@@ -1,0 +1,14 @@
+{
+  "name": "crew",
+  "owner": {
+    "name": "Jerridan Quiring"
+  },
+  "plugins": [
+    {
+      "name": "crew",
+      "source": "./",
+      "description": "Autonomous project lead — takes one goal to reviewable draft PRs and picks the cheapest model per unit of work",
+      "version": "0.1.0"
+    }
+  ]
+}

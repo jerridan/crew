@@ -1,0 +1,1070 @@
+# crew — design
+
+**A project lead that takes one goal to reviewable draft PRs without the human in
+the loop, and picks the cheapest model that can do each piece.**
+
+Status: design. Date: 2026-08-24, amended 2026-08-27.
+
+This document says what to build and why. It is the first stage of the
+"Personal Agent Org" PRD (`~/.claude/plans/recently-read-a-blurb-pure-piglet.md`),
+scoped down to one tier.
+
+---
+
+## 1. Purpose
+
+Today a session stops for the human at every stage: after brainstorming, after
+the spec, after the plan, after the plan review. Each stop costs attention, and
+the work waits. The model is also chosen before any investigation happens, so
+almost everything runs on Opus at high effort — including the parts that did not
+need it.
+
+`crew` removes both problems for one goal at a time. You hand a goal to the lead.
+The lead investigates, writes a spec, has it critiqued, splits the work, assigns
+a model per piece, dispatches workers, integrates the result, and opens draft
+PRs. It records every judgment call it made on your behalf so you can audit them
+at review time.
+
+### In scope
+
+- One goal per run. One lead, in your session.
+- Autonomous progress from hand-off to draft PR.
+- Model chosen per unit of work, after investigation.
+- A durable record you can read, audit, and resume from.
+
+### Out of scope
+
+- **Autonomous merging.** The draft PR is the terminus. A human merges.
+- **A tier above the lead.** No router, no roster, no lead-of-leads.
+- **Concurrent goals.** One goal per lead session. Run more sessions for more.
+- **An org-wide view.** No dashboard, no cross-session sweep, no supervision.
+- **Replacing CI review.** The existing reviewer fleet stays the quality gate.
+  `crew` feeds it.
+
+---
+
+## 2. Relationship to superpowers
+
+`crew` is heavily inspired by the `superpowers` plugin. The process spine — spec,
+plan, critique, TDD, review, integrate — comes from there, and several checklists
+are copied rather than paraphrased so they stay easy to re-sync.
+
+`crew` is not a wrapper. It never invokes a superpowers skill, because every
+superpowers process skill is built to stop and wait for a human, and removing
+those stops is the whole point. Section 14 lists every deliberate deviation.
+
+---
+
+## 3. Roles
+
+| Role | Mechanism | Model | Lifetime |
+|---|---|---|---|
+| **Lead** | `/crew:lead <goal>` in your session | your session's | the run |
+| **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
+| **Advocate** | unnamed subagent (`general-purpose`) | sonnet | one position |
+| **Spec critic** | unnamed subagent, new `crew:spec-critic` (unbuilt) | opus / high | one review |
+| **Decomposition critic** | unnamed subagent, new `crew:decompose-critic` | opus / high | one review |
+| **IC** | **named teammate** `crew:ic`, or unnamed subagent | per band | a territory |
+| **Instruction IC** | **named teammate** `crew:ic-instructions` | per band | a territory |
+| **Package reviewer** | unnamed subagent, new `crew:package-reviewer` | sonnet / high | one review |
+| **Deliverable reviewer** | unnamed subagent, new `crew:deliverable-reviewer` | opus / high | one review |
+
+### The naming rule
+
+A **named** agent becomes a teammate. A teammate's output never returns to the
+lead, so everything that must return a parseable result stays **unnamed**.
+
+Only ICs get names, because only ICs need two things names provide: resume with
+context intact for fix rounds, and graceful stand-down on a direction change.
+
+### What each role may not do
+
+The prohibitions bound cost and blast radius, so they matter more than the
+duties.
+
+- The **lead** does not read code broadly. It dispatches scouts. It writes no
+  implementation code except bounded edits (section 9.3).
+- An **IC** does not touch files outside its declared set, does not renegotiate
+  its own scope, does not push to a remote, and does not spawn a reviewer or
+  another implementer. It may spawn read-only lookup subagents only.
+- A **critic** or **reviewer** does not edit code. It reports.
+
+---
+
+### 3.1 Specialist ICs
+
+`crew:ic-instructions` is the first specialist. It owns any package whose
+deliverable is an instruction file: `CLAUDE.md`, a `.claude/rules/` file, a
+`SKILL.md`, or an agent definition.
+
+It exists because the **acceptance mechanism differs**, not because the subject
+matter does. A code IC runs test-first and "green" means a passing test. No test
+can be run against a `SKILL.md`. An instruction package's acceptance criterion is
+a checklist, verified by a reviewer, so the TDD contract does not apply to it and
+forcing prose through that contract produces theatre.
+
+Its contract replaces red-green-refactor with:
+
+1. Pick the container, cheapest one that still reaches the audience.
+2. Draft.
+3. Revise down — expect to lose about a third.
+4. Self-check against the checklist.
+5. Commit.
+
+It holds **no copy** of the standard. `writing-standard.md`, under
+`skills/lead/references/`, is canonical, and the IC's brief tells it to read
+that file before writing anything. It is a plain reference file, not a skill
+invocation, so there is no fork risk: the IC reads it with its own `Read` tool,
+into its own context, every time — and the standard's own rule applies to
+itself: a second copy of a rule is worse than no copy, because nothing decides
+which copy wins.
+
+It covers all four container types this IC owns directly, with no hand-off to
+another skill for two of the four.
+
+`crew:package-reviewer` reviews its work as usual, with the checklist as the
+rubric instead of a diff-and-tests review. The lead passes it the checklist's
+path, so there is still one copy.
+
+**The IC is judged on its output, not on how it obtained the standard.** That
+keeps the contract intact when an IC forgets to read the file, or reads a stale
+copy.
+
+This is the general rule for adding a specialist later: **split an IC when the
+definition of done changes, not when the subject changes.** A new language or
+framework is a generalist's job. A different acceptance mechanism is not.
+
+Building `crew` is itself almost entirely instruction files, so this specialist
+does most of the packages in crew's own construction — which makes it the natural
+way to prove stage 2 works.
+
+## 4. The record
+
+One directory per goal, outside the target repo so the repo stays clean:
+
+```
+~/.claude/crew/<goal-slug>/
+├── charter.md        goal + falsifiable acceptance criterion
+├── spec.md           the spec the lead wrote after scouting
+├── plan.md           deliverables → packages, with interfaces and bands
+├── state.json        deliverables, per-package state, band history, spend, escalations
+├── decisions.md      every judgment call, with its citation or reasoning
+├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
+├── reports/          one report per package, written by its IC
+├── plans/            one plan per package, written by its IC
+└── reviews/          raw critic and reviewer output
+```
+
+`state.json` is **authoritative for the plan** — which packages exist, their
+bands, their file sets, their contracts, and what the lead intended. Messages
+between agents are notifications only; a lost message costs latency, never
+correctness. Nothing in the design may treat the agent-team task list as the
+source of truth, because that is what keeps a later move to independent sessions
+cheap.
+
+**The worktrees are authoritative for progress.** After a crash `state.json` can
+be stale — it may call a package in-flight that an IC actually finished, or the
+reverse. Git cannot lie about what landed, so recovery reconciles against the
+worktrees rather than trusting the record (section 10.1).
+
+The lead writes `state.json` after **every** state transition, not batched at
+package boundaries. A crash then loses at most one transition.
+
+At the end, the lead copies `spec.md` and `decisions.md` into the draft PR body.
+That is where you review them.
+
+### `decisions.md`
+
+Every entry records: the question, how it was routed (section 6), the answer, and
+either the exact instruction that resolved it or the reasoning that produced it.
+
+```markdown
+## Should the version bump be part of package 2?
+Route: precedent
+Answer: No — the lead bumps versions at integration.
+Citation: CLAUDE.md "Development Workflow" step 3 requires both plugin.json and
+marketplace.json to change, which no two packages can own disjointly.
+Confidence: high
+```
+
+An entry with high confidence and no citation is a defect.
+
+---
+
+## 5. Decomposition
+
+### Two levels
+
+- A **goal** splits into 1..N **deliverables**. One deliverable is one branch and
+  one draft PR. Deliverables run **sequentially**, because a later one may build
+  on an earlier one.
+- A deliverable splits into 1..M **packages**. Packages run **in parallel**.
+
+The lead decides both counts after scouting. A goal that is too large for one PR
+gets several deliverables; that judgment is the lead's to make.
+
+### Territories
+
+Packages are grouped into **territories** — regions of the file tree. One IC owns
+one territory and works every package in it, in order, in one worktree.
+
+This follows the agent-team guidance of 3-5 workers with several tasks each,
+rather than one worker per task. It also means fewer spawns, an IC that keeps its
+accumulated repo knowledge across packages, and one merge per IC instead of one
+per package.
+
+### Package right-sizing
+
+Copied from `superpowers:writing-plans`:
+
+> A task is the smallest unit that carries its own test cycle and is worth a
+> fresh reviewer's gate. Fold setup, configuration, scaffolding, and
+> documentation steps into the task whose deliverable needs them; split only
+> where a reviewer could meaningfully reject one task while approving its
+> neighbor.
+
+### The invariant
+
+A package is dispatchable only when it has all four:
+
+1. Its own acceptance criterion, which is satisfied by only its own changes.
+   That is **an executable test** for code, or **a written checklist verified by
+   a named reviewer** for a package that produces prose (section 3.1).
+2. A file set disjoint from every concurrent sibling.
+3. A written interface contract with its siblings.
+4. A band (section 8).
+
+Packages that cannot be made disjoint are serialized or merged.
+
+### Interface contracts
+
+Copied from `superpowers:writing-plans`. Every package records:
+
+- **Consumes:** what it uses from earlier packages — exact signatures.
+- **Produces:** what later packages rely on — exact names, parameter and return
+  types.
+
+The rationale is stronger here than in superpowers: an IC works in an isolated
+worktree and **cannot see its siblings' work at all**. This block is the only
+channel between packages.
+
+### Global constraints
+
+`plan.md` carries a `Global Constraints` section: project-wide requirements
+copied verbatim from the spec — version floors, dependency limits, naming rules,
+platform requirements. Every package's requirements implicitly include it, and
+the lead injects it into every IC spawn prompt.
+
+### Shared files belong to the lead
+
+Version manifests, lockfiles, barrel and `index` files, and shared config are
+never in a package's file set. The lead edits them at integration.
+
+In this repo that means `plugin.json` and `marketplace.json` specifically:
+`CLAUDE.md` requires both to change for any content change, so no two packages
+could ever own them disjointly.
+
+### The critic
+
+`crew:decompose-critic` reviews `plan.md` before any IC is dispatched. It checks
+only the invariant, and nothing else:
+
+1. Is every file set disjoint from its concurrent siblings? Look hardest at
+   shared config, barrel and `index` files, test helpers, snapshots, lockfiles,
+   and version manifests.
+2. Is every interface contract written, with exact signatures and types?
+3. Can each acceptance test pass with only its own package's changes?
+4. Is anything mis-split — two packages that should be one, or one that must be
+   serialized behind another?
+5. Is any "parallel" set a dependency chain in disguise?
+6. **Type consistency:** do names, signatures, and types used by a later package
+   match what an earlier package defines? A function called `clearLayers()` in
+   one package and `clearFullLayers()` in another is a bug.
+7. Does any package reference a type, function, or method that no package
+   defines?
+
+This is one cheap Opus call that prevents days of wasted IC work. It is skipped
+only on the simple path (section 9.1), where there is one package and nothing to
+check.
+
+---
+
+## 6. The autonomy contract
+
+The lead answers its own questions. It asks you only when it genuinely cannot
+proceed correctly.
+
+### Routing
+
+Every question is classified and **the routing is logged to `decisions.md`
+before it is answered**, so an audit can catch a pivotal question that was
+wrongly routed. Routing without a recorded reason is a defect.
+
+| Route | For | How |
+|---|---|---|
+| **Precedent** | "How does this work here?" / anything an instruction covers | Section 6.2 |
+| **Council** | Judgment with a determinable answer, and **every** question touching a data model, public interface, service boundary, or cross-cutting pattern | Section 6.1 |
+| **Preference** | What the human wants, where evidence cannot decide: opt-in or not, match old behavior or fix it, is this worth doing | Resolve from `CLAUDE.md`, `.claude/rules/`, or an explicit prior decision. Otherwise **escalate**. Never debate. |
+
+The preference route exists because a council will always name a winner, grounded
+in precedent — and precedent is the wrong guide when the point is to change
+something deliberately. Debating a preference question converts "I do not know
+what you want" into "we established you want X", buried in a record instead of
+surfaced as a question. That is worse than asking.
+
+A question may be answered inline only when the lead can cite why every
+alternative is implausible. An inline answer with no citation is suspect; when in
+doubt, route to a council.
+
+**The council is discretionary.** The ladder is: confident → answer it and record
+why; unsure → convene a council; council inconclusive → flag it for the human.
+The lead is not obliged to spin up a council for a question it can already
+answer.
+
+The one constraint on that discretion: **an architecture-moving question answered
+inline must cite why the alternatives are implausible.** That is what stops the
+"mis-framed as trivial, so never debated" blind spot from returning. Confidence
+without a citation is not confidence, and it routes to a council.
+
+### 6.1 Council
+
+Adapted from the `resolve-ticket` plugin.
+
+1. Frame 2 or more candidate positions. Cap at 3.
+2. Dispatch one advocate per position, in parallel, in a single batch. Each is
+   told: argue **for** your position, gather cited evidence from code and docs,
+   make the strongest case, and name the strongest objection to your own side.
+3. The lead adjudicates and picks a winner.
+4. Record the decision, the losing arguments, the citations, and a confidence
+   level. Never record high confidence without a citation.
+
+A council is adversarial advocacy with one judge, not a poll. Agreement between
+agents from the same base model measures shared priors, not correctness, which is
+why positions are assigned rather than discovered.
+
+**When a council is balanced** — the lead cannot pick a winner at medium
+confidence or better — **and the question is architecture-moving, the lead
+escalates.** It does not flag and continue.
+
+This differs from `resolve-ticket`, deliberately. There, one ticket produces one
+PR a human reviews. Here, a wrong architecture-moving call propagates into the
+decomposition and then into every IC in parallel, so it costs the whole run.
+Same machinery, higher threshold, because the blast radius is larger.
+
+**Models.** Advocates run **sonnet**. The lead adjudicates at its own model.
+Advocacy is evidence-gathering and synthesis; the judgment is the expensive part,
+so the capable model goes on the judging, not the gathering.
+
+Two rules on top:
+
+- **Every advocate in one council runs the same model.** Mismatched advocates
+  measure model strength rather than argument strength, and the adjudicator then
+  picks a side for the wrong reason.
+- **Sonnet is the floor.** Haiku produces weak cases, which corrupts the
+  adjudication in the same way.
+
+Raise every advocate to opus together when the decision is `deep`-band. Record
+which model a council used, so promotion data covers councils too.
+
+Council spend is logged. It is expected to be the largest single line item in a
+run.
+
+### 6.2 Precedent and competing patterns
+
+Repos carry several patterns for the same job, and some of them are patterns the
+team is moving away from. Volume is not evidence. Search in this order and stop
+at the first answer:
+
+1. **An explicit instruction** — `CLAUDE.md`, then `.claude/rules/`, then any
+   nested `CLAUDE.md` closer to the files being changed.
+2. **An explicit prior decision** recorded in `decisions.md` this run.
+3. **Repo precedent.**
+
+**An instruction is the final word.** When an instruction says not to use a
+pattern and the repo is full of that pattern, the instruction wins. The lead
+records the conflict — the instruction, and the fact that precedent contradicts
+it — so the volume of old usage never looks like a reason to ignore the rule.
+
+Treat these as deprecation signals with the same weight as an instruction: a lint
+rule against the pattern, a `deprecated` marker, a migration document, or a
+codemod in the repo.
+
+**When precedent is split and no instruction resolves it**, do not pick the more
+common one. Check whether the split tracks age: if new files use one pattern and
+old files use the other, the newer one is the direction of travel, and that is
+real evidence — record it and proceed. If the split does not track age, the lead
+has no basis to choose, and this becomes a **preference** question.
+
+Escalate it, and make the escalation productive:
+
+```
+Two patterns exist for <job> and no instruction covers it:
+
+A. <pattern> — <N> usages, e.g. <path:line>
+B. <pattern> — <M> usages, e.g. <path:line>
+Age: <does the split track age, or not>
+My recommendation: <which, and why>
+
+Which should crew use? Want me to record the answer in <CLAUDE.md or the right
+.claude/rules/ file> so this never comes back?
+```
+
+The lead **proposes** the instruction text and never writes it without your
+explicit approval — instructions are configuration, and changing them is your
+decision, not a side effect of a run.
+
+This is the one escalation that pays for itself. Every answer becomes an
+instruction that resolves the same question in every future run, so the question
+rate should fall over time instead of staying flat.
+
+**ICs never escalate to the human — they escalate to the lead.** An IC that hits
+pattern ambiguity inside a package messages the lead. The lead answers it if an
+instruction covers it, and otherwise batches it for you.
+
+**An IC does not wait for the answer.** A message to a busy lead sits until the
+lead is between actions, so an IC that stops and goes idle turns one question into
+a stalled worktree. In order of preference, an asking IC:
+
+1. Proceeds under a stated assumption, records it, and names it in its report.
+   The lead corrects it in a fix round if the assumption was wrong — cheap,
+   because messaging the same IC keeps its context.
+2. Moves to the next package in its territory, if that package does not depend on
+   the answer.
+3. Stops only when the question is load-bearing for the whole package and it
+   cannot write any code without it.
+
+This is the same rule the lead follows one level up: do everything that does not
+depend on the answer first, then ask once.
+
+An IC must never go idle with an unanswered question and no stated assumption.
+The `TeammateIdle` hook enforces this (section 13.1).
+
+**Blocking rule.** A pattern choice that changes the decomposition or an
+interface contract blocks — the lead cannot split the work without it. Any other
+pattern choice is batched: the lead does everything that does not depend on the
+answer first, then asks once.
+
+### Escalation triggers
+
+**This list is a floor, not a ceiling.** These are the cases where the lead
+*must* stop. It is never forbidden from asking about anything else.
+
+A lead that reads "narrow triggers" as "never ask" is the failure this paragraph
+exists to prevent. No human in the loop is the goal, not the rule. A question
+costs one interruption; a project built in the wrong direction costs a day, and
+the assumption trail only shows you that after the fact. So when the cost of
+being wrong is high and confidence is low, ask — and record that the ask was a
+judgment call rather than a trigger.
+
+Each answer you give can then be written into `CLAUDE.md` or `.claude/rules/`
+(section 6.2), which retires that question for every future run. The right
+number of escalations early is higher than the right number later.
+
+Triggers are batched into one interruption where possible.
+
+1. No falsifiable acceptance criterion can be written for the goal. The lead
+   aborts before doing any work.
+2. A **preference** question that no instruction resolves — including a split
+   precedent that does not track age (section 6.2).
+3. A **balanced council** on an architecture-moving question.
+4. Any action outside an isolated workspace: the main branch, production, or
+   credentials.
+5. The spend ceiling is crossed.
+6. A package reached the fix-round breaker at the top band.
+
+Everything else the lead settles itself and records — unless it judges that
+getting it wrong would take the work off the rails, in which case it asks anyway.
+
+---
+
+## 7. Verification
+
+The lead's hardest rule, copied from `superpowers:verification-before-completion`:
+
+> **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
+
+This matters more here than in a normal session, because a teammate's output
+never reaches the lead at all. So:
+
+| Claim | Requires | Not sufficient |
+|---|---|---|
+| An IC finished | `git -C <worktree> log` and `diff` show the work, on the right branch | the IC's report |
+| Tests pass | a fresh run's output, 0 failures | a previous run, "should pass" |
+| Requirements met | a line-by-line check against the charter | tests passing |
+
+**An IC's report is a claim, not evidence.** Every IC completion is checked
+against its worktree before the lead believes it. That check also catches an IC
+that drifted out of its assigned worktree (section 12).
+
+A green run only proves the tree it ran on, so the lead re-runs after every
+merge.
+
+### Adjudication
+
+The lead receives findings from reviewers. Adapted from
+`superpowers:receiving-code-review`:
+
+1. Read the whole set without acting.
+2. Restate each finding in its own words.
+3. Verify it against the codebase.
+4. Evaluate whether it is right **for this codebase**.
+5. Push back with technical reasoning where it is not, and record the pushback.
+6. Fix one at a time, in order: blocking, then simple, then complex.
+
+**Assuming the reviewer is right is a mistake, not deference.** If a finding is
+unclear, the lead does not dispatch a fix round on it — it requests a clarified
+re-review first. That is what stops review-loop thrash.
+
+Before "implementing properly", grep for real usage. Unused means remove it.
+
+---
+
+## 8. Model and cost policy
+
+Model is chosen **per package, after scouting**. Effort cannot be set per
+teammate — a teammate inherits the lead's effort — so bands are model only.
+
+| Band | Model | The package looks like |
+|---|---|---|
+| light | haiku | Follows an existing repo pattern verbatim; tests already cover the surface |
+| **standard** | **sonnet** | **default** |
+| deep | opus | A new interface others depend on; concurrency, security, migration, or a data-shape change; or the lead had to *interpret* the acceptance criterion rather than read it off the charter |
+
+Rules:
+
+- The default is `standard`. Choosing `deep` requires a written justification in
+  `plan.md`.
+- **Promotion:** an IC that reports `BLOCKED`, exhausts its fix rounds, or goes
+  idle without meeting its acceptance test is re-dispatched one band up. No human
+  involvement.
+- Every promotion is logged with predicted band, actual band, and cause. That
+  turns the rubric from a guess into a measurement.
+- Each run has a spend ceiling. Crossing it escalates.
+
+Spend is measured from the `usage` block on each subagent's completion
+notification, which carries `total_tokens` per agent. A teammate's spend is not
+reported this way, so the lead records an estimate for teammates and marks it as
+such. This is a known weakness of the ceiling: it undercounts exactly the agents
+that cost the most. Treat the first runs' numbers as a floor.
+
+One `crew:ic` definition serves all three bands, because a spawn-time `model`
+overrides the definition's frontmatter (section 12).
+
+---
+
+## 9. The execution loop
+
+### 9.1 Choosing the shape
+
+After scouting, the lead picks the shape. **Mechanism follows the need for a
+conversation, not the size of the work.**
+
+| Situation | Shape |
+|---|---|
+| A bounded edit: 1-2 tool calls, no file reading needed | The lead does it itself |
+| One simple package | **Simple path:** one unnamed subagent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. Its result returns as a normal tool result. |
+| Several packages, or work long enough to need steering | **Full path:** IC teammates in worktrees |
+
+The simple path is much cheaper and is expected to be the common case for small
+goals. The lead is idle while the subagent works, so sharing the tree costs
+nothing.
+
+The lead does work itself only for bounded edits. Its own context is the most
+expensive place to do anything: it runs at your model and effort, and everything
+it reads inflates every later turn.
+
+### 9.2 Full path, per deliverable
+
+1. Create a worktree and branch per IC. Record them in `worktrees.json`.
+2. Spawn IC teammates at their band. The spawn prompt carries: the package
+   brief, the declared file set, the worktree path, the interface contracts, the
+   acceptance test, and the global constraints. A teammate inherits no
+   conversation history, so the prompt must be self-contained.
+3. Require plan approval. Today this means the fallback: the IC plans in
+   read-only mode, writes its plan into the record, and waits for the lead's
+   go-ahead by message — see section 12's `PROBE PENDING` entry on plan
+   approval. Native plan approval is the pending upgrade; swap to it once
+   that probe confirms it works. Autonomous either way.
+4. The IC implements test-first, **commits after every green step**, self-reviews,
+   and writes its report into the record.
+5. The lead verifies the worktree (section 7), then writes the diff to a file
+   (`git diff > <path>`) and dispatches `crew:package-reviewer` with the **path**.
+   The diff never enters the lead's context.
+6. Fix rounds, five maximum. Rounds 1-3 message the same IC, so it keeps its
+   context. Rounds 4-5 respawn a fresh IC one band up. Then the breaker: fix,
+   park with recorded reasoning, or defer.
+7. Repeat for the IC's next package in its territory.
+
+### 9.3 Integration
+
+All ICs branch from the same base — the deliverable branch head — so integration
+is a merge, not a rebase.
+
+```
+git merge --squash <ic-branch> && git commit -m "<package one-liner>"
+<run the suite>
+```
+
+One squashed commit per package gives a narrative a reviewer can read, and the
+IC's per-green-step commits stay on its own branch for resume safety.
+
+**Test after each merge, not after all of them.** A failure is then attributable
+to one package for free, with no bisect.
+
+Then the lead edits the shared files itself, bumps both version fields, dispatches
+`crew:deliverable-reviewer` over the whole diff, adjudicates the findings, pushes,
+and opens a **draft** PR with `spec.md` and `decisions.md` in the body.
+
+Textual conflicts should be impossible: disjoint file sets leave git nothing to
+conflict on, and the lead owns every shared file. What remains is the semantic
+conflict — two packages that merge cleanly and break at runtime — which the
+per-merge test run catches.
+
+### 9.4 Cleanup
+
+The lead removes each IC worktree when the deliverable closes, and prunes stale
+registrations. Copied from `superpowers:finishing-a-development-branch`:
+
+**Never force a worktree removal.** A refusal means files exist nowhere else.
+Commit them to the IC branch or surface them. Clean up only worktrees `crew`
+created.
+
+---
+
+## 10. Intervention and re-planning
+
+You can interrupt the lead at any point, and you can open any IC in the agent
+panel and message it directly.
+
+A direction change may revise the spec, recompute the decomposition, and replace
+work in flight. Two rules:
+
+- **Stand down, never kill.** An IC that is being replaced is asked to commit
+  what it has and stop. Work in progress is retained.
+- **Distinguish the states.** A package is `pending`, `in-flight`, `integrated`,
+  or `abandoned`. A deliverable follows the same states, except its terminal
+  value is `draft-pr-opened`, not `integrated` — no deliverable state ever
+  means the deliverable reached `main`. A re-plan cares about the first
+  three: integrated work cannot be revised in place — it needs new corrective
+  work. A re-plan that treats all
+  packages alike produces a spec that no longer describes what already landed.
+  `abandoned` is the terminal state for a package the breaker deferred or a
+  re-plan dropped, and it is never revived; new work gets a new package.
+
+### 10.1 Recovery after a kill
+
+A whole team dies at once — teammates are in-process, so a crash, a closed
+terminal, a reboot, or a `/resume` takes all of them down together. What survives
+is every IC's worktree: its commits, **and its uncommitted edits**, because a
+worktree is a directory on disk. What is lost is each IC's live context and any
+message in flight.
+
+`/crew:lead --resume <goal-slug>` reconciles. For every worktree in
+`worktrees.json`:
+
+| Worktree state | Meaning | Action |
+|---|---|---|
+| Has commits, clean | The IC may have finished | Verify against the package's acceptance test before believing it. Do not re-run work that already passes. |
+| Has commits, **dirty** | Died mid-package | **Commit the dirty work first**, then respawn. Never discard it. |
+| Clean, no commits | Nothing was done | Respawn from the original brief |
+| Recorded `integrated` and still present | Already merged | Safe to prune |
+
+Three rules make this work:
+
+1. **Never discard a dirty worktree.** Commit it before anything else. This is
+   the crash-time form of "stand down, never kill" (section 10). Uncommitted work
+   is the only thing in the system that exists in exactly one place.
+2. **Reconcile from git, then correct the record.** `git -C <wt> log <base>..HEAD`
+   and `git -C <wt> status --porcelain` are the evidence. `state.json` is
+   rewritten to match them, not the other way round.
+3. **A respawned IC is a new IC.** It holds no context, so its brief must
+   describe what is already in its worktree — `git log --oneline` plus
+   `git diff --stat` is enough — and say which steps are done. Its acceptance
+   test tells it when to stop, which is what keeps a respawn idempotent.
+
+The deliverable branch needs the same reconciliation: if the lead died after
+merging two of four packages, `git log` on that branch shows which. Already-merged
+packages are `integrated` and cannot be revised in place — they need new
+corrective work (section 10).
+
+Pruning an orphaned worktree never forces (section 9.4). If a worktree holds
+uncommitted files, the lead commits them to that IC's branch and says so, rather
+than removing it.
+
+Known recovery detail: a lead killed mid-commit can leave a stale `index.lock`
+in a worktree. Resume clears one only when no process holds it.
+
+---
+
+## 11. Overriding the "monitor and steer" guidance
+
+The agent-teams documentation warns that letting a team run unattended increases
+the risk of wasted effort, and recommends monitoring and steering. `crew`
+overrides that deliberately.
+
+The premise of this design is that the **lead** is the monitor, not you. The
+check-ins are the plan-approval gate, the per-package review, the per-merge test
+run, and the record. If those are not enough, the answer is to strengthen them —
+not to put the human back in the loop, which restores the original problem.
+
+The documentation also recommends starting with research and review rather than
+parallel implementation. So the first real run should be a small, familiar goal.
+
+---
+
+## 12. Verified platform constraints
+
+Measured by probe, not assumed. Each one shapes a requirement above.
+Everything above the `Skill`-tool rows was probed on 2026-08-24. The three
+`Skill`-tool rows were probed on 2026-08-27, on Claude Code 2.1.247, from
+`--output-format stream-json --verbose` transcripts.
+
+| Constraint | Consequence |
+|---|---|
+| `isolation: "worktree"` creates a real separate worktree and branch | Isolation is available for subagents |
+| Without the flag, an agent shares the lead's tree | Isolation is never automatic |
+| Passing `isolation` **downgrades a named agent to a subagent** | An IC cannot be both a teammate and harness-isolated. The lead builds worktrees itself. |
+| A lead **can** run `git worktree add` from inside a worktree, and a teammate can work, write, and commit there with no guard, provided the driving session is not itself worktree-isolated (§15 item 10) | The workaround holds |
+| **The shell cwd resets after every Bash call.** `cd` holds only within one invocation. | Every IC command must carry its own `cd <worktree> &&`. An IC that forgets works on the wrong checkout with **no error**. Detection is the lead's verification step. |
+| Spawn-time `model` overrides frontmatter `model:`; frontmatter applies when no override is passed | One `crew:ic` definition serves all bands |
+| `reasoning_effort` is frontmatter only, and teammates inherit the lead's effort | Bands are model only |
+| A teammate's output never returns to the dispatcher | ICs write reports into the record |
+| A teammate does not know its own model | Band assignment cannot be verified by asking |
+| Task tools are off by default on Opus 5 and Sonnet 5 | The lead session must be launched with `--allowedTools TaskCreate TaskGet TaskList TaskUpdate` to get the shared task list and dependency blocking |
+| `hooks` in agent frontmatter is **ignored for teammates**, and plugin agents cannot use `hooks` at all | IC behavior cannot be hook-enforced without a global hook. See section 13. |
+| Teammates cannot spawn teammates; a teammate's subagents run in the foreground | An IC may use read-only lookup subagents, but they block it |
+| `claude -p` cannot spawn teammates | A future detached lead must be interactive |
+| Teammate spawning needs a working display mode | `it2` installed plus the iTerm2 Python API enabled, or run inside tmux, or `teammateMode: "in-process"` |
+| Plain headless `-p` mode auto-rejects the `Skill` tool with no surface to approve it (`tool_result_meta` shows `user-rejected`) | A headless session cannot exercise a skill-invocation path. The model falls back to `Read`/`Bash` and can still produce a plausible answer. A probe that relies on this path passes vacuously. |
+| Under `--permission-mode bypassPermissions`, the `Skill` tool executes. It labels its result `(forked execution)` regardless of the skill's `context:` setting. In one run its result text was stale and wrong. | The `Skill` tool's own result text is not evidence of how a skill executed, or of the tree's current state. |
+| In headless mode, `subagent_stats.spawned` and `parent_tool_use_id` were identical — `0` and `null` — for a skill with no `context:` key and for one with `context: fork` | The harness exposes no signal for fork-vs-inline skill execution. The frontmatter is the only available ground truth. |
+
+**PROBE PENDING — plan approval, load-bearing.** The plan-approval flow in
+section 9.2 is taken from the documentation, not from a probe. Test it before
+stage 5: spawn a teammate requiring plan approval, confirm the request reaches
+the lead, and confirm the lead can reject it with feedback and have the
+teammate revise. Run this probe from an interactive session. `claude -p`
+cannot spawn a teammate. A subagent cannot run this probe either. Only an
+interactive lead can spawn one.
+
+Until the probe runs, `crew:ic` is written against the fallback. The IC writes
+its plan into the record and waits for the lead's go-ahead by message, instead
+of using native plan approval. If the probe later shows native plan approval
+works, swapping to it is a small, localized change.
+
+**RESOLVED — the fork-vs-inform question no longer applies.** Section 3.1
+originally needed a canonical *skill* to run in the IC's own context rather
+than fork to a subagent. `writing-standard.md` is a plain reference file
+instead, read with the IC's own `Read` tool, so there is no invocation to
+fork and nothing left to probe here.
+
+---
+
+## 13. Build order
+
+Staged so each stage is independently useful and independently abandonable.
+
+| # | Deliverable | Done when |
+|---|---|---|
+| 0 | Write crew's own `writing-standard.md` (open question 6) | Crew's own prompts have one standard to be written against |
+| 1 | Plugin skeleton, record format, band rubric, IC contract reference | Later stages agree on a format |
+| 2 | `crew:ic` + `crew:ic-instructions` + `crew:package-reviewer`, driven by hand | One package of each kind reaches a reviewed, accepted result with zero prompts |
+| 3 | `crew:decompose-critic` + `plan.md` format | A bad split is caught before dispatch |
+| 4 | `crew:deliverable-reviewer` + `/crew:lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
+| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts |
+| 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
+
+### 13.1 Hooks
+
+`crew` ships its own `hooks/hooks.json`, the way `auto-approve` and
+`session-memory` do. The restriction found in section 12 is on **agent
+frontmatter** `hooks`, which is ignored for teammates and banned for plugin
+agents. A plugin's own hook file has no such limit.
+
+Plugin hooks are active in every session, so the deciding question for each one
+is how often it fires when no crew run is happening.
+
+| Hook | Fires | Job | Stage |
+|---|---|---|---|
+| `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Exit 2 to reject an IC that goes idle without a green test run, a written report, or a stated assumption — a mechanism taken from documentation, not a probe (see below). Keeps it working. | **5** |
+| `SessionEnd` | once per session; a guard clause exits at once when no crew record exists | **Writes only.** Marks the run interrupted in `state.json` and lists its worktrees as orphaned. Deletes nothing. | 5 |
+| `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard | **deferred** |
+| `PreToolUse` on `Agent` | every agent spawn | Provision a worktree at spawn time | **not needed** — the lead does this itself |
+
+The `Bash` hook is the only one with a real cost, and it is the one deferred. Its
+value is also the most replaceable: the lead already detects worktree drift when
+it verifies each IC against `git -C <worktree> log` (section 7). Revisit it once
+an IC is actually observed wandering.
+
+**No hook ever deletes a worktree.** Three reasons, any one of which is enough:
+
+1. **Path patterns are not ownership.** Manual worktrees live in
+   `.claude/worktrees/` too, alongside crew's, and several sessions may hold live
+   workspaces there at once. A hook keyed on a directory would delete another
+   session's work. Only `worktrees.json`, matched to the run's own session id, is
+   proof of ownership — and a hook firing on an unrelated session has no run to
+   match against.
+2. **A hook cannot ask.** A refused removal means files exist nowhere else
+   (section 9.4). `SessionEnd` cannot surface that choice, so it can only force
+   and destroy silently, or skip. Neither is acceptable in a hook that runs in
+   every session.
+3. **`SessionEnd` must be fast** or it blocks session shutdown. Removing several
+   worktrees is not fast.
+
+So `SessionEnd` records and never destroys. Marking the run interrupted is the
+part that carries real value: without it, a resume cannot tell a live run from a
+dead one.
+
+Removal happens where an agent can reason about it and you can see it: on
+`/crew:lead --resume`, which prunes the orphaned worktrees this run registered,
+and never forces.
+
+**`TeammateIdle` ships in stage 5, not stage 2, with `SessionEnd`.** *If* exit 2
+blocks the idle as documented — unverified; see the `PROBE PENDING` entry
+below — the two hooks are halves of one mechanism. The hook blocks an idle
+while a package is `in-flight`. Only `SessionEnd`'s `run_state: interrupted`
+marks a dead run's packages as no longer in flight. Under that assumption,
+shipping the blocking half alone would leave a single crashed run blocking
+teammates in every future session on the machine, with no diagnosis path.
+
+Three rules for it, all cheap, none optional:
+
+- **Scope to the idling teammate, and fail open.** If the payload cannot identify
+  which teammate is idling, exit 0. A coarse "any package in flight" rule
+  livelocks a multi-IC run — an IC that legitimately finished is told to keep
+  working because a *different* IC is still busy, and it has nothing to do.
+- **Check the report file on disk**, not a `state.json` field. The lead owns
+  `state.json`, so an IC cannot unblock itself through it.
+- **Ship a kill switch** — `CREW_DISABLE_IDLE_HOOK=1` — and a staleness cutoff
+  that ignores any run whose `state.json` has not been written for hours.
+
+**PROBE PENDING — `TeammateIdle`, before stage 5.** Two things are unverified,
+not one:
+
+1. **Whether the payload identifies which teammate is idling.** The
+   documentation describes it only as "teammate/agent context information". If
+   it does not name the idling teammate, the hook cannot look up that IC's
+   package or worktree. The check then falls back to something coarser — such
+   as refusing any idle while the record shows an in-flight package with no
+   report.
+2. **Whether exit 2 actually blocks the idle at all.** The design assumes it
+   does. That assumption comes from documentation, not from a probe.
+   Exit-code semantics differ per hook event. If exit 2 does not block the
+   idle, this hook is a no-op, and stage 5 needs a different design.
+
+Probe procedure, run once before stage 5:
+
+1. Register a temporary `TeammateIdle` hook in `~/.claude/settings.json`. Have
+   it dump stdin to a file and exit 2:
+
+   ```bash
+   cat > /path/to/probe.sh <<'EOF'
+   #!/bin/bash
+   cat >> /path/to/teammate-idle-payload.json
+   echo "crew probe: refusing idle" >&2
+   exit 2
+   EOF
+   chmod +x /path/to/probe.sh
+   ```
+
+2. Spawn a teammate. Let it go idle, then let it finish.
+3. **Remove the hook registration right after.** While it stays registered, it
+   fires on every teammate in every session on the machine, not just the
+   probe's.
+4. Answer three questions from the dump: Does exit 2 prevent the teammate from
+   idling? Does the stderr string reach the teammate? Does the payload identify
+   which teammate, and does it carry a session id or cwd? Without one, the hook
+   cannot scope to a run and must fail open.
+
+---
+
+## 14. Deviations from superpowers
+
+Copied as-is, so it stays easy to re-sync: the `Interfaces` block, the
+`Global Constraints` block, task right-sizing, the no-placeholders list, the
+verification table, the adjudication procedure, the worktree cleanup guard.
+
+Deliberately different:
+
+| superpowers | crew | Why |
+|---|---|---|
+| Every stage stops for human approval; brainstorming has a hard gate | No gates. The lead self-approves and records the decision. | The gates are the problem being removed |
+| The spec review gate is the human's | The (unbuilt) crew-owned spec critic plus the council are the review | Independence without a stop |
+| `writing-plans` offers an execution choice | The lead picks the shape itself (section 9.1) | No prompt |
+| `finishing-a-development-branch` presents a 3-option integration menu | Hardcoded to push and open a **draft** PR | Not autonomous merging; not a menu either |
+| No cost policy beyond "promote on fix rounds 4-5" | Per-package bands, a rubric, promotion logging, a spend ceiling | Section 8 is a primary motive |
+| SDD keeps a progress ledger | A record with an assumption trail, per-package state, and resume | Autonomy is only acceptable if auditable |
+| Subagents throughout | Teammates for ICs, subagents for everything one-shot | Steering and attach |
+| One plan, one branch | Goal → deliverables → packages | A goal too large for one PR |
+| One worker per task | One IC per territory, several packages each | Agent-team guidance; fewer spawns |
+
+---
+
+## 15. Open questions
+
+1. **Plugin name.** `crew`, with `/crew:lead` as the entry point. Rename now if
+   another name reads better; it is cheap today and annoying later.
+2. **The spec critic is unbuilt.** `crew` is now distributed alone, which
+   forces the decision the earlier draft deferred: the spec critic cannot
+   depend on another plugin's agent. Stage 3, which builds the decomposition
+   critic, must also supply a crew-owned spec critic — its own agent
+   definition, reviewing the spec on crew's own terms, with no dependency
+   outside this plugin.
+3. **The spend ceiling value.** Unknowable until the first runs produce
+   cost-per-package data. Start deliberately low and raise it.
+4. **Whether the shared task list earns its launch flag.** It brings dependency
+   blocking, at the cost of tool definitions in every agent's context. Measure
+   once stage 5 runs.
+5. **Territory count.** Guidance says 3-5 workers. Whether that holds for a
+   repo this small is untested.
+6. **How general crew's writing standard needs to be.** Resolved:
+   `writing-standard.md` is crew's own, written directly for the four
+   container types this plugin's IC owns — the container-routing table, the
+   reader-context section, the frontmatter block, the revise-down rule, and
+   the final checklist. It is not split from, or a pointer into, any other
+   repo's internal standard. `crew` keeps no copy of anything external and
+   carries no repo-specific layer to strip out, so it can ship and sync on
+   its own.
+7. **Is a "parked" package ever recoverable?** §9.2's breaker (line 601-602)
+   gives three outcomes — fix, park with recorded reasoning, or defer — but
+   §10 (line 655-656) maps only "defer" to `abandoned` and calls `abandoned`
+   terminal and never revived. Nothing says what state a "parked" package
+   holds or whether it can later resume. If park also means `abandoned`, the
+   state set needs no change; if a parked package can later resume, the state
+   set needs a fourth, non-terminal value, and §10's transitions need it too.
+8. **The plan gate collides with the idle hook.** Every IC must stop and wait
+   after writing its plan (§9.2 step 3), but the `TeammateIdle` check must
+   find a *report* on disk before it lets an IC idle, not a plan (line
+   842-843; `record-format.md` lines 36-37). The two collide by construction.
+   The hook is stage 5 and still `PROBE PENDING` (lines 847-859), so neither
+   file can resolve this alone; `ic-contract.md` only names the post-plan
+   wait as an expected pause, not an idle to fix.
+9. **`decisions.md` needs a `Models:` line for councils.** §6.1 requires
+   recording which model a council used (lines 373-374), and council spend
+   is logged (lines 376-377) with its field, `spend.council_tokens`, defined
+   in `record-format.md` (lines 161, 187, 427). Today the model is recorded
+   as free text inside the entry. `decisions.md` is
+   already a labelled-line format, so the fix is one more labelled line —
+   this belongs in stage 6, when councils exist and advocate-spend
+   attribution is known. Do not add this field to `band-rubric.md` ahead of
+   that; an unowned field name there would be the exact class of mismatch
+   this document works to avoid.
+10. **§12's "the workaround holds" row does not hold when the driving
+    session is itself worktree-isolated.** Task 10's stage-2 run dispatched
+    `crew:ic` from a headless `claude -p` session launched from inside this
+    repo's own worktree-isolated checkout. Every `git` command that named
+    another worktree — `git -C <path>`, a literal `cd <path> && git ...`,
+    and `--git-dir`/`--work-tree` — was refused outright by the harness,
+    independent of `--permission-mode` and of `dangerouslyDisableSandbox`.
+    This blocked the exact operation §7's verification table requires
+    (`git -C <worktree> log` and `diff`, line 498) and the exact operation
+    §12's own row claims works ("a teammate can work, write, and commit
+    there with no guard", line 731). That row's probe must have run from a
+    session that was not itself worktree-isolated. Stage 5's full path
+    (separate IC worktrees, §9.2) could not be exercised at all in this
+    run for that reason; only the simple path (§9.1, one package on the
+    current branch, no separate worktree) could be driven end to end. Any
+    lead session that itself runs inside a worktree — which is exactly how
+    this project's own sessions are normally launched — needs a different
+    verification mechanism than `git -C <ic-worktree>`, or needs to run
+    unisolated.
+11. **`--add-dir` widens file access but not `git commit`, and the two are
+    separate failures.** Widening a headless IC's allowed directories with
+    `--add-dir <worktree> --add-dir <record-root>` let `Read`/`Write`/`Edit`
+    succeed against an assigned worktree outside the launch directory —
+    confirmed by a modified test file actually landing on disk. It did not
+    help the `git commit` failure in finding 12 below; that denial persists
+    with or without `--add-dir`. A future lead cannot treat these as one
+    problem with one fix.
+12. **`--permission-mode acceptEdits` does not cover `git commit` in
+    headless mode, so no IC dispatch can commit its own work.** Both
+    packages in this run reproduced this independently: `git status`,
+    `git log`, `git diff`, and `git add` all ran; every `git commit` form
+    — plain, `-m`, heredoc-quoted, with `dangerouslyDisableSandbox: true`
+    — returned a denial with no human present to approve it. The literal
+    acceptance command (`python`, as opposed to `python3`) hit the same
+    denial pattern for one package. This means `ic-contract.md`'s Commit
+    discipline ("Commit after every green step", line 66-70) cannot
+    execute at all under this exact dispatch shape — not a corner case, the
+    normal case. Both ICs behaved correctly: they did not fabricate a
+    commit, did not retry indefinitely, and reported the block precisely
+    (`BLOCKED` and `DONE_WITH_CONCERNS`). The lead, played by hand, verified
+    each staged diff against its brief and reviewer verdict and committed
+    it directly — which is consistent with the lead already owning
+    integration commits (§9.3), but §9.2 step 4 assumes the *IC* commits,
+    and nothing in the design currently says the lead must be ready to
+    commit on an IC's behalf as the normal path rather than the exception.
+13. **`ic-contract.md` has no branch for "I cannot write my report."** The
+    first, full-path attempt at the code package (before this run pivoted
+    to the simple path — see finding 10) hit a session whose sandbox
+    permitted no writes at all into either the assigned worktree or the
+    record root. The contract's own words are "Never go idle with no
+    report on disk" (line 93-95), but this IC had no writable path to any
+    disk location the contract names. It behaved correctly — it returned
+    its full diagnosis as its final output instead of fabricating a file or
+    silently stopping — but the contract does not anticipate this state.
+    Recommend a documented fallback: when the record root is confirmed
+    unwritable, the IC's final message *is* the report, and it must say so
+    explicitly. Without this, §13.1's planned `TeammateIdle` hook — which
+    checks for a report file on disk, not a message (line 842-843) — would
+    reject such an IC's idle forever, with no way for it to comply.
+14. **No IC used `SendMessage` to reach a live lead, and one attempt named
+    a target that does not exist.** Design §6.2 gives an IC exactly one
+    escalation path: "`SendMessage` the lead... ICs never escalate to the
+    human" (lines 427-429, 433). In this run's dispatch shape — a headless
+    `claude -p` invocation using the `Agent` tool to spawn `crew:ic` or
+    `crew:ic-instructions`, named or unnamed — neither IC had a reachable
+    lead to message. One tried `SendMessage` to an agent literally named
+    `"lead"` and got `No agent named "lead" is reachable`; the other
+    concluded up front that no `to` target existed for a live lead session
+    and skipped the attempt entirely, stating that assumption in its
+    report instead. Both ICs then correctly wrote their concern into the
+    report rather than stalling. This does not by itself disprove §6.2's
+    mechanism for a genuinely interactive, long-lived lead session (stage
+    4's actual build), but it means the mechanism has not been shown to
+    work in any shape tested so far, and the fallback behavior it forces —
+    write the concern into the report and proceed — is worth keeping as
+    the documented default regardless of whether `SendMessage` ever works.
+15. **A denied literal command can have a working substitute, and that is
+    easy to miss.** One package's acceptance criterion named `python`
+    literally; that exact invocation was denied in the headless session,
+    while `python3` against the identical script ran and produced identical
+    output. The IC noticed, named the substitution as an assumption, and
+    the reviewer independently re-ran both forms to confirm they were
+    behavior-identical before accepting. An IC that treated the one
+    successful form as proof of general capability, without flagging the
+    substitution, would have been trusting an environment quirk rather
+    than its actual acceptance criterion.
+16. **The dispatch mechanism's real cost is wall-clock opacity, not just
+    token spend.** Driving one code package and one instruction package
+    through plan → implement → report → review → lead-commit took eight
+    separate headless `claude -p` invocations (one mechanism probe, two
+    code-IC attempts, one code-package review, one chained
+    instruction-IC-plus-review run, plus the retries the cwd-hazard and
+    permission findings above forced) over roughly 45-50 minutes of wall
+    clock. Every invocation had to be waited on from outside the session,
+    because a headless `-p` process reports nothing until it exits — no
+    partial progress, no indication of which step it is on. Stage 4 builds
+    an autonomous loop directly on top of this primitive; its cost and
+    timeout model needs to budget for that opacity per dispatch, not only
+    for the token totals design §8 already tracks.
+17. **A README is not one of `crew:ic-instructions`'s four container
+    types.** §3.1 gives that specialist exactly four containers:
+    `CLAUDE.md`, a `.claude/rules/` file, a `SKILL.md`, and an agent
+    definition. Task 10 dispatched it on `plugins/crew/README.md` anyway,
+    to dogfood the specialist, and its own package review flagged the
+    mismatch: the README passed the acceptance checklist on the merits,
+    but the checklist's container-choice item did not apply to it. Either
+    the specialist's container list should grow to include a README and
+    other reader-facing prose, or a README needs a different owner. This
+    document does not decide which.
+18. **Should an environmental block and a capability block get the same
+    `BLOCKED` response?** `ic-contract.md`'s `BLOCKED` row directs the lead
+    to promote the package one band up, or stop the run at a breaker. Item
+    12 above is an environmental block — no human present to approve a `git
+    commit` — not a capability gap, and promoting a band over it spends
+    money climbing toward `deep` before any breaker fires. The run's own
+    lead deviated from that mandated response and committed the package on
+    the IC's behalf instead of promoting it. Whether the `BLOCKED` row
+    should split into an environmental case and a capability case is a
+    design decision above this fix wave; this item does not decide it.

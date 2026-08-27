@@ -1,0 +1,43 @@
+diff --git a/plugins/auto-approve/scripts/test-auto-approve.py b/plugins/auto-approve/scripts/test-auto-approve.py
+index 18ba62f..8307628 100644
+--- a/plugins/auto-approve/scripts/test-auto-approve.py
++++ b/plugins/auto-approve/scripts/test-auto-approve.py
+@@ -1099,6 +1099,30 @@ def test_opus_response_parser():
+         print(f"  FAIL: ambiguous response handling: {decision} — {reason}")
+ 
+ 
++def test_mixed_chain_operators():
++    """Chains with `;`, `||`, `|`, and mixed operators still resolve per segment."""
++    print("\n--- Mixed chain operators ---")
++
++    # `;`-only chain of safe commands.
++    result = run_hook("Bash", {"command": "git status; ls -la; pwd"})
++    assert_decision("T1: ;-only safe chain", result, "allow", "T1: Safe Command")
++
++    # `||`-only chain of safe commands.
++    result = run_hook("Bash", {"command": "git status || ls -la || pwd"})
++    assert_decision("T1: ||-only safe chain", result, "allow", "T1: Safe Command")
++
++    # A single command mixing &&, ;, ||, and | where every segment is safe.
++    mixed_safe = "git status && ls -la; pwd || echo done | cat"
++    result = run_hook("Bash", {"command": mixed_safe})
++    assert_decision(f"T1: {mixed_safe}", result, "allow", "T1: Safe Command")
++
++    # Same mix of operators, but with one unsafe command buried after
++    # several safe segments. The whole chain must not pass Tier 1.
++    mixed_unsafe = "git status && ls -la; pwd || rm -rf /tmp/foo"
++    result = run_hook("Bash", {"command": mixed_unsafe})
++    assert_not_t1(mixed_unsafe, result)
++
++
+ # =========================================================================
+ # Run
+ # =========================================================================
+@@ -1141,6 +1165,7 @@ if __name__ == "__main__":
+     test_merged_log_tags_origin()
+     test_uv_safe_prefixes()
+     test_opus_response_parser()
++    test_mixed_chain_operators()
+ 
+     print(f"\n{'='*50}")
+     print(f"Results: {PASS} passed, {FAIL} failed")

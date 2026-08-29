@@ -1068,16 +1068,17 @@ Deliberately different:
     the IC's behalf instead of promoting it. Whether the `BLOCKED` row
     should split into an environmental case and a capability case is a
     design decision above this fix wave; this item does not decide it.
-19. **"Lead" becomes ambiguous the moment a tier above it exists.** §1 scopes
-    out "a tier above the lead. No router, no roster, no lead-of-leads"
-    (line 38), and names this document the first stage of a "Personal Agent
-    Org" PRD "scoped down to one tier" (lines 8-10). The second tier is
-    planned, not hypothetical. Every file in this plugin writes `lead` bare
-    today and means the project lead — 206 uses across `docs/`, `agents/`,
-    `skills/`, `README.md` and `CLAUDE.md` — and so do the shipped skill name
-    `/crew:lead`, `record-format.md`'s `run.session_ids` ("the lead's own
-    session id"), and every "the lead does X" rule in `ic-contract.md`. When a
-    delegating tier lands, no rule says which lead binds it, and a reader
-    cannot tell from the sentence. Fixing the vocabulary before that tier is
-    built costs one decision; fixing it afterward costs 206 edits and the
-    rename of a published skill. This item does not pick the names.
+19. **`lead` is reserved for a tier that does not exist yet.** Decided: the
+    hierarchy is **lead → project leads → ICs**. What this document calls the
+    "lead" is a **project lead**. `lead` names the tier above it, which
+    delegates to project leads and is still out of scope here (§1, line 38).
+    No behaviour changes — only the word. §1's own "no lead-of-leads" line
+    stays true; it now also fixes what that tier will be called.
+
+    The rename itself is not done. Every file in this plugin writes `lead`
+    bare and means the project lead: 206 uses across `docs/`, `agents/`,
+    `skills/`, `README.md` and `CLAUDE.md`, plus `record-format.md`'s
+    `run.session_ids` ("the lead's own session id") and every "the lead does
+    X" rule in `ic-contract.md`. Two pieces stay open: when to do the prose
+    rename, and what the entry-point skill is called — `/crew:lead` is
+    published, and the tier above is the natural claimant for that name.

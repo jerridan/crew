@@ -75,6 +75,9 @@ file included. Its checklist under `## Before you open the PR` defines done.
   stops for a human, and removing that stop is the point of this plugin. Copy
   a checklist word for word instead, so it stays easy to re-sync (design §2,
   §14).
+- Draw a diagram as text inside a fenced block, never as mermaid. Mermaid
+  renders inconsistently across the places these files get read, and it
+  degrades to nothing when it fails.
 - `docs/implementation-plan.md` and `docs/stage-2-run/` are evidence from the
   first hand-driven run. Do not edit them, and do not repair their paths —
   they are relative to the larger plugin repo crew was built inside. Record

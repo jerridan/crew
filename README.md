@@ -40,26 +40,48 @@ approving them one at a time.
 
 ## How it works
 
-```mermaid
-flowchart TD
-    Goal([One goal]) --> Lead[Lead: scout, write the spec, split the work]
-    Lead --> Critic{Critics review<br/>the spec and the split}
-    Critic --> Band[Assign a model per package<br/>haiku / sonnet / opus]
-    Band --> IC1[IC: code package<br/>test-first, own worktree]
-    Band --> IC2[IC: prose package<br/>checklist, own worktree]
-    IC1 --> Rev[Package reviewer]
-    IC2 --> Rev
-    Rev -->|findings| IC1
-    Rev -->|accepted| Merge[Lead merges, re-runs the suite,<br/>edits the shared files]
-    Merge --> PR([Draft PR — you merge it])
-
-    classDef built fill:#d4f4dd,stroke:#2d7a3e,color:#000
-    classDef todo fill:#f4f4f4,stroke:#999,color:#555
-    class IC1,IC2,Rev built
-    class Lead,Critic,Band,Merge todo
+```
+   one goal
+      │
+      ▼
+   ┌───────────────────────────────────────────────┐
+   │ LEAD      investigate, spec, split the work   │   not built
+   └───────────────────────────────────────────────┘
+      │
+      ▼
+   ┌───────────────────────────────────────────────┐
+   │ CRITICS   reject a bad spec or a bad split    │   not built
+   └───────────────────────────────────────────────┘
+      │
+      │   each package gets a band:  haiku / sonnet / opus
+      │
+      ├────────────────┬────────────────┐
+      ▼                ▼                ▼
+   ┌────────────┐  ┌────────────┐  ┌────────────┐
+   │ IC         │  │ IC         │  │ IC         │   built
+   │ one        │  │ one        │  │ one        │
+   │ worktree   │  │ worktree   │  │ worktree   │
+   └────────────┘  └────────────┘  └────────────┘
+      │                │                │
+      └────────────────┴────────────────┘
+      │
+      ▼
+   ┌───────────────────────────────────────────────┐
+   │ REVIEWER  did not write the code it reviews   │   built
+   └───────────────────────────────────────────────┘
+      │                  │
+      │ accepted         └──▶  findings go back to that IC,
+      ▼                        up to five fix rounds
+   ┌───────────────────────────────────────────────┐
+   │ LEAD      merge, re-run the suite, integrate  │   not built
+   └───────────────────────────────────────────────┘
+      │
+      ▼
+   draft PR   ──▶   you merge it
 ```
 
-Green exists. Grey does not yet.
+Only the middle of that pipeline exists today. The workers are built; nothing
+dispatches them yet.
 
 A package is dispatchable only when it has four things: its own acceptance
 criterion, a file set disjoint from every sibling running beside it, a written

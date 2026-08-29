@@ -1095,3 +1095,69 @@ Deliberately different:
     where it means the tier above. `docs/implementation-plan.md`,
     `docs/stage-2-run/` and `docs/pr-body.md` keep the old wording — they are
     the frozen record of a run that happened under it.
+20. **The agent-teams docs contradict five rows of §12, and settle two probes.**
+    Read against `code.claude.com/docs/en/agent-teams` and `.../sub-agents`
+    (fetched 2026-08-29, docs current to ~v2.1.234). §12's rows were probed
+    2026-08-24 and some describe behaviour that has since changed or was
+    never quite right. Corrections, each of which changes a design decision:
+
+    a. **Teammates are gated on an experimental flag.** Agent teams are off
+       by default and need `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in
+       settings `env` or the environment. With it unset, naming an agent does
+       *not* produce a teammate — it launches an ordinary subagent. §3's
+       naming rule ("a named agent becomes a teammate") therefore holds only
+       when the flag is on, and nothing in this plugin currently checks it.
+
+    b. **A teammate's output does reach the project lead.** §12 says it
+       "never returns to the dispatcher". The docs say a teammate that
+       finishes and goes idle "automatically notifies the lead and includes
+       its final answer in the notification". It is not a parseable tool
+       result, so the record is still the durable channel — but the stated
+       reason for writing reports is wrong, and §3's naming rule rests on it.
+
+    c. **Display mode needs no setup.** §12 requires iTerm2 + `it2`, tmux, or
+       an explicit `teammateMode`. Since v2.1.179 the default is
+       `in-process`, which works in any terminal. Split panes are the
+       optional upgrade, and are unsupported in VS Code's terminal, Windows
+       Terminal and Ghostty.
+
+    d. **An agent definition means different things by display mode.** For an
+       in-process teammate the definition's body is *appended* to the default
+       system prompt; for a split-pane teammate it *replaces* it. A
+       split-pane teammate also ignores the definition's `model`, and neither
+       mode applies its `skills`. `crew:ic` is written as a whole system
+       prompt, so it is a different agent in the two modes.
+
+    e. **`CLAUDE_CODE_SUBAGENT_MODEL` outranks a spawn-time model.** The
+       order is that variable, then the spawn prompt, then (in-process only)
+       the definition's `model`, then the lead's model. Set to anything but
+       `inherit` it silently flattens every band in §8.
+
+    Two `PROBE PENDING` entries in §12 are now answered. **`TeammateIdle`
+    exit 2 works** — the hook "runs when a teammate is about to go idle. Exit
+    with code 2 to send feedback and keep the teammate working" — so §13.1's
+    mechanism stands. **Native plan approval is not a review gate**: a
+    teammate's plan request is approved in the lead's session "as soon as the
+    request arrives, without the lead reviewing it". §9.2 step 3's fallback —
+    plan to the record, wait for a message — is therefore the *only* way to
+    get a reviewed plan gate, not a stopgap. Do not swap to native approval.
+
+    Also newly relevant and not recorded anywhere: teammate permission
+    prompts surface in the lead's session for a human to approve, which is
+    the mechanism behind item 12's `git commit` denials; `/resume` does not
+    restore in-process teammates, which §10.1 recovery must assume; and
+    subagents nest three layers deep by default while teammates cannot nest
+    at all (§15.21).
+21. **A three-tier hierarchy cannot be nested teams.** Teammates cannot spawn
+    teammates ("no nested teams"), the lead is fixed for a session's
+    lifetime, and a session has exactly one team. So project leads cannot be
+    teammates of a lead *and* have IC teammates of their own. Worse, an
+    in-process teammate's subagents are forced to the foreground, so a
+    project-lead teammate could only run one IC at a time — which removes the
+    parallelism §5 exists to provide. (Whether a split-pane teammate is
+    likewise forced is not stated in the docs; unprobed.) The shape the
+    platform does support is one session per project lead, driven by
+    cross-session messaging from the lead, each running its own IC team.
+    Subagents nest three deep by default
+    (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`), so an all-subagent hierarchy
+    also fits. This item does not choose.

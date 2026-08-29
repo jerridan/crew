@@ -71,6 +71,17 @@ done.
 - Only ICs are named agents. A named agent becomes a teammate, and a
   teammate's output never returns to its dispatcher. Anything whose result the
   dispatcher must read stays unnamed (design §3).
+- Teammates are experimental and gated on
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. With the flag off, a named agent
+  launches as a plain subagent, so the naming rule above holds only when it is
+  on (design §15.20a).
+- A teammate cannot spawn a teammate, and an in-process teammate's subagents
+  are forced to the foreground. Any tier that must dispatch in parallel cannot
+  itself be a teammate (design §15.21).
+- A teammate built from an agent definition reads that definition differently
+  by display mode: in-process **appends** the body to its default system
+  prompt, split-pane **replaces** it, and neither applies `skills:`. Write an
+  agent body that survives both (design §15.20d).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json`, in stage 5 (design §12, §13.1).
 - A spawn-time `model` overrides an agent's frontmatter `model`.

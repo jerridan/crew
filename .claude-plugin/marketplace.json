@@ -8,7 +8,7 @@
       "name": "crew",
       "source": "./",
       "description": "A team of agents that takes one goal to a reviewable draft PR — split across parallel implementers, independently reviewed, no approval gates",
-      "version": "0.1.1"
+      "version": "0.1.2"
     }
   ]
 }

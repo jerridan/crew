@@ -54,10 +54,16 @@ second copy is worse than no copy, because nothing decides which copy wins.
 
 ## Writing rules
 
-Read `skills/project-lead/references/writing-standard.md` before you add or
-edit any `CLAUDE.md`, `.claude/rules/` file, `SKILL.md`, or agent definition —
-this file included. Its checklist under `## Before you open the PR` defines
+Read `skills/project-lead/references/writing-standard.md` before you draft any
+Claude instruction — a `CLAUDE.md`, a `.claude/rules/` file, a `SKILL.md`, or
+an agent definition, this file included. Check the draft against its checklist
+under `## Before you open the PR` before you commit. That checklist defines
 done.
+
+Those prose rules are ASD-STE100 — Simplified Technical English. Apply them to
+every file in this repo, and to each commit message and PR body. Only the
+container-choice check is limited to the four container types the standard
+names.
 
 ## Constraints that are easy to get wrong
 
@@ -103,6 +109,14 @@ done.
   first hand-driven run. Do not edit them, and do not repair their paths —
   they are relative to the larger plugin repo crew was built inside. Record
   what you learned from them in `docs/design.md` §15 instead.
+
+## Communication
+
+Report progress as you work. Name each decision as you make it. Say plainly
+when something failed, or when you got it wrong. Never finish work silently —
+a completed task with no reply reads as a stall.
+
+Ask when a choice is genuinely the user's. Name the option you recommend.
 
 ## Workflow
 

@@ -1,8 +1,9 @@
 # crew
 
-**An autonomous project lead for Claude Code.** You give it one goal. It takes
-that goal to a reviewable draft PR without stopping at each stage to ask you,
-and it picks the cheapest model that can do each piece of work.
+**A team of agents that takes one goal to a reviewable draft PR.** You hand the
+goal to a lead. It investigates, splits the work across implementers, has each
+piece reviewed by an agent that did not write it, and opens the PR. It asks you
+only when it genuinely cannot proceed.
 
 > **Status: partly built. Installing it will not get you a run.**
 > The worker agents exist and have been driven by hand. The lead that
@@ -11,17 +12,31 @@ and it picks the cheapest model that can do each piece of work.
 
 ## Why
 
-A session stops for you at every stage: after brainstorming, after the spec,
-after the plan, after the plan review. Each stop costs your attention, and the
-work waits until you come back to it.
+Most agent tooling scales one agent up: a longer context, a bigger model, a
+better prompt. `crew` scales sideways. It hands the goal to a team with an org
+chart — a lead that plans and delegates, implementers working in parallel in
+isolated worktrees, critics that review work they did not do, and advocates
+that argue assigned sides of a judgment call.
 
-The model is also chosen before any investigation happens. So almost
-everything runs on Opus at high effort — including the parts that never
-needed it.
+The structure buys four things one agent cannot get alone:
 
-`crew` removes both problems for one goal at a time. It records every judgment
-call it made on your behalf, so you audit them at review time instead of
-approving them in advance.
+- **A review is independent.** An agent that checks its own work grades its
+  own homework. A reviewer handed the brief and the diff, which never saw the
+  work happen, is a real gate.
+- **Disagreement is designed in.** Two agents on the same base model agree
+  because they share priors, not because they are right. A council assigns
+  opposing positions, so the lead weighs arguments instead of counting votes.
+- **Work happens at once.** Packages carry disjoint file sets, so several
+  implementers run at the same time without colliding.
+- **Effort is sized per piece.** Once the work is split, each piece can take
+  the cheapest model that can do it, decided after investigation rather than
+  before.
+
+It also moves the stops. A session today interrupts you after brainstorming,
+after the spec, after the plan, after the plan review — because you are the
+only reviewer it has. Give it a team and that review happens inside the run,
+recorded as it goes, so you audit the judgment calls at the end instead of
+approving them one at a time.
 
 ## How it works
 
@@ -75,10 +90,10 @@ that a lead running inside a worktree cannot reach a sibling worktree at all.
 Both block the full path. §15 of the design doc records both, among eighteen
 open questions in all.
 
-## Four ideas it turns on
+## The mechanics
 
-**A model per package, chosen after investigation.** Bands are `light`
-(haiku), `standard` (sonnet), and `deep` (opus). `standard` is the default and
+**Bands, and a rubric that measures itself.** A package is `light` (haiku),
+`standard` (sonnet), or `deep` (opus). `standard` is the default and
 `deep` needs a written justification. An IC that reports blocked is
 re-dispatched one band up with no human involvement, and every prediction and
 promotion is logged — which turns the rubric from a guess into a measurement.
@@ -88,10 +103,9 @@ outside your repo, holding the spec, the plan, every IC's report, every
 reviewer's findings, and every judgment call with its citation. A decision
 recorded at high confidence with no citation is a defect.
 
-**A contract for when to ask you.** Questions route three ways: precedent,
-an adversarial council of advocates arguing assigned positions, or you. The
-lead escalates on a fixed set of triggers, among them a goal with no
-falsifiable acceptance criterion, a balanced council on an
+**A contract for when to ask you.** Questions route three ways: precedent, a
+council, or you. The lead escalates on a fixed set of triggers, among them a
+goal with no falsifiable acceptance criterion, a balanced council on an
 architecture-moving question, and a crossed spend ceiling. Questions about
 what *you* want are never debated: a council always names a winner, and would
 bury "we do not know what you want" as "we established you want X".

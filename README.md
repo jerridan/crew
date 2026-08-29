@@ -111,10 +111,11 @@ coverage to a sibling plugin; a prose package wrote a README. Both reached
 `Verdict: accepted` from `crew:package-reviewer`. That run's plans, reports and
 reviews are kept verbatim in [`docs/stage-2-run/`](docs/stage-2-run).
 
-That run also found that a headless IC cannot get a `git commit` approved, and
-that a project lead running inside a worktree cannot reach a sibling worktree
-at all. Both block the full path. §15 of the design doc records both, among its
-other open questions and findings.
+That run also found that a headless IC could not get a `git commit` approved,
+and that a worktree-isolated session could not reach a sibling worktree at
+all. Later probes resolved both: a path-scoped allow rule covers the commit,
+and an unisolated launch restores worktree access. §15 of the design doc
+records the findings.
 
 ## The mechanics
 

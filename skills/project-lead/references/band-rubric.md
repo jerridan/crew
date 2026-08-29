@@ -37,10 +37,14 @@ Any "yes" past the first two is a signal toward `deep`.
 - Assigning `deep` requires a written justification in `plan.md`. An
   unjustified `deep` assignment is a defect.
 - **Promotion.** Re-dispatch a package one band up, with no human
-  involvement, when its IC reports `BLOCKED`, exhausts its fix rounds, or
-  goes idle without meeting its acceptance test (design §8). A `deep`
-  package cannot promote further — at the top band, the fix-round breaker
-  escalates instead (design §6 trigger 6).
+  involvement, when its IC reports `BLOCKED` with a `capability` cause,
+  exhausts its fix rounds, or goes idle without meeting its acceptance
+  test (design §8). A `deep` package cannot promote further — at the top
+  band, the fix-round breaker escalates instead (design §6 trigger 6).
+- **An `environment` block never promotes.** A bigger model hits the same
+  denied permission or missing tool. The project lead fixes the
+  environment or performs the blocked action itself — `ic-contract.md`'s
+  `BLOCKED` row owns the two causes.
 - Log every prediction and every promotion into `state.json`'s
   `band_history` (see `record-format.md`'s `band_history` row for its
   fields). Logging it turns the rubric from a guess into a measurement.

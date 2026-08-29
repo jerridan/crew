@@ -59,6 +59,11 @@ edit any `CLAUDE.md`, `.claude/rules/` file, `SKILL.md`, or agent definition —
 this file included. Its checklist under `## Before you open the PR` defines
 done.
 
+That standard's prose rules are ASD-STE100 — Simplified Technical English —
+and they hold for everything written here, not only the four container types
+it names. A README, `docs/design.md`, a commit message and a PR body are all
+held to them. Only its container-choice check is limited to those four.
+
 ## Constraints that are easy to get wrong
 
 - Every change outside `README.md`, `CLAUDE.md` and `LICENSE` is content —
@@ -103,6 +108,16 @@ done.
   first hand-driven run. Do not edit them, and do not repair their paths —
   they are relative to the larger plugin repo crew was built inside. Record
   what you learned from them in `docs/design.md` §15 instead.
+
+## Communication
+
+Say what you are doing while you do it. Report progress as you go, name each
+decision as you make it, and state plainly when something failed or when you
+got it wrong. Never finish a piece of work silently — a completed task with no
+reply reads as a stall.
+
+Ask when a choice is genuinely the user's to make, and say which option you
+recommend.
 
 ## Workflow
 

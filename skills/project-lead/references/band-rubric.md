@@ -2,7 +2,7 @@
 
 This file decides which model a package or a council gets (design §8, §6.1).
 
-A band sets model only. A teammate inherits the lead's `reasoning_effort`
+A band sets model only. A teammate inherits the project lead's `reasoning_effort`
 (design §12), so a band cannot set effort. Do not add an effort column to
 this rubric.
 
@@ -12,7 +12,7 @@ this rubric.
 |---|---|---|
 | light | haiku | Follows an existing repo pattern verbatim. Tests already cover the surface. |
 | **standard** | **sonnet** | **Default.** |
-| deep | opus | A new interface others depend on. A concurrency, security, migration, or data-shape change. Or the lead had to *interpret* the acceptance criterion rather than read it off the charter. |
+| deep | opus | A new interface others depend on. A concurrency, security, migration, or data-shape change. Or the project lead had to *interpret* the acceptance criterion rather than read it off the charter. |
 
 ## Observable inputs
 
@@ -23,8 +23,8 @@ assign a band:
 - Do tests already cover the surface this package touches?
 - Does the package define a new interface that other packages depend on?
 - Is this a concurrency, security, migration, or data-shape change?
-- Did the lead have to interpret the acceptance criterion, rather than read it
-  directly off the charter?
+- Did the project lead have to interpret the acceptance criterion, rather than
+  read it directly off the charter?
 
 Any "yes" past the first two is a signal toward `deep`.
 
@@ -49,8 +49,8 @@ Any "yes" past the first two is a signal toward `deep`.
 
 - Every advocate in a council runs **sonnet**.
 - Every advocate in **one** council runs the **same** model. Mismatched
-  advocates measure model strength, not argument strength, and the lead then
-  picks a side for the wrong reason.
+  advocates measure model strength, not argument strength, and the project
+  lead then picks a side for the wrong reason.
 - **Sonnet is the floor.** Haiku produces weak cases, which corrupts the
   adjudication the same way a mismatch does.
 - Raise every advocate to **opus**, together, when the decision belongs to a

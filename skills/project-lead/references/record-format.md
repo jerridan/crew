@@ -5,7 +5,7 @@ One directory per goal, outside the target repo (design §4):
 ```
 ~/.claude/crew/<goal-slug>/
 ├── charter.md        goal + falsifiable acceptance criterion
-├── spec.md           the spec the lead wrote after scouting
+├── spec.md           the spec the project lead wrote after scouting
 ├── plan.md           deliverables → packages, with interfaces and bands
 ├── state.json        deliverables, per-package state, band history, spend, escalations
 ├── decisions.md      every judgment call, with its citation, confidence, and timestamp
@@ -28,12 +28,12 @@ naming convention. Do not mix their contents.
   package's own IC writes here. `state.json`'s `report_path` for a package
   always equals `reports/<id>.md`.
 - **`plans/`** — one file per package, `plans/<id>.md`. The IC writes its
-  implementation plan here and waits for the lead's go-ahead (design §9.2
-  step 3, §12's plan-approval fallback). `state.json`'s `plan_path` always
-  equals `plans/<id>.md`. This stays separate from `reports/` because
-  `plan.md` at the record root is the lead's own decomposition — an IC told
-  to "write its plan into the record" with no named target could overwrite
-  it — and separate because §13.1's `TeammateIdle` check must find a
+  implementation plan here and waits for the project lead's go-ahead (design
+  §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
+  always equals `plans/<id>.md`. This stays separate from `reports/` because
+  `plan.md` at the record root is the project lead's own decomposition — an IC
+  told to "write its plan into the record" with no named target could
+  overwrite it — and separate because §13.1's `TeammateIdle` check must find a
   *report* on disk before it lets an IC go idle, not a plan.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
@@ -45,27 +45,27 @@ naming convention. Do not mix their contents.
   five review rounds per package, and a goal can hold several deliverables —
   a shared filename per kind would let a later round, a later deliverable,
   or a later re-plan silently destroy an earlier review, which is this run's
-  only audit trail. The lead writes every file under `reviews/`, from the
+  only audit trail. The project lead writes every file under `reviews/`, from the
   reviewer's returned findings — a reviewer agent has no `Write` tool and
   returns its findings as a tool result.
 
-The lead never has to parse a review to find a report or a plan. It reads
+The project lead never has to parse a review to find a report or a plan. It reads
 `report_path` or `plan_path` from `state.json` and opens that file directly.
 
 ## Goal-slug uniqueness
 
-The lead appends a short random suffix to every goal slug at creation time,
-always — not only on a collision:
+The project lead appends a short random suffix to every goal slug at creation
+time, always — not only on a collision:
 
 ```
 <kebab-case-slug>-<4 lowercase hex chars>
 ```
 
-Example: `add-request-logging-a1b2`. The lead generates the suffix once, when
-it creates the record directory, and never regenerates it. Design §1 runs
-several goals in parallel sessions with no shared lock, so a fixed-format slug
-with no randomness lets two similar goals collide. A random suffix avoids the
-collision without needing a lock or an existence check.
+Example: `add-request-logging-a1b2`. The project lead generates the suffix
+once, when it creates the record directory, and never regenerates it. Design
+§1 runs several goals in parallel sessions with no shared lock, so a
+fixed-format slug with no randomness lets two similar goals collide. A random
+suffix avoids the collision without needing a lock or an existence check.
 
 ## `state.json`
 
@@ -116,7 +116,7 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
     abandoned                          (terminal)
 ```
 
-- `pending → in-flight`: the lead dispatches an IC for the package.
+- `pending → in-flight`: the project lead dispatches an IC for the package.
 - `in-flight → integrated`: the package's diff merges and passes review.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   package, or the fix-round breaker parks it (design §9.2, §10).
@@ -135,22 +135,24 @@ pending ──▶ in-flight ──▶ draft-pr-opened   (terminal)
     abandoned                              (terminal)
 ```
 
-- `pending → in-flight`: the lead dispatches the deliverable's first package.
-- `in-flight → draft-pr-opened`: every package integrates and the lead opens
-  the draft PR (design §9.3).
+- `pending → in-flight`: the project lead dispatches the deliverable's first
+  package.
+- `in-flight → draft-pr-opened`: every package integrates and the project lead
+  opens the draft PR (design §9.3).
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   deliverable (design §10).
 
-These arrows are **transitions**: one-way lead decisions. A **reconciliation**
-is different — after a crash, design §10.1 rewrites `state.json` to match
-git, and that correction may move a wrongly recorded value in either
-direction, including out of a mistaken `integrated` or `draft-pr-opened`.
+These arrows are **transitions**: one-way project lead decisions. A
+**reconciliation** is different — after a crash, design §10.1 rewrites
+`state.json` to match git, and that correction may move a wrongly recorded
+value in either direction, including out of a mistaken `integrated` or
+`draft-pr-opened`.
 
 ### At creation
 
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
 and `ic_name: null`. `plan_path` and `report_path` name files that do not
-exist yet. On the simple path (design §9.1) the lead never writes
+exist yet. On the simple path (design §9.1) the project lead never writes
 `worktrees.json`: there is one package, no territory, and `ic_name` stays
 `null` for the run.
 
@@ -159,20 +161,20 @@ exist yet. On the simple path (design §9.1) the lead never writes
 | Field | Meaning |
 |---|---|
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
-| `session_ids` | a list, not a single id. The lead's own session id, appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
+| `session_ids` | a list, not a single id. The project lead's own session id, appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
 | `spend` | `{ceiling, measured_tokens, estimated_tokens, council_tokens, by_agent}`. See Spend below. |
-| `escalations` | a list of questions the lead asked the human (design §6 triggers). See Escalations below. |
+| `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 
 ### `run_state` transitions
 
 | From | To | Trigger |
 |---|---|---|
-| `active` | `blocked` | the lead hits an escalation trigger (design §6) |
-| `blocked` | `active` | the human answers; the lead records it in `escalations` |
+| `active` | `blocked` | the project lead hits an escalation trigger (design §6) |
+| `blocked` | `active` | the human answers; the project lead records it in `escalations` |
 | `active` or `blocked` | `interrupted` | `SessionEnd` fires on a crash (design §13.1) |
 | `interrupted` | `blocked` | `--resume`, when an `escalations` entry has no `answer` yet |
 | `interrupted` | `active` | `--resume`, when no `escalations` entry is missing an `answer` |
-| `active` | `complete` | the lead finishes the run |
+| `active` | `complete` | the project lead finishes the run |
 
 ### Spend
 
@@ -185,7 +187,7 @@ largest in a run.
 |---|---|
 | `ceiling` | the run's spend ceiling (design §8). Crossing it escalates. |
 | `measured_tokens` | sum of `total_tokens` from subagent completion notifications (design §8) |
-| `estimated_tokens` | the lead's estimate of teammate spend, which is not reported this way |
+| `estimated_tokens` | the project lead's estimate of teammate spend, which is not reported this way |
 | `council_tokens` | tokens attributed to council advocacy and adjudication (design §6.1) |
 | `by_agent` | a list of `{agent, total_tokens, measured}`. `total_tokens` here is design §8's own per-agent name; `measured` is `false` for a teammate's estimate. |
 
@@ -194,7 +196,7 @@ largest in a run.
 | Field | Meaning |
 |---|---|
 | `trigger` | which design §6 trigger fired |
-| `question` | what the lead asked |
+| `question` | what the project lead asked |
 | `asked_at` | ISO-8601 UTC timestamp |
 | `answer` | `null` until the human responds; a non-`null` value flips `run_state` from `blocked` back to `active` |
 
@@ -341,7 +343,7 @@ Design §4's worked example, with a `Timestamp` line added:
 ```markdown
 ## Should the version bump be part of package 2?
 Route: precedent
-Answer: No — the lead bumps versions at integration.
+Answer: No — the project lead bumps versions at integration.
 Citation: CLAUDE.md "Development Workflow" step 3 requires both plugin.json and
 marketplace.json to change, which no two packages can own disjointly.
 Confidence: high
@@ -352,11 +354,11 @@ An entry with high confidence and no citation is a defect.
 
 ## Authority rule
 
-`state.json` is authoritative for the plan: which packages exist, their
-bands, file sets, and contracts. The worktrees are authoritative for
-progress: what actually landed, proven by `git log` and `git status`, not by
-the record (design §4, §10.1). The lead writes `state.json` after **every**
-state transition, never batched, so a crash loses at most one transition.
+`state.json` is authoritative for the plan: which packages exist, their bands,
+file sets, and contracts. The worktrees are authoritative for progress: what
+actually landed, proven by `git log` and `git status`, not by the record
+(design §4, §10.1). The project lead writes `state.json` after **every** state
+transition, never batched, so a crash loses at most one transition.
 
 ---
 
@@ -365,22 +367,22 @@ state transition, never batched, so a crash loses at most one transition.
 Every name this file defines, with what consumes it.
 
 **Layout entries (design §4, this file's directory tree)**
-- `charter.md` — consumer: stage 4 (lead writes it after scouting)
-- `spec.md` — consumer: stage 4 (lead writes it); Task 11 (copied into the PR body)
+- `charter.md` — consumer: stage 4 (project lead writes it after scouting)
+- `spec.md` — consumer: stage 4 (project lead writes it); Task 11 (copied into the PR body)
 - `plan.md` — consumer: stage 3 (`crew:decompose-critic` and the `plan.md` format)
-- `state.json` — consumer: stage 4 (lead loop); stage 5 (recovery, design §10.1)
+- `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
-- `reviews/` — writer: the lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`decompose-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/` — writer: the project lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`decompose-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 
 **`state.json` top-level keys**
-- `goal` — consumer: stage 4 (lead records the original goal text); Task 11 (PR body)
+- `goal` — consumer: stage 4 (project lead records the original goal text); Task 11 (PR body)
 - `goal_slug` — consumer: stage 4 (record directory name); this file's Goal-slug uniqueness rule
 - `deliverables` — consumer: stage 5 (per-deliverable integration and recovery, design §9.3, §10.1)
-- `run` — consumer: stage 4/5 (lead loop); stage 6 (spend, escalations)
-- `packages` — consumer: stage 4 (lead dispatch loop); stage 5 (recovery, design §10.1)
+- `run` — consumer: stage 4/5 (project lead loop); stage 6 (spend, escalations)
+- `packages` — consumer: stage 4 (project lead dispatch loop); stage 5 (recovery, design §10.1)
 
 **`state.json` `deliverables` entry fields**
 - `id` (deliverable) — consumer: `packages[].deliverable` cross-reference; `reviews/<deliverable-id>-*` filenames
@@ -394,7 +396,7 @@ Every name this file defines, with what consumes it.
 - `id` — consumer: this file's `reports/<id>.md`, `plans/<id>.md`, `reviews/<id>-package-review-r<n>.md` naming; stage 3 (`decompose-critic` identifies packages)
 - `deliverable` — consumer: stage 5 (per-deliverable integration, design §9.3); cross-references `deliverables[].id`
 - `territory` — consumer: stage 5 (one IC dispatched per territory, design §5)
-- `state` — consumer: stage 4 (lead loop); stage 5 (re-planning and recovery, design §10)
+- `state` — consumer: stage 4 (project lead loop); stage 5 (re-planning and recovery, design §10)
 - `state_changed_at` — consumer: a human auditing the record's timeline; stage 6
 - `band` — consumer: Task 5 (`band-rubric.md` defines what each value means and when to promote)
 - `band_history` — consumer: Task 5 (band-rubric.md's promotion-logging rule); stage 5 (promotion on `BLOCKED`/exhausted fix rounds/idle)
@@ -402,18 +404,20 @@ Every name this file defines, with what consumes it.
 - `interface_contract` — consumer: stage 3 (`decompose-critic` type-consistency check); Task 7/Task 8 (IC spawn prompt carries it, design §9.2 step 2)
 - `acceptance_criterion` — consumer: Task 6 (`ic-contract.md`, tells the IC when to stop); Task 9 (`crew:package-reviewer` checks work against it)
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
-- `ic_name` — consumer: `worktrees.json` (this file); stage 5 (lead finds the worktree to verify)
+- `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
 - `plan_path` — consumer: Task 6 (`ic-contract.md`, plan-approval step); Task 7 (`crew:ic` writes it, design §9.2 step 3)
 - `report_path` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)
 
-**`state.json` state values** (shared by `packages[].state` and `deliverables[].state`, except `integrated` and `draft-pr-opened`)
-- `pending` — consumer: stage 4/5 (lead loop dispatches from this state)
-- `in-flight` — consumer: stage 5 (lead loop, `TeammateIdle` hook)
+**`state.json` state values** (shared by `packages[].state` and
+`deliverables[].state`, except `integrated` and `draft-pr-opened`)
+- `pending` — consumer: stage 4/5 (project lead loop dispatches from this state)
+- `in-flight` — consumer: stage 5 (project lead loop, `TeammateIdle` hook)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
-- `draft-pr-opened` (deliverable only) — consumer: stage 4 (lead opens the draft PR, design §9.3); Task 11 (PR body)
+- `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
 
-**`state.json` band values** (canonical definitions live in Task 5's `band-rubric.md`)
+**`state.json` band values** (canonical definitions live in Task 5's
+`band-rubric.md`)
 - `light` — consumer: Task 5 (`band-rubric.md`)
 - `standard` — consumer: Task 5 (`band-rubric.md`); this file's worked example
 - `deep` — consumer: Task 5 (`band-rubric.md`); this file's worked example
@@ -421,7 +425,7 @@ Every name this file defines, with what consumes it.
 **`state.json` per-run fields**
 - `run_state` — consumer: design §13.1 `SessionEnd` hook, stage 5
 - `run_state` values `active`, `blocked`, `interrupted`, `complete` — consumer: this file's `run_state` transitions table; design §13.1, stage 5, stage 6
-- `run.session_ids` — consumer: stage 5 (resume, matches this run's lead sessions)
+- `run.session_ids` — consumer: stage 5 (resume, matches this run's project lead sessions)
 - `spend` — consumer: design §8 spend ceiling, stage 6 (escalation on crossing it)
 - `spend.ceiling` — consumer: stage 6 (spend ceiling check, design §8)
 - `spend.measured_tokens` — consumer: stage 6 (spend ceiling check, design §8)
@@ -444,7 +448,7 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (lead verifies an IC against this path, design §7)
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7)
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the `TeammateIdle` hook
 - `orphaned` — consumer: design §13.1 `SessionEnd` (writer); stage 5 `--resume` (prunes on it, design §10.1)
@@ -459,7 +463,7 @@ Every name this file defines, with what consumes it.
 - `Timestamp` — consumer: a human auditing the record's timeline; stage 6
 
 **Goal-slug format**
-- `<kebab-case-slug>-<4 lowercase hex chars>` — consumer: stage 4 (lead generates it when creating the record directory)
+- `<kebab-case-slug>-<4 lowercase hex chars>` — consumer: stage 4 (project lead generates it when creating the record directory)
 
 **Filename conventions**
 - `reports/<id>.md` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)

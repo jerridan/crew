@@ -37,7 +37,8 @@ behalf so you can audit them at review time.
 - **Autonomous merging.** The draft PR is the terminus. A human merges.
 - **A tier above the project lead.** No router, no roster, no `lead` tier
   (§15 item 19).
-- **Concurrent goals.** One goal per project lead session. Run more sessions for more.
+- **Concurrent goals.** One goal per project lead session. Run more sessions
+  for more.
 - **An org-wide view.** No dashboard, no cross-session sweep, no supervision.
 - **Replacing CI review.** The existing reviewer fleet stays the quality gate.
   `crew` feeds it.
@@ -60,7 +61,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 
 | Role | Mechanism | Model | Lifetime |
 |---|---|---|---|
-| **Project lead** | `/crew:lead <goal>` in your session | your session's | the run |
+| **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
 | **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
 | **Advocate** | unnamed subagent (`general-purpose`) | sonnet | one position |
 | **Spec critic** | unnamed subagent, new `crew:spec-critic` (unbuilt) | opus / high | one review |
@@ -113,12 +114,12 @@ Its contract replaces red-green-refactor with:
 5. Commit.
 
 It holds **no copy** of the standard. `writing-standard.md`, under
-`skills/lead/references/`, is canonical, and the IC's brief tells it to read
-that file before writing anything. It is a plain reference file, not a skill
-invocation, so there is no fork risk: the IC reads it with its own `Read` tool,
-into its own context, every time — and the standard's own rule applies to
-itself: a second copy of a rule is worse than no copy, because nothing decides
-which copy wins.
+`skills/project-lead/references/`, is canonical, and the IC's brief tells it
+to read that file before writing anything. It is a plain reference file, not a
+skill invocation, so there is no fork risk: the IC reads it with its own
+`Read` tool, into its own context, every time — and the standard's own rule
+applies to itself: a second copy of a rule is worse than no copy, because
+nothing decides which copy wins.
 
 It covers all four container types this IC owns directly, with no hand-off to
 another skill for two of the four.
@@ -671,7 +672,7 @@ is every IC's worktree: its commits, **and its uncommitted edits**, because a
 worktree is a directory on disk. What is lost is each IC's live context and any
 message in flight.
 
-`/crew:lead --resume <goal-slug>` reconciles. For every worktree in
+`/crew:project-lead --resume <goal-slug>` reconciles. For every worktree in
 `worktrees.json`:
 
 | Worktree state | Meaning | Action |
@@ -783,7 +784,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 1 | Plugin skeleton, record format, band rubric, IC contract reference | Later stages agree on a format |
 | 2 | `crew:ic` + `crew:ic-instructions` + `crew:package-reviewer`, driven by hand | One package of each kind reaches a reviewed, accepted result with zero prompts |
 | 3 | `crew:decompose-critic` + `plan.md` format | A bad split is caught before dispatch |
-| 4 | `crew:deliverable-reviewer` + `/crew:lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
+| 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
 
@@ -829,8 +830,8 @@ part that carries real value: without it, a resume cannot tell a live run from a
 dead one.
 
 Removal happens where an agent can reason about it and you can see it: on
-`/crew:lead --resume`, which prunes the orphaned worktrees this run registered,
-and never forces.
+`/crew:project-lead --resume`, which prunes the orphaned worktrees this run
+registered, and never forces.
 
 **`TeammateIdle` ships in stage 5, not stage 2, with `SessionEnd`.** *If* exit 2
 blocks the idle as documented — unverified; see the `PROBE PENDING` entry
@@ -915,8 +916,9 @@ Deliberately different:
 
 ## 15. Open questions
 
-1. **Plugin name.** `crew`, with `/crew:lead` as the entry point. Rename now if
-   another name reads better; it is cheap today and annoying later.
+1. **Plugin name.** `crew`, with `/crew:project-lead` as the entry point.
+   Rename now if another name reads better; it is cheap today and annoying
+   later.
 2. **The spec critic is unbuilt.** `crew` is now distributed alone, which
    forces the decision the earlier draft deferred: the spec critic cannot
    depend on another plugin's agent. Stage 3, which builds the decomposition
@@ -1085,13 +1087,11 @@ Deliberately different:
 19. **`lead` is reserved for a tier that does not exist yet.** Decided: the
     hierarchy is **lead → project leads → ICs**. What this plugin builds is a
     **project lead**. `lead` names the tier above it, which delegates to
-    project leads and stays out of scope here (§1). Prose across this plugin
-    now says "project lead" throughout — 184 renamed uses in `docs/design.md`,
-    `agents/`, `skills/lead/references/`, `README.md` and `CLAUDE.md`.
+    project leads and stays out of scope here (§1).
 
-    Still open: the entry point is `/crew:lead`, and `skills/lead/` holds it
-    and its four references. Both names were left alone — they are published,
-    and moving the directory moves every reference path an IC is given. The
-    tier above is the natural claimant for `lead`, so the skill likely becomes
-    `/crew:project-lead`, but that is a breaking rename and this item does not
-    make it.
+    Done: prose across this plugin says "project lead" throughout (184
+    renamed uses), the entry point is `/crew:project-lead`, and its files
+    moved to `skills/project-lead/`. The bare word `lead` now appears only
+    where it means the tier above. `docs/implementation-plan.md`,
+    `docs/stage-2-run/` and `docs/pr-body.md` keep the old wording — they are
+    the frozen record of a run that happened under it.

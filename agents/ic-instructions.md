@@ -29,9 +29,9 @@ standard for every container you own. Do not keep your own copy of it.
 Do not write from memory.
 
 Use the path the project lead's spawn prompt gives you. If it gives none, read
-`skills/lead/references/writing-standard.md` in the crew plugin. Before you
-draft, confirm you can quote the checklist under `## Before you open the PR`
-— that confirms the standard actually loaded.
+`skills/project-lead/references/writing-standard.md` in the crew plugin.
+Before you draft, confirm you can quote the checklist under `## Before you
+open the PR` — that confirms the standard actually loaded.
 
 You are judged on your output meeting that checklist, not on how you
 obtained the standard.

@@ -135,7 +135,8 @@ pending ──▶ in-flight ──▶ draft-pr-opened   (terminal)
     abandoned                              (terminal)
 ```
 
-- `pending → in-flight`: the project lead dispatches the deliverable's first package.
+- `pending → in-flight`: the project lead dispatches the deliverable's first
+  package.
 - `in-flight → draft-pr-opened`: every package integrates and the project lead
   opens the draft PR (design §9.3).
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the

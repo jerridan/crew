@@ -15,8 +15,8 @@ change is reading, not running.
 | `.claude-plugin/plugin.json` | plugin manifest | the plugin loader |
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
-| `skills/lead/SKILL.md` | the `/crew:lead` entry point — a stub today | its skill trigger |
-| `skills/lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
+| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — a stub today | its skill trigger |
+| `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `docs/design.md` | the living spec | a person |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
 
@@ -29,10 +29,10 @@ Stages 0 through 2 are built: three agents (`crew:ic`, `crew:ic-instructions`,
 `crew:package-reviewer`) and four references. Nothing dispatches them yet. A
 human drove the only run so far by hand.
 
-`skills/lead/SKILL.md` is a placeholder. The project lead loop, both critics, the
-deliverable reviewer, the council, and the hooks are stages 3 through 6, and
-none of them exist. `docs/design.md` §13 holds the build order. Never write
-about an unbuilt stage as if it runs.
+`skills/project-lead/SKILL.md` is a placeholder. The project lead loop, both
+critics, the deliverable reviewer, the council, and the hooks are stages 3
+through 6, and none of them exist. `docs/design.md` §13 holds the build order.
+Never write about an unbuilt stage as if it runs.
 
 ## Authority
 
@@ -54,9 +54,10 @@ second copy is worse than no copy, because nothing decides which copy wins.
 
 ## Writing rules
 
-Read `skills/lead/references/writing-standard.md` before you add or edit any
-`CLAUDE.md`, `.claude/rules/` file, `SKILL.md`, or agent definition — this
-file included. Its checklist under `## Before you open the PR` defines done.
+Read `skills/project-lead/references/writing-standard.md` before you add or
+edit any `CLAUDE.md`, `.claude/rules/` file, `SKILL.md`, or agent definition —
+this file included. Its checklist under `## Before you open the PR` defines
+done.
 
 ## Constraints that are easy to get wrong
 
@@ -65,8 +66,8 @@ file included. Its checklist under `## Before you open the PR` defines done.
   and `.claude-plugin/marketplace.json`. Keep the two values equal.
 - The hierarchy is lead → project leads → ICs. `lead` names the tier above
   this plugin, which does not exist yet, so what crew builds is a **project
-  lead** — write it in full. The entry point is still `/crew:lead` and its
-  directory is still `skills/lead/`; renaming those is open (design §15.19).
+  lead** — write it in full, and leave the bare word `lead` for that future
+  tier (design §15.19).
 - Only ICs are named agents. A named agent becomes a teammate, and a
   teammate's output never returns to its dispatcher. Anything whose result the
   dispatcher must read stays unnamed (design §3).

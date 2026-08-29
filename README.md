@@ -6,7 +6,7 @@ implementers, has each piece reviewed by an agent that did not write it, and
 opens the PR. It asks you only when it genuinely cannot proceed.
 
 > **Status: partly built. Installing it will not get you a run.**
-> The skill ships and `/crew:lead` resolves, but its body is a one-line
+> The skill ships and `/crew:project-lead` resolves, but its body is a one-line
 > placeholder — invoking it only tells you the loop is not written yet. The
 > worker agents it will dispatch are real, and have been driven through a run
 > by hand. See [What exists today](#what-exists-today).
@@ -83,9 +83,9 @@ approving them one at a time.
 ```
 
 Only the middle of that pipeline exists. The workers are built, and were
-driven through a real run by hand. `/crew:lead` resolves to a placeholder —
-the loop that would dispatch them is unwritten. The critics have no definition
-at all.
+driven through a real run by hand. `/crew:project-lead` resolves to a
+placeholder — the loop that would dispatch them is unwritten. The critics have
+no definition at all.
 
 A package is dispatchable only when it has four things: its own acceptance
 criterion, a file set disjoint from every sibling running beside it, a written
@@ -101,7 +101,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 |---|---|
 | `crew:ic`, `crew:ic-instructions`, `crew:package-reviewer` | built, and driven end to end by hand |
 | The record format, band rubric, IC contract, writing standard | built |
-| `/crew:lead` — the loop that dispatches all of it | **stub** |
+| `/crew:project-lead` — the loop that dispatches all of it | **stub** |
 | Spec critic, decomposition critic, deliverable reviewer | not built |
 | Council, question routing, `decisions.md` | not built |
 | Hooks | not built |

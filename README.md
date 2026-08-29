@@ -166,10 +166,16 @@ no bisect.
 This gets you the agents above. Nothing dispatches them yet, so today this is
 worth doing only to read them or drive one by hand.
 
-When the project lead does land, it will dispatch ICs as named teammates, and
-teammate spawning needs a working display mode — iTerm2 with its Python API
-enabled, a session inside tmux, or `teammateMode: "in-process"` in your
-settings.
+**When it does run, the parallel path needs teammates.** ICs are dispatched as
+named teammates, and teammate spawning needs a working display mode — iTerm2
+with its Python API enabled, a session inside tmux, or `teammateMode:
+"in-process"` in your settings. It also has to be interactive: `claude -p`
+cannot spawn a teammate at all.
+
+The single-package path needs none of that. It runs one plain subagent on the
+current branch, with no worktree and no teammate, and it is what stage 4 builds
+first — so the first working version of `/crew:project-lead` will not depend on
+any of the above.
 
 ## Credit
 

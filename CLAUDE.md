@@ -68,9 +68,10 @@ done.
   this plugin, which does not exist yet, so what crew builds is a **project
   lead** — write it in full, and leave the bare word `lead` for that future
   tier (design §15.19).
-- Only ICs are named agents. A named agent becomes a teammate, and a
-  teammate's output never returns to its dispatcher. Anything whose result the
-  dispatcher must read stays unnamed (design §3).
+- Only ICs are named agents. A named agent becomes a teammate, and a teammate
+  returns no parseable tool result — just a final answer in its idle
+  notification. Anything whose result the dispatcher must read and act on
+  stays unnamed (design §3, §15.20b).
 - Teammates are experimental and gated on
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. With the flag off, a named agent
   launches as a plain subagent, so the naming rule above holds only when it is
@@ -82,6 +83,9 @@ done.
   by display mode: in-process **appends** the body to its default system
   prompt, split-pane **replaces** it, and neither applies `skills:`. Write an
   agent body that survives both (design §15.20d).
+- A teammate's permission prompts surface in the project lead's session for a
+  human to approve. Pre-approve what a run needs, or a no-prompt run stops on
+  the first one (design §15.20, §15.12).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json`, in stage 5 (design §12, §13.1).
 - A spawn-time `model` overrides an agent's frontmatter `model`.

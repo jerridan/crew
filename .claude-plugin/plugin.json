@@ -1,7 +1,7 @@
 {
   "name": "crew",
-  "description": "Autonomous project lead — takes one goal to reviewable draft PRs and picks the cheapest model per unit of work",
-  "version": "0.1.0",
+  "description": "A team of agents that takes one goal to a reviewable draft PR — split across parallel implementers, independently reviewed, no approval gates",
+  "version": "0.1.1",
   "author": {
     "name": "Jerridan Quiring"
   }

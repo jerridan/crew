@@ -1,0 +1,92 @@
+# crew
+
+`crew` is a Claude Code plugin: an autonomous project lead that takes one goal
+to a reviewable draft PR and picks the cheapest model for each piece of work.
+The repo root is the plugin root.
+
+Every file here is markdown. There is no source code, no build, no test suite,
+and no CI. Correctness means an instruction a model follows, so verifying a
+change is reading, not running.
+
+## Layout
+
+| Path | What it is | What loads it |
+|---|---|---|
+| `.claude-plugin/plugin.json` | plugin manifest | the plugin loader |
+| `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
+| `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
+| `skills/lead/SKILL.md` | the `/crew:lead` entry point — a stub today | its skill trigger |
+| `skills/lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
+| `docs/design.md` | the living spec | a person |
+| `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
+
+A run's own output — charter, spec, plan, state, reports, reviews — never
+lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
+
+## Build state
+
+Stages 0 through 2 are built: three agents (`crew:ic`, `crew:ic-instructions`,
+`crew:package-reviewer`) and four references. Nothing dispatches them yet. A
+human drove the only run so far by hand.
+
+`skills/lead/SKILL.md` is a placeholder. The lead loop, both critics, the
+deliverable reviewer, the council, and the hooks are stages 3 through 6, and
+none of them exist. `docs/design.md` §13 holds the build order. Never write
+about an unbuilt stage as if it runs.
+
+## Authority
+
+`docs/design.md` is the spec. Read the section you are changing before you
+change behavior. §15 holds the open questions and the findings from the
+stage-2 run; add a new finding there.
+
+Each reference owns one subject and is canonical for it:
+
+- `record-format.md` — the record directory, every `state.json`,
+  `worktrees.json` and `decisions.md` field, and every state transition.
+- `band-rubric.md` — which model a package or a council gets, and when to
+  promote.
+- `ic-contract.md` — what an IC may and may not do, and its report statuses.
+- `writing-standard.md` — how every instruction file here is written.
+
+A rule lives in exactly one file. Point at that file from anywhere else. A
+second copy is worse than no copy, because nothing decides which copy wins.
+
+## Writing rules
+
+Read `skills/lead/references/writing-standard.md` before you add or edit any
+`CLAUDE.md`, `.claude/rules/` file, `SKILL.md`, or agent definition — this
+file included. Its checklist under `## Before you open the PR` defines done.
+
+## Constraints that are easy to get wrong
+
+- Every change outside `README.md`, `CLAUDE.md` and `LICENSE` is content —
+  `docs/` included — and bumps `version` in both `.claude-plugin/plugin.json`
+  and `.claude-plugin/marketplace.json`. Keep the two values equal.
+- Only ICs are named agents. A named agent becomes a teammate, and a
+  teammate's output never returns to its dispatcher. Anything whose result the
+  dispatcher must read stays unnamed (design §3).
+- Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
+  Crew's hooks ship in `hooks/hooks.json`, in stage 5 (design §12, §13.1).
+- A spawn-time `model` overrides an agent's frontmatter `model`.
+  `reasoning_effort` is frontmatter only, and a teammate inherits the lead's
+  effort. That is why a band sets model and never effort (design §8, §12).
+- No crew agent invokes a superpowers skill. Every superpowers process skill
+  stops for a human, and removing that stop is the point of this plugin. Copy
+  a checklist word for word instead, so it stays easy to re-sync (design §2,
+  §14).
+- `docs/implementation-plan.md` and `docs/stage-2-run/` are evidence from the
+  first hand-driven run. Do not edit them, and do not repair their paths —
+  they are relative to the larger plugin repo crew was built inside. Record
+  what you learned from them in `docs/design.md` §15 instead.
+
+## Workflow
+
+- Branch, commit with a one-line message, open a draft PR. A human merges.
+- Exercise a change against this checkout, never the installed copy:
+  `claude --plugin-dir <path to this repo>`.
+- Spawning a teammate needs a working display mode: iTerm2 with its Python API
+  enabled, a session inside tmux, or `teammateMode: "in-process"`.
+- The `Skill` tool is auto-rejected in headless `claude -p`. A `-p` run can
+  confirm a skill is listed, but it cannot invoke one, so a probe that relies
+  on invocation passes vacuously (design §12).

@@ -45,7 +45,7 @@ approving them one at a time.
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ LEAD      investigate, spec, split the work   │   not built
+   │ LEAD      investigate, spec, split the work   │   stub
    └───────────────────────────────────────────────┘
       │
       ▼
@@ -73,15 +73,17 @@ approving them one at a time.
       │ accepted         └──▶  findings go back to that IC,
       ▼                        up to five fix rounds
    ┌───────────────────────────────────────────────┐
-   │ LEAD      merge, re-run the suite, integrate  │   not built
+   │ LEAD      merge, re-run the suite, integrate  │   stub
    └───────────────────────────────────────────────┘
       │
       ▼
    draft PR   ──▶   you merge it
 ```
 
-Only the middle of that pipeline exists today. The workers are built; nothing
-dispatches them yet.
+Only the middle of that pipeline exists. The workers are built, and were
+driven through a real run by hand. `/crew:lead` resolves to a placeholder —
+the loop that would dispatch them is unwritten. The critics have no definition
+at all.
 
 A package is dispatchable only when it has four things: its own acceptance
 criterion, a file set disjoint from every sibling running beside it, a written

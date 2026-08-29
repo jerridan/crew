@@ -29,7 +29,7 @@ Stages 0 through 2 are built: three agents (`crew:ic`, `crew:ic-instructions`,
 `crew:package-reviewer`) and four references. Nothing dispatches them yet. A
 human drove the only run so far by hand.
 
-`skills/lead/SKILL.md` is a placeholder. The lead loop, both critics, the
+`skills/lead/SKILL.md` is a placeholder. The project lead loop, both critics, the
 deliverable reviewer, the council, and the hooks are stages 3 through 6, and
 none of them exist. `docs/design.md` §13 holds the build order. Never write
 about an unbuilt stage as if it runs.
@@ -63,14 +63,19 @@ file included. Its checklist under `## Before you open the PR` defines done.
 - Every change outside `README.md`, `CLAUDE.md` and `LICENSE` is content —
   `docs/` included — and bumps `version` in both `.claude-plugin/plugin.json`
   and `.claude-plugin/marketplace.json`. Keep the two values equal.
+- The hierarchy is lead → project leads → ICs. `lead` names the tier above
+  this plugin, which does not exist yet, so what crew builds is a **project
+  lead** — write it in full. The entry point is still `/crew:lead` and its
+  directory is still `skills/lead/`; renaming those is open (design §15.19).
 - Only ICs are named agents. A named agent becomes a teammate, and a
   teammate's output never returns to its dispatcher. Anything whose result the
   dispatcher must read stays unnamed (design §3).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json`, in stage 5 (design §12, §13.1).
 - A spawn-time `model` overrides an agent's frontmatter `model`.
-  `reasoning_effort` is frontmatter only, and a teammate inherits the lead's
-  effort. That is why a band sets model and never effort (design §8, §12).
+  `reasoning_effort` is frontmatter only, and a teammate inherits the project
+  lead's effort. That is why a band sets model and never effort (design §8,
+  §12).
 - No crew agent invokes a superpowers skill. Every superpowers process skill
   stops for a human, and removing that stop is the point of this plugin. Copy
   a checklist word for word instead, so it stays easy to re-sync (design §2,

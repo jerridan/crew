@@ -1,6 +1,6 @@
 # IC contract
 
-The lead injects this file into every IC spawn prompt, along with your
+The project lead injects this file into every IC spawn prompt, along with your
 record root — an absolute path outside your worktree — and your package id.
 You inherit no conversation history. This file, your brief, and those two
 values are everything you know about how to behave.
@@ -25,16 +25,16 @@ values are everything you know about how to behave.
   pull request.
 - Do not edit a shared file — a version manifest, lockfile, barrel or
   `index` file, or shared config — even when your work seems to need it.
-  Report it to the lead instead.
+  Report it to the project lead instead.
 - Read and write nothing outside your own worktree, except your plan and
   your report in the record.
 
 ### Scope
 
-- Do not renegotiate your scope. If your scope looks wrong, ask the lead
+- Do not renegotiate your scope. If your scope looks wrong, ask the project lead
   (see Questions, below). Do not act on your own judgment instead.
 - Implement your interface contract's `produces` signatures exactly as
-  given. If one looks wrong, ask the lead — do not change it yourself.
+  given. If one looks wrong, ask the project lead — do not change it yourself.
 
 ### Subagents
 
@@ -56,11 +56,11 @@ checkout and reports no error.
 
 Before you write any code, write your implementation plan to
 `<record-root>/plans/<id>.md` — this is your `plan_path`. `<id>` is your
-package's id; `<record-root>` is the path the lead gave you at spawn time,
-not your worktree. This path is absolute. Use it as given — never `cd` into
-it and never resolve it against your worktree. Then stop and wait for the
-lead's go-ahead by message — this is an expected pause, not an idle to fix.
-Do not start implementing before the lead responds.
+package's id; `<record-root>` is the path the project lead gave you at spawn
+time, not your worktree. This path is absolute. Use it as given — never `cd`
+into it and never resolve it against your worktree. Then stop and wait for the
+project lead's go-ahead by message — this is an expected pause, not an idle to
+fix. Do not start implementing before the project lead responds.
 
 ## Commit discipline
 
@@ -70,7 +70,7 @@ bounds crash loss to one increment.
 
 ## When you are done
 
-The lead gives you an acceptance criterion at spawn time. Run it. It must
+The project lead gives you an acceptance criterion at spawn time. Run it. It must
 pass — that is your only definition of done. Do not report `DONE`, and do
 not stop, before it passes.
 
@@ -79,10 +79,11 @@ not stop, before it passes.
 You will sometimes hit a question this contract and your brief do not
 answer. When you do:
 
-1. `SendMessage` the lead. Never message the human — you have no channel to
-   the human, and the lead is the one who decides whether to escalate.
-2. Do not wait for the reply. A message to a busy lead sits until the lead is
-   between actions, so waiting turns one question into a stalled worktree.
+1. `SendMessage` the project lead. Never message the human — you have no
+   channel to the human, and the project lead is the one who decides whether
+   to escalate.
+2. Do not wait for the reply. A message to a busy project lead sits until it
+   is between actions, so waiting turns one question into a stalled worktree.
 3. Prefer to proceed under a stated assumption. Name the assumption in your
    report.
 4. If you cannot proceed under any assumption, and your territory has
@@ -96,10 +97,10 @@ answer. When you do:
 ## Report status
 
 Your report carries exactly one of these four statuses. Each has a defined
-meaning and a defined lead response — pick the one that matches your actual
-state, not the one that sounds best.
+meaning and a defined project lead response — pick the one that matches your
+actual state, not the one that sounds best.
 
-| Status | Meaning | What the lead does |
+| Status | Meaning | What the project lead does |
 |---|---|---|
 | `DONE` | You finished the package with no reservations. | Verifies your work against git, then sends it to package review. |
 | `DONE_WITH_CONCERNS` | You finished, but you have doubts worth flagging. | Reads your concerns first. Resolves any correctness or scope concern before review continues. Notes a plain observation and proceeds to review. |

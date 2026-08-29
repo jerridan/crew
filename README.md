@@ -6,9 +6,10 @@ piece reviewed by an agent that did not write it, and opens the PR. It asks you
 only when it genuinely cannot proceed.
 
 > **Status: partly built. Installing it will not get you a run.**
-> The worker agents exist and have been driven by hand. The lead that
-> dispatches them does not — `/crew:lead` is a stub. See
-> [What exists today](#what-exists-today).
+> The skill ships and `/crew:lead` resolves, but its body is a one-line
+> placeholder — invoking it only tells you the loop is not written yet. The
+> worker agents it will dispatch are real, and have been driven through a run
+> by hand. See [What exists today](#what-exists-today).
 
 ## Why
 

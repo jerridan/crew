@@ -113,8 +113,8 @@ reviews are kept verbatim in [`docs/stage-2-run/`](docs/stage-2-run).
 
 That run also found that a headless IC cannot get a `git commit` approved, and
 that a project lead running inside a worktree cannot reach a sibling worktree
-at all. Both block the full path. §15 of the design doc records both, among
-eighteen open questions in all.
+at all. Both block the full path. §15 of the design doc records both, among its
+other open questions and findings.
 
 ## The mechanics
 

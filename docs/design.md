@@ -3,7 +3,7 @@
 **A project lead that takes one goal to reviewable draft PRs without the human in
 the loop, and picks the cheapest model that can do each piece.**
 
-Status: design. Date: 2026-08-24, amended 2026-08-27.
+Status: design. Date: 2026-08-24, amended 2026-08-27 and 2026-08-29.
 
 This document says what to build and why. It is the first stage of the
 "Personal Agent Org" PRD (`~/.claude/plans/recently-read-a-blurb-pure-piglet.md`),
@@ -36,7 +36,8 @@ behalf so you can audit them at review time.
 
 - **Autonomous merging.** The draft PR is the terminus. A human merges.
 - **A tier above the project lead.** No router, no roster, no `lead` tier
-  (§15 item 19).
+  (§15 items 19, 21, 22). Item 22 names what stage 4 must build so that
+  tier can attach later without a rewrite.
 - **Concurrent goals.** One goal per project lead session. Run more sessions
   for more.
 - **An org-wide view.** No dashboard, no cross-session sweep, no supervision.
@@ -1148,16 +1149,72 @@ Deliberately different:
     restore in-process teammates, which §10.1 recovery must assume; and
     subagents nest three layers deep by default while teammates cannot nest
     at all (§15.21).
-21. **A three-tier hierarchy cannot be nested teams.** Teammates cannot spawn
-    teammates ("no nested teams"), the lead is fixed for a session's
-    lifetime, and a session has exactly one team. So project leads cannot be
-    teammates of a lead *and* have IC teammates of their own. Worse, an
-    in-process teammate's subagents are forced to the foreground, so a
-    project-lead teammate could only run one IC at a time — which removes the
+21. **A three-tier hierarchy cannot be nested teams. Decided: every tier
+    boundary is a session boundary.** Teammates cannot spawn teammates ("no
+    nested teams"), the lead is fixed for a session's lifetime, and a
+    session has exactly one team. So project leads cannot be teammates of a
+    lead *and* have IC teammates of their own. Worse, an in-process
+    teammate's subagents are forced to the foreground, so a project-lead
+    teammate could only run one IC at a time — which removes the
     parallelism §5 exists to provide. (Whether a split-pane teammate is
-    likewise forced is not stated in the docs; unprobed.) The shape the
-    platform does support is one session per project lead, driven by
-    cross-session messaging from the lead, each running its own IC team.
-    Subagents nest three deep by default
-    (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`), so an all-subagent hierarchy
-    also fits. This item does not choose.
+    likewise forced is not stated in the docs; unprobed.)
+
+    Decided 2026-08-29: the hierarchy is one interactive session per
+    project lead. The future lead is a session. Each project lead is its
+    own session — exactly the thing this plugin already builds. ICs are
+    that session's teammates on the full path, or its subagents on the
+    simple path (§9.1). No file in this plugin changes shape for this;
+    the decision is that none has to. Two alternatives were rejected:
+
+    - **An all-subagent tree.** Subagents nest three deep by default
+      (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`), so the shape fits the
+      platform. But a subagent holds no conversation, and the working
+      pattern this hierarchy serves splits the human's attention across
+      tiers — most on the lead, some on project leads, a little on ICs.
+      A project-lead subagent forecloses that middle share, and §9.1's
+      own rule — mechanism follows the need for a conversation — already
+      names the reason.
+    - **A workflow script.** The documented pattern for large parallel
+      fan-out, but the script decides what runs, not a conversation. The
+      same §9.1 rule puts every tier above the ICs out of its reach.
+
+    The channel between a lead and its project leads exists now:
+    cross-session messaging (`code.claude.com/docs/en/cross-session-messaging`,
+    v2.1.224+, fetched 2026-08-29). Local sessions on one machine discover
+    each other with `ListAgents` and message each other with `SendMessage`,
+    over per-session sockets. §12 predates this capability and does not
+    record it. The durable interface between tiers stays the record (§4):
+    a lost message costs latency, never correctness — the same rule that
+    already governs project-lead-to-IC messages, applied one tier up.
+22. **What stage 4 must build so a lead tier can attach later.** The lead
+    tier stays out of scope (§1), and building it before the project-lead
+    loop exists would stack a new tier on a stub. But the project lead is
+    the tier a future lead will drive, so its entry points are the
+    interface. Three requirements, each cheap now and expensive to
+    retrofit:
+
+    a. **Accept a written charter, not only a goal string.**
+       `/crew:project-lead <goal>` covers a human's hand-off. A lead hands
+       off a charter it already wrote. Stage 4's skill takes either form:
+       a goal string it expands into `charter.md`, or a path to a charter
+       file it adopts as `charter.md` unchanged.
+
+    b. **Escalate to the principal, not to "the human".** The escalation
+       ladder is already tier-recursive: an IC escalates to its project
+       lead, which answers what it can and escalates the rest upward
+       (§6.2). Generalize the top rung: a project lead escalates to
+       whoever handed it the goal — today the human in its session, later
+       the lead by cross-session message. Stage 6's escalation format must
+       not hard-code the human as the only principal.
+
+    c. **A project-lead session must be spawnable by rule.** It runs
+       interactive, because `claude -p` cannot spawn teammates (§12). It
+       launches outside any worktree, or §15.10's refusals block IC
+       verification. Its permissions are pre-approved, or the first prompt
+       stalls a session nobody watches (§15.20, item 12). A human obeys
+       these three rules by hand today; a lead automates the same three
+       rules later, for example with `tmux new-window 'claude ...'`.
+
+    Until a lead exists, the human is the lead: they hold the portfolio,
+    write or approve charters, and answer escalations. That is the target
+    division of attention already, minus the automation.

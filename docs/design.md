@@ -624,8 +624,11 @@ IC's per-green-step commits stay on its own branch for resume safety.
 to one package for free, with no bisect.
 
 Then the project lead edits the shared files itself, bumps both version
-fields, dispatches `crew:deliverable-reviewer` over the whole diff,
-adjudicates the findings, pushes, and opens a **draft** PR with `spec.md` and
+fields, and dispatches `crew:deliverable-reviewer` over the whole diff. That
+dispatch carries `spec.md` and this deliverable's `split.md` with the diff.
+Four of the reviewer's seven checks read the record, not the diff, so a
+diff-only dispatch cannot run them (§15.24). The project lead then adjudicates
+the findings, pushes, and opens a **draft** PR with `spec.md` and
 `decisions.md` in the body.
 
 Textual conflicts should be impossible: disjoint file sets leave git nothing
@@ -1298,3 +1301,60 @@ Deliberately different:
     probe covered an interactive session, where the same guard in (b)
     surfaces as a prompt a human can approve. The zero-prompt goal makes
     the idiom split right regardless.
+
+24. **The deliverable reviewer works from the split, not from the diff
+    alone — validated 2026-08-30 (T3).** `agents/deliverable-reviewer.md`
+    is built: unnamed, opus at high effort, `Read Glob Grep Bash`. It
+    keeps the package reviewer's posture — report never fix, `git -C
+    <worktree>` for git, the same two verdict lines — and takes five
+    inputs: `spec.md`, `split.md`, the worktree and base ref, the merged
+    diff, and the accepted package reviews.
+
+    A hand dispatch over a seeded two-package deliverable found all seven
+    planted flaws and split one of them correctly into two: a dropped
+    spec criterion, two ends of one broken seam (a keyword argument the
+    producer never took, and a dataclass indexed as a dict), a version
+    skew across two project-lead-owned shared files, an edit to a file
+    the global constraints put out of scope, a stray scratch file, the
+    merged suite failing, and a debug print. It returned `Verdict: fix
+    round needed` with a critical count. The dispatch was repeated
+    against the corrected agent body after review, over the same seeded
+    deliverable, and returned the same seven criticals and the same
+    verdict.
+
+    What the run showed: four of the seven checks read the record, not
+    the diff. Spec coverage needs `spec.md`. The seam check reads the
+    `Produces`/`Consumes` pair at both ends in `split.md`. The
+    shared-file check needs the split's list of project-lead-owned
+    files, and the scope-leak check subtracts the union of the
+    `file_set`s plus that list from the diff's file list. Only three
+    findings were reachable from the diff alone: the debug print, the
+    failing suite, and the stray scratch file — and the scratch file
+    only through the PR-readiness check, not the scope-leak check that
+    reported it. So the project lead sends the record with the diff.
+
+    Both ICs reported their acceptance test passing, and both were
+    telling the truth — each suite was written against a different idea
+    of `load_config`. Only the merged run exposed it. That is the case
+    §9.3's per-merge test run exists for, and the reason this reviewer
+    re-runs the suite itself instead of reading the package reviews.
+
+    A third dispatch measured the other direction: the same deliverable
+    with every seeded flaw repaired. It returned `Verdict: accepted` and
+    a critical count of zero, so the seven checks do not invent a
+    blocker. It still reported one `[Concern]` — the consuming package
+    never handles the error the producing package's contract says it
+    raises, so a missing file exits the cli with a traceback. Each end
+    is correct alone, which is why neither package reviewer could see
+    it. That is the class of defect this reviewer exists for.
+
+    The first attempt at that clean run did not come back accepted, and
+    the reason is worth keeping: the repaired deliverable carried a
+    test that asserted nothing. It set the environment variable, called
+    the entry point, and checked only the return code, which was the
+    same either way. The reviewer called it `[Critical]` against the
+    spec criterion the test claimed to prove. A criterion is met by a
+    test that can fail, not by a test that passes — so this reviewer
+    reads the test body, and a green suite is not evidence on its own.
+    The run also caught that the branch under review was not the branch
+    `split.md` names.

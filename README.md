@@ -104,7 +104,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `/crew:project-lead` — the loop that dispatches all of it | **stub** |
 | `crew:split-critic` and the `split.md` format | built, not dispatched yet |
 | `crew:spec-critic` | built, not dispatched yet |
-| Deliverable reviewer | not built |
+| `crew:deliverable-reviewer` | built, not dispatched yet |
 | Council, question routing, `decisions.md` | not built |
 | Hooks | not built |
 
@@ -152,12 +152,12 @@ no bisect.
 | Project lead | Runs the whole goal in your session: investigates, writes the spec, splits the work, dispatches workers, integrates, opens the draft PR. | stub |
 | Scout | Answers one research question for the project lead, then exits. | needs the project lead |
 | Advocate | Argues one position in a council, when the project lead needs a second opinion on a judgment call. | needs the project lead |
-| Spec critic | Reviews the project lead's spec before any work starts. | no |
-| Decomposition critic | Reviews the work split before any IC starts, to catch a bad split early. | no |
+| Spec critic | Reviews the project lead's spec before any work starts. | yes, not dispatched yet |
+| Decomposition critic | Reviews the work split before any IC starts, to catch a bad split early. | yes, not dispatched yet |
 | IC | Implements one package of code, in its own worktree, test-first. | yes |
 | Instruction IC | Implements one package whose deliverable is prose — a `CLAUDE.md`, a rule file, a `SKILL.md`, an agent definition — where a checklist decides done, not a test. | yes |
 | Package reviewer | Reviews one finished package against its brief before the project lead accepts it. | yes |
-| Deliverable reviewer | Reviews the whole deliverable, after every package merges, before the draft PR opens. | no |
+| Deliverable reviewer | Reviews the whole deliverable, after every package merges, before the draft PR opens. | yes, not dispatched yet |
 
 ## Install
 

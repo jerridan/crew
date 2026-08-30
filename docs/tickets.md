@@ -59,7 +59,7 @@ Read first: design §15.2, §3, §7 (adjudication); `writing-standard.md`.
 
 ## T3 — Deliverable reviewer
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: 4 (design §13)
 

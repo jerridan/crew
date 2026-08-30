@@ -259,3 +259,47 @@ one no-code-change question ends in a recorded diagnosis instead of a
 PR.
 
 Read first: T11's design section; design §9.1; `record-format.md`.
+
+## T13 — Researcher agent
+
+Status: open
+Depends on: nothing
+Stage: any (usable from stage 4 on)
+
+A scout answers one question in one shot (design §3). A hard question —
+"figure out why X happens", "map how subsystem Y really works" — needs
+several lines of inquiry followed across hops, then synthesis, and today
+that synthesis lands in the project lead's own context. Build
+`agents/researcher.md`: an unnamed agent that takes one open question,
+fans out its own read-only lookup subagents in parallel (subagents nest
+three deep — design §15.20), follows leads, and returns one brief with
+citations, a confidence level, and what it could not determine. It edits
+nothing. Banded like any package: sonnet default, opus when the question
+is deep. Add its row to design §3; scouts stay for single lookups.
+
+Done when: a hand-dispatched researcher answers a genuinely multi-hop
+question about a real repo with citations and a stated unknown, and the
+dispatching session read only the brief.
+
+Read first: design §3, §9.1, §15.20; `writing-standard.md`.
+
+## T14 — Design run instruments
+
+Status: open
+Depends on: nothing
+Stage: design (`docs/design.md`); implementation folds into T4
+
+Some target repos carry their own investigation skills with access crew
+must never own — a database, internal endpoints. Design the instruments
+mechanism: the charter carries an explicit list, named by the principal
+at hand-off, of repo-local skills or agents this run may dispatch. Crew
+ships none, auto-discovers none, and never invokes one not listed. Every
+use is recorded in the run's record. The design section says who may use
+an instrument (the project lead, a researcher, an IC?) and how its
+output is treated (a claim to verify, like an IC report — design §7).
+Nothing environment-specific enters this repo, not even as an example.
+
+Done when: design.md carries the section, the charter format names the
+field, and T4's ticket lists it.
+
+Read first: design §6.2, §7, §15.22a; `record-format.md`.

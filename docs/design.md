@@ -1338,3 +1338,23 @@ Deliberately different:
     of `load_config`. Only the merged run exposed it. That is the case
     §9.3's per-merge test run exists for, and the reason this reviewer
     re-runs the suite itself instead of reading the package reviews.
+
+    A third dispatch measured the other direction: the same deliverable
+    with every seeded flaw repaired. It returned `Verdict: accepted` and
+    a critical count of zero, so the seven checks do not invent a
+    blocker. It still reported one `[Concern]` — the consuming package
+    never handles the error the producing package's contract says it
+    raises, so a missing file exits the cli with a traceback. Each end
+    is correct alone, which is why neither package reviewer could see
+    it. That is the class of defect this reviewer exists for.
+
+    The first attempt at that clean run did not come back accepted, and
+    the reason is worth keeping: the repaired deliverable carried a
+    test that asserted nothing. It set the environment variable, called
+    the entry point, and checked only the return code, which was the
+    same either way. The reviewer called it `[Critical]` against the
+    spec criterion the test claimed to prove. A criterion is met by a
+    test that can fail, not by a test that passes — so this reviewer
+    reads the test body, and a green suite is not evidence on its own.
+    The run also caught that the branch under review was not the branch
+    `split.md` names.

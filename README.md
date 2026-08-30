@@ -52,7 +52,7 @@ approving them one at a time.
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ CRITICS   reject a bad spec or a bad split    │   not built
+   │ CRITICS   reject a bad spec or a bad split    │   split only
    └───────────────────────────────────────────────┘
       │
       │   each package gets a band:  haiku / sonnet / opus
@@ -102,7 +102,8 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `crew:ic`, `crew:ic-instructions`, `crew:package-reviewer` | built, and driven end to end by hand |
 | The record format, band rubric, IC contract, writing standard | built |
 | `/crew:project-lead` — the loop that dispatches all of it | **stub** |
-| Spec critic, decomposition critic, deliverable reviewer | not built |
+| `crew:split-critic` and the `split.md` format | built, not dispatched yet |
+| Spec critic, deliverable reviewer | not built |
 | Council, question routing, `decisions.md` | not built |
 | Hooks | not built |
 

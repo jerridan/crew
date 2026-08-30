@@ -34,7 +34,7 @@ Any "yes" past the first two is a signal toward `deep`.
   other one is no.
 - Assign `standard` by default — every other case, including a `light`
   candidate that fails on any one of its two conditions.
-- Assigning `deep` requires a written justification in `plan.md`. An
+- Assigning `deep` requires a written justification in `split.md`. An
   unjustified `deep` assignment is a defect.
 - **Promotion.** Re-dispatch a package one band up, with no human
   involvement, when its IC reports `BLOCKED` with a `capability` cause,

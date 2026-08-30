@@ -66,7 +66,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
 | **Advocate** | unnamed subagent (`general-purpose`) | sonnet | one position |
 | **Spec critic** | unnamed subagent, new `crew:spec-critic` (unbuilt) | opus / high | one review |
-| **Decomposition critic** | unnamed subagent, new `crew:decompose-critic` | opus / high | one review |
+| **Split critic** | unnamed subagent, new `crew:split-critic` | opus / high | one review |
 | **IC** | **named teammate** `crew:ic`, or unnamed subagent | per band | a territory |
 | **Instruction IC** | **named teammate** `crew:ic-instructions` | per band | a territory |
 | **Package reviewer** | unnamed subagent, new `crew:package-reviewer` | sonnet / high | one review |
@@ -149,7 +149,7 @@ One directory per goal, outside the target repo so the repo stays clean:
 ~/.claude/crew/<goal-slug>/
 ├── charter.md        goal + falsifiable acceptance criterion
 ├── spec.md           the spec the project lead wrote after scouting
-├── plan.md           deliverables → packages, with interfaces and bands
+├── split.md          deliverables → packages, with interfaces and bands
 ├── state.json        deliverables, per-package state, band history, spend, escalations
 ├── decisions.md      every judgment call, with its citation or reasoning
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
@@ -254,7 +254,7 @@ channel between packages.
 
 ### Global constraints
 
-`plan.md` carries a `Global Constraints` section: project-wide requirements
+`split.md` carries a `Global Constraints` section: project-wide requirements
 copied verbatim from the spec — version floors, dependency limits, naming rules,
 platform requirements. Every package's requirements implicitly include it, and
 the project lead injects it into every IC spawn prompt.
@@ -270,7 +270,7 @@ could ever own them disjointly.
 
 ### The critic
 
-`crew:decompose-critic` reviews `plan.md` before any IC is dispatched. It checks
+`crew:split-critic` reviews `split.md` before any IC is dispatched. It checks
 only the invariant, and nothing else:
 
 1. Is every file set disjoint from its concurrent siblings? Look hardest at
@@ -544,7 +544,7 @@ only.
 Rules:
 
 - The default is `standard`. Choosing `deep` requires a written justification in
-  `plan.md`.
+  `split.md`.
 - **Promotion:** an IC that reports `BLOCKED`, exhausts its fix rounds, or goes
   idle without meeting its acceptance test is re-dispatched one band up. No human
   involvement.
@@ -785,7 +785,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 0 | Write crew's own `writing-standard.md` (open question 6) | Crew's own prompts have one standard to be written against |
 | 1 | Plugin skeleton, record format, band rubric, IC contract reference | Later stages agree on a format |
 | 2 | `crew:ic` + `crew:ic-instructions` + `crew:package-reviewer`, driven by hand | One package of each kind reaches a reviewed, accepted result with zero prompts |
-| 3 | `crew:decompose-critic` + `plan.md` format | A bad split is caught before dispatch |
+| 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
@@ -923,10 +923,10 @@ Deliberately different:
    later.
 2. **The spec critic is unbuilt.** `crew` is now distributed alone, which
    forces the decision the earlier draft deferred: the spec critic cannot
-   depend on another plugin's agent. Stage 3, which builds the decomposition
-   critic, must also supply a crew-owned spec critic — its own agent
-   definition, reviewing the spec on crew's own terms, with no dependency
-   outside this plugin.
+   depend on another plugin's agent. Stage 3, which builds the split critic,
+   must also supply a crew-owned spec critic — its own agent definition,
+   reviewing the spec on crew's own terms, with no dependency outside this
+   plugin.
 3. **The spend ceiling value.** Unknowable until the first runs produce
    cost-per-package data. Start deliberately low and raise it.
 4. **Whether the shared task list earns its launch flag.** It brings dependency

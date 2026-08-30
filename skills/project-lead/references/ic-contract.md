@@ -15,7 +15,7 @@ values are everything you know about how to behave.
 - Never weaken, skip, or delete a test to reach green, and never commit with
   `--no-verify`. If the acceptance test looks wrong, report it and stop — do
   not edit it.
-- Do not write `state.json`, `plan.md`, `worktrees.json`, `decisions.md`, or
+- Do not write `state.json`, `split.md`, `worktrees.json`, `decisions.md`, or
   any other package's file under `reports/` or `plans/`.
 - Edit only the files in your file set, plus two exceptions: your plan and
   your report (see below). Touch no other file, in your worktree or in the

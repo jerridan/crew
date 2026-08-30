@@ -19,15 +19,15 @@ is not takeable.
 
 ---
 
-## T1 — Split critic and the `plan.md` format
+## T1 — Split critic and the `split.md` format
 
 Status: in-progress
 Depends on: nothing
 Stage: 3 (design §13)
 
 Build `agents/split-critic.md`: an unnamed agent (opus, high effort —
-design §3) that reviews the project lead's `plan.md` against the seven
-checks in design §5 "The critic", and nothing else. Define the `plan.md`
+design §3) that reviews the project lead's `split.md` against the seven
+checks in design §5 "The critic", and nothing else. Define the `split.md`
 format it reviews: deliverables → packages, with the four dispatchability
 invariants (§5), interface contracts, global constraints, and band
 justifications. The format definition lives in

@@ -29,7 +29,7 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 Stages 0 through 2 are built: three agents (`crew:ic`, `crew:ic-instructions`,
 `crew:package-reviewer`) and four references. Stage 3 is part built:
-`crew:split-critic` and the `plan.md` format exist. Nothing dispatches any
+`crew:split-critic` and the `split.md` format exist. Nothing dispatches any
 of them yet. A human drove the only run so far by hand.
 
 `skills/project-lead/SKILL.md` is a placeholder. The project lead loop, the

@@ -6,7 +6,7 @@ One directory per goal, outside the target repo (design §4):
 ~/.claude/crew/<goal-slug>/
 ├── charter.md        goal + falsifiable acceptance criterion
 ├── spec.md           the spec the project lead wrote after scouting
-├── plan.md           deliverables → packages, with interfaces and bands
+├── split.md          deliverables → packages, with interfaces and bands
 ├── state.json        deliverables, per-package state, band history, spend, escalations
 ├── decisions.md      every judgment call, with its citation, confidence, and timestamp
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
@@ -31,10 +31,10 @@ naming convention. Do not mix their contents.
   implementation plan here and waits for the project lead's go-ahead (design
   §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
   always equals `plans/<id>.md`. This stays separate from `reports/` because
-  `plan.md` at the record root is the project lead's own decomposition — an IC
-  told to "write its plan into the record" with no named target could
-  overwrite it — and separate because §13.1's `TeammateIdle` check must find a
-  *report* on disk before it lets an IC go idle, not a plan.
+  §13.1's `TeammateIdle` check must find a *report* on disk before it lets an
+  IC go idle, not a plan. The project lead's own decomposition is `split.md` at
+  the record root, named apart from `plans/` so that an IC told to "write its
+  plan into the record" cannot overwrite it.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
   (`<n>` is the fix round, from `fix_rounds_used`),
@@ -67,7 +67,7 @@ once, when it creates the record directory, and never regenerates it. Design
 fixed-format slug with no randomness lets two similar goals collide. A random
 suffix avoids the collision without needing a lock or an existence check.
 
-## `plan.md`
+## `split.md`
 
 The project lead's decomposition, in markdown, one file per goal. It is what
 `crew:split-critic` reads before any IC is dispatched. It holds one section
@@ -76,7 +76,7 @@ packages of one territory listed together in the order that territory's IC works
 them.
 
 ```markdown
-# Plan: <goal>
+# Split: <goal>
 
 ## Global Constraints
 
@@ -131,11 +131,11 @@ Rules the format carries:
 `state.json` stays authoritative for the plan (see Authority rule below). Every
 package here has a `packages[]` entry whose `id`, `territory`, `band`,
 `file_set`, `interface_contract`, and `acceptance_criterion` hold the same
-values. `plan.md` adds what `state.json` does not carry: the global
+values. `split.md` adds what `state.json` does not carry: the global
 constraints, the band justifications, and the deliverable order. When the two
-disagree, `state.json` wins and the project lead rewrites `plan.md` to match.
+disagree, `state.json` wins and the project lead rewrites `split.md` to match.
 
-A re-plan (design §10) overwrites `plan.md` in place. The critic's reviews are
+A re-plan (design §10) overwrites `split.md` in place. The critic's reviews are
 the audit trail of earlier splits, one file per re-plan:
 `reviews/<deliverable-id>-split-critic-r<n>.md`.
 
@@ -444,7 +444,7 @@ Every name this file defines, with what consumes it.
 **Layout entries (design §4, this file's directory tree)**
 - `charter.md` — consumer: stage 4 (project lead writes it after scouting)
 - `spec.md` — consumer: stage 4 (project lead writes it); Task 11 (copied into the PR body)
-- `plan.md` — consumer: stage 3 (`crew:split-critic` and the `plan.md` format)
+- `split.md` — consumer: stage 3 (`crew:split-critic` and the `split.md` format)
 - `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
@@ -452,7 +452,7 @@ Every name this file defines, with what consumes it.
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `reviews/` — writer: the project lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 
-**`plan.md` sections and fields**
+**`split.md` sections and fields**
 - `Global Constraints` — consumer: stage 4/5 (project lead copies it into every IC spawn prompt, design §5)
 - `Deliverable <id>` section — consumer: stage 3 (`split-critic` reviews one deliverable's packages); cross-references `deliverables[].id`
 - `Branch` (deliverable) — consumer: stage 5 (merge target, design §9.3); mirrors `deliverables[].branch`

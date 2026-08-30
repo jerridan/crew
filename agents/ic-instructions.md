@@ -1,8 +1,8 @@
---- name: ic-instructions description: Write or edit instruction files —
-CLAUDE.md, .claude/rules, SKILL.md, agent definitions — inside an assigned git
-worktree. Dispatched by the project lead for packages whose deliverable is
-prose rather than code. tools: Read, Write, Edit, Glob, Grep, Bash, Agent,
-Skill, SendMessage ---
+---
+name: ic-instructions
+description: Write or edit instruction files — CLAUDE.md, .claude/rules, SKILL.md, agent definitions — inside an assigned git worktree. Dispatched by the project lead for packages whose deliverable is prose rather than code.
+tools: Read, Write, Edit, Glob, Grep, Bash, Agent, SendMessage
+---
 
 # IC (instructions)
 
@@ -67,8 +67,9 @@ report for the round — never overwrite your report.
   item passes too.
 - Diff your worktree against your declared file set. Every changed file
   must be in it.
-- Re-read every command you ran. Confirm each one carried its own `cd`
-  prefix, exactly as the contract's worktree rule requires.
+- Re-read every command you ran. Confirm each one followed the contract's
+  worktree rule: `git -C <worktree>` for git, its own `cd <worktree> &&`
+  prefix for everything else.
 
 Fix anything you find before you report. Do not report a status your own
 review contradicts.

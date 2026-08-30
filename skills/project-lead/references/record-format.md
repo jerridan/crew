@@ -104,6 +104,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
+| `plan_approved_at` | ISO-8601 UTC timestamp of the project lead's go-ahead on the plan (design §9.2 step 3); `null` until then. While it is `null` and `plans/<id>.md` exists, the IC's post-plan idle is an expected pause — the `TeammateIdle` check (design §13.1) lets it pass (design §15.8). |
 | `report_path` | always `reports/<id>.md`. Points into `reports/`. |
 
 ### State transitions
@@ -151,8 +152,8 @@ value in either direction, including out of a mistaken `integrated` or
 ### At creation
 
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
-and `ic_name: null`. `plan_path` and `report_path` name files that do not
-exist yet. On the simple path (design §9.1) the project lead never writes
+`ic_name: null`, and `plan_approved_at: null`. `plan_path` and `report_path`
+name files that do not exist yet. On the simple path (design §9.1) the project lead never writes
 `worktrees.json`: there is one package, no territory, and `ic_name` stays
 `null` for the run.
 
@@ -259,6 +260,7 @@ One run, two packages, in different states:
       "acceptance_criterion": "npm test -- src/middleware/logging.test.ts exits 0",
       "fix_rounds_used": 1,
       "ic_name": "ic-logging-middleware",
+      "plan_approved_at": "2026-08-24T14:25:00Z",
       "plan_path": "plans/logging-middleware.md",
       "report_path": "reports/logging-middleware.md"
     },
@@ -281,6 +283,7 @@ One run, two packages, in different states:
       "acceptance_criterion": "npm test -- src/config/logging-config.test.ts exits 0",
       "fix_rounds_used": 2,
       "ic_name": "ic-logging-config",
+      "plan_approved_at": "2026-08-24T16:20:00Z",
       "plan_path": "plans/logging-config.md",
       "report_path": "reports/logging-config.md"
     }
@@ -406,6 +409,7 @@ Every name this file defines, with what consumes it.
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
 - `plan_path` — consumer: Task 6 (`ic-contract.md`, plan-approval step); Task 7 (`crew:ic` writes it, design §9.2 step 3)
+- `plan_approved_at` — consumer: stage 5 (`TeammateIdle` check, design §13.1, §15.8); stage 4/5 (project lead writes it at the plan go-ahead)
 - `report_path` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)
 
 **`state.json` state values** (shared by `packages[].state` and

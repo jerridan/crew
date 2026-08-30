@@ -1,7 +1,8 @@
---- name: ic description: Implement one work package test-first inside an
-assigned git worktree, commit after every green step, and report to the
-project lead. Dispatched by the project lead, one per territory. tools: Read,
-Write, Edit, Glob, Grep, Bash, Agent, Skill, SendMessage ---
+---
+name: ic
+description: Implement one work package test-first inside an assigned git worktree, commit after every green step, and report to the project lead. Dispatched by the project lead, one per territory.
+tools: Read, Write, Edit, Glob, Grep, Bash, Agent, SendMessage
+---
 
 # IC
 
@@ -44,8 +45,9 @@ report for the round — never overwrite your report.
   fresh run.
 - Diff your worktree against your declared file set. Every changed file
   must be in it.
-- Re-read every command you ran. Confirm each one carried its own `cd`
-  prefix, exactly as the contract's worktree rule requires.
+- Re-read every command you ran. Confirm each one followed the contract's
+  worktree rule: `git -C <worktree>` for git, its own `cd <worktree> &&`
+  prefix for everything else.
 
 Fix anything you find before you report. Do not report a status your own
 review contradicts.

@@ -3,7 +3,7 @@
 **A project lead that takes one goal to reviewable draft PRs without the human in
 the loop, and picks the cheapest model that can do each piece.**
 
-Status: design. Date: 2026-08-24, amended 2026-08-27.
+Status: design. Date: 2026-08-24, amended 2026-08-27 and 2026-08-29.
 
 This document says what to build and why. It is the first stage of the
 "Personal Agent Org" PRD (`~/.claude/plans/recently-read-a-blurb-pure-piglet.md`),
@@ -36,7 +36,8 @@ behalf so you can audit them at review time.
 
 - **Autonomous merging.** The draft PR is the terminus. A human merges.
 - **A tier above the project lead.** No router, no roster, no `lead` tier
-  (§15 item 19).
+  (§15 items 19, 21, 22). Item 22 names what stage 4 must build so that
+  tier can attach later without a rewrite.
 - **Concurrent goals.** One goal per project lead session. Run more sessions
   for more.
 - **An org-wide view.** No dashboard, no cross-session sweep, no supervision.
@@ -661,8 +662,9 @@ work in flight. Two rules:
   three: integrated work cannot be revised in place — it needs new corrective
   work. A re-plan that treats all
   packages alike produces a spec that no longer describes what already landed.
-  `abandoned` is the terminal state for a package the breaker deferred or a
-  re-plan dropped, and it is never revived; new work gets a new package.
+  `abandoned` is the terminal state for a package the breaker parked or
+  deferred, or a re-plan dropped, and it is never revived; new work gets a
+  new package (§15 item 7).
 
 ### 10.1 Recovery after a kill
 
@@ -802,7 +804,7 @@ is how often it fires when no crew run is happening.
 |---|---|---|---|
 | `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Exit 2 to reject an IC that goes idle without a green test run, a written report, or a stated assumption — a mechanism taken from documentation, not a probe (see below). Keeps it working. | **5** |
 | `SessionEnd` | once per session; a guard clause exits at once when no crew record exists | **Writes only.** Marks the run interrupted in `state.json` and lists its worktrees as orphaned. Deletes nothing. | 5 |
-| `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard | **deferred** |
+| `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard — non-git commands only; a `cd` before git is denied (§15 item 23b) | **deferred** |
 | `PreToolUse` on `Agent` | every agent spawn | Provision a worktree at spawn time | **not needed** — the project lead does this itself |
 
 The `Bash` hook is the only one with a real cost, and it is the one deferred.
@@ -947,6 +949,11 @@ Deliberately different:
    holds or whether it can later resume. If park also means `abandoned`, the
    state set needs no change; if a parked package can later resume, the state
    set needs a fourth, non-terminal value, and §10's transitions need it too.
+
+   Decided 2026-08-29: park is `abandoned`. Park and defer land in the same
+   state and differ only in the recorded reasoning. The state set does not
+   change, and reviving parked work is what §10 already prescribes: a new
+   package.
 8. **The plan gate collides with the idle hook.** Every IC must stop and wait
    after writing its plan (§9.2 step 3), but the `TeammateIdle` check must
    find a *report* on disk before it lets an IC idle, not a plan (line
@@ -954,6 +961,12 @@ Deliberately different:
    The hook is stage 5 and still `PROBE PENDING` (lines 847-859), so neither
    file can resolve this alone; `ic-contract.md` only names the post-plan
    wait as an expected pause, not an idle to fix.
+
+   Decided 2026-08-29: the record carries the gate. `record-format.md` adds
+   `plan_approved_at` per package, `null` until the project lead's
+   go-ahead. The `TeammateIdle` check lets an idle pass while
+   `plans/<id>.md` exists and `plan_approved_at` is `null`. The collision
+   dissolves: a post-plan wait is visible in the record, not inferred.
 9. **`decisions.md` needs a `Models:` line for councils.** §6.1 requires
    recording which model a council used (lines 373-374), and council spend
    is logged (lines 376-377) with its field, `spend.council_tokens`, defined
@@ -1084,6 +1097,13 @@ Deliberately different:
     package on the IC's behalf instead of promoting it. Whether the `BLOCKED`
     row should split into an environmental case and a capability case is a
     design decision above this fix wave; this item does not decide it.
+
+    Decided 2026-08-29: the causes split. A `BLOCKED` report names its
+    cause, `capability` or `environment`. Capability promotes
+    (`band-rubric.md`). Environment never does — the project lead fixes the
+    environment or performs the blocked action itself, and item 23's
+    pre-approval rules make that case rare. `ic-contract.md` and
+    `band-rubric.md` carry the split.
 19. **`lead` is reserved for a tier that does not exist yet.** Decided: the
     hierarchy is **lead → project leads → ICs**. What this plugin builds is a
     **project lead**. `lead` names the tier above it, which delegates to
@@ -1148,16 +1168,128 @@ Deliberately different:
     restore in-process teammates, which §10.1 recovery must assume; and
     subagents nest three layers deep by default while teammates cannot nest
     at all (§15.21).
-21. **A three-tier hierarchy cannot be nested teams.** Teammates cannot spawn
-    teammates ("no nested teams"), the lead is fixed for a session's
-    lifetime, and a session has exactly one team. So project leads cannot be
-    teammates of a lead *and* have IC teammates of their own. Worse, an
-    in-process teammate's subagents are forced to the foreground, so a
-    project-lead teammate could only run one IC at a time — which removes the
+21. **A three-tier hierarchy cannot be nested teams. Decided: every tier
+    boundary is a session boundary.** Teammates cannot spawn teammates ("no
+    nested teams"), the lead is fixed for a session's lifetime, and a
+    session has exactly one team. So project leads cannot be teammates of a
+    lead *and* have IC teammates of their own. Worse, an in-process
+    teammate's subagents are forced to the foreground, so a project-lead
+    teammate could only run one IC at a time — which removes the
     parallelism §5 exists to provide. (Whether a split-pane teammate is
-    likewise forced is not stated in the docs; unprobed.) The shape the
-    platform does support is one session per project lead, driven by
-    cross-session messaging from the lead, each running its own IC team.
-    Subagents nest three deep by default
-    (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`), so an all-subagent hierarchy
-    also fits. This item does not choose.
+    likewise forced is not stated in the docs; unprobed.)
+
+    Decided 2026-08-29: the hierarchy is one interactive session per
+    project lead. The future lead is a session. Each project lead is its
+    own session — exactly the thing this plugin already builds. ICs are
+    that session's teammates on the full path, or its subagents on the
+    simple path (§9.1). No file in this plugin changes shape for this;
+    the decision is that none has to. Two alternatives were rejected:
+
+    - **An all-subagent tree.** Subagents nest three deep by default
+      (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`), so the shape fits the
+      platform. But a subagent holds no conversation, and the working
+      pattern this hierarchy serves splits the human's attention across
+      tiers — most on the lead, some on project leads, a little on ICs.
+      A project-lead subagent forecloses that middle share, and §9.1's
+      own rule — mechanism follows the need for a conversation — already
+      names the reason.
+    - **A workflow script.** The documented pattern for large parallel
+      fan-out, but the script decides what runs, not a conversation. The
+      same §9.1 rule puts every tier above the ICs out of its reach.
+
+    The channel between a lead and its project leads exists now:
+    cross-session messaging (`code.claude.com/docs/en/cross-session-messaging`,
+    v2.1.224+, fetched 2026-08-29). Local sessions on one machine discover
+    each other with `ListAgents` and message each other with `SendMessage`,
+    over per-session sockets. §12 predates this capability and does not
+    record it. The durable interface between tiers stays the record (§4):
+    a lost message costs latency, never correctness — the same rule that
+    already governs project-lead-to-IC messages, applied one tier up.
+22. **What stage 4 must build so a lead tier can attach later.** The lead
+    tier stays out of scope (§1), and building it before the project-lead
+    loop exists would stack a new tier on a stub. But the project lead is
+    the tier a future lead will drive, so its entry points are the
+    interface. Three requirements, each cheap now and expensive to
+    retrofit:
+
+    a. **Accept a written charter, not only a goal string.**
+       `/crew:project-lead <goal>` covers a human's hand-off. A lead hands
+       off a charter it already wrote. Stage 4's skill takes either form:
+       a goal string it expands into `charter.md`, or a path to a charter
+       file it adopts as `charter.md` unchanged.
+
+    b. **Escalate to the principal, not to "the human".** The escalation
+       ladder is already tier-recursive: an IC escalates to its project
+       lead, which answers what it can and escalates the rest upward
+       (§6.2). Generalize the top rung: a project lead escalates to
+       whoever handed it the goal — today the human in its session, later
+       the lead by cross-session message. Stage 6's escalation format must
+       not hard-code the human as the only principal.
+
+    c. **A project-lead session must be spawnable by rule.** It runs
+       interactive, because `claude -p` cannot spawn teammates (§12). It
+       launches outside any worktree, or §15.10's refusals block IC
+       verification. Its permissions are pre-approved, or the first prompt
+       stalls a session nobody watches (§15.20, item 12) — item 23 gives
+       the verified mechanism. A human obeys these three rules by hand
+       today; a lead automates the same three rules later, for example
+       with `tmux new-window 'claude ...'`.
+
+    Until a lead exists, the human is the lead: they hold the portfolio,
+    write or approve charters, and answer escalations. That is the target
+    division of attention already, minus the automation.
+23. **Items 10-12 dissolve under the right idiom and allow rules — probed.**
+    Probed 2026-08-29 on Claude Code 2.1.251: nested headless `claude -p`
+    dispatches in a linux container, against a scratch repo with a linked
+    worktree, each result verified with `git log` rather than the inner
+    model's claim. Cross-checked against `permissions.md`,
+    `permission-modes.md`, `worktrees.md`, and `hooks-guide.md` (fetched
+    the same day). Six findings:
+
+    a. **Item 12's commit denial is a missing allow rule, not a wall.**
+       `acceptEdits` auto-approves only file edits plus `mkdir`, `touch`,
+       `rm`, `rmdir`, `mv`, `cp`, `sed` — never `git commit`. Headless, a
+       call that would prompt is denied instead. With one rule —
+       `--allowedTools "Bash(git commit:*)"` — the probe committed.
+    b. **A cd-before-git guard denies every `cd <path> && git ...`
+       headless, allow rules or not** — including read-only
+       `cd <wt> && git status` under broad `Bash(cd:*)` plus `Bash(git:*)`
+       rules. The denial text names the reason: a `cd` before git can
+       execute untrusted hooks from the target directory. This made the
+       old worktree rule — every command carries `cd <worktree> &&` —
+       unrunnable unattended for git. `ic-contract.md` now splits the
+       idiom: `git -C <worktree>` for git, the `cd` prefix for everything
+       else. Compound non-git commands are safe: the matcher splits on
+       shell operators and checks each part against its own rule.
+    c. **A path-scoped rule is the sanctioned pre-approval.**
+       `--allowedTools "Bash(git -C <worktree> *)"` — the exact worktree
+       path, wildcard after — let the probe commit into that worktree on
+       its branch, unattended. A wildcard before the subcommand
+       (`Bash(git -C * commit *)`) also matched but draws a startup
+       warning naming `-c`/`--exec-path` injection. So a dispatch can
+       grant one IC git rights over exactly its own worktree.
+    d. **Headless `-p` does not load the project's `.claude/settings.json`**
+       (untrusted workspace). User settings, managed settings,
+       `--settings`, and `--allowedTools` still apply. An interactive
+       session — stage 4-5's shape, teammate prompts included — honors
+       repo settings. So pre-approval travels with the spawn: per-dispatch
+       `--allowedTools` for a headless IC, repo settings for a run inside
+       an interactive project-lead session.
+    e. **Item 11 confirmed from the docs side.** `--add-dir` widens file
+       tools and the file commands Claude Code recognizes (`cat`, `head`,
+       `tail`, `sed`). Git is an arbitrary subprocess, outside that
+       system. The two failures are two systems, as item 11 suspected.
+    f. **Item 10 narrows to isolation, not location.** The docs document
+       git isolation for sessions in Claude Code's own worktree isolation:
+       no `git -C`, `--git-dir`, `GIT_DIR`/`GIT_WORK_TREE`, or cd-into
+       reaching the main checkout or siblings. A plain session whose cwd
+       merely sits in a linked worktree is not in that state: the probe
+       read and committed into the sibling checkout under a broad allow
+       rule. Item 22c's launch rule — unisolated — stands and is
+       sufficient.
+
+    Two limits on these probes: the container ran as root, so
+    `bypassPermissions` stayed untested — and unwanted anyway; and no
+    probe covered an interactive session, where the same guard in (b)
+    surfaces as a prompt a human can approve. The zero-prompt goal makes
+    the idiom split right regardless.

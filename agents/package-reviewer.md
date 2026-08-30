@@ -1,7 +1,10 @@
---- name: package-reviewer description: Review one completed work package
-against its brief and acceptance criterion. Dispatched unnamed by the project
-lead so its findings return as a tool result. model: sonnet reasoning_effort:
-high tools: Read, Glob, Grep, Bash ---
+---
+name: package-reviewer
+description: Review one completed work package against its brief and acceptance criterion. Dispatched unnamed by the project lead so its findings return as a tool result.
+model: sonnet
+reasoning_effort: high
+tools: Read, Glob, Grep, Bash
+---
 
 # Package reviewer
 
@@ -19,10 +22,11 @@ Read all five before you judge anything.
 
 ## Your own worktree rule
 
-The shell's working directory resets after every `Bash` call. Every command
-you run against the package carries its own `cd <worktree> &&` prefix. A
-test result you got without that prefix is not evidence — you cannot be
-sure which tree it ran against.
+The shell's working directory resets after every `Bash` call. Run git
+against the package as `git -C <worktree> ...` — never `cd <path> && git
+...`, which the harness denies. Prefix every other command with its own
+`cd <worktree> &&`. A test result you got without that prefix is not
+evidence — you cannot be sure which tree it ran against.
 
 ## You report. You do not fix.
 

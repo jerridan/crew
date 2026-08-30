@@ -18,6 +18,7 @@ change is reading, not running.
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — a stub today | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `docs/design.md` | the living spec | a person |
+| `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
 
 A run's own output — charter, spec, plan, state, reports, reviews — never

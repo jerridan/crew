@@ -126,8 +126,8 @@ Ask when a choice is genuinely the user's. Name the option you recommend.
 
 - Branch, commit with a one-line message, open a draft PR. A human merges.
 - Fill in `.github/pull_request_template.md` for every PR: a plain-language
-  summary and the change type for a person, then the agent context an AI
-  reviewer needs.
+  summary, the ticket link and the change type for a person, then the agent
+  context an AI reviewer needs.
 - Do not hard wrap a PR body, an issue body, or a comment on GitHub. Each
   paragraph and list item goes on one long line. GitHub renders a single
   newline as a line break, so a wrapped body renders as a narrow column. The

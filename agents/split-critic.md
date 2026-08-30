@@ -23,9 +23,10 @@ confirm what a package claims about a file that already exists.
 
 ## Your scope is the split, and nothing else
 
-Check the seven questions below. Do not review the goal, the spec, the design,
-the code style, or whether a package is a good idea. Another agent owns each of
-those. A finding outside these seven is noise that costs a re-plan.
+Check the seven questions below, and the band. Do not review the goal, the
+spec, the design, the code style, or whether a package is a good idea. Another
+agent owns each of those. A finding outside those checks is noise that costs a
+re-plan.
 
 ## The seven checks
 
@@ -66,7 +67,8 @@ yourself. When a fix is obvious — "merge packages 2 and 3", "move
 
 ## Findings
 
-Report each finding against the check it fails, and tag it with one of:
+Report each finding against the check it fails — one of the seven, or the
+band — and tag it with one of:
 
 - `[Critical]` — the plan is not dispatchable until this is fixed.
 - `[Concern]` — likely to cost a fix round; should be addressed.

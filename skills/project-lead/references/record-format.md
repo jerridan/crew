@@ -71,7 +71,9 @@ suffix avoids the collision without needing a lock or an existence check.
 
 The project lead's decomposition, in markdown, one file per goal. It is what
 `crew:split-critic` reads before any IC is dispatched. It holds one section
-per deliverable, in run order, and one subsection per package.
+per deliverable, in run order, and one subsection per package, with the
+packages of one territory listed together in the order that territory's IC works
+them.
 
 ```markdown
 # Plan: <goal>
@@ -91,7 +93,7 @@ Depends on: <deliverable-id> | nothing
 ### Package <package-id>
 
 Territory: <file-tree region>
-Band: <light | standard | deep> — <justification>
+Band: <light | standard | deep>[ — <justification, required for deep>]
 File set:
 - <path>
 - <path>
@@ -113,8 +115,15 @@ Rules the format carries:
   packages.
 - **A `deep` band needs a written justification** on the `Band` line (design
   §8). `light` and `standard` do not.
-- **`Depends on` orders the deliverables.** Deliverables run sequentially; the
-  packages inside one deliverable run in parallel.
+- **Territories set what runs in parallel**, not the deliverable. Territories
+  run beside each other; the packages inside one territory run in order, top to
+  bottom as listed, in one IC's worktree (design §5). `Depends on` orders the
+  deliverables, which run sequentially.
+- **`Consumes` names an earlier package, never a concurrent one.** A package may
+  consume a package listed earlier in its own territory, a package from an
+  earlier deliverable, or code the repo already holds. An entry naming a package
+  in a concurrent territory is a serialization bug, and `crew:split-critic`
+  check 5 rejects it.
 - **Shared files never appear in a file set.** Version manifests, lockfiles,
   barrel and `index` files, and shared config belong to the project lead at
   integration (design §5).

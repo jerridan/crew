@@ -65,7 +65,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
 | **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
 | **Advocate** | unnamed subagent (`general-purpose`) | sonnet | one position |
-| **Spec critic** | unnamed subagent, new `crew:spec-critic` (unbuilt) | opus / high | one review |
+| **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |
 | **Split critic** | unnamed subagent, new `crew:split-critic` | opus / high | one review |
 | **IC** | **named teammate** `crew:ic`, or unnamed subagent | per band | a territory |
 | **Instruction IC** | **named teammate** `crew:ic-instructions` | per band | a territory |
@@ -905,7 +905,7 @@ Deliberately different:
 | superpowers | crew | Why |
 |---|---|---|
 | Every stage stops for human approval; brainstorming has a hard gate | No gates. The project lead self-approves and records the decision. | The gates are the problem being removed |
-| The spec review gate is the human's | The (unbuilt) crew-owned spec critic plus the council are the review | Independence without a stop |
+| The spec review gate is the human's | The crew-owned spec critic plus the council are the review | Independence without a stop |
 | `writing-plans` offers an execution choice | The project lead picks the shape itself (section 9.1) | No prompt |
 | `finishing-a-development-branch` presents a 3-option integration menu | Hardcoded to push and open a **draft** PR | Not autonomous merging; not a menu either |
 | No cost policy beyond "promote on fix rounds 4-5" | Per-package bands, a rubric, promotion logging, a spend ceiling | Section 8 is a primary motive |
@@ -927,6 +927,11 @@ Deliberately different:
    must also supply a crew-owned spec critic — its own agent definition,
    reviewing the spec on crew's own terms, with no dependency outside this
    plugin.
+
+   Built 2026-08-30 (T2): `agents/spec-critic.md`, unnamed, opus at high
+   effort, seven checks against the charter, no dependency outside crew. It
+   reports and never edits, and its review lands at
+   `reviews/spec-critic-r<n>.md`. Nothing dispatches it until stage 4.
 3. **The spend ceiling value.** Unknowable until the first runs produce
    cost-per-package data. Start deliberately low and raise it.
 4. **Whether the shared task list earns its launch flag.** It brings dependency

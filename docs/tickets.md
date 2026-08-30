@@ -43,7 +43,7 @@ Read first: design §5, §3; `record-format.md`;
 
 ## T2 — Spec critic
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: 3 (design §15.2)
 

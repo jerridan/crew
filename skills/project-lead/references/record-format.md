@@ -38,6 +38,8 @@ naming convention. Do not mix their contents.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
   (`<n>` is the fix round, from `fix_rounds_used`),
+  `reviews/spec-critic-r<n>.md` (`<n>` counts re-specs of this goal; the spec
+  is per goal, so this name carries no deliverable id),
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
   critic on the same deliverable),

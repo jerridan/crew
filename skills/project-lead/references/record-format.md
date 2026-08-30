@@ -38,7 +38,7 @@ naming convention. Do not mix their contents.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
   (`<n>` is the fix round, from `fix_rounds_used`),
-  `reviews/<deliverable-id>-decompose-critic-r<n>.md` (`<n>` here counts
+  `reviews/<deliverable-id>-plan-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
   critic on the same deliverable),
   `reviews/<deliverable-id>-deliverable-review.md`. Design §9.2 allows up to
@@ -70,7 +70,7 @@ suffix avoids the collision without needing a lock or an existence check.
 ## `plan.md`
 
 The project lead's decomposition, in markdown, one file per goal. It is what
-`crew:decompose-critic` reads before any IC is dispatched. It holds one section
+`crew:plan-critic` reads before any IC is dispatched. It holds one section
 per deliverable, in run order, and one subsection per package.
 
 ```markdown
@@ -128,7 +128,7 @@ disagree, `state.json` wins and the project lead rewrites `plan.md` to match.
 
 A re-plan (design §10) overwrites `plan.md` in place. The critic's reviews are
 the audit trail of earlier splits, one file per re-plan:
-`reviews/<deliverable-id>-decompose-critic-r<n>.md`.
+`reviews/<deliverable-id>-plan-critic-r<n>.md`.
 
 ## `state.json`
 
@@ -161,7 +161,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `state_changed_at` | ISO-8601 UTC timestamp of this package's last `state` transition |
 | `band` | one of `light`, `standard`, `deep`. `band-rubric.md` is the authority for what a band means and when to promote one; this field only stores the current value. |
 | `band_history` | a list of `{predicted, actual, cause, at}` entries: one when the band is first predicted, and one more per promotion after that (design §8). `at` is an ISO-8601 UTC timestamp. |
-| `file_set` | the package's declared, disjoint file list (design §5 invariant 2). `decompose-critic` checks disjointness against this field. |
+| `file_set` | the package's declared, disjoint file list (design §5 invariant 2). `plan-critic` checks disjointness against this field. |
 | `interface_contract` | `{consumes, produces}` with exact signatures (design §5 invariant 3). The only channel between isolated ICs. |
 | `acceptance_criterion` | the executable test or reviewer checklist that proves the package is done (design §5 invariant 1). Also what makes a respawn idempotent after a crash (design §10.1). |
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
@@ -291,7 +291,7 @@ One run, two packages, in different states:
       "estimated_tokens": 150000,
       "council_tokens": 0,
       "by_agent": [
-        { "agent": "decompose-critic", "total_tokens": 210000, "measured": true },
+        { "agent": "plan-critic", "total_tokens": 210000, "measured": true },
         { "agent": "ic-logging-middleware", "total_tokens": 0, "measured": false }
       ]
     },
@@ -435,20 +435,20 @@ Every name this file defines, with what consumes it.
 **Layout entries (design §4, this file's directory tree)**
 - `charter.md` — consumer: stage 4 (project lead writes it after scouting)
 - `spec.md` — consumer: stage 4 (project lead writes it); Task 11 (copied into the PR body)
-- `plan.md` — consumer: stage 3 (`crew:decompose-critic` and the `plan.md` format)
+- `plan.md` — consumer: stage 3 (`crew:plan-critic` and the `plan.md` format)
 - `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
-- `reviews/` — writer: the project lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`decompose-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/` — writer: the project lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`plan-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 
 **`plan.md` sections and fields**
 - `Global Constraints` — consumer: stage 4/5 (project lead copies it into every IC spawn prompt, design §5)
-- `Deliverable <id>` section — consumer: stage 3 (`decompose-critic` reviews one deliverable's packages); cross-references `deliverables[].id`
+- `Deliverable <id>` section — consumer: stage 3 (`plan-critic` reviews one deliverable's packages); cross-references `deliverables[].id`
 - `Branch` (deliverable) — consumer: stage 5 (merge target, design §9.3); mirrors `deliverables[].branch`
 - `Depends on` (deliverable) — consumer: stage 4/5 (deliverable run order, design §5)
-- `Package <id>` subsection — consumer: stage 3 (`decompose-critic` checks the four invariants); mirrors `packages[].id`
+- `Package <id>` subsection — consumer: stage 3 (`plan-critic` checks the four invariants); mirrors `packages[].id`
 - `Territory` — consumer: stage 5 (one IC per territory); mirrors `packages[].territory`
 - `Band` and its justification — consumer: Task 5 (`band-rubric.md`); design §8 (a `deep` band needs the written justification)
 - `File set` — consumer: stage 3 (disjointness check); mirrors `packages[].file_set`
@@ -471,15 +471,15 @@ Every name this file defines, with what consumes it.
 - `pr_url` — consumer: stage 4 (draft PR opened in `draft-pr-opened`, design §9.3); Task 11
 
 **`state.json` per-package fields**
-- `id` — consumer: this file's `reports/<id>.md`, `plans/<id>.md`, `reviews/<id>-package-review-r<n>.md` naming; stage 3 (`decompose-critic` identifies packages)
+- `id` — consumer: this file's `reports/<id>.md`, `plans/<id>.md`, `reviews/<id>-package-review-r<n>.md` naming; stage 3 (`plan-critic` identifies packages)
 - `deliverable` — consumer: stage 5 (per-deliverable integration, design §9.3); cross-references `deliverables[].id`
 - `territory` — consumer: stage 5 (one IC dispatched per territory, design §5)
 - `state` — consumer: stage 4 (project lead loop); stage 5 (re-planning and recovery, design §10)
 - `state_changed_at` — consumer: a human auditing the record's timeline; stage 6
 - `band` — consumer: Task 5 (`band-rubric.md` defines what each value means and when to promote)
 - `band_history` — consumer: Task 5 (band-rubric.md's promotion-logging rule); stage 5 (promotion on `BLOCKED`/exhausted fix rounds/idle)
-- `file_set` — consumer: Task 7 (`crew:ic` self-review checks its diff against this); stage 3 (`decompose-critic` disjointness check)
-- `interface_contract` — consumer: stage 3 (`decompose-critic` type-consistency check); Task 7/Task 8 (IC spawn prompt carries it, design §9.2 step 2)
+- `file_set` — consumer: Task 7 (`crew:ic` self-review checks its diff against this); stage 3 (`plan-critic` disjointness check)
+- `interface_contract` — consumer: stage 3 (`plan-critic` type-consistency check); Task 7/Task 8 (IC spawn prompt carries it, design §9.2 step 2)
 - `acceptance_criterion` — consumer: Task 6 (`ic-contract.md`, tells the IC when to stop); Task 9 (`crew:package-reviewer` checks work against it)
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
@@ -548,5 +548,5 @@ Every name this file defines, with what consumes it.
 - `reports/<id>.md` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)
 - `plans/<id>.md` — consumer: Task 6 (`ic-contract.md`); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `reviews/<id>-package-review-r<n>.md` — consumer: Task 9 (`crew:package-reviewer` output, one file per fix round)
-- `reviews/<deliverable-id>-decompose-critic-r<n>.md` — consumer: stage 3 (`decompose-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
+- `reviews/<deliverable-id>-plan-critic-r<n>.md` — consumer: stage 3 (`plan-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
 - `reviews/<deliverable-id>-deliverable-review.md` — consumer: stage 4 (`crew:deliverable-reviewer` output)

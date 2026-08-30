@@ -20,6 +20,7 @@ change is reading, not running.
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
+| `.github/pull_request_template.md` | the PR body skeleton | GitHub, when you open a PR |
 
 A run's own output — charter, spec, plan, state, reports, reviews — never
 lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
@@ -124,6 +125,14 @@ Ask when a choice is genuinely the user's. Name the option you recommend.
 ## Workflow
 
 - Branch, commit with a one-line message, open a draft PR. A human merges.
+- Fill in `.github/pull_request_template.md` for every PR: a plain-language
+  summary and the change type for a person, then the agent context an AI
+  reviewer needs.
+- Do not hard wrap a PR body, an issue body, or a comment on GitHub. Each
+  paragraph and list item goes on one long line. GitHub renders a single
+  newline as a line break, so a wrapped body renders as a narrow column. The
+  files in this repo stay hard wrapped; only the text you send to GitHub does
+  not.
 - Exercise a change against this checkout, never the installed copy:
   `claude --plugin-dir <path to this repo>`.
 - Spawning a teammate needs a working display mode: iTerm2 with its Python API

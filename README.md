@@ -103,7 +103,8 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | The record format, band rubric, IC contract, writing standard | built |
 | `/crew:project-lead` — the loop that dispatches all of it | **stub** |
 | `crew:split-critic` and the `split.md` format | built, not dispatched yet |
-| Spec critic, deliverable reviewer | not built |
+| `crew:spec-critic` | built, not dispatched yet |
+| Deliverable reviewer | not built |
 | Council, question routing, `decisions.md` | not built |
 | Hooks | not built |
 

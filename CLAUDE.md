@@ -71,9 +71,11 @@ names.
 
 ## Constraints that are easy to get wrong
 
-- Every change outside `README.md`, `CLAUDE.md` and `LICENSE` is content —
-  `docs/` included — and bumps `version` in both `.claude-plugin/plugin.json`
-  and `.claude-plugin/marketplace.json`. Keep the two values equal.
+- A change to what the plugin loads — `agents/`, `skills/`, `hooks/`, or the
+  manifests — bumps `version` in both `.claude-plugin/plugin.json` and
+  `.claude-plugin/marketplace.json`. Keep the two values equal. Nothing else
+  bumps it: `docs/`, `README.md`, `CLAUDE.md` and `LICENSE` never reach a
+  plugin user, so a bump for them says a release happened when none did.
 - The hierarchy is lead → project leads → ICs. `lead` names the tier above
   this plugin, which does not exist yet, so what crew builds is a **project
   lead** — write it in full, and leave the bare word `lead` for that future

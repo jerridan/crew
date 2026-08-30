@@ -1317,7 +1317,10 @@ Deliberately different:
     skew across two project-lead-owned shared files, an edit to a file
     the global constraints put out of scope, a stray scratch file, the
     merged suite failing, and a debug print. It returned `Verdict: fix
-    round needed` with a critical count.
+    round needed` with a critical count. The dispatch was repeated
+    against the corrected agent body after review, over the same seeded
+    deliverable, and returned the same seven criticals and the same
+    verdict.
 
     What the run showed: four of the seven checks read the record, not
     the diff. Spec coverage needs `spec.md`. The seam check reads the

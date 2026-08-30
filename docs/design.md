@@ -1298,3 +1298,34 @@ Deliberately different:
     probe covered an interactive session, where the same guard in (b)
     surfaces as a prompt a human can approve. The zero-prompt goal makes
     the idiom split right regardless.
+
+24. **The deliverable reviewer works from the split, not from the diff
+    alone — validated 2026-08-30 (T3).** `agents/deliverable-reviewer.md`
+    is built: unnamed, opus at high effort, `Read Glob Grep Bash`. It
+    keeps the package reviewer's posture — report never fix, `git -C
+    <worktree>` for git, the same two verdict lines — and takes five
+    inputs: `spec.md`, `split.md`, the worktree and base ref, the merged
+    diff, and the accepted package reviews.
+
+    A hand dispatch over a seeded two-package deliverable found all seven
+    planted flaws and split one of them correctly into two: a dropped
+    spec criterion, two ends of one broken seam (a keyword argument the
+    producer never took, and a dataclass indexed as a dict), a version
+    skew across two project-lead-owned shared files, an edit to a file
+    the global constraints put out of scope, a stray scratch file, the
+    merged suite failing, and a debug print. It returned `Verdict: fix
+    round needed` with a critical count.
+
+    What the run showed: every finding except the debug print and the
+    failing suite needed `split.md` or `spec.md` to be visible. The seam
+    check reads the `Produces`/`Consumes` pair at both ends, and the
+    scope-leak check subtracts the union of the `file_set`s plus the
+    shared files from the diff's file list. A dispatch that passes only
+    the diff makes five of the seven checks unrunnable. So the project
+    lead sends the record, not just the diff.
+
+    Both ICs reported their acceptance test passing, and both were
+    telling the truth — each suite was written against a different idea
+    of `load_config`. Only the merged run exposed it. That is the case
+    §9.3's per-merge test run exists for, and the reason this reviewer
+    re-runs the suite itself instead of reading the package reviews.

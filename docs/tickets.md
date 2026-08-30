@@ -21,7 +21,7 @@ is not takeable.
 
 ## T1 — Decomposition critic and the `plan.md` format
 
-Status: open
+Status: in-progress
 Depends on: nothing
 Stage: 3 (design §13)
 

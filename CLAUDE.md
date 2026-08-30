@@ -27,12 +27,14 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 ## Build state
 
 Stages 0 through 2 are built: three agents (`crew:ic`, `crew:ic-instructions`,
-`crew:package-reviewer`) and four references. Nothing dispatches them yet. A
-human drove the only run so far by hand.
+`crew:package-reviewer`) and four references. Stage 3 is part built:
+`crew:decompose-critic` and the `plan.md` format exist. Nothing dispatches any
+of them yet. A human drove the only run so far by hand.
 
-`skills/project-lead/SKILL.md` is a placeholder. The project lead loop, both
-critics, the deliverable reviewer, the council, and the hooks are stages 3
-through 6, and none of them exist. `docs/design.md` §13 holds the build order.
+`skills/project-lead/SKILL.md` is a placeholder. The project lead loop, the
+spec critic, the deliverable reviewer, the council, and the hooks are stages 3
+through 6, and none of them exist. `docs/design.md` §13 holds the build order,
+and `docs/tickets.md` holds the backlog.
 Never write about an unbuilt stage as if it runs.
 
 ## Authority

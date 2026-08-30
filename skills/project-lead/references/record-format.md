@@ -67,6 +67,69 @@ once, when it creates the record directory, and never regenerates it. Design
 fixed-format slug with no randomness lets two similar goals collide. A random
 suffix avoids the collision without needing a lock or an existence check.
 
+## `plan.md`
+
+The project lead's decomposition, in markdown, one file per goal. It is what
+`crew:decompose-critic` reads before any IC is dispatched. It holds one section
+per deliverable, in run order, and one subsection per package.
+
+```markdown
+# Plan: <goal>
+
+## Global Constraints
+
+Project-wide requirements, copied verbatim from `spec.md` — version floors,
+dependency limits, naming rules, platform requirements (design §5). Every
+package's requirements include these, and the project lead injects this section
+into every IC spawn prompt.
+
+## Deliverable <deliverable-id> — <title>
+
+Branch: crew/<deliverable-id>
+Depends on: <deliverable-id> | nothing
+
+### Package <package-id>
+
+Territory: <file-tree region>
+Band: <light | standard | deep> — <justification>
+File set:
+- <path>
+- <path>
+Consumes:
+- <exact signature, or "nothing">
+Produces:
+- <exact signature>
+Acceptance criterion: <executable test, or the reviewer checklist path>
+```
+
+Rules the format carries:
+
+- **Every package states all four invariants** (design §5): an acceptance
+  criterion satisfied by its own changes, a file set disjoint from every
+  concurrent sibling, a written interface contract, and a band. A package
+  missing one of the four is not dispatchable.
+- **`Consumes` and `Produces` carry exact signatures**, not descriptions. An IC
+  cannot see its siblings' worktrees, so this block is the only channel between
+  packages.
+- **A `deep` band needs a written justification** on the `Band` line (design
+  §8). `light` and `standard` do not.
+- **`Depends on` orders the deliverables.** Deliverables run sequentially; the
+  packages inside one deliverable run in parallel.
+- **Shared files never appear in a file set.** Version manifests, lockfiles,
+  barrel and `index` files, and shared config belong to the project lead at
+  integration (design §5).
+
+`state.json` stays authoritative for the plan (see Authority rule below). Every
+package here has a `packages[]` entry whose `id`, `territory`, `band`,
+`file_set`, `interface_contract`, and `acceptance_criterion` hold the same
+values. `plan.md` adds what `state.json` does not carry: the global
+constraints, the band justifications, and the deliverable order. When the two
+disagree, `state.json` wins and the project lead rewrites `plan.md` to match.
+
+A re-plan (design §10) overwrites `plan.md` in place. The critic's reviews are
+the audit trail of earlier splits, one file per re-plan:
+`reviews/<deliverable-id>-decompose-critic-r<n>.md`.
+
 ## `state.json`
 
 Top-level keys: `goal`, `goal_slug`, `deliverables`, `run`, `packages`.
@@ -379,6 +442,18 @@ Every name this file defines, with what consumes it.
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `reviews/` — writer: the project lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`decompose-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+
+**`plan.md` sections and fields**
+- `Global Constraints` — consumer: stage 4/5 (project lead copies it into every IC spawn prompt, design §5)
+- `Deliverable <id>` section — consumer: stage 3 (`decompose-critic` reviews one deliverable's packages); cross-references `deliverables[].id`
+- `Branch` (deliverable) — consumer: stage 5 (merge target, design §9.3); mirrors `deliverables[].branch`
+- `Depends on` (deliverable) — consumer: stage 4/5 (deliverable run order, design §5)
+- `Package <id>` subsection — consumer: stage 3 (`decompose-critic` checks the four invariants); mirrors `packages[].id`
+- `Territory` — consumer: stage 5 (one IC per territory); mirrors `packages[].territory`
+- `Band` and its justification — consumer: Task 5 (`band-rubric.md`); design §8 (a `deep` band needs the written justification)
+- `File set` — consumer: stage 3 (disjointness check); mirrors `packages[].file_set`
+- `Consumes` / `Produces` — consumer: stage 3 (contract and type-consistency checks); mirrors `packages[].interface_contract`
+- `Acceptance criterion` — consumer: stage 3 (self-contained-acceptance check); mirrors `packages[].acceptance_criterion`
 
 **`state.json` top-level keys**
 - `goal` — consumer: stage 4 (project lead records the original goal text); Task 11 (PR body)

@@ -9,8 +9,9 @@ How to take a ticket:
 1. Read `CLAUDE.md` first, then the ticket's **Read first** list.
 2. Work only that ticket. Branch, commit, open a draft PR (`CLAUDE.md`
    workflow). One ticket per PR.
-3. Set the ticket's `Status` line in your PR: `in-progress` when you
-   start, `done` when the PR merges.
+3. `Status` is `open` or `done`. Set it to `done` in the PR that
+   finishes the ticket, so the merge and the status land together. An
+   open PR is what says the work is under way.
 4. Record what you learn in `docs/design.md` §15, not here. This file
    holds work, not findings.
 
@@ -21,7 +22,7 @@ is not takeable.
 
 ## T1 — Split critic and the `split.md` format
 
-Status: in-progress
+Status: done
 Depends on: nothing
 Stage: 3 (design §13)
 

@@ -624,8 +624,11 @@ IC's per-green-step commits stay on its own branch for resume safety.
 to one package for free, with no bisect.
 
 Then the project lead edits the shared files itself, bumps both version
-fields, dispatches `crew:deliverable-reviewer` over the whole diff,
-adjudicates the findings, pushes, and opens a **draft** PR with `spec.md` and
+fields, and dispatches `crew:deliverable-reviewer` over the whole diff. That
+dispatch carries `spec.md` and this deliverable's `split.md` with the diff.
+Four of the reviewer's seven checks read the record, not the diff, so a
+diff-only dispatch cannot run them (§15.24). The project lead then adjudicates
+the findings, pushes, and opens a **draft** PR with `spec.md` and
 `decisions.md` in the body.
 
 Textual conflicts should be impossible: disjoint file sets leave git nothing
@@ -1316,13 +1319,16 @@ Deliberately different:
     merged suite failing, and a debug print. It returned `Verdict: fix
     round needed` with a critical count.
 
-    What the run showed: every finding except the debug print and the
-    failing suite needed `split.md` or `spec.md` to be visible. The seam
-    check reads the `Produces`/`Consumes` pair at both ends, and the
-    scope-leak check subtracts the union of the `file_set`s plus the
-    shared files from the diff's file list. A dispatch that passes only
-    the diff makes five of the seven checks unrunnable. So the project
-    lead sends the record, not just the diff.
+    What the run showed: four of the seven checks read the record, not
+    the diff. Spec coverage needs `spec.md`. The seam check reads the
+    `Produces`/`Consumes` pair at both ends in `split.md`. The
+    shared-file check needs the split's list of project-lead-owned
+    files, and the scope-leak check subtracts the union of the
+    `file_set`s plus that list from the diff's file list. Only three
+    findings were reachable from the diff alone: the debug print, the
+    failing suite, and the stray scratch file — and the scratch file
+    only through the PR-readiness check, not the scope-leak check that
+    reported it. So the project lead sends the record with the diff.
 
     Both ICs reported their acceptance test passing, and both were
     telling the truth — each suite was written against a different idea

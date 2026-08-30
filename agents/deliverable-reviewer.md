@@ -43,9 +43,9 @@ there.
 ## Review the whole, not the packages again
 
 `crew:package-reviewer` already checked each package against its own brief.
-Re-arguing an accepted package's internals costs a fix round that buys nothing.
-Report a package-local defect only when it is `[Critical]`. Everything else you
-find inside one package's file set is a `[Nit]` at most.
+Report a package-local defect only when it is `[Critical]`. Drop every lesser
+defect that sits inside one package's file set — its reviewer weighed it
+already, and re-raising it costs a fix round that buys nothing.
 
 Your subject is what no package reviewer could see: the seams, the shared
 files, and the deliverable as one change.

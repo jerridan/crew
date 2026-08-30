@@ -209,3 +209,53 @@ different owner. Record the decision in design §15.17 and align §3.1,
 Done when: the four files agree and §15.17 reads "Decided".
 
 Read first: design §15.17, §3.1; `writing-standard.md`.
+
+## T11 — Design the investigation path
+
+Status: open
+Depends on: nothing
+Stage: design (`docs/design.md`)
+
+Crew's loop assumes the goal is a change: spec, split, implement, draft
+PR. A bug or a support ticket starts from an unknown — most of the work
+is diagnosis, and a run can legitimately end with no code change. Write
+the design section for an investigation path:
+
+- A bug charter: the acceptance criterion is a reproduction — a test or
+  command that fails now and must pass after the fix.
+- A diagnosis artifact in the record — evidence, root cause, ruled-out
+  hypotheses — and a terminal deliverable state for a run that ends in a
+  report instead of a PR. `record-format.md` owns both names.
+- Competing root-cause hypotheses run as a council (§6.1): advocates
+  argue assigned hypotheses over the same evidence, the project lead
+  adjudicates.
+- A debugging checklist copied word for word from superpowers (§2, §14):
+  reproduce before touching code; no fix without the root cause.
+- Where the path rejoins the build loop: a diagnosed fix is usually one
+  package on the simple path (§9.1), with the repro as its acceptance
+  test.
+
+Done when: `docs/design.md` carries the section, §14 records the new
+deviations, and the implementation tickets it implies are added here.
+
+Read first: design §2, §5 (invariant 1), §6.1, §9.1, §14; the
+superpowers debugging skill the checklist copies from.
+
+## T12 — Implement the investigation path
+
+Status: open
+Depends on: T4, T11
+Stage: after 4
+
+Extend `/crew:project-lead` with T11's design: accept a bug-shaped
+charter, run the diagnosis loop — scouts gather evidence, a council
+weighs hypotheses when more than one survives — write the diagnosis
+artifact, then either stop at the report or hand the fix to the simple
+path with the reproduction as its acceptance test.
+
+Done when: one real bug goes from ticket text to a draft PR whose new
+test reproduces the bug and passes after the fix, with zero prompts; and
+one no-code-change question ends in a recorded diagnosis instead of a
+PR.
+
+Read first: T11's design section; design §9.1; `record-format.md`.

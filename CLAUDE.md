@@ -33,7 +33,7 @@ Stages 0 through 2 are built: three agents (`crew:ic`, `crew:ic-instructions`,
 Nothing dispatches any of them yet. A human drove the only run so far by hand.
 
 `skills/project-lead/SKILL.md` is a placeholder. The project lead loop, the
-deliverable reviewer, the council, and the hooks are stages 3 through 6, and
+deliverable reviewer, the council, and the hooks are stages 4 through 6, and
 none of them exist. `docs/design.md` §13 holds the build order, and
 `docs/tickets.md` holds the backlog. Never write about an unbuilt stage as if
 it runs.

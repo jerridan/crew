@@ -47,7 +47,11 @@ naming convention. Do not mix their contents.
   five review rounds per package, and a goal can hold several deliverables —
   a shared filename per kind would let a later round, a later deliverable,
   or a later re-plan silently destroy an earlier review, which is this run's
-  only audit trail. The project lead writes every file under `reviews/`, from the
+  only audit trail. A package review reads its `<n>` from `fix_rounds_used`.
+  The spec and split critics have no counter in `state.json`, so their `<n>`
+  is one more than the highest already on disk under that same name. Reading
+  it from disk is what keeps a resumed run from overwriting a review it wrote
+  before the crash. The project lead writes every file under `reviews/`, from the
   reviewer's returned findings — a reviewer agent has no `Write` tool and
   returns its findings as a tool result.
 

@@ -921,7 +921,7 @@ Deliberately different:
 1. **Plugin name.** `crew`, with `/crew:project-lead` as the entry point.
    Rename now if another name reads better; it is cheap today and annoying
    later.
-2. **The spec critic is unbuilt.** `crew` is now distributed alone, which
+2. **Resolved: the spec critic is crew-owned.** `crew` is now distributed alone, which
    forces the decision the earlier draft deferred: the spec critic cannot
    depend on another plugin's agent. Stage 3, which builds the split critic,
    must also supply a crew-owned spec critic — its own agent definition,

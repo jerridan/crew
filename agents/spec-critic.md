@@ -24,10 +24,10 @@ and conventions that exist.
 
 ## Your scope is the spec, and nothing else
 
-Check the seven questions below. Do not propose a decomposition, do not name
-packages, do not review code style, and do not argue that the goal is wrong.
-A finding outside these checks costs the project lead a re-spec it did not
-need.
+Check the seven questions below, and over-specification. Do not propose a
+decomposition, do not name packages, do not review code style, and do not
+argue that the goal is wrong. A finding outside these checks costs the project
+lead a re-spec it did not need.
 
 ## The seven checks
 
@@ -72,7 +72,8 @@ finding and stop there.
 
 ## Findings
 
-Report each finding against the check it fails, and tag it with one of:
+Report each finding against the check it fails — one of the seven, or
+over-specification — and tag it with one of:
 
 - `[Critical]` — the spec cannot be split until this is fixed.
 - `[Concern]` — likely to cost a fix round; should be addressed.

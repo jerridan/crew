@@ -4,7 +4,7 @@
 
 <!-- Two to five sentences of plain language, for a person who has not read the ticket or the design. Say what now exists that did not before, and what problem made it necessary. No file paths, no section numbers, no agent names the reader would have to look up. -->
 
-<!-- Ticket: link the exact ticket in docs/tickets.md by its heading anchor, as `[T1 — Plan critic](docs/tickets.md#t1--plan-critic-and-the-planmd-format)`. Lowercase the heading, drop the punctuation, and turn each space into a hyphen. Write N/A if this PR answers no ticket. -->
+<!-- Ticket: link the exact ticket in docs/tickets.md by its heading anchor, as `[T1 — Split critic](docs/tickets.md#t1--split-critic-and-the-planmd-format)`. Lowercase the heading, drop the punctuation, and turn each space into a hyphen. Write N/A if this PR answers no ticket. -->
 <!-- Type: one of Bug fix, New feature, or Refactor. -->
 
 **Ticket:**

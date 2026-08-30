@@ -19,13 +19,13 @@ is not takeable.
 
 ---
 
-## T1 — Plan critic and the `plan.md` format
+## T1 — Split critic and the `plan.md` format
 
 Status: in-progress
 Depends on: nothing
 Stage: 3 (design §13)
 
-Build `agents/plan-critic.md`: an unnamed agent (opus, high effort —
+Build `agents/split-critic.md`: an unnamed agent (opus, high effort —
 design §3) that reviews the project lead's `plan.md` against the seven
 checks in design §5 "The critic", and nothing else. Define the `plan.md`
 format it reviews: deliverables → packages, with the four dispatchability

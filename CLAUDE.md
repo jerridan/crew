@@ -35,9 +35,10 @@ draft PR. That loop dispatches `crew:spec-critic`, `crew:ic` or
 `crew:deliverable-reviewer`.
 
 Nothing dispatches `crew:split-critic` yet — the simple path has one
-package, so it is skipped. The full path (worktrees, territories,
-teammates), the council, and the hooks are stages 5 and 6, and none of them
-exist. `docs/design.md` §13 holds the build order, and
+package, so it is skipped. Stage 6 arrived in two halves: question routing
+and `decisions.md` are built, because the simple path cannot answer its own
+questions without them, and the council is not. The full path (worktrees,
+territories, teammates) and the hooks are stage 5, and neither exists. `docs/design.md` §13 holds the build order, and
 `docs/tickets.md` holds the backlog. Never write about an unbuilt stage as if
 it runs.
 

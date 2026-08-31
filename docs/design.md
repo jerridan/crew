@@ -276,7 +276,9 @@ only the invariant, and nothing else:
 
 1. Is every file set disjoint from its concurrent siblings? Look hardest at
    shared config, barrel and `index` files, test helpers, snapshots, lockfiles,
-   and version manifests.
+   and version manifests. The shared files below belong to the project lead and
+   never to a package. A test helper or a snapshot two packages both touch is a
+   collision too, but it belongs to one of them.
 2. Is every interface contract written, with exact signatures and types?
 3. Can each acceptance test pass with only its own package's changes?
 4. Is anything mis-split — two packages that should be one, or one that must be
@@ -1503,3 +1505,66 @@ Deliberately different:
     brief's own unknowns were well chosen: it flagged that it could not tell
     whether `README.md` is meant to be exempt, which is exactly the question
     T10 already holds open.
+
+28. **The review-output convention gets a fifth reference — decided 2026-08-31
+    (T15).** Item 27's audit found the four review agents each holding a full
+    copy of one findings convention, owned by no file in `CLAUDE.md`'s
+    Authority list. `skills/project-lead/references/review-output.md` now owns
+    it: the three severity tags, the `Cannot verify` escape, the
+    report-never-fix rule, the no-`SendMessage` return path, and the shape of
+    the two verdict lines.
+
+    Each agent keeps its own two verdict strings inline — `ready to split`,
+    `dispatchable`, `accepted`, and their opposites. Those strings are
+    agent-specific, so each is still stated once, and the project lead parses
+    them. The failure the reference buys off is drift, which had already
+    happened three times.
+
+    The project lead injects the reference **whole** into every review dispatch
+    (`SKILL.md` steps 4, 10 and 13), the idiom step 8 already uses for
+    `ic-contract.md`. A path was the first design and is wrong: a review agent's
+    cwd is the target repo, so a plugin-relative path resolves to nothing on
+    every run against a repo other than `crew`, and all four agents would then
+    invent their own severity tags under the project lead's `[Critical]` gate.
+    `agents/ic-instructions.md`'s path idiom works because its reference is a
+    quality standard, not a parsed contract.
+
+    One rule is deliberately stated twice. `crew:package-reviewer` and
+    `crew:deliverable-reviewer` hold `Bash`, so each restates "never edit a
+    file" in its own body as well. The reference owns the rule; the inline copy
+    is a guard on a capability that can change the tree under review. A
+    duplicated sentence is the cheaper failure.
+
+    **Verified by dispatch, 2026-08-31.** `crew:spec-critic` was hand-dispatched
+    twice against the same fixture — a spec with five seeded flaws — through
+    `claude -p --plugin-dir`, with the fixture as cwd so the agent ran outside
+    the plugin, the condition a path would have failed in.
+
+    With the reference injected, the agent named every seeded flaw, tagged each
+    finding `[Critical]`, `[Concern]` or `[Nit]`, wrote `Cannot verify from the
+    checkout` with the source named, and closed with the two verdict lines and
+    `Critical count: 4`.
+
+    Without it, the agent said in its first line that its prompt did not carry
+    the convention, then improvised: it invented `[Note]` for the third tag and
+    tagged a check that passed, which the reference forbids. `[Critical]` and
+    `[Concern]` survived, and so did both verdict lines, so the project lead's
+    gate still keys on tags that mean what it thinks. That is the predicted
+    degradation, measured rather than reasoned. The fix is not a fourth copy of
+    the tag list in each agent — that is the drift this item removes. The
+    injection is the project lead's job, and `SKILL.md` steps 4, 10 and 13 say
+    so.
+
+    The three drifts item 27 named are gone. Two resolved by moving the rule
+    into the new reference: the `[Concern]` definition is now
+    "likely to cause a problem" everywhere, and the `Cannot verify` line now
+    governs a *check* and names the source it lacked. The third was a real
+    error, not just a wording split: `split-critic.md` listed "test helpers,
+    snapshots" among the shared files, which would have handed the project lead
+    files that belong to a package. §5 owns the shared-file list, and check 1
+    now cites §5 and says plainly that a test helper two packages both touch is
+    a collision inside the split, not a project-lead file.
+
+    Left open on purpose: `agents/researcher.md` accepting `medium-high` as a
+    confidence value (item 27's other note). It is not a duplication, so T15
+    does not carry it.

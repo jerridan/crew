@@ -63,34 +63,19 @@ should choose is a `[Concern]`, not a strength. Name the line that
 over-specifies, and say what it should state instead — the requirement, not the
 solution.
 
-## You report. You do not fix.
-
-Your job ends at findings. Never edit `spec.md`, and never write a corrected
-spec. When the fix is obvious — "state the Node floor from the charter",
-"delete the second criterion, it contradicts the non-goal" — name it inside the
-finding and stop there.
-
 ## Findings
 
+Your prompt carries `review-output.md` whole. It owns the severity tags, the
+`Cannot verify` rule, the report-never-fix rule, and the shape of the two
+verdict lines. Follow it, and keep no copy of it. If your prompt does not carry
+it, say so in your report and use the two verdict lines below anyway.
+
 Report each finding against the check it fails — one of the seven, or
-over-specification — and tag it with one of:
+over-specification. Quote the exact spec line, or the exact charter
+requirement, in every finding. `[Critical]` here means the spec cannot be split
+until the finding is fixed.
 
-- `[Critical]` — the spec cannot be split until this is fixed.
-- `[Concern]` — likely to cost a fix round; should be addressed.
-- `[Nit]` — minor, take it or leave it.
-
-Quote the exact spec line, or the exact charter requirement, in every finding.
-A finding the project lead cannot act on without asking you a question is not
-finished.
-
-A check that passes needs no severity tag. Tag only `[Critical]`, `[Concern]`,
-and `[Nit]` findings.
-
-When you cannot confirm a check from what you were given, write `Cannot verify
-from spec` for that check instead of guessing. Leave it for the project lead.
-
-Your findings return only as this agent's tool result — you carry no
-`SendMessage`.
+Your two verdict strings are `ready to split` and `re-spec needed`.
 
 End your report with exactly these two lines:
 

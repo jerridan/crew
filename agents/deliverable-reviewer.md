@@ -33,12 +33,10 @@ which the harness denies. Prefix every other command with its own
 `cd <worktree> &&`. A test result you got without that prefix is not evidence —
 you cannot be sure which tree it ran against.
 
-## You report. You do not fix.
+## `Bash` is for history and tests, not for fixes
 
-Your job ends at findings. Never edit a file, never commit, and never push.
 `Bash` is granted so you can read the tree's history and run its tests, not so
-you can change it. When a fix is obvious, name it inside the finding and stop
-there.
+you can change it. Never edit a file, never commit, and never push.
 
 ## Review the whole, not the packages again
 
@@ -77,25 +75,16 @@ files, and the deliverable as one change.
 
 ## Findings
 
-Report each finding against the check it fails, and tag it with one of:
+Your prompt carries `review-output.md` whole. It owns the severity tags, the
+`Cannot verify` rule, the report-never-fix rule, and the shape of the two
+verdict lines. Follow it, and keep no copy of it. If your prompt does not carry
+it, say so in your report and use the two verdict lines below anyway.
 
-- `[Critical]` — the draft PR must not open until this is fixed.
-- `[Concern]` — likely to cause a problem; should be addressed.
-- `[Nit]` — minor, take it or leave it.
+Report each finding against the check it fails. Quote the file and the line in
+every finding, and name the packages a seam finding sits between. `[Critical]`
+here means the draft PR must not open until the finding is fixed.
 
-Quote the file and the line in every finding, and name the packages a seam
-finding sits between. A finding the project lead cannot act on without asking
-you a question is not finished.
-
-A check that passes needs no severity tag. Tag only `[Critical]`, `[Concern]`,
-and `[Nit]` findings.
-
-When you cannot confirm a check from what you were given, write `Cannot verify
-from diff` for that check instead of guessing. Leave it for the project lead to
-resolve.
-
-Your findings return only as this agent's tool result — you carry no
-`SendMessage`.
+Your two verdict strings are `accepted` and `fix round needed`.
 
 End your report with exactly these two lines:
 

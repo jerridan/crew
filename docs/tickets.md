@@ -269,7 +269,7 @@ Read first: T11's design section; design §9.1; `record-format.md`.
 
 ## T13 — Researcher agent
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (usable from stage 4 on)
 
@@ -285,9 +285,8 @@ nothing. Banded like any package: sonnet default, opus when the question
 is deep. Add its row to design §3; scouts stay for single lookups.
 
 `agents/researcher.md` and the design §3 row landed on 2026-08-31, built by
-the first `/crew:project-lead` simple-path run. The ticket stays open: the
-"Done when" below asks for a dispatched researcher, and nothing has
-dispatched one yet. What remains is the exercise, not the file.
+the first `/crew:project-lead` simple-path run. The dispatch exercise ran
+the same day; design §15.27 records what it returned.
 
 Done when: a hand-dispatched researcher answers a genuinely multi-hop
 question about a real repo with citations and a stated unknown, and the
@@ -315,3 +314,36 @@ Done when: design.md carries the section, the charter format names the
 field, and T4's ticket lists it.
 
 Read first: design §6.2, §7, §15.22a; `record-format.md`.
+
+## T15 — Consolidate the duplicated agent boilerplate
+
+Status: open
+Depends on: nothing
+Stage: any
+
+`crew:researcher`'s first dispatch audited this plugin against `CLAUDE.md`'s
+"a rule lives in exactly one file" and found six rules stated in more than
+one place, three of them already drifted (design §15.27). Fix the three that
+drifted, and decide an owner for each rule that has none:
+
+- The `[Concern]` definition reads "likely to cost a fix round" in
+  `spec-critic.md` and `split-critic.md`, and "likely to cause a problem" in
+  `package-reviewer.md` and `deliverable-reviewer.md`.
+- `split-critic.md`'s shared-file list adds "test helpers, snapshots"; the
+  other five copies of that list do not.
+- The "Cannot verify" line disagrees on whether it applies to a *check* or
+  an *item*, and on whether the project lead "resolves" it.
+
+The four review agents each hold a full copy of the same findings
+convention — severity tags, the "Cannot verify" escape, the no-`SendMessage`
+line, the two verdict lines. No file in `CLAUDE.md`'s Authority list owns
+it. Decide: a fifth reference that owns the review-output convention, or an
+accepted exception with a stated reason. A reference the agents read costs
+each dispatch a `Read`; four copies cost a drift. Say which cost this
+project takes.
+
+Done when: the three drifts are gone, every rule the audit named has one
+owner or a recorded exception, and `CLAUDE.md`'s Authority list matches.
+
+Read first: design §15.27; `writing-standard.md`; the four agents under
+`agents/` that carry the findings convention.

@@ -103,22 +103,24 @@ Status: done
 Depends on: nothing
 Stage: pre-5 (design §13.1)
 
-Run the probe procedure in design §13.1: does exit 2 block a teammate's
+Run the probe procedure design §13.1 carried until this ticket closed
+(the procedure is in the git history now): does exit 2 block a teammate's
 idle, does stderr reach the teammate, and does the payload identify the
 idling teammate and carry a session id or cwd? Needs an interactive
 session with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` — headless `-p`
 cannot spawn a teammate (design §12). Remove the probe hook registration
 right after.
 
-Done when: all three §13.1 questions have probed answers recorded in
-design §15 as a new finding.
+Done when: all three questions have probed answers recorded in design §15
+as a new finding.
 
 The probe ran on 2026-08-31 on Claude Code 2.1.252. All three answers, and
 one finding the ticket did not ask for — a block that lasts 11 refusals and
-then lets the teammate idle — are in design §15.29. §13.1 carries the new
-one-refusal-per-package rule that follows from it.
+then lets the teammate idle — are in design §15.29. §13.1 carries the two
+rules that follow from it: refuse each package at most once, and count the
+refusals in a marker file.
 
-Read first: design §13.1, §12, §15.8.
+Read first: design §15.29, §13.1, §12, §15.8.
 
 ## T6 — Full path: worktrees, territories, teammates
 
@@ -152,8 +154,10 @@ specifies: `TeammateIdle` blocks an idle only for the idling IC's own
 unreported, approved, in-flight package — and lets a plan-gate pause pass
 (`plan_approved_at` null, design §15.8); `SessionEnd` marks the run
 interrupted and its worktrees orphaned, writes only, deletes nothing.
-Include the kill switch, the staleness cutoff, and T5's one-refusal-per-package
-cap (§15.29). No hook ever removes a worktree. The hook's stderr is the whole
+Include the kill switch, the staleness cutoff, and T5's refusal cap — each
+package refused at most once, counted in a marker file the hook owns (§13.1,
+§15.29). `record-format.md` gains the marker's name and place. No hook ever
+removes a worktree. The hook's stderr is the whole
 message the IC gets, so write it as an instruction: what is missing, and where
 to write it. Add the rule §15.29 found missing: what an IC does when a hook,
 not a reviewer, is what blocks it. `ic-contract.md` owns that rule.

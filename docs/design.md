@@ -808,7 +808,7 @@ is how often it fires when no crew run is happening.
 
 | Hook | Fires | Job | Stage |
 |---|---|---|---|
-| `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Exit 2 to reject an IC that goes idle without a green test run, a written report, or a stated assumption — probed, §15.29. Keeps it working, once per package. | **5** |
+| `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Exit 2 to reject an IC that goes idle without a green test run, a written report, or a stated assumption — probed, §15.29. Refuses each package at most once. | **5** |
 | `SessionEnd` | once per session; a guard clause exits at once when no crew record exists | **Writes only.** Marks the run interrupted in `state.json` and lists its worktrees as orphaned. Deletes nothing. | 5 |
 | `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard — non-git commands only; a `cd` before git is denied (§15 item 23b) | **deferred** |
 | `PreToolUse` on `Agent` | every agent spawn | Provision a worktree at spawn time | **not needed** — the project lead does this itself |
@@ -845,11 +845,18 @@ registered, and never forces.
 blocks the idle — probed, §15.29 — so the two hooks are halves of one
 mechanism. The hook blocks an idle while a package is `in-flight`. Only
 `SessionEnd`'s `run_state: interrupted` marks a dead run's packages as no
-longer in flight. Shipping the blocking half alone would leave a single
-crashed run blocking teammates in every future session on the machine, with no
-diagnosis path.
+longer in flight.
 
-Four rules for it, all cheap, none optional:
+The first version of this paragraph gave a stronger reason: without
+`SessionEnd`, one crashed run blocks teammates on the machine forever. That
+reason died with the probe. The block is bounded, and the refusal cap below
+holds it to one, so a crashed run costs a later teammate one wasted refusal per
+package. The coupling stays for two smaller reasons. A refusal with no
+`run_state: interrupted` is a lie — it tells a teammate to finish a package
+whose run is dead. And the staleness cutoff below is a guess at the same fact
+`SessionEnd` writes down. Ship them together.
+
+Five rules for it, all cheap, none optional:
 
 - **Scope to the idling teammate, and fail open.** If the payload cannot identify
   which teammate is idling, exit 0. A coarse "any package in flight" rule
@@ -859,11 +866,20 @@ Four rules for it, all cheap, none optional:
   lead owns `state.json`, so an IC cannot unblock itself through it.
 - **Ship a kill switch** — `CREW_DISABLE_IDLE_HOOK=1` — and a staleness cutoff
   that ignores any run whose `state.json` has not been written for hours.
-- **Refuse at most once per package.** The block is a nudge, not a gate: the
+- **Refuse a package at most once.** The block is a nudge, not a gate: the
   probe measured 11 refusals in 27 seconds, then the teammate idled anyway
-  (§15.29). A hook that refuses the same teammate again and again burns tokens
+  (§15.29). A hook that refuses the same package again and again burns tokens
   and still loses. Refuse once, write the reason, and let the second idle pass
-  to the project lead's own verification (§7).
+  to the project lead's own verification (§7). An IC holding a territory of
+  several packages (§5) can be refused once for each of them, because each
+  refusal names a different missing report.
+- **Count the refusals in a marker file the hook owns.** A hook process starts
+  fresh every firing, so a cap needs state on disk, and the rule above bars the
+  hook from `state.json`. The hook writes one marker per package beside that
+  package's report in the run record, and reads it to decide whether this idle
+  is the first. `record-format.md` owns the marker's name and its place in the
+  record; T7 adds it. The project lead deletes the marker when it accepts the
+  package. An IC never writes it, so an IC still cannot unblock itself.
 
 **Probed 2026-08-31 (T5).** Exit 2 blocks the idle, the stderr line reaches the
 teammate word for word, and the payload names the idling teammate. §15.29
@@ -943,12 +959,12 @@ Deliberately different:
    package.
 8. **The plan gate collides with the idle hook.** Every IC must stop and wait
    after writing its plan (§9.2 step 3), but the `TeammateIdle` check must
-   find a *report* on disk before it lets an IC idle, not a plan (line
-   842-843; `record-format.md` lines 36-37). The two collide by construction.
-   The hook was stage 5 and unprobed when this item opened (probed 2026-08-31,
-   §15.29), so neither
-   file could resolve this alone; `ic-contract.md` only names the post-plan
-   wait as an expected pause, not an idle to fix.
+   find a *report* on disk before it lets an IC idle, not a plan (§13.1's
+   report-on-disk rule; `record-format.md` lines 36-37). The two collide by
+   construction. The hook is stage 5, and was unprobed when this item opened
+   (probed 2026-08-31, §15.29), so neither file could resolve this alone;
+   `ic-contract.md` only names the post-plan wait as an expected pause, not an
+   idle to fix.
 
    Decided 2026-08-29: the record carries the gate. `record-format.md` adds
    `plan_approved_at` per package, `null` until the project lead's
@@ -1144,8 +1160,9 @@ Deliberately different:
     Two `PROBE PENDING` entries in §12 are now answered. **`TeammateIdle`
     exit 2 works** — the hook "runs when a teammate is about to go idle. Exit
     with code 2 to send feedback and keep the teammate working" — so §13.1's
-    mechanism stands. §15.29 later probed it and found the block bounded:
-    it holds for a number of refusals, then lets the teammate idle. **Native plan approval is not a review gate**: a
+    mechanism stands. §15.29 later probed it and found the block bounded: it
+    holds for a number of refusals, then lets the teammate idle. **Native plan
+    approval is not a review gate**: a
     teammate's plan request is approved in the lead's session "as soon as the
     request arrives, without the lead reviewing it". §9.2 step 3's fallback —
     plan to the record, wait for a message — is therefore the *only* way to
@@ -1542,7 +1559,7 @@ Deliberately different:
     confidence value (item 27's other note). It is not a duplication, so T15
     does not carry it.
 29. **`TeammateIdle`: exit 2 blocks the idle, but only for a while — probed
-    2026-08-31 (T5).** §13.1's probe ran on Claude Code 2.1.252, in an
+    2026-08-31 (T5).** The probe ran on Claude Code 2.1.252, in an
     interactive session inside `tmux` with
     `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. A temporary hook dumped its
     stdin, wrote `crew probe: refusing idle` to stderr, and exited 2. One

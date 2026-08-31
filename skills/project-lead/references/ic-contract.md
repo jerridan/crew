@@ -68,6 +68,13 @@ into it and never resolve it against your worktree. Then stop and wait for the
 project lead's go-ahead by message — this is an expected pause, not an idle to
 fix. Do not start implementing before the project lead responds.
 
+You have no message channel when the project lead dispatched you as a
+subagent rather than a teammate. Ending your turn is how you wait. Write the
+plan, say in your final message that you are waiting on the gate, and stop.
+The project lead reads the plan and dispatches you again to implement it.
+That second dispatch names your plan's path. Read the plan first — you hold
+none of the first dispatch's context.
+
 ## Commit discipline
 
 Commit after every green step — a passing test for a code package, or the

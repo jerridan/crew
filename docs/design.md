@@ -1397,3 +1397,58 @@ Deliberately different:
     `skills/project-lead/references/autonomy-contract.md`, because
     `SKILL.md` would otherwise pass the writing standard's 200-line limit.
     That file owns §6 and §8's spend rules; nothing else copies them.
+26. **The first simple-path run: four environment findings and one
+    contract that held — 2026-08-31 (T4).** `/crew:project-lead`'s simple
+    path was exercised end to end by hand, on a real backlog goal (T13's
+    researcher agent), driving every agent through nested headless
+    `claude -p` dispatches. The run reached a draft PR. Five agent
+    dispatches, one re-dispatch, zero fix rounds, zero escalations.
+
+    a. **A dispatch must carry the record root, and reading it is a
+       separate grant from writing it.** The record lives at
+       `~/.claude/crew/<goal-slug>/`, outside the launch directory, so
+       the first `crew:spec-critic` dispatch could not read its own
+       inputs and correctly refused to review — "Cannot verify from spec"
+       against all eight checks, rather than a guess. `--add-dir
+       <record-root>` fixed the reads. It did not fix the writes.
+
+    b. **An IC cannot write into the record root at all under `~/.claude`.**
+       Both IC dispatches were denied every write to `plans/` and
+       `reports/`, with `--permission-mode acceptEdits`, with
+       `--allowedTools Write`, with `--add-dir`, and with the sandbox
+       override. The second denial named its reason: the path is treated
+       as a **sensitive file**, because it sits under a dotfile directory
+       in the user's home. This is not item 11's `--add-dir` gap and not
+       item 12's `git commit` gap — it is a third, separate mechanism, and
+       no allow rule tested here defeats it. Design §4 puts the record
+       outside the target repo on purpose, so the two requirements
+       collide. Whoever builds T6 must either find the grant that covers
+       a sensitive path, or move the record somewhere that is not one.
+
+    c. **`ic-contract.md`'s denied-record-root fallback earned its
+       place.** Written for item 13, it was used twice in one run, by two
+       fresh ICs with no shared context. Each returned its plan or report
+       as its final message, said so in the first line, and named the
+       denied path. Neither fabricated a file and neither stopped
+       silently. The project lead transcribed both into the record and
+       verified the report's git claims before any review ran. A design
+       branch written for a case that had happened once is now a branch
+       that carries the normal case in this environment.
+
+    d. **Spend cannot be measured through a nested headless dispatch.**
+       Design §8 reads `total_tokens` off each subagent's completion
+       notification. A nested `claude -p` process returns only its final
+       text, so not one of the five agents reported a number, and
+       `state.json` marks every one unmeasured. §8 assumes the project
+       lead spawns its subagents directly — true for the real interactive
+       shape, false for every probe run so far. The ceiling has never
+       actually been exercised.
+
+    What the run also showed, on the loop rather than the environment:
+    the plan gate works as two dispatches; the deliverable reviewer found
+    three project-lead-owned files stale that no package reviewer could
+    have seen (`CLAUDE.md`'s agent count, a silent ticket status, a
+    README table), which is check 3 doing exactly its job; and the
+    adjudication step earned its keep, because one of that reviewer's
+    five findings was wrong and was pushed back on with a §12 citation
+    rather than fixed.

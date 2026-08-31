@@ -1503,3 +1503,36 @@ Deliberately different:
     brief's own unknowns were well chosen: it flagged that it could not tell
     whether `README.md` is meant to be exempt, which is exactly the question
     T10 already holds open.
+
+28. **The review-output convention gets a fifth reference — decided 2026-08-31
+    (T15).** Item 27's audit found the four review agents each holding a full
+    copy of one findings convention, owned by no file in `CLAUDE.md`'s
+    Authority list. `skills/project-lead/references/review-output.md` now owns
+    it: the three severity tags, the `Cannot verify` escape, the
+    report-never-fix rule, the no-`SendMessage` return path, and the shape of
+    the two verdict lines.
+
+    Each agent keeps its own two verdict strings inline — `ready to split`,
+    `dispatchable`, `accepted`, and their opposites. Those strings are
+    agent-specific, so each is still stated once, and the project lead parses
+    them. The cost this project takes is one `Read` per review dispatch. The
+    failure it buys off is drift, which had already happened three times. If a
+    review agent cannot read the reference, its severity tags degrade but its
+    verdict lines still parse, so a failed `Read` never stalls the loop. The
+    project lead passes the path in every review dispatch (`SKILL.md` steps 4,
+    10 and 13), the same idiom `agents/ic-instructions.md` already uses for
+    `writing-standard.md`.
+
+    The three drifts item 27 named are gone. Two resolved by moving the rule
+    into the new reference: the `[Concern]` definition is now
+    "likely to cause a problem" everywhere, and the `Cannot verify` line now
+    governs a *check* and names the source it lacked. The third was a real
+    error, not just a wording split: `split-critic.md` listed "test helpers,
+    snapshots" among the shared files, which would have handed the project lead
+    files that belong to a package. §5 owns the shared-file list, and check 1
+    now cites §5 and says plainly that a test helper two packages both touch is
+    a collision inside the split, not a project-lead file.
+
+    Left open on purpose: `agents/researcher.md` accepting `medium-high` as a
+    confidence value (item 27's other note). It is not a duplication, so T15
+    does not carry it.

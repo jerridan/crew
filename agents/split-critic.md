@@ -32,8 +32,10 @@ re-plan.
 
 1. **Disjoint file sets.** Is every package's file set disjoint from every
    concurrent sibling's? Look hardest at shared config, barrel and `index`
-   files, test helpers, snapshots, lockfiles, and version manifests. A shared
-   file belongs to the project lead at integration, never to a package.
+   files, lockfiles, and version manifests — the shared files design §5 gives
+   the project lead at integration, which never belong to a package. A test
+   helper or a snapshot two packages both touch is a collision too, but it
+   belongs to one of them, not to the project lead.
 2. **Written contracts.** Does every package state `Consumes` and `Produces`
    with exact names, signatures, parameter types, and return types? "The config
    type" is not a contract. An empty `Consumes` is valid; a missing one is not.
@@ -59,33 +61,20 @@ written justification on its `Band` line (design §8). A missing band, or a
 dispatchable. Do not argue the band itself: whether `standard` should have been
 `deep` is the project lead's call, not yours.
 
-## You report. You do not fix.
-
-Your job ends at findings. Never edit `split.md`, and never rewrite the split
-yourself. When a fix is obvious — "merge packages 2 and 3", "move
-`plugin.json` to integration" — name it inside the finding and stop there.
-
 ## Findings
 
-Report each finding against the check it fails — one of the seven, or the
-band — and tag it with one of:
+Read `review-output.md` before you write your report. Use the path your prompt
+gives you; if it gives none, read
+`skills/project-lead/references/review-output.md` in the crew plugin. It owns
+the severity tags, the `Cannot verify` rule, the report-never-fix rule, and the
+shape of the two verdict lines. Keep no copy of it.
 
-- `[Critical]` — the plan is not dispatchable until this is fixed.
-- `[Concern]` — likely to cost a fix round; should be addressed.
-- `[Nit]` — minor, take it or leave it.
+Report each finding against the check it fails — one of the seven, or the band.
+Name the packages and the exact file, type, or signature in every finding.
+`[Critical]` here means the plan is not dispatchable until the finding is
+fixed.
 
-Name the packages and the exact file, type, or signature in every finding. A
-finding the project lead cannot act on without asking you a question is not
-finished.
-
-A check that passes needs no severity tag. Tag only `[Critical]`, `[Concern]`,
-and `[Nit]` findings.
-
-When you cannot confirm a check from what you were given, write `Cannot verify
-from plan` for that check instead of guessing. Leave it for the project lead.
-
-Your findings return only as this agent's tool result — you carry no
-`SendMessage`.
+Your two verdict strings are `dispatchable` and `re-split needed`.
 
 End your report with exactly these two lines:
 

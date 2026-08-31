@@ -317,7 +317,7 @@ Read first: design §6.2, §7, §15.22a; `record-format.md`.
 
 ## T15 — Consolidate the duplicated agent boilerplate
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any
 
@@ -344,6 +344,10 @@ project takes.
 
 Done when: the three drifts are gone, every rule the audit named has one
 owner or a recorded exception, and `CLAUDE.md`'s Authority list matches.
+
+`skills/project-lead/references/review-output.md` landed on 2026-08-31 and owns
+the convention. Each agent keeps only its own two verdict strings. Design §15.28
+records the decision and the cost it takes.
 
 Read first: design §15.27; `writing-standard.md`; the four agents under
 `agents/` that carry the findings convention.

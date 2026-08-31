@@ -27,12 +27,11 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 4 are built: seven agents, five references, and
+Stages 0 through 4 are built: seven agents, six references, and
 `/crew:project-lead`'s **simple path** — one goal, one deliverable, one
-package, one unnamed subagent, from a goal string or a charter file to a
-draft PR. That loop dispatches `crew:spec-critic`, `crew:ic` or
-`crew:ic-instructions`, `crew:package-reviewer`, and
-`crew:deliverable-reviewer`.
+package, one unnamed subagent, from a goal string or a charter file to a draft
+PR. That loop dispatches `crew:spec-critic`, `crew:ic` or
+`crew:ic-instructions`, `crew:package-reviewer` and `crew:deliverable-reviewer`.
 
 Nothing dispatches `crew:split-critic` or `crew:researcher` yet: one package
 has no sibling to overlap, and no tier calls a researcher. Stage 6 arrived in two halves: question routing
@@ -57,6 +56,7 @@ Each reference owns one subject and is canonical for it:
 - `band-rubric.md` — which model a package or a council gets, and when to
   promote.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
+- `review-output.md` — the shape every review agent reports its findings in.
 - `writing-standard.md` — how every instruction file here is written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A

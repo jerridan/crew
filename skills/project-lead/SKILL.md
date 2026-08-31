@@ -31,6 +31,8 @@ council-route question inline with a citation, or escalate it.
 - `references/ic-contract.md` is the IC's rules. Inject it whole into the
   spawn prompt. You do not follow it.
 - `references/writing-standard.md` governs any instruction file you draft.
+- `references/review-output.md` is the shape every review agent reports in.
+  Give its path in every review dispatch. You do not follow it.
 
 Write `state.json` after **every** transition, never batched.
 
@@ -63,9 +65,10 @@ and the non-goals. State requirements, never implementations.
 
 ## 4. Have the spec reviewed
 
-Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md` and the
-repo path. Write its findings to `reviews/spec-critic-r<n>.md`, `<n>` being
-one more than the highest already on disk.
+Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md`, the repo
+path, and `references/review-output.md`'s path. Write its findings to
+`reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest already on
+disk.
 
 On `Verdict: re-spec needed`, adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.
@@ -148,8 +151,9 @@ checklist file instead.
 `crew:package-reviewer` requires five inputs and says so. Send all five: the
 package's record entry (`file_set`, `interface_contract`,
 `acceptance_criterion`), the checkout path, the IC's report, the diff or
-checklist path, and the brief. Without the `file_set` it cannot check scope;
-without the report it cannot weigh claim against evidence.
+checklist path, and the brief. Add `references/review-output.md`'s path.
+Without the `file_set` it cannot check scope; without the report it cannot
+weigh claim against evidence.
 
 Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 `fix_rounds_used`.
@@ -183,9 +187,9 @@ shared-file check exists to read.
 ## 13. Review the deliverable
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`,
-the checkout path and base ref, the fresh diff path, and the accepted
-package review. Four of its seven checks read the record, so a diff-only
-dispatch cannot run them.
+the checkout path and base ref, the fresh diff path, the accepted package
+review, and `references/review-output.md`'s path. Four of its seven checks read
+the record, so a diff-only dispatch cannot run them.
 
 Write its findings to `reviews/<deliverable-id>-deliverable-review.md`.
 Adjudicate as in step 4. Clear every `[Critical]` before the PR opens.

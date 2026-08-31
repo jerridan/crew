@@ -28,12 +28,10 @@ against the package as `git -C <worktree> ...` — never `cd <path> && git
 `cd <worktree> &&`. A test result you got without that prefix is not
 evidence — you cannot be sure which tree it ran against.
 
-## You report. You do not fix.
+## `Bash` is for tests, not for fixes
 
-Your job ends at findings. Never edit the package's files. Never commit on
-its behalf, not even a one-line fix. `Bash` is granted so you can run the
-package's tests, not so you can change its code. If a fix looks obvious,
-say so in a finding. Do not make it yourself.
+`Bash` is granted so you can run the package's tests, not so you can change
+its code. Never commit on the package's behalf, not even a one-line fix.
 
 ## The IC's report is a claim, not evidence
 
@@ -71,21 +69,17 @@ do not trust the IC's own claim of scope.
 
 ## Findings
 
-Report each finding tagged with one of:
+Read `review-output.md` before you write your report. Use the path your prompt
+gives you; if it gives none, read
+`skills/project-lead/references/review-output.md` in the crew plugin. It owns
+the severity tags, the `Cannot verify` rule, the report-never-fix rule, and the
+shape of the two verdict lines. Keep no copy of it.
 
-- `[Critical]` — blocks acceptance.
-- `[Concern]` — likely to cause a problem; should be addressed.
-- `[Nit]` — minor, take it or leave it.
+Report each finding against the brief, the interface contract, or the
+acceptance criterion it fails. Quote the file and the line. `[Critical]` here
+means the package cannot be accepted until the finding is fixed.
 
-Your findings return only as this agent's tool result — you carry no
-`SendMessage`.
-
-When you cannot confirm a requirement from what you were given, write
-`Cannot verify from diff` for that item instead of guessing. Leave it for
-the project lead to resolve.
-
-A finding that passes needs no severity tag. Tag only `[Critical]`,
-`[Concern]`, and `[Nit]` findings — the ones that need attention.
+Your two verdict strings are `accepted` and `fix round needed`.
 
 End your report with exactly these two lines:
 

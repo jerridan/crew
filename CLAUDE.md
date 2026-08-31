@@ -15,7 +15,7 @@ change is reading, not running.
 | `.claude-plugin/plugin.json` | plugin manifest | the plugin loader |
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
-| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — a stub today | its skill trigger |
+| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the simple-path loop | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
@@ -27,14 +27,16 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 2 are built: three agents (`crew:ic`, `crew:ic-instructions`,
-`crew:package-reviewer`) and four references. Stage 3 is part built:
-`crew:split-critic`, `crew:spec-critic`, and the `split.md` format exist.
-Stage 4 is part built: `crew:deliverable-reviewer` exists. Nothing dispatches
-any of them yet. A human drove the only run so far by hand.
+Stages 0 through 4 are built: six agents, five references, and
+`/crew:project-lead`'s **simple path** — one goal, one deliverable, one
+package, one unnamed subagent, from a goal string or a charter file to a
+draft PR. That loop dispatches `crew:spec-critic`, `crew:ic` or
+`crew:ic-instructions`, `crew:package-reviewer`, and
+`crew:deliverable-reviewer`.
 
-`skills/project-lead/SKILL.md` is a placeholder. The project lead loop, the
-council, and the hooks are the rest of stages 4 through 6, and none of them
+Nothing dispatches `crew:split-critic` yet — the simple path has one
+package, so it is skipped. The full path (worktrees, territories,
+teammates), the council, and the hooks are stages 5 and 6, and none of them
 exist. `docs/design.md` §13 holds the build order, and
 `docs/tickets.md` holds the backlog. Never write about an unbuilt stage as if
 it runs.
@@ -47,6 +49,8 @@ stage-2 run; add a new finding there.
 
 Each reference owns one subject and is canonical for it:
 
+- `autonomy-contract.md` — how a question is routed, when the project lead
+  escalates and to whom, and how a run's spend is counted.
 - `record-format.md` — the record directory, every `state.json`,
   `worktrees.json` and `decisions.md` field, and every state transition.
 - `band-rubric.md` — which model a package or a council gets, and when to

@@ -937,6 +937,11 @@ Deliberately different:
    `reviews/spec-critic-r<n>.md`. Nothing dispatches it until stage 4.
 3. **The spend ceiling value.** Unknowable until the first runs produce
    cost-per-package data. Start deliberately low and raise it.
+
+   Decided 2026-08-31 (T4): the default is 2,000,000 tokens, set by
+   `SKILL.md` step 1 when the principal names no ceiling. It is a
+   placeholder chosen low on purpose, not a measurement. Raise it from the
+   first runs' `spend.by_agent` totals.
 4. **Whether the shared task list earns its launch flag.** It brings dependency
    blocking, at the cost of tool definitions in every agent's context. Measure
    once stage 5 runs.
@@ -1358,3 +1363,37 @@ Deliberately different:
     reads the test body, and a green suite is not evidence on its own.
     The run also caught that the branch under review was not the branch
     `split.md` names.
+25. **The simple path needs three rules the full path does not — built
+    2026-08-31 (T4).** `skills/project-lead/SKILL.md` now carries the
+    stage-4 loop: charter, scout, spec, spec critic, one package, package
+    review, fix rounds, integration, deliverable review, draft PR. Writing
+    it forced three decisions the design had not stated.
+
+    a. **The plan gate is two dispatches on the simple path.** §9.2 step 3
+       has the IC write its plan and wait for the project lead's go-ahead
+       by message. A subagent has no message channel — ending its turn is
+       the only wait it can perform. So the first dispatch writes
+       `plans/<id>.md` and stops, the project lead reads it and sets
+       `plan_approved_at`, and a second dispatch implements it and is told
+       to read the plan first. `ic-contract.md`'s plan gate carries this
+       branch. The full path keeps the message form, because a teammate
+       does have the channel.
+
+    b. **The simple path still writes `split.md`, and still runs the
+       deliverable reviewer.** §9.1 skips the critic, the merge and the
+       cleanup, but item 24 showed four of the deliverable reviewer's
+       seven checks read `split.md` and `spec.md` rather than the diff.
+       The project lead also edits the shared files itself at integration
+       (§9.3), and no package reviewer ever sees those edits. So one
+       package is not a reason to skip either one.
+
+    c. **Two caps the design left open.** A spec that keeps failing its
+       critic loops forever, so `SKILL.md` caps re-specs at three and then
+       escalates. Fix rounds already had §9.2's cap of five. Neither cap is
+       measured; both are placeholders, like the spend ceiling in item 3.
+
+    A fourth decision was not needed: routing, the escalation triggers and
+    spend counting moved into a fifth reference,
+    `skills/project-lead/references/autonomy-contract.md`, because
+    `SKILL.md` would otherwise pass the writing standard's 200-line limit.
+    That file owns §6 and §8's spend rules; nothing else copies them.

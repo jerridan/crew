@@ -1,7 +1,7 @@
 # Tickets
 
-The build backlog, from the current state (stages 0-2 built, nothing
-dispatches them) to the target state: a working three-tier hierarchy —
+The build backlog, from the current state (stages 0-4 built: the simple
+path runs) to the target state: a working three-tier hierarchy —
 lead → project leads → ICs (design §15.21).
 
 How to take a ticket:
@@ -77,7 +77,7 @@ Read first: design §9.3, §7; `agents/package-reviewer.md`;
 
 ## T4 — `/crew:project-lead`, simple path
 
-Status: open
+Status: done
 Depends on: T1, T2, T3
 Stage: 4 (design §13)
 

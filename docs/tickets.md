@@ -284,6 +284,11 @@ citations, a confidence level, and what it could not determine. It edits
 nothing. Banded like any package: sonnet default, opus when the question
 is deep. Add its row to design §3; scouts stay for single lookups.
 
+`agents/researcher.md` and the design §3 row landed on 2026-08-31, built by
+the first `/crew:project-lead` simple-path run. The ticket stays open: the
+"Done when" below asks for a dispatched researcher, and nothing has
+dispatched one yet. What remains is the exercise, not the file.
+
 Done when: a hand-dispatched researcher answers a genuinely multi-hop
 question about a real repo with citations and a stated unknown, and the
 dispatching session read only the brief.

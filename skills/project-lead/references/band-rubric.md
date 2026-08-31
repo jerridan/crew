@@ -49,6 +49,22 @@ Any "yes" past the first two is a signal toward `deep`.
   `band_history` (see `record-format.md`'s `band_history` row for its
   fields). Logging it turns the rubric from a guess into a measurement.
 
+## Researcher model rules (design §3)
+
+A research question has no file set and no acceptance criterion, so the
+observable inputs above cannot score it. Band a `crew:researcher` dispatch
+on the question instead:
+
+- **sonnet** by default, for every question.
+- **opus** when the question belongs to a `deep`-band package, or when its
+  answer will move an interface, a data shape, or a decomposition.
+- Never haiku. A weak synthesis over several hops reads as an answer and is
+  not one.
+
+`agents/researcher.md` carries `model: sonnet` in its frontmatter as that
+default. A spawn-time model overrides it (design §12), which is how the
+`opus` case is dispatched.
+
 ## Council model rules (design §6.1)
 
 - Every advocate in a council runs **sonnet**.

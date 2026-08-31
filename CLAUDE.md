@@ -27,15 +27,15 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 4 are built: six agents, five references, and
+Stages 0 through 4 are built: seven agents, five references, and
 `/crew:project-lead`'s **simple path** — one goal, one deliverable, one
 package, one unnamed subagent, from a goal string or a charter file to a
 draft PR. That loop dispatches `crew:spec-critic`, `crew:ic` or
 `crew:ic-instructions`, `crew:package-reviewer`, and
 `crew:deliverable-reviewer`.
 
-Nothing dispatches `crew:split-critic` yet — the simple path has one
-package, so it is skipped. Stage 6 arrived in two halves: question routing
+Nothing dispatches `crew:split-critic` or `crew:researcher` yet: one package
+has no sibling to overlap, and no tier calls a researcher. Stage 6 arrived in two halves: question routing
 and `decisions.md` are built, because the simple path cannot answer its own
 questions without them, and the council is not. The full path (worktrees,
 territories, teammates) and the hooks are stage 5, and neither exists. `docs/design.md` §13 holds the build order, and

@@ -65,6 +65,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
 | **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
 | **Advocate** | unnamed subagent (`general-purpose`) | sonnet | one position |
+| **Researcher** | unnamed subagent, new `crew:researcher` | per band | one question |
 | **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |
 | **Split critic** | unnamed subagent, new `crew:split-critic` | opus / high | one review |
 | **IC** | **named teammate** `crew:ic`, or unnamed subagent | per band | a territory |

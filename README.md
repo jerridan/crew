@@ -105,6 +105,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `crew:split-critic` and the `split.md` format | built. The simple path has one package, so nothing dispatches it yet |
 | `crew:spec-critic` | built, and dispatched by the simple path |
 | `crew:deliverable-reviewer` | built, and dispatched by the simple path |
+| `crew:researcher` | built, not dispatched yet |
 | Question routing and `decisions.md` | built, and run by the simple path |
 | Council | not built |
 | Hooks | not built |

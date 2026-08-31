@@ -1392,6 +1392,22 @@ Deliberately different:
        escalates. Fix rounds already had §9.2's cap of five. Neither cap is
        measured; both are placeholders, like the spend ceiling in item 3.
 
+    A code review over the finished loop then found eight defects a
+    reading of the design had missed, and every one was a control-flow gap
+    rather than a wrong rule: the bounded-edit route skipped the branch it
+    then tried to push; the deliverable never passed through `in-flight`,
+    so every simple-path record was invalid against its own state machine;
+    the deliverable reviewer got the pre-integration diff, which omits the
+    shared-file edits its check 3 exists to read; the fix-round loop had no
+    return edge and no exit; the package reviewer got one of the five
+    inputs its own definition demands; the plan gate read a file that
+    item 26b says is usually never written; and the spend rule said to
+    write `measured: true` for a number that item 26d says never arrives.
+    All eight are fixed. The lesson worth keeping: a loop written as prose
+    hides a missing edge the way a diagram does not, and the checks that
+    caught these were "follow the arrow and see where it lands", not "is
+    this rule right".
+
     A fourth decision was not needed: routing, the escalation triggers and
     spend counting moved into a fifth reference,
     `skills/project-lead/references/autonomy-contract.md`, because

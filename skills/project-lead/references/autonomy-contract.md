@@ -58,9 +58,10 @@ what you can into one interruption.
 
 ## How to escalate
 
-Write the ask into `state.json`'s `escalations` with its trigger and
-timestamp, set `run_state: blocked`, and set it back to `active` when the
-answer lands.
+Write the ask into `state.json`'s `escalations` with all four of its
+fields — `trigger`, `question`, `asked_at`, and `answer: null` — set
+`run_state: blocked`, and fill `answer` and set `run_state` back to `active`
+when the answer lands.
 
 Make the ask productive. Name the options with evidence, name your
 recommendation, and offer to record the answer as an instruction:
@@ -88,7 +89,17 @@ instruction that settles the same question in every later run.
 
 Read `total_tokens` from each subagent's completion notification into
 `spend.by_agent` with `measured: true`, and add it to `measured_tokens`. A
-subagent's spend is measured; only a teammate's is an estimate, and the
-simple path spawns no teammate.
+subagent you spawned yourself reports its spend; a teammate's is an
+estimate, and the simple path spawns no teammate.
 
-Crossing `ceiling` is trigger 5.
+**A number you did not receive is never `measured: true`.** Some dispatch
+shapes report no `total_tokens` at all — a nested headless process returns
+only its final text (design §15.26d). Record that agent with
+`total_tokens: null` and `measured: false`, estimate it into
+`estimated_tokens`, and say in the record which shape gave you no number.
+Writing `measured: true` over an absent number is a fabricated measurement,
+and it is worse than the gap it hides.
+
+Crossing `ceiling` — counting `measured_tokens` and `estimated_tokens`
+together — is trigger 5. When every agent is unmeasured the ceiling cannot
+fire, so say so in the record rather than reporting a run as within budget.

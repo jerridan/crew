@@ -27,7 +27,7 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 4 are built: six agents, five references, and
+Stages 0 through 4 are built: seven agents, five references, and
 `/crew:project-lead`'s **simple path** — one goal, one deliverable, one
 package, one unnamed subagent, from a goal string or a charter file to a
 draft PR. That loop dispatches `crew:spec-critic`, `crew:ic` or

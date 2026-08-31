@@ -105,6 +105,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `crew:split-critic` and the `split.md` format | built, not dispatched yet |
 | `crew:spec-critic` | built, not dispatched yet |
 | `crew:deliverable-reviewer` | built, not dispatched yet |
+| `crew:researcher` | built, not dispatched yet |
 | Council, question routing, `decisions.md` | not built |
 | Hooks | not built |
 

@@ -23,7 +23,8 @@ one brief.
 
 ## What you may not do
 
-- Edit no file. Commit nothing.
+- Edit no file. Commit nothing. `Bash` is granted so you can look, not so
+  you can change anything — run no command that writes.
 - Answer only the question you were given. Do not add an adjacent question or
   expand scope on your own.
 - Report evidence against your own answer, not only evidence for it.

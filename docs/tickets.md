@@ -99,7 +99,7 @@ Read first: design §9.1, §9.3, §6, §7, §15.22; `record-format.md`;
 
 ## T5 — Probe: `TeammateIdle`
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: pre-5 (design §13.1)
 
@@ -112,6 +112,11 @@ right after.
 
 Done when: all three §13.1 questions have probed answers recorded in
 design §15 as a new finding.
+
+The probe ran on 2026-08-31 on Claude Code 2.1.252. All three answers, and
+one finding the ticket did not ask for — a block that lasts 11 refusals and
+then lets the teammate idle — are in design §15.29. §13.1 carries the new
+one-refusal-per-package rule that follows from it.
 
 Read first: design §13.1, §12, §15.8.
 
@@ -147,14 +152,18 @@ specifies: `TeammateIdle` blocks an idle only for the idling IC's own
 unreported, approved, in-flight package — and lets a plan-gate pause pass
 (`plan_approved_at` null, design §15.8); `SessionEnd` marks the run
 interrupted and its worktrees orphaned, writes only, deletes nothing.
-Include the kill switch and the staleness cutoff. No hook ever removes a
-worktree.
+Include the kill switch, the staleness cutoff, and T5's one-refusal-per-package
+cap (§15.29). No hook ever removes a worktree. The hook's stderr is the whole
+message the IC gets, so write it as an instruction: what is missing, and where
+to write it. Add the rule §15.29 found missing: what an IC does when a hook,
+not a reviewer, is what blocks it. `ic-contract.md` owns that rule.
 
 Done when: a crashed run's next `--resume` finds `run_state: interrupted`,
 and an IC idling without a report is rejected while a plan-gate pause is
 not.
 
-Read first: design §13.1, §15.8; `record-format.md`.
+Read first: design §13.1, §15.8, §15.29; `record-format.md`;
+`ic-contract.md`.
 
 ## T8 — Council, routing, `decisions.md`
 

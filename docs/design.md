@@ -1469,3 +1469,37 @@ Deliberately different:
     adjudication step earned its keep, because one of that reviewer's
     five findings was wrong and was pushed back on with a §12 citation
     rather than fixed.
+27. **The researcher's first dispatch, and what it found — 2026-08-31
+    (T13).** `crew:researcher` was dispatched unnamed against this repo with
+    one question: does `CLAUDE.md`'s "a rule lives in exactly one file" hold
+    today? The dispatching session read only the returned brief and did no
+    research of its own, which is what T13's "Done when" asks for.
+
+    The brief came back in the required shape: `path:line` citations
+    throughout, a stated confidence, and a named list of what it could not
+    determine. It reported reading every file under `agents/`, `skills/`,
+    `CLAUDE.md` and `README.md` — 2,159 lines — and said so with the command
+    that proved the count, rather than claiming coverage bare.
+
+    **The answer is no, and it is worth acting on.** Six rules are stated in
+    more than one place, and three have already drifted: the `[Concern]`
+    definition splits two ways across the four review agents; the shared-file
+    enumeration appears six times and `split-critic.md`'s copy silently
+    broadened it with "test helpers, snapshots"; and the "Cannot verify" line
+    disagrees on whether it governs a *check* or an *item*. Two of those
+    three were spot-checked against the tree and matched exactly, line
+    numbers included. T15 carries the fix.
+
+    The sharper finding is structural: the four review agents each hold a
+    full copy of one findings convention, and no file in `CLAUDE.md`'s
+    Authority list owns it. The rule that forbids a second copy has no
+    canonical home for the thing being copied. That is the failure the rule
+    exists to prevent, sitting inside the plugin that states the rule.
+
+    Two notes on the agent itself. Its confidence came back `medium-high`,
+    which is not one of the three values `agents/researcher.md` requires —
+    the definition names `high`, `medium` or `low`, and the brief invented a
+    fourth. The agent should reject a value outside its own list. And the
+    brief's own unknowns were well chosen: it flagged that it could not tell
+    whether `README.md` is meant to be exempt, which is exactly the question
+    T10 already holds open.

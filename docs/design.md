@@ -1535,6 +1535,26 @@ Deliberately different:
     is a guard on a capability that can change the tree under review. A
     duplicated sentence is the cheaper failure.
 
+    **Verified by dispatch, 2026-08-31.** `crew:spec-critic` was hand-dispatched
+    twice against the same fixture — a spec with five seeded flaws — through
+    `claude -p --plugin-dir`, with the fixture as cwd so the agent ran outside
+    the plugin, the condition a path would have failed in.
+
+    With the reference injected, the agent named every seeded flaw, tagged each
+    finding `[Critical]`, `[Concern]` or `[Nit]`, wrote `Cannot verify from the
+    checkout` with the source named, and closed with the two verdict lines and
+    `Critical count: 4`.
+
+    Without it, the agent said in its first line that its prompt did not carry
+    the convention, then improvised: it invented `[Note]` for the third tag and
+    tagged a check that passed, which the reference forbids. `[Critical]` and
+    `[Concern]` survived, and so did both verdict lines, so the project lead's
+    gate still keys on tags that mean what it thinks. That is the predicted
+    degradation, measured rather than reasoned. The fix is not a fourth copy of
+    the tag list in each agent — that is the drift this item removes. The
+    injection is the project lead's job, and `SKILL.md` steps 4, 10 and 13 say
+    so.
+
     The three drifts item 27 named are gone. Two resolved by moving the rule
     into the new reference: the `[Concern]` definition is now
     "likely to cause a problem" everywhere, and the `Cannot verify` line now

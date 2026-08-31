@@ -32,8 +32,9 @@ re-plan.
 
 1. **Disjoint file sets.** Is every package's file set disjoint from every
    concurrent sibling's? Look hardest at shared config, barrel and `index`
-   files, lockfiles, and version manifests — the shared files design §5 gives
-   the project lead at integration, which never belong to a package. A test
+   files, test helpers, snapshots, lockfiles, and version manifests. Design §5
+   gives the shared config, barrels, `index` files, lockfiles and manifests to
+   the project lead at integration, so those never belong to a package. A test
    helper or a snapshot two packages both touch is a collision too, but it
    belongs to one of them, not to the project lead.
 2. **Written contracts.** Does every package state `Consumes` and `Produces`
@@ -63,11 +64,10 @@ dispatchable. Do not argue the band itself: whether `standard` should have been
 
 ## Findings
 
-Read `review-output.md` before you write your report. Use the path your prompt
-gives you; if it gives none, read
-`skills/project-lead/references/review-output.md` in the crew plugin. It owns
-the severity tags, the `Cannot verify` rule, the report-never-fix rule, and the
-shape of the two verdict lines. Keep no copy of it.
+Your prompt carries `review-output.md` whole. It owns the severity tags, the
+`Cannot verify` rule, the report-never-fix rule, and the shape of the two
+verdict lines. Follow it, and keep no copy of it. If your prompt does not carry
+it, say so in your report and use the two verdict lines below anyway.
 
 Report each finding against the check it fails — one of the seven, or the band.
 Name the packages and the exact file, type, or signature in every finding.

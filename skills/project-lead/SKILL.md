@@ -32,7 +32,7 @@ council-route question inline with a citation, or escalate it.
   spawn prompt. You do not follow it.
 - `references/writing-standard.md` governs any instruction file you draft.
 - `references/review-output.md` is the shape every review agent reports in.
-  Give its path in every review dispatch. You do not follow it.
+  Inject it whole into every review dispatch. You do not follow it.
 
 Write `state.json` after **every** transition, never batched.
 
@@ -66,7 +66,7 @@ and the non-goals. State requirements, never implementations.
 ## 4. Have the spec reviewed
 
 Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md`, the repo
-path, and `references/review-output.md`'s path. Write its findings to
+path, and `references/review-output.md` whole. Write its findings to
 `reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest already on
 disk.
 
@@ -151,7 +151,7 @@ checklist file instead.
 `crew:package-reviewer` requires five inputs and says so. Send all five: the
 package's record entry (`file_set`, `interface_contract`,
 `acceptance_criterion`), the checkout path, the IC's report, the diff or
-checklist path, and the brief. Add `references/review-output.md`'s path.
+checklist path, and the brief. Inject `references/review-output.md` whole too.
 Without the `file_set` it cannot check scope; without the report it cannot
 weigh claim against evidence.
 
@@ -188,7 +188,7 @@ shared-file check exists to read.
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`,
 the checkout path and base ref, the fresh diff path, the accepted package
-review, and `references/review-output.md`'s path. Four of its seven checks read
+review, and `references/review-output.md` whole. Four of its seven checks read
 the record, so a diff-only dispatch cannot run them.
 
 Write its findings to `reviews/<deliverable-id>-deliverable-review.md`.

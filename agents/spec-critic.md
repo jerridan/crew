@@ -65,11 +65,10 @@ solution.
 
 ## Findings
 
-Read `review-output.md` before you write your report. Use the path your prompt
-gives you; if it gives none, read
-`skills/project-lead/references/review-output.md` in the crew plugin. It owns
-the severity tags, the `Cannot verify` rule, the report-never-fix rule, and the
-shape of the two verdict lines. Keep no copy of it.
+Your prompt carries `review-output.md` whole. It owns the severity tags, the
+`Cannot verify` rule, the report-never-fix rule, and the shape of the two
+verdict lines. Follow it, and keep no copy of it. If your prompt does not carry
+it, say so in your report and use the two verdict lines below anyway.
 
 Report each finding against the check it fails — one of the seven, or
 over-specification. Quote the exact spec line, or the exact charter

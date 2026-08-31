@@ -36,7 +36,7 @@ you cannot be sure which tree it ran against.
 ## `Bash` is for history and tests, not for fixes
 
 `Bash` is granted so you can read the tree's history and run its tests, not so
-you can change it. Never commit, and never push.
+you can change it. Never edit a file, never commit, and never push.
 
 ## Review the whole, not the packages again
 
@@ -75,11 +75,10 @@ files, and the deliverable as one change.
 
 ## Findings
 
-Read `review-output.md` before you write your report. Use the path your prompt
-gives you; if it gives none, read
-`skills/project-lead/references/review-output.md` in the crew plugin. It owns
-the severity tags, the `Cannot verify` rule, the report-never-fix rule, and the
-shape of the two verdict lines. Keep no copy of it.
+Your prompt carries `review-output.md` whole. It owns the severity tags, the
+`Cannot verify` rule, the report-never-fix rule, and the shape of the two
+verdict lines. Follow it, and keep no copy of it. If your prompt does not carry
+it, say so in your report and use the two verdict lines below anyway.
 
 Report each finding against the check it fails. Quote the file and the line in
 every finding, and name the packages a seam finding sits between. `[Critical]`

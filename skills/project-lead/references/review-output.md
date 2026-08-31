@@ -4,7 +4,8 @@ Every crew review agent reports in this shape: `crew:spec-critic`,
 `crew:split-critic`, `crew:package-reviewer` and `crew:deliverable-reviewer`.
 This file owns the shape. An agent that reads it keeps no copy of it.
 
-The project lead injects this file, or its path, into every review dispatch.
+The project lead injects this file whole into every review dispatch. A path
+would not resolve: a review agent's cwd is the target repo, not the plugin.
 
 ## Severity tags
 

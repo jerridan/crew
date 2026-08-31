@@ -276,7 +276,9 @@ only the invariant, and nothing else:
 
 1. Is every file set disjoint from its concurrent siblings? Look hardest at
    shared config, barrel and `index` files, test helpers, snapshots, lockfiles,
-   and version manifests.
+   and version manifests. The shared files below belong to the project lead and
+   never to a package. A test helper or a snapshot two packages both touch is a
+   collision too, but it belongs to one of them.
 2. Is every interface contract written, with exact signatures and types?
 3. Can each acceptance test pass with only its own package's changes?
 4. Is anything mis-split — two packages that should be one, or one that must be
@@ -1515,13 +1517,23 @@ Deliberately different:
     Each agent keeps its own two verdict strings inline — `ready to split`,
     `dispatchable`, `accepted`, and their opposites. Those strings are
     agent-specific, so each is still stated once, and the project lead parses
-    them. The cost this project takes is one `Read` per review dispatch. The
-    failure it buys off is drift, which had already happened three times. If a
-    review agent cannot read the reference, its severity tags degrade but its
-    verdict lines still parse, so a failed `Read` never stalls the loop. The
-    project lead passes the path in every review dispatch (`SKILL.md` steps 4,
-    10 and 13), the same idiom `agents/ic-instructions.md` already uses for
-    `writing-standard.md`.
+    them. The failure the reference buys off is drift, which had already
+    happened three times.
+
+    The project lead injects the reference **whole** into every review dispatch
+    (`SKILL.md` steps 4, 10 and 13), the idiom step 8 already uses for
+    `ic-contract.md`. A path was the first design and is wrong: a review agent's
+    cwd is the target repo, so a plugin-relative path resolves to nothing on
+    every run against a repo other than `crew`, and all four agents would then
+    invent their own severity tags under the project lead's `[Critical]` gate.
+    `agents/ic-instructions.md`'s path idiom works because its reference is a
+    quality standard, not a parsed contract.
+
+    One rule is deliberately stated twice. `crew:package-reviewer` and
+    `crew:deliverable-reviewer` hold `Bash`, so each restates "never edit a
+    file" in its own body as well. The reference owns the rule; the inline copy
+    is a guard on a capability that can change the tree under review. A
+    duplicated sentence is the cheaper failure.
 
     The three drifts item 27 named are gone. Two resolved by moving the rule
     into the new reference: the `[Concern]` definition is now

@@ -1905,3 +1905,64 @@ Deliberately different:
     has never been reachable. `worktrees.json` pruning, record-directory
     reuse and PR-branch cleanup all share that property and none has been
     tested.
+35. **The full path ran, and four rules were wrong — 2026-09-01, T6's
+    exercise on `convert-keys-js`.** Goal: add a `toDotCase` converter and
+    write `docs/USAGE.md` for the three existing converters. The project lead
+    split it into two territories, `src` and `docs`, dispatched
+    `crew:split-critic` for the first time in the plugin's life, created two
+    worktrees, and ran `crew:ic` and `crew:ic-instructions` as teammates side
+    by side. Findings recorded while the run was still in flight.
+
+    a. **§12's plan-approval probe is closed. The message form works.** Both
+       ICs wrote `plans/<id>.md`, notified the project lead and went idle
+       waiting. The project lead read each plan and sent a go-ahead by
+       message, and both gates opened. It did not rubber-stamp either: each
+       approval carried added requirements — `ic-src` was told to add a test
+       that `objectKey`, `object_key` and `object-key` all converge on
+       `object.key`, because a case-for-case copy of the kebab spec would
+       never produce that case, and `ic-docs` was told to verify its nine
+       examples by running the library rather than by hand. That is
+       approve-with-feedback, which is the half of the gate the fallback
+       cannot do. `ic-contract.md` keeps both branches: a teammate waits on
+       its channel, a subagent ends its turn.
+
+    b. **The worktree root default is wrong, and its escape hatch fired on
+       the first repo tried.** `full-path.md` step 3 defaults to
+       `<repo>/.claude/worktrees/crew/<goal-slug>` and says to move out when
+       the target repo's test runner walks that directory. This repo's does:
+       `jest.config.js` sets no `testPathIgnorePatterns`, so `yarn test` at
+       the root collected every worktree's specs and reported 12 suites and
+       189 tests instead of 4 and 63. `.claude/` also showed as untracked,
+       because the repo's `.gitignore` does not name it. The project lead
+       detected both, moved the root, and recorded why. A default that breaks
+       on the first repo it meets is not a default: the root belongs outside
+       the target repo, and repo-local should be the exception.
+
+    c. **A worktree has no `node_modules`, and nothing said whose problem
+       that is.** Neither IC could run its acceptance criterion — a fresh
+       worktree carries tracked files only. The project lead symlinked the
+       repo's own install into each worktree and justified it from the
+       contract: environment setup is the project lead's job, and an IC
+       blocked on a missing tool is an `environment` block, which never
+       promotes. Correct, and reached unaided. Every JS, Python and Rust repo
+       has this problem, and `full-path.md` step 3 creates a worktree and
+       hands it over without a word about dependencies.
+
+    d. **Both critics ran at sonnet, though their definitions say opus.**
+       `agents/spec-critic.md` and `agents/split-critic.md` carry
+       `model: opus`; both reviews report `sonnet`. A spawn-time model
+       overrides frontmatter (§12), and no file told the project lead not to
+       pass one — `band-rubric.md` covered packages, councils and researchers
+       and never mentioned critics, so the frontmatter was the only authority
+       and it lost silently. Dispatching a critic at the package's band reads
+       like consistency and quietly downgrades the check.
+       `band-rubric.md` now says a critic or reviewer takes its own model and
+       gets no spawn-time override. This was only visible because these
+       reviews record the model they ran at; the earlier run's did not.
+
+    e. **`worktrees.json` was written in a shape `record-format.md` does not
+       define.** The reference specifies a map keyed by IC name. The run
+       wrote `{"worktrees": [ {...,"ic_name":...} ]}`. The array is arguably
+       the better shape, but §10.1's recovery reads this file, and a format
+       that varies per run is one recovery cannot depend on. Undecided:
+       either the reference adopts the array or the loop is held to the map.

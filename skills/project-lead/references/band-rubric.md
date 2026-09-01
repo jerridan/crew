@@ -49,6 +49,17 @@ Any "yes" past the first two is a signal toward `deep`.
   `band_history` (see `record-format.md`'s `band_history` row for its
   fields). Logging it turns the rubric from a guess into a measurement.
 
+## Critics and reviewers take their own model
+
+A band is for a **package**. `crew:spec-critic`, `crew:split-critic`,
+`crew:package-reviewer` and `crew:deliverable-reviewer` are not packages, and
+none of them gets a band.
+
+**Pass no spawn-time `model` when you dispatch one.** Each definition already
+carries the model its job needs, and a spawn-time value silently overrides it
+(design §12). Dispatching a critic at the package's band is the easy mistake:
+it reads like consistency and it quietly downgrades the check (design §15.35).
+
 ## Researcher model rules (design §3)
 
 A research question has no file set and no acceptance criterion, so the

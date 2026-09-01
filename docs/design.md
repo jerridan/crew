@@ -1787,3 +1787,36 @@ Deliberately different:
 
     The probe is not the T6 exercise. It proves the environment a full-path
     run needs, not the loop that runs in it.
+32. **Plan mode silently converts the project lead into a planner —
+    2026-09-01, at the T6 exercise launch.** The first attempt to run the full
+    path stopped before it dispatched anything. The skill loaded, read its own
+    step 1, and then said: "Plan mode is on, so I'll research and plan first
+    rather than dispatching the crew loop." It was right to. Plan mode forbids
+    the writes and spawns every step of either path is made of, so a project
+    lead inside it can only produce a plan and wait — which is the approval
+    gate this plugin exists to remove, restored by a session setting nobody
+    checked.
+
+    Three things make this worth its own item rather than a footnote.
+
+    a. **It applies to both paths.** The simple path dispatches a subagent and
+       writes a record; the full path adds worktrees and teammates. Plan mode
+       blocks all of it. So the rule belongs in `SKILL.md` step 1, not in
+       `full-path.md` step 0 beside the teammate conditions.
+
+    b. **The project lead can detect this one.** Unlike permission mode
+       (§15.31a), a session knows it is in plan mode — this one said so
+       unprompted, before being asked. That makes it a real check rather than
+       a launch requirement to document and hope for, which is why `SKILL.md`
+       tells the project lead to stop and say so.
+
+    c. **It fails in the most expensive way available.** Nothing errors. The
+       run reads as working, produces a plausible plan, and stops for a human
+       — so the failure looks like the product working correctly. A launch
+       condition that degrades into "asks you for approval" is invisible in
+       exactly the runs meant to prove no approval was needed.
+
+    Found by watching a run rather than by reading. The four conditions in
+    `full-path.md` step 0 came from probes and from the design; this one came
+    from starting the thing and seeing what it did, and it was the first
+    problem the exercise hit.

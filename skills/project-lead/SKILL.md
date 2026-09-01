@@ -38,6 +38,9 @@ Write `state.json` after **every** transition, never batched.
 
 ## 1. Take the goal
 
+**Plan mode stops every dispatch.** If it is on, say so and stop — planning
+the goal yourself is not the job (design §15.32).
+
 The argument is `--resume <goal-slug>`, a goal string, or a path to a
 charter file. A path that exists on disk becomes `charter.md` unchanged. Any
 other string you expand into `charter.md` yourself: the goal, and one
@@ -58,8 +61,8 @@ ceiling of 2,000,000 tokens unless the principal names one.
 
 Keep the reading out of your own context: dispatch `Explore` subagents and
 read their answers. Settle four questions. Does an analogous implementation
-exist? Do tests cover this surface? What command runs the suite? Which
-instruction files apply — `CLAUDE.md`, `.claude/rules/`, a nested `CLAUDE.md`?
+exist? Do tests cover this surface? What runs the suite? Which instruction
+files apply — `CLAUDE.md`, `.claude/rules/`, a nested `CLAUDE.md`?
 
 ## 3. Write the spec
 
@@ -79,9 +82,8 @@ On `Verdict: re-spec needed`, adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.
 
 Adjudicate every review the same way: read the whole set, restate each
-finding in your own words, verify it against the repo, and push back in
-writing where it is wrong here. A reviewer's finding is a claim, not a
-verdict.
+finding in your own words, verify it against the repo, and push back where it
+is wrong here. A finding is a claim, not a verdict.
 
 ## 5. Choose the shape
 

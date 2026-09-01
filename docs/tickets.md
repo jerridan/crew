@@ -99,26 +99,34 @@ Read first: design §9.1, §9.3, §6, §7, §15.22; `record-format.md`;
 
 ## T5 — Probe: `TeammateIdle`
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: pre-5 (design §13.1)
 
-Run the probe procedure in design §13.1: does exit 2 block a teammate's
+Run the probe procedure design §13.1 carried until this ticket closed
+(the procedure is in the git history now): does exit 2 block a teammate's
 idle, does stderr reach the teammate, and does the payload identify the
 idling teammate and carry a session id or cwd? Needs an interactive
 session with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` — headless `-p`
 cannot spawn a teammate (design §12). Remove the probe hook registration
 right after.
 
-Done when: all three §13.1 questions have probed answers recorded in
-design §15 as a new finding.
+Done when: all three questions have probed answers recorded in design §15
+as a new finding.
 
-Read first: design §13.1, §12, §15.8.
+The probe ran on 2026-08-31 on Claude Code 2.1.252. All three answers are in
+design §15.29, with two findings the ticket did not ask for. The refusal loop
+ends at a harness cap on consecutive blocks that any tool call resets, so a
+working IC can be refused forever. And a project lead can re-engage an idle
+teammate with one message, which does the hook's whole job. §13.1 cuts the
+hook on that evidence; T7 builds the nudge.
+
+Read first: design §15.29, §13.1, §12, §15.8.
 
 ## T6 — Full path: worktrees, territories, teammates
 
 Status: open
-Depends on: T4, T5
+Depends on: T4
 Stage: 5 (design §13)
 
 Extend `/crew:project-lead` with the full path (§9.2): worktrees and
@@ -136,25 +144,34 @@ including one forced fix round and one kill-and-resume.
 Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23;
 `record-format.md`; `ic-contract.md`.
 
-## T7 — Hooks: `TeammateIdle` and `SessionEnd`
+## T7 — Hooks: `SessionEnd`, and the idle nudge that replaces `TeammateIdle`
 
 Status: open
-Depends on: T5, T6
+Depends on: T6
 Stage: 5 (design §13.1)
 
-Ship `hooks/hooks.json` with the two stage-5 hooks, exactly as §13.1
-specifies: `TeammateIdle` blocks an idle only for the idling IC's own
-unreported, approved, in-flight package — and lets a plan-gate pause pass
-(`plan_approved_at` null, design §15.8); `SessionEnd` marks the run
-interrupted and its worktrees orphaned, writes only, deletes nothing.
-Include the kill switch and the staleness cutoff. No hook ever removes a
+Ship `hooks/hooks.json` with one hook: `SessionEnd` marks the run interrupted
+and its worktrees orphaned, writes only, deletes nothing. Include the guard
+clause that exits at once when no crew record exists. No hook ever removes a
 worktree.
 
-Done when: a crashed run's next `--resume` finds `run_state: interrupted`,
-and an IC idling without a report is rejected while a plan-gate pause is
-not.
+`TeammateIdle` is cut (design §13.1, §15.29). Its job moves into the project
+lead: when an IC idles with no report, the project lead messages it with what
+is missing and where to write it. Build that beside the §7 verification, which
+is where the project lead already reads the IC's report file and `git` log. Let
+a plan-gate pause pass — `plans/<id>.md` written and `plan_approved_at` null
+(§15.8) — and send at most one nudge per dispatch; a second empty idle fails
+the package instead.
 
-Read first: design §13.1, §15.8; `record-format.md`.
+Add the rule §15.29 found missing, which outlives the hook: what an IC does
+when a mechanism, not a reviewer, is what blocks it. `ic-contract.md` owns it.
+
+Done when: a crashed run's next `--resume` finds `run_state: interrupted`, and
+an IC that idles without a report gets one nudge and finishes, while a
+plan-gate pause gets none.
+
+Read first: design §13.1, §15.8, §15.29, §7; `record-format.md`;
+`ic-contract.md`.
 
 ## T8 — Council, routing, `decisions.md`
 

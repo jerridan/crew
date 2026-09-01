@@ -107,7 +107,7 @@ into every IC spawn prompt.
 
 ## Deliverable <deliverable-id> — <title>
 
-Branch: crew/<deliverable-id>
+Branch: crew/<goal-slug>/<deliverable-id>
 Depends on: <deliverable-id> | nothing
 
 ### Package <package-id>
@@ -170,7 +170,7 @@ One entry per deliverable (design §5):
 | Field | Meaning |
 |---|---|
 | `id` | referenced by each package's `deliverable` field |
-| `branch` | the deliverable branch every package's IC branches from (design §9.3) |
+| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). |
 | `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1) |
 | `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `abandoned`. `draft-pr-opened` is a deliverable's own terminal state, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |

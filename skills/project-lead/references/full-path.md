@@ -69,15 +69,15 @@ escalate at it.
 ## 3. Create the branch and the worktrees
 
 Branch from the current head:
-`git -C <repo> switch -c crew/<deliverable-id>`. Write the `deliverables[]`
-entry now — `id`, branch, the head sha as `base`, `state: pending`,
-`pr_url: null`.
+`git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. Write the
+`deliverables[]` entry now — `id`, branch, the head sha as `base`,
+`state: pending`, `pr_url: null`.
 
 Then one worktree per territory, all branching from that same head, so
 integration is a merge and never a rebase (design §9.3):
 
 ```
-git -C <repo> worktree add <worktree-root>/<territory-slug> -b crew/<territory-slug>
+git -C <repo> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
 `<worktree-root>` is `<repo>/.claude/worktrees/crew/<goal-slug>`. Git omits
@@ -201,7 +201,7 @@ Then send the IC its next package in the same territory, and return to step
 Merge one package at a time, into the deliverable branch:
 
 ```
-git -C <repo> merge --squash crew/<territory-slug>
+git -C <repo> merge --squash crew/<goal-slug>/<territory-slug>
 git -C <repo> commit -m "<package one-liner>"
 <run the suite>
 ```

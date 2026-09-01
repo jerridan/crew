@@ -106,7 +106,8 @@ No split critic runs — one package has no sibling to overlap. Write
 
 ## 7. Create the branch
 
-Branch from the current head: `git -C <repo> switch -c crew/<deliverable-id>`.
+Branch from the current head:
+`git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`.
 Never work on the main branch. Write the `deliverables[]` entry now — `id`,
 branch, the head sha as `base`, `state: pending`, `pr_url: null`.
 

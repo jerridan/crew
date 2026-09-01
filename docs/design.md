@@ -1883,3 +1883,25 @@ Deliberately different:
     full path is still unexercised. A goal that splits in this repo needs one
     code package and one package outside `src/`, because every converter
     funnels through the same registry and the same barrel.
+34. **Branch names collided between two runs in one repo — 2026-09-01.** The
+    first `convert-keys-js` run created `crew/deliverable-1`. Deliverable ids
+    restart at 1 in every run, so the next run in the same repo would generate
+    the same name and fail at `git switch -c`. The same held for a full-path
+    IC branch, `crew/<territory-slug>`: two runs whose splits pick the same
+    territory name collide the same way.
+
+    Item 4's goal-slug rule already solved this for the record directory —
+    "`<kebab-case-slug>-<4 lowercase hex chars>`, generated once, always, not
+    only on a collision", precisely so two goals cannot occupy one directory.
+    The rule was written for the record and never carried to the branch names,
+    which need it for the same reason and against the same failure. Branches
+    are now `crew/<goal-slug>/<deliverable-id>` and
+    `crew/<goal-slug>/<territory-slug>`.
+
+    Found by preparing a second run rather than by running one — the first
+    run's own branch was still sitting in the repo. Worth noting as the shape
+    of the bug: crew has been exercised as a series of first runs, each in a
+    fresh state, so anything that only breaks on the *second* run in one repo
+    has never been reachable. `worktrees.json` pruning, record-directory
+    reuse and PR-branch cleanup all share that property and none has been
+    tested.

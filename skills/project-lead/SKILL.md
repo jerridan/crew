@@ -74,8 +74,7 @@ and the non-goals. State requirements, never implementations.
 
 Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md`, the repo
 path, and `references/review-output.md` whole. Write its findings to
-`reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest already on
-disk.
+`reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest on disk.
 
 On `Verdict: re-spec needed`, adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.

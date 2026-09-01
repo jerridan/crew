@@ -1,25 +1,12 @@
 # IC contract
 
 The project lead injects this file into every IC spawn prompt, along with
-your write location — the absolute directory your plan and your report go
-in — and your package id. You inherit no conversation history. This file,
-your brief, and those two values are everything you know about how to
-behave.
+your record root — an absolute path outside your worktree — and your package
+id. You inherit no conversation history. This file, your brief, and those
+two values are everything you know about how to behave.
 
-## Your write location
-
-The project lead names it at spawn time. It is one of two, and which one you
-got decides nothing else about your job:
-
-- **A worktree of your own** — your write location is inside it, and the
-  project lead copies your files into the record itself. This is the full
-  path.
-- **The record root** — an absolute path outside the checkout, under
-  `~/.claude`. This is the simple path, where you share the project lead's
-  checkout.
-
-Use the path exactly as given. Never `cd` into it, and never resolve it
-against your worktree.
+Use the record root exactly as given. Never `cd` into it, and never resolve
+it against your worktree.
 
 ## What you may not do
 
@@ -43,7 +30,7 @@ against your worktree.
   `index` file, or shared config — even when your work seems to need it.
   Report it to the project lead instead.
 - Read and write nothing outside your own worktree, except your plan and
-  your report in your write location.
+  your report in the record.
 
 ### Scope
 
@@ -76,11 +63,11 @@ reports no error.
 
 ## The plan gate
 
-Before you write any code, write your implementation plan into your write
-location, as `plans/<id>.md` under a record root or as `plan.md` in a
-worktree write location. `<id>` is your package's id. Then stop and wait for
-the project lead's go-ahead — this is an expected pause, not an idle to fix.
-Do not start implementing before the project lead responds.
+Before you write any code, write your implementation plan to
+`<record-root>/plans/<id>.md` — this is your `plan_path`, and `<id>` is your
+package's id. Then stop and wait for the project lead's go-ahead — this is
+an expected pause, not an idle to fix. Do not start implementing before the
+project lead responds.
 
 **As a teammate**, you have a message channel. Wait on it. The go-ahead
 arrives as a message, and so does anything the project lead wants changed
@@ -140,9 +127,9 @@ actual state, not the one that sounds best.
 
 ## Report contract
 
-Write your report into the same write location as your plan, as
-`reports/<id>.md` under a record root or as `report.md` in a worktree write
-location. Include:
+Write your report to `<record-root>/reports/<id>.md`, the same
+`<record-root>` and `<id>` as your plan — this is your `report_path`.
+Include:
 
 - Your status, one of the four above. A `BLOCKED` status names its cause:
   `capability` or `environment`.
@@ -153,11 +140,11 @@ location. Include:
 
 ### When you cannot write your report
 
-A sandbox can deny every write to a record root under `~/.claude`. When that
-happens, your final message is your report. Say so in its first line,
-include everything the report contract requires, and name the denied path.
-Never fabricate a file you could not write, and never stop silently.
+A sandbox can deny every write to the record root. When that happens, your
+final message is your report. Say so in its first line, include everything
+the report contract requires, and name the denied path. Never fabricate a
+file you could not write, and never stop silently.
 
-A worktree write location is different: you hold write rights over your own
-worktree, so a denial there is a fault worth reporting, not a case to work
-around. Report it as `BLOCKED`, cause `environment`.
+This holds whichever way you were dispatched. A subagent's final message
+returns to the project lead as a tool result, and a teammate's reaches it in
+the idle notification, so either way it is read.

@@ -13,7 +13,7 @@ The simple path stays in `SKILL.md`. Nothing here applies to it.
 | The IC | one unnamed subagent | one **named** teammate per territory |
 | Where it works | this checkout | its own worktree and branch |
 | The plan gate | two dispatches | one dispatch, then a message |
-| Its report | a tool result you read | a file you read from its worktree |
+| Its report | a tool result you read | a file in the record, plus an idle notification |
 | Integration | nothing merges | one squash merge per package |
 | The split critic | skipped | runs before any IC is dispatched |
 
@@ -33,10 +33,11 @@ escalate on any that fails — none of them can be fixed mid-run.
    (design §15.10, §15.23f).
 3. A display mode works: iTerm2 with its Python API, a session inside tmux,
    or `teammateMode: "in-process"`.
-4. The permission grants a run needs are already in the user's settings. A
-   teammate's prompts surface in your session for a human to approve (design
-   §15.12, §15.20), so a missing grant stops a no-prompt run on its first
-   git call. You may not add the grants yourself — settings are
+4. Nothing will stop for a human. A teammate's permission prompts surface in
+   your session (design §15.12, §15.20), so one un-granted command stalls the
+   whole run. Either auto mode is on, or the grants a run needs are already
+   in the user's settings. Auto mode is the common case and it needs no grant
+   list (design §15.31a). You may not add grants yourself — settings are
    configuration, and the principal owns them.
 
 State which condition failed. Do not start the run and discover it later.
@@ -78,17 +79,6 @@ a registered worktree from its parent's `git status`, so a worktree there
 never shows up as untracked work. If the target repo's test runner walks
 that directory, pick a root outside the repo instead and record why.
 
-Give each IC a writable scratch directory and hide it from git:
-
-```
-mkdir -p <worktree>/.crew
-echo '.crew/' >> <worktree>/.git/info/exclude
-```
-
-The exclude line matters twice: it keeps `.crew/` out of every diff a
-reviewer reads, and it keeps `git status --porcelain` honest for the
-dirty-worktree check at step 13.
-
 Write `worktrees.json` now: the IC's name, the absolute worktree path, its
 branch, this session's id, and `orphaned: false`. Set every package's
 `ic_name` to the name of the IC that owns its territory. Nothing else maps a
@@ -111,12 +101,12 @@ of: `ic-contract.md`'s full text, the brief, the file set, **the absolute
 worktree path**, the interface contract, the acceptance criterion, the
 global constraints section, and the package id.
 
-It also carries the IC's write location. On this path that is
-`<worktree>/.crew/plan.md` and `<worktree>/.crew/report.md`, never the
-record root. The record root sits under `~/.claude`, and a write there is
-denied as a sensitive path (design §15.26b). The worktree is the one
-location an IC is certain to hold write rights over. You copy both files
-into the record yourself, at step 5 and step 6.
+It also carries the record root, as an absolute path. An interactive
+teammate can write there (design §15.31b), so a full-path IC writes
+`plans/<id>.md` and `reports/<id>.md` itself. If a write is denied anyway,
+`ic-contract.md` makes the IC's final message its plan or its report, and
+that message reaches you in its idle notification. Transcribe it, and say in
+the file that you transcribed it.
 
 Write the agent body to survive both display modes: in-process **appends**
 an agent definition to the default system prompt and split-pane
@@ -130,21 +120,18 @@ Set the package and its deliverable `in-flight` at the first spawn.
 A teammate has a message channel, so the gate is one dispatch and a reply —
 not the simple path's two dispatches.
 
-The IC writes `<worktree>/.crew/plan.md` and waits. Read that file, copy it
-to `plans/<id>.md`, and say in the file that you copied it. Then approve it
-or send it back with what to change. `SendMessage` the IC its go-ahead, and
-set `plan_approved_at`.
+The IC writes `plans/<id>.md` and waits. Read it, then approve it or send it
+back with what to change. `SendMessage` the IC its go-ahead, and set
+`plan_approved_at`.
 
 While `plans/<id>.md` exists and `plan_approved_at` is `null`, that IC's
 idle is an expected pause and not a fault (design §15.8).
 
 ## 6. Verify before you believe
 
-Read `<worktree>/.crew/report.md`, copy it to `reports/<id>.md`, and say in
-the file that you copied it.
-
-Then treat it as a claim, never as evidence. The evidence is
-`git -C <worktree> log <base>..HEAD` and `git -C <worktree> diff`.
+Read `reports/<id>.md`, then treat it as a claim and never as evidence. The
+evidence is `git -C <worktree> log <base>..HEAD` and
+`git -C <worktree> diff`.
 
 Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
 denies any command that changes directory before it runs git, allow rule or

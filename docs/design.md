@@ -1672,24 +1672,26 @@ Deliberately different:
        owner of a rule the project lead has already read at step 1 is not
        one.
 
-    b. **A full-path IC writes into its own worktree, never the record
-       root.** Item 26b left T6 to either find the grant that covers a
-       sensitive path or move the record. It does neither: the IC writes
-       `plan.md` and `report.md` into `<worktree>/.crew/`, and the project
-       lead copies both into `plans/` and `reports/`. The worktree is the one
-       location an IC certainly holds write rights over, the project lead
-       already reads it to verify, and the record stays canonical because the
-       project lead is the only writer. This also closes the gap that the
-       simple path's fallback cannot cover: a teammate's final message never
-       returns to the dispatcher as a tool result (§12), so "the final
-       message is the report" has no reader on the full path.
+    b. **Withdrawn — a full-path IC writes to the record root, like every
+       other IC.** This item first routed the IC's plan and report to a
+       `.crew/` directory inside its worktree, to dodge item 26b's
+       sensitive-path denial. Item 31 probed the denial and it did not
+       reproduce, so the detour bought nothing and cost a copy hop. Its
+       stated reason was also wrong: it claimed a teammate's final message
+       has no reader, when §12 only says the message is not a parseable tool
+       result. It still arrives, in the idle notification, which item 31c
+       confirms. The `ic-contract.md` fallback therefore covers both paths,
+       and one write location serves both.
 
-    c. **`.crew/` goes in the worktree's `.git/info/exclude`.** Otherwise the
-       two scratch files show up in every package diff a reviewer reads, and
-       in `git status --porcelain` — which is exactly the command §10.1's
-       dirty-worktree check reads to decide whether to commit before
-       respawning. An unexcluded scratch file would make every clean worktree
-       look dirty.
+    c. **Withdrawn with (b), and it would not have worked.** The plan was to
+       hide `.crew/` in the worktree's `.git/info/exclude`. A linked
+       worktree's `.git` is a **file**, not a directory, so that path cannot
+       be appended to at all; and git reads exclude patterns from
+       `$GIT_COMMON_DIR/info/exclude`, so a pattern written to the
+       per-worktree git dir is never consulted. Verified three ways in a
+       scratch repo on 2026-09-01. The lesson is narrow and worth keeping: a
+       command written from memory about worktree internals is a claim like
+       any other, and this one shipped in a first draft unrun.
 
     d. **Worktrees live at
        `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`.**
@@ -1715,8 +1717,59 @@ Deliberately different:
     a forced fix round and a kill-and-resume, and that needs an interactive,
     unisolated session with the teams flag. The session that wrote this was
     worktree-isolated, which item 10 already names as the one shape that
-    cannot drive the full path. T6 stays open until the run happens. Two
-    things the run should settle: whether a teammate can write under
-    `~/.claude/crew/` at all, which would let (b) drop the copy hop; and
-    whether the plan-approval probe §12 still lists as pending behaves as the
-    documentation says, since the full path is where it finally matters.
+    cannot drive the full path. T6 stays open until the run happens. Item 31
+    probed the environment the run needs and corrected (b) and (c) before any
+    run; what stays unprobed is the loop itself, and the plan-approval
+    question §12 has listed as pending since stage 3 — the full path is the
+    first place an IC has a message channel to be gated on, so it is the
+    first place that probe can run.
+31. **The full-path environment probe: nothing was denied, and two of T6's
+    own rules were wrong — 2026-09-01.** One teammate, `probe-ic`, spawned
+    from `crew:ic` at sonnet by an interactive session on Claude Code 2.1.257
+    with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, inside tmux, in a throwaway
+    worktree. It was told to attempt four things and to record rather than
+    work around each failure. Nothing failed. Five findings.
+
+    a. **Under auto mode the grant set is empty.** Not one permission prompt
+       surfaced in the driving session while the teammate worked — not for
+       its writes, not for `git -C <worktree> status`, not for its commit.
+       §15.12's hazard is real but the classifier answers it, and this user
+       runs every session in auto mode. So `full-path.md` step 0 asks for the
+       property, not the mechanism: nothing stops for a human, by auto mode
+       **or** by pre-approved grants. The probe therefore yields no grant
+       strings, because none were ever requested — a settings-based run still
+       needs its list built some other way.
+
+    b. **Item 26b does not reproduce for an interactive teammate.** The write
+       to `~/.claude/crew/probe-t6/reports/probe.md` was allowed, and the
+       agent created the missing `reports/` directory on the way. Item 26b's
+       denial came from a nested headless `claude -p` dispatch, so it is a
+       property of that shape and not of the path. The record root is
+       writable from the shape stage 5 actually uses, which is what withdrew
+       item 30b.
+
+    c. **A teammate's final answer does reach the project lead.** It arrived
+       in full, as prose in the idle notification, exactly as §12 and
+       `CLAUDE.md` describe — not a parseable tool result, but readable.
+       `ic-contract.md`'s "your final message is your report" fallback
+       therefore has a reader on both paths. Item 30b claimed otherwise and
+       was wrong.
+
+    d. **`git -C <worktree>` commits unattended from a teammate.** Confirms
+       §15.23c from the interactive side, which the container probe could not
+       reach. The idiom split in `ic-contract.md` — `git -C` for git, a `cd`
+       prefix for everything else — needs no change.
+
+    e. **A worktree cannot carry its own `info/exclude`.** The probe caught
+       T6's step 3 command as unrunnable, and a scratch-repo test confirmed
+       it three ways: a linked worktree's `.git` is a file, so
+       `<worktree>/.git/info/exclude` is not a writable path; a pattern
+       written to `$GIT_DIR/info/exclude` under `.git/worktrees/<name>` is
+       never consulted; only `$GIT_COMMON_DIR/info/exclude` — the shared
+       `.git/info/exclude` — takes effect, and it applies to every worktree
+       of that repo. Withdrawing item 30c removed the need, but the fact
+       stands for anything later that wants to hide a file inside one
+       worktree.
+
+    The probe is not the T6 exercise. It proves the environment a full-path
+    run needs, not the loop that runs in it.

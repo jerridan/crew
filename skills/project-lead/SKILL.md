@@ -118,18 +118,18 @@ code, `crew:ic-instructions` for a `CLAUDE.md`, a `.claude/rules/` file, a
 It inherits no history, so the spawn prompt carries all of:
 `ic-contract.md`'s full text, the brief, the file set, this checkout's path,
 the interface contract, the acceptance criterion, the global constraints
-section, the write location — the record root on this path — and the
-package id.
+section, the record root, and the package id.
 
 **The plan gate is two dispatches here.** The first ends at
 `plans/<id>.md` — a subagent has no message channel to wait on. Read that
 plan, approve it or send it back, set `plan_approved_at`, then dispatch
 again to implement and name the plan's path in that prompt.
 
-**Expect the contents instead of the file.** A sandbox usually denies an IC
-every write to the record root (design §15.26b), so its final message
-carries the plan or the report. Transcribe it into `plans/<id>.md` or
-`reports/<id>.md` unchanged, and say in the file that you transcribed it.
+**Expect the contents instead of the file.** Some dispatch shapes deny an IC
+every write to the record root (design §15.26b, §15.31b), and its final
+message then carries the plan or the report. Transcribe it into
+`plans/<id>.md` or `reports/<id>.md` unchanged, and say in the file that you
+transcribed it.
 
 Set the package and its deliverable `in-flight` at the first dispatch.
 

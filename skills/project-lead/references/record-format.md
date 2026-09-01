@@ -58,12 +58,11 @@ naming convention. Do not mix their contents.
 The project lead never has to parse a review to find a report or a plan. It reads
 `report_path` or `plan_path` from `state.json` and opens that file directly.
 
-**Who writes into `plans/` and `reports/` depends on the path.** On the
-simple path the IC writes there itself, or returns the contents when the
-write is denied and the project lead transcribes them. On the full path the
-IC writes into its own worktree and the project lead copies the file in.
-Either way the file says how it arrived, so an audit can tell a first-hand
-file from a copy.
+**The IC writes both files, on either path.** When a sandbox denies the
+write, the IC returns the contents as its final message and the project lead
+transcribes them — as a tool result from a subagent, or in the idle
+notification from a teammate. A transcribed file says so, so an audit can
+tell a first-hand file from a copy.
 
 ## Goal-slug uniqueness
 
@@ -391,11 +390,10 @@ concurrent goals from colliding in one directory. Git omits a registered
 worktree from its parent's `git status`, so a worktree there never reads as
 untracked work in the deliverable branch.
 
-Each worktree also holds `.crew/`, listed in that worktree's
-`.git/info/exclude`. It is where its IC writes `plan.md` and `report.md`,
-and the exclude line is what keeps those two files out of every diff and out
-of `git status --porcelain`. The dirty-worktree check at recovery reads that
-same command, so an unexcluded scratch file would read as work to commit.
+An IC writes its plan and its report into the record root, not into its
+worktree, so a worktree holds only the package's own work. That keeps
+`git status --porcelain` meaning exactly what the recovery check reads it to
+mean: uncommitted work, and nothing else.
 
 **`session_ids` is a list, not a single id.** Design §13.1 makes the session
 id the only proof of worktree ownership, but `--resume` runs in a *new*
@@ -564,7 +562,6 @@ Every name this file defines, with what consumes it.
 
 **`worktrees.json` fields**
 - `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`
-- `<worktree>/.crew/` — writer: the IC (`plan.md`, `report.md`). Consumer: stage 5 (the project lead copies both into `plans/` and `reports/`)
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the project lead's idle nudge
 - `orphaned` — consumer: design §13.1 `SessionEnd` (writer); stage 5 `--resume` (prunes on it, design §10.1)

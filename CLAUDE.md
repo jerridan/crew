@@ -57,7 +57,8 @@ Each reference owns one subject and is canonical for it:
   promote.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
 - `review-output.md` — the shape every review agent reports its findings in.
-- `writing-standard.md` — how every instruction file here is written.
+- `writing-standard.md` — how an instruction file is written, and how
+  reader-facing prose is written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A
 second copy is worse than no copy, because nothing decides which copy wins.
@@ -70,10 +71,13 @@ an agent definition, this file included. Check the draft against its checklist
 under `## Before you open the PR` before you commit. That checklist defines
 done.
 
+Read its `## Writing for a person` section before you touch `README.md`, a PR
+body or an issue. State the action; leave the reasoning in `docs/design.md`.
+Design voice in the README is the drift that keeps coming back.
+
 Those prose rules are ASD-STE100 — Simplified Technical English. Apply them to
-every file in this repo, and to each commit message and PR body. Only the
-container-choice check is limited to the four container types the standard
-names.
+every file here, and to each commit message and PR body. Only the
+container-choice check is limited to the standard's four container types.
 
 ## Constraints that are easy to get wrong
 
@@ -136,11 +140,7 @@ Ask when a choice is genuinely the user's. Name the option you recommend.
 - Fill in `.github/pull_request_template.md` for every PR: a plain-language
   summary, the ticket link and the change type for a person, then the agent
   context an AI reviewer needs.
-- Do not hard wrap a PR body, an issue body, or a comment on GitHub. Each
-  paragraph and list item goes on one long line. GitHub renders a single
-  newline as a line break, so a wrapped body renders as a narrow column. The
-  files in this repo stay hard wrapped; only the text you send to GitHub does
-  not.
+- Never hard wrap text you send to GitHub — `writing-standard.md` says why.
 - Exercise a change against this checkout, never the installed copy:
   `claude --plugin-dir <path to this repo>`.
 - Spawning a teammate needs a working display mode: iTerm2 with its Python API

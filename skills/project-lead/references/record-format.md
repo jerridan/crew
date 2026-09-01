@@ -12,6 +12,7 @@ One directory per goal, outside the target repo (design §4):
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
 ├── reports/          one report per package, written by its IC
 ├── plans/            one plan per package, written by its IC
+├── diffs/            one diff per review dispatch, written by the project lead
 └── reviews/          raw critic and reviewer output
 ```
 
@@ -19,9 +20,9 @@ Every relative path named in `state.json` resolves against this directory
 root. `worktrees.json`'s `worktree` field is the one path that is already
 absolute.
 
-## `reports/`, `plans/`, and `reviews/`
+## `reports/`, `plans/`, `diffs/`, and `reviews/`
 
-Three directories hold per-run output. Each has one writer and a fixed
+Four directories hold per-run output. Each has one writer and a fixed
 naming convention. Do not mix their contents.
 
 - **`reports/`** — one file per package, `reports/<id>.md`. It holds that
@@ -35,6 +36,13 @@ naming convention. Do not mix their contents.
   a package, not a plan (design §13.1). The project lead's own decomposition is
   `split.md` at the record root, named apart from `plans/` so that an IC told
   to "write its plan into the record" cannot overwrite it.
+- **`diffs/`** — the diff a review dispatch reads, written by the project
+  lead so it never enters its own context. `diffs/<id>-r<n>.patch` for a
+  package review, `<n>` being `fix_rounds_used`;
+  `diffs/<deliverable-id>-final.patch` for the deliverable review, rewritten
+  after integration so it carries the shared-file edits. A diff is evidence
+  of what a reviewer actually saw, so a later round never overwrites an
+  earlier one.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
   (`<n>` is the fix round, from `fix_rounds_used`),

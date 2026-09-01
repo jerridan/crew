@@ -157,10 +157,10 @@ outcome here, not a failure (design §15.12).
 
 ## 7. Review the package
 
-Write the diff to a file so it never enters your context:
+Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
 
 ```
-git -C <worktree> diff <base>..HEAD > <path>
+git -C <worktree> diff <base>..HEAD > <record-root>/diffs/<id>-r<n>.patch
 ```
 
 An instruction package gets its acceptance checklist file instead.
@@ -226,7 +226,8 @@ keep the values they require equal. Commit them.
 
 ## 10. Review the deliverable
 
-**Write the diff again now.** Step 7's diffs predate the fix rounds and
+**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. Step
+7's diffs predate the fix rounds and
 every shared-file edit you just made, and those edits are exactly what the
 next reviewer's shared-file check exists to read (design §15.24).
 

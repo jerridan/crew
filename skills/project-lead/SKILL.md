@@ -51,9 +51,8 @@ anything else. `references/full-path.md` step 13 owns that; on the simple
 path, `git log` on the deliverable branch is the whole job. Append this
 session's id to `run.session_ids`, never overwrite it.
 
-Write no falsifiable criterion, do no work: escalate and stop.
-
-Create `~/.claude/crew/<slug>-<4 hex chars>/`, generating the suffix once.
+Write no falsifiable criterion, do no work: escalate and stop. Create
+`~/.claude/crew/<slug>-<4 hex chars>/`, generating the suffix once.
 Write `charter.md`, then `state.json` with `run_state: active` and a spend
 ceiling of 2,000,000 tokens unless the principal names one.
 
@@ -146,9 +145,9 @@ what each cause earns.
 
 ## 10. Review the package
 
-Write the diff to a file — `git -C <repo> diff <base>..HEAD > <path>` — so
-it never enters your context. An instruction package gets its acceptance
-checklist file instead.
+Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
+`git -C <repo> diff <base>..HEAD > <path>`. An instruction package gets its
+acceptance checklist file instead.
 
 `crew:package-reviewer` requires five inputs and says so. Send all five: the
 package's record entry (`file_set`, `interface_contract`,
@@ -180,7 +179,8 @@ files: read the target repo's own instructions for which must change
 together, and keep the values they require equal. Commit them, and mark the
 package `integrated`.
 
-**Write the diff again now.** Step 10's diff predates the fix rounds and
+**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. Step
+10's diff predates the fix rounds and
 every shared-file edit you just made — the edits the next reviewer's
 shared-file check exists to read.
 

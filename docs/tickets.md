@@ -142,12 +142,27 @@ Done when: one multi-package goal reaches a draft PR with zero prompts,
 including one forced fix round and one kill-and-resume.
 
 The loop landed on 2026-09-01 as
-`skills/project-lead/references/full-path.md`, and design §15.30 records the
-five decisions it forced. The ticket stays open because the run above has
-not happened: it needs an interactive, unisolated session with
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and the session that wrote the
-loop was worktree-isolated — the one shape §15.10 says cannot drive the full
-path. Close this ticket from that run, not from a reading.
+`skills/project-lead/references/full-path.md`; design §15.30 records the five
+decisions it forced, and §15.31 the environment probe that corrected two of
+them.
+
+It then ran, the same day, on `jerridan/convert-keys-js` — two packages, two
+territories, two IC teammates, a squash merge each with a suite run, and a
+draft PR (#7) with zero escalations. Design §15.35 records what that proved
+and the nine things it found. §12's plan-approval probe is closed: the
+message form works, and the project lead approved with added requirements
+rather than rubber-stamping.
+
+The ticket stays open because two of its three "Done when" clauses did not
+happen. No fix round ran — both package reviews returned `accepted` first
+time — and there was no kill-and-resume, so §10.1's recovery is still
+unproven. Finding §15.35g raises the stakes on that: an IC only commits per
+green step when the project lead says so in the plan approval, and an IC that
+commits once at the end turns a crash into a large dirty worktree — the
+branch of §10.1's table that has never run.
+
+Close this from a run that forces a fix round and survives a kill, not from a
+reading and not from the run above.
 
 Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23, §15.30;
 `record-format.md`; `ic-contract.md`; `full-path.md`.

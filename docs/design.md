@@ -1966,3 +1966,53 @@ Deliberately different:
        the better shape, but §10.1's recovery reads this file, and a format
        that varies per run is one recovery cannot depend on. Undecided:
        either the reference adopts the array or the loop is held to the map.
+
+    f. **The state machine has no word for "reviewed, not yet merged".** Both
+       packages passed through `accepted`, a value `record-format.md` does not
+       define, between `in-flight` and `integrated`. It is not a slip: it
+       happened twice, in the same place, because the full path genuinely has
+       that state and the simple path does not. Merges happen one at a time
+       at step 9, after every package is reviewed, so a package really is
+       finished and waiting. On the simple path nothing merges and step 12
+       marks the package `integrated` in place, so the four states were
+       designed against a shape where review and integration are one moment.
+       The window is short but it is exactly when a crash is likeliest — the
+       project lead is running merges and suites — and `--resume` would then
+       read a state its own table does not define. Recommend adding
+       `in-flight -> accepted -> integrated`, because recovery is the
+       argument: with `accepted` recorded, resume knows the review already
+       passed and does not redo it, which `git log` alone cannot tell it.
+
+    g. **"Commit after every green step" does not hold unless the project
+       lead repeats it.** `ic-docs` made four commits, one per section plus a
+       proofread pass; `ic-src` made one commit for 204 lines. Same contract,
+       same session, same run. The difference is that the project lead's plan
+       approval told `ic-docs` to commit per section and told `ic-src`
+       nothing. So the contract's own Commit-discipline line did not carry
+       the behaviour on its own. That line's stated purpose — bounding crash
+       loss to one increment — is a recovery property, which is what T6
+       depends on, so either `ic-contract.md` states it more strongly or
+       `full-path.md` step 5 makes it part of every plan approval. Isolating
+       this needed two ICs running in parallel under different instructions;
+       one package could never have shown it.
+
+    h. **The deliverable reviewer caught a defect in the project lead's own
+       shared-file edit.** Its README sentence promised "a worked example of
+       each converter" under a list of four functions, while `docs/USAGE.md`
+       covers three by the run's own decision D5. No package reviewer could
+       have seen it: the file belongs to no package and the edit happened
+       after both package reviews. Item 24 predicted this from the simple
+       path; the full path confirms it, and it is the clearest argument the
+       deliverable reviewer has yet produced for its own existence.
+
+    i. **Cleanup worked.** Both worktrees were removed and deregistered after
+       the PR opened, `worktrees.json` was emptied with a note, and the IC
+       branches were retained because their commits are squashed onto the
+       deliverable branch. Nothing was forced.
+
+    **What the run did not exercise.** No fix round — both package reviews
+    returned `accepted` first time — and no kill-and-resume. §10.1's recovery
+    is the one part of the full path still unproven, and finding (g) makes it
+    more urgent rather than less: an IC that commits once at the end turns a
+    crash into a large dirty worktree, which is the branch of §10.1's table
+    that has never run.

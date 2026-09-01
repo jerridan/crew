@@ -1787,36 +1787,35 @@ Deliberately different:
 
     The probe is not the T6 exercise. It proves the environment a full-path
     run needs, not the loop that runs in it.
-32. **Plan mode silently converts the project lead into a planner —
-    2026-09-01, at the T6 exercise launch.** The first attempt to run the full
-    path stopped before it dispatched anything. The skill loaded, read its own
-    step 1, and then said: "Plan mode is on, so I'll research and plan first
-    rather than dispatching the crew loop." It was right to. Plan mode forbids
-    the writes and spawns every step of either path is made of, so a project
-    lead inside it can only produce a plan and wait — which is the approval
-    gate this plugin exists to remove, restored by a session setting nobody
-    checked.
+32. **A project lead in plan mode plans instead of dispatching — observed
+    2026-09-01, at the T6 exercise launch.** The skill loaded, read its own
+    step 1, and said: "Plan mode is on, so I'll research and plan first rather
+    than dispatching the crew loop." The operator switched the session to auto
+    mode a moment later and the run proceeded normally, so **what the run
+    would have produced was never seen.** What is established is narrower than
+    it first looked, and worth keeping at that size.
 
-    Three things make this worth its own item rather than a footnote.
+    a. **The project lead can detect plan mode, and acts on it unprompted.**
+    Unlike permission mode (§15.31a), which a session cannot read at all, this
+    one reported its own mode before anyone asked and correctly changed what
+    it was going to do. That makes plan mode a check the project lead can
+    genuinely perform, which is why `SKILL.md` step 1 now tells it to stop and
+    say so rather than plan.
 
-    a. **It applies to both paths.** The simple path dispatches a subagent and
-       writes a record; the full path adds worktrees and teammates. Plan mode
-       blocks all of it. So the rule belongs in `SKILL.md` step 1, not in
-       `full-path.md` step 0 beside the teammate conditions.
+    b. **It applies to both paths**, so the rule belongs in `SKILL.md` step 1
+    and not beside `full-path.md` step 0's teammate conditions. Plan mode
+    forbids the writes and the spawns that every step of either path is made
+    of.
 
-    b. **The project lead can detect this one.** Unlike permission mode
-       (§15.31a), a session knows it is in plan mode — this one said so
-       unprompted, before being asked. That makes it a real check rather than
-       a launch requirement to document and hope for, which is why `SKILL.md`
-       tells the project lead to stop and say so.
+    c. **The risk, not yet observed:** a condition that degrades into "asks
+    you for approval" produces no error and a plausible plan, so it reads as
+    the product working correctly — in exactly the runs meant to prove no
+    approval was needed. This is why the rule is worth having even though the
+    failure was cut short. Do not cite it as a measured outcome.
 
-    c. **It fails in the most expensive way available.** Nothing errors. The
-       run reads as working, produces a plausible plan, and stops for a human
-       — so the failure looks like the product working correctly. A launch
-       condition that degrades into "asks you for approval" is invisible in
-       exactly the runs meant to prove no approval was needed.
-
-    Found by watching a run rather than by reading. The four conditions in
-    `full-path.md` step 0 came from probes and from the design; this one came
-    from starting the thing and seeing what it did, and it was the first
-    problem the exercise hit.
+    A first draft of this item claimed the run "stopped before it dispatched
+    anything" and described what it produced instead. Neither was observed;
+    both were inferred from one line of transcript caught while the operator
+    was mid-switch. The lesson generalizes past this item: a finding written
+    from a live pane is a claim like any other, and the pane is not a
+    completed run.

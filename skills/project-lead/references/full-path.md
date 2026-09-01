@@ -23,8 +23,8 @@ in a run stays unnamed, because you must read its result (design §3,
 
 ## 0. Check the launch conditions
 
-A teammate needs all four. Check them before you write the split, and
-escalate on any that fails — none of them can be fixed mid-run.
+Three you can check yourself. Check them before you write the split, and
+escalate on any that fails — none can be fixed mid-run.
 
 1. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set. With the flag off, a
    named agent launches as a plain subagent and every rule here is wrong.
@@ -33,14 +33,20 @@ escalate on any that fails — none of them can be fixed mid-run.
    (design §15.10, §15.23f).
 3. A display mode works: iTerm2 with its Python API, a session inside tmux,
    or `teammateMode: "in-process"`.
-4. Nothing will stop for a human. A teammate's permission prompts surface in
-   your session (design §15.12, §15.20), so one un-granted command stalls the
-   whole run. Either auto mode is on, or the grants a run needs are already
-   in the user's settings. Auto mode is the common case and it needs no grant
-   list (design §15.31a). You may not add grants yourself — settings are
-   configuration, and the principal owns them.
 
 State which condition failed. Do not start the run and discover it later.
+
+The fourth condition is **not yours to check**: nothing in the run may stop
+for a human. A teammate's permission prompts surface in your session (design
+§15.12, §15.20), so one un-granted command stalls the whole run. A session
+cannot read its own permission mode, so you cannot verify this in advance —
+the README names it as a launch requirement and the principal owns it. You
+may not widen it yourself either, because settings are configuration.
+
+What you do instead is fail fast on it. If your first dispatch stalls waiting
+for an approval, stop there and escalate as an `environment` block. Do not
+spawn the rest of the territories first; one stalled dispatch is a cheap
+lesson, and four is a wasted run.
 
 ## 1. Write the split
 

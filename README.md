@@ -169,25 +169,38 @@ no bisect.
 /plugin install crew@crew
 ```
 
-This gets you the agents above. Nothing dispatches them yet, so today this is
-worth doing only to read them or drive one by hand.
+This gets you the agents and both paths of `/crew:project-lead`.
 
-**When it does run, the parallel path needs agent teams**, which are
-experimental and off by default. Turn them on with
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your settings, and run
-interactively — `claude -p` never spawns a teammate. Display mode needs no
-setup: teammates run in-process in any terminal by default, and split panes
-(tmux or iTerm2) are an optional upgrade.
+### What a full-path run needs
 
-Without that variable crew still runs, but differently: a named agent launches
-as an ordinary subagent instead of a teammate. You keep the isolated context,
-the per-package model and a returned result. You lose the independent session,
-the direct messaging between agents, and the shared task list.
+The single-package path needs none of this. It runs one plain subagent on the
+current branch, with no worktree and no teammate. The parallel path needs four
+things, and the run stops on any of them.
 
-The single-package path needs none of it. It runs one plain subagent on the
-current branch, with no worktree and no teammate, and it is what stage 4 builds
-first — so the first working version of `/crew:project-lead` will not depend on
-agent teams at all.
+**Agent teams, which are experimental and off by default.** Turn them on with
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and run interactively — `claude -p`
+never spawns a teammate. Without the variable crew still runs, but differently:
+a named agent launches as an ordinary subagent instead of a teammate. You keep
+the isolated context, the per-package model and a returned result. You lose the
+independent session, the direct messaging between agents, and the shared task
+list.
+
+**A session that is not worktree-isolated.** The project lead verifies each IC
+with `git -C <its-worktree>`, and a worktree-isolated session is refused every
+such command. Start it from an ordinary checkout.
+
+**A display mode.** Teammates run in-process in any terminal by default, so
+this usually needs no setup. Split panes (tmux or iTerm2) are an optional
+upgrade.
+
+**A permission setup where nothing stops for a human.** A teammate's permission
+prompts surface in the project lead's session, so one unapproved command stalls
+the whole run — and crew cannot detect this in advance, because a session
+cannot read its own permission mode. Either run in a mode that approves
+automatically, or pre-approve what the run needs in your settings. Crew never
+widens your permissions itself. If the first dispatch stalls, the project lead
+escalates instead of spawning the rest.
+
 
 ## Credit
 

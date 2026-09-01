@@ -1730,15 +1730,29 @@ Deliberately different:
     worktree. It was told to attempt four things and to record rather than
     work around each failure. Nothing failed. Five findings.
 
-    a. **Under auto mode the grant set is empty.** Not one permission prompt
-       surfaced in the driving session while the teammate worked — not for
-       its writes, not for `git -C <worktree> status`, not for its commit.
-       §15.12's hazard is real but the classifier answers it, and this user
-       runs every session in auto mode. So `full-path.md` step 0 asks for the
-       property, not the mechanism: nothing stops for a human, by auto mode
-       **or** by pre-approved grants. The probe therefore yields no grant
-       strings, because none were ever requested — a settings-based run still
-       needs its list built some other way.
+    a. **Under an auto-approving permission mode the grant set is empty.**
+       Not one permission prompt surfaced in the driving session while the
+       teammate worked — not for its writes, not for `git -C <worktree>
+       status`, not for its commit. §15.12's hazard is real, and a
+       classifier that answers prompts removes it as completely as a
+       pre-approved allow list does. So the requirement is a property, not a
+       mechanism: nothing in the run stops for a human. The probe yields no
+       grant strings, because none were ever requested — a run that means to
+       satisfy the property with settings instead still needs its list built
+       some other way.
+
+       **Crew cannot detect which mechanism is in play, and does not try.** A
+       session cannot read its own permission mode, and the only direct probe
+       — issue a command that would prompt — fails by stalling, which is the
+       outcome the check exists to avoid. So the property is a launch
+       requirement named in the README, owned by whoever starts the run, and
+       `full-path.md` step 0 lists it apart from the three conditions the
+       project lead can actually verify. The project lead's own defence is to
+       fail fast: if the first dispatch stalls, escalate as an `environment`
+       block rather than spawning the remaining territories behind it.
+
+       Nothing else in either path branches on permission mode, so this is
+       the only place it enters the design.
 
     b. **Item 26b does not reproduce for an interactive teammate.** The write
        to `~/.claude/crew/probe-t6/reports/probe.md` was allowed, and the

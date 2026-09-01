@@ -1819,3 +1819,67 @@ Deliberately different:
     was mid-switch. The lesson generalizes past this item: a finding written
     from a live pane is a claim like any other, and the pane is not a
     completed run.
+33. **The first simple-path run against a repo with a real test suite —
+    2026-09-01, `convert-keys-js`.** Run as the setup for T6's exercise, from
+    an interactive session in auto mode. It reached a draft PR
+    (jerridan/convert-keys-js#6) with no escalation and no fix round: charter,
+    scout, spec, spec critic, split, branch, plan gate, IC, package review,
+    integration, deliverable review, PR. Every prior run had been against
+    crew itself, which has no suite, so several rules were executing for the
+    first time.
+
+    a. **Spend was measured in full, for the first time.** All six agents
+       reported `total_tokens` with `measured: true`, totalling 227,766
+       against the 2,000,000 ceiling. Item 26d recorded that spend cannot be
+       measured through a nested headless dispatch; this run shows that gap
+       belongs to that shape and not to §8. A project lead that spawns its own
+       subagents gets the number §8 assumes. This is also the first real
+       datum for item 3's placeholder ceiling: one small simple-path run costs
+       roughly 230k, so 2,000,000 buys about eight or nine of them.
+
+    b. **An acceptance criterion can be green without covering the work.**
+       `yarn check-types` exits 0, and `tsconfig.json` sets
+       `"files": ["src/index.ts"]`, so it type-checks only the graph reachable
+       from the barrel. Until the project lead added the export lines at
+       integration, the two new modules were unreachable and that pass was
+       vacuous — ts-jest was doing the real checking. The project lead noticed
+       unprompted, recorded the limit in its package-review adjudication, and
+       deferred the meaningful run to after the index edit. §7 says a green
+       run only proves the tree it ran on. The sharper form this run found:
+       a green run may not have read your files at all, and nothing in the
+       output says so. Worth carrying into any acceptance criterion that
+       names a type-check, a lint or a coverage gate over a file list.
+
+    c. **`<path>` had no owner.** `SKILL.md` step 10 and `full-path.md` step 7
+       both said to write the review diff to `<path>`, and no file said where.
+       The project lead invented `diff-converters-r0.patch` at the record
+       root. Sensible, but every run would invent its own name and a later
+       round could overwrite the diff an earlier review actually read.
+       `record-format.md` now owns a fourth output directory, `diffs/`, with
+       `diffs/<id>-r<n>.patch` and `diffs/<deliverable-id>-final.patch`. This
+       is a T4 defect that only appears against a repo whose diff is worth
+       writing down.
+
+    d. **The project lead read the target repo's conventions instead of
+       crew's.** It updated `package.json`'s `description`, put the entries
+       under the CHANGELOG's `Added` heading, and left `version` at 1.1.0 —
+       correct for a Keep a Changelog repo that bumps at release. Crew's own
+       `CLAUDE.md` requires a version bump on every content change, and none
+       of that leaked into someone else's project.
+
+    e. **The reviewers cleared a pre-existing bug rather than charging it.**
+       `require('dist/index.js')` throws `ReferenceError: self is not
+       defined`. The deliverable reviewer reproduced it at base `d744e8a` in
+       an isolated worktree, listed it under observations it explicitly did
+       not raise as findings, and the project lead named it in the PR body
+       instead of fixing it. That is a real bug in the published package and
+       is out of this goal's scope.
+
+    **What it did not test.** The goal was picked to split into two packages
+    and did not: both converters must register in `src/utils/ConvertKey.ts`,
+    so their file sets could not be disjoint, and §5's merge rule correctly
+    collapsed them into one. That was a flaw in the goal, not in the
+    decomposition — but it means this run exercised the simple path, and T6's
+    full path is still unexercised. A goal that splits in this repo needs one
+    code package and one package outside `src/`, because every converter
+    funnels through the same registry and the same barrel.

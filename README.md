@@ -173,33 +173,22 @@ This gets you the agents and both paths of `/crew:project-lead`.
 
 ### What a full-path run needs
 
-The single-package path needs none of this. It runs one plain subagent on the
-current branch, with no worktree and no teammate. The parallel path needs four
-things, and the run stops on any of them.
+Four things. Miss any one and the run stops.
 
-**Agent teams, which are experimental and off by default.** Turn them on with
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and run interactively — `claude -p`
-never spawns a teammate. Without the variable crew still runs, but differently:
-a named agent launches as an ordinary subagent instead of a teammate. You keep
-the isolated context, the per-package model and a returned result. You lose the
-independent session, the direct messaging between agents, and the shared task
-list.
+| Requirement | How |
+|---|---|
+| Agent teams | Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and run interactively |
+| An unisolated checkout | Start from an ordinary clone |
+| A display mode | Nothing to do — in-process by default. tmux or iTerm2 adds split panes |
+| Permissions that never stop for a human | A permission mode that approves automatically, or your own allow rules |
 
-**A session that is not worktree-isolated.** The project lead verifies each IC
-with `git -C <its-worktree>`, and a worktree-isolated session is refused every
-such command. Start it from an ordinary checkout.
+The single-package path needs none of them. It runs one subagent on your
+current branch.
 
-**A display mode.** Teammates run in-process in any terminal by default, so
-this usually needs no setup. Split panes (tmux or iTerm2) are an optional
-upgrade.
-
-**A permission setup where nothing stops for a human.** A teammate's permission
-prompts surface in the project lead's session, so one unapproved command stalls
-the whole run — and crew cannot detect this in advance, because a session
-cannot read its own permission mode. Either run in a mode that approves
-automatically, or pre-approve what the run needs in your settings. Crew never
-widens your permissions itself. If the first dispatch stalls, the project lead
-escalates instead of spawning the rest.
+Crew never widens your permissions itself. Without the teams variable it still
+runs, but a named agent becomes an ordinary subagent: you keep the isolated
+context, the per-package model and a returned result, and you lose the
+independent session, the messaging between agents, and the shared task list.
 
 
 ## Credit

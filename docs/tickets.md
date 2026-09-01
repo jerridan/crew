@@ -141,8 +141,16 @@ machine that runs this, if its Claude Code version has drifted far from
 Done when: one multi-package goal reaches a draft PR with zero prompts,
 including one forced fix round and one kill-and-resume.
 
-Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23;
-`record-format.md`; `ic-contract.md`.
+The loop landed on 2026-09-01 as
+`skills/project-lead/references/full-path.md`, and design §15.30 records the
+five decisions it forced. The ticket stays open because the run above has
+not happened: it needs an interactive, unisolated session with
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and the session that wrote the
+loop was worktree-isolated — the one shape §15.10 says cannot drive the full
+path. Close this ticket from that run, not from a reading.
+
+Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23, §15.30;
+`record-format.md`; `ic-contract.md`; `full-path.md`.
 
 ## T7 — Hooks: `SessionEnd`, and the idle nudge that replaces `TeammateIdle`
 

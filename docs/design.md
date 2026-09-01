@@ -794,7 +794,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 2 | `crew:ic` + `crew:ic-instructions` + `crew:package-reviewer`, driven by hand | One package of each kind reaches a reviewed, accepted result with zero prompts |
 | 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
-| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts |
+| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **written 2026-09-01 (§15.30), not yet exercised** |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
 
 ### 13.1 Hooks
@@ -1644,3 +1644,79 @@ Deliberately different:
     telling it what to do — `probe-bot` asked its project lead to remove the
     hook, and the project lead refused because the config belonged to another
     session. That was judgment, not instruction.
+30. **The full path is written — five decisions the design had not stated,
+    2026-09-01 (T6).** `skills/project-lead/references/full-path.md` carries
+    the loop for a deliverable with more than one package: launch conditions,
+    the split critic, worktrees, named IC teammates, the plan gate by
+    message, per-package squash merges with a suite run each, promotion,
+    cleanup and `--resume` recovery. `SKILL.md` branches to it at step 5 and
+    keeps the simple path in its own steps 6 to 14. Writing it forced five
+    decisions.
+
+    a. **The full path is a sixth reference, not more `SKILL.md`.** The body
+       was already at the writing standard's 200-line cap, and the full path
+       is longer than the simple path it replaces. Splitting it also matches
+       how it runs: a simple-path run never reads it. Trimming `SKILL.md`
+       back under the cap removed three rules it stated twice — the `BLOCKED`
+       promotion rule (`band-rubric.md` owns it), the council row
+       (`autonomy-contract.md` owns it), and the draft-PR step, which
+       `full-path.md` now points at rather than repeats.
+
+       It bends the writing standard's reference-depth check, which says no
+       reference points to a second reference. `full-path.md` names
+       `record-format.md`, `band-rubric.md` and `ic-contract.md` as owners of
+       rules it will not restate. That is the existing idiom, not a new
+       exception — `band-rubric.md` already names `ic-contract.md`'s
+       `BLOCKED` row and `record-format.md`'s `band_history` row the same
+       way. The check bars a reader hop the file cannot avoid; naming the
+       owner of a rule the project lead has already read at step 1 is not
+       one.
+
+    b. **A full-path IC writes into its own worktree, never the record
+       root.** Item 26b left T6 to either find the grant that covers a
+       sensitive path or move the record. It does neither: the IC writes
+       `plan.md` and `report.md` into `<worktree>/.crew/`, and the project
+       lead copies both into `plans/` and `reports/`. The worktree is the one
+       location an IC certainly holds write rights over, the project lead
+       already reads it to verify, and the record stays canonical because the
+       project lead is the only writer. This also closes the gap that the
+       simple path's fallback cannot cover: a teammate's final message never
+       returns to the dispatcher as a tool result (§12), so "the final
+       message is the report" has no reader on the full path.
+
+    c. **`.crew/` goes in the worktree's `.git/info/exclude`.** Otherwise the
+       two scratch files show up in every package diff a reviewer reads, and
+       in `git status --porcelain` — which is exactly the command §10.1's
+       dirty-worktree check reads to decide whether to commit before
+       respawning. An unexcluded scratch file would make every clean worktree
+       look dirty.
+
+    d. **Worktrees live at
+       `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`.**
+       `record-format.md` previously showed `~/.claude/worktrees/crew/<name>`,
+       which item 26b's sensitive-path finding makes suspect for the same
+       reason it blocks the record root, and which has no goal segment to keep
+       two concurrent goals apart. A repo-local root is proven writable — this
+       repo's own sessions run in one — and git omits a registered worktree
+       from its parent's `git status`, so nothing there reads as untracked
+       work. The one hazard is a test runner that walks the directory;
+       `full-path.md` step 3 says to move the root out of the repo and record
+       why when that happens.
+
+    e. **Launch conditions are a step, not a preamble.** Three of the four —
+       the teams flag, an unisolated session, a working display mode — cannot
+       be fixed once a run is under way, and the fourth, the permission
+       grants, is configuration the project lead may not write for itself
+       (§15.12, §15.20). So `full-path.md` step 0 checks all four and
+       escalates, and `autonomy-contract.md`'s trigger 7 changed from "the
+       full path is not built" to a missing launch condition.
+
+    **Not yet exercised.** T6's "Done when" is a real multi-package run with
+    a forced fix round and a kill-and-resume, and that needs an interactive,
+    unisolated session with the teams flag. The session that wrote this was
+    worktree-isolated, which item 10 already names as the one shape that
+    cannot drive the full path. T6 stays open until the run happens. Two
+    things the run should settle: whether a teammate can write under
+    `~/.claude/crew/` at all, which would let (b) drop the copy hop; and
+    whether the plan-approval probe §12 still lists as pending behaves as the
+    documentation says, since the full path is where it finally matters.

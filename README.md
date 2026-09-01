@@ -101,12 +101,13 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 |---|---|
 | `crew:ic`, `crew:ic-instructions`, `crew:package-reviewer` | built, and driven end to end by hand |
 | The record format, band rubric, IC contract, writing standard | built |
-| `/crew:project-lead` — the loop that dispatches all of it | the simple path is built: one goal, one package, one subagent, to a draft PR |
-| `crew:split-critic` and the `split.md` format | built. The simple path has one package, so nothing dispatches it yet |
-| `crew:spec-critic` | built, and dispatched by the simple path |
-| `crew:deliverable-reviewer` | built, and dispatched by the simple path |
+| `/crew:project-lead` — the loop that dispatches all of it | the simple path is built and exercised: one goal, one package, one subagent, to a draft PR |
+| The full path — worktrees, IC teammates, merges, recovery | written, not yet exercised. One deliverable, several packages, one teammate per territory |
+| `crew:split-critic` and the `split.md` format | built, and dispatched by the full path |
+| `crew:spec-critic` | built, and dispatched by both paths |
+| `crew:deliverable-reviewer` | built, and dispatched by both paths |
 | `crew:researcher` | built, not dispatched yet |
-| Question routing and `decisions.md` | built, and run by the simple path |
+| Question routing and `decisions.md` | built, and run by both paths |
 | Council | not built |
 | Hooks | not built |
 

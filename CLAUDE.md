@@ -27,19 +27,17 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 4 are built: seven agents, six references, and
-`/crew:project-lead`'s **simple path** — one goal, one deliverable, one
-package, one unnamed subagent, from a goal string or a charter file to a draft
-PR. That loop dispatches `crew:spec-critic`, `crew:ic` or
-`crew:ic-instructions`, `crew:package-reviewer` and `crew:deliverable-reviewer`.
+Stages 0 through 5 are built, except the hooks: seven agents, seven
+references, and both of `/crew:project-lead`'s paths. The **simple path** is
+one package on one branch, driven by one unnamed subagent. The **full path**
+is several packages in worktrees, worked by named IC teammates, with a split
+critic, a squash merge per package and `--resume` recovery. It is **written
+but not yet exercised** — T6 stays open until a real run closes it.
 
-Nothing dispatches `crew:split-critic` or `crew:researcher` yet: one package
-has no sibling to overlap, and no tier calls a researcher. Stage 6 arrived in two halves: question routing
-and `decisions.md` are built, because the simple path cannot answer its own
-questions without them, and the council is not. The full path (worktrees,
-territories, teammates) and the hooks are stage 5, and neither exists. `docs/design.md` §13 holds the build order, and
-`docs/tickets.md` holds the backlog. Never write about an unbuilt stage as if
-it runs.
+Nothing dispatches `crew:researcher` yet. The council half of stage 6 is not
+built; its question routing and `decisions.md` are. `hooks/hooks.json` does
+not exist. `docs/design.md` §13 holds the build order and `docs/tickets.md`
+the backlog. Never write about an unbuilt stage as if it runs.
 
 ## Authority
 
@@ -51,6 +49,8 @@ Each reference owns one subject and is canonical for it:
 
 - `autonomy-contract.md` — how a question is routed, when the project lead
   escalates and to whom, and how a run's spend is counted.
+- `full-path.md` — the loop for more than one package: worktrees, IC
+  teammates, merges, promotion and recovery.
 - `record-format.md` — the record directory, every `state.json`,
   `worktrees.json` and `decisions.md` field, and every state transition.
 - `band-rubric.md` — which model a package or a council gets, and when to

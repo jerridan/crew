@@ -24,11 +24,11 @@ absolute.
 Three directories hold per-run output. Each has one writer and a fixed
 naming convention. Do not mix their contents.
 
-- **`reports/`** — one file per package, `reports/<id>.md`. Only that
-  package's own IC writes here. `state.json`'s `report_path` for a package
-  always equals `reports/<id>.md`.
-- **`plans/`** — one file per package, `plans/<id>.md`. The IC writes its
-  implementation plan here and waits for the project lead's go-ahead (design
+- **`reports/`** — one file per package, `reports/<id>.md`. It holds that
+  package's own IC's report and nothing else. `state.json`'s `report_path`
+  for a package always equals `reports/<id>.md`.
+- **`plans/`** — one file per package, `plans/<id>.md`. It holds the IC's
+  implementation plan, written before the project lead's go-ahead (design
   §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
   always equals `plans/<id>.md`. This stays separate from `reports/` because
   the project lead's idle check must find a *report* on disk before it accepts
@@ -57,6 +57,13 @@ naming convention. Do not mix their contents.
 
 The project lead never has to parse a review to find a report or a plan. It reads
 `report_path` or `plan_path` from `state.json` and opens that file directly.
+
+**Who writes into `plans/` and `reports/` depends on the path.** On the
+simple path the IC writes there itself, or returns the contents when the
+write is denied and the project lead transcribes them. On the full path the
+IC writes into its own worktree and the project lead copies the file in.
+Either way the file says how it arrived, so an audit can tell a first-hand
+file from a copy.
 
 ## Goal-slug uniqueness
 
@@ -374,7 +381,21 @@ describes: the initial prediction, then a promotion with its cause.
 
 ## `worktrees.json`
 
-IC name → worktree path → branch → `session_ids` → `orphaned`.
+IC name → worktree path → branch → `session_ids` → `orphaned`. The project
+lead writes it on the full path only; the simple path creates no worktree.
+
+**The path convention** is
+`<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`, and the IC on
+it is named `ic-<territory-slug>`. The `<goal-slug>` segment keeps two
+concurrent goals from colliding in one directory. Git omits a registered
+worktree from its parent's `git status`, so a worktree there never reads as
+untracked work in the deliverable branch.
+
+Each worktree also holds `.crew/`, listed in that worktree's
+`.git/info/exclude`. It is where its IC writes `plan.md` and `report.md`,
+and the exclude line is what keeps those two files out of every diff and out
+of `git status --porcelain`. The dirty-worktree check at recovery reads that
+same command, so an unexcluded scratch file would read as work to commit.
 
 **`session_ids` is a list, not a single id.** Design §13.1 makes the session
 id the only proof of worktree ownership, but `--resume` runs in a *new*
@@ -393,13 +414,13 @@ reconciled.
 ```json
 {
   "ic-logging-middleware": {
-    "worktree": "~/.claude/worktrees/crew/logging-middleware",
+    "worktree": "/Users/x/src/app/.claude/worktrees/crew/add-request-logging-a1b2/logging-middleware",
     "branch": "crew/logging-middleware",
     "session_ids": ["sess-a001"],
     "orphaned": false
   },
   "ic-logging-config": {
-    "worktree": "~/.claude/worktrees/crew/logging-config",
+    "worktree": "/Users/x/src/app/.claude/worktrees/crew/add-request-logging-a1b2/logging-config",
     "branch": "crew/logging-config",
     "session_ids": ["sess-b002", "sess-b003"],
     "orphaned": false
@@ -542,7 +563,8 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7)
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`
+- `<worktree>/.crew/` — writer: the IC (`plan.md`, `report.md`). Consumer: stage 5 (the project lead copies both into `plans/` and `reports/`)
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the project lead's idle nudge
 - `orphaned` — consumer: design §13.1 `SessionEnd` (writer); stage 5 `--resume` (prunes on it, design §10.1)

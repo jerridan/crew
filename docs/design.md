@@ -448,7 +448,8 @@ This is the same rule the project lead follows one level up: do everything
 that does not depend on the answer first, then ask once.
 
 An IC must never go idle with an unanswered question and no stated assumption.
-The `TeammateIdle` hook enforces this (section 13.1).
+The project lead enforces this: it verifies every IC before it accepts a
+package (section 7), and messages an IC that idles without one (section 13.1).
 
 **Blocking rule.** A pattern choice that changes the decomposition or an
 interface contract blocks — the project lead cannot split the work without it.
@@ -808,7 +809,7 @@ is how often it fires when no crew run is happening.
 
 | Hook | Fires | Job | Stage |
 |---|---|---|---|
-| `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Exit 2 to reject an IC that goes idle without a green test run, a written report, or a stated assumption — probed, §15.29. Refuses each package at most once. | **5** |
+| `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Was to exit 2 and reject an IC that idles with no report | **cut** — the project lead does this by message (below, §15.29) |
 | `SessionEnd` | once per session; a guard clause exits at once when no crew record exists | **Writes only.** Marks the run interrupted in `state.json` and lists its worktrees as orphaned. Deletes nothing. | 5 |
 | `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard — non-git commands only; a `cd` before git is denied (§15 item 23b) | **deferred** |
 | `PreToolUse` on `Agent` | every agent spawn | Provision a worktree at spawn time | **not needed** — the project lead does this itself |
@@ -841,66 +842,38 @@ Removal happens where an agent can reason about it and you can see it: on
 `/crew:project-lead --resume`, which prunes the orphaned worktrees this run
 registered, and never forces.
 
-**`TeammateIdle` ships in stage 5, not stage 2, with `SessionEnd`.** Exit 2
-blocks the idle — probed, §15.29 — so the two hooks are halves of one
-mechanism. The hook blocks an idle while a package is `in-flight`. Only
-`SessionEnd`'s `run_state: interrupted` marks a dead run's packages as no
-longer in flight.
+**`TeammateIdle` is cut. The project lead nudges by message instead.** The hook
+was to exit 2 when an IC idles with no report, and push it back to work. T5
+probed the mechanism and it does work (§15.29), but the same probe and its
+audit priced it, and it does not pay.
 
-That coupling holds, and the probe strengthened it (§15.29). The harness ends a
-refusal loop only after several *consecutive* blocks, and any tool call resets
-that count, so a working IC can be refused forever. Crew's own refusal cap
-below is the only real bound. Without `run_state: interrupted`, a refusal is
-also a lie — it tells a teammate to finish a package whose run is dead — and
-the staleness cutoff below is a guess at the same fact `SessionEnd` writes
-down. Ship them together.
+What the hook was worth: one saved dispatch. §7 already catches an IC that
+idles with no report, because the project lead verifies every IC's claim
+against `git` and the report file before it accepts a package. The hook only
+changed who fixes the miss — the IC in place, instead of a fix round.
 
-Five rules for it, all cheap, none optional:
+What it cost: a blocking hook that fires for every teammate on the machine,
+five guard rules, a refusal counter that needed a new file in the record with
+its own lifecycle, a payload whose published documentation is already wrong for
+this event, and a deprecated field in that payload. Crew has never observed the
+failure it prevents.
 
-- **Scope to the idling teammate, and fail open.** If the payload cannot identify
-  which teammate is idling, exit 0. A coarse "any package in flight" rule
-  livelocks a multi-IC run — an IC that legitimately finished is told to keep
-  working because a *different* IC is still busy, and it has nothing to do.
-- **Check the report file on disk**, not a `state.json` field. The project
-  lead owns `state.json`, so an IC cannot unblock itself through it.
-- **Ship a kill switch** — `CREW_DISABLE_IDLE_HOOK=1` — and a staleness cutoff
-  that ignores any run whose `state.json` has not been written for hours.
-- **Refuse a package at most once.** The block is a nudge, not a gate. The
-  harness's own cap ends a refusal loop only after several consecutive blocks,
-  and any tool call resets its count (§15.29), so an IC that keeps working can
-  be refused forever. A hook that refuses the same package again and again
-  burns tokens on a message the IC has already failed to act on. Refuse once,
-  write the reason, and let the second idle pass to the project lead's own
-  verification (§7). An IC holding a territory of
-  several packages (§5) can be refused once for each of them, because each
-  refusal names a different missing report.
-- **Count the refusals in a marker file the hook owns.** A hook process starts
-  fresh every firing, so a cap needs state on disk. Three stores are ruled out.
-  `state.json` breaks the rule above and races when several ICs idle at once.
-  The hook's own history is unreadable: the payload's `transcript_path` names
-  the parent session, never the idling IC's transcript (§15.29). A count the IC
-  reports back is state the IC can misstate to unblock itself. So the hook
-  writes one marker per package beside that package's report in the run record,
-  and reads it to decide whether this idle is the first. `record-format.md`
-  owns the marker's name and its place in the record; T7 adds it. The project
-  lead deletes the marker **when it dispatches the package**, not when it
-  accepts it — a fix round on the same package must get its own refusal, and a
-  crashed project lead must not leave a marker that silences the next run. An
-  IC never writes it, so an IC still cannot unblock itself.
+And the risk was the wrong shape. The harness stops a refusal loop only after
+several *consecutive* blocks, and any tool call resets that count (§15.29). So
+a working IC can be refused forever, and the only thing standing between a bug
+in crew's counter and a teammate stuck in a loop was crew's own cap. That is a
+poor trade for a saved dispatch.
 
-**Probed 2026-08-31 (T5).** Exit 2 blocks the idle, the stderr line reaches the
-teammate word for word inside a harness wrapper, and the payload names the
-idling teammate. §15.29 holds the payload fields, the two traps in them, the
-harness's consecutive-block cap, and what each answer changes.
+The replacement is one message. A project lead that sees an IC idle with no
+report sends it one: what is missing, and where to write it. **Probed
+2026-08-31:** a teammate replied `FIRST` and went idle, its project lead sent
+`SendMessage`, and the teammate re-engaged and replied `SECOND` 1.5 seconds
+later, with its context intact. Same one-turn save, no hook, no marker, and
+nothing that fires in a session crew is not running. §7 owns the check; §9.2
+owns the nudge that follows it.
 
-**Open: is this hook worth its cost?** §7 already catches an IC that idles with
-no report, so the hook only saves a fix-round dispatch. Against that stands a
-hook that fires for every teammate on the machine, five rules, a marker
-lifecycle, and a payload whose published documentation is already wrong. Crew
-has never observed the failure it prevents. T6 should count how often §7
-rejects an IC for a missing report, and T7 should ship the hook only if that
-count justifies it. `SessionEnd` does not wait on this: it is load-bearing on
-its own, because nothing else marks a dead run.
+`SessionEnd` is unaffected and still ships in stage 5. Nothing else marks a
+dead run, so it never depended on `TeammateIdle`.
 
 ---
 
@@ -985,9 +958,13 @@ Deliberately different:
 
    Decided 2026-08-29: the record carries the gate. `record-format.md` adds
    `plan_approved_at` per package, `null` until the project lead's
-   go-ahead. The `TeammateIdle` check lets an idle pass while
+   go-ahead. The idle check lets an idle pass while
    `plans/<id>.md` exists and `plan_approved_at` is `null`. The collision
    dissolves: a post-plan wait is visible in the record, not inferred.
+
+   Still true after the hook was cut (§15.29): the check now runs in the
+   project lead, which reads the same two record fields before it nudges an
+   idle IC. The gate moved; the fields it reads did not.
 9. **`decisions.md` needs a `Models:` line for councils.** §6.1 requires
    recording which model a council used (lines 373-374), and council spend
    is logged (lines 376-377) with its field, `spend.council_tokens`, defined
@@ -1055,8 +1032,10 @@ Deliberately different:
     Recommend a documented fallback: when the record root is confirmed
     unwritable, the IC's final message *is* the report, and it must say so
     explicitly. Without this, §13.1's planned `TeammateIdle` hook — which
-    checks for a report file on disk, not a message (line 842-843) — would
-    reject such an IC's idle forever, with no way for it to comply.
+    checked for a report file on disk, not a message — would have rejected
+    such an IC's idle forever, with no way for it to comply. The hook is now
+    cut (§15.29), which removes the trap but not the need for the fallback:
+    the project lead applies the same file check by hand (§7).
 14. **No IC used `SendMessage` to reach a live project lead, and one attempt named
     a target that does not exist.** Design §6.2 gives an IC exactly one
     escalation path: "`SendMessage` the project lead... ICs never escalate to
@@ -1634,27 +1613,34 @@ Deliberately different:
     implementation detail can change between versions. Crew must not depend on
     it in either direction.
 
-    Two consequences for stage 5 (T7):
+    **Decided 2026-08-31: the hook is cut.** The probe proved the mechanism
+    works and then priced it, and it does not pay. Its whole value was one
+    saved dispatch, because §7 already catches an IC that idles with no report.
+    Against that: a blocking hook in every session on the machine, five guard
+    rules, a refusal counter needing a new record file with its own lifecycle,
+    published documentation that is wrong for this event, a deprecated field in
+    the payload, and a failure crew has never observed. The cap finding makes
+    it worse, not better — with the harness bound gone for any working IC, a
+    bug in crew's own counter holds a teammate in a loop with nothing to stop
+    it. §13.1 carries the decision and what replaces it.
 
-    - **A refusal is a nudge, not a gate, and crew must supply the only bound.**
-      §13.1 caps it at one refusal per package. The real gate stays where §7
-      already puts it: the project lead verifies each IC's claim against `git`
-      and the report file, and an IC that idles with no report fails that check
-      whether the hook stopped it or not.
-    - **An uncapped refusal is a livelock, not just a cost.** Each refusal
-      re-invokes the model. Against a working IC the harness will not stop it,
-      so a hook with no cap of its own can hold an IC forever on a message it
-      has already failed to act on. That is the argument for the cap.
+    **The replacement, probed the same day.** A project lead can re-engage an
+    idle teammate with one message. `nudge-bot` replied `FIRST` and went idle
+    at 00:34:11Z; its project lead sent `SendMessage` at 00:34:18Z; the
+    teammate re-engaged and replied `SECOND` at 00:34:19Z, with its context
+    intact. One message, 1.5 seconds, and the same one-turn save the hook was
+    built for — without a hook that fires in sessions crew is not running.
 
-    One improvement the audit proposes and T7 should weigh: allow a second
-    refusal only when the IC did something since the first. Store the package
-    worktree's `HEAD` sha in the marker at refusal time, and refuse again only
-    if `git -C <worktree> rev-parse HEAD` has moved. That separates "went back
-    to work and stopped short again", which deserves a nudge, from "has nothing
-    to do", which never does.
+    Two things this probe leaves for whoever builds §9.2's idle handling. The
+    project lead must notice the idle, which it does today only when it reads
+    the idle notification, so the nudge belongs beside its §7 verification, not
+    in a separate watcher. And a nudge can be ignored just like a refusal: cap
+    it at one per dispatch, and let §7 fail the package if the second idle is
+    still empty.
 
-    One thing the probe did not settle: `probe-bot` messaged its project lead
-    to ask that the hook be removed. The project lead refused, because the hook
-    is config owned by another session. That is the right answer, and it is
-    luck rather than design — no rule in `ic-contract.md` tells an IC what to
-    do when a hook, not a reviewer, is what blocks it. T7 should say.
+    Two details worth keeping even though the hook is gone, because any future
+    hook meets them. `team_name` is deprecated in the payload. And an IC
+    blocked by a hook rather than a reviewer has no rule in `ic-contract.md`
+    telling it what to do — `probe-bot` asked its project lead to remove the
+    hook, and the project lead refused because the config belonged to another
+    session. That was judgment, not instruction.

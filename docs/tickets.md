@@ -114,18 +114,19 @@ right after.
 Done when: all three questions have probed answers recorded in design §15
 as a new finding.
 
-The probe ran on 2026-08-31 on Claude Code 2.1.252. All three answers, and
-one finding the ticket did not ask for — a block that lasts 11 refusals and
-then lets the teammate idle — are in design §15.29. §13.1 carries the two
-rules that follow from it: refuse each package at most once, and count the
-refusals in a marker file.
+The probe ran on 2026-08-31 on Claude Code 2.1.252. All three answers are in
+design §15.29, with two findings the ticket did not ask for. The refusal loop
+ends at a harness cap on consecutive blocks that any tool call resets, so a
+working IC can be refused forever. And a project lead can re-engage an idle
+teammate with one message, which does the hook's whole job. §13.1 cuts the
+hook on that evidence; T7 builds the nudge.
 
 Read first: design §15.29, §13.1, §12, §15.8.
 
 ## T6 — Full path: worktrees, territories, teammates
 
 Status: open
-Depends on: T4, T5
+Depends on: T4
 Stage: 5 (design §13)
 
 Extend `/crew:project-lead` with the full path (§9.2): worktrees and
@@ -143,35 +144,33 @@ including one forced fix round and one kill-and-resume.
 Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23;
 `record-format.md`; `ic-contract.md`.
 
-## T7 — Hooks: `TeammateIdle` and `SessionEnd`
+## T7 — Hooks: `SessionEnd`, and the idle nudge that replaces `TeammateIdle`
 
 Status: open
-Depends on: T5, T6
+Depends on: T6
 Stage: 5 (design §13.1)
 
-Ship `hooks/hooks.json` with the two stage-5 hooks, exactly as §13.1
-specifies: `TeammateIdle` blocks an idle only for the idling IC's own
-unreported, approved, in-flight package — and lets a plan-gate pause pass
-(`plan_approved_at` null, design §15.8); `SessionEnd` marks the run
-interrupted and its worktrees orphaned, writes only, deletes nothing.
-Include the kill switch, the staleness cutoff, and T5's refusal cap — each
-package refused at most once, counted in a marker file the hook owns and the
-project lead deletes at dispatch (§13.1, §15.29). `record-format.md` gains the
-marker's name and place. No hook ever removes a worktree.
+Ship `hooks/hooks.json` with one hook: `SessionEnd` marks the run interrupted
+and its worktrees orphaned, writes only, deletes nothing. Include the guard
+clause that exits at once when no crew record exists. No hook ever removes a
+worktree.
 
-First, answer §13.1's open question: does `TeammateIdle` pay for itself? T6
-counts how often §7 rejects an IC for a missing report. A count near zero means
-this ticket ships `SessionEnd` alone, which is load-bearing whatever the count
-says. The hook's stderr is the whole
-message the IC gets, so write it as an instruction: what is missing, and where
-to write it. Add the rule §15.29 found missing: what an IC does when a hook,
-not a reviewer, is what blocks it. `ic-contract.md` owns that rule.
+`TeammateIdle` is cut (design §13.1, §15.29). Its job moves into the project
+lead: when an IC idles with no report, the project lead messages it with what
+is missing and where to write it. Build that beside the §7 verification, which
+is where the project lead already reads the IC's report file and `git` log. Let
+a plan-gate pause pass — `plans/<id>.md` written and `plan_approved_at` null
+(§15.8) — and send at most one nudge per dispatch; a second empty idle fails
+the package instead.
 
-Done when: a crashed run's next `--resume` finds `run_state: interrupted`,
-and an IC idling without a report is rejected while a plan-gate pause is
-not.
+Add the rule §15.29 found missing, which outlives the hook: what an IC does
+when a mechanism, not a reviewer, is what blocks it. `ic-contract.md` owns it.
 
-Read first: design §13.1, §15.8, §15.29; `record-format.md`;
+Done when: a crashed run's next `--resume` finds `run_state: interrupted`, and
+an IC that idles without a report gets one nudge and finishes, while a
+plan-gate pause gets none.
+
+Read first: design §13.1, §15.8, §15.29, §7; `record-format.md`;
 `ic-contract.md`.
 
 ## T8 — Council, routing, `decisions.md`

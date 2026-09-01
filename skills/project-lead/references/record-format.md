@@ -31,10 +31,10 @@ naming convention. Do not mix their contents.
   implementation plan here and waits for the project lead's go-ahead (design
   §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
   always equals `plans/<id>.md`. This stays separate from `reports/` because
-  §13.1's `TeammateIdle` check must find a *report* on disk before it lets an
-  IC go idle, not a plan. The project lead's own decomposition is `split.md` at
-  the record root, named apart from `plans/` so that an IC told to "write its
-  plan into the record" cannot overwrite it.
+  the project lead's idle check must find a *report* on disk before it accepts
+  a package, not a plan (design §13.1). The project lead's own decomposition is
+  `split.md` at the record root, named apart from `plans/` so that an IC told
+  to "write its plan into the record" cannot overwrite it.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
   (`<n>` is the fix round, from `fix_rounds_used`),
@@ -182,7 +182,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
-| `plan_approved_at` | ISO-8601 UTC timestamp of the project lead's go-ahead on the plan (design §9.2 step 3); `null` until then. While it is `null` and `plans/<id>.md` exists, the IC's post-plan idle is an expected pause — the `TeammateIdle` check (design §13.1) lets it pass (design §15.8). |
+| `plan_approved_at` | ISO-8601 UTC timestamp of the project lead's go-ahead on the plan (design §9.2 step 3); `null` until then. While it is `null` and `plans/<id>.md` exists, the IC's post-plan idle is an expected pause — the project lead's idle check (design §13.1) lets it pass (design §15.8). |
 | `report_path` | always `reports/<id>.md`. Points into `reports/`. |
 
 ### State transitions
@@ -499,13 +499,13 @@ Every name this file defines, with what consumes it.
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
 - `plan_path` — consumer: Task 6 (`ic-contract.md`, plan-approval step); Task 7 (`crew:ic` writes it, design §9.2 step 3)
-- `plan_approved_at` — consumer: stage 5 (`TeammateIdle` check, design §13.1, §15.8); stage 4/5 (project lead writes it at the plan go-ahead)
+- `plan_approved_at` — consumer: stage 5 (the project lead's idle check, design §13.1, §15.8); stage 4/5 (project lead writes it at the plan go-ahead)
 - `report_path` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)
 
 **`state.json` state values** (shared by `packages[].state` and
 `deliverables[].state`, except `integrated` and `draft-pr-opened`)
 - `pending` — consumer: stage 4/5 (project lead loop dispatches from this state)
-- `in-flight` — consumer: stage 5 (project lead loop, `TeammateIdle` hook)
+- `in-flight` — consumer: stage 5 (project lead loop, idle check)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
 - `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
@@ -544,7 +544,7 @@ Every name this file defines, with what consumes it.
 **`worktrees.json` fields**
 - `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7)
 - `branch` — consumer: stage 5 (merge step, design §9.3)
-- `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the `TeammateIdle` hook
+- `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the project lead's idle nudge
 - `orphaned` — consumer: design §13.1 `SessionEnd` (writer); stage 5 `--resume` (prunes on it, design §10.1)
 
 **`decisions.md` entry fields**

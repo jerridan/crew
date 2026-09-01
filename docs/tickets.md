@@ -155,9 +155,14 @@ unreported, approved, in-flight package — and lets a plan-gate pause pass
 (`plan_approved_at` null, design §15.8); `SessionEnd` marks the run
 interrupted and its worktrees orphaned, writes only, deletes nothing.
 Include the kill switch, the staleness cutoff, and T5's refusal cap — each
-package refused at most once, counted in a marker file the hook owns (§13.1,
-§15.29). `record-format.md` gains the marker's name and place. No hook ever
-removes a worktree. The hook's stderr is the whole
+package refused at most once, counted in a marker file the hook owns and the
+project lead deletes at dispatch (§13.1, §15.29). `record-format.md` gains the
+marker's name and place. No hook ever removes a worktree.
+
+First, answer §13.1's open question: does `TeammateIdle` pay for itself? T6
+counts how often §7 rejects an IC for a missing report. A count near zero means
+this ticket ships `SessionEnd` alone, which is load-bearing whatever the count
+says. The hook's stderr is the whole
 message the IC gets, so write it as an instruction: what is missing, and where
 to write it. Add the rule §15.29 found missing: what an IC does when a hook,
 not a reviewer, is what blocks it. `ic-contract.md` owns that rule.

@@ -847,14 +847,13 @@ mechanism. The hook blocks an idle while a package is `in-flight`. Only
 `SessionEnd`'s `run_state: interrupted` marks a dead run's packages as no
 longer in flight.
 
-The first version of this paragraph gave a stronger reason: without
-`SessionEnd`, one crashed run blocks teammates on the machine forever. That
-reason died with the probe. The block is bounded, and the refusal cap below
-holds it to one, so a crashed run costs a later teammate one wasted refusal per
-package. The coupling stays for two smaller reasons. A refusal with no
-`run_state: interrupted` is a lie — it tells a teammate to finish a package
-whose run is dead. And the staleness cutoff below is a guess at the same fact
-`SessionEnd` writes down. Ship them together.
+That coupling holds, and the probe strengthened it (§15.29). The harness ends a
+refusal loop only after several *consecutive* blocks, and any tool call resets
+that count, so a working IC can be refused forever. Crew's own refusal cap
+below is the only real bound. Without `run_state: interrupted`, a refusal is
+also a lie — it tells a teammate to finish a package whose run is dead — and
+the staleness cutoff below is a guess at the same fact `SessionEnd` writes
+down. Ship them together.
 
 Five rules for it, all cheap, none optional:
 
@@ -866,24 +865,42 @@ Five rules for it, all cheap, none optional:
   lead owns `state.json`, so an IC cannot unblock itself through it.
 - **Ship a kill switch** — `CREW_DISABLE_IDLE_HOOK=1` — and a staleness cutoff
   that ignores any run whose `state.json` has not been written for hours.
-- **Refuse a package at most once.** The block is a nudge, not a gate: the
-  probe measured 11 refusals in 27 seconds, then the teammate idled anyway
-  (§15.29). A hook that refuses the same package again and again burns tokens
-  and still loses. Refuse once, write the reason, and let the second idle pass
-  to the project lead's own verification (§7). An IC holding a territory of
+- **Refuse a package at most once.** The block is a nudge, not a gate. The
+  harness's own cap ends a refusal loop only after several consecutive blocks,
+  and any tool call resets its count (§15.29), so an IC that keeps working can
+  be refused forever. A hook that refuses the same package again and again
+  burns tokens on a message the IC has already failed to act on. Refuse once,
+  write the reason, and let the second idle pass to the project lead's own
+  verification (§7). An IC holding a territory of
   several packages (§5) can be refused once for each of them, because each
   refusal names a different missing report.
 - **Count the refusals in a marker file the hook owns.** A hook process starts
-  fresh every firing, so a cap needs state on disk, and the rule above bars the
-  hook from `state.json`. The hook writes one marker per package beside that
-  package's report in the run record, and reads it to decide whether this idle
-  is the first. `record-format.md` owns the marker's name and its place in the
-  record; T7 adds it. The project lead deletes the marker when it accepts the
-  package. An IC never writes it, so an IC still cannot unblock itself.
+  fresh every firing, so a cap needs state on disk. Three stores are ruled out.
+  `state.json` breaks the rule above and races when several ICs idle at once.
+  The hook's own history is unreadable: the payload's `transcript_path` names
+  the parent session, never the idling IC's transcript (§15.29). A count the IC
+  reports back is state the IC can misstate to unblock itself. So the hook
+  writes one marker per package beside that package's report in the run record,
+  and reads it to decide whether this idle is the first. `record-format.md`
+  owns the marker's name and its place in the record; T7 adds it. The project
+  lead deletes the marker **when it dispatches the package**, not when it
+  accepts it — a fix round on the same package must get its own refusal, and a
+  crashed project lead must not leave a marker that silences the next run. An
+  IC never writes it, so an IC still cannot unblock itself.
 
 **Probed 2026-08-31 (T5).** Exit 2 blocks the idle, the stderr line reaches the
-teammate word for word, and the payload names the idling teammate. §15.29
-holds the payload, the retry behavior, and what each answer changes.
+teammate word for word inside a harness wrapper, and the payload names the
+idling teammate. §15.29 holds the payload fields, the two traps in them, the
+harness's consecutive-block cap, and what each answer changes.
+
+**Open: is this hook worth its cost?** §7 already catches an IC that idles with
+no report, so the hook only saves a fix-round dispatch. Against that stands a
+hook that fires for every teammate on the machine, five rules, a marker
+lifecycle, and a payload whose published documentation is already wrong. Crew
+has never observed the failure it prevents. T6 should count how often §7
+rejects an IC for a missing report, and T7 should ship the hook only if that
+count justifies it. `SessionEnd` does not wait on this: it is load-bearing on
+its own, because nothing else marks a dead run.
 
 ---
 
@@ -1558,8 +1575,9 @@ Deliberately different:
     Left open on purpose: `agents/researcher.md` accepting `medium-high` as a
     confidence value (item 27's other note). It is not a duplication, so T15
     does not carry it.
-29. **`TeammateIdle`: exit 2 blocks the idle, but only for a while — probed
-    2026-08-31 (T5).** The probe ran on Claude Code 2.1.252, in an
+29. **`TeammateIdle`: exit 2 blocks the idle, and only the harness's own cap
+    ends the loop — probed 2026-08-31 (T5), corrected the same day by an
+    audit.** The probe ran on Claude Code 2.1.252, in an
     interactive session inside `tmux` with
     `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. A temporary hook dumped its
     stdin, wrote `crew probe: refusing idle` to stderr, and exited 2. One
@@ -1571,11 +1589,13 @@ Deliberately different:
     1. **Exit 2 does block the idle.** `probe-bot` replied `READY`, tried to
        idle, and was re-invoked instead. The hook fired 11 times between
        21:53:53Z and 21:54:20Z.
-    2. **The stderr line reaches the teammate, word for word.** `probe-bot`
-       quoted `crew probe: refusing idle` back to its project lead and named
-       the hook as the reason it could not stop. The session transcript carries
-       the string 7 times. So the hook's stderr is the whole message an IC
-       gets: it must say what is missing and where to write it.
+    2. **The stderr line reaches the teammate, word for word, inside a wrapper
+       the harness writes.** The IC receives
+       `TeammateIdle hook feedback:` on one line, then
+       `[<path to the hook script>]: <the stderr>`. Two consequences: crew's
+       stderr need not say a hook is blocking, because the harness already
+       said so; and the hook's own script path is shown to the IC. The
+       teammate's transcript carries the refusal 11 times, once per firing.
     3. **The payload names the idling teammate.** Every dump carried
        `teammate_name` (`probe-bot`), `team_name` (`session-<parent sid>`),
        `session_id`, `cwd`, `transcript_path`, `permission_mode` and
@@ -1583,22 +1603,55 @@ Deliberately different:
        scoping rule it protects is buildable as designed: name the teammate,
        find its package, read its report file.
 
-    **The finding that changes the design: the block is not permanent.** After
-    11 refusals in 27 seconds, `probe-bot` idled anyway, on the same second as
-    the 11th firing. The refusals also tightened, from 6 seconds apart to 1.
-    Whether 11 is a fixed cap, a time budget, or something else is not
-    probed — the run measured one number, once.
+       Two traps in that payload. `team_name` is marked deprecated in the
+       2.1.252 schema — key nothing on it. And `transcript_path` names the
+       **parent** session's transcript, not the teammate's: the IC's own turns
+       live in `<parent transcript dir>/subagents/agent-a<name>-<hash>.jsonl`,
+       a path the payload never gives. A hook cannot read the idling IC's
+       conversation.
+
+       The published hook documentation is wrong for this event in 2.1.252. It
+       lists `agent_type` as the only event-specific field and omits
+       `teammate_name`. The observed payload carries no `agent_type`, and the
+       binary's schema marks `teammate_name` required. Believe the probe.
+
+    **The finding that changes the design, and the correction that changes it
+    again.** The probe saw 11 refusals in 27 seconds and then an idle, and
+    concluded the block is bounded. That conclusion was wrong. An audit the
+    same day found the mechanism in the 2.1.252 binary: a cap on *consecutive*
+    blocks, shared by `Stop`, `SubagentStop`, `TaskCompleted` and
+    `TeammateIdle` — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP??8`, overriding on the
+    ninth, counted in `stopHookBlockingCount`, and **reset to zero on any tool
+    call**. The observed 11 is 2 blocks, then `probe-bot` made a tool call
+    which reset the counter, then 9 more. The refusals speeding up from 6
+    seconds to 1 is not a backoff either — `probe-bot`'s replies simply got
+    shorter, ending as the bare word `READY.`
+
+    So the block is bounded only for a teammate that does nothing but emit
+    text. **A real IC that answers a refusal by running a test or reading a
+    file resets the counter every round, and the loop never ends by itself.**
+    Nothing in the documentation carries this cap, and an undocumented
+    implementation detail can change between versions. Crew must not depend on
+    it in either direction.
 
     Two consequences for stage 5 (T7):
 
-    - **A refusal is a nudge, not a gate.** The hook cannot hold an IC that has
-      nothing left to do. §13.1 now caps it at one refusal per package. The
-      real gate stays where §7 already puts it: the project lead verifies each
-      IC's claim against `git` and the report file, and an IC that idles with
-      no report fails that check whether the hook stopped it or not.
-    - **A refused IC with no work left burns tokens.** Each refusal re-invokes
-      the model. Eleven refusals cost eleven turns to reach the same idle. That
-      is the whole argument for the cap.
+    - **A refusal is a nudge, not a gate, and crew must supply the only bound.**
+      §13.1 caps it at one refusal per package. The real gate stays where §7
+      already puts it: the project lead verifies each IC's claim against `git`
+      and the report file, and an IC that idles with no report fails that check
+      whether the hook stopped it or not.
+    - **An uncapped refusal is a livelock, not just a cost.** Each refusal
+      re-invokes the model. Against a working IC the harness will not stop it,
+      so a hook with no cap of its own can hold an IC forever on a message it
+      has already failed to act on. That is the argument for the cap.
+
+    One improvement the audit proposes and T7 should weigh: allow a second
+    refusal only when the IC did something since the first. Store the package
+    worktree's `HEAD` sha in the marker at refusal time, and refuse again only
+    if `git -C <worktree> rev-parse HEAD` has moved. That separates "went back
+    to work and stopped short again", which deserves a nudge, from "has nothing
+    to do", which never does.
 
     One thing the probe did not settle: `probe-bot` messaged its project lead
     to ask that the hook be removed. The project lead refused, because the hook

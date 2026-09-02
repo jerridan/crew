@@ -174,9 +174,9 @@ One entry per deliverable (design §5):
 | `id` | referenced by each package's `deliverable` field |
 | `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). |
 | `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1) |
-| `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `abandoned`. `draft-pr-opened` is a deliverable's own terminal state, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. |
+| `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
-| `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then |
+| `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for a run that ends in a report and not a change, the record itself. |
 
 Deliverables run sequentially (design §5), so at most one is ever
 `in-flight`.
@@ -221,29 +221,36 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
   transition (design §10). Correcting integrated work never revises the same
   record — it creates a new package in `pending`.
 
-A deliverable follows the same shape, with `draft-pr-opened` in place of
-`integrated`:
+A deliverable follows the same shape, with `draft-pr-opened` and
+`work-complete` in place of `integrated`:
 
 ```
-pending ──▶ in-flight ──▶ draft-pr-opened   (terminal)
-   │             │
-   └────┬────────┘
-        ▼
-    abandoned                              (terminal)
+                        ┌──▶ draft-pr-opened   (terminal)
+pending ──▶ in-flight ──┤
+   │            │       └──▶ work-complete     (terminal)
+   │            │
+   └─────┬──────┘
+         ▼
+     abandoned                                 (terminal)
 ```
 
 - `pending → in-flight`: the project lead dispatches the deliverable's first
   package.
 - `in-flight → draft-pr-opened`: every package integrates and the project lead
   opens the draft PR (design §9.3).
+- `in-flight → work-complete`: the work is complete and reviewed, and the push
+  or the draft PR was impossible or refused (`SKILL.md` step 14).
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   deliverable (design §10).
+
+`draft-pr-opened`, `work-complete`, and `abandoned` are all terminal. None
+has an outgoing transition (design §10).
 
 These arrows are **transitions**: one-way project lead decisions. A
 **reconciliation** is different — after a crash, design §10.1 rewrites
 `state.json` to match git, and that correction may move a wrongly recorded
-value in either direction, including out of a mistaken `integrated` or
-`draft-pr-opened`.
+value in either direction, including out of a mistaken `integrated`,
+`draft-pr-opened`, or `work-complete`.
 
 ### At creation
 
@@ -578,7 +585,7 @@ Every name this file defines, with what consumes it.
 - `id` (deliverable) — consumer: `packages[].deliverable` cross-reference; `reviews/<deliverable-id>-*` filenames
 - `branch` (deliverable) — consumer: stage 5 (merge target, design §9.3)
 - `base` — consumer: stage 5 (recovery, `git log <base>..HEAD`, design §10.1)
-- `state` (deliverable) — consumer: stage 5 (integration and re-plan, design §9.3, §10); shares `pending`/`in-flight`/`abandoned` with a package's `state`, but not `integrated`
+- `state` (deliverable) — consumer: stage 5 (integration and re-plan, design §9.3, §10); shares `pending`/`in-flight`/`abandoned` with a package's `state`, but not `integrated` or `work-complete`
 - `state_changed_at` (deliverable) — consumer: a human auditing the record's timeline; stage 6
 - `pr_url` — consumer: stage 4 (draft PR opened in `draft-pr-opened`, design §9.3); Task 11
 
@@ -602,11 +609,13 @@ Every name this file defines, with what consumes it.
 - `report_path` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)
 
 **`state.json` state values** (shared by `packages[].state` and
-`deliverables[].state`, except `integrated` and `draft-pr-opened`)
+`deliverables[].state`, except `integrated`, `draft-pr-opened`, and
+`work-complete`)
 - `pending` — consumer: stage 4/5 (project lead loop dispatches from this state)
 - `in-flight` — consumer: stage 5 (project lead loop, idle check)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
 - `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
+- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14, `full-path.md` step 11); Task 11 (PR body)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
 
 **`state.json` band values** (canonical definitions live in Task 5's

@@ -120,8 +120,8 @@ prediction and promotion is logged, which turns the rubric into a measurement.
 | Agent | Model | Reasoning effort |
 |---|---|---|
 | Project lead | your session's | your session's |
-| IC, Instruction IC | the package's band: haiku, sonnet or opus | inherited — see below |
-| Scout | haiku or sonnet | inherited — see below |
+| IC, Instruction IC | the package's band: haiku, sonnet or opus | your session's |
+| Scout | haiku or sonnet | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |
 | Package reviewer | sonnet | high |
 | Researcher | sonnet, or opus for a deep question | high |
@@ -129,7 +129,7 @@ prediction and promotion is logged, which turns the rubric into a measurement.
 | Decomposition critic | opus | high |
 | Deliverable reviewer | opus | high |
 
-**Set your session effort before you start a run.** Effort cannot be passed to an agent at dispatch, so crew sets none for an IC or a scout. Design [§12](docs/design.md) has them inherit the session's.
+**Set your session effort before you start a run.** Effort cannot be passed to an agent at dispatch, so an IC and a scout work at the effort of the session you launched.
 
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's

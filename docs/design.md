@@ -2525,13 +2525,18 @@ Deliberately different:
     including `CLAUDE.md:81`, the line §15.44's medium run had placed at 44-45.
     A spawn-time `model` is safe. The raise-to-opus rule keeps its effort.
 
-    **Probe 2, inconclusive, and recorded because it is.** The question was
-    whether a subagent with no declared effort — an IC's exact shape — inherits
-    the parent session's. Identical citation task, `general-purpose` subagent,
-    parent at `low` and at `high`. **Both scored six of six.** A probe whose
-    arms both max out measures nothing, so this settles neither the inheritance
-    claim nor its opposite. A sharper probe needs a task that a low-effort
-    agent fails.
+    **Probe 2, inconclusive, and closed as not worth settling.** The question
+    was whether an agent with no declared effort — an IC's exact shape —
+    inherits the parent session's. Identical citation task, `general-purpose`
+    subagent, parent at `low` and at `high`. **Both scored six of six.** A
+    probe whose arms both max out measures nothing.
+
+    §15.46 then tried it on a real teammate and could not separate the causes
+    either. Stop here: **crew takes §12's claim as given — an IC and a scout
+    run at the effort of the session that launched the run.** No action depends
+    on proving it. Effort cannot be set per-agent either way, so the only move
+    available is to set the session's effort before starting, which the README
+    now says. A probe that changes no decision is not worth its cost.
 
     **What no probe here can reach.** Design §12's claim is about a
     **teammate**, and headless `-p` cannot spawn one. Probe 2 tested a
@@ -2546,3 +2551,33 @@ Deliberately different:
     actually ran. Confirm `--effort` bites before trusting it: on a trivial
     prompt `low` and `high` were identical, and only a question with room to
     think separated them (57 against 153 thinking tokens).
+
+46. **A project lead reported citation drift that was not there — 2026-09-02,
+    T8.** An interactive tmux session at `--effort low`, with
+    `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, spawned `crew:council-advocate`
+    as a **named teammate** and gave it §15.43's question. Three things came
+    out of it, only one of which was the one being looked for.
+
+    **A teammate cannot see its own effort.** Asked directly, it answered
+    "nothing in my system prompt, environment, or context states a reasoning
+    effort level or thinking budget." So no self-report can settle §15.45's
+    inheritance question, and the behavioural route is closed too: the teammate
+    anchored every citation correctly under a `low` parent, which is equally
+    explained by it keeping the definition's `high` and by §15.44's new
+    look-it-up rule working at `low`. The causes cannot be separated. §15.45
+    closes the question instead.
+
+    **The finding that matters was accidental.** The project lead session
+    reviewed the teammate's case and reported "line numbers are off by a few",
+    naming two. Checked against the files, **all seven anchors were correct**.
+    The project lead judged them by eye, from a file it had read earlier, and
+    was wrong — in the direction that penalises an advocate that did its job.
+    §6.1 puts citation checking on the judge, and a judge that skims is worse
+    than no check, because it produces a confident wrong verdict rather than an
+    absent one. `autonomy-contract.md`'s adjudication step now says to look
+    each cited line up and never judge an anchor by eye.
+
+    **The teammate mechanism itself worked.** A named `crew:ic` teammate
+    spawned at a spawn-time model, replied, went idle, took a follow-up message
+    and replied again — the re-engagement §15.29 relies on. The one permission
+    prompt was a write outside the worktree, which is what §15.12 predicts.

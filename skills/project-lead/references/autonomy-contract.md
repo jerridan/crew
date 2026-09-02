@@ -67,6 +67,10 @@ with no citation is not confidence, and it routes to a council.
    against the repo, and pick a winner. A case that cited a line that does not
    say what the advocate claimed loses on that. The judgment is the expensive
    part of a council, which is why the advocates run cheaper than you do.
+
+   **Look each cited line up. Never judge an anchor by eye.** A project lead
+   doing this from memory has already reported drift in citations that were
+   correct (design §15.46), which costs an advocate a point it earned.
 4. **Record it** — the section below.
 
 ### When a council is balanced

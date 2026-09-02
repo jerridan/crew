@@ -1,6 +1,6 @@
 # Tickets
 
-The build backlog, from the current state (stages 0-5 built: both paths
+The build backlog, from the current state (stages 0-6 built: both paths
 run) to the target state: a working three-tier hierarchy —
 lead → project leads → ICs (design §15.21).
 
@@ -228,7 +228,7 @@ Read first: design §13.1, §15.8, §15.29, §15.38-40, §7; `record-format.md`;
 
 ## T8 — Council, routing, `decisions.md`
 
-Status: open
+Status: done
 Depends on: T4
 Stage: 6 (design §13)
 
@@ -249,7 +249,20 @@ Done when: an architecture-moving question in a real run is resolved by a
 council, recorded with citations, models, and spend, with no human
 prompt.
 
-Read first: design §6, §6.1, §6.2, §15.9; `record-format.md`;
+The council landed on 2026-09-02. `agents/council-advocate.md` argues one
+assigned position; `autonomy-contract.md` owns the procedure — framing, the
+single batch, adjudication, the balanced-council escalation, and
+`spend.council_tokens`. `record-format.md` owns the council entry, which adds
+`Positions`, `Losing`, `Models` and `Spend`. Design §15.9 is decided, and
+§15.41 records why the advocate got its own agent definition rather than an
+inline `general-purpose` brief — a revision to design §3's Advocate row.
+
+The "in a real run" clause stays open, the way T7's nudge clause does. No run
+has convened a council. Close it from a run that hits a question it cannot
+answer inline, not from a rig: a council convened to test councils frames its
+own question and proves less than it appears to (§15.42).
+
+Read first: design §6, §6.1, §6.2, §15.9, §15.41; `record-format.md`;
 `band-rubric.md` council rules.
 
 ## T9 — The lead tier

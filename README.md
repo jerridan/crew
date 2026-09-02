@@ -5,7 +5,7 @@ goal to a project lead. It investigates, splits the work across implementers,
 has each piece reviewed by an agent that did not write it, and opens the PR. It
 asks you only when it cannot proceed.
 
-> **Status: it runs. Councils do not exist yet.**
+> **Status: it runs. No run has convened a council yet.**
 > One goal to a draft PR, either as a single package or split across parallel
 > worktrees. Both paths have been driven end to end against a real repo. See
 > [What exists today](#what-exists-today).
@@ -96,7 +96,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `crew:researcher` | built, not dispatched yet |
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
-| Councils | not built |
+| `crew:council-advocate`, and councils | built, not convened in a run yet |
 | Hooks | `SessionEnd` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports
@@ -145,7 +145,7 @@ failure belongs to one package with no bisect.
 | Deliverable reviewer | Reviews the whole deliverable before the draft PR opens. | yes |
 | Researcher | Answers one open question across several hops, and returns a brief with citations. | yes |
 | Scout | Answers one lookup for the project lead, then exits. | yes |
-| Advocate | Argues one assigned position in a council. | no |
+| Advocate | Argues one assigned position in a council. | yes |
 
 ## Install
 

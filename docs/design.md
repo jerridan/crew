@@ -64,7 +64,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 |---|---|---|---|
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
 | **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
-| **Advocate** | unnamed subagent (`general-purpose`) | sonnet | one position |
+| **Advocate** | unnamed subagent, new `crew:council-advocate` | sonnet | one position |
 | **Researcher** | unnamed subagent, new `crew:researcher` | per band | one question |
 | **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |
 | **Split critic** | unnamed subagent, new `crew:split-critic` | opus / high | one review |
@@ -338,9 +338,10 @@ without a citation is not confidence, and it routes to a council.
 Adapted from the `resolve-ticket` plugin.
 
 1. Frame 2 or more candidate positions. Cap at 3.
-2. Dispatch one advocate per position, in parallel, in a single batch. Each is
-   told: argue **for** your position, gather cited evidence from code and docs,
-   make the strongest case, and name the strongest objection to your own side.
+2. Dispatch one `crew:council-advocate` per position, unnamed, in parallel, in
+   a single batch. The definition carries the rules: argue **for** your
+   assigned position, gather cited evidence from code and docs, make the
+   strongest case, and name the strongest objection to your own side.
 3. The project lead adjudicates and picks a winner.
 4. Record the decision, the losing arguments, the citations, and a confidence
    level. Never record high confidence without a citation.
@@ -795,7 +796,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
-| 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
+| 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), unexercised by a run |
 
 ### 13.1 Hooks
 
@@ -975,6 +976,12 @@ Deliberately different:
    attribution is known. Do not add this field to `band-rubric.md` ahead of
    that; an unowned field name there would be the exact class of mismatch
    this document works to avoid.
+
+   Decided 2026-09-02 (T8): `record-format.md` owns the field, in a new
+   council-entry shape. A council entry carries four extra lines, not one —
+   `Positions`, `Losing`, `Models` and `Spend`. `Models` is one value, not one
+   per advocate, because every advocate in one council runs the same model.
+   `band-rubric.md` names the line and points at the file that defines it.
 10. **§12's "the workaround holds" row does not hold when the driving
     session is itself worktree-isolated.** Task 10's stage-2 run dispatched
     `crew:ic` from a headless `claude -p` session launched from inside this
@@ -2354,3 +2361,36 @@ Deliberately different:
     a and b are the difference between a hook that works and a hook that never
     matches, and neither was reachable by a probe whose author wrote both
     sides.
+
+41. **The advocate got its own agent definition, which revises §3 —
+    2026-09-02, T8.** §3's `Advocate` row said `general-purpose` subagent,
+    briefed inline. It now says `crew:council-advocate`.
+
+    The deciding argument is the tool boundary. A `general-purpose` dispatch
+    carries every tool, including `Write`, `Edit` and an unrestricted `Bash`,
+    and a council runs two or three of them in parallel while ICs hold
+    worktrees. An advocate that can edit is a hazard with no upside — it
+    argues, it never builds. `writing-standard.md` states the rule this rests
+    on: `tools` is a capability boundary, not a formality. Every other crew
+    role that must not edit already carries its own definition and its own
+    tool list: `spec-critic`, `split-critic`, `package-reviewer`,
+    `deliverable-reviewer`, `researcher`. The advocate is the same shape, and
+    it was the only one of the six left inline.
+
+    The second argument is drift. Six rules are the same in every council —
+    argue the assigned side, cite every claim, an instruction beats precedent,
+    volume is not evidence, name the strongest objection to your own side,
+    edit nothing. Retyped into two or three spawn prompts per council, they
+    are the exact duplication `CLAUDE.md` bans.
+
+    The cost is one more file the plugin loads, and one more place a council
+    rule could be stated twice. `band-rubric.md` still owns the model, and
+    `autonomy-contract.md` still owns the procedure. The definition owns only
+    how one advocate argues.
+
+42. **Stage 6 is built and no run has convened a council — 2026-09-02, T8.**
+    T8's "done when" asks for an architecture-moving question resolved by a
+    council in a real run. The build landed; that clause did not. It stays
+    open the way T7's nudge clause does, and it closes from a real run rather
+    than from a rig, because a council convened to test councils frames its
+    own question and proves less than it appears to.

@@ -28,17 +28,17 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 5 are built: seven agents, seven references, the
+Stages 0 through 6 are built: eight agents, seven references, the
 `SessionEnd` hook, and both of `/crew:project-lead`'s paths. The **simple
 path** is one package on one branch, driven by one unnamed subagent. The
 **full path** is several packages in worktrees, worked by named IC teammates,
 with a split critic, a squash merge per package and `--resume` recovery. Both
 paths have run end to end against a real repo with a test suite.
 
-Nothing dispatches `crew:researcher` yet. The council half of stage 6 is not
-built; its question routing and `decisions.md` are. `docs/design.md` §13 holds
-the build order and `docs/tickets.md` the backlog. Never write about an
-unbuilt stage as if it runs.
+Nothing dispatches `crew:researcher` yet, and no run has convened a council.
+`docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
+Never write about an unbuilt stage as if it runs, or about a built one as if a
+run has exercised it.
 
 ## Authority
 

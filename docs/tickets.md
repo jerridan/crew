@@ -1,7 +1,7 @@
 # Tickets
 
-The build backlog, from the current state (stages 0-4 built: the simple
-path runs) to the target state: a working three-tier hierarchy —
+The build backlog, from the current state (stages 0-5 built: both paths
+run) to the target state: a working three-tier hierarchy —
 lead → project leads → ICs (design §15.21).
 
 How to take a ticket:
@@ -174,7 +174,7 @@ Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23, §15.30;
 
 ## T7 — Hooks: `SessionEnd`, and the idle nudge that replaces `TeammateIdle`
 
-Status: open
+Status: done
 Depends on: T6
 Stage: 5 (design §13.1)
 
@@ -198,7 +198,19 @@ Done when: a crashed run's next `--resume` finds `run_state: interrupted`, and
 an IC that idles without a report gets one nudge and finishes, while a
 plan-gate pause gets none.
 
-Read first: design §13.1, §15.8, §15.29, §7; `record-format.md`;
+`hooks/hooks.json` and `hooks/session-end.py` landed on 2026-09-02. The hook was
+probed end to end: a seeded record plus `claude -p --session-id <uuid>
+--plugin-dir <repo>` left the run `interrupted` and its worktree `orphaned`,
+and left another session's worktree and a `complete` run untouched. Design
+§15.38 records the probe and three things it settles.
+
+The nudge is `full-path.md` step 5a, with `nudges_used` in the record and the
+mechanism-block rule in `ic-contract.md`. One clause of "done when" stays
+unproven: no crew run has yet produced a teammate that idles with no report, so
+the nudge has never fired against a real IC. §15.38 says so, and the next
+full-path run is what closes it.
+
+Read first: design §13.1, §15.8, §15.29, §15.38, §7; `record-format.md`;
 `ic-contract.md`.
 
 ## T8 — Council, routing, `decisions.md`

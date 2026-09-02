@@ -153,6 +153,36 @@ back with what to change. `SendMessage` the IC its go-ahead, and set
 While `plans/<id>.md` exists and `plan_approved_at` is `null`, that IC's
 idle is an expected pause and not a fault (design §15.8).
 
+## 5a. The idle nudge
+
+An IC's idle notification is what tells you it stopped. Read the record
+before you answer one, and sort the idle into one of three kinds. No hook
+does this — a message does (design §13.1, §15.29).
+
+| What the record holds | The idle means | What you do |
+|---|---|---|
+| `plans/<id>.md` exists, `plan_approved_at` is `null` | the plan gate | Nothing. Go to step 5. |
+| `reports/<id>.md` exists | the IC finished, or stopped and said why | Go to step 6. |
+| Neither | the IC stopped with nothing on disk | Nudge it, once. |
+
+An idle notification carries the IC's final message. When that message is
+the report itself — `ic-contract.md` makes it the report when the record
+write was denied — transcribe it to `reports/<id>.md`, say in the file that
+you transcribed it, and go to step 6. That is a report, not an empty idle.
+
+**One nudge per dispatch.** `SendMessage` the IC what is missing and the
+absolute path to write it to. Then increment `nudges_used` and write
+`state.json`, so a resumed session cannot nudge the same dispatch again.
+
+A second empty idle on the same dispatch gets no second nudge. Verify the
+worktree as step 6 says, commit any uncommitted work yourself, and treat the
+package as `BLOCKED` with cause `capability`. `band-rubric.md`'s promotion
+rules take it from there.
+
+`nudges_used` counts one dispatch, not the package's life. Reset it to 0
+whenever you dispatch that package again — a fix round, a next package, or a
+respawn after a crash.
+
 ## 6. Verify before you believe
 
 Read `reports/<id>.md`, then treat it as a claim and never as evidence. The

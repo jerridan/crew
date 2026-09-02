@@ -794,7 +794,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 2 | `crew:ic` + `crew:ic-instructions` + `crew:package-reviewer`, driven by hand | One package of each kind reaches a reviewed, accepted result with zero prompts |
 | 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
-| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). The hooks are the part still missing. |
+| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
 
 ### 13.1 Hooks
@@ -810,7 +810,7 @@ is how often it fires when no crew run is happening.
 | Hook | Fires | Job | Stage |
 |---|---|---|---|
 | `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Was to exit 2 and reject an IC that idles with no report | **cut** — the project lead does this by message (below, §15.29) |
-| `SessionEnd` | once per session; a guard clause exits at once when no crew record exists | **Writes only.** Marks the run interrupted in `state.json` and lists its worktrees as orphaned. Deletes nothing. | 5 |
+| `SessionEnd` | once per session; a guard clause exits at once when no crew record exists | **Writes only.** Marks the run interrupted in `state.json` and lists its worktrees as orphaned. Deletes nothing. | **built** — `hooks/session-end.py` (§15.38) |
 | `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard — non-git commands only; a `cd` before git is denied (§15 item 23b) | **deferred** |
 | `PreToolUse` on `Agent` | every agent spawn | Provision a worktree at spawn time | **not needed** — the project lead does this itself |
 
@@ -872,7 +872,7 @@ later, with its context intact. Same one-turn save, no hook, no marker, and
 nothing that fires in a session crew is not running. §7 owns the check; §9.2
 owns the nudge that follows it.
 
-`SessionEnd` is unaffected and still ships in stage 5. Nothing else marks a
+`SessionEnd` is unaffected and shipped in stage 5. Nothing else marks a
 dead run, so it never depended on `TeammateIdle`.
 
 ---
@@ -2198,3 +2198,49 @@ Deliberately different:
     those: the multi-package territory, the resume that re-enters at step 1,
     the fourth fix round. Runs and reviews cover different surfaces, and a
     green run is not evidence about an untaken branch.
+38. **`SessionEnd` ships, and it cannot tell a crash from a clean exit —
+    T7, probed 2026-09-02.** `hooks/hooks.json` registers one hook,
+    `hooks/session-end.py`. It marks every `active` or `blocked` run whose
+    `run.session_ids` hold the ending session's id as `interrupted`, and sets
+    `orphaned: true` on that run's worktrees with the same id. It writes two
+    files and deletes nothing.
+
+    **The probe.** A record was seeded under `~/.claude/crew/` with
+    `run_state: active` and one worktree, both carrying a chosen uuid. A
+    headless session ran with that uuid and this checkout loaded:
+    `claude -p --session-id <uuid> --plugin-dir <repo>`. The session ended, and
+    the record read `interrupted` with the worktree `orphaned: true`. A second
+    worktree in the same record, owned by a different session id, stayed
+    `false`, and the four real records on the machine were untouched. Bench
+    cases covered the rest: an unknown session id, a malformed payload, and a
+    missing `crew/` directory each exit 0 and write nothing.
+
+    Three things this settles.
+
+    a. **`--session-id` makes a hook testable headlessly.** `TeammateIdle`
+       needed an interactive session in tmux (§15.29). A hook that keys on the
+       session id needs only a seeded record and a chosen uuid, so this one was
+       proved end to end in a `-p` run.
+
+    b. **The hook fires on every session end, clean or not.** Nothing in the
+       payload separates a crash from a normal exit, and `reason` does not
+       carry it either. So `run_state: complete`, written by the project lead
+       when it opens the draft PR, is the only thing that protects a finished
+       run from being marked interrupted. A run the project lead left `active`
+       gets `interrupted` even when the human simply closed the terminal —
+       which is correct: nothing finished that run, and `--resume` moves it
+       back.
+
+    c. **The hook is the repo's first executable file.** It is `python3` and
+       stdlib only, because it edits JSON and a shell script cannot do that
+       without `jq`. A machine with no `python3` loses the marker and nothing
+       else — the run is unaffected, and recovery reconciles from git as it
+       always did (§10.1). Every failure inside the script is swallowed and
+       exits 0, because this hook runs in every session on the machine.
+
+    **What is still unproven.** The idle nudge (`full-path.md` step 5a) is
+    written from §15.29's probe, not from a run. No crew run has yet produced a
+    teammate that idled with no report, so the nudge, its one-per-dispatch cap
+    and the `BLOCKED` fallback on a second empty idle have never fired against
+    a real IC. The plan-gate exemption is the one branch three runs did
+    exercise, because every IC pauses there.

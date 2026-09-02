@@ -125,7 +125,7 @@ Read first: design §15.29, §13.1, §12, §15.8.
 
 ## T6 — Full path: worktrees, territories, teammates
 
-Status: open
+Status: done
 Depends on: T4
 Stage: 5 (design §13)
 
@@ -153,16 +153,21 @@ and the nine things it found. §12's plan-approval probe is closed: the
 message form works, and the project lead approved with added requirements
 rather than rubber-stamping.
 
-The ticket stays open because two of its three "Done when" clauses did not
-happen. No fix round ran — both package reviews returned `accepted` first
-time — and there was no kill-and-resume, so §10.1's recovery is still
-unproven. Finding §15.35g raises the stakes on that: an IC only commits per
-green step when the project lead says so in the plan approval, and an IC that
-commits once at the end turns a crash into a large dirty worktree — the
-branch of §10.1's table that has never run.
+A third run on the same repo closed the remaining two clauses the same day —
+`toTitleCase` plus `docs/OVERRIDES.md`, draft PR #8. A fix round was forced on
+a real defect the package reviewer had missed (a dead `.toLowerCase()` that
+`lodashSnakeCase` makes unreachable): fixed, re-diffed as `-r1`, re-reviewed,
+accepted, with `fix_rounds_used` persisted at 1. The pane was then killed with
+one package merged and the record stale on both; a fresh session reconciled
+from git, corrected both packages to `integrated`, appended rather than
+overwrote the session ids in `state.json` and `worktrees.json`, re-dispatched
+nothing, and carried the run to the PR. Design §15.36 records that run.
 
-Close this from a run that forces a fix round and survives a kill, not from a
-reading and not from the run above.
+Two transitions stay unproven and belong to T7, not here: `run_state` never
+became `interrupted` and no worktree was ever marked `orphaned`, because the
+`SessionEnd` hook that writes both does not exist. Recovery was therefore
+tested against a record that still claimed the dead run was `active`, which is
+the harder case, not the easier one.
 
 Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23, §15.30;
 `record-format.md`; `ic-contract.md`; `full-path.md`.

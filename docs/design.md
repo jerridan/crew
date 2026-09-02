@@ -2016,3 +2016,104 @@ Deliberately different:
     more urgent rather than less: an IC that commits once at the end turns a
     crash into a large dirty worktree, which is the branch of §10.1's table
     that has never run.
+36. **T6 closed: the fix round and the kill-and-resume, on the third run —
+    2026-09-01, `convert-keys-js` PR #8.** Goal: a `toTitleCase` converter and
+    `docs/OVERRIDES.md`. Two packages, two territories, two IC teammates, one
+    forced fix round, one crash, one resume, one draft PR. Claude Code 2.1.258
+    — a version newer than item 35's run, which updated itself between the
+    two.
+
+    a. **The forced fix round ran on a real defect the reviewer missed.**
+       `titleCase` mapped each word to `word.charAt(0).toUpperCase() +
+       word.slice(1).toLowerCase()`, and `lodashSnakeCase` returns lowercase
+       by contract, so that `.toLowerCase()` could never fire. The package
+       review returned `accepted` with no findings. Forced by a message to the
+       project lead, the round removed the dead call in one commit, wrote
+       `diffs/titlecase-converter-r1.patch`, re-reviewed, and returned
+       `accepted` with `fix_rounds_used` persisted at 1. The loop's return
+       edge — every round goes back through verification and review, and the
+       step exits only on `accepted` — is the control-flow gap item 25 found
+       by reading. It is now confirmed by running.
+
+    b. **Recovery works, and it was tested against a record that lied.** The
+       pane was killed with `overrides-docs` merged and `titlecase-converter`
+       merged seconds later, while `state.json` still called both `in-flight`
+       and the run `active`. A fresh session read git rather than the record,
+       corrected both packages to `integrated`, kept `fix_rounds_used`,
+       re-dispatched nothing, and finished the run. Rule 2 of §10.1 —
+       reconcile from git, then correct the record — is the rule that carried
+       it, and it carried it against a two-package divergence rather than a
+       toy one.
+
+    c. **The append-only session rule held in both files.** `--resume` added
+       its session id to `run.session_ids` and to every entry in
+       `worktrees.json`, overwriting neither. That rule exists because resume
+       runs under a new id and ownership matching would otherwise fail on the
+       first resume — the exact case that had never been exercised.
+
+    d. **`interrupted` and `orphaned` remain unproven, and that belongs to
+       T7.** Nothing marked the dead run interrupted or its worktrees
+       orphaned, because the `SessionEnd` hook that writes both does not
+       exist. So `record-format.md`'s `interrupted -> active` transition has
+       still never fired, and §10.1's "clear `orphaned` once reconciled" step
+       had nothing to clear. This makes the run a harder test rather than an
+       easier one: recovery had to work from a record that claimed the dead
+       run was live.
+
+    e. **The escalation path fired for the first time, on a council-route
+       question.** The project lead could not settle what `toTitleCase` should
+       produce for `object_key` from the repo or any instruction, and it
+       escalated rather than guessing — recorded with all four fields, an
+       answer, and `run_state` back to `active`. It classified the trigger
+       correctly as §6 trigger 3, a council-route question it could not answer
+       with a citation, not a preference question: the output shape of a new
+       exported function is a public-interface judgment. Councils are not
+       built, so the contract's degraded row sent it to a human. With T8 it
+       would have been answered inside the run. This is the first concrete
+       case where the missing stage cost an interruption.
+
+    f. **The re-spec loop fired for the first time too.** `crew:spec-critic`
+       returned `re-spec needed` with one `[Critical]`: R1's acceptance
+       criterion said mirror `toCamelCase.spec.ts`, and R3 required inputs
+       that file does not contain, so the two could not both hold. The project
+       lead revised the spec, re-dispatched, and got `ready to split` on r2 —
+       before any IC was spawned, which is the gate's whole purpose.
+
+    g. **No adjudication was written anywhere in this run.** Neither spec
+       review nor the deliverable review carries the "Adjudication by the
+       project lead" section that both earlier runs appended to every review,
+       and `decisions.md` has no entry for the `[Critical]` either. `SKILL.md`
+       step 4 requires pushing back in writing but never says where an
+       adjudication is written; the first two runs invented the convention of
+       appending it to the review file and this one did not. The gap is in the
+       instruction, not in the run. `review-output.md` is the file that should
+       own the location, since it already owns the shape of what a review
+       returns.
+
+    h. **Artifact names keep drifting wherever `record-format.md` is
+       silent.** The acceptance checklist a prose package needs — design §5
+       invariant 1's "a written checklist verified by a named reviewer" —
+       landed at `reviews/overrides-docs-checklist.md`, while item 35's run
+       put its equivalent at `diffs/usage-guide-r0-checklist-target.md`. They
+       are not even the same artifact: one is the checklist, the other a copy
+       of the finished document. Both are required by the design and neither
+       has a defined home. Same class as the `<path>` gap in item 33, and the
+       same fix: name it, or every run invents something reasonable and
+       different.
+
+    i. **Worktree and IC naming drifted from a rule that does exist.**
+       `full-path.md` step 3 says the worktree directory, the branch and the
+       IC name all take the **territory** slug. This run used package ids —
+       `worktrees/titlecase-converter`, `ic-titlecase-converter` — where item
+       35's run correctly used `worktrees/src` and `ic-src`. Harmless while
+       each territory holds one package, wrong the moment a territory holds
+       several, which is the case territories exist for.
+
+    j. **A run's model choices are unverifiable.** Item 35d found three
+       opus-defined critics silently dispatched at sonnet, and could only find
+       it because that run's reviews happened to record the model. This run's
+       reviews record none, so whether the `band-rubric.md` fix took effect
+       cannot be confirmed from the record — only weakly inferred from the
+       absence of a model label in the transcript. A rule nothing can audit is
+       a weak rule: `review-output.md` should require every review to state
+       the model it ran at.

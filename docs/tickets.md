@@ -257,10 +257,17 @@ single batch, adjudication, the balanced-council escalation, and
 §15.41 records why the advocate got its own agent definition rather than an
 inline `general-purpose` brief — a revision to design §3's Advocate row.
 
-The "in a real run" clause stays open, the way T7's nudge clause does. No run
-has convened a council. Close it from a run that hits a question it cannot
-answer inline, not from a rig: a council convened to test councils frames its
-own question and proves less than it appears to (§15.42).
+A council then ran by hand, the same day, on T10's open question — three
+advocates in one batch, every citation checked, and a decision that split the
+question rather than picking one advocate's side. §15.43 records what it
+proved, what it cost (169,257 tokens for three sonnet advocates), and the
+defect it found: a hand-dispatch drops an agent's frontmatter, so neither the
+model nor the effort in the definition was in force.
+
+The "in a real run" clause stays open. Nothing has convened a council from
+inside `/crew:project-lead`, so the routing that reaches one, the
+`decisions.md` write and the balanced-council escalation are all unexercised.
+Close it from a run that hits a question it cannot answer inline (§15.42).
 
 Read first: design §6, §6.1, §6.2, §15.9, §15.41; `record-format.md`;
 `band-rubric.md` council rules.
@@ -296,9 +303,17 @@ grow the specialist's list to cover reader-facing prose, or name a
 different owner. Record the decision in design §15.17 and align §3.1,
 `agents/ic-instructions.md`, and `writing-standard.md`'s README note.
 
+The decision is made. T8's first council settled it on 2026-09-02: a README
+goes to `crew:ic-instructions` as a fifth container type, and a PR body, an
+issue and a comment stay with the project lead. §15.17 carries it and §15.43
+the council. What remains here is the alignment — §3.1,
+`agents/ic-instructions.md` and `writing-standard.md`'s README note — and one
+sub-question the council raised: whether a specialist named `ic-instructions`
+whose container list now includes non-instructions needs a different name.
+
 Done when: the four files agree and §15.17 reads "Decided".
 
-Read first: design §15.17, §3.1; `writing-standard.md`.
+Read first: design §15.17, §15.43, §3.1; `writing-standard.md`.
 
 ## T11 — Design the investigation path
 

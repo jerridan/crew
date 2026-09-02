@@ -1094,6 +1094,26 @@ Deliberately different:
     the specialist's container list should grow to include a README and
     other reader-facing prose, or a README needs a different owner. This
     document does not decide which.
+
+    **Decided 2026-09-02 by council** (§15.43), in the two halves the council
+    forced:
+
+    - **A README, and any reader-facing file that is a deliverable in its own
+      right, goes to `crew:ic-instructions` as a fifth container type.** §3.1's
+      own rule decides it: split an IC when the definition of done changes, not
+      when the subject changes. The definition of done does not change — a
+      written checklist verified by a reviewer, either way. One checklist item
+      is skipped and the prose rules invert, and `writing-standard.md` already
+      carries both branches in one file.
+    - **A PR body, an issue and a comment stay with the project lead.** They
+      are written after every package merges, out of `spec.md` and
+      `decisions.md`, so they have no sibling to be disjoint from and nothing
+      downstream consumes them. §5's dispatchability invariants cannot be met
+      by them, and §9.3 already has the project lead write the PR body.
+
+    T10 still owns the file alignment this implies, and one sub-question the
+    council raised: a specialist named `ic-instructions` whose container list
+    now includes non-instructions may need a different name.
 18. **Should an environmental block and a capability block get the same
     `BLOCKED` response?** `ic-contract.md`'s `BLOCKED` row directs the project
     lead to promote the package one band up, or stop the run at a breaker.
@@ -2394,3 +2414,49 @@ Deliberately different:
     open the way T7's nudge clause does, and it closes from a real run rather
     than from a rig, because a council convened to test councils frames its
     own question and proves less than it appears to.
+
+43. **The first council ran, by hand, and the mechanism worked — 2026-09-02,
+    T8.** Three advocates, one batch, on a real open question from this repo:
+    T10's owner for reader-facing prose. Positions were assigned, not
+    discovered — A grow `crew:ic-instructions`, B add a second prose
+    specialist, C the project lead owns it. §15.17 carries the decision.
+
+    **What the shape produced.** Every advocate returned the definition's
+    report shape without being shown it in the prompt — it read the file. Every
+    citation was checked against the repo, and every one held but a truncated
+    sentence in C's evidence list. No advocate hedged toward the middle, and
+    each named a genuine objection to its own side. Two of those objections did
+    real work: C's admitted its strongest citation was the PR body and
+    transferred to a README only by analogy, which is what the adjudication
+    turned on, and A's proposed a rename rather than defending the name. The
+    `Confidence` line paid for itself: B's `medium`, with its stated reason
+    (no repo precedent that a split is how this codebase resolves a forked
+    acceptance mechanism), was a more useful signal than its argument.
+
+    **The adjudication split the question rather than picking a side.** A won
+    for a README; C won for a PR body, an issue and a comment. No advocate
+    framed that split, because an advocate argues its assignment. This is the
+    judge's job working as §6.1 intends, and it is the argument against ever
+    reading a council as a vote.
+
+    **Spend: 169,257 tokens across three sonnet advocates**, 54k / 54k / 61k,
+    with the adjudication on top. One council on one question already costs
+    what a small package costs. §6.1's claim that a council is the largest
+    single line item in a run now has one measurement behind it.
+
+    **The defect the exercise found is in the dispatch shape, not the
+    council.** The advocates ran as `general-purpose` subagents told to read
+    `agents/council-advocate.md`. That injects the body and drops the
+    frontmatter: `model: sonnet` held only because it was passed as a spawn
+    override, and `reasoning_effort: high` was never applied. A hand-dispatch
+    of any crew agent, from a session that has not loaded the plugin,
+    exercises the text and nothing else — not the model, not the effort, not
+    the tool boundary. This is §15.35's defect in a new place: the value in the
+    definition loses silently. Exercise an agent through
+    `claude --plugin-dir <repo>` whenever the frontmatter is part of what is
+    being tested.
+
+    **What stays unproven.** No `/crew:project-lead` run has convened a
+    council. Nothing here exercised the routing that reaches one, the
+    `decisions.md` write, or the balanced-council escalation — all three
+    advocates were decisive and the judge was not balanced.

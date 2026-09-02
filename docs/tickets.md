@@ -219,10 +219,9 @@ evidence for §13.1's reason for cutting `TeammateIdle`, not a gap to keep
 hunting: the failure is hard to provoke on purpose. Leave the clause open and
 close it from a real run that hits it, not from a better rig.
 
-Two defects the runs exposed belong to their own tickets, not here: an IC
-resolves a conflict between its contract and the target repo's instructions
-without recording it (§15.40e), and a deliverable that cannot open a PR has no
-honest terminal state (§15.40f, which T11 also needs).
+One defect the runs exposed belongs to its own ticket, not here: a deliverable
+that cannot open a PR has no honest terminal state (§15.40f, which T11 also
+needs).
 
 Read first: design §13.1, §15.8, §15.29, §15.38-40, §7; `record-format.md`;
 `ic-contract.md`.

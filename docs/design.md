@@ -2328,13 +2328,17 @@ Deliberately different:
 
     **Two defects the runs exposed, both outside T7.**
 
-    e. **An IC resolves a conflict between its contract and the target repo's
-       instructions silently.** Neither report mentioned the `## Reporting`
-       rule it had overruled. The IC chose correctly, but the project lead
-       never learns the target repo holds a rule crew is ignoring, and a
-       reviewer reading the report cannot see the choice was made.
-       `ic-contract.md`'s report contract should require naming such a
-       conflict; that is a change for its own ticket, not this one.
+    e. **The scope boundary is implicit, and both ICs read it correctly
+       anyway. No change made.** The bait was aimed at crew's record, not at
+       the repo — "do not write status files" in a repo's own `CLAUDE.md`
+       means do not litter that checkout. Both ICs read it that way, wrote
+       their reports to the record root outside the repo, and carried on.
+       Nothing in `ic-contract.md` states that repo instructions govern the
+       worktree while this contract governs the record; the ICs inferred it
+       from the record root being an absolute path outside the repo. Stating
+       it was considered and dropped: two runs show the inference holds, and
+       a rule whose absence causes no mistake is one the writing standard
+       says to delete. Revisit only if an IC is seen getting it wrong.
 
     f. **A deliverable that cannot open a PR has no honest terminal state.**
        The scratch repo has no git remote, so `git push` and `gh pr create`

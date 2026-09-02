@@ -421,3 +421,44 @@ records the decision and the cost it takes.
 
 Read first: design §15.27; `writing-standard.md`; the four agents under
 `agents/` that carry the findings convention.
+
+## T16 — A terminal deliverable state for a run that opens no PR
+
+Status: open
+Depends on: nothing
+Stage: any
+
+A deliverable has four states: `pending`, `in-flight`, `draft-pr-opened` and
+`abandoned`. None of them fits a deliverable that finished its work and could
+not open a PR, so a project lead in that position has to record something
+untrue. Both probe runs on 2026-09-02 did: the scratch repo had no git remote,
+so `git push` and `gh pr create` could not run, and each run closed with
+`state: "draft-pr-opened"` and `pr_url: null` — a state that names a PR nobody
+opened (design §15.40f).
+
+`abandoned` is not the answer. It means a re-plan dropped the deliverable or a
+breaker parked it, and it says the work is not to be trusted. Here the work is
+complete, reviewed and green.
+
+Add the fourth terminal state and thread it through:
+
+- `record-format.md` owns the vocabulary: name the state, add it to the
+  deliverable field table, to the state-transition diagram and its arrow list,
+  and to the consumer index. Say what `pr_url` holds in it, and that the branch
+  name is what the principal is handed instead.
+- `SKILL.md` step 14 and `full-path.md` step 11 both say to push and open a
+  draft PR. Each needs the branch for when that is impossible or refused.
+- Keep the escalation. Both runs asked the principal before closing, and that
+  was right — this ticket changes what gets recorded after the answer, not
+  whether to ask.
+
+Two callers need it, so pick a name that serves both: a run blocked by the
+environment, and T11's investigation path, which ends in a diagnosis report
+rather than a change and needs the same terminal state.
+
+Done when: a run in a repo with no remote reaches a truthful terminal state
+with `pr_url: null`, `record-format.md`'s transition diagram covers it, and
+T11's ticket names it as the state its report path ends in.
+
+Read first: design §15.40f, §9.3, §10; `record-format.md` deliverable states
+and transitions; T11.

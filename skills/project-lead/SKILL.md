@@ -144,9 +144,8 @@ A `BLOCKED` report names its cause; `band-rubric.md` says what each earns.
 ## 10. Review the package
 
 Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
-`git -C <repo> diff <base>..HEAD > <path>`. One package means its `base` is
-the deliverable's. An instruction package gets its acceptance checklist file
-instead.
+`git -C <repo> diff <base>..HEAD > <path>` — one package means its `base` is
+the deliverable's. An instruction package gets its checklist file instead.
 
 `crew:package-reviewer` requires five inputs and says so. Send all five: the
 package's record entry (`file_set`, `interface_contract`,

@@ -615,7 +615,7 @@ Every name this file defines, with what consumes it.
 - `in-flight` — consumer: stage 5 (project lead loop, idle check)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
 - `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
-- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14, `full-path.md` step 11); Task 11 (PR body)
+- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14, `full-path.md` step 11)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
 
 **`state.json` band values** (canonical definitions live in Task 5's

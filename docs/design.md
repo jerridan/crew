@@ -2377,7 +2377,7 @@ Deliberately different:
        a state for an investigation that ends in a report; this is a second
        caller for it.
 
-       **Decided 2026-09-02 (T16).** The fourth terminal deliverable state is
+       **Decided 2026-09-02 (T16).** The new terminal deliverable state is
        named `work-complete`. It serves two callers: a deliverable whose push
        or draft PR is impossible or refused, and T11's investigation path,
        which ends in a report rather than a change. A council chose it over

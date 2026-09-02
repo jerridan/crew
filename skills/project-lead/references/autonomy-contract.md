@@ -51,7 +51,13 @@ one interruption; a run built in the wrong direction costs a day.
    or credentials.
 5. The spend ceiling is crossed.
 6. The fix-round breaker fired at the top band.
-7. The goal needs more than one package. The full path is not built.
+7. The goal needs the full path and one of the two conditions you can check
+   fails — agent teams off, or a worktree-isolated session (`full-path.md`
+   step 0). Neither can be fixed mid-run.
+8. The goal needs more than one **deliverable**. `full-path.md` runs one
+   deliverable's packages; nothing loops over deliverables or reads
+   `split.md`'s `Depends on` yet. Say which deliverables you would cut it
+   into, and ask whether to run the first alone.
 
 Do everything that does not depend on the answer first, then ask once. Batch
 what you can into one interruption.
@@ -89,8 +95,10 @@ instruction that settles the same question in every later run.
 
 Read `total_tokens` from each subagent's completion notification into
 `spend.by_agent` with `measured: true`, and add it to `measured_tokens`. A
-subagent you spawned yourself reports its spend; a teammate's is an
-estimate, and the simple path spawns no teammate.
+subagent you spawned yourself reports its spend. A teammate's spend is never
+reported, so every full-path IC costs you an estimate with
+`measured: false`. That undercounts exactly the agents that cost the most —
+treat a full-path total as a floor, and say so in the record.
 
 **A number you did not receive is never `measured: true`.** Some dispatch
 shapes report no `total_tokens` at all — a nested headless process returns

@@ -12,6 +12,7 @@ One directory per goal, outside the target repo (design §4):
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
 ├── reports/          one report per package, written by its IC
 ├── plans/            one plan per package, written by its IC
+├── diffs/            one diff per review dispatch, written by the project lead
 └── reviews/          raw critic and reviewer output
 ```
 
@@ -19,22 +20,31 @@ Every relative path named in `state.json` resolves against this directory
 root. `worktrees.json`'s `worktree` field is the one path that is already
 absolute.
 
-## `reports/`, `plans/`, and `reviews/`
+## `reports/`, `plans/`, `diffs/`, and `reviews/`
 
-Three directories hold per-run output. Each has one writer and a fixed
+Four directories hold per-run output. Each has one writer and a fixed
 naming convention. Do not mix their contents.
 
-- **`reports/`** — one file per package, `reports/<id>.md`. Only that
-  package's own IC writes here. `state.json`'s `report_path` for a package
-  always equals `reports/<id>.md`.
-- **`plans/`** — one file per package, `plans/<id>.md`. The IC writes its
-  implementation plan here and waits for the project lead's go-ahead (design
+- **`reports/`** — one file per package, `reports/<id>.md`. It holds that
+  package's own IC's report and nothing else. `state.json`'s `report_path`
+  for a package always equals `reports/<id>.md`.
+- **`plans/`** — one file per package, `plans/<id>.md`. It holds the IC's
+  implementation plan, written before the project lead's go-ahead (design
   §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
   always equals `plans/<id>.md`. This stays separate from `reports/` because
   the project lead's idle check must find a *report* on disk before it accepts
   a package, not a plan (design §13.1). The project lead's own decomposition is
   `split.md` at the record root, named apart from `plans/` so that an IC told
   to "write its plan into the record" cannot overwrite it.
+- **`diffs/`** — the diff a review dispatch reads, written by the project
+  lead so it never enters its own context. `diffs/<id>-r<n>.patch` for a
+  package review, `<n>` being `fix_rounds_used`. **The counter moves before
+  the round runs**, or round 1 writes over round 0's diff and review, which
+  are a reviewer's only audit trail;
+  `diffs/<deliverable-id>-final.patch` for the deliverable review, rewritten
+  after integration so it carries the shared-file edits. A diff is evidence
+  of what a reviewer actually saw, so a later round never overwrites an
+  earlier one.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
   (`<n>` is the fix round, from `fix_rounds_used`),
@@ -57,6 +67,12 @@ naming convention. Do not mix their contents.
 
 The project lead never has to parse a review to find a report or a plan. It reads
 `report_path` or `plan_path` from `state.json` and opens that file directly.
+
+**The IC writes both files, on either path.** When a sandbox denies the
+write, the IC returns the contents as its final message and the project lead
+transcribes them — as a tool result from a subagent, or in the idle
+notification from a teammate. A transcribed file says so, so an audit can
+tell a first-hand file from a copy.
 
 ## Goal-slug uniqueness
 
@@ -93,7 +109,7 @@ into every IC spawn prompt.
 
 ## Deliverable <deliverable-id> — <title>
 
-Branch: crew/<deliverable-id>
+Branch: crew/<goal-slug>/<deliverable-id>
 Depends on: <deliverable-id> | nothing
 
 ### Package <package-id>
@@ -156,7 +172,7 @@ One entry per deliverable (design §5):
 | Field | Meaning |
 |---|---|
 | `id` | referenced by each package's `deliverable` field |
-| `branch` | the deliverable branch every package's IC branches from (design §9.3) |
+| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). |
 | `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1) |
 | `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `abandoned`. `draft-pr-opened` is a deliverable's own terminal state, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
@@ -179,6 +195,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `file_set` | the package's declared, disjoint file list (design §5 invariant 2). `split-critic` checks disjointness against this field. |
 | `interface_contract` | `{consumes, produces}` with exact signatures (design §5 invariant 3). The only channel between isolated ICs. |
 | `acceptance_criterion` | the executable test or reviewer checklist that proves the package is done (design §5 invariant 1). Also what makes a respawn idempotent after a crash (design §10.1). |
+| `base` | the sha in this package's worktree when the project lead dispatched it. For a territory's first package that equals the deliverable's `base`; for each package after it, the worktree head when the previous package was accepted. `<base>..HEAD` is what makes a review diff cover this package and not its predecessors in the same worktree (design §15.37a). |
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
@@ -196,7 +213,7 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
 ```
 
 - `pending → in-flight`: the project lead dispatches an IC for the package.
-- `in-flight → integrated`: the package's diff merges and passes review.
+- `in-flight → integrated`: the package passed review, and its work is on the deliverable branch with the suite green there. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   package, or the fix-round breaker parks it (design §9.2, §10).
 - `integrated` and `abandoned` are both terminal. Neither has an outgoing
@@ -230,7 +247,8 @@ value in either direction, including out of a mistaken `integrated` or
 ### At creation
 
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
-`ic_name: null`, and `plan_approved_at: null`. `plan_path` and `report_path`
+`ic_name: null`, `base: null` until it is dispatched, and
+`plan_approved_at: null`. `plan_path` and `report_path`
 name files that do not exist yet. On the simple path (design §9.1) the project lead never writes
 `worktrees.json`: there is one package, no territory, and `ic_name` stays
 `null` for the run.
@@ -290,7 +308,7 @@ One run, two packages, in different states:
   "deliverables": [
     {
       "id": "deliverable-1",
-      "branch": "crew/deliverable-1",
+      "branch": "crew/add-request-logging-a1b2/deliverable-1",
       "base": "a1b2c3d",
       "state": "in-flight",
       "state_changed_at": "2026-08-24T14:05:00Z",
@@ -307,7 +325,7 @@ One run, two packages, in different states:
       "council_tokens": 0,
       "by_agent": [
         { "agent": "split-critic", "total_tokens": 210000, "measured": true },
-        { "agent": "ic-logging-middleware", "total_tokens": 0, "measured": false }
+        { "agent": "ic-middleware", "total_tokens": 0, "measured": false }
       ]
     },
     "escalations": [
@@ -336,8 +354,9 @@ One run, two packages, in different states:
         "produces": ["export function requestLogger(req: Request): void"]
       },
       "acceptance_criterion": "npm test -- src/middleware/logging.test.ts exits 0",
+      "base": "a1b2c3d",
       "fix_rounds_used": 1,
-      "ic_name": "ic-logging-middleware",
+      "ic_name": "ic-middleware",
       "plan_approved_at": "2026-08-24T14:25:00Z",
       "plan_path": "plans/logging-middleware.md",
       "report_path": "reports/logging-middleware.md"
@@ -359,8 +378,9 @@ One run, two packages, in different states:
         "produces": ["export type LogLevel = \"debug\" | \"info\" | \"warn\" | \"error\""]
       },
       "acceptance_criterion": "npm test -- src/config/logging-config.test.ts exits 0",
+      "base": "e4f5a6b",
       "fix_rounds_used": 2,
-      "ic_name": "ic-logging-config",
+      "ic_name": "ic-config",
       "plan_approved_at": "2026-08-24T16:20:00Z",
       "plan_path": "plans/logging-config.md",
       "report_path": "reports/logging-config.md"
@@ -374,7 +394,19 @@ describes: the initial prediction, then a promotion with its cause.
 
 ## `worktrees.json`
 
-IC name → worktree path → branch → `session_ids` → `orphaned`.
+IC name → worktree path → branch → `session_ids` → `orphaned`. The project
+lead writes it on the full path only; the simple path creates no worktree.
+
+**The path convention** is `<record-root>/worktrees/<territory-slug>`, and
+the IC on it is named `ic-<territory-slug>`. The root sits outside the target
+repo: a test runner that globs collects every worktree's tests as well as the
+repo's own, so a repo-local root makes the suite measure the wrong tree
+(design §15.35b, §15.37f).
+
+An IC writes its plan and its report into the record root, not into its
+worktree, so a worktree holds only the package's own work. That keeps
+`git status --porcelain` meaning exactly what the recovery check reads it to
+mean: uncommitted work, and nothing else.
 
 **`session_ids` is a list, not a single id.** Design §13.1 makes the session
 id the only proof of worktree ownership, but `--resume` runs in a *new*
@@ -383,31 +415,32 @@ would fail on the very first resume — the exact case the field exists to
 serve. Resume appends; it never overwrites. `state.json`'s `run.session_ids`
 follows the same append-only rule, for the same reason.
 
-**`orphaned`** is a boolean. `SessionEnd` (design §13.1) sets it `true` for
-every worktree the dying run registered. `--resume` (design §10.1) reads it
-to decide which worktrees to prune, and clears it once a worktree is
-reconciled.
+**`orphaned`** is a boolean, and **nothing writes `true` yet**: its only
+writer is the `SessionEnd` hook, which is stage 5 and not built. Until it
+ships, a crashed run leaves `orphaned: false` on every worktree, so recovery
+decides from git and from a recorded `integrated`, never from this field.
+`--resume` clears it once a worktree is reconciled.
 
 ### Worked example
 
 ```json
 {
-  "ic-logging-middleware": {
-    "worktree": "~/.claude/worktrees/crew/logging-middleware",
-    "branch": "crew/logging-middleware",
+  "ic-middleware": {
+    "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/middleware",
+    "branch": "crew/add-request-logging-a1b2/middleware",
     "session_ids": ["sess-a001"],
     "orphaned": false
   },
-  "ic-logging-config": {
-    "worktree": "~/.claude/worktrees/crew/logging-config",
-    "branch": "crew/logging-config",
+  "ic-config": {
+    "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/config",
+    "branch": "crew/add-request-logging-a1b2/config",
     "session_ids": ["sess-b002", "sess-b003"],
     "orphaned": false
   }
 }
 ```
 
-`ic-logging-config` shows a resumed IC: two session ids because the worktree
+`ic-config` shows a resumed IC: two session ids because the worktree
 survived a crash and was resumed once.
 
 ## `decisions.md`
@@ -496,6 +529,7 @@ Every name this file defines, with what consumes it.
 - `file_set` — consumer: Task 7 (`crew:ic` self-review checks its diff against this); stage 3 (`split-critic` disjointness check)
 - `interface_contract` — consumer: stage 3 (`split-critic` type-consistency check); Task 7/Task 8 (IC spawn prompt carries it, design §9.2 step 2)
 - `acceptance_criterion` — consumer: Task 6 (`ic-contract.md`, tells the IC when to stop); Task 9 (`crew:package-reviewer` checks work against it)
+- `base` (package) — consumer: stage 5 (the review diff and the verification range, `<base>..HEAD`)
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
 - `plan_path` — consumer: Task 6 (`ic-contract.md`, plan-approval step); Task 7 (`crew:ic` writes it, design §9.2 step 3)
@@ -542,7 +576,7 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7)
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-root>/worktrees/<territory-slug>`
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the project lead's idle nudge
 - `orphaned` — consumer: design §13.1 `SessionEnd` (writer); stage 5 `--resume` (prunes on it, design §10.1)

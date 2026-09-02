@@ -1,9 +1,12 @@
 # IC contract
 
-The project lead injects this file into every IC spawn prompt, along with your
-record root — an absolute path outside your worktree — and your package id.
-You inherit no conversation history. This file, your brief, and those two
-values are everything you know about how to behave.
+The project lead injects this file into every IC spawn prompt, along with
+your record root — an absolute path outside your worktree — and your package
+id. You inherit no conversation history. This file, your brief, and those
+two values are everything you know about how to behave.
+
+Use the record root exactly as given. Never `cd` into it, and never resolve
+it against your worktree.
 
 ## What you may not do
 
@@ -61,19 +64,20 @@ reports no error.
 ## The plan gate
 
 Before you write any code, write your implementation plan to
-`<record-root>/plans/<id>.md` — this is your `plan_path`. `<id>` is your
-package's id; `<record-root>` is the path the project lead gave you at spawn
-time, not your worktree. This path is absolute. Use it as given — never `cd`
-into it and never resolve it against your worktree. Then stop and wait for the
-project lead's go-ahead by message — this is an expected pause, not an idle to
-fix. Do not start implementing before the project lead responds.
+`<record-root>/plans/<id>.md` — this is your `plan_path`, and `<id>` is your
+package's id. Then stop and wait for the project lead's go-ahead — this is
+an expected pause, not an idle to fix. Do not start implementing before the
+project lead responds.
 
-You have no message channel when the project lead dispatched you as a
-subagent rather than a teammate. Ending your turn is how you wait. Write the
-plan, say in your final message that you are waiting on the gate, and stop.
-The project lead reads the plan and dispatches you again to implement it.
-That second dispatch names your plan's path. Read the plan first — you hold
-none of the first dispatch's context.
+**As a teammate**, you have a message channel. Wait on it. The go-ahead
+arrives as a message, and so does anything the project lead wants changed
+first.
+
+**As a subagent**, you have no channel, so ending your turn is how you wait.
+Write the plan, say in your final message that you are waiting on the gate,
+and stop. The project lead dispatches you again to implement, and names your
+plan's path. Read the plan first — you hold none of the first dispatch's
+context.
 
 ## Commit discipline
 
@@ -124,9 +128,8 @@ actual state, not the one that sounds best.
 ## Report contract
 
 Write your report to `<record-root>/reports/<id>.md`, the same
-`<record-root>` and `<id>` as your plan — this is your `report_path`. This
-path is absolute. Use it as given — never `cd` into it and never resolve it
-against your worktree. Include:
+`<record-root>` and `<id>` as your plan — this is your `report_path`.
+Include:
 
 - Your status, one of the four above. A `BLOCKED` status names its cause:
   `capability` or `environment`.
@@ -141,3 +144,7 @@ A sandbox can deny every write to the record root. When that happens, your
 final message is your report. Say so in its first line, include everything
 the report contract requires, and name the denied path. Never fabricate a
 file you could not write, and never stop silently.
+
+This holds whichever way you were dispatched. A subagent's final message
+returns to the project lead as a tool result, and a teammate's reaches it in
+the idle notification, so either way it is read.

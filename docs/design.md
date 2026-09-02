@@ -794,7 +794,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 2 | `crew:ic` + `crew:ic-instructions` + `crew:package-reviewer`, driven by hand | One package of each kind reaches a reviewed, accepted result with zero prompts |
 | 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
-| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts |
+| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). The hooks are the part still missing. |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
 
 ### 13.1 Hooks
@@ -1644,3 +1644,557 @@ Deliberately different:
     telling it what to do — `probe-bot` asked its project lead to remove the
     hook, and the project lead refused because the config belonged to another
     session. That was judgment, not instruction.
+30. **The full path is written — five decisions the design had not stated,
+    2026-09-01 (T6).** `skills/project-lead/references/full-path.md` carries
+    the loop for a deliverable with more than one package: launch conditions,
+    the split critic, worktrees, named IC teammates, the plan gate by
+    message, per-package squash merges with a suite run each, promotion,
+    cleanup and `--resume` recovery. `SKILL.md` branches to it at step 5 and
+    keeps the simple path in its own steps 6 to 14. Writing it forced five
+    decisions.
+
+    a. **The full path is a sixth reference, not more `SKILL.md`.** The body
+       was already at the writing standard's 200-line cap, and the full path
+       is longer than the simple path it replaces. Splitting it also matches
+       how it runs: a simple-path run never reads it. Trimming `SKILL.md`
+       back under the cap removed three rules it stated twice — the `BLOCKED`
+       promotion rule (`band-rubric.md` owns it), the council row
+       (`autonomy-contract.md` owns it), and the draft-PR step, which
+       `full-path.md` now points at rather than repeats.
+
+       It bends the writing standard's reference-depth check, which says no
+       reference points to a second reference. `full-path.md` names
+       `record-format.md`, `band-rubric.md` and `ic-contract.md` as owners of
+       rules it will not restate. That is the existing idiom, not a new
+       exception — `band-rubric.md` already names `ic-contract.md`'s
+       `BLOCKED` row and `record-format.md`'s `band_history` row the same
+       way. The check bars a reader hop the file cannot avoid; naming the
+       owner of a rule the project lead has already read at step 1 is not
+       one.
+
+    b. **Withdrawn — a full-path IC writes to the record root, like every
+       other IC.** This item first routed the IC's plan and report to a
+       `.crew/` directory inside its worktree, to dodge item 26b's
+       sensitive-path denial. Item 31 probed the denial and it did not
+       reproduce, so the detour bought nothing and cost a copy hop. Its
+       stated reason was also wrong: it claimed a teammate's final message
+       has no reader, when §12 only says the message is not a parseable tool
+       result. It still arrives, in the idle notification, which item 31c
+       confirms. The `ic-contract.md` fallback therefore covers both paths,
+       and one write location serves both.
+
+    c. **Withdrawn with (b), and it would not have worked.** The plan was to
+       hide `.crew/` in the worktree's `.git/info/exclude`. A linked
+       worktree's `.git` is a **file**, not a directory, so that path cannot
+       be appended to at all; and git reads exclude patterns from
+       `$GIT_COMMON_DIR/info/exclude`, so a pattern written to the
+       per-worktree git dir is never consulted. Verified three ways in a
+       scratch repo on 2026-09-01. The lesson is narrow and worth keeping: a
+       command written from memory about worktree internals is a claim like
+       any other, and this one shipped in a first draft unrun.
+
+    d. **Superseded by §15.37f — the root moved out of the target repo.**
+       This item put worktrees at
+       `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`, and the
+       hazard it names in its last sentence is the one that fired on the first
+       repo tried (§15.35b). The root is now `<record-root>/worktrees`. The
+       reasoning below stands except for the location it chose.
+       `record-format.md` previously showed `~/.claude/worktrees/crew/<name>`,
+       which item 26b's sensitive-path finding makes suspect for the same
+       reason it blocks the record root, and which has no goal segment to keep
+       two concurrent goals apart. A repo-local root is proven writable — this
+       repo's own sessions run in one — and git omits a registered worktree
+       from its parent's `git status`, so nothing there reads as untracked
+       work. The one hazard is a test runner that walks the directory;
+       `full-path.md` step 3 says to move the root out of the repo and record
+       why when that happens.
+
+    e. **Launch conditions are a step, not a preamble.** Three of the four —
+       the teams flag, an unisolated session, a working display mode — cannot
+       be fixed once a run is under way, and the fourth, the permission
+       grants, is configuration the project lead may not write for itself
+       (§15.12, §15.20). So `full-path.md` step 0 checks all four and
+       escalates, and `autonomy-contract.md`'s trigger 7 changed from "the
+       full path is not built" to a missing launch condition.
+
+    **Not yet exercised.** T6's "Done when" is a real multi-package run with
+    a forced fix round and a kill-and-resume, and that needs an interactive,
+    unisolated session with the teams flag. The session that wrote this was
+    worktree-isolated, which item 10 already names as the one shape that
+    cannot drive the full path. T6 stays open until the run happens. Item 31
+    probed the environment the run needs and corrected (b) and (c) before any
+    run; what stays unprobed is the loop itself, and the plan-approval
+    question §12 has listed as pending since stage 3 — the full path is the
+    first place an IC has a message channel to be gated on, so it is the
+    first place that probe can run.
+31. **The full-path environment probe: nothing was denied, and two of T6's
+    own rules were wrong — 2026-09-01.** One teammate, `probe-ic`, spawned
+    from `crew:ic` at sonnet by an interactive session on Claude Code 2.1.257
+    with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, inside tmux, in a throwaway
+    worktree. It was told to attempt four things and to record rather than
+    work around each failure. Nothing failed. Five findings.
+
+    a. **Under an auto-approving permission mode the grant set is empty.**
+       Not one permission prompt surfaced in the driving session while the
+       teammate worked — not for its writes, not for `git -C <worktree>
+       status`, not for its commit. §15.12's hazard is real, and a
+       classifier that answers prompts removes it as completely as a
+       pre-approved allow list does. So the requirement is a property, not a
+       mechanism: nothing in the run stops for a human. The probe yields no
+       grant strings, because none were ever requested — a run that means to
+       satisfy the property with settings instead still needs its list built
+       some other way.
+
+       **Crew cannot detect which mechanism is in play, and does not try.** A
+       session cannot read its own permission mode, and the only direct probe
+       — issue a command that would prompt — fails by stalling, which is the
+       outcome the check exists to avoid. So the property is a launch
+       requirement named in the README, owned by whoever starts the run, and
+       `full-path.md` step 0 lists it apart from the three conditions the
+       project lead can actually verify. The project lead's own defence is to
+       fail fast: if the first dispatch stalls, escalate as an `environment`
+       block rather than spawning the remaining territories behind it.
+
+       Nothing else in either path branches on permission mode, so this is
+       the only place it enters the design.
+
+    b. **Item 26b does not reproduce for an interactive teammate.** The write
+       to `~/.claude/crew/probe-t6/reports/probe.md` was allowed, and the
+       agent created the missing `reports/` directory on the way. Item 26b's
+       denial came from a nested headless `claude -p` dispatch, so it is a
+       property of that shape and not of the path. The record root is
+       writable from the shape stage 5 actually uses, which is what withdrew
+       item 30b.
+
+    c. **A teammate's final answer does reach the project lead.** It arrived
+       in full, as prose in the idle notification, exactly as §12 and
+       `CLAUDE.md` describe — not a parseable tool result, but readable.
+       `ic-contract.md`'s "your final message is your report" fallback
+       therefore has a reader on both paths. Item 30b claimed otherwise and
+       was wrong.
+
+    d. **`git -C <worktree>` commits unattended from a teammate.** Confirms
+       §15.23c from the interactive side, which the container probe could not
+       reach. The idiom split in `ic-contract.md` — `git -C` for git, a `cd`
+       prefix for everything else — needs no change.
+
+    e. **A worktree cannot carry its own `info/exclude`.** The probe caught
+       T6's step 3 command as unrunnable, and a scratch-repo test confirmed
+       it three ways: a linked worktree's `.git` is a file, so
+       `<worktree>/.git/info/exclude` is not a writable path; a pattern
+       written to `$GIT_DIR/info/exclude` under `.git/worktrees/<name>` is
+       never consulted; only `$GIT_COMMON_DIR/info/exclude` — the shared
+       `.git/info/exclude` — takes effect, and it applies to every worktree
+       of that repo. Withdrawing item 30c removed the need, but the fact
+       stands for anything later that wants to hide a file inside one
+       worktree.
+
+    The probe is not the T6 exercise. It proves the environment a full-path
+    run needs, not the loop that runs in it.
+32. **A project lead in plan mode plans instead of dispatching — observed
+    2026-09-01, at the T6 exercise launch.** The skill loaded, read its own
+    step 1, and said: "Plan mode is on, so I'll research and plan first rather
+    than dispatching the crew loop." The operator switched the session to auto
+    mode a moment later and the run proceeded normally, so **what the run
+    would have produced was never seen.** What is established is narrower than
+    it first looked, and worth keeping at that size.
+
+    a. **The project lead can detect plan mode, and acts on it unprompted.**
+    Unlike permission mode (§15.31a), which a session cannot read at all, this
+    one reported its own mode before anyone asked and correctly changed what
+    it was going to do. That makes plan mode a check the project lead can
+    genuinely perform, which is why `SKILL.md` step 1 now tells it to stop and
+    say so rather than plan.
+
+    b. **It applies to both paths**, so the rule belongs in `SKILL.md` step 1
+    and not beside `full-path.md` step 0's teammate conditions. Plan mode
+    forbids the writes and the spawns that every step of either path is made
+    of.
+
+    c. **The risk, not yet observed:** a condition that degrades into "asks
+    you for approval" produces no error and a plausible plan, so it reads as
+    the product working correctly — in exactly the runs meant to prove no
+    approval was needed. This is why the rule is worth having even though the
+    failure was cut short. Do not cite it as a measured outcome.
+
+    A first draft of this item claimed the run "stopped before it dispatched
+    anything" and described what it produced instead. Neither was observed;
+    both were inferred from one line of transcript caught while the operator
+    was mid-switch. The lesson generalizes past this item: a finding written
+    from a live pane is a claim like any other, and the pane is not a
+    completed run.
+33. **The first simple-path run against a repo with a real test suite —
+    2026-09-01, `convert-keys-js`.** Run as the setup for T6's exercise, from
+    an interactive session in auto mode. It reached a draft PR
+    (jerridan/convert-keys-js#6) with no escalation and no fix round: charter,
+    scout, spec, spec critic, split, branch, plan gate, IC, package review,
+    integration, deliverable review, PR. Every prior run had been against
+    crew itself, which has no suite, so several rules were executing for the
+    first time.
+
+    a. **Spend was measured in full, for the first time.** All six agents
+       reported `total_tokens` with `measured: true`, totalling 227,766
+       against the 2,000,000 ceiling. Item 26d recorded that spend cannot be
+       measured through a nested headless dispatch; this run shows that gap
+       belongs to that shape and not to §8. A project lead that spawns its own
+       subagents gets the number §8 assumes. This is also the first real
+       datum for item 3's placeholder ceiling: one small simple-path run costs
+       roughly 230k, so 2,000,000 buys about eight or nine of them.
+
+    b. **An acceptance criterion can be green without covering the work.**
+       `yarn check-types` exits 0, and `tsconfig.json` sets
+       `"files": ["src/index.ts"]`, so it type-checks only the graph reachable
+       from the barrel. Until the project lead added the export lines at
+       integration, the two new modules were unreachable and that pass was
+       vacuous — ts-jest was doing the real checking. The project lead noticed
+       unprompted, recorded the limit in its package-review adjudication, and
+       deferred the meaningful run to after the index edit. §7 says a green
+       run only proves the tree it ran on. The sharper form this run found:
+       a green run may not have read your files at all, and nothing in the
+       output says so. Worth carrying into any acceptance criterion that
+       names a type-check, a lint or a coverage gate over a file list.
+
+    c. **`<path>` had no owner.** `SKILL.md` step 10 and `full-path.md` step 7
+       both said to write the review diff to `<path>`, and no file said where.
+       The project lead invented `diff-converters-r0.patch` at the record
+       root. Sensible, but every run would invent its own name and a later
+       round could overwrite the diff an earlier review actually read.
+       `record-format.md` now owns a fourth output directory, `diffs/`, with
+       `diffs/<id>-r<n>.patch` and `diffs/<deliverable-id>-final.patch`. This
+       is a T4 defect that only appears against a repo whose diff is worth
+       writing down.
+
+    d. **The project lead read the target repo's conventions instead of
+       crew's.** It updated `package.json`'s `description`, put the entries
+       under the CHANGELOG's `Added` heading, and left `version` at 1.1.0 —
+       correct for a Keep a Changelog repo that bumps at release. Crew's own
+       `CLAUDE.md` requires a version bump on every content change, and none
+       of that leaked into someone else's project.
+
+    e. **The reviewers cleared a pre-existing bug rather than charging it.**
+       `require('dist/index.js')` throws `ReferenceError: self is not
+       defined`. The deliverable reviewer reproduced it at base `d744e8a` in
+       an isolated worktree, listed it under observations it explicitly did
+       not raise as findings, and the project lead named it in the PR body
+       instead of fixing it. That is a real bug in the published package and
+       is out of this goal's scope.
+
+    **What it did not test.** The goal was picked to split into two packages
+    and did not: both converters must register in `src/utils/ConvertKey.ts`,
+    so their file sets could not be disjoint, and §5's merge rule correctly
+    collapsed them into one. That was a flaw in the goal, not in the
+    decomposition — but it means this run exercised the simple path, and T6's
+    full path is still unexercised. A goal that splits in this repo needs one
+    code package and one package outside `src/`, because every converter
+    funnels through the same registry and the same barrel.
+34. **Branch names collided between two runs in one repo — 2026-09-01.** The
+    first `convert-keys-js` run created `crew/deliverable-1`. Deliverable ids
+    restart at 1 in every run, so the next run in the same repo would generate
+    the same name and fail at `git switch -c`. The same held for a full-path
+    IC branch, `crew/<territory-slug>`: two runs whose splits pick the same
+    territory name collide the same way.
+
+    Item 4's goal-slug rule already solved this for the record directory —
+    "`<kebab-case-slug>-<4 lowercase hex chars>`, generated once, always, not
+    only on a collision", precisely so two goals cannot occupy one directory.
+    The rule was written for the record and never carried to the branch names,
+    which need it for the same reason and against the same failure. Branches
+    are now `crew/<goal-slug>/<deliverable-id>` and
+    `crew/<goal-slug>/<territory-slug>`.
+
+    Found by preparing a second run rather than by running one — the first
+    run's own branch was still sitting in the repo. Worth noting as the shape
+    of the bug: crew has been exercised as a series of first runs, each in a
+    fresh state, so anything that only breaks on the *second* run in one repo
+    has never been reachable. `worktrees.json` pruning, record-directory
+    reuse and PR-branch cleanup all share that property and none has been
+    tested.
+35. **The full path ran, and four rules were wrong — 2026-09-01, T6's
+    exercise on `convert-keys-js`.** Goal: add a `toDotCase` converter and
+    write `docs/USAGE.md` for the three existing converters. The project lead
+    split it into two territories, `src` and `docs`, dispatched
+    `crew:split-critic` for the first time in the plugin's life, created two
+    worktrees, and ran `crew:ic` and `crew:ic-instructions` as teammates side
+    by side. Findings recorded while the run was still in flight.
+
+    a. **§12's plan-approval probe is closed. The message form works.** Both
+       ICs wrote `plans/<id>.md`, notified the project lead and went idle
+       waiting. The project lead read each plan and sent a go-ahead by
+       message, and both gates opened. It did not rubber-stamp either: each
+       approval carried added requirements — `ic-src` was told to add a test
+       that `objectKey`, `object_key` and `object-key` all converge on
+       `object.key`, because a case-for-case copy of the kebab spec would
+       never produce that case, and `ic-docs` was told to verify its nine
+       examples by running the library rather than by hand. That is
+       approve-with-feedback, which is the half of the gate the fallback
+       cannot do. `ic-contract.md` keeps both branches: a teammate waits on
+       its channel, a subagent ends its turn.
+
+    b. **The worktree root default is wrong, and its escape hatch fired on
+       the first repo tried.** `full-path.md` step 3 defaults to
+       `<repo>/.claude/worktrees/crew/<goal-slug>` and says to move out when
+       the target repo's test runner walks that directory. This repo's does:
+       `jest.config.js` sets no `testPathIgnorePatterns`, so `yarn test` at
+       the root collected every worktree's specs and reported 12 suites and
+       189 tests instead of 4 and 63. `.claude/` also showed as untracked,
+       because the repo's `.gitignore` does not name it. The project lead
+       detected both, moved the root, and recorded why. A default that breaks
+       on the first repo it meets is not a default: the root belongs outside
+       the target repo, and repo-local should be the exception.
+
+    c. **A worktree has no `node_modules`, and nothing said whose problem
+       that is.** Neither IC could run its acceptance criterion — a fresh
+       worktree carries tracked files only. The project lead symlinked the
+       repo's own install into each worktree and justified it from the
+       contract: environment setup is the project lead's job, and an IC
+       blocked on a missing tool is an `environment` block, which never
+       promotes. Correct, and reached unaided. Every JS, Python and Rust repo
+       has this problem, and `full-path.md` step 3 creates a worktree and
+       hands it over without a word about dependencies.
+
+    d. **Both critics ran at sonnet, though their definitions say opus.**
+       `agents/spec-critic.md` and `agents/split-critic.md` carry
+       `model: opus`; both reviews report `sonnet`. A spawn-time model
+       overrides frontmatter (§12), and no file told the project lead not to
+       pass one — `band-rubric.md` covered packages, councils and researchers
+       and never mentioned critics, so the frontmatter was the only authority
+       and it lost silently. Dispatching a critic at the package's band reads
+       like consistency and quietly downgrades the check.
+       `band-rubric.md` now says a critic or reviewer takes its own model and
+       gets no spawn-time override. This was only visible because these
+       reviews record the model they ran at; the earlier run's did not.
+
+    e. **`worktrees.json` was written in a shape `record-format.md` does not
+       define.** The reference specifies a map keyed by IC name. The run
+       wrote `{"worktrees": [ {...,"ic_name":...} ]}`. The array is arguably
+       the better shape, but §10.1's recovery reads this file, and a format
+       that varies per run is one recovery cannot depend on. Undecided:
+       either the reference adopts the array or the loop is held to the map.
+
+    f. **The state machine has no word for "reviewed, not yet merged".** Both
+       packages passed through `accepted`, a value `record-format.md` does not
+       define, between `in-flight` and `integrated`. It is not a slip: it
+       happened twice, in the same place, because the full path genuinely has
+       that state and the simple path does not. Merges happen one at a time
+       at step 9, after every package is reviewed, so a package really is
+       finished and waiting. On the simple path nothing merges and step 12
+       marks the package `integrated` in place, so the four states were
+       designed against a shape where review and integration are one moment.
+       The window is short but it is exactly when a crash is likeliest — the
+       project lead is running merges and suites — and `--resume` would then
+       read a state its own table does not define. Recommend adding
+       `in-flight -> accepted -> integrated`, because recovery is the
+       argument: with `accepted` recorded, resume knows the review already
+       passed and does not redo it, which `git log` alone cannot tell it.
+
+    g. **"Commit after every green step" does not hold unless the project
+       lead repeats it.** `ic-docs` made four commits, one per section plus a
+       proofread pass; `ic-src` made one commit for 204 lines. Same contract,
+       same session, same run. The difference is that the project lead's plan
+       approval told `ic-docs` to commit per section and told `ic-src`
+       nothing. So the contract's own Commit-discipline line did not carry
+       the behaviour on its own. That line's stated purpose — bounding crash
+       loss to one increment — is a recovery property, which is what T6
+       depends on, so either `ic-contract.md` states it more strongly or
+       `full-path.md` step 5 makes it part of every plan approval. Isolating
+       this needed two ICs running in parallel under different instructions;
+       one package could never have shown it.
+
+    h. **The deliverable reviewer caught a defect in the project lead's own
+       shared-file edit.** Its README sentence promised "a worked example of
+       each converter" under a list of four functions, while `docs/USAGE.md`
+       covers three by the run's own decision D5. No package reviewer could
+       have seen it: the file belongs to no package and the edit happened
+       after both package reviews. Item 24 predicted this from the simple
+       path; the full path confirms it, and it is the clearest argument the
+       deliverable reviewer has yet produced for its own existence.
+
+    i. **Cleanup worked.** Both worktrees were removed and deregistered after
+       the PR opened, `worktrees.json` was emptied with a note, and the IC
+       branches were retained because their commits are squashed onto the
+       deliverable branch. Nothing was forced.
+
+    **What the run did not exercise.** No fix round — both package reviews
+    returned `accepted` first time — and no kill-and-resume. §10.1's recovery
+    is the one part of the full path still unproven, and finding (g) makes it
+    more urgent rather than less: an IC that commits once at the end turns a
+    crash into a large dirty worktree, which is the branch of §10.1's table
+    that has never run.
+36. **T6 closed: the fix round and the kill-and-resume, on the third run —
+    2026-09-01, `convert-keys-js` PR #8.** Goal: a `toTitleCase` converter and
+    `docs/OVERRIDES.md`. Two packages, two territories, two IC teammates, one
+    forced fix round, one crash, one resume, one draft PR. Claude Code 2.1.258
+    — a version newer than item 35's run, which updated itself between the
+    two.
+
+    a. **The forced fix round ran on a real defect the reviewer missed.**
+       `titleCase` mapped each word to `word.charAt(0).toUpperCase() +
+       word.slice(1).toLowerCase()`, and `lodashSnakeCase` returns lowercase
+       by contract, so that `.toLowerCase()` could never fire. The package
+       review returned `accepted` with no findings. Forced by a message to the
+       project lead, the round removed the dead call in one commit, wrote
+       `diffs/titlecase-converter-r1.patch`, re-reviewed, and returned
+       `accepted` with `fix_rounds_used` persisted at 1. The loop's return
+       edge — every round goes back through verification and review, and the
+       step exits only on `accepted` — is the control-flow gap item 25 found
+       by reading. It is now confirmed by running.
+
+    b. **Recovery works, and it was tested against a record that lied.** The
+       pane was killed with `overrides-docs` merged and `titlecase-converter`
+       merged seconds later, while `state.json` still called both `in-flight`
+       and the run `active`. A fresh session read git rather than the record,
+       corrected both packages to `integrated`, kept `fix_rounds_used`,
+       re-dispatched nothing, and finished the run. Rule 2 of §10.1 —
+       reconcile from git, then correct the record — is the rule that carried
+       it, and it carried it against a two-package divergence rather than a
+       toy one.
+
+    c. **The append-only session rule held in both files.** `--resume` added
+       its session id to `run.session_ids` and to every entry in
+       `worktrees.json`, overwriting neither. That rule exists because resume
+       runs under a new id and ownership matching would otherwise fail on the
+       first resume — the exact case that had never been exercised.
+
+    d. **`interrupted` and `orphaned` remain unproven, and that belongs to
+       T7.** Nothing marked the dead run interrupted or its worktrees
+       orphaned, because the `SessionEnd` hook that writes both does not
+       exist. So `record-format.md`'s `interrupted -> active` transition has
+       still never fired, and §10.1's "clear `orphaned` once reconciled" step
+       had nothing to clear. This makes the run a harder test rather than an
+       easier one: recovery had to work from a record that claimed the dead
+       run was live.
+
+    e. **The escalation path fired for the first time, on a council-route
+       question.** The project lead could not settle what `toTitleCase` should
+       produce for `object_key` from the repo or any instruction, and it
+       escalated rather than guessing — recorded with all four fields, an
+       answer, and `run_state` back to `active`. It classified the trigger
+       correctly as §6 trigger 3, a council-route question it could not answer
+       with a citation, not a preference question: the output shape of a new
+       exported function is a public-interface judgment. Councils are not
+       built, so the contract's degraded row sent it to a human. With T8 it
+       would have been answered inside the run. This is the first concrete
+       case where the missing stage cost an interruption.
+
+    f. **The re-spec loop fired for the first time too.** `crew:spec-critic`
+       returned `re-spec needed` with one `[Critical]`: R1's acceptance
+       criterion said mirror `toCamelCase.spec.ts`, and R3 required inputs
+       that file does not contain, so the two could not both hold. The project
+       lead revised the spec, re-dispatched, and got `ready to split` on r2 —
+       before any IC was spawned, which is the gate's whole purpose.
+
+    g. **No adjudication was written anywhere in this run.** Neither spec
+       review nor the deliverable review carries the "Adjudication by the
+       project lead" section that both earlier runs appended to every review,
+       and `decisions.md` has no entry for the `[Critical]` either. `SKILL.md`
+       step 4 requires pushing back in writing but never says where an
+       adjudication is written; the first two runs invented the convention of
+       appending it to the review file and this one did not. The gap is in the
+       instruction, not in the run. `review-output.md` is the file that should
+       own the location, since it already owns the shape of what a review
+       returns.
+
+    h. **Artifact names keep drifting wherever `record-format.md` is
+       silent.** The acceptance checklist a prose package needs — design §5
+       invariant 1's "a written checklist verified by a named reviewer" —
+       landed at `reviews/overrides-docs-checklist.md`, while item 35's run
+       put its equivalent at `diffs/usage-guide-r0-checklist-target.md`. They
+       are not even the same artifact: one is the checklist, the other a copy
+       of the finished document. Both are required by the design and neither
+       has a defined home. Same class as the `<path>` gap in item 33, and the
+       same fix: name it, or every run invents something reasonable and
+       different.
+
+    i. **Worktree and IC naming drifted from a rule that does exist.**
+       `full-path.md` step 3 says the worktree directory, the branch and the
+       IC name all take the **territory** slug. This run used package ids —
+       `worktrees/titlecase-converter`, `ic-titlecase-converter` — where item
+       35's run correctly used `worktrees/src` and `ic-src`. Harmless while
+       each territory holds one package, wrong the moment a territory holds
+       several, which is the case territories exist for.
+
+    j. **A run's model choices are unverifiable.** Item 35d found three
+       opus-defined critics silently dispatched at sonnet, and could only find
+       it because that run's reviews happened to record the model. This run's
+       reviews record none, so whether the `band-rubric.md` fix took effect
+       cannot be confirmed from the record — only weakly inferred from the
+       absence of a model label in the transcript. A rule nothing can audit is
+       a weak rule: `review-output.md` should require every review to state
+       the model it ran at.
+37. **A code review of the T6 branch found what three runs could not — the
+    multi-package territory — 2026-09-01.** Fifteen findings, two of them
+    `[Critical]`, and every one held on verification. Ten were fixed; the rest
+    were already recorded as deferrals. Both `[Critical]`s came from one
+    mistake: **`full-path.md` was written as though a territory holds exactly
+    one package.** Design §5 says the opposite — a territory is a region one IC
+    owns and works *several* packages in, and fewer spawns with retained
+    context is the reason territories exist. All three runs happened to give
+    each territory one package, so the loop's central case never ran.
+
+    a. **A package had no `base`, so every package after the first in a
+       territory was doomed to a false scope finding.** Step 7 diffed
+       `<base>..HEAD` where `base` is the deliverable's — the only base any
+       record field carried. A territory's packages are sequential commits on
+       one branch, so package 2's review diff contained package 1's files, and
+       `package-reviewer.md` is required to flag a file outside the declared
+       `file_set` as scope drift. That is a guaranteed `[Critical]` and a
+       wasted fix round on every package after the first. `packages[]` now
+       carries its own `base`, written at dispatch and rewritten when the IC is
+       sent its next package, and steps 6 and 7 range from it.
+
+    b. **`merge --squash` of a territory branch cannot give one commit per
+       package.** The branch holds every package the territory has finished, so
+       a three-package territory produced one squashed commit and one suite
+       run — losing both benefits §9.3 claims, per-package attribution with no
+       bisect and a narrative a reviewer can read. Step 9 now applies the
+       package's own range, `git cherry-pick -n <package-base>..<package-head>`
+       followed by one commit, as each package is accepted.
+
+    c. **`--resume` fell through into new-run setup.** The resume paragraph was
+       followed unconditionally by "create `~/.claude/crew/<slug>-<4 hex>/`",
+       so a resumed run would mint a second record directory beside the one it
+       had just reconciled, rewrite the spec, re-dispatch the spec critic, and
+       fail at `git switch -c` on a branch that already exists. The §15.36 run
+       never reached it because the resumed session re-entered mid-loop. Step 1
+       now stops the resume path before setup and says to re-enter at the first
+       unfinished step.
+
+    d. **The fix-round counter was incremented after the files named by it.**
+       Steps 6 and 7 name `diffs/<id>-r<n>.patch` and
+       `reviews/<id>-package-review-r<n>.md` from `fix_rounds_used`, and the
+       increment came last, so round 1 would overwrite round 0's diff and
+       review — the two artifacts `record-format.md` declares are never
+       overwritten. Both files now increment first.
+
+    e. **Rounds 4 and 5 promoted with no top-band guard**, contradicting
+       `band-rubric.md`'s "a `deep` package cannot promote further". Both files
+       now escalate instead.
+
+    f. **The worktree root default is inverted.** §15.35b concluded the root
+       belongs outside the target repo and the files still defaulted to
+       repo-local with an escape hatch. Now the default is
+       `<record-root>/worktrees` and repo-local needs a recorded reason.
+
+    g. **Removing trigger 7's old wording removed the only stop for a
+       multi-deliverable goal.** It used to read "the goal needs more than one
+       package. The full path is not built", which caught a goal too large for
+       one deliverable as a side effect. `full-path.md` runs one deliverable
+       and nothing reads `split.md`'s `Depends on`, so such a goal had no path
+       and no escalation. That is now trigger 8.
+
+    h. **Two worked examples in `record-format.md` still taught the branch
+       name §15.34 had just fixed**, and a third instance the review did not
+       catch. An example is an instruction: an agent copying it would recreate
+       the collision the slug segment exists to prevent.
+
+    i. **A crew-specific rule had leaked into a target-repo instruction.** Step
+       9 said "bump both version fields", which is crew's own two-manifest rule
+       and wrong for most repos — and §15.33d had praised an earlier run
+       precisely for *not* applying it to someone else's project.
+
+    The lesson is narrower than "review found bugs". Running the loop three
+    times proved the paths those runs took. It could say nothing about the
+    paths they did not, and the reading found the worst defects in exactly
+    those: the multi-package territory, the resume that re-enters at step 1,
+    the fourth fix round. Runs and reviews cover different surfaces, and a
+    green run is not evidence about an untaken branch.

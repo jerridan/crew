@@ -27,19 +27,17 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 4 are built: seven agents, six references, and
-`/crew:project-lead`'s **simple path** — one goal, one deliverable, one
-package, one unnamed subagent, from a goal string or a charter file to a draft
-PR. That loop dispatches `crew:spec-critic`, `crew:ic` or
-`crew:ic-instructions`, `crew:package-reviewer` and `crew:deliverable-reviewer`.
+Stages 0 through 5 are built, except the hooks: seven agents, seven
+references, and both of `/crew:project-lead`'s paths. The **simple path** is
+one package on one branch, driven by one unnamed subagent. The **full path**
+is several packages in worktrees, worked by named IC teammates, with a split
+critic, a squash merge per package and `--resume` recovery. Both paths have
+run end to end against a real repo with a test suite.
 
-Nothing dispatches `crew:split-critic` or `crew:researcher` yet: one package
-has no sibling to overlap, and no tier calls a researcher. Stage 6 arrived in two halves: question routing
-and `decisions.md` are built, because the simple path cannot answer its own
-questions without them, and the council is not. The full path (worktrees,
-territories, teammates) and the hooks are stage 5, and neither exists. `docs/design.md` §13 holds the build order, and
-`docs/tickets.md` holds the backlog. Never write about an unbuilt stage as if
-it runs.
+Nothing dispatches `crew:researcher` yet. The council half of stage 6 is not
+built; its question routing and `decisions.md` are. `hooks/hooks.json` does
+not exist. `docs/design.md` §13 holds the build order and `docs/tickets.md`
+the backlog. Never write about an unbuilt stage as if it runs.
 
 ## Authority
 
@@ -51,13 +49,16 @@ Each reference owns one subject and is canonical for it:
 
 - `autonomy-contract.md` — how a question is routed, when the project lead
   escalates and to whom, and how a run's spend is counted.
+- `full-path.md` — the loop for more than one package: worktrees, IC
+  teammates, merges, promotion and recovery.
 - `record-format.md` — the record directory, every `state.json`,
   `worktrees.json` and `decisions.md` field, and every state transition.
 - `band-rubric.md` — which model a package or a council gets, and when to
   promote.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
 - `review-output.md` — the shape every review agent reports its findings in.
-- `writing-standard.md` — how every instruction file here is written.
+- `writing-standard.md` — how an instruction file is written, and how
+  reader-facing prose is written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A
 second copy is worse than no copy, because nothing decides which copy wins.
@@ -70,10 +71,13 @@ an agent definition, this file included. Check the draft against its checklist
 under `## Before you open the PR` before you commit. That checklist defines
 done.
 
+Read its `## Writing for a person` section before you touch `README.md`, a PR
+body or an issue. State the action; leave the reasoning in `docs/design.md`.
+Design voice in the README is the drift that keeps coming back.
+
 Those prose rules are ASD-STE100 — Simplified Technical English. Apply them to
-every file in this repo, and to each commit message and PR body. Only the
-container-choice check is limited to the four container types the standard
-names.
+every file here, and to each commit message and PR body. Only the
+container-choice check is limited to the standard's four container types.
 
 ## Constraints that are easy to get wrong
 
@@ -106,10 +110,9 @@ names.
   the first one (design §15.20, §15.12).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json`, in stage 5 (design §12, §13.1).
-- A spawn-time `model` overrides an agent's frontmatter `model`.
-  `reasoning_effort` is frontmatter only, and a teammate inherits the project
-  lead's effort. That is why a band sets model and never effort (design §8,
-  §12).
+- A spawn-time `model` overrides an agent's frontmatter, and
+  `reasoning_effort` cannot travel that way. `band-rubric.md` owns what
+  follows from that (design §8, §12).
 - No crew agent invokes a superpowers skill. Every superpowers process skill
   stops for a human, and removing that stop is the point of this plugin. Copy
   a checklist word for word instead, so it stays easy to re-sync (design §2,
@@ -136,11 +139,7 @@ Ask when a choice is genuinely the user's. Name the option you recommend.
 - Fill in `.github/pull_request_template.md` for every PR: a plain-language
   summary, the ticket link and the change type for a person, then the agent
   context an AI reviewer needs.
-- Do not hard wrap a PR body, an issue body, or a comment on GitHub. Each
-  paragraph and list item goes on one long line. GitHub renders a single
-  newline as a line break, so a wrapped body renders as a narrow column. The
-  files in this repo stay hard wrapped; only the text you send to GitHub does
-  not.
+- Never hard wrap text you send to GitHub — `writing-standard.md` says why.
 - Exercise a change against this checkout, never the installed copy:
   `claude --plugin-dir <path to this repo>`.
 - Spawning a teammate needs a working display mode: iTerm2 with its Python API

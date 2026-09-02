@@ -125,7 +125,7 @@ Read first: design §15.29, §13.1, §12, §15.8.
 
 ## T6 — Full path: worktrees, territories, teammates
 
-Status: open
+Status: done
 Depends on: T4
 Stage: 5 (design §13)
 
@@ -141,8 +141,36 @@ machine that runs this, if its Claude Code version has drifted far from
 Done when: one multi-package goal reaches a draft PR with zero prompts,
 including one forced fix round and one kill-and-resume.
 
-Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23;
-`record-format.md`; `ic-contract.md`.
+The loop landed on 2026-09-01 as
+`skills/project-lead/references/full-path.md`; design §15.30 records the five
+decisions it forced, and §15.31 the environment probe that corrected two of
+them.
+
+It then ran, the same day, on `jerridan/convert-keys-js` — two packages, two
+territories, two IC teammates, a squash merge each with a suite run, and a
+draft PR (#7) with zero escalations. Design §15.35 records what that proved
+and the nine things it found. §12's plan-approval probe is closed: the
+message form works, and the project lead approved with added requirements
+rather than rubber-stamping.
+
+A third run on the same repo closed the remaining two clauses the same day —
+`toTitleCase` plus `docs/OVERRIDES.md`, draft PR #8. A fix round was forced on
+a real defect the package reviewer had missed (a dead `.toLowerCase()` that
+`lodashSnakeCase` makes unreachable): fixed, re-diffed as `-r1`, re-reviewed,
+accepted, with `fix_rounds_used` persisted at 1. The pane was then killed with
+one package merged and the record stale on both; a fresh session reconciled
+from git, corrected both packages to `integrated`, appended rather than
+overwrote the session ids in `state.json` and `worktrees.json`, re-dispatched
+nothing, and carried the run to the PR. Design §15.36 records that run.
+
+Two transitions stay unproven and belong to T7, not here: `run_state` never
+became `interrupted` and no worktree was ever marked `orphaned`, because the
+`SessionEnd` hook that writes both does not exist. Recovery was therefore
+tested against a record that still claimed the dead run was `active`, which is
+the harder case, not the easier one.
+
+Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23, §15.30;
+`record-format.md`; `ic-contract.md`; `full-path.md`.
 
 ## T7 — Hooks: `SessionEnd`, and the idle nudge that replaces `TeammateIdle`
 

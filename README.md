@@ -1,44 +1,38 @@
 # crew
 
-**A team of agents that takes one goal to a reviewable draft PR.** You hand
-the goal to a project lead. It investigates, splits the work across
-implementers, has each piece reviewed by an agent that did not write it, and
-opens the PR. It asks you only when it genuinely cannot proceed.
+**A team of agents that takes one goal to a reviewable draft PR.** You hand the
+goal to a project lead. It investigates, splits the work across implementers,
+has each piece reviewed by an agent that did not write it, and opens the PR. It
+asks you only when it cannot proceed.
 
-> **Status: partly built. Installing it will not get you a run.**
-> The skill ships and `/crew:project-lead` resolves, but its body is a one-line
-> placeholder — invoking it only tells you the loop is not written yet. The
-> worker agents it will dispatch are real, and have been driven through a run
-> by hand. See [What exists today](#what-exists-today).
+> **Status: it runs. Councils and hooks do not exist yet.**
+> One goal to a draft PR, either as a single package or split across parallel
+> worktrees. Both paths have been driven end to end against a real repo. See
+> [What exists today](#what-exists-today).
 
 ## Why
 
 Most agent tooling scales one agent up: a longer context, a bigger model, a
-better prompt. `crew` scales sideways. It hands the goal to a team with an org
-chart — a project lead that plans and delegates, implementers working in
-parallel in isolated worktrees, critics that review work they did not do, and
-advocates that argue assigned sides of a judgment call.
+better prompt. `crew` scales sideways, to a team with an org chart.
 
-The structure buys four things one agent cannot get alone:
+Four things follow that one agent cannot get alone:
 
-- **A review is independent.** An agent that checks its own work grades its
-  own homework. A reviewer handed the brief and the diff, which never saw the
-  work happen, is a real gate.
-- **Disagreement is designed in.** Two agents on the same base model agree
-  because they share priors, not because they are right. A council assigns
-  opposing positions, so the project lead weighs arguments instead of counting
-  votes.
+- **Review is independent.** An agent that checks its own work grades its own
+  homework. A reviewer handed the brief and the diff, which never saw the work
+  happen, is a real gate.
+- **Disagreement is designed in.** Two agents on one base model agree because
+  they share priors, not because they are right. A council assigns opposing
+  positions, so the project lead weighs arguments instead of counting votes.
 - **Work happens at once.** Packages carry disjoint file sets, so several
-  implementers run at the same time without colliding.
-- **Effort is sized per piece.** Once the work is split, each piece can take
-  the cheapest model that can do it, decided after investigation rather than
-  before.
+  implementers run without colliding.
+- **Effort is sized per piece.** Each package takes the cheapest model that can
+  do it, chosen after investigation rather than before.
 
 It also moves the stops. A session today interrupts you after brainstorming,
-after the spec, after the plan, after the plan review — because you are the
-only reviewer it has. Give it a team and that review happens inside the run,
-recorded as it goes, so you audit the judgment calls at the end instead of
-approving them one at a time.
+after the spec, after the plan, after the plan review — because you are its only
+reviewer. Give it a team and that review happens inside the run, recorded as it
+goes. You audit the judgment calls at the end instead of approving them one at a
+time.
 
 ## How it works
 
@@ -47,12 +41,12 @@ approving them one at a time.
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ LEAD      investigate, spec, split the work   │   stub
+   │ PROJECT LEAD   investigate, spec, split       │
    └───────────────────────────────────────────────┘
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ CRITICS   reject a bad spec or a bad split    │   split only
+   │ CRITICS        reject a bad spec or split     │
    └───────────────────────────────────────────────┘
       │
       │   each package gets a band:  haiku / sonnet / opus
@@ -60,7 +54,7 @@ approving them one at a time.
       ├────────────────┬────────────────┐
       ▼                ▼                ▼
    ┌────────────┐  ┌────────────┐  ┌────────────┐
-   │ IC         │  │ IC         │  │ IC         │   built
+   │ IC         │  │ IC         │  │ IC         │
    │ one        │  │ one        │  │ one        │
    │ worktree   │  │ worktree   │  │ worktree   │
    └────────────┘  └────────────┘  └────────────┘
@@ -69,29 +63,24 @@ approving them one at a time.
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ REVIEWER  did not write the code it reviews   │   built
+   │ REVIEWER       did not write what it reviews  │
    └───────────────────────────────────────────────┘
       │                  │
       │ accepted         └──▶  findings go back to that IC,
       ▼                        up to five fix rounds
    ┌───────────────────────────────────────────────┐
-   │ LEAD      merge, re-run the suite, integrate  │   stub
+   │ PROJECT LEAD   merge, re-run the suite        │
    └───────────────────────────────────────────────┘
       │
       ▼
    draft PR   ──▶   you merge it
 ```
 
-Only the middle of that pipeline exists. The workers are built, and were
-driven through a real run by hand. `/crew:project-lead` resolves to a
-placeholder — the loop that would dispatch them is unwritten. The critics have
-no definition at all.
-
-A package is dispatchable only when it has four things: its own acceptance
-criterion, a file set disjoint from every sibling running beside it, a written
-interface contract with those siblings, and a model band. An IC works in its
-own git worktree and cannot see its siblings' work at all, so that contract is
-the only channel between packages.
+A package is dispatchable only with four things: its own acceptance criterion, a
+file set disjoint from every sibling beside it, a written interface contract
+with those siblings, and a model band. An IC works in its own worktree and
+cannot see its siblings' work, so that contract is the only channel between
+packages.
 
 The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 
@@ -99,67 +88,64 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 
 | Piece | State |
 |---|---|
-| `crew:ic`, `crew:ic-instructions`, `crew:package-reviewer` | built, and driven end to end by hand |
-| The record format, band rubric, IC contract, writing standard | built |
-| `/crew:project-lead` — the loop that dispatches all of it | the simple path is built: one goal, one package, one subagent, to a draft PR |
-| `crew:split-critic` and the `split.md` format | built. The simple path has one package, so nothing dispatches it yet |
-| `crew:spec-critic` | built, and dispatched by the simple path |
-| `crew:deliverable-reviewer` | built, and dispatched by the simple path |
+| `/crew:project-lead`, one package | built, and driven end to end |
+| `/crew:project-lead`, several packages | built, and driven end to end |
+| `crew:ic`, `crew:ic-instructions` | built, dispatched |
+| `crew:spec-critic`, `crew:package-reviewer`, `crew:deliverable-reviewer` | built, dispatched |
+| `crew:split-critic` | built, dispatched by the parallel path |
 | `crew:researcher` | built, not dispatched yet |
-| Question routing and `decisions.md` | built, and run by the simple path |
-| Council | not built |
+| The record, band rubric, IC contract, writing standard | built |
+| Question routing and `decisions.md` | built |
+| Councils | not built |
 | Hooks | not built |
 
-One hand-driven run exercised the worker agents. A code package added real test
-coverage to a sibling plugin; a prose package wrote a README. Both reached
-`Verdict: accepted` from `crew:package-reviewer`. That run's plans, reports and
-reviews are kept verbatim in [`docs/stage-2-run/`](docs/stage-2-run).
+Every run is on the record. The first was hand-driven and its plans, reports
+and reviews are kept verbatim in [`docs/stage-2-run/`](docs/stage-2-run). Later
+runs drove `/crew:project-lead` itself, against a real library with a test
+suite: one package to a draft PR, then two packages in parallel worktrees, then
+a run that survived a forced fix round and a mid-run crash.
 
-That run also found that a headless IC could not get a `git commit` approved,
-and that a worktree-isolated session could not reach a sibling worktree at
-all. Later probes resolved both: a path-scoped allow rule covers the commit,
-and an unisolated launch restores worktree access. §15 of the design doc
-records the findings.
+Design [§15](docs/design.md) records what each run found, including the defects
+they exposed in crew itself.
 
 ## The mechanics
 
-**Bands, and a rubric that measures itself.** A package is `light` (haiku),
-`standard` (sonnet), or `deep` (opus). `standard` is the default and
-`deep` needs a written justification. An IC that reports blocked is
-re-dispatched one band up with no human involvement, and every prediction and
-promotion is logged — which turns the rubric from a guess into a measurement.
+**Bands.** A package is `light` (haiku), `standard` (sonnet), or `deep` (opus).
+`standard` is the default and `deep` needs a written justification. An IC that
+reports blocked is re-dispatched one band up with no human involvement. Every
+prediction and promotion is logged, which turns the rubric into a measurement.
 
-**An audit trail instead of an approval gate.** One directory per goal, kept
-outside your repo, holding the spec, the plan, every IC's report, every
-reviewer's findings, and every judgment call with its citation. A decision
-recorded at high confidence with no citation is a defect.
+**An audit trail instead of an approval gate.** One directory per goal, outside
+your repo, holding the spec, the plan, every IC's report, every reviewer's
+findings, and every judgment call with its citation. A decision recorded at high
+confidence with no citation is a defect.
 
 **A contract for when to ask you.** Questions route three ways: precedent, a
-council, or you. The project lead escalates on a fixed set of triggers, among
-them a goal with no falsifiable acceptance criterion, a balanced council on an
-architecture-moving question, and a crossed spend ceiling. Questions about
-what *you* want are never debated: a council always names a winner, and would
-bury "we do not know what you want" as "we established you want X".
+council, or you. The project lead escalates on a fixed set of triggers — a goal
+with no falsifiable acceptance criterion, a council it cannot settle, a crossed
+spend ceiling. Questions about what *you* want are never debated, because a
+council always names a winner and would bury "we do not know what you want" as
+"we established you want X".
 
 **Reports are claims; git is evidence.** A teammate's output never returns to
 the project lead, so every IC completion is checked against `git log` in its
-worktree before the project lead believes it. The suite is re-run after each
-merge, not once at the end, so a failure is attributable to one package with
-no bisect.
+worktree first. The suite re-runs after each merge, not once at the end, so a
+failure belongs to one package with no bisect.
 
 ## Roles
 
 | Role | What it does | Built |
 |---|---|---|
-| Project lead | Runs the whole goal in your session: investigates, writes the spec, splits the work, dispatches workers, integrates, opens the draft PR. | stub |
-| Scout | Answers one research question for the project lead, then exits. | needs the project lead |
-| Advocate | Argues one position in a council, when the project lead needs a second opinion on a judgment call. | needs the project lead |
-| Spec critic | Reviews the project lead's spec before any work starts. | yes, not dispatched yet |
-| Decomposition critic | Reviews the work split before any IC starts, to catch a bad split early. | yes, not dispatched yet |
+| Project lead | Runs the whole goal in your session: investigates, writes the spec, splits the work, dispatches workers, integrates, opens the draft PR. | yes |
 | IC | Implements one package of code, in its own worktree, test-first. | yes |
 | Instruction IC | Implements one package whose deliverable is prose — a `CLAUDE.md`, a rule file, a `SKILL.md`, an agent definition — where a checklist decides done, not a test. | yes |
-| Package reviewer | Reviews one finished package against its brief before the project lead accepts it. | yes |
-| Deliverable reviewer | Reviews the whole deliverable, after every package merges, before the draft PR opens. | yes, not dispatched yet |
+| Spec critic | Reviews the spec before any work starts. | yes |
+| Decomposition critic | Reviews the work split before any IC starts. | yes |
+| Package reviewer | Reviews one finished package against its brief. | yes |
+| Deliverable reviewer | Reviews the whole deliverable before the draft PR opens. | yes |
+| Researcher | Answers one open question across several hops, and returns a brief with citations. | yes |
+| Scout | Answers one lookup for the project lead, then exits. | yes |
+| Advocate | Argues one assigned position in a council. | no |
 
 ## Install
 
@@ -168,47 +154,45 @@ no bisect.
 /plugin install crew@crew
 ```
 
-This gets you the agents above. Nothing dispatches them yet, so today this is
-worth doing only to read them or drive one by hand.
+### What a parallel run needs
 
-**When it does run, the parallel path needs agent teams**, which are
-experimental and off by default. Turn them on with
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your settings, and run
-interactively — `claude -p` never spawns a teammate. Display mode needs no
-setup: teammates run in-process in any terminal by default, and split panes
-(tmux or iTerm2) are an optional upgrade.
+Four things. Miss any one and the run stops.
 
-Without that variable crew still runs, but differently: a named agent launches
-as an ordinary subagent instead of a teammate. You keep the isolated context,
-the per-package model and a returned result. You lose the independent session,
-the direct messaging between agents, and the shared task list.
+| Requirement | How |
+|---|---|
+| Agent teams | Set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and run interactively |
+| An unisolated checkout | Start from an ordinary clone |
+| A display mode | Nothing to do — in-process by default. tmux or iTerm2 adds split panes |
+| Permissions that never stop for a human | A permission mode that approves automatically, or your own allow rules |
 
-The single-package path needs none of it. It runs one plain subagent on the
-current branch, with no worktree and no teammate, and it is what stage 4 builds
-first — so the first working version of `/crew:project-lead` will not depend on
-agent teams at all.
+The single-package path needs none of them. It runs one subagent on your
+current branch.
+
+Crew never widens your permissions itself. Without the teams variable it still
+runs, but a named agent becomes an ordinary subagent: you keep the isolated
+context, the per-package model and a returned result, and you lose the
+independent session, the messaging between agents, and the shared task list.
 
 ## Credit
 
 `crew`'s process — spec, plan, critique, test-driven implementation, review,
-integrate — is adapted from the `superpowers` plugin. Several of its
-checklists are copied word for word rather than paraphrased, so they stay easy
-to re-sync later.
+integrate — is adapted from the `superpowers` plugin. Several of its checklists
+are copied word for word rather than paraphrased, so they stay easy to re-sync.
 
 `crew` never invokes a superpowers skill directly. Every superpowers process
-skill stops and waits for a human. Removing that stop is the whole point of
+skill stops and waits for a human, and removing that stop is the point of
 `crew`.
 
 ## Reading the docs
 
-[`docs/design.md`](docs/design.md) is the living spec. Read it first if you
-want to know how `crew` is meant to work, and §15 for what is still open.
+[`docs/design.md`](docs/design.md) is the living spec. Read it to know how
+`crew` is meant to work, and §15 for what is still open.
 
 [`docs/implementation-plan.md`](docs/implementation-plan.md) and
-[`docs/stage-2-run/`](docs/stage-2-run) are a record of how stages 0 through 2
-were built. `crew` was built inside a larger plugin repo, so their paths are
-relative to that layout, and they name a few plugins that live there. They are
-kept unedited because they are evidence.
+[`docs/stage-2-run/`](docs/stage-2-run) record how the first stages were built.
+`crew` was built inside a larger plugin repo, so their paths suit that layout
+and name a few plugins that live there. They are kept unedited because they are
+evidence.
 
 ## License
 

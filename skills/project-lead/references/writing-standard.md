@@ -1,9 +1,10 @@
 # Writing standard
 
-Read this before drafting or editing a `CLAUDE.md`, a `.claude/rules/`
-file, a `SKILL.md`, or an agent definition. No test can run against
-prose. This standard, and its final checklist, is what "done" means for
-a package like that.
+Read this before drafting or editing a `CLAUDE.md`, a `.claude/rules/` file, a
+`SKILL.md`, or an agent definition — and its `## Writing for a person` section
+before a `README.md`, a PR body, an issue or a comment. No test can run against
+prose. This standard, and its final checklist, is what "done" means for a
+package like that.
 
 ## Pick the container
 
@@ -24,11 +25,35 @@ Each container has a different cost to the reader:
   it. Put in it only what that one job needs.
 
 A README, and reader-facing prose in general, is none of these four. A
-person opens it directly; nothing loads it automatically. Recommended
-routing: hold it to this standard's prose rules — write for the reader,
-revise down, ASD-STE100 — but skip the container-choice check below,
-since no cheaper container exists to route it to. This routing is not
-settled. Flag it as open when you hit it.
+person opens it directly; nothing loads it automatically. Hold it to this
+standard's prose rules, skip the container-choice check — no cheaper
+container exists to route it to — and add the section below. Who owns
+reader-facing prose is still open (design §15.17); how to write it is not.
+
+## Writing for a person
+
+A README is read by a human who is scanning, not by a model that will act
+on it. That changes what belongs in it.
+
+- **State the action, not the mechanism.** Say what to set, install or run.
+  The reason it works that way belongs in `docs/design.md`.
+- **Never explain a design decision.** "Crew cannot detect this, because a
+  session cannot read its own permission mode" is a design fact. Cite the
+  design section instead, or say nothing.
+- **Prefer a table** for anything with a repeating shape: requirements,
+  state, roles, options. A reader finds a row faster than a paragraph.
+- **No bolded lead-in followed by its own explanation.** Two or three of
+  those in a row is design voice, and it is the drift to watch for.
+- **Keep the status true.** A README that calls a built thing a stub is
+  worse than one that says nothing. Check every "not built" claim in it
+  against the repo whenever a stage lands.
+
+The same rules hold for a PR body, an issue and a comment.
+
+**Never hard wrap text you send to GitHub.** Each paragraph and list item
+goes on one long line. GitHub renders a single newline as a line break, so a
+wrapped body renders as a narrow column. Files in this repo stay hard
+wrapped; only the text you send to GitHub does not.
 
 ## Write for what the reader already has
 
@@ -82,12 +107,15 @@ not done.
 2. **No duplication.** No rule in this change repeats or contradicts a
    rule already stated in a sibling file. Grep the change's key terms
    against the package's other files before you finish.
-3. **Reference depth.** A reference file sits at most one link away from
-   the file that points to it. No reference file points to a second
-   reference file.
+3. **Reference depth.** No step may require reading a third file to
+   finish it. A reference **naming** the file that owns a rule is not a
+   hop — that is how a rule keeps one owner — but a reference that sends
+   you to a second file to learn what to do next is.
 4. **Size.** A `CLAUDE.md` or a `.claude/rules/` file is at most 150
-   lines. A `SKILL.md` body, not counting `references/`, is at most 200
-   lines. Over either limit, move the excess into a reference file.
+   lines. A `SKILL.md` body is at most 200. Count every line the file
+   holds — blank lines included — from the line after the closing `---`
+   of the frontmatter to the end, and count no file under `references/`.
+   Over either limit, move the excess into a reference file.
 5. **ASD-STE100 prose.** Every sentence is short, uses active voice, and
    carries exactly one instruction. A sentence you must reread to parse
    is too long — split it.

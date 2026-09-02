@@ -794,7 +794,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 2 | `crew:ic` + `crew:ic-instructions` + `crew:package-reviewer`, driven by hand | One package of each kind reaches a reviewed, accepted result with zero prompts |
 | 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
-| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **written 2026-09-01 (§15.30), not yet exercised** |
+| 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). The hooks are the part still missing. |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
 
 ### 13.1 Hooks
@@ -2117,3 +2117,80 @@ Deliberately different:
        absence of a model label in the transcript. A rule nothing can audit is
        a weak rule: `review-output.md` should require every review to state
        the model it ran at.
+37. **A code review of the T6 branch found what three runs could not — the
+    multi-package territory — 2026-09-01.** Fifteen findings, two of them
+    `[Critical]`, and every one held on verification. Ten were fixed; the rest
+    were already recorded as deferrals. Both `[Critical]`s came from one
+    mistake: **`full-path.md` was written as though a territory holds exactly
+    one package.** Design §5 says the opposite — a territory is a region one IC
+    owns and works *several* packages in, and fewer spawns with retained
+    context is the reason territories exist. All three runs happened to give
+    each territory one package, so the loop's central case never ran.
+
+    a. **A package had no `base`, so every package after the first in a
+       territory was doomed to a false scope finding.** Step 7 diffed
+       `<base>..HEAD` where `base` is the deliverable's — the only base any
+       record field carried. A territory's packages are sequential commits on
+       one branch, so package 2's review diff contained package 1's files, and
+       `package-reviewer.md` is required to flag a file outside the declared
+       `file_set` as scope drift. That is a guaranteed `[Critical]` and a
+       wasted fix round on every package after the first. `packages[]` now
+       carries its own `base`, written at dispatch and rewritten when the IC is
+       sent its next package, and steps 6 and 7 range from it.
+
+    b. **`merge --squash` of a territory branch cannot give one commit per
+       package.** The branch holds every package the territory has finished, so
+       a three-package territory produced one squashed commit and one suite
+       run — losing both benefits §9.3 claims, per-package attribution with no
+       bisect and a narrative a reviewer can read. Step 9 now applies the
+       package's own range, `git cherry-pick -n <package-base>..<package-head>`
+       followed by one commit, as each package is accepted.
+
+    c. **`--resume` fell through into new-run setup.** The resume paragraph was
+       followed unconditionally by "create `~/.claude/crew/<slug>-<4 hex>/`",
+       so a resumed run would mint a second record directory beside the one it
+       had just reconciled, rewrite the spec, re-dispatch the spec critic, and
+       fail at `git switch -c` on a branch that already exists. The §15.36 run
+       never reached it because the resumed session re-entered mid-loop. Step 1
+       now stops the resume path before setup and says to re-enter at the first
+       unfinished step.
+
+    d. **The fix-round counter was incremented after the files named by it.**
+       Steps 6 and 7 name `diffs/<id>-r<n>.patch` and
+       `reviews/<id>-package-review-r<n>.md` from `fix_rounds_used`, and the
+       increment came last, so round 1 would overwrite round 0's diff and
+       review — the two artifacts `record-format.md` declares are never
+       overwritten. Both files now increment first.
+
+    e. **Rounds 4 and 5 promoted with no top-band guard**, contradicting
+       `band-rubric.md`'s "a `deep` package cannot promote further". Both files
+       now escalate instead.
+
+    f. **The worktree root default is inverted.** §15.35b concluded the root
+       belongs outside the target repo and the files still defaulted to
+       repo-local with an escape hatch. Now the default is
+       `<record-root>/worktrees` and repo-local needs a recorded reason.
+
+    g. **Removing trigger 7's old wording removed the only stop for a
+       multi-deliverable goal.** It used to read "the goal needs more than one
+       package. The full path is not built", which caught a goal too large for
+       one deliverable as a side effect. `full-path.md` runs one deliverable
+       and nothing reads `split.md`'s `Depends on`, so such a goal had no path
+       and no escalation. That is now trigger 8.
+
+    h. **Two worked examples in `record-format.md` still taught the branch
+       name §15.34 had just fixed**, and a third instance the review did not
+       catch. An example is an instruction: an agent copying it would recreate
+       the collision the slug segment exists to prevent.
+
+    i. **A crew-specific rule had leaked into a target-repo instruction.** Step
+       9 said "bump both version fields", which is crew's own two-manifest rule
+       and wrong for most repos — and §15.33d had praised an earlier run
+       precisely for *not* applying it to someone else's project.
+
+    The lesson is narrower than "review found bugs". Running the loop three
+    times proved the paths those runs took. It could say nothing about the
+    paths they did not, and the reading found the worst defects in exactly
+    those: the multi-package territory, the resume that re-enters at step 1,
+    the fourth fix round. Runs and reviews cover different surfaces, and a
+    green run is not evidence about an untaken branch.

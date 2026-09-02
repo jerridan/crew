@@ -6,6 +6,10 @@ place of its steps 6 to 14.
 
 The simple path stays in `SKILL.md`. Nothing here applies to it.
 
+This file runs **one** deliverable. Deliverables run sequentially and
+`split.md` carries `Depends on` to order them, but no loop reads it yet, so a
+goal needing two deliverables is escalation trigger 8, not a bigger split.
+
 ## What changes
 
 | | Simple path | Full path |
@@ -80,10 +84,11 @@ integration is a merge and never a rebase (design §9.3):
 git -C <repo> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
-`<worktree-root>` is `<repo>/.claude/worktrees/crew/<goal-slug>`. Git omits
-a registered worktree from its parent's `git status`, so a worktree there
-never shows up as untracked work. If the target repo's test runner walks
-that directory, pick a root outside the repo instead and record why.
+`<worktree-root>` is `<record-root>/worktrees` — **outside the target repo**.
+A repo-local root looks tidy and breaks the suite: a test runner that globs,
+which is the common case, collects every worktree's tests as well as the
+repo's own, and the run then measures the wrong tree (design §15.35b). Put
+the root inside the repo only when you have a reason, and record it.
 
 Write `worktrees.json` now: the IC's name, the absolute worktree path, its
 branch, this session's id, and `orphaned: false`. Set every package's
@@ -119,7 +124,9 @@ an agent definition to the default system prompt and split-pane
 **replaces** it, and neither applies `skills:` (design §15.20d). That is why
 the contract is injected into the prompt and not linked.
 
-Set the package and its deliverable `in-flight` at the first spawn.
+Set the package and its deliverable `in-flight` at the first spawn, and write
+that package's `base`: the worktree's head sha right now. For a territory's
+first package that equals the deliverable's `base`.
 
 ## 5. The plan gate
 
@@ -136,8 +143,13 @@ idle is an expected pause and not a fault (design §15.8).
 ## 6. Verify before you believe
 
 Read `reports/<id>.md`, then treat it as a claim and never as evidence. The
-evidence is `git -C <worktree> log <base>..HEAD` and
-`git -C <worktree> diff`.
+evidence is `git -C <worktree> log <package-base>..HEAD` and
+`git -C <worktree> diff <package-base>..HEAD`.
+
+`<package-base>` is that package's own `base`, not the deliverable's. A
+territory works its packages in sequence in one worktree, so a range from the
+deliverable base carries the previous packages' files too, and every package
+after the first would be failed for scope drift it did not cause.
 
 Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
 denies any command that changes directory before it runs git, allow rule or
@@ -160,7 +172,7 @@ outcome here, not a failure (design §15.12).
 Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
 
 ```
-git -C <worktree> diff <base>..HEAD > <record-root>/diffs/<id>-r<n>.patch
+git -C <worktree> diff <package-base>..HEAD > <record-root>/diffs/<id>-r<n>.patch
 ```
 
 An instruction package gets its acceptance checklist file instead.
@@ -182,29 +194,44 @@ Run a round only on `Verdict: fix round needed`. Five is the cap.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
   up**. A fresh IC holds no context, so its prompt describes what is already
   committed — `git -C <worktree> log --oneline` plus `git -C <worktree> diff
-  --stat` — and which findings it must fix.
+  --stat` — and which findings it must fix. A `deep` package cannot promote,
+  so a `deep` package reaching round 4 escalates instead: respawn it at
+  `deep` only if the principal says to (`band-rubric.md`).
 - **At the cap**, fix the package yourself, or park it as `abandoned` with
   your reasoning recorded. At the top band, escalate instead.
 
-Every round goes back through steps 6 and 7. A fix nobody re-reviewed is a
-claim. Leave this step only on `Verdict: accepted`.
+**Increment `fix_rounds_used` and write `state.json` first**, before the round
+runs. Steps 6 and 7 name `diffs/<id>-r<n>.patch` and
+`reviews/<id>-package-review-r<n>.md` from that counter, so incrementing
+afterwards makes round 1 overwrite round 0's diff and review — the two files
+that are a reviewer's only audit trail.
 
-Increment `fix_rounds_used` and write `state.json` every round. Log every
-promotion into `band_history` with its predicted band, actual band, and
-cause.
+Then the round goes back through steps 6 and 7. A fix nobody re-reviewed is a
+claim. Leave this step only on `Verdict: accepted`. Log every promotion into
+`band_history` with its predicted band, actual band, and cause.
 
 Then send the IC its next package in the same territory, and return to step
-5. An IC works its packages in the order `split.md` lists them.
+5. An IC works its packages in the order `split.md` lists them. Write the new
+package's `base` as you send it — the worktree head as it stands now, which
+is the accepted package's last commit. That is what keeps the next review
+diff to the next package's own work.
 
 ## 9. Integrate
 
-Merge one package at a time, into the deliverable branch:
+Merge one package at a time, into the deliverable branch, as each package is
+accepted rather than once per territory:
 
 ```
-git -C <repo> merge --squash crew/<goal-slug>/<territory-slug>
+git -C <repo> cherry-pick -n <package-base>..<package-head>
 git -C <repo> commit -m "<package one-liner>"
 <run the suite>
 ```
+
+Apply the package's own commit range, never `merge --squash` of the territory
+branch. That branch holds every package the territory has finished, so a
+branch-level squash collapses them into one commit and one suite run, which
+loses the per-package attribution the next two paragraphs promise (design
+§15.37b).
 
 **Run the suite after each merge, not after all of them.** A failure is then
 attributable to one package with no bisect. Read the output yourself. A
@@ -220,9 +247,10 @@ Textual conflicts should be impossible — disjoint file sets leave git
 nothing to conflict on, and you own every shared file. What remains is the
 semantic conflict, and the per-merge suite run is what catches it.
 
-Then edit the shared files yourself and bump both version fields. Read the
-target repo's own instructions for which files must change together, and
-keep the values they require equal. Commit them.
+Then edit the shared files yourself. Read the target repo's own instructions
+for which files must change together, and keep the values they require equal.
+Crew's own two-manifest version rule is crew's, not every repo's — a repo that
+bumps at release wants no bump here at all. Commit them.
 
 ## 10. Review the deliverable
 

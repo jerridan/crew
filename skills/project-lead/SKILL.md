@@ -12,12 +12,11 @@ proceed correctly.
 
 ## What is built
 
-Both paths run. The **simple path** — steps 6 to 14 below — is one
-deliverable, one package, one unnamed subagent, on the deliverable branch in
-this checkout. The **full path** is several packages in worktrees, worked by
-named IC teammates; `references/full-path.md` owns it. Councils are not
-built; the council row in `references/autonomy-contract.md` says what to do
-instead.
+Both paths run. The **simple path** — steps 6 to 14 below — is one package on
+the deliverable branch here, worked by one unnamed subagent. The **full path**
+is several packages in worktrees, worked by named IC teammates;
+`references/full-path.md` owns it. Councils are not built; the council row in
+`references/autonomy-contract.md` says what to do instead.
 
 ## The references
 
@@ -46,15 +45,17 @@ charter file. A path that exists on disk becomes `charter.md` unchanged. Any
 other string you expand into `charter.md` yourself: the goal, and one
 falsifiable acceptance criterion.
 
-`--resume` reopens `~/.claude/crew/<goal-slug>/` and reconciles before
-anything else. `references/full-path.md` step 13 owns that; on the simple
-path, `git log` on the deliverable branch is the whole job. Append this
-session's id to `run.session_ids`, never overwrite it.
+**`--resume` skips the rest of this step.** It reopens
+`~/.claude/crew/<goal-slug>/` — never a new directory — appends this session's
+id to `run.session_ids`, and reconciles: `full-path.md` step 13 owns that, and
+on the simple path `git log` on the deliverable branch is the whole job. Then
+re-enter at the first unfinished step, never re-running a finished one. A
+resumed run writes no charter, no spec and no new branch.
 
-Write no falsifiable criterion, do no work: escalate and stop. Create
-`~/.claude/crew/<slug>-<4 hex chars>/`, generating the suffix once.
-Write `charter.md`, then `state.json` with `run_state: active` and a spend
-ceiling of 2,000,000 tokens unless the principal names one.
+On a new goal: write no falsifiable criterion, do no work — escalate and stop.
+Otherwise create `~/.claude/crew/<slug>-<4 hex chars>/`, generating the suffix
+once. Write `charter.md`, then `state.json` with `run_state: active` and a
+spend ceiling of 2,000,000 tokens unless the principal names one.
 
 ## 2. Scout
 
@@ -66,14 +67,14 @@ files apply — `CLAUDE.md`, `.claude/rules/`, a nested `CLAUDE.md`?
 ## 3. Write the spec
 
 Write `spec.md`: the requirements, an acceptance criterion per requirement
-that a command or a checklist can fail, the global constraints written out
-(version floors, dependency limits, naming rules, platform requirements),
-and the non-goals. State requirements, never implementations.
+that a command or a checklist can fail, the global constraints in full
+(version floors, dependency limits, naming rules, platform requirements), and
+the non-goals. State requirements, never implementations.
 
 ## 4. Have the spec reviewed
 
 Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md`, the repo
-path, and `references/review-output.md` whole. Write its findings to
+path, and `review-output.md` whole. Write its findings to
 `reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest on disk.
 
 On `Verdict: re-spec needed`, adjudicate, revise `spec.md`, and dispatch
@@ -91,7 +92,6 @@ is wrong here. A finding is a claim, not a verdict.
 | One package, short enough to run unattended | Run steps 6-14 |
 | More than one package, or work long enough to need steering | Read `references/full-path.md` and run it in place of steps 6-14 |
 
-Mechanism follows the need for a conversation, not the size of the work.
 Your own context is the most expensive place to work.
 
 ## 6. Write the split
@@ -100,8 +100,8 @@ Write `split.md` in `record-format.md`'s format, one deliverable and one
 package. Assign the band from `band-rubric.md`, and mirror every field into
 `state.json`'s `packages[]`.
 
-No split critic runs — one package has no sibling to overlap. Write
-`split.md` anyway; `crew:deliverable-reviewer` reads it at step 13.
+No split critic runs — one package has no sibling to overlap. Write it anyway;
+`crew:deliverable-reviewer` reads it at step 13.
 
 ## 7. Create the branch
 
@@ -127,10 +127,9 @@ plan, approve it or send it back, set `plan_approved_at`, then dispatch
 again to implement and name the plan's path in that prompt.
 
 **Expect the contents instead of the file.** Some dispatch shapes deny an IC
-every write to the record root (design §15.26b, §15.31b), and its final
-message then carries the plan or the report. Transcribe it into
-`plans/<id>.md` or `reports/<id>.md` unchanged, and say in the file that you
-transcribed it.
+every write to the record root (design §15.26b, §15.31b); its final message
+then carries the plan or the report. Transcribe it unchanged, and say in the
+file that you transcribed it.
 
 Set the package and its deliverable `in-flight` at the first dispatch.
 
@@ -140,19 +139,19 @@ The IC's report is a claim. `git -C <repo> log` and `git -C <repo> diff` are
 the evidence. Check the diff's file list against the declared file set, and
 run the acceptance criterion yourself.
 
-A `BLOCKED` report names its cause. `band-rubric.md`'s promotion rules say
-what each cause earns.
+A `BLOCKED` report names its cause; `band-rubric.md` says what each earns.
 
 ## 10. Review the package
 
 Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
-`git -C <repo> diff <base>..HEAD > <path>`. An instruction package gets its
-acceptance checklist file instead.
+`git -C <repo> diff <base>..HEAD > <path>`. One package means its `base` is
+the deliverable's. An instruction package gets its acceptance checklist file
+instead.
 
 `crew:package-reviewer` requires five inputs and says so. Send all five: the
 package's record entry (`file_set`, `interface_contract`,
 `acceptance_criterion`), the checkout path, the IC's report, the diff or
-checklist path, and the brief. Inject `references/review-output.md` whole too.
+checklist path, and the brief. Inject `review-output.md` whole too.
 
 Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 `fix_rounds_used`.
@@ -162,14 +161,16 @@ Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 Run a round only on `Verdict: fix round needed`. Each round is a fresh
 subagent, so its prompt describes what is already committed — `git log
 --oneline` plus `git diff --stat` — and which findings it must fix. Rounds 4
-and 5 run one band up.
+and 5 run one band up, unless the package is already `deep`: then escalate.
 
 **Every round goes back through steps 9 and 10** — a fix nobody re-reviewed
 is a claim. Leave this step only on `Verdict: accepted`.
 
-Increment `fix_rounds_used` and write `state.json` every round. Five is the
-cap: at it, fix the package yourself or park it as `abandoned` with your
-reasoning recorded. At the top band, escalate instead.
+Increment `fix_rounds_used` and write `state.json` **before** the round runs —
+steps 10 and 11 name their files from that counter, so a late increment
+overwrites the previous round's diff and review. Five is the cap: at it, fix
+the package yourself or park it as `abandoned` with your reasoning recorded.
+At the top band, escalate instead.
 
 ## 12. Integrate
 
@@ -188,8 +189,8 @@ shared-file check exists to read.
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`,
 the checkout path and base ref, the fresh diff path, the accepted package
-review, and `references/review-output.md` whole. It cannot run four of its
-seven checks from a diff alone.
+review, and `review-output.md` whole. It cannot run four of its seven checks
+from a diff alone.
 
 Write its findings to `reviews/<deliverable-id>-deliverable-review.md`.
 Adjudicate as in step 4. Clear every `[Critical]` before the PR opens.

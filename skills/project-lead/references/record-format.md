@@ -193,6 +193,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `file_set` | the package's declared, disjoint file list (design §5 invariant 2). `split-critic` checks disjointness against this field. |
 | `interface_contract` | `{consumes, produces}` with exact signatures (design §5 invariant 3). The only channel between isolated ICs. |
 | `acceptance_criterion` | the executable test or reviewer checklist that proves the package is done (design §5 invariant 1). Also what makes a respawn idempotent after a crash (design §10.1). |
+| `base` | the sha in this package's worktree when the project lead dispatched it. For a territory's first package that equals the deliverable's `base`; for each package after it, the worktree head when the previous package was accepted. `<base>..HEAD` is what makes a review diff cover this package and not its predecessors in the same worktree (design §15.37a). |
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
@@ -244,7 +245,8 @@ value in either direction, including out of a mistaken `integrated` or
 ### At creation
 
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
-`ic_name: null`, and `plan_approved_at: null`. `plan_path` and `report_path`
+`ic_name: null`, `base: null` until it is dispatched, and
+`plan_approved_at: null`. `plan_path` and `report_path`
 name files that do not exist yet. On the simple path (design §9.1) the project lead never writes
 `worktrees.json`: there is one package, no territory, and `ic_name` stays
 `null` for the run.
@@ -304,7 +306,7 @@ One run, two packages, in different states:
   "deliverables": [
     {
       "id": "deliverable-1",
-      "branch": "crew/deliverable-1",
+      "branch": "crew/add-request-logging-a1b2/deliverable-1",
       "base": "a1b2c3d",
       "state": "in-flight",
       "state_changed_at": "2026-08-24T14:05:00Z",
@@ -350,6 +352,7 @@ One run, two packages, in different states:
         "produces": ["export function requestLogger(req: Request): void"]
       },
       "acceptance_criterion": "npm test -- src/middleware/logging.test.ts exits 0",
+      "base": "a1b2c3d",
       "fix_rounds_used": 1,
       "ic_name": "ic-logging-middleware",
       "plan_approved_at": "2026-08-24T14:25:00Z",
@@ -373,6 +376,7 @@ One run, two packages, in different states:
         "produces": ["export type LogLevel = \"debug\" | \"info\" | \"warn\" | \"error\""]
       },
       "acceptance_criterion": "npm test -- src/config/logging-config.test.ts exits 0",
+      "base": "e4f5a6b",
       "fix_rounds_used": 2,
       "ic_name": "ic-logging-config",
       "plan_approved_at": "2026-08-24T16:20:00Z",
@@ -421,13 +425,13 @@ reconciled.
 {
   "ic-logging-middleware": {
     "worktree": "/Users/x/src/app/.claude/worktrees/crew/add-request-logging-a1b2/logging-middleware",
-    "branch": "crew/logging-middleware",
+    "branch": "crew/add-request-logging-a1b2/middleware",
     "session_ids": ["sess-a001"],
     "orphaned": false
   },
   "ic-logging-config": {
     "worktree": "/Users/x/src/app/.claude/worktrees/crew/add-request-logging-a1b2/logging-config",
-    "branch": "crew/logging-config",
+    "branch": "crew/add-request-logging-a1b2/config",
     "session_ids": ["sess-b002", "sess-b003"],
     "orphaned": false
   }
@@ -523,6 +527,7 @@ Every name this file defines, with what consumes it.
 - `file_set` — consumer: Task 7 (`crew:ic` self-review checks its diff against this); stage 3 (`split-critic` disjointness check)
 - `interface_contract` — consumer: stage 3 (`split-critic` type-consistency check); Task 7/Task 8 (IC spawn prompt carries it, design §9.2 step 2)
 - `acceptance_criterion` — consumer: Task 6 (`ic-contract.md`, tells the IC when to stop); Task 9 (`crew:package-reviewer` checks work against it)
+- `base` (package) — consumer: stage 5 (the review diff and the verification range, `<base>..HEAD`)
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
 - `plan_path` — consumer: Task 6 (`ic-contract.md`, plan-approval step); Task 7 (`crew:ic` writes it, design §9.2 step 3)

@@ -15,9 +15,21 @@ from pathlib import Path
 LIVE_STATES = ("active", "blocked")
 
 
-def crew_root() -> Path:
-    config_dir = os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude")
-    return Path(config_dir) / "crew"
+def crew_roots() -> list[Path]:
+    """Every place a record may live.
+
+    `record-format.md` hardcodes `~/.claude/crew/`, so that path is always
+    checked. `CLAUDE_CONFIG_DIR` relocates the config dir, and a project lead
+    on such a machine may follow the harness rather than the reference, so
+    check that too. Looking in both costs one `is_dir` and cannot miss a run.
+    """
+    roots = [Path.home() / ".claude" / "crew"]
+    config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+    if config_dir:
+        relocated = Path(config_dir) / "crew"
+        if relocated not in roots:
+            roots.append(relocated)
+    return roots
 
 
 def read_json(path: Path):
@@ -29,7 +41,7 @@ def write_json(path: Path, data) -> None:
     """Replace the file in one step, so a killed hook leaves no half-file."""
     tmp = path.with_name(path.name + ".tmp")
     with tmp.open("w", encoding="utf-8") as handle:
-        json.dump(data, handle, indent=2)
+        json.dump(data, handle, indent=2, ensure_ascii=False)
         handle.write("\n")
     os.replace(tmp, path)
 
@@ -64,18 +76,19 @@ def interrupt_run(state_path: Path, session_id: str) -> None:
 
 
 def main() -> None:
-    root = crew_root()
-    if not root.is_dir():
+    roots = [r for r in crew_roots() if r.is_dir()]
+    if not roots:
         return
     payload = json.loads(sys.stdin.read() or "{}")
     session_id = payload.get("session_id")
     if not session_id:
         return
-    for state_path in sorted(root.glob("*/state.json")):
-        try:
-            interrupt_run(state_path, session_id)
-        except Exception:
-            continue
+    for root in roots:
+        for state_path in sorted(root.glob("*/state.json")):
+            try:
+                interrupt_run(state_path, session_id)
+            except Exception:
+                continue
 
 
 if __name__ == "__main__":

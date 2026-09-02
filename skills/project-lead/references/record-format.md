@@ -263,6 +263,13 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | `spend` | `{ceiling, measured_tokens, estimated_tokens, council_tokens, by_agent}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 
+**Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
+prints this session's own id, and it is the same string the `SessionEnd` hook
+matches against. Run it. A plausible-looking id you wrote yourself matches
+nothing, so the hook silently marks no run, and `--resume` cannot prove which
+worktree it owns (design §15.39). This holds on both paths: the simple path
+writes no `worktrees.json`, but it still writes `run.session_ids`.
+
 ### `run_state` transitions
 
 | From | To | Trigger |
@@ -411,12 +418,6 @@ worktree, so a worktree holds only the package's own work. That keeps
 `git status --porcelain` meaning exactly what the recovery check reads it to
 mean: uncommitted work, and nothing else.
 
-**Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
-prints this session's own id, and it is the same string the `SessionEnd` hook
-matches against. Run it. A plausible-looking id you wrote yourself matches
-nothing, so the hook silently marks no run and `--resume` cannot prove which
-worktree it owns (design §15.39).
-
 **`session_ids` is a list, not a single id.** Design §13.1 makes the session
 id the only proof of worktree ownership, but `--resume` runs in a *new*
 session with a *new* id. If resume overwrote the field, ownership matching
@@ -424,9 +425,12 @@ would fail on the very first resume — the exact case the field exists to
 serve. Resume appends; it never overwrites. `state.json`'s `run.session_ids`
 follows the same append-only rule, for the same reason.
 
-**`orphaned`** is a boolean. Its only writer is crew's `SessionEnd` hook,
-which sets it `true` on every worktree whose `session_ids` hold the ending
-session's id. `--resume` clears it once a worktree is reconciled. It is a
+**`orphaned`** is a boolean. Its only writer is crew's `SessionEnd` hook.
+It marks a worktree only when that worktree's own run is being interrupted —
+the run's `run_state` was `active` or `blocked` and its `session_ids` hold the
+ending session's id — and then only the worktrees carrying that same id. A run
+already `complete` is left alone whatever its worktrees say, because a
+finished run's leftovers are step 12's cleanup, not an orphan. `--resume` clears it once a worktree is reconciled. It is a
 hint, not evidence: the hook fails open, so recovery still decides from git
 and from a recorded `integrated`, never from this field alone.
 

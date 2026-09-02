@@ -125,8 +125,10 @@ just did. Three rules hold for all of them.
    to a session you do not own, and the project lead cannot edit another
    session's configuration either. Do not ask it to.
 3. **Report the action, not the complaint.** Name what you needed to run or
-   write. The project lead either performs that action itself or fixes the
-   environment (see `BLOCKED` below).
+   write. The project lead then runs that command itself, installs the tool,
+   or creates the path. It cannot widen a permission, edit a setting or
+   remove a hook either — those belong to a session neither of you owns — so
+   an `environment` block that needs one of those reaches the principal.
 
 ## Report status
 

@@ -156,14 +156,25 @@ idle is an expected pause and not a fault (design §15.8).
 ## 5a. The idle nudge
 
 An IC's idle notification is what tells you it stopped. Read the record
-before you answer one, and sort the idle into one of three kinds. No hook
+before you answer one, and sort the idle into one of four kinds. No hook
 does this — a message does (design §13.1, §15.29).
 
 | What the record holds | The idle means | What you do |
 |---|---|---|
 | `plans/<id>.md` exists, `plan_approved_at` is `null` | the plan gate | Nothing. Go to step 5. |
-| `reports/<id>.md` exists | the IC finished, or stopped and said why | Go to step 6. |
-| Neither | the IC stopped with nothing on disk | Nudge it, once. |
+| A report **for this dispatch** | the IC finished, or stopped and said why | Go to step 6. |
+| No such report, `nudges_used` is 0 | the IC stopped with nothing on disk | Nudge it, once. |
+| No such report, `nudges_used` is 1 | the nudge did not land | Fail the package (below). |
+
+**"For this dispatch" is the whole trick.** `reports/<id>.md` carries no round
+suffix, so it survives every fix round and every re-plan. On a package's first
+dispatch its existence is enough. After that it is not: a round-1 report sitting
+on disk would make a round-2 IC that wrote nothing look finished, and the
+project lead would verify a range whose HEAD never moved. So from the first fix
+round on, the report counts only when it carries a `## Fix round <n>` heading
+for the round now running (step 8 tells the IC to append one). A re-planned IC
+is the same case: set `plan_approved_at` back to `null` when you send a plan
+back, and its idle reads as the plan gate again.
 
 An idle notification carries the IC's final message. When that message is
 the report itself — `ic-contract.md` makes it the report when the record
@@ -172,12 +183,14 @@ you transcribed it, and go to step 6. That is a report, not an empty idle.
 
 **One nudge per dispatch.** `SendMessage` the IC what is missing and the
 absolute path to write it to. Then increment `nudges_used` and write
-`state.json`, so a resumed session cannot nudge the same dispatch again.
+`state.json` before you go back to waiting. Read that field on every empty
+idle, as the table's last two rows do: it is the only thing that tells a
+resumed session a nudge already went out.
 
-A second empty idle on the same dispatch gets no second nudge. Verify the
-worktree as step 6 says, commit any uncommitted work yourself, and treat the
-package as `BLOCKED` with cause `capability`. `band-rubric.md`'s promotion
-rules take it from there.
+Failing the package is what the second empty idle earns. Verify the worktree
+as step 6 says, commit any uncommitted work yourself, and treat the package as
+`BLOCKED` with cause `capability`. `band-rubric.md`'s promotion rules take it
+from there.
 
 `nudges_used` counts one dispatch, not the package's life. Reset it to 0
 whenever you dispatch that package again — a fix round, a next package, or a
@@ -233,7 +246,9 @@ Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 Run a round only on `Verdict: fix round needed`. Five is the cap.
 
 - **Rounds 1 to 3** message the same IC. It keeps its context, which is the
-  point of a teammate.
+  point of a teammate. Tell it to append a `## Fix round <n>` section to
+  `reports/<id>.md` rather than write a new file — step 5a reads that heading
+  to tell this round's report from the last one's.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
   up**. A fresh IC holds no context, so its prompt describes what is already
   committed — `git -C <worktree> log --oneline` plus `git -C <worktree> diff
@@ -374,7 +389,10 @@ Reconcile the deliverable branch the same way: `git -C <repo> log` shows
 which packages already merged. An `integrated` package is terminal and
 cannot be revised in place — correcting it takes a new package (design §10).
 
-Clear `orphaned` on each worktree as you reconcile it.
+Move `run_state` out of `interrupted` **first**, then clear `orphaned` on
+each worktree as you reconcile it. In the other order, a session that dies
+mid-reconciliation leaves cleared worktrees behind a run the hook will not
+touch again, because the hook only acts on an `active` or `blocked` run.
 
 A project lead killed mid-commit can leave a stale `index.lock` in a
 worktree. Clear one only when no process holds it.

@@ -4,9 +4,9 @@
 to a reviewable draft PR and picks the cheapest model for each piece of work.
 The repo root is the plugin root.
 
-Every file here is markdown. There is no source code, no build, no test suite,
-and no CI. Correctness means an instruction a model follows, so verifying a
-change is reading, not running.
+Almost every file here is markdown. Verifying a change is reading, not
+running — there is no build, no test suite and no CI. The exception is
+`hooks/session-end.py`: it is code, run against a seeded record (design §15.38).
 
 ## Layout
 
@@ -17,6 +17,7 @@ change is reading, not running.
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the simple-path loop | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
+| `hooks/hooks.json`, `hooks/session-end.py` | the `SessionEnd` hook, which marks a dead run interrupted | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
@@ -27,17 +28,17 @@ lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
 
 ## Build state
 
-Stages 0 through 5 are built, except the hooks: seven agents, seven
-references, and both of `/crew:project-lead`'s paths. The **simple path** is
-one package on one branch, driven by one unnamed subagent. The **full path**
-is several packages in worktrees, worked by named IC teammates, with a split
-critic, a squash merge per package and `--resume` recovery. Both paths have
-run end to end against a real repo with a test suite.
+Stages 0 through 5 are built: seven agents, seven references, the
+`SessionEnd` hook, and both of `/crew:project-lead`'s paths. The **simple
+path** is one package on one branch, driven by one unnamed subagent. The
+**full path** is several packages in worktrees, worked by named IC teammates,
+with a split critic, a squash merge per package and `--resume` recovery. Both
+paths have run end to end against a real repo with a test suite.
 
 Nothing dispatches `crew:researcher` yet. The council half of stage 6 is not
-built; its question routing and `decisions.md` are. `hooks/hooks.json` does
-not exist. `docs/design.md` §13 holds the build order and `docs/tickets.md`
-the backlog. Never write about an unbuilt stage as if it runs.
+built; its question routing and `decisions.md` are. `docs/design.md` §13 holds
+the build order and `docs/tickets.md` the backlog. Never write about an
+unbuilt stage as if it runs.
 
 ## Authority
 
@@ -65,11 +66,11 @@ second copy is worse than no copy, because nothing decides which copy wins.
 
 ## Writing rules
 
-Read `skills/project-lead/references/writing-standard.md` before you draft any
-Claude instruction — a `CLAUDE.md`, a `.claude/rules/` file, a `SKILL.md`, or
-an agent definition, this file included. Check the draft against its checklist
-under `## Before you open the PR` before you commit. That checklist defines
-done.
+Read `skills/project-lead/references/writing-standard.md` before you draft or
+edit any Claude instruction — a `CLAUDE.md`, a `.claude/rules/` file, a
+`SKILL.md`, an agent definition, or a file under `references/`, this one
+included. Check the draft against its `## Before you open the PR` checklist
+before you commit. That checklist defines done.
 
 Read its `## Writing for a person` section before you touch `README.md`, a PR
 body or an issue. State the action; leave the reasoning in `docs/design.md`.
@@ -109,7 +110,7 @@ container-choice check is limited to the standard's four container types.
   human to approve. Pre-approve what a run needs, or a no-prompt run stops on
   the first one (design §15.20, §15.12).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
-  Crew's hooks ship in `hooks/hooks.json`, in stage 5 (design §12, §13.1).
+  Crew's hooks ship in `hooks/hooks.json` (design §12, §13.1).
 - A spawn-time `model` overrides an agent's frontmatter, and
   `reasoning_effort` cannot travel that way. `band-rubric.md` owns what
   follows from that (design §8, §12).

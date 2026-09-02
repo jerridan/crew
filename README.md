@@ -5,7 +5,7 @@ goal to a project lead. It investigates, splits the work across implementers,
 has each piece reviewed by an agent that did not write it, and opens the PR. It
 asks you only when it cannot proceed.
 
-> **Status: it runs. Councils and hooks do not exist yet.**
+> **Status: it runs. Councils do not exist yet.**
 > One goal to a draft PR, either as a single package or split across parallel
 > worktrees. Both paths have been driven end to end against a real repo. See
 > [What exists today](#what-exists-today).
@@ -97,7 +97,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
 | Councils | not built |
-| Hooks | not built |
+| Hooks | `SessionEnd` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports
 and reviews are kept verbatim in [`docs/stage-2-run/`](docs/stage-2-run). Later

@@ -1,7 +1,7 @@
 # Tickets
 
-The build backlog, from the current state (stages 0-4 built: the simple
-path runs) to the target state: a working three-tier hierarchy —
+The build backlog, from the current state (stages 0-5 built: both paths
+run) to the target state: a working three-tier hierarchy —
 lead → project leads → ICs (design §15.21).
 
 How to take a ticket:
@@ -174,7 +174,7 @@ Read first: design §9.2-9.4, §10, §10.1, §15.10-12, §15.23, §15.30;
 
 ## T7 — Hooks: `SessionEnd`, and the idle nudge that replaces `TeammateIdle`
 
-Status: open
+Status: done
 Depends on: T6
 Stage: 5 (design §13.1)
 
@@ -198,7 +198,32 @@ Done when: a crashed run's next `--resume` finds `run_state: interrupted`, and
 an IC that idles without a report gets one nudge and finishes, while a
 plan-gate pause gets none.
 
-Read first: design §13.1, §15.8, §15.29, §7; `record-format.md`;
+`hooks/hooks.json` and `hooks/session-end.py` landed on 2026-09-02. The hook was
+probed end to end: a seeded record plus `claude -p --session-id <uuid>
+--plugin-dir <repo>` left the run `interrupted` and its worktree `orphaned`,
+and left another session's worktree and a `complete` run untouched. Design
+§15.38 records the probe and three things it settles.
+
+The nudge is `full-path.md` step 5a, with `nudges_used` in the record and the
+mechanism-block rule in `ic-contract.md`.
+
+Two runs against a scratch repo then tested it (§15.40). They found that a
+project lead invented its session id rather than reading it, which would have
+stopped the hook matching any real run — fixed in `record-format.md`, and
+§15.39 records it. They proved the plan-gate branch takes no nudge, and that
+the hook fires against a record a run wrote rather than one seeded by hand.
+
+The nudge itself stays unproven. Both runs baited an IC to idle with no report
+and both ICs wrote their reports anyway, because `ic-contract.md` held. That is
+evidence for §13.1's reason for cutting `TeammateIdle`, not a gap to keep
+hunting: the failure is hard to provoke on purpose. Leave the clause open and
+close it from a real run that hits it, not from a better rig.
+
+One defect the runs exposed belongs to its own ticket, not here: a deliverable
+that cannot open a PR has no honest terminal state (§15.40f, which T11 also
+needs).
+
+Read first: design §13.1, §15.8, §15.29, §15.38-40, §7; `record-format.md`;
 `ic-contract.md`.
 
 ## T8 — Council, routing, `decisions.md`
@@ -396,3 +421,44 @@ records the decision and the cost it takes.
 
 Read first: design §15.27; `writing-standard.md`; the four agents under
 `agents/` that carry the findings convention.
+
+## T16 — A terminal deliverable state for a run that opens no PR
+
+Status: open
+Depends on: nothing
+Stage: any
+
+A deliverable has four states: `pending`, `in-flight`, `draft-pr-opened` and
+`abandoned`. None of them fits a deliverable that finished its work and could
+not open a PR, so a project lead in that position has to record something
+untrue. Both probe runs on 2026-09-02 did: the scratch repo had no git remote,
+so `git push` and `gh pr create` could not run, and each run closed with
+`state: "draft-pr-opened"` and `pr_url: null` — a state that names a PR nobody
+opened (design §15.40f).
+
+`abandoned` is not the answer. It means a re-plan dropped the deliverable or a
+breaker parked it, and it says the work is not to be trusted. Here the work is
+complete, reviewed and green.
+
+Add the fourth terminal state and thread it through:
+
+- `record-format.md` owns the vocabulary: name the state, add it to the
+  deliverable field table, to the state-transition diagram and its arrow list,
+  and to the consumer index. Say what `pr_url` holds in it, and that the branch
+  name is what the principal is handed instead.
+- `SKILL.md` step 14 and `full-path.md` step 11 both say to push and open a
+  draft PR. Each needs the branch for when that is impossible or refused.
+- Keep the escalation. Both runs asked the principal before closing, and that
+  was right — this ticket changes what gets recorded after the answer, not
+  whether to ask.
+
+Two callers need it, so pick a name that serves both: a run blocked by the
+environment, and T11's investigation path, which ends in a diagnosis report
+rather than a change and needs the same terminal state.
+
+Done when: a run in a repo with no remote reaches a truthful terminal state
+with `pr_url: null`, `record-format.md`'s transition diagram covers it, and
+T11's ticket names it as the state its report path ends in.
+
+Read first: design §15.40f, §9.3, §10; `record-format.md` deliverable states
+and transitions; T11.

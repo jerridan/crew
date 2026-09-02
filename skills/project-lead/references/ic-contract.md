@@ -112,6 +112,24 @@ answer. When you do:
    disk — before you stop, write your report with status `NEEDS_CONTEXT` or
    `BLOCKED`.
 
+## When a mechanism blocks you
+
+A reviewer's finding is work. A mechanism is not: a denied permission, a
+sandbox that refuses a path, a missing tool, or a hook that rejects what you
+just did. Three rules hold for all of them.
+
+1. **Never fight it twice.** If the same mechanism refuses you a second time,
+   stop. Report `BLOCKED`, cause `environment`, and name the exact command or
+   path it refused. A third attempt costs the run and changes nothing.
+2. **Never change the configuration.** Settings, permissions and hooks belong
+   to a session you do not own, and the project lead cannot edit another
+   session's configuration either. Do not ask it to.
+3. **Report the action, not the complaint.** Name what you needed to run or
+   write. The project lead then runs that command itself, installs the tool,
+   or creates the path. It cannot widen a permission, edit a setting or
+   remove a hook either — those belong to a session neither of you owns — so
+   an `environment` block that needs one of those reaches the principal.
+
 ## Report status
 
 Your report carries exactly one of these four statuses. Each has a defined

@@ -197,6 +197,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `acceptance_criterion` | the executable test or reviewer checklist that proves the package is done (design §5 invariant 1). Also what makes a respawn idempotent after a crash (design §10.1). |
 | `base` | the sha in this package's worktree when the project lead dispatched it. For a territory's first package that equals the deliverable's `base`; for each package after it, the worktree head when the previous package was accepted. `<base>..HEAD` is what makes a review diff cover this package and not its predecessors in the same worktree (design §15.37a). |
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
+| `nudges_used` | integer, capped at one per dispatch (`full-path.md` step 5a). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: a subagent has no message channel to nudge. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
 | `plan_approved_at` | ISO-8601 UTC timestamp of the project lead's go-ahead on the plan (design §9.2 step 3); `null` until then. While it is `null` and `plans/<id>.md` exists, the IC's post-plan idle is an expected pause — the project lead's idle check (design §13.1) lets it pass (design §15.8). |
@@ -247,7 +248,7 @@ value in either direction, including out of a mistaken `integrated` or
 ### At creation
 
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
-`ic_name: null`, `base: null` until it is dispatched, and
+`nudges_used: 0`, `ic_name: null`, `base: null` until it is dispatched, and
 `plan_approved_at: null`. `plan_path` and `report_path`
 name files that do not exist yet. On the simple path (design §9.1) the project lead never writes
 `worktrees.json`: there is one package, no territory, and `ic_name` stays
@@ -258,9 +259,16 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | Field | Meaning |
 |---|---|
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
-| `session_ids` | a list, not a single id. The project lead's own session id, appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
+| `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
 | `spend` | `{ceiling, measured_tokens, estimated_tokens, council_tokens, by_agent}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
+
+**Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
+prints this session's own id, and it is the same string the `SessionEnd` hook
+matches against. Run it. A plausible-looking id you wrote yourself matches
+nothing, so the hook silently marks no run, and `--resume` cannot prove which
+worktree it owns (design §15.39). This holds on both paths: the simple path
+writes no `worktrees.json`, but it still writes `run.session_ids`.
 
 ### `run_state` transitions
 
@@ -317,7 +325,7 @@ One run, two packages, in different states:
   ],
   "run": {
     "run_state": "active",
-    "session_ids": ["sess-3f9a"],
+    "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "spend": {
       "ceiling": 5000000,
       "measured_tokens": 812000,
@@ -356,6 +364,7 @@ One run, two packages, in different states:
       "acceptance_criterion": "npm test -- src/middleware/logging.test.ts exits 0",
       "base": "a1b2c3d",
       "fix_rounds_used": 1,
+      "nudges_used": 0,
       "ic_name": "ic-middleware",
       "plan_approved_at": "2026-08-24T14:25:00Z",
       "plan_path": "plans/logging-middleware.md",
@@ -380,6 +389,7 @@ One run, two packages, in different states:
       "acceptance_criterion": "npm test -- src/config/logging-config.test.ts exits 0",
       "base": "e4f5a6b",
       "fix_rounds_used": 2,
+      "nudges_used": 1,
       "ic_name": "ic-config",
       "plan_approved_at": "2026-08-24T16:20:00Z",
       "plan_path": "plans/logging-config.md",
@@ -415,11 +425,14 @@ would fail on the very first resume — the exact case the field exists to
 serve. Resume appends; it never overwrites. `state.json`'s `run.session_ids`
 follows the same append-only rule, for the same reason.
 
-**`orphaned`** is a boolean, and **nothing writes `true` yet**: its only
-writer is the `SessionEnd` hook, which is stage 5 and not built. Until it
-ships, a crashed run leaves `orphaned: false` on every worktree, so recovery
-decides from git and from a recorded `integrated`, never from this field.
-`--resume` clears it once a worktree is reconciled.
+**`orphaned`** is a boolean. Its only writer is crew's `SessionEnd` hook.
+It marks a worktree only when that worktree's own run is being interrupted —
+the run's `run_state` was `active` or `blocked` and its `session_ids` hold the
+ending session's id — and then only the worktrees carrying that same id. A run
+already `complete` is left alone whatever its worktrees say, because a
+finished run's leftovers are step 12's cleanup, not an orphan. `--resume` clears it once a worktree is reconciled. It is a
+hint, not evidence: the hook fails open, so recovery still decides from git
+and from a recorded `integrated`, never from this field alone.
 
 ### Worked example
 
@@ -428,13 +441,13 @@ decides from git and from a recorded `integrated`, never from this field.
   "ic-middleware": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/middleware",
     "branch": "crew/add-request-logging-a1b2/middleware",
-    "session_ids": ["sess-a001"],
+    "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "orphaned": false
   },
   "ic-config": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/config",
     "branch": "crew/add-request-logging-a1b2/config",
-    "session_ids": ["sess-b002", "sess-b003"],
+    "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2", "43227fc9-c61f-488e-afbd-20737f7a3650"],
     "orphaned": false
   }
 }
@@ -531,6 +544,7 @@ Every name this file defines, with what consumes it.
 - `acceptance_criterion` — consumer: Task 6 (`ic-contract.md`, tells the IC when to stop); Task 9 (`crew:package-reviewer` checks work against it)
 - `base` (package) — consumer: stage 5 (the review diff and the verification range, `<base>..HEAD`)
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
+- `nudges_used` — consumer: the project lead's idle nudge (`full-path.md` step 5a)
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
 - `plan_path` — consumer: Task 6 (`ic-contract.md`, plan-approval step); Task 7 (`crew:ic` writes it, design §9.2 step 3)
 - `plan_approved_at` — consumer: stage 5 (the project lead's idle check, design §13.1, §15.8); stage 4/5 (project lead writes it at the plan go-ahead)
@@ -551,8 +565,8 @@ Every name this file defines, with what consumes it.
 - `deep` — consumer: Task 5 (`band-rubric.md`); this file's worked example
 
 **`state.json` per-run fields**
-- `run_state` — consumer: design §13.1 `SessionEnd` hook, stage 5
-- `run_state` values `active`, `blocked`, `interrupted`, `complete` — consumer: this file's `run_state` transitions table; design §13.1, stage 5, stage 6
+- `run_state` — consumer: crew's `SessionEnd` hook (writer, `hooks/session-end.py`); stage 5
+- `run_state` values `active`, `blocked`, `interrupted`, `complete` — consumer: this file's `run_state` transitions table; crew's `SessionEnd` hook; stage 5, stage 6
 - `run.session_ids` — consumer: stage 5 (resume, matches this run's project lead sessions)
 - `spend` — consumer: design §8 spend ceiling, stage 6 (escalation on crossing it)
 - `spend.ceiling` — consumer: stage 6 (spend ceiling check, design §8)
@@ -578,8 +592,8 @@ Every name this file defines, with what consumes it.
 **`worktrees.json` fields**
 - `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-root>/worktrees/<territory-slug>`
 - `branch` — consumer: stage 5 (merge step, design §9.3)
-- `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the project lead's idle nudge
-- `orphaned` — consumer: design §13.1 `SessionEnd` (writer); stage 5 `--resume` (prunes on it, design §10.1)
+- `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); crew's `SessionEnd` hook (matches a worktree to the ending session)
+- `orphaned` — consumer: crew's `SessionEnd` hook (writer); stage 5 `--resume` (prunes on it, design §10.1)
 
 **`decisions.md` entry fields**
 - `Route` — consumer: stage 6 (question routing, design §6)

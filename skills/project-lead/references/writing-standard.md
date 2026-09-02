@@ -1,10 +1,15 @@
 # Writing standard
 
 Read this before drafting or editing a `CLAUDE.md`, a `.claude/rules/` file, a
-`SKILL.md`, or an agent definition — and its `## Writing for a person` section
+`SKILL.md`, an agent definition, or a reference beside this one under
+`skills/project-lead/references/` — and its `## Writing for a person` section
 before a `README.md`, a PR body, an issue or a comment. No test can run against
 prose. This standard, and its final checklist, is what "done" means for a
 package like that.
+
+A reference is an instruction file like any other. It carries every rule here
+except the container choice, which is already settled by the time content
+lands in one.
 
 ## Pick the container
 

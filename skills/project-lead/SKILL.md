@@ -55,8 +55,9 @@ finished one. A resumed run writes no charter, no spec and no new branch.
 
 On a new goal: write no falsifiable criterion, do no work — escalate and stop.
 Otherwise create `~/.claude/crew/<slug>-<4 hex chars>/`, generating the suffix
-once. Write `charter.md`, then `state.json` with `run_state: active` and a
-spend ceiling of 2,000,000 tokens unless the principal names one.
+once. Write `charter.md`, then `state.json` with `run_state: active`, a spend
+ceiling of 2,000,000 tokens unless the principal names one, and
+`run.session_ids` — read it, never invent it (`record-format.md`).
 
 ## 2. Scout
 

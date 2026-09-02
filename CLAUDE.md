@@ -31,8 +31,8 @@ Stages 0 through 5 are built, except the hooks: seven agents, seven
 references, and both of `/crew:project-lead`'s paths. The **simple path** is
 one package on one branch, driven by one unnamed subagent. The **full path**
 is several packages in worktrees, worked by named IC teammates, with a split
-critic, a squash merge per package and `--resume` recovery. It is **written
-but not yet exercised** — T6 stays open until a real run closes it.
+critic, a squash merge per package and `--resume` recovery. Both paths have
+run end to end against a real repo with a test suite.
 
 Nothing dispatches `crew:researcher` yet. The council half of stage 6 is not
 built; its question routing and `decisions.md` are. `hooks/hooks.json` does

@@ -5,10 +5,10 @@ goal to a project lead. It investigates, splits the work across implementers,
 has each piece reviewed by an agent that did not write it, and opens the PR. It
 asks you only when it cannot proceed.
 
-> **Status: it runs, and half of it is unexercised.**
-> One goal, one package, to a draft PR — built, and driven end to end. Several
-> packages in parallel worktrees — written, never run. Councils and hooks do not
-> exist. See [What exists today](#what-exists-today).
+> **Status: it runs. Councils and hooks do not exist yet.**
+> One goal to a draft PR, either as a single package or split across parallel
+> worktrees. Both paths have been driven end to end against a real repo. See
+> [What exists today](#what-exists-today).
 
 ## Why
 
@@ -89,7 +89,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | Piece | State |
 |---|---|
 | `/crew:project-lead`, one package | built, and driven end to end |
-| `/crew:project-lead`, several packages | written, never run |
+| `/crew:project-lead`, several packages | built, and driven end to end |
 | `crew:ic`, `crew:ic-instructions` | built, dispatched |
 | `crew:spec-critic`, `crew:package-reviewer`, `crew:deliverable-reviewer` | built, dispatched |
 | `crew:split-critic` | built, dispatched by the parallel path |
@@ -99,15 +99,14 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | Councils | not built |
 | Hooks | not built |
 
-Two runs are on the record. A hand-driven run took one code package and one
-prose package to `Verdict: accepted`; its plans, reports and reviews are kept
-verbatim in [`docs/stage-2-run/`](docs/stage-2-run). A later run drove
-`/crew:project-lead` end to end and reached a draft PR.
+Every run is on the record. The first was hand-driven and its plans, reports
+and reviews are kept verbatim in [`docs/stage-2-run/`](docs/stage-2-run). Later
+runs drove `/crew:project-lead` itself, against a real library with a test
+suite: one package to a draft PR, then two packages in parallel worktrees, then
+a run that survived a forced fix round and a mid-run crash.
 
-Those runs found real limits: a headless IC could not get a `git commit`
-approved, and a worktree-isolated session could not reach a sibling worktree.
-Both are solved — a path-scoped allow rule covers the commit, and an unisolated
-launch restores worktree access.
+Design [§15](docs/design.md) records what each run found, including the defects
+they exposed in crew itself.
 
 ## The mechanics
 

@@ -479,6 +479,12 @@ Timestamp: 2026-08-24T14:32:00Z
 
 An entry with high confidence and no citation is a defect.
 
+**Read the clock for `Timestamp`, never write one from memory.** `date -u
++%Y-%m-%dT%H:%M:%SZ` prints it. A run that guesses stamps every entry at
+midnight, which makes a decision trail a human cannot order (design §15.47).
+This is the same failure as an invented session id (§15.39), in a field that
+looks harmless.
+
 ### A council entry
 
 A council-route entry carries four more lines (design §6.1). `Positions` and

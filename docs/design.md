@@ -2581,3 +2581,67 @@ Deliberately different:
     spawned at a spawn-time model, replied, went idle, took a follow-up message
     and replied again — the re-engagement §15.29 relies on. The one permission
     prompt was a write outside the worktree, which is what §15.12 predicts.
+
+47. **A run convened a council on its own, and its judge caught what the
+    hand-run's judge missed — 2026-09-02, T8's closing evidence.** Goal: T16,
+    the missing terminal state for a deliverable that finishes its work and
+    opens no PR. Interactive tmux session, `--effort high`, agent teams on,
+    plugin loaded from the checkout. Record
+    `~/.claude/crew/no-pr-terminal-state-9a32/`. Result: draft PR #16,
+    `run_state: complete`, **zero escalations**, 744,244 measured tokens
+    against a 2,000,000 ceiling, one forced fix round on its own package.
+    $20.75.
+
+    **T8's open clause closes here.** The project lead routed "what is the
+    fourth terminal state called?" to a council itself — correctly, since
+    record vocabulary is a cross-cutting pattern — framed three positions,
+    dispatched three advocates in one batch, and adjudicated. The entry carries
+    every field the format defines, including `Models: 3 advocates, sonnet.
+    Adjudicated at opus.` and `Spend: 126168 tokens`. Nothing was staged: the
+    goal was a real open ticket, and the question is one T16 could not be built
+    without answering.
+
+    **The routing was written before the answer.** `decisions.md` held
+    `Route: council`, the three positions and `Answer: pending` while the
+    advocates ran. That is the audit property `autonomy-contract.md` asks for,
+    observed rather than asserted.
+
+    **The judge caught a losing advocate's bad anchors.** Its `Losing` line
+    reads, of position A: "Two of its anchors also missed
+    (`docs/tickets.md:470-471` and `479-480` do not hold the quoted text; it
+    sits at 473-475 and 489-490)." §15.46 added the look-each-line-up rule
+    hours earlier, after a project lead reported drift that was not there. Here
+    a project lead found drift that was, named where the text actually sits,
+    and weighed it against that advocate. The rule works in both directions,
+    which is what makes it worth its cost.
+
+    **The winner beat the position listed first, on the losers' own
+    arguments.** `closed-no-pr` lost to a collision its own advocate raised —
+    GitHub's `closed` means opened and then closed, the reverse of this case.
+    `handed-off` lost because `design.md:31` already uses "hand-off" for the
+    start of a run, so the name would carry two meanings. A council that only
+    ratified the first-listed option would be evidence of nothing; this one did
+    not.
+
+    **Second spend measurement.** 126,168 tokens for three sonnet advocates,
+    against §15.43's 169,257 for the same shape. A council costs about what a
+    small package costs, and §6.1's claim that it is a run's largest single
+    line item holds on two runs.
+
+    **The defect it exposed: every `Timestamp` was `00:00:00Z`.** Both entries,
+    written minutes apart, are stamped midnight, so the decision trail cannot
+    be ordered. The project lead wrote the date from context instead of reading
+    the clock. `record-format.md` now says to run `date -u`. This is §15.39's
+    invented-session-id failure again, in a field that looks harmless enough
+    that nobody checked it.
+
+    **A second defect, in the simple path.** The run switched the checkout onto
+    its own deliverable branch and left it there when it finished. A person, or
+    another session, working in that directory then finds itself on a branch it
+    did not choose — the T8 session's next two edits landed on the run's branch
+    by accident. §9.1 puts the simple path on the current checkout by design,
+    so the fix is to say who restores the original branch and when. Unowned
+    today.
+
+    **One process note.** PR #16 branches from T8's own branch, so it carries
+    T8's commits and merges after PR #15.

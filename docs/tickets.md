@@ -278,10 +278,19 @@ raise-to-opus rule is safe. Whether a subagent inherits its parent's effort is
 still unknown: both arms scored full marks, so the probe measured nothing. The
 teammate form of that question needs an interactive session and stays open.
 
-The "in a real run" clause stays open. Nothing has convened a council from
-inside `/crew:project-lead`, so the routing that reaches one, the
-`decisions.md` write and the balanced-council escalation are all unexercised.
-Close it from a run that hits a question it cannot answer inline (§15.42).
+The "in a real run" clause closed the same day (§15.47). A
+`/crew:project-lead` run on T16 routed a naming question to a council itself,
+framed three positions, dispatched three advocates in one batch, adjudicated at
+opus, and reached draft PR #16 with zero escalations and one forced fix round.
+The council cost 126,168 tokens of the run's 744,244. Its judge caught a losing
+advocate's two bad line anchors and named where the text actually sits, which
+is §15.46's rule working in the direction that earns its cost.
+
+Two defects that run exposed are open and unowned: every `decisions.md`
+`Timestamp` was midnight, now fixed in `record-format.md`; and the simple path
+leaves the checkout on the run's own branch when it finishes. The
+balanced-council escalation stays unexercised — both judges so far were
+decisive.
 
 Read first: design §6, §6.1, §6.2, §15.9, §15.41; `record-format.md`;
 `band-rubric.md` council rules.

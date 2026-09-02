@@ -665,8 +665,9 @@ work in flight. Two rules:
   what it has and stop. Work in progress is retained.
 - **Distinguish the states.** A package is `pending`, `in-flight`, `integrated`,
   or `abandoned`. A deliverable follows the same states, except its terminal
-  value is `draft-pr-opened`, not `integrated` — no deliverable state ever
-  means the deliverable reached `main`. A re-plan cares about the first
+  values are `draft-pr-opened` and `work-complete`, not `integrated` —
+  `record-format.md` owns what separates the two, and no deliverable state
+  ever means the deliverable reached `main`. A re-plan cares about the first
   three: integrated work cannot be revised in place — it needs new corrective
   work. A re-plan that treats all
   packages alike produces a spec that no longer describes what already landed.
@@ -2375,6 +2376,13 @@ Deliberately different:
        has no state for finished-without-a-PR. T11 already needs exactly such
        a state for an investigation that ends in a report; this is a second
        caller for it.
+
+       **Decided 2026-09-02 (T16).** The fourth terminal deliverable state is
+       named `work-complete`. It serves two callers: a deliverable whose push
+       or draft PR is impossible or refused, and T11's investigation path,
+       which ends in a report rather than a change. A council chose it over
+       `closed-no-pr` and `handed-off`; `record-format.md` owns the
+       definition.
 
     **What the probe cost, and what it bought.** $17.43 over two runs to prove
     one line of a hook and disprove nothing about the nudge. Worth it anyway:

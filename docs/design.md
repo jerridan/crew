@@ -2460,3 +2460,47 @@ Deliberately different:
     council. Nothing here exercised the routing that reaches one, the
     `decisions.md` write, or the balanced-council escalation — all three
     advocates were decisive and the judge was not balanced.
+
+44. **An advocate at medium effort writes a better-reading case that the judge
+    cannot verify — 2026-09-02, T8.** The council in §15.43 ran by hand, which
+    dropped the definition's frontmatter, so nothing had yet tested the
+    `reasoning_effort: high` that `agents/council-advocate.md` carries. This
+    probe tested it directly.
+
+    **The rig, which is the reusable part.** `claude -p --plugin-dir <repo>
+    --agent crew:council-advocate --effort <level> --output-format json` runs
+    the session **as** the agent, with its frontmatter in force: the JSON came
+    back on `claude-sonnet-5` with no `model` passed, which is the definition's
+    own value. `--effort` overrides the session's effort, so one definition can
+    be run at two levels with nothing else changed. The JSON also carries
+    `usage.output_tokens_details.thinking_tokens`, which is what makes the
+    comparison measurable. `--effort` was confirmed to do something first: the
+    same problem drew 57 thinking tokens at `low` and 153 at `high`. On a
+    trivial prompt both levels were identical, so a probe of the flag needs a
+    question with room to think.
+
+    **The result, one position argued twice.** High: 5,204 thinking tokens,
+    8,441 output, $0.19, and every one of nine `path:line` anchors landed on
+    the line it quoted. Medium: 2,042 thinking tokens, 5,324 output, $0.16, and
+    every anchor checked pointed somewhere else — usually a nearby section
+    header. Medium's **quotes were genuine**; the text it quoted is in the
+    repo. Only the anchors missed.
+
+    **Why that is disqualifying rather than untidy.** §6.1 puts citation
+    checking on the judge, and the judge is the most expensive agent in the
+    run. An advocate whose quotes are real and whose anchors are wrong does not
+    save the judge the search — it hides that the search still has to happen.
+    Medium's prose was, if anything, the stronger read: its self-objection
+    named the exact reading the real adjudication turned on. That is the trap.
+    A case that reads better than it verifies is worse than one that reads
+    worse, because the failure is invisible until the judge clicks.
+
+    **The saving is 3 cents an advocate, about 16%.** Against §15.43's measured
+    169,257-token council, that is not a trade. `reasoning_effort: high` stays
+    in `agents/council-advocate.md`.
+
+    **The fix is effort, not instruction.** The definition already says "Every
+    claim about the repo carries a `path:line`. Quote the line." Medium follows
+    the quoting half and drops the anchoring half of one sentence it was given.
+    More instruction does not buy what capacity is failing to deliver, so
+    nothing was added to the file.

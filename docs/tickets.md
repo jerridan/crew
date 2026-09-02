@@ -264,6 +264,12 @@ proved, what it cost (169,257 tokens for three sonnet advocates), and the
 defect it found: a hand-dispatch drops an agent's frontmatter, so neither the
 model nor the effort in the definition was in force.
 
+A follow-up probe then tested the effort the hand-dispatch had skipped, in a
+rig where the frontmatter does apply (§15.44). At medium effort an advocate
+quotes real text under line anchors that miss, which costs the judge the
+search the citation exists to save, for a 16% saving. `reasoning_effort: high`
+stays.
+
 The "in a real run" clause stays open. Nothing has convened a council from
 inside `/crew:project-lead`, so the routing that reaches one, the
 `decisions.md` write and the balanced-council escalation are all unexercised.

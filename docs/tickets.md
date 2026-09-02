@@ -266,9 +266,17 @@ model nor the effort in the definition was in force.
 
 A follow-up probe then tested the effort the hand-dispatch had skipped, in a
 rig where the frontmatter does apply (§15.44). At medium effort an advocate
-quotes real text under line anchors that miss, which costs the judge the
+quoted real text under line anchors that miss, which costs the judge the
 search the citation exists to save, for a 16% saving. `reasoning_effort: high`
-stays.
+stays, and the advocate now has to look each line number up — §15.45 found
+that the runs which anchored correctly all did, so the variable may be
+verification rather than reasoning depth.
+
+Two more probes ran in the same rig (§15.45). A spawn-time `model` does not
+cost an agent the effort in its frontmatter, so `band-rubric.md`'s
+raise-to-opus rule is safe. Whether a subagent inherits its parent's effort is
+still unknown: both arms scored full marks, so the probe measured nothing. The
+teammate form of that question needs an interactive session and stays open.
 
 The "in a real run" clause stays open. Nothing has convened a council from
 inside `/crew:project-lead`, so the routing that reaches one, the

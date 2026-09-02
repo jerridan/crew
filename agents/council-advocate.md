@@ -37,6 +37,11 @@ the evidence for your side is thin, say it is thin.
 Every claim about the repo carries a `path:line`. Quote the line. A claim you
 cannot cite is an opinion, and you mark it as one.
 
+**Look every line number up before you cite it** — `grep -n`, or `sed -n
+'<n>p'` to confirm what sits there. A quote of real text under a line number
+that misses sends the judge searching for what the citation was meant to save,
+and it is the failure this agent has actually been caught in (design §15.44).
+
 Read the repo's instruction files before its code — `CLAUDE.md`, then
 `.claude/rules/`, then a nested `CLAUDE.md` closer to the files in question.
 The judge weighs an instruction above repo precedent, so an instruction that

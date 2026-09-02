@@ -2499,8 +2499,50 @@ Deliberately different:
     169,257-token council, that is not a trade. `reasoning_effort: high` stays
     in `agents/council-advocate.md`.
 
-    **The fix is effort, not instruction.** The definition already says "Every
-    claim about the repo carries a `path:line`. Quote the line." Medium follows
-    the quoting half and drops the anchoring half of one sentence it was given.
-    More instruction does not buy what capacity is failing to deliver, so
-    nothing was added to the file.
+    **How far this evidence goes.** One paired comparison, one position, one
+    question. It is directional, not established. §15.45's four later runs do
+    not strengthen it and do not weaken it — none of them ran at medium.
+
+    **The confound, which §15.45 exposed.** Every run that anchored correctly
+    said it looked the numbers up, with `grep -n` or `sed -n`. The medium run
+    inferred them. So the variable may be whether the agent verifies rather
+    than how deeply it reasons, and effort may only change how likely it is to
+    bother. `agents/council-advocate.md` now says to look each line up, which
+    makes the outcome hold either way. Keep `high` as well: it costs 3 cents an
+    advocate, and the instruction is untested at medium.
+
+45. **A spawn-time model does not cost an agent its effort; whether a subagent
+    inherits effort is still unknown — 2026-09-02, T8.** Two probes in
+    §15.44's rig, four runs.
+
+    **Probe 1, answered.** `band-rubric.md` tells the project lead to raise
+    every advocate to opus together for a `deep` decision, which means passing
+    `model` at spawn. Design §12 establishes that `reasoning_effort` cannot be
+    *sent* at spawn; it does not say whether a sent `model` clobbers the
+    definition's own effort. Two dispatches of `crew:council-advocate` from a
+    plugin-loaded headless parent, same question, one passing `model: sonnet`
+    and one passing nothing: both returned every `path:line` anchor correct,
+    including `CLAUDE.md:81`, the line §15.44's medium run had placed at 44-45.
+    A spawn-time `model` is safe. The raise-to-opus rule keeps its effort.
+
+    **Probe 2, inconclusive, and recorded because it is.** The question was
+    whether a subagent with no declared effort — an IC's exact shape — inherits
+    the parent session's. Identical citation task, `general-purpose` subagent,
+    parent at `low` and at `high`. **Both scored six of six.** A probe whose
+    arms both max out measures nothing, so this settles neither the inheritance
+    claim nor its opposite. A sharper probe needs a task that a low-effort
+    agent fails.
+
+    **What no probe here can reach.** Design §12's claim is about a
+    **teammate**, and headless `-p` cannot spawn one. Probe 2 tested a
+    subagent. The teammate case stays open and needs an interactive session
+    with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
+
+    **The rig, worth reusing.** `claude -p --plugin-dir <repo> --agent
+    <name> --effort <level> --output-format json` runs a session **as** a crew
+    agent with its frontmatter in force, and the JSON reports
+    `usage.output_tokens_details.thinking_tokens`, `modelUsage` per model, and
+    `subagent_stats.by_type` — enough to prove which agent and which model
+    actually ran. Confirm `--effort` bites before trusting it: on a trivial
+    prompt `low` and `high` were identical, and only a question with room to
+    think separated them (57 against 153 thinking tokens).

@@ -115,6 +115,22 @@ they exposed in crew itself.
 reports blocked is re-dispatched one band up with no human involvement. Every
 prediction and promotion is logged, which turns the rubric into a measurement.
 
+**What each agent runs on.** The reviewers, critics and advocates set their own model and effort. An IC takes its model from its package's band, and no agent definition can set effort for an IC.
+
+| Agent | Model | Reasoning effort |
+|---|---|---|
+| Project lead | your session's | your session's |
+| IC, Instruction IC | the package's band: haiku, sonnet or opus | inherited — see below |
+| Scout | haiku or sonnet | inherited — see below |
+| Council advocate | sonnet, or opus for a deep decision | high |
+| Package reviewer | sonnet | high |
+| Researcher | sonnet, or opus for a deep question | high |
+| Spec critic | opus | high |
+| Decomposition critic | opus | high |
+| Deliverable reviewer | opus | high |
+
+**Set your session effort before you start a run.** Effort cannot be passed to an agent at dispatch, so crew sets none for an IC or a scout. Design [§12](docs/design.md) has them inherit the session's.
+
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's
 findings, and every judgment call with its citation. A decision recorded at high

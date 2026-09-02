@@ -352,8 +352,9 @@ the design section for an investigation path:
 - A bug charter: the acceptance criterion is a reproduction — a test or
   command that fails now and must pass after the fix.
 - A diagnosis artifact in the record — evidence, root cause, ruled-out
-  hypotheses — and a terminal deliverable state for a run that ends in a
-  report instead of a PR. `record-format.md` owns both names.
+  hypotheses — and `work-complete`, the terminal deliverable state for a run
+  that ends in a report instead of a PR (T16). `record-format.md` owns both
+  names.
 - Competing root-cause hypotheses run as a council (§6.1): advocates
   argue assigned hypotheses over the same evidence, the project lead
   adjudicates.
@@ -475,7 +476,7 @@ Read first: design §15.27; `writing-standard.md`; the four agents under
 
 ## T16 — A terminal deliverable state for a run that opens no PR
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any
 

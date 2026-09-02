@@ -342,6 +342,11 @@ the PR opens.
 `SKILL.md` step 14 owns this, unchanged. One deliverable is one branch and
 one draft PR however many packages it took.
 
+When the push or `gh pr create` cannot run, or the principal refuses it,
+escalate first, then record `work-complete` with `pr_url: null` and hand the
+principal the branch name instead of a PR. `SKILL.md` step 14 owns the
+procedure.
+
 ## 12. Clean up
 
 Remove each IC worktree when the deliverable closes, and prune its

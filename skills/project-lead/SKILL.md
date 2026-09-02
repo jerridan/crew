@@ -27,13 +27,10 @@ is several packages in worktrees, worked by named IC teammates, and
 - `references/full-path.md` owns the loop for more than one package. Read it
   at step 5, only if that is the shape.
 - `references/band-rubric.md` owns the band. Read it at step 6.
-- `references/ic-contract.md` is the IC's rules. Inject it whole into the
-  spawn prompt. You do not follow it.
+- `references/ic-contract.md` is the IC's rules. You do not follow it.
 - `references/writing-standard.md` governs any instruction file you draft.
 - `references/review-output.md` is the shape every review agent reports in.
   Inject it whole into every review dispatch. You do not follow it.
-
-Write `state.json` after **every** transition, never batched.
 
 ## 1. Take the goal
 
@@ -160,7 +157,7 @@ Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 Run a round only on `Verdict: fix round needed`. Each round is a fresh
 subagent, so its prompt describes what is already committed — `git log
 --oneline` plus `git diff --stat` — and which findings to fix. Rounds 4 and 5
-run one band up, unless the package is `deep`: then escalate.
+promote a band; `band-rubric.md` says what a `deep` package does instead.
 
 **Every round goes back through steps 9 and 10** — a fix nobody re-reviewed
 is a claim. Leave this step only on `Verdict: accepted`.
@@ -169,7 +166,6 @@ Increment `fix_rounds_used` and write `state.json` **before** the round runs —
 steps 10 and 11 name their files from that counter, so a late increment
 overwrites the previous round's diff and review. Five is the cap: at it, fix
 the package yourself or park it as `abandoned` with your reasoning recorded.
-At the top band, escalate instead.
 
 ## 12. Integrate
 
@@ -202,3 +198,7 @@ on one long line — GitHub renders a single newline as a line break.
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it.
+
+When the push or `gh pr create` cannot run, or the principal refuses it,
+escalate first (`autonomy-contract.md`). Then record `work-complete` with
+`pr_url: null` and `run_state: complete`, and hand the principal the branch.

@@ -66,11 +66,11 @@ second copy is worse than no copy, because nothing decides which copy wins.
 
 ## Writing rules
 
-Read `skills/project-lead/references/writing-standard.md` before you draft any
-Claude instruction — a `CLAUDE.md`, a `.claude/rules/` file, a `SKILL.md`, or
-an agent definition, this file included. Check the draft against its checklist
-under `## Before you open the PR` before you commit. That checklist defines
-done.
+Read `skills/project-lead/references/writing-standard.md` before you draft or
+edit any Claude instruction — a `CLAUDE.md`, a `.claude/rules/` file, a
+`SKILL.md`, an agent definition, or a file under `references/`, this one
+included. Check the draft against its `## Before you open the PR` checklist
+before you commit. That checklist defines done.
 
 Read its `## Writing for a person` section before you touch `README.md`, a PR
 body or an issue. State the action; leave the reasoning in `docs/design.md`.

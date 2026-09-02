@@ -12,11 +12,9 @@ proceed correctly.
 
 ## What is built
 
-Both paths run. The **simple path** — steps 6 to 14 below — is one package on
-the deliverable branch here, worked by one unnamed subagent. The **full path**
-is several packages in worktrees, worked by named IC teammates, and
-`references/full-path.md` owns it. Councils run on both paths;
-`references/autonomy-contract.md` owns them.
+Both paths run: the **simple path** is steps 6-14 below; the **full path** is
+`references/full-path.md`. Step 5 routes between them. Councils run on both
+paths; `references/autonomy-contract.md` owns them.
 
 ## The references
 
@@ -24,13 +22,14 @@ is several packages in worktrees, worked by named IC teammates, and
   Read it before your first question, not when you hit one.
 - `references/record-format.md` owns the record: every file, field and
   state transition. Read it before you create the record.
-- `references/full-path.md` owns the loop for more than one package. Read it
-  at step 5, only if that is the shape.
-- `references/band-rubric.md` owns the band. Read it at step 6.
+- `references/full-path.md` owns the loop for more than one package.
+- `references/band-rubric.md` owns the band.
 - `references/ic-contract.md` is the IC's rules. You do not follow it.
 - `references/writing-standard.md` governs any instruction file you draft.
 - `references/review-output.md` is the shape every review agent reports in.
   Inject it whole into every review dispatch. You do not follow it.
+
+Write `state.json` after **every** transition, never batched.
 
 ## 1. Take the goal
 
@@ -166,6 +165,7 @@ Increment `fix_rounds_used` and write `state.json` **before** the round runs —
 steps 10 and 11 name their files from that counter, so a late increment
 overwrites the previous round's diff and review. Five is the cap: at it, fix
 the package yourself or park it as `abandoned` with your reasoning recorded.
+At the top band, escalate instead.
 
 ## 12. Integrate
 

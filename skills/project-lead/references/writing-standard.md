@@ -1,9 +1,10 @@
 # Writing standard
 
-Read this before drafting or editing a `CLAUDE.md`, a `.claude/rules/`
-file, a `SKILL.md`, or an agent definition. No test can run against
-prose. This standard, and its final checklist, is what "done" means for
-a package like that.
+Read this before drafting or editing a `CLAUDE.md`, a `.claude/rules/` file, a
+`SKILL.md`, or an agent definition — and its `## Writing for a person` section
+before a `README.md`, a PR body, an issue or a comment. No test can run against
+prose. This standard, and its final checklist, is what "done" means for a
+package like that.
 
 ## Pick the container
 
@@ -106,12 +107,15 @@ not done.
 2. **No duplication.** No rule in this change repeats or contradicts a
    rule already stated in a sibling file. Grep the change's key terms
    against the package's other files before you finish.
-3. **Reference depth.** A reference file sits at most one link away from
-   the file that points to it. No reference file points to a second
-   reference file.
+3. **Reference depth.** No step may require reading a third file to
+   finish it. A reference **naming** the file that owns a rule is not a
+   hop — that is how a rule keeps one owner — but a reference that sends
+   you to a second file to learn what to do next is.
 4. **Size.** A `CLAUDE.md` or a `.claude/rules/` file is at most 150
-   lines. A `SKILL.md` body, not counting `references/`, is at most 200
-   lines. Over either limit, move the excess into a reference file.
+   lines. A `SKILL.md` body is at most 200. Count every line the file
+   holds — blank lines included — from the line after the closing `---`
+   of the frontmatter to the end, and count no file under `references/`.
+   Over either limit, move the excess into a reference file.
 5. **ASD-STE100 prose.** Every sentence is short, uses active voice, and
    carries exactly one instruction. A sentence you must reread to parse
    is too long — split it.

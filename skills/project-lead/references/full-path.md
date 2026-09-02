@@ -18,7 +18,7 @@ goal needing two deliverables is escalation trigger 8, not a bigger split.
 | Where it works | this checkout | its own worktree and branch |
 | The plan gate | two dispatches | one dispatch, then a message |
 | Its report | a tool result you read | a file in the record, plus an idle notification |
-| Integration | nothing merges | one squash merge per package |
+| Integration | nothing merges | one squashed commit per package |
 | The split critic | skipped | runs before any IC is dispatched |
 
 An IC is named here because a teammate is a named agent. Every other agent
@@ -27,21 +27,22 @@ in a run stays unnamed, because you must read its result (design §3,
 
 ## 0. Check the launch conditions
 
-Three you can check yourself. Check them before you write the split, and
-escalate on any that fails — none can be fixed mid-run.
+Two you can check, with the command that checks them. Run both before you
+write the split, and escalate on either — neither can be fixed mid-run.
 
-1. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set. With the flag off, a
-   named agent launches as a plain subagent and every rule here is wrong.
-2. This session is **not** worktree-isolated. An isolated session cannot run
-   `git -C` against any other worktree, which is the whole verification step
+1. **Agent teams are on.** `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
+   prints `1`. With the flag off, a named agent launches as a plain subagent
+   and every rule here is wrong.
+2. **This session is not worktree-isolated.** `git -C <repo> status` from a
+   worktree other than your own: an isolated session is refused outright, and
+   the refusal names the reason. That command is the whole verification step
    (design §15.10, §15.23f).
-3. A display mode works: iTerm2 with its Python API, a session inside tmux,
-   or `teammateMode: "in-process"`.
 
-State which condition failed. Do not start the run and discover it later.
+State which one failed. Do not start the run and discover it later.
 
-The fourth condition is **not yours to check**: nothing in the run may stop
-for a human. A teammate's permission prompts surface in your session (design
+Two more conditions you cannot check in advance. A display mode must work —
+iTerm2 with its Python API, a session inside tmux, or
+`teammateMode: "in-process"` — and nothing in the run may stop for a human. A teammate's permission prompts surface in your session (design
 §15.12, §15.20), so one un-granted command stalls the whole run. A session
 cannot read its own permission mode, so you cannot verify this in advance —
 the README names it as a launch requirement and the principal owns it. You
@@ -84,11 +85,11 @@ integration is a merge and never a rebase (design §9.3):
 git -C <repo> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
-`<worktree-root>` is `<record-root>/worktrees` — **outside the target repo**.
-A repo-local root looks tidy and breaks the suite: a test runner that globs,
-which is the common case, collects every worktree's tests as well as the
-repo's own, and the run then measures the wrong tree (design §15.35b). Put
-the root inside the repo only when you have a reason, and record it.
+Put `<worktree-root>` at `<record-root>/worktrees`, outside the target repo.
+A repo-local root looks tidy and breaks the suite: a test runner that globs
+collects every worktree's tests as well as the repo's own, so the run
+measures the wrong tree (design §15.35b). Put the root inside the repo only
+with a reason, and record it.
 
 Write `worktrees.json` now: the IC's name, the absolute worktree path, its
 branch, this session's id, and `orphaned: false`. Set every package's
@@ -103,14 +104,15 @@ Spawn one **named** teammate per territory, at the band of the package it
 starts on: `crew:ic` for code, `crew:ic-instructions` for a `CLAUDE.md`, a
 `.claude/rules/` file, a `SKILL.md` or an agent definition.
 
-Pass the band's model at spawn time. A spawn-time `model` overrides the
-agent's frontmatter, and effort is inherited and cannot be set per teammate
-(design §12), which is why a band is model only.
+Pass the band's model at spawn time, as `band-rubric.md` says. Pass it for an
+IC and never for a critic or a reviewer.
 
 A teammate inherits no conversation history, so the spawn prompt carries all
 of: `ic-contract.md`'s full text, the brief, the file set, **the absolute
 worktree path**, the interface contract, the acceptance criterion, the
-global constraints section, and the package id.
+global constraints section, the package id, and **that it is a teammate** —
+`ic-contract.md`'s plan gate branches on it, and an IC cannot tell on its
+own.
 
 It also carries the record root, as an absolute path. An interactive
 teammate can write there (design §15.31b), so a full-path IC writes
@@ -119,14 +121,25 @@ teammate can write there (design §15.31b), so a full-path IC writes
 that message reaches you in its idle notification. Transcribe it, and say in
 the file that you transcribed it.
 
-Write the agent body to survive both display modes: in-process **appends**
-an agent definition to the default system prompt and split-pane
-**replaces** it, and neither applies `skills:` (design §15.20d). That is why
-the contract is injected into the prompt and not linked.
+Inject the contract as text. A teammate applies no `skills:` key and reads an
+agent body differently in each display mode (design §15.20d), so a link is
+not dependable and the prompt is.
 
 Set the package and its deliverable `in-flight` at the first spawn, and write
 that package's `base`: the worktree's head sha right now. For a territory's
 first package that equals the deliverable's `base`.
+
+## Servicing several territories
+
+Steps 5 to 8a are written for one IC and you will be running several. You are
+not stepping them in lockstep: service whichever IC reports next, and let the
+others keep working. Each territory walks its own packages at its own pace.
+
+Two rules keep that honest. Every IC's state lives in the record, not in your
+head — `plan_approved_at`, `state` and `fix_rounds_used` per package — so read
+the record, not your memory of who was where. And step 9 merges one package at
+a time regardless of which territory produced it, because a suite run only
+attributes a failure when a single package moved.
 
 ## 5. The plan gate
 
@@ -201,20 +214,21 @@ Run a round only on `Verdict: fix round needed`. Five is the cap.
   your reasoning recorded. At the top band, escalate instead.
 
 **Increment `fix_rounds_used` and write `state.json` first**, before the round
-runs. Steps 6 and 7 name `diffs/<id>-r<n>.patch` and
-`reviews/<id>-package-review-r<n>.md` from that counter, so incrementing
-afterwards makes round 1 overwrite round 0's diff and review — the two files
-that are a reviewer's only audit trail.
+runs — `record-format.md` says why the counter moves before the files it
+names.
 
 Then the round goes back through steps 6 and 7. A fix nobody re-reviewed is a
-claim. Leave this step only on `Verdict: accepted`. Log every promotion into
-`band_history` with its predicted band, actual band, and cause.
+claim. Leave this step only on `Verdict: accepted`.
 
-Then send the IC its next package in the same territory, and return to step
-5. An IC works its packages in the order `split.md` lists them. Write the new
-package's `base` as you send it — the worktree head as it stands now, which
-is the accepted package's last commit. That is what keeps the next review
-diff to the next package's own work.
+## 8a. The territory's next package
+
+On `Verdict: accepted`, if that territory has another package in `split.md`,
+send the IC its next package and return to step 5. An IC works its packages
+in the listed order. Write the new package's `base` as you send it — the
+worktree head as it stands now, which is the accepted package's last commit.
+That is what keeps the next review diff to the next package's own work.
+
+Reach step 9 only when every territory has finished every package it owns.
 
 ## 9. Integrate
 
@@ -227,6 +241,9 @@ git -C <repo> commit -m "<package one-liner>"
 <run the suite>
 ```
 
+`<package-head>` is the worktree head when you accepted the package — the
+same sha you write as the next package's `base` at step 8.
+
 Apply the package's own commit range, never `merge --squash` of the territory
 branch. That branch holds every package the territory has finished, so a
 branch-level squash collapses them into one commit and one suite run, which
@@ -234,8 +251,15 @@ loses the per-package attribution the next two paragraphs promise (design
 §15.37b).
 
 **Run the suite after each merge, not after all of them.** A failure is then
-attributable to one package with no bisect. Read the output yourself. A
-green run only proves the tree it ran on.
+attributable to one package with no bisect. Read the output yourself. A green
+run only proves the tree it ran on.
+
+**On a red suite, revert that commit and open a fix round** on the package
+that caused it. `git -C <repo> reset --hard HEAD~1` on the deliverable branch
+undoes the cherry-pick; the package's own worktree and branch still hold the
+work, so nothing is lost. The package goes back to `in-flight` and step 8
+counts the round. A merge you leave red makes every later package's suite run
+meaningless.
 
 One squashed commit per package gives a reviewer a narrative to read, and
 the IC's per-green-step commits stay on its own branch, which is what makes

@@ -2,9 +2,11 @@
 
 This file decides which model a package or a council gets (design §8, §6.1).
 
-A band sets model only. A teammate inherits the project lead's `reasoning_effort`
-(design §12), so a band cannot set effort. Do not add an effort column to
-this rubric.
+**A band sets model only, and a spawn-time `model` overrides an agent's
+frontmatter.** `reasoning_effort` cannot travel that way — a teammate inherits
+the project lead's effort (design §12) — so a band cannot set effort. Do not
+add an effort column to this rubric. This file is the only place a model is
+chosen.
 
 ## Bands
 
@@ -72,9 +74,8 @@ on the question instead:
 - Never haiku. A weak synthesis over several hops reads as an answer and is
   not one.
 
-`agents/researcher.md` carries `model: sonnet` in its frontmatter as that
-default. A spawn-time model overrides it (design §12), which is how the
-`opus` case is dispatched.
+`agents/researcher.md` carries `model: sonnet` as that default; the `opus`
+case is a spawn-time override.
 
 ## Council model rules (design §6.1)
 

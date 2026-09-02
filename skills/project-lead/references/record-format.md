@@ -38,7 +38,9 @@ naming convention. Do not mix their contents.
   to "write its plan into the record" cannot overwrite it.
 - **`diffs/`** — the diff a review dispatch reads, written by the project
   lead so it never enters its own context. `diffs/<id>-r<n>.patch` for a
-  package review, `<n>` being `fix_rounds_used`;
+  package review, `<n>` being `fix_rounds_used`. **The counter moves before
+  the round runs**, or round 1 writes over round 0's diff and review, which
+  are a reviewer's only audit trail;
   `diffs/<deliverable-id>-final.patch` for the deliverable review, rewritten
   after integration so it carries the shared-file edits. A diff is evidence
   of what a reviewer actually saw, so a later round never overwrites an
@@ -211,7 +213,7 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
 ```
 
 - `pending → in-flight`: the project lead dispatches an IC for the package.
-- `in-flight → integrated`: the package's diff merges and passes review.
+- `in-flight → integrated`: the package passed review, and its work is on the deliverable branch with the suite green there. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   package, or the fix-round breaker parks it (design §9.2, §10).
 - `integrated` and `abandoned` are both terminal. Neither has an outgoing
@@ -323,7 +325,7 @@ One run, two packages, in different states:
       "council_tokens": 0,
       "by_agent": [
         { "agent": "split-critic", "total_tokens": 210000, "measured": true },
-        { "agent": "ic-logging-middleware", "total_tokens": 0, "measured": false }
+        { "agent": "ic-middleware", "total_tokens": 0, "measured": false }
       ]
     },
     "escalations": [
@@ -354,7 +356,7 @@ One run, two packages, in different states:
       "acceptance_criterion": "npm test -- src/middleware/logging.test.ts exits 0",
       "base": "a1b2c3d",
       "fix_rounds_used": 1,
-      "ic_name": "ic-logging-middleware",
+      "ic_name": "ic-middleware",
       "plan_approved_at": "2026-08-24T14:25:00Z",
       "plan_path": "plans/logging-middleware.md",
       "report_path": "reports/logging-middleware.md"
@@ -378,7 +380,7 @@ One run, two packages, in different states:
       "acceptance_criterion": "npm test -- src/config/logging-config.test.ts exits 0",
       "base": "e4f5a6b",
       "fix_rounds_used": 2,
-      "ic_name": "ic-logging-config",
+      "ic_name": "ic-config",
       "plan_approved_at": "2026-08-24T16:20:00Z",
       "plan_path": "plans/logging-config.md",
       "report_path": "reports/logging-config.md"
@@ -395,12 +397,11 @@ describes: the initial prediction, then a promotion with its cause.
 IC name → worktree path → branch → `session_ids` → `orphaned`. The project
 lead writes it on the full path only; the simple path creates no worktree.
 
-**The path convention** is
-`<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`, and the IC on
-it is named `ic-<territory-slug>`. The `<goal-slug>` segment keeps two
-concurrent goals from colliding in one directory. Git omits a registered
-worktree from its parent's `git status`, so a worktree there never reads as
-untracked work in the deliverable branch.
+**The path convention** is `<record-root>/worktrees/<territory-slug>`, and
+the IC on it is named `ic-<territory-slug>`. The root sits outside the target
+repo: a test runner that globs collects every worktree's tests as well as the
+repo's own, so a repo-local root makes the suite measure the wrong tree
+(design §15.35b, §15.37f).
 
 An IC writes its plan and its report into the record root, not into its
 worktree, so a worktree holds only the package's own work. That keeps
@@ -414,23 +415,24 @@ would fail on the very first resume — the exact case the field exists to
 serve. Resume appends; it never overwrites. `state.json`'s `run.session_ids`
 follows the same append-only rule, for the same reason.
 
-**`orphaned`** is a boolean. `SessionEnd` (design §13.1) sets it `true` for
-every worktree the dying run registered. `--resume` (design §10.1) reads it
-to decide which worktrees to prune, and clears it once a worktree is
-reconciled.
+**`orphaned`** is a boolean, and **nothing writes `true` yet**: its only
+writer is the `SessionEnd` hook, which is stage 5 and not built. Until it
+ships, a crashed run leaves `orphaned: false` on every worktree, so recovery
+decides from git and from a recorded `integrated`, never from this field.
+`--resume` clears it once a worktree is reconciled.
 
 ### Worked example
 
 ```json
 {
-  "ic-logging-middleware": {
-    "worktree": "/Users/x/src/app/.claude/worktrees/crew/add-request-logging-a1b2/logging-middleware",
+  "ic-middleware": {
+    "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/middleware",
     "branch": "crew/add-request-logging-a1b2/middleware",
     "session_ids": ["sess-a001"],
     "orphaned": false
   },
-  "ic-logging-config": {
-    "worktree": "/Users/x/src/app/.claude/worktrees/crew/add-request-logging-a1b2/logging-config",
+  "ic-config": {
+    "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/config",
     "branch": "crew/add-request-logging-a1b2/config",
     "session_ids": ["sess-b002", "sess-b003"],
     "orphaned": false
@@ -438,7 +440,7 @@ reconciled.
 }
 ```
 
-`ic-logging-config` shows a resumed IC: two session ids because the worktree
+`ic-config` shows a resumed IC: two session ids because the worktree
 survived a crash and was resumed once.
 
 ## `decisions.md`
@@ -574,7 +576,7 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-root>/worktrees/<territory-slug>`
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); the project lead's idle nudge
 - `orphaned` — consumer: design §13.1 `SessionEnd` (writer); stage 5 `--resume` (prunes on it, design §10.1)

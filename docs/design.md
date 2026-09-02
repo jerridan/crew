@@ -1693,8 +1693,12 @@ Deliberately different:
        command written from memory about worktree internals is a claim like
        any other, and this one shipped in a first draft unrun.
 
-    d. **Worktrees live at
-       `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`.**
+    d. **Superseded by §15.37f — the root moved out of the target repo.**
+       This item put worktrees at
+       `<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`, and the
+       hazard it names in its last sentence is the one that fired on the first
+       repo tried (§15.35b). The root is now `<record-root>/worktrees`. The
+       reasoning below stands except for the location it chose.
        `record-format.md` previously showed `~/.claude/worktrees/crew/<name>`,
        which item 26b's sensitive-path finding makes suspect for the same
        reason it blocks the record root, and which has no goal segment to keep

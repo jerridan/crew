@@ -110,10 +110,9 @@ container-choice check is limited to the standard's four container types.
   the first one (design §15.20, §15.12).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json`, in stage 5 (design §12, §13.1).
-- A spawn-time `model` overrides an agent's frontmatter `model`.
-  `reasoning_effort` is frontmatter only, and a teammate inherits the project
-  lead's effort. That is why a band sets model and never effort (design §8,
-  §12).
+- A spawn-time `model` overrides an agent's frontmatter, and
+  `reasoning_effort` cannot travel that way. `band-rubric.md` owns what
+  follows from that (design §8, §12).
 - No crew agent invokes a superpowers skill. Every superpowers process skill
   stops for a human, and removing that stop is the point of this plugin. Copy
   a checklist word for word instead, so it stays easy to re-sync (design §2,

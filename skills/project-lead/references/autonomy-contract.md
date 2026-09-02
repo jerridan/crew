@@ -51,8 +51,9 @@ one interruption; a run built in the wrong direction costs a day.
    or credentials.
 5. The spend ceiling is crossed.
 6. The fix-round breaker fired at the top band.
-7. The goal needs the full path and a launch condition for it is missing
-   (`full-path.md` step 0). None of the four can be fixed mid-run.
+7. The goal needs the full path and one of the two conditions you can check
+   fails — agent teams off, or a worktree-isolated session (`full-path.md`
+   step 0). Neither can be fixed mid-run.
 8. The goal needs more than one **deliverable**. `full-path.md` runs one
    deliverable's packages; nothing loops over deliverables or reads
    `split.md`'s `Depends on` yet. Say which deliverables you would cut it

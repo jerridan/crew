@@ -14,8 +14,8 @@ proceed correctly.
 
 Both paths run. The **simple path** — steps 6 to 14 below — is one package on
 the deliverable branch here, worked by one unnamed subagent. The **full path**
-is several packages in worktrees, worked by named IC teammates;
-`references/full-path.md` owns it. Councils are not built; the council row in
+is several packages in worktrees, worked by named IC teammates, and
+`references/full-path.md` owns it. Councils are not built; that row in
 `references/autonomy-contract.md` says what to do instead.
 
 ## The references
@@ -25,7 +25,7 @@ is several packages in worktrees, worked by named IC teammates;
 - `references/record-format.md` owns the record: every file, field and
   state transition. Read it before you create the record.
 - `references/full-path.md` owns the loop for more than one package. Read it
-  at step 5, only when that is the shape.
+  at step 5, only if that is the shape.
 - `references/band-rubric.md` owns the band. Read it at step 6.
 - `references/ic-contract.md` is the IC's rules. Inject it whole into the
   spawn prompt. You do not follow it.
@@ -47,10 +47,11 @@ falsifiable acceptance criterion.
 
 **`--resume` skips the rest of this step.** It reopens
 `~/.claude/crew/<goal-slug>/` — never a new directory — appends this session's
-id to `run.session_ids`, and reconciles: `full-path.md` step 13 owns that, and
-on the simple path `git log` on the deliverable branch is the whole job. Then
-re-enter at the first unfinished step, never re-running a finished one. A
-resumed run writes no charter, no spec and no new branch.
+id to `run.session_ids`, and reconciles. `worktrees.json` says which path you
+are resuming, because the simple path never writes it: with it, `full-path.md`
+step 13 owns the reconciliation; without it, `git log` on the deliverable
+branch is the whole job. Re-enter at the first unfinished step and re-run no
+finished one. A resumed run writes no charter, no spec and no new branch.
 
 On a new goal: write no falsifiable criterion, do no work — escalate and stop.
 Otherwise create `~/.claude/crew/<slug>-<4 hex chars>/`, generating the suffix
@@ -62,7 +63,7 @@ spend ceiling of 2,000,000 tokens unless the principal names one.
 Keep the reading out of your own context: dispatch `Explore` subagents and
 read their answers. Settle four questions. Does an analogous implementation
 exist? Do tests cover this surface? What runs the suite? Which instruction
-files apply — `CLAUDE.md`, `.claude/rules/`, a nested `CLAUDE.md`?
+files apply — `CLAUDE.md`, `.claude/rules/`, a nested one?
 
 ## 3. Write the spec
 
@@ -80,9 +81,9 @@ path, and `review-output.md` whole. Write its findings to
 On `Verdict: re-spec needed`, adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.
 
-Adjudicate every review the same way: read the whole set, restate each
-finding in your own words, verify it against the repo, and push back where it
-is wrong here. A finding is a claim, not a verdict.
+Adjudicate every review the same way: read the whole set, restate each finding
+in your own words, verify it against the repo, and push back in writing where
+it is wrong here. A finding is a claim, not a verdict.
 
 ## 5. Choose the shape
 
@@ -98,10 +99,8 @@ Your own context is the most expensive place to work.
 
 Write `split.md` in `record-format.md`'s format, one deliverable and one
 package. Assign the band from `band-rubric.md`, and mirror every field into
-`state.json`'s `packages[]`.
-
-No split critic runs — one package has no sibling to overlap. Write it anyway;
-`crew:deliverable-reviewer` reads it at step 13.
+`state.json`'s `packages[]`. No split critic runs — one package has no sibling
+to overlap. Write it anyway; `crew:deliverable-reviewer` reads it at step 13.
 
 ## 7. Create the branch
 
@@ -119,27 +118,27 @@ code, `crew:ic-instructions` for a `CLAUDE.md`, a `.claude/rules/` file, a
 It inherits no history, so the spawn prompt carries all of:
 `ic-contract.md`'s full text, the brief, the file set, this checkout's path,
 the interface contract, the acceptance criterion, the global constraints
-section, the record root, and the package id.
+section, the record root, the package id, and **that it is a subagent** —
+`ic-contract.md`'s plan gate branches on it.
 
-**The plan gate is two dispatches here.** The first ends at
-`plans/<id>.md` — a subagent has no message channel to wait on. Read that
-plan, approve it or send it back, set `plan_approved_at`, then dispatch
-again to implement and name the plan's path in that prompt.
+**The plan gate is two dispatches here.** The first ends at `plans/<id>.md` —
+a subagent has no channel to wait on. Read it, approve it or send it back, set
+`plan_approved_at`, then dispatch again to implement, naming the plan's path.
 
 **Expect the contents instead of the file.** Some dispatch shapes deny an IC
-every write to the record root (design §15.26b, §15.31b); its final message
-then carries the plan or the report. Transcribe it unchanged, and say in the
-file that you transcribed it.
+every write to the record root (§15.26b, §15.31b); its final message then
+carries the plan or the report. Transcribe it, and say that you did.
 
-Set the package and its deliverable `in-flight` at the first dispatch.
+Set the package and its deliverable `in-flight` at the first dispatch, and
+write the package's `base`: the deliverable's `base`, since there is one
+package.
 
 ## 9. Verify before you believe
 
 The IC's report is a claim. `git -C <repo> log` and `git -C <repo> diff` are
-the evidence. Check the diff's file list against the declared file set, and
-run the acceptance criterion yourself.
-
-A `BLOCKED` report names its cause; `band-rubric.md` says what each earns.
+the evidence. Check the diff's file list against the declared file set, and run
+the acceptance criterion yourself. A `BLOCKED` report names its cause;
+`band-rubric.md` says what each earns.
 
 ## 10. Review the package
 
@@ -150,7 +149,7 @@ the deliverable's. An instruction package gets its checklist file instead.
 `crew:package-reviewer` requires five inputs and says so. Send all five: the
 package's record entry (`file_set`, `interface_contract`,
 `acceptance_criterion`), the checkout path, the IC's report, the diff or
-checklist path, and the brief. Inject `review-output.md` whole too.
+checklist path, and the brief. Inject `review-output.md` too.
 
 Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 `fix_rounds_used`.
@@ -159,8 +158,8 @@ Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 
 Run a round only on `Verdict: fix round needed`. Each round is a fresh
 subagent, so its prompt describes what is already committed — `git log
---oneline` plus `git diff --stat` — and which findings it must fix. Rounds 4
-and 5 run one band up, unless the package is already `deep`: then escalate.
+--oneline` plus `git diff --stat` — and which findings to fix. Rounds 4 and 5
+run one band up, unless the package is `deep`: then escalate.
 
 **Every round goes back through steps 9 and 10** — a fix nobody re-reviewed
 is a claim. Leave this step only on `Verdict: accepted`.
@@ -196,9 +195,9 @@ Adjudicate as in step 4. Clear every `[Critical]` before the PR opens.
 
 ## 14. Open the draft PR
 
-Push the branch. Fill the repo's pull request template if it has one, and
-put `spec.md` and `decisions.md` in the body. Write each paragraph and list
-item on one long line — GitHub renders a single newline as a line break.
+Push the branch. Fill the repo's pull request template if it has one, and put
+`spec.md` and `decisions.md` in the body. Write each paragraph and list item
+on one long line — GitHub renders a single newline as a line break.
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it.

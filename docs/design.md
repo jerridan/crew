@@ -2238,9 +2238,115 @@ Deliberately different:
        always did (§10.1). Every failure inside the script is swallowed and
        exits 0, because this hook runs in every session on the machine.
 
-    **What is still unproven.** The idle nudge (`full-path.md` step 5a) is
-    written from §15.29's probe, not from a run. No crew run has yet produced a
+    **What is still unproven.** The idle nudge itself (`full-path.md` step 5a)
+    is written from §15.29's probe, not from a run: no crew run has produced a
     teammate that idled with no report, so the nudge, its one-per-dispatch cap
     and the `BLOCKED` fallback on a second empty idle have never fired against
-    a real IC. The plan-gate exemption is the one branch three runs did
-    exercise, because every IC pauses there.
+    a real IC. §15.40 records two runs built to provoke exactly that and
+    failing to. The plan-gate exemption is exercised (§15.40c), and the hook
+    now has a run-written record behind it (§15.40b).
+39. **The project lead invented its session id, so the `SessionEnd` hook
+    would have matched nothing — found 2026-09-02, by a run that was probing
+    something else.** A full `/crew:project-lead` run against a scratch repo
+    wrote `"session_ids": ["session_01MDcB7zHedJbJEZXGtZn75j"]` into
+    `state.json`. That session's real id was
+    `8154734d-d163-4d22-8946-83c3b12cb6f2`, which is what names its transcript
+    under `~/.claude/projects/`. The id in the record was plausible and wholly
+    invented.
+
+    **Why it matters.** §15.38's hook matches `run.session_ids` against the
+    payload's `session_id` by exact string. An invented id matches nothing, so
+    the hook marks no run interrupted and no worktree orphaned, silently, on
+    every real run. `--resume` loses its only proof of worktree ownership at
+    the same time (§13.1).
+
+    **The cause is a missing instruction, not a bad model.** Nothing in
+    `record-format.md`, `SKILL.md` or `full-path.md` said where a session's own
+    id comes from, and `record-format.md`'s worked examples used `sess-3f9a`,
+    `sess-a001` and `sess-b002` — short fake ids that read as a format to
+    imitate rather than a value to read. Given a field to fill and no source,
+    the model produced something shaped like the examples.
+
+    **The fix.** `$CLAUDE_CODE_SESSION_ID` is set in every Claude Code session
+    and equals the transcript filename. `record-format.md` now says to run
+    `echo $CLAUDE_CODE_SESSION_ID` and never to invent the value, and its
+    worked examples carry real uuids so the shape cannot mislead.
+
+    **What this says about §15.38's verification.** That probe seeded the
+    record by hand with the true session id and then asserted the hook matched
+    it. It proved the hook's mechanism and nothing about the record a real run
+    writes, because the same author wrote both sides of the comparison. A hook
+    that keys on a value some other agent must produce is only proved by a run
+    that produces it. This is §15.37's lesson again: a green probe says nothing
+    about the branch it did not take.
+40. **Two runs built to catch the idle nudge caught four other things and
+    never caught the nudge — 2026-09-02, T7's verification.** A scratch repo
+    (`string-kit`, a helper library with a `node --test` suite) was built to
+    provoke an IC that idles with no report. Its own `CLAUDE.md` carried the
+    bait, under a `## Reporting` heading: reply with a one-line summary, and
+    write no status files, task reports, plans or logs. Nothing in it mentions
+    crew, so a project lead meets the fault the way it would meet a real
+    repo's house style.
+
+    **Run 1 took the simple path**, because two helpers read as one package.
+    No teammate, no idle, nothing to nudge. The charter was too small, which is
+    a lesson about writing a probe, not about crew: the shape is chosen from
+    the work, so a probe that needs the full path must carry work that earns
+    it.
+
+    **Run 2 took the full path** on a charter of seven helpers in two subject
+    areas — two territories, two worktrees, `ic-case` and `ic-path` as
+    teammates, a split critic, a squash merge and suite run per package, and
+    zero fix rounds. It cost $12.14 and about 25 minutes.
+
+    Four things it settled, none of them the nudge:
+
+    a. **§15.39's fix works.** The record carried
+       `"session_ids": ["efec9753-02fb-4c8e-85d6-0cf0f851d5ac"]`, the session's
+       real id, written by a project lead reading
+       `$CLAUDE_CODE_SESSION_ID` as `record-format.md` now tells it to.
+
+    b. **`SessionEnd` fires against a record a run wrote.** With `run_state`
+       hand-set back to `active` to stand in for a crash — that flip is the
+       only synthetic part — ending the session moved it to `interrupted`,
+       matching on the id the project lead had recorded itself. §15.38's probe
+       had matched an id this author seeded; this one matched an id crew
+       produced.
+
+    c. **The plan gate takes no nudge, on a real run.** Both ICs wrote
+       `plans/<id>.md` and idled with `plan_approved_at` null. Both were
+       approved and neither was nudged, `nudges_used` staying 0 through the
+       whole run. That branch of `full-path.md` step 5a is now exercised.
+
+    d. **The bait failed, twice, because `ic-contract.md` held.** Both ICs
+       wrote `reports/<id>.md` in full, against their repo's explicit
+       instruction not to. That is the right outcome and it is the reason the
+       nudge stays unproven: the failure it handles is hard to provoke even
+       when a probe is built to provoke it. It is direct evidence for §13.1's
+       reason for cutting `TeammateIdle` — crew has never observed the failure
+       that hook prevented, and two attempts to manufacture it did not.
+
+    **Two defects the runs exposed, both outside T7.**
+
+    e. **An IC resolves a conflict between its contract and the target repo's
+       instructions silently.** Neither report mentioned the `## Reporting`
+       rule it had overruled. The IC chose correctly, but the project lead
+       never learns the target repo holds a rule crew is ignoring, and a
+       reviewer reading the report cannot see the choice was made.
+       `ic-contract.md`'s report contract should require naming such a
+       conflict; that is a change for its own ticket, not this one.
+
+    f. **A deliverable that cannot open a PR has no honest terminal state.**
+       The scratch repo has no git remote, so `git push` and `gh pr create`
+       could not run. The project lead escalated correctly, took the answer,
+       and then recorded `state: "draft-pr-opened"` with `pr_url: null` — a
+       state that claims a PR nobody opened. `record-format.md`'s vocabulary
+       has no state for finished-without-a-PR. T11 already needs exactly such
+       a state for an investigation that ends in a report; this is a second
+       caller for it.
+
+    **What the probe cost, and what it bought.** $17.43 over two runs to prove
+    one line of a hook and disprove nothing about the nudge. Worth it anyway:
+    a and b are the difference between a hook that works and a hook that never
+    matches, and neither was reachable by a probe whose author wrote both
+    sides.

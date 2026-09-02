@@ -205,12 +205,26 @@ and left another session's worktree and a `complete` run untouched. Design
 §15.38 records the probe and three things it settles.
 
 The nudge is `full-path.md` step 5a, with `nudges_used` in the record and the
-mechanism-block rule in `ic-contract.md`. One clause of "done when" stays
-unproven: no crew run has yet produced a teammate that idles with no report, so
-the nudge has never fired against a real IC. §15.38 says so, and the next
-full-path run is what closes it.
+mechanism-block rule in `ic-contract.md`.
 
-Read first: design §13.1, §15.8, §15.29, §15.38, §7; `record-format.md`;
+Two runs against a scratch repo then tested it (§15.40). They found that a
+project lead invented its session id rather than reading it, which would have
+stopped the hook matching any real run — fixed in `record-format.md`, and
+§15.39 records it. They proved the plan-gate branch takes no nudge, and that
+the hook fires against a record a run wrote rather than one seeded by hand.
+
+The nudge itself stays unproven. Both runs baited an IC to idle with no report
+and both ICs wrote their reports anyway, because `ic-contract.md` held. That is
+evidence for §13.1's reason for cutting `TeammateIdle`, not a gap to keep
+hunting: the failure is hard to provoke on purpose. Leave the clause open and
+close it from a real run that hits it, not from a better rig.
+
+Two defects the runs exposed belong to their own tickets, not here: an IC
+resolves a conflict between its contract and the target repo's instructions
+without recording it (§15.40e), and a deliverable that cannot open a PR has no
+honest terminal state (§15.40f, which T11 also needs).
+
+Read first: design §13.1, §15.8, §15.29, §15.38-40, §7; `record-format.md`;
 `ic-contract.md`.
 
 ## T8 — Council, routing, `decisions.md`

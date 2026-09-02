@@ -259,7 +259,7 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | Field | Meaning |
 |---|---|
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
-| `session_ids` | a list, not a single id. The project lead's own session id, appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
+| `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
 | `spend` | `{ceiling, measured_tokens, estimated_tokens, council_tokens, by_agent}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 
@@ -318,7 +318,7 @@ One run, two packages, in different states:
   ],
   "run": {
     "run_state": "active",
-    "session_ids": ["sess-3f9a"],
+    "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "spend": {
       "ceiling": 5000000,
       "measured_tokens": 812000,
@@ -411,6 +411,12 @@ worktree, so a worktree holds only the package's own work. That keeps
 `git status --porcelain` meaning exactly what the recovery check reads it to
 mean: uncommitted work, and nothing else.
 
+**Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
+prints this session's own id, and it is the same string the `SessionEnd` hook
+matches against. Run it. A plausible-looking id you wrote yourself matches
+nothing, so the hook silently marks no run and `--resume` cannot prove which
+worktree it owns (design §15.39).
+
 **`session_ids` is a list, not a single id.** Design §13.1 makes the session
 id the only proof of worktree ownership, but `--resume` runs in a *new*
 session with a *new* id. If resume overwrote the field, ownership matching
@@ -431,13 +437,13 @@ and from a recorded `integrated`, never from this field alone.
   "ic-middleware": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/middleware",
     "branch": "crew/add-request-logging-a1b2/middleware",
-    "session_ids": ["sess-a001"],
+    "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "orphaned": false
   },
   "ic-config": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/config",
     "branch": "crew/add-request-logging-a1b2/config",
-    "session_ids": ["sess-b002", "sess-b003"],
+    "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2", "43227fc9-c61f-488e-afbd-20737f7a3650"],
     "orphaned": false
   }
 }

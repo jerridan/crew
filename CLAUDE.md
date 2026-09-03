@@ -35,10 +35,9 @@ path** is one package on one branch, driven by one unnamed subagent. The
 with a split critic, a squash merge per package and `--resume` recovery. Both
 paths have run end to end against a real repo with a test suite.
 
-Nothing dispatches `crew:researcher` yet, and no run has convened a council.
-`docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
-Never write about an unbuilt stage as if it runs, or about a built one as if a
-run has exercised it.
+Nothing dispatches `crew:researcher` yet. `docs/design.md` §13 holds the build
+order and `docs/tickets.md` the backlog. Never write about an unbuilt stage as
+if it runs, or about a built one as if a run has exercised it.
 
 ## Authority
 
@@ -138,13 +137,14 @@ Ask when a choice is genuinely the user's. Name the option you recommend.
 
 - Branch, commit with a one-line message, open a draft PR. A human merges.
 - Fill in `.github/pull_request_template.md` for every PR: a plain-language
-  summary, the ticket link and the change type for a person, then the agent
-  context an AI reviewer needs.
+  summary, the ticket link and the change type, then the agent context.
 - Never hard wrap text you send to GitHub — `writing-standard.md` says why.
 - Exercise a change against this checkout, never the installed copy:
   `claude --plugin-dir <path to this repo>`.
 - Spawning a teammate needs a working display mode: iTerm2 with its Python API
   enabled, a session inside tmux, or `teammateMode: "in-process"`.
-- The `Skill` tool is auto-rejected in headless `claude -p`. A `-p` run can
-  confirm a skill is listed, but it cannot invoke one, so a probe that relies
-  on invocation passes vacuously (design §12).
+- Set `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false` for an experiment you drive
+  in tmux. A suggestion lands in the input box unsent, and a session reading
+  the pane cannot tell it from a person's typing (design §15.47).
+- The `Skill` tool is auto-rejected in headless `claude -p`, so a probe that
+  relies on invoking one passes vacuously (design §12).

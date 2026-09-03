@@ -512,7 +512,7 @@ holding it.
 ```markdown
 ## Where does the retry budget live: the client or the call site?
 Route: council
-Positions: A. the client owns it. B. each call site owns it. C. a policy object both read.
+Positions: B. each call site owns it. A. the client owns it. C. a policy object both read.
 Answer: A — the client owns it.
 Citation: src/http/client.ts:44 already holds the timeout and the backoff, and
 CLAUDE.md "HTTP" says one place owns transport policy.

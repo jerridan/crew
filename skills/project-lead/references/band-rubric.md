@@ -87,6 +87,9 @@ case is a spawn-time override.
   adjudication the same way a mismatch does.
 - Raise every advocate to **opus**, together, when the decision belongs to a
   `deep`-band package.
-- When you record the council's decision in `decisions.md`, note which model
-  every advocate ran. This is what lets promotion data cover councils, not
+- Record which model the advocates ran, on the council entry's `Models:` line
+  (`record-format.md`). This is what lets promotion data cover councils, not
   only packages.
+
+`agents/council-advocate.md` carries `model: sonnet` as that default; the
+`opus` case is a spawn-time override, passed to every advocate in the batch.

@@ -5,7 +5,7 @@ goal to a project lead. It investigates, splits the work across implementers,
 has each piece reviewed by an agent that did not write it, and opens the PR. It
 asks you only when it cannot proceed.
 
-> **Status: it runs. Councils do not exist yet.**
+> **Status: it runs, councils included.**
 > One goal to a draft PR, either as a single package or split across parallel
 > worktrees. Both paths have been driven end to end against a real repo. See
 > [What exists today](#what-exists-today).
@@ -96,7 +96,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `crew:researcher` | built, not dispatched yet |
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
-| Councils | not built |
+| `crew:council-advocate`, and councils | built, convened in a run |
 | Hooks | `SessionEnd` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports
@@ -114,6 +114,22 @@ they exposed in crew itself.
 `standard` is the default and `deep` needs a written justification. An IC that
 reports blocked is re-dispatched one band up with no human involvement. Every
 prediction and promotion is logged, which turns the rubric into a measurement.
+
+**What each agent runs on.** A reviewer or critic sets its own model and effort, and the project lead overrides neither. An advocate sets its own effort, and moves to opus only when the whole council does. An IC takes its model from its package's band, and no agent definition can set effort for an IC.
+
+| Agent | Model | Reasoning effort |
+|---|---|---|
+| Project lead | your session's | your session's |
+| IC, Instruction IC | the package's band: haiku, sonnet or opus | your session's |
+| Scout | haiku or sonnet | your session's |
+| Council advocate | sonnet, or opus for a deep decision | high |
+| Package reviewer | sonnet | high |
+| Researcher | sonnet, or opus for a deep question | high |
+| Spec critic | opus | high |
+| Decomposition critic | opus | high |
+| Deliverable reviewer | opus | high |
+
+**Set your session effort before you start a run.** Effort cannot be passed to an agent at dispatch, so an IC and a scout work at the effort of the session you launched.
 
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's
@@ -145,7 +161,7 @@ failure belongs to one package with no bisect.
 | Deliverable reviewer | Reviews the whole deliverable before the draft PR opens. | yes |
 | Researcher | Answers one open question across several hops, and returns a brief with citations. | yes |
 | Scout | Answers one lookup for the project lead, then exits. | yes |
-| Advocate | Argues one assigned position in a council. | no |
+| Advocate | Argues one assigned position in a council. | yes |
 
 ## Install
 

@@ -64,7 +64,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 |---|---|---|---|
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
 | **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
-| **Advocate** | unnamed subagent (`general-purpose`) | sonnet | one position |
+| **Advocate** | unnamed subagent, new `crew:council-advocate` | sonnet | one position |
 | **Researcher** | unnamed subagent, new `crew:researcher` | per band | one question |
 | **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |
 | **Split critic** | unnamed subagent, new `crew:split-critic` | opus / high | one review |
@@ -338,9 +338,10 @@ without a citation is not confidence, and it routes to a council.
 Adapted from the `resolve-ticket` plugin.
 
 1. Frame 2 or more candidate positions. Cap at 3.
-2. Dispatch one advocate per position, in parallel, in a single batch. Each is
-   told: argue **for** your position, gather cited evidence from code and docs,
-   make the strongest case, and name the strongest objection to your own side.
+2. Dispatch one `crew:council-advocate` per position, unnamed, in parallel, in
+   a single batch. The definition carries the rules: argue **for** your
+   assigned position, gather cited evidence from code and docs, make the
+   strongest case, and name the strongest objection to your own side.
 3. The project lead adjudicates and picks a winner.
 4. Record the decision, the losing arguments, the citations, and a confidence
    level. Never record high confidence without a citation.
@@ -795,7 +796,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
-| 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt |
+| 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
 
 ### 13.1 Hooks
 
@@ -975,6 +976,12 @@ Deliberately different:
    attribution is known. Do not add this field to `band-rubric.md` ahead of
    that; an unowned field name there would be the exact class of mismatch
    this document works to avoid.
+
+   Decided 2026-09-02 (T8): `record-format.md` owns the field, in a new
+   council-entry shape. A council entry carries four extra lines, not one —
+   `Positions`, `Losing`, `Models` and `Spend`. `Models` is one value, not one
+   per advocate, because every advocate in one council runs the same model.
+   `band-rubric.md` names the line and points at the file that defines it.
 10. **§12's "the workaround holds" row does not hold when the driving
     session is itself worktree-isolated.** Task 10's stage-2 run dispatched
     `crew:ic` from a headless `claude -p` session launched from inside this
@@ -1087,6 +1094,26 @@ Deliberately different:
     the specialist's container list should grow to include a README and
     other reader-facing prose, or a README needs a different owner. This
     document does not decide which.
+
+    **Decided 2026-09-02 by council** (§15.43), in the two halves the council
+    forced:
+
+    - **A README, and any reader-facing file that is a deliverable in its own
+      right, goes to `crew:ic-instructions` as a fifth container type.** §3.1's
+      own rule decides it: split an IC when the definition of done changes, not
+      when the subject changes. The definition of done does not change — a
+      written checklist verified by a reviewer, either way. One checklist item
+      is skipped and the prose rules invert, and `writing-standard.md` already
+      carries both branches in one file.
+    - **A PR body, an issue and a comment stay with the project lead.** They
+      are written after every package merges, out of `spec.md` and
+      `decisions.md`, so they have no sibling to be disjoint from and nothing
+      downstream consumes them. §5's dispatchability invariants cannot be met
+      by them, and §9.3 already has the project lead write the PR body.
+
+    T10 still owns the file alignment this implies, and one sub-question the
+    council raised: a specialist named `ic-instructions` whose container list
+    now includes non-instructions may need a different name.
 18. **Should an environmental block and a capability block get the same
     `BLOCKED` response?** `ic-contract.md`'s `BLOCKED` row directs the project
     lead to promote the package one band up, or stop the run at a breaker.
@@ -2354,3 +2381,322 @@ Deliberately different:
     a and b are the difference between a hook that works and a hook that never
     matches, and neither was reachable by a probe whose author wrote both
     sides.
+
+41. **The advocate got its own agent definition, which revises §3 —
+    2026-09-02, T8.** §3's `Advocate` row said `general-purpose` subagent,
+    briefed inline. It now says `crew:council-advocate`.
+
+    The deciding argument is the tool boundary. A `general-purpose` dispatch
+    carries every tool, including `Write`, `Edit` and an unrestricted `Bash`,
+    and a council runs two or three of them in parallel while ICs hold
+    worktrees. An advocate that can edit is a hazard with no upside — it
+    argues, it never builds. `writing-standard.md` states the rule this rests
+    on: `tools` is a capability boundary, not a formality. Every other crew
+    role that must not edit already carries its own definition and its own
+    tool list: `spec-critic`, `split-critic`, `package-reviewer`,
+    `deliverable-reviewer`, `researcher`. The advocate is the same shape, and
+    it was the only one of the six left inline.
+
+    The second argument is drift. Six rules are the same in every council —
+    argue the assigned side, cite every claim, an instruction beats precedent,
+    volume is not evidence, name the strongest objection to your own side,
+    edit nothing. Retyped into two or three spawn prompts per council, they
+    are the exact duplication `CLAUDE.md` bans.
+
+    The cost is one more file the plugin loads, and one more place a council
+    rule could be stated twice. `band-rubric.md` still owns the model, and
+    `autonomy-contract.md` still owns the procedure. The definition owns only
+    how one advocate argues.
+
+42. **Closed by §15.47 the same day: a run convened a council.** Left here for
+    the standard it set, which §15.47 then met.
+
+    **Stage 6 is built and no run has convened a council — 2026-09-02, T8.**
+    T8's "done when" asks for an architecture-moving question resolved by a
+    council in a real run. The build landed; that clause did not. It stays
+    open the way T7's nudge clause does, and it closes from a real run rather
+    than from a rig, because a council convened to test councils frames its
+    own question and proves less than it appears to.
+
+43. **The first council ran, by hand, and the mechanism worked — 2026-09-02,
+    T8.** Three advocates, one batch, on a real open question from this repo:
+    T10's owner for reader-facing prose. Positions were assigned, not
+    discovered — A grow `crew:ic-instructions`, B add a second prose
+    specialist, C the project lead owns it. §15.17 carries the decision.
+
+    **What the shape produced.** Every advocate returned the definition's
+    report shape without being shown it in the prompt — it read the file. Every
+    citation was checked against the repo, and every one held but a truncated
+    sentence in C's evidence list. No advocate hedged toward the middle, and
+    each named a genuine objection to its own side. Two of those objections did
+    real work: C's admitted its strongest citation was the PR body and
+    transferred to a README only by analogy, which is what the adjudication
+    turned on, and A's proposed a rename rather than defending the name. The
+    `Confidence` line paid for itself: B's `medium`, with its stated reason
+    (no repo precedent that a split is how this codebase resolves a forked
+    acceptance mechanism), was a more useful signal than its argument.
+
+    **The adjudication split the question rather than picking a side.** A won
+    for a README; C won for a PR body, an issue and a comment. No advocate
+    framed that split, because an advocate argues its assignment. This is the
+    judge's job working as §6.1 intends, and it is the argument against ever
+    reading a council as a vote.
+
+    **Spend: 169,257 tokens across three sonnet advocates**, 54k / 54k / 61k,
+    with the adjudication on top. One council on one question already costs
+    what a small package costs. §6.1's claim that a council is the largest
+    single line item in a run now has one measurement behind it.
+
+    **The defect the exercise found is in the dispatch shape, not the
+    council.** The advocates ran as `general-purpose` subagents told to read
+    `agents/council-advocate.md`. That injects the body and drops the
+    frontmatter: `model: sonnet` held only because it was passed as a spawn
+    override, and `reasoning_effort: high` was never applied. A hand-dispatch
+    of any crew agent, from a session that has not loaded the plugin,
+    exercises the text and nothing else — not the model, not the effort, not
+    the tool boundary. This is §15.35's defect in a new place: the value in the
+    definition loses silently. Exercise an agent through
+    `claude --plugin-dir <repo>` whenever the frontmatter is part of what is
+    being tested.
+
+    **What stays unproven.** No `/crew:project-lead` run has convened a
+    council. Nothing here exercised the routing that reaches one, the
+    `decisions.md` write, or the balanced-council escalation — all three
+    advocates were decisive and the judge was not balanced.
+
+44. **An advocate at medium effort writes a better-reading case that the judge
+    cannot verify — 2026-09-02, T8.** The council in §15.43 ran by hand, which
+    dropped the definition's frontmatter, so nothing had yet tested the
+    `reasoning_effort: high` that `agents/council-advocate.md` carries. This
+    probe tested it directly.
+
+    **The rig, which is the reusable part.** `claude -p --plugin-dir <repo>
+    --agent crew:council-advocate --effort <level> --output-format json` runs
+    the session **as** the agent, with its frontmatter in force: the JSON came
+    back on `claude-sonnet-5` with no `model` passed, which is the definition's
+    own value. `--effort` overrides the session's effort, so one definition can
+    be run at two levels with nothing else changed. The JSON also carries
+    `usage.output_tokens_details.thinking_tokens`, which is what makes the
+    comparison measurable. `--effort` was confirmed to do something first: the
+    same problem drew 57 thinking tokens at `low` and 153 at `high`. On a
+    trivial prompt both levels were identical, so a probe of the flag needs a
+    question with room to think.
+
+    **The result, one position argued twice.** High: 5,204 thinking tokens,
+    8,441 output, $0.19, and every one of nine `path:line` anchors landed on
+    the line it quoted. Medium: 2,042 thinking tokens, 5,324 output, $0.16, and
+    every anchor checked pointed somewhere else — usually a nearby section
+    header. Medium's **quotes were genuine**; the text it quoted is in the
+    repo. Only the anchors missed.
+
+    **Why that is disqualifying rather than untidy.** §6.1 puts citation
+    checking on the judge, and the judge is the most expensive agent in the
+    run. An advocate whose quotes are real and whose anchors are wrong does not
+    save the judge the search — it hides that the search still has to happen.
+    Medium's prose was, if anything, the stronger read: its self-objection
+    named the exact reading the real adjudication turned on. That is the trap.
+    A case that reads better than it verifies is worse than one that reads
+    worse, because the failure is invisible until the judge clicks.
+
+    **The saving is 3 cents an advocate, about 16%.** Against §15.43's measured
+    169,257-token council, that is not a trade. `reasoning_effort: high` stays
+    in `agents/council-advocate.md`.
+
+    **How far this evidence goes.** One paired comparison, one position, one
+    question. It is directional, not established. §15.45's four later runs do
+    not strengthen it and do not weaken it — none of them ran at medium.
+
+    **The confound, which §15.45 exposed.** Every run that anchored correctly
+    said it looked the numbers up, with `grep -n` or `sed -n`. The medium run
+    inferred them. So the variable may be whether the agent verifies rather
+    than how deeply it reasons, and effort may only change how likely it is to
+    bother. `agents/council-advocate.md` now says to look each line up, which
+    makes the outcome hold either way. Keep `high` as well: it costs 3 cents an
+    advocate, and the instruction is untested at medium.
+
+45. **A spawn-time model does not cost an agent its effort; whether a subagent
+    inherits effort is still unknown — 2026-09-02, T8.** Two probes in
+    §15.44's rig, four runs.
+
+    **Probe 1, answered.** `band-rubric.md` tells the project lead to raise
+    every advocate to opus together for a `deep` decision, which means passing
+    `model` at spawn. Design §12 establishes that `reasoning_effort` cannot be
+    *sent* at spawn; it does not say whether a sent `model` clobbers the
+    definition's own effort. Two dispatches of `crew:council-advocate` from a
+    plugin-loaded headless parent, same question, one passing `model: sonnet`
+    and one passing nothing: both returned every `path:line` anchor correct,
+    including `CLAUDE.md:81`, the line §15.44's medium run had placed at 44-45.
+    A spawn-time `model` is safe. The raise-to-opus rule keeps its effort.
+
+    **Probe 2, inconclusive, and closed as not worth settling.** The question
+    was whether an agent with no declared effort — an IC's exact shape —
+    inherits the parent session's. Identical citation task, `general-purpose`
+    subagent, parent at `low` and at `high`. **Both scored six of six.** A
+    probe whose arms both max out measures nothing.
+
+    §15.46 then tried it on a real teammate and could not separate the causes
+    either. Stop here: **crew takes §12's claim as given — an IC and a scout
+    run at the effort of the session that launched the run.** No action depends
+    on proving it. Effort cannot be set per-agent either way, so the only move
+    available is to set the session's effort before starting, which the README
+    now says. A probe that changes no decision is not worth its cost.
+
+    **What no probe here can reach.** Design §12's claim is about a
+    **teammate**, and headless `-p` cannot spawn one. Probe 2 tested a
+    subagent. The teammate case stays open and needs an interactive session
+    with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
+
+    **The rig, worth reusing.** `claude -p --plugin-dir <repo> --agent
+    <name> --effort <level> --output-format json` runs a session **as** a crew
+    agent with its frontmatter in force, and the JSON reports
+    `usage.output_tokens_details.thinking_tokens`, `modelUsage` per model, and
+    `subagent_stats.by_type` — enough to prove which agent and which model
+    actually ran. Confirm `--effort` bites before trusting it: on a trivial
+    prompt `low` and `high` were identical, and only a question with room to
+    think separated them (57 against 153 thinking tokens).
+
+46. **A project lead reported citation drift that was not there — 2026-09-02,
+    T8.** An interactive tmux session at `--effort low`, with
+    `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, spawned `crew:council-advocate`
+    as a **named teammate** and gave it §15.43's question. Three things came
+    out of it, only one of which was the one being looked for.
+
+    **A teammate cannot see its own effort.** Asked directly, it answered
+    "nothing in my system prompt, environment, or context states a reasoning
+    effort level or thinking budget." So no self-report can settle §15.45's
+    inheritance question, and the behavioural route is closed too: the teammate
+    anchored every citation correctly under a `low` parent, which is equally
+    explained by it keeping the definition's `high` and by §15.44's new
+    look-it-up rule working at `low`. The causes cannot be separated. §15.45
+    closes the question instead.
+
+    **The finding that matters was accidental.** The project lead session
+    reviewed the teammate's case and reported "line numbers are off by a few",
+    naming two. Checked against the files, **all seven anchors were correct**.
+    The project lead judged them by eye, from a file it had read earlier, and
+    was wrong — in the direction that penalises an advocate that did its job.
+    §6.1 puts citation checking on the judge, and a judge that skims is worse
+    than no check, because it produces a confident wrong verdict rather than an
+    absent one. `autonomy-contract.md`'s adjudication step now says to look
+    each cited line up and never judge an anchor by eye.
+
+    **The teammate mechanism itself worked.** A named `crew:ic` teammate
+    spawned at a spawn-time model, replied, went idle, took a follow-up message
+    and replied again — the re-engagement §15.29 relies on. The one permission
+    prompt was a write outside the worktree, which is what §15.12 predicts.
+
+47. **A run convened a council on its own, and its judge caught what the
+    hand-run's judge missed — 2026-09-02, T8's closing evidence.** Goal: T16,
+    the missing terminal state for a deliverable that finishes its work and
+    opens no PR. Interactive tmux session, `--effort high`, agent teams on,
+    plugin loaded from the checkout. Record
+    `~/.claude/crew/no-pr-terminal-state-9a32/`. Result: draft PR #16,
+    `run_state: complete`, **zero escalations**, 744,244 measured tokens
+    against a 2,000,000 ceiling, one forced fix round on its own package.
+    $20.75.
+
+    **T8's open clause closes here.** The project lead routed "what is the
+    fourth terminal state called?" to a council itself — correctly, since
+    record vocabulary is a cross-cutting pattern — framed three positions,
+    dispatched three advocates in one batch, and adjudicated. The entry carries
+    every field the format defines, including `Models: 3 advocates, sonnet.
+    Adjudicated at opus.` and `Spend: 126168 tokens`. Nothing was staged: the
+    goal was a real open ticket, and the question is one T16 could not be built
+    without answering.
+
+    **The routing was written before the answer.** `decisions.md` held
+    `Route: council`, the three positions and `Answer: pending` while the
+    advocates ran. That is the audit property `autonomy-contract.md` asks for,
+    observed rather than asserted.
+
+    **The judge caught a losing advocate's bad anchors.** Its `Losing` line
+    reads, of position A: "Two of its anchors also missed
+    (`docs/tickets.md:470-471` and `479-480` do not hold the quoted text; it
+    sits at 473-475 and 489-490)." §15.46 added the look-each-line-up rule
+    hours earlier, after a project lead reported drift that was not there. Here
+    a project lead found drift that was, named where the text actually sits,
+    and weighed it against that advocate. The rule works in both directions,
+    which is what makes it worth its cost.
+
+    **The winner beat the position listed first, on the losers' own
+    arguments.** `closed-no-pr` lost to a collision its own advocate raised —
+    GitHub's `closed` means opened and then closed, the reverse of this case.
+    `handed-off` lost because `design.md:31` already uses "hand-off" for the
+    start of a run, so the name would carry two meanings. A council that only
+    ratified the first-listed option would be evidence of nothing; this one did
+    not.
+
+    **Second spend measurement.** 126,168 tokens for three sonnet advocates,
+    against §15.43's 169,257 for the same shape. A council costs about what a
+    small package costs, and §6.1's claim that it is a run's largest single
+    line item holds on two runs.
+
+    **The defect it exposed: every `Timestamp` was `00:00:00Z`.** Both entries,
+    written minutes apart, are stamped midnight, so the decision trail cannot
+    be ordered. The project lead wrote the date from context instead of reading
+    the clock. `record-format.md` now says to run `date -u`. This is §15.39's
+    invented-session-id failure again, in a field that looks harmless enough
+    that nobody checked it.
+
+    **A second defect, in the simple path.** The run switched the checkout onto
+    its own deliverable branch and left it there when it finished. A person, or
+    another session, working in that directory then finds itself on a branch it
+    did not choose — the T8 session's next two edits landed on the run's branch
+    by accident. §9.1 puts the simple path on the current checkout by design,
+    so the fix is to say who restores the original branch and when. Unowned
+    today.
+
+    **One process note.** PR #16 branches from T8's own branch, so it carries
+    T8's commits and merges after PR #15.
+
+48. **A code review of the T8 branch found ten defects reading could not —
+    2026-09-02.** `/code-review high` over `main...ticket-t8-council`. Every
+    finding held. Three classes, and the third is the one worth keeping.
+
+    **Stale status claims, three of them, all written by the session that then
+    disproved them.** The README's banner and status row still said no run had
+    convened a council; §13's stage-6 row said the procedure was unexercised;
+    §15.42 asserted an open clause that §15.47, five entries later, opens by
+    closing. The same session wrote both halves within an hour. Noticing one
+    stale claim (`CLAUDE.md`'s) does not prompt a sweep for the rest — only a
+    grep does.
+
+    **Two missed version bumps.** `026abbc` and `1ecca45` each changed a file
+    under `skills/`, which the plugin loads, with no bump. An installed copy at
+    0.1.22 held neither the look-it-up rule nor the read-the-clock rule, and
+    `/plugin update` saw nothing to pull. The bump rule is stated in
+    `CLAUDE.md` and was followed for the first two commits of the same branch,
+    which is what makes the miss instructive: a rule obeyed early in a branch
+    reads as already handled.
+
+    **Four rules that contradict another rule in the same change.** These are
+    the ones no amount of rereading finds, because each half is correct alone.
+
+    a. `council-advocate.md` mandated looking every line number up with
+       `grep -n` or `sed -n`, and three sections later restricted `Bash` to
+       "`git log`, `git blame`, and nothing else". The verification the file
+       exists to require was outside the tool boundary the same file sets.
+
+    b. `record-format.md` ordered `Positions` "winner first", while
+       `autonomy-contract.md` orders that same line written **before** dispatch,
+       when there is no winner. Following both means silently reordering the
+       line after adjudication — which also destroys the evidence §15.47 relied
+       on to say the council did not simply ratify its first option. Now: the
+       order they were framed, never reordered.
+
+    c. `council_tokens` was defined as the advocates' spend **plus the project
+       lead's own adjudication**, inside a claim that it is a line item within
+       `measured_tokens`. Nothing reports the project lead's own tokens, so the
+       sum could exceed the total it sits inside. §15.47's run had already
+       ignored the instruction and logged the advocates only. Now: advocates
+       only, with the gap stated rather than guessed.
+
+    d. `autonomy-contract.md` said "two of them exist only for a council" where
+       `record-format.md` names four, and the two it omitted included
+       `Positions` — the field the other file calls load-bearing for an audit,
+       and the one step 1 already told the project lead to write.
+
+    **What this says about verifying an instruction repo.** Reading finds a
+    rule that is wrong. It does not find two rules that are each right and
+    disagree, because checking that costs a pass per pair. A diff-wide review
+    is the cheapest thing that does, and on this branch it found four.

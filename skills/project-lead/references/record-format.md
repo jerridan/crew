@@ -479,6 +479,57 @@ Timestamp: 2026-08-24T14:32:00Z
 
 An entry with high confidence and no citation is a defect.
 
+**Read the clock for `Timestamp`, never write one from memory.** `date -u
++%Y-%m-%dT%H:%M:%SZ` prints it. A run that guesses stamps every entry at
+midnight, which makes a decision trail a human cannot order (design §15.47).
+This is the same failure as an invented session id (§15.39), in a field that
+looks harmless.
+
+### A council entry
+
+A council-route entry carries four more lines (design §6.1). `Positions` and
+`Losing` are what let an audit see the whole council rather than its winner.
+
+**A council entry is written twice.** `autonomy-contract.md` has the project
+lead write the question, `Route: council` and `Positions` **before** it
+dispatches, which is what proves the routing came first. At that point no
+answer exists, so `Answer` and `Confidence` both read `pending`, and
+`Citation`, `Losing`, `Models`, `Spend` and `Timestamp` are absent. The
+adjudication fills them in. `pending` is the only sanctioned placeholder, and
+the no-citation-at-high-confidence check does not apply to an entry still
+holding it.
+
+- `Positions:` — every position the project lead framed, in the order they
+  were framed. Never reorder them once the winner is known: an entry whose
+  winner always sits first cannot show an audit that the council was open.
+- `Losing:` — one line per losing position: the best argument it made, and why
+  it lost.
+- `Models:` — the model every advocate ran, as `<n> advocates, <model>`. Every
+  advocate in one council runs the same model (`band-rubric.md`), so this is
+  one value, not one per advocate. Name your own adjudicating model after it.
+- `Spend:` — the tokens this council added to `spend.council_tokens`.
+
+```markdown
+## Where does the retry budget live: the client or the call site?
+Route: council
+Positions: B. each call site owns it. A. the client owns it. C. a policy object both read.
+Answer: A — the client owns it.
+Citation: src/http/client.ts:44 already holds the timeout and the backoff, and
+CLAUDE.md "HTTP" says one place owns transport policy.
+Losing: B argued call sites vary (src/sync/push.ts:80 retries 5 times), which
+the client's per-request override already covers. C added a type no caller
+asks for.
+Confidence: high
+Models: 3 advocates, sonnet. Adjudicated at opus.
+Spend: 41200 tokens
+Timestamp: 2026-08-24T14:32:00Z
+```
+
+A balanced council is not an entry to finish alone. When the project lead
+cannot pick a winner at medium confidence or better and the question is
+architecture-moving, it escalates (`autonomy-contract.md`), and the entry's
+`Answer` is the principal's.
+
 ## Authority rule
 
 `state.json` is authoritative for the plan: which packages exist, their bands,
@@ -602,6 +653,10 @@ Every name this file defines, with what consumes it.
 - `Citation` — consumer: stage 6 (the confidence rule)
 - `Confidence` — consumer: stage 6 (the confidence rule)
 - `Confidence` values `high`, `medium`, `low` — consumer: stage 6
+- `Positions` — consumer: stage 6 (council entries only, design §6.1)
+- `Losing` — consumer: stage 6 (council entries only, design §6.1)
+- `Models` — consumer: stage 6 (council entries only); Task 5 (`band-rubric.md`'s promotion data covers councils, design §15.9)
+- `Spend` — consumer: stage 6 (council entries only); mirrors `spend.council_tokens`
 - `Timestamp` — consumer: a human auditing the record's timeline; stage 6
 
 **Goal-slug format**

@@ -1,6 +1,6 @@
 # Tickets
 
-The build backlog, from the current state (stages 0-5 built: both paths
+The build backlog, from the current state (stages 0-6 built: both paths
 run) to the target state: a working three-tier hierarchy —
 lead → project leads → ICs (design §15.21).
 
@@ -228,7 +228,7 @@ Read first: design §13.1, §15.8, §15.29, §15.38-40, §7; `record-format.md`;
 
 ## T8 — Council, routing, `decisions.md`
 
-Status: open
+Status: done
 Depends on: T4
 Stage: 6 (design §13)
 
@@ -249,7 +249,50 @@ Done when: an architecture-moving question in a real run is resolved by a
 council, recorded with citations, models, and spend, with no human
 prompt.
 
-Read first: design §6, §6.1, §6.2, §15.9; `record-format.md`;
+The council landed on 2026-09-02. `agents/council-advocate.md` argues one
+assigned position; `autonomy-contract.md` owns the procedure — framing, the
+single batch, adjudication, the balanced-council escalation, and
+`spend.council_tokens`. `record-format.md` owns the council entry, which adds
+`Positions`, `Losing`, `Models` and `Spend`. Design §15.9 is decided, and
+§15.41 records why the advocate got its own agent definition rather than an
+inline `general-purpose` brief — a revision to design §3's Advocate row.
+
+A council then ran by hand, the same day, on T10's open question — three
+advocates in one batch, every citation checked, and a decision that split the
+question rather than picking one advocate's side. §15.43 records what it
+proved, what it cost (169,257 tokens for three sonnet advocates), and the
+defect it found: a hand-dispatch drops an agent's frontmatter, so neither the
+model nor the effort in the definition was in force.
+
+A follow-up probe then tested the effort the hand-dispatch had skipped, in a
+rig where the frontmatter does apply (§15.44). At medium effort an advocate
+quoted real text under line anchors that miss, which costs the judge the
+search the citation exists to save, for a 16% saving. `reasoning_effort: high`
+stays, and the advocate now has to look each line number up — §15.45 found
+that the runs which anchored correctly all did, so the variable may be
+verification rather than reasoning depth.
+
+Two more probes ran in the same rig (§15.45). A spawn-time `model` does not
+cost an agent the effort in its frontmatter, so `band-rubric.md`'s
+raise-to-opus rule is safe. Whether a subagent inherits its parent's effort is
+still unknown: both arms scored full marks, so the probe measured nothing. The
+teammate form of that question needs an interactive session and stays open.
+
+The "in a real run" clause closed the same day (§15.47). A
+`/crew:project-lead` run on T16 routed a naming question to a council itself,
+framed three positions, dispatched three advocates in one batch, adjudicated at
+opus, and reached draft PR #16 with zero escalations and one forced fix round.
+The council cost 126,168 tokens of the run's 744,244. Its judge caught a losing
+advocate's two bad line anchors and named where the text actually sits, which
+is §15.46's rule working in the direction that earns its cost.
+
+Two defects that run exposed are open and unowned: every `decisions.md`
+`Timestamp` was midnight, now fixed in `record-format.md`; and the simple path
+leaves the checkout on the run's own branch when it finishes. The
+balanced-council escalation stays unexercised — both judges so far were
+decisive.
+
+Read first: design §6, §6.1, §6.2, §15.9, §15.41; `record-format.md`;
 `band-rubric.md` council rules.
 
 ## T9 — The lead tier
@@ -283,9 +326,17 @@ grow the specialist's list to cover reader-facing prose, or name a
 different owner. Record the decision in design §15.17 and align §3.1,
 `agents/ic-instructions.md`, and `writing-standard.md`'s README note.
 
+The decision is made. T8's first council settled it on 2026-09-02: a README
+goes to `crew:ic-instructions` as a fifth container type, and a PR body, an
+issue and a comment stay with the project lead. §15.17 carries it and §15.43
+the council. What remains here is the alignment — §3.1,
+`agents/ic-instructions.md` and `writing-standard.md`'s README note — and one
+sub-question the council raised: whether a specialist named `ic-instructions`
+whose container list now includes non-instructions needs a different name.
+
 Done when: the four files agree and §15.17 reads "Decided".
 
-Read first: design §15.17, §3.1; `writing-standard.md`.
+Read first: design §15.17, §15.43, §3.1; `writing-standard.md`.
 
 ## T11 — Design the investigation path
 

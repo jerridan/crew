@@ -15,8 +15,8 @@ proceed correctly.
 Both paths run. The **simple path** — steps 6 to 14 below — is one package on
 the deliverable branch here, worked by one unnamed subagent. The **full path**
 is several packages in worktrees, worked by named IC teammates, and
-`references/full-path.md` owns it. Councils are not built; that row in
-`references/autonomy-contract.md` says what to do instead.
+`references/full-path.md` owns it. Councils run on both paths;
+`references/autonomy-contract.md` owns them.
 
 ## The references
 

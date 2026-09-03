@@ -86,25 +86,36 @@ does not.
 ### Record the decision
 
 Write one `decisions.md` entry per council, in `record-format.md`'s council
-entry shape. That file owns the fields; two of them exist only for a council
-and need saying why:
+entry shape. That file owns the four fields a council adds — `Positions`,
+`Losing`, `Models` and `Spend`. Two of them need saying why:
 
-- The losing positions and the best argument each made. An audit needs to see
-  what was weighed, not only what won.
+- `Losing:`, the losing positions and the best argument each made. An audit
+  needs to see what was weighed, not only what won.
 - `Models:`, the model every advocate ran. This is what lets promotion data
   cover councils and not only packages.
+
+You wrote `Positions` before you dispatched. Leave that line as it stands —
+reordering it to put the winner first destroys the only evidence that the
+council was open when it started.
 
 A council entry with high confidence and no citation is a defect, the same as
 any other entry.
 
 ### Council spend
 
-Add every advocate's `total_tokens`, and your own adjudication, to
-`spend.council_tokens`. Add each advocate to `spend.by_agent` and to
-`measured_tokens` as well, the way you record any subagent — `council_tokens`
-is a line item over the same spend, not a second budget. A council is expected
-to be the largest single line item in a run. The `Spend` section below owns
-what to do with a number you did not receive.
+Sum the advocates' `total_tokens` into `spend.council_tokens`, and record each
+advocate in `spend.by_agent` and `measured_tokens` the way you record any
+subagent. `council_tokens` is a line item over that same spend, not a second
+budget, so it never exceeds `measured_tokens`.
+
+**Your own adjudication is not in it.** Nothing reports your tokens to you —
+`measured_tokens` counts subagent notifications and `estimated_tokens` covers
+teammates, and neither has a place for the project lead's own. A council
+therefore costs more than its line item says. Say so in the record rather than
+inventing a number for yourself.
+
+A council is expected to be the largest single line item in a run. The `Spend`
+section below owns what to do with a number you did not receive.
 
 ## Escalation triggers
 

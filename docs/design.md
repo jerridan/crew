@@ -796,7 +796,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 3 | `crew:split-critic` + `split.md` format | A bad split is caught before dispatch |
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
-| 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), unexercised by a run |
+| 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
 
 ### 13.1 Hooks
 
@@ -2408,7 +2408,10 @@ Deliberately different:
     `autonomy-contract.md` still owns the procedure. The definition owns only
     how one advocate argues.
 
-42. **Stage 6 is built and no run has convened a council — 2026-09-02, T8.**
+42. **Closed by §15.47 the same day: a run convened a council.** Left here for
+    the standard it set, which §15.47 then met.
+
+    **Stage 6 is built and no run has convened a council — 2026-09-02, T8.**
     T8's "done when" asks for an architecture-moving question resolved by a
     council in a real run. The build landed; that clause did not. It stays
     open the way T7's nudge clause does, and it closes from a real run rather
@@ -2645,3 +2648,55 @@ Deliberately different:
 
     **One process note.** PR #16 branches from T8's own branch, so it carries
     T8's commits and merges after PR #15.
+
+48. **A code review of the T8 branch found ten defects reading could not —
+    2026-09-02.** `/code-review high` over `main...ticket-t8-council`. Every
+    finding held. Three classes, and the third is the one worth keeping.
+
+    **Stale status claims, three of them, all written by the session that then
+    disproved them.** The README's banner and status row still said no run had
+    convened a council; §13's stage-6 row said the procedure was unexercised;
+    §15.42 asserted an open clause that §15.47, five entries later, opens by
+    closing. The same session wrote both halves within an hour. Noticing one
+    stale claim (`CLAUDE.md`'s) does not prompt a sweep for the rest — only a
+    grep does.
+
+    **Two missed version bumps.** `026abbc` and `1ecca45` each changed a file
+    under `skills/`, which the plugin loads, with no bump. An installed copy at
+    0.1.22 held neither the look-it-up rule nor the read-the-clock rule, and
+    `/plugin update` saw nothing to pull. The bump rule is stated in
+    `CLAUDE.md` and was followed for the first two commits of the same branch,
+    which is what makes the miss instructive: a rule obeyed early in a branch
+    reads as already handled.
+
+    **Four rules that contradict another rule in the same change.** These are
+    the ones no amount of rereading finds, because each half is correct alone.
+
+    a. `council-advocate.md` mandated looking every line number up with
+       `grep -n` or `sed -n`, and three sections later restricted `Bash` to
+       "`git log`, `git blame`, and nothing else". The verification the file
+       exists to require was outside the tool boundary the same file sets.
+
+    b. `record-format.md` ordered `Positions` "winner first", while
+       `autonomy-contract.md` orders that same line written **before** dispatch,
+       when there is no winner. Following both means silently reordering the
+       line after adjudication — which also destroys the evidence §15.47 relied
+       on to say the council did not simply ratify its first option. Now: the
+       order they were framed, never reordered.
+
+    c. `council_tokens` was defined as the advocates' spend **plus the project
+       lead's own adjudication**, inside a claim that it is a line item within
+       `measured_tokens`. Nothing reports the project lead's own tokens, so the
+       sum could exceed the total it sits inside. §15.47's run had already
+       ignored the instruction and logged the advocates only. Now: advocates
+       only, with the gap stated rather than guessed.
+
+    d. `autonomy-contract.md` said "two of them exist only for a council" where
+       `record-format.md` names four, and the two it omitted included
+       `Positions` — the field the other file calls load-bearing for an audit,
+       and the one step 1 already told the project lead to write.
+
+    **What this says about verifying an instruction repo.** Reading finds a
+    rule that is wrong. It does not find two rules that are each right and
+    disagree, because checking that costs a pass per pair. A diff-wide review
+    is the cheapest thing that does, and on this branch it found four.

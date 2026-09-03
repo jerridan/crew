@@ -490,7 +490,18 @@ looks harmless.
 A council-route entry carries four more lines (design §6.1). `Positions` and
 `Losing` are what let an audit see the whole council rather than its winner.
 
-- `Positions:` — every position the project lead framed, the winner first.
+**A council entry is written twice.** `autonomy-contract.md` has the project
+lead write the question, `Route: council` and `Positions` **before** it
+dispatches, which is what proves the routing came first. At that point no
+answer exists, so `Answer` and `Confidence` both read `pending`, and
+`Citation`, `Losing`, `Models`, `Spend` and `Timestamp` are absent. The
+adjudication fills them in. `pending` is the only sanctioned placeholder, and
+the no-citation-at-high-confidence check does not apply to an entry still
+holding it.
+
+- `Positions:` — every position the project lead framed, in the order they
+  were framed. Never reorder them once the winner is known: an entry whose
+  winner always sits first cannot show an audit that the council was open.
 - `Losing:` — one line per losing position: the best argument it made, and why
   it lost.
 - `Models:` — the model every advocate ran, as `<n> advocates, <model>`. Every

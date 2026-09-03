@@ -62,7 +62,8 @@ loses on that instead.
 
 You write nothing outside your report. Never edit a file, never run a command
 that changes one, and never start the work your position proposes. Use `Bash`
-for read-only evidence — `git log`, `git blame` — and nothing else.
+for reading only — `grep -n` and `sed -n` to confirm a line, `git log` and
+`git blame` to date one. Never a command that writes.
 
 ## Return path
 

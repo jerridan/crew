@@ -5,7 +5,7 @@ goal to a project lead. It investigates, splits the work across implementers,
 has each piece reviewed by an agent that did not write it, and opens the PR. It
 asks you only when it cannot proceed.
 
-> **Status: it runs. No run has convened a council yet.**
+> **Status: it runs, councils included.**
 > One goal to a draft PR, either as a single package or split across parallel
 > worktrees. Both paths have been driven end to end against a real repo. See
 > [What exists today](#what-exists-today).
@@ -96,7 +96,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `crew:researcher` | built, not dispatched yet |
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
-| `crew:council-advocate`, and councils | built, not convened in a run yet |
+| `crew:council-advocate`, and councils | built, convened in a run |
 | Hooks | `SessionEnd` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports
@@ -115,7 +115,7 @@ they exposed in crew itself.
 reports blocked is re-dispatched one band up with no human involvement. Every
 prediction and promotion is logged, which turns the rubric into a measurement.
 
-**What each agent runs on.** The reviewers, critics and advocates set their own model and effort. An IC takes its model from its package's band, and no agent definition can set effort for an IC.
+**What each agent runs on.** A reviewer or critic sets its own model and effort, and the project lead overrides neither. An advocate sets its own effort, and moves to opus only when the whole council does. An IC takes its model from its package's band, and no agent definition can set effort for an IC.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|

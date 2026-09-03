@@ -665,8 +665,9 @@ work in flight. Two rules:
   what it has and stop. Work in progress is retained.
 - **Distinguish the states.** A package is `pending`, `in-flight`, `integrated`,
   or `abandoned`. A deliverable follows the same states, except its terminal
-  value is `draft-pr-opened`, not `integrated` — no deliverable state ever
-  means the deliverable reached `main`. A re-plan cares about the first
+  values are `draft-pr-opened` and `work-complete`, not `integrated` —
+  `record-format.md` owns what separates the two, and no deliverable state
+  ever means the deliverable reached `main`. A re-plan cares about the first
   three: integrated work cannot be revised in place — it needs new corrective
   work. A re-plan that treats all
   packages alike produces a spec that no longer describes what already landed.
@@ -2376,6 +2377,13 @@ Deliberately different:
        a state for an investigation that ends in a report; this is a second
        caller for it.
 
+       **Decided 2026-09-02 (T16).** The new terminal deliverable state is
+       named `work-complete`. It serves two callers: a deliverable whose push
+       or draft PR is impossible or refused, and T11's investigation path,
+       which ends in a report rather than a change. A council chose it over
+       `closed-no-pr` and `handed-off`; `record-format.md` owns the
+       definition.
+
     **What the probe cost, and what it bought.** $17.43 over two runs to prove
     one line of a hook and disprove nothing about the nudge. Worth it anyway:
     a and b are the difference between a hook that works and a hook that never
@@ -2700,3 +2708,43 @@ Deliberately different:
     rule that is wrong. It does not find two rules that are each right and
     disagree, because checking that costs a pass per pair. A diff-wide review
     is the cheapest thing that does, and on this branch it found four.
+
+49. **An independent review found six defects in crew's own output that crew's
+    own reviewers passed — 2026-09-02.** `/code-review high` over PR #16, the
+    T16 work produced by the §15.47 run. That run had a `crew:package-reviewer`
+    pass, a forced fix round, and a `crew:deliverable-reviewer` pass. Six
+    findings survived all of it, three of them substantive.
+
+    **The one that mattered: `work-complete` had no evidence outside the
+    record.** Design §10.1 reconciles from git and rewrites the record to
+    match. Every other terminal state is provable outside the record —
+    `integrated` by a merge, `draft-pr-opened` by a `pr_url`. A
+    `work-complete` deliverable looks exactly like an `in-flight` one that died
+    just before step 14: commits on a branch, clean tree, no PR. A resume would
+    have re-entered step 14 and **opened the very PR the principal refused**.
+    The state invented to stop the record lying would have caused the run to
+    override a human decision. `record-format.md` now names the `escalations`
+    answer as its evidence, forbids moving out of `work-complete` on git
+    evidence alone, and requires the deliverable and run writes to land
+    together so a crash cannot strand it under a live `run_state`.
+
+    **Two more that reading passed.** Step 14 told the project lead to escalate
+    and then set `run_state: complete`, a transition `record-format.md`'s own
+    table does not have — and it closed the run with the escalation
+    unanswered, which is the opposite of what T16 asked for. And the whole
+    procedure was copied into `full-path.md` step 11, in a paragraph that opens
+    by naming `SKILL.md` step 14 as its owner.
+
+    **What this says about crew's review layer.** Its reviewers check a package
+    against its brief and a deliverable against its spec. They do not check a
+    new state against the recovery path that has to survive it, because nothing
+    in the brief mentions recovery. The defect was not in the code the package
+    wrote; it was in what the package's addition implies for a file it never
+    touched. That is the class §15.48 named a diff-wide review as the cheapest
+    way to catch, and it holds for crew's own output as much as for a person's.
+
+    **Do not read this as the run failing.** The run produced a correct state
+    vocabulary, a correct diagram, a council-chosen name, and threading through
+    four files, at $20.75 and one fix round. It produced defects a specialist
+    review found in twenty minutes. Both are true, and the second is an
+    argument for adding a review, not for distrusting the run.

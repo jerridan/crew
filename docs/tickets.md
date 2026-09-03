@@ -352,8 +352,9 @@ the design section for an investigation path:
 - A bug charter: the acceptance criterion is a reproduction — a test or
   command that fails now and must pass after the fix.
 - A diagnosis artifact in the record — evidence, root cause, ruled-out
-  hypotheses — and a terminal deliverable state for a run that ends in a
-  report instead of a PR. `record-format.md` owns both names.
+  hypotheses — and `work-complete`, the terminal deliverable state for a run
+  that ends in a report instead of a PR (T16). `record-format.md` owns both
+  names.
 - Competing root-cause hypotheses run as a council (§6.1): advocates
   argue assigned hypotheses over the same evidence, the project lead
   adjudicates.
@@ -475,7 +476,7 @@ Read first: design §15.27; `writing-standard.md`; the four agents under
 
 ## T16 — A terminal deliverable state for a run that opens no PR
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any
 
@@ -511,5 +512,16 @@ Done when: a run in a repo with no remote reaches a truthful terminal state
 with `pr_url: null`, `record-format.md`'s transition diagram covers it, and
 T11's ticket names it as the state its report path ends in.
 
-Read first: design §15.40f, §9.3, §10; `record-format.md` deliverable states
-and transitions; T11.
+`work-complete` landed on 2026-09-02, written by a `/crew:project-lead` run on
+this ticket (design §15.47). The name came from a council. Two of the three
+clauses are met: the diagram covers it, and T11 names it.
+
+The first clause is not. **No run has reached `work-complete`**, so the path
+that writes it is unexercised — the same shape as T7's nudge clause. An
+independent review then found six defects in the run's own output, three of
+them substantive, including a recovery hazard that would have re-opened a
+refused PR (§15.49). Those are fixed here. Close the last clause from a run in
+a repo with no remote.
+
+Read first: design §15.40f, §15.47, §15.49, §9.3, §10; `record-format.md`
+deliverable states and transitions; T11.

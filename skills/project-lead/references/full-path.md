@@ -342,6 +342,9 @@ the PR opens.
 `SKILL.md` step 14 owns this, unchanged. One deliverable is one branch and
 one draft PR however many packages it took.
 
+A deliverable that cannot open a PR ends in `work-complete`. Step 14 owns
+that procedure too, and `record-format.md` owns what the state means.
+
 ## 12. Clean up
 
 Remove each IC worktree when the deliverable closes, and prune its

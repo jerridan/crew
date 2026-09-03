@@ -12,11 +12,9 @@ proceed correctly.
 
 ## What is built
 
-Both paths run. The **simple path** — steps 6 to 14 below — is one package on
-the deliverable branch here, worked by one unnamed subagent. The **full path**
-is several packages in worktrees, worked by named IC teammates, and
-`references/full-path.md` owns it. Councils run on both paths;
-`references/autonomy-contract.md` owns them.
+Both paths run: the **simple path** is steps 6-14 below; the **full path** is
+`references/full-path.md`. Step 5 routes between them. Councils run on both
+paths; `references/autonomy-contract.md` owns them.
 
 ## The references
 
@@ -24,11 +22,9 @@ is several packages in worktrees, worked by named IC teammates, and
   Read it before your first question, not when you hit one.
 - `references/record-format.md` owns the record: every file, field and
   state transition. Read it before you create the record.
-- `references/full-path.md` owns the loop for more than one package. Read it
-  at step 5, only if that is the shape.
-- `references/band-rubric.md` owns the band. Read it at step 6.
-- `references/ic-contract.md` is the IC's rules. Inject it whole into the
-  spawn prompt. You do not follow it.
+- `references/full-path.md` owns the loop for more than one package.
+- `references/band-rubric.md` owns the band.
+- `references/ic-contract.md` is the IC's rules. You do not follow it.
 - `references/writing-standard.md` governs any instruction file you draft.
 - `references/review-output.md` is the shape every review agent reports in.
   Inject it whole into every review dispatch. You do not follow it.
@@ -160,7 +156,7 @@ Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
 Run a round only on `Verdict: fix round needed`. Each round is a fresh
 subagent, so its prompt describes what is already committed — `git log
 --oneline` plus `git diff --stat` — and which findings to fix. Rounds 4 and 5
-run one band up, unless the package is `deep`: then escalate.
+promote a band; `band-rubric.md` says what a `deep` package does instead.
 
 **Every round goes back through steps 9 and 10** — a fix nobody re-reviewed
 is a claim. Leave this step only on `Verdict: accepted`.
@@ -202,3 +198,8 @@ on one long line — GitHub renders a single newline as a line break.
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it.
+
+When the push or `gh pr create` cannot run, ask the principal and **wait for
+the answer** — `blocked` until it lands, then `active`. One who already refused
+the PR has answered; do not ask twice. Then record `work-complete`,
+`pr_url: null` and `run_state: complete` in one write, and hand over the branch.

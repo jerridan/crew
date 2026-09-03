@@ -525,3 +525,80 @@ a repo with no remote.
 
 Read first: design §15.40f, §15.47, §15.49, §9.3, §10; `record-format.md`
 deliverable states and transitions; T11.
+
+## T17 — Restore the checkout's branch when a simple-path run ends
+
+Status: open
+Depends on: nothing
+Stage: any
+
+The simple path works on the current checkout by design (§9.1) — no worktree,
+one deliverable branch, `git switch -c` at step 7. Nothing switches back. A run
+that finishes leaves the checkout on `crew/<goal-slug>/<deliverable-id>`, and
+the next person or session in that directory is on a branch it did not choose.
+
+This is not hypothetical. The §15.47 run left the T8 session on the run's
+branch, and that session's next two edits landed there before it noticed
+(design §15.47). The cost is silent: a commit on the wrong branch looks exactly
+like a commit on the right one.
+
+Decide who restores it and when, then write it into the file that owns the
+step:
+
+- Record the branch the checkout was on **before** step 7, so the run can put
+  it back. `record-format.md` owns the field name; `deliverables[].base`
+  already records the sha, which is not the same thing as the branch name.
+- Say what happens when the tree is dirty at the end, or when the principal
+  wants to stay on the deliverable branch to look at it. Switching a checkout
+  out from under a person is its own failure.
+- The full path does not have this problem — its ICs work in worktrees — so
+  the rule belongs in `SKILL.md`, not `full-path.md`. Say so, rather than
+  adding a step to both.
+
+Done when: a simple-path run ends with the checkout on the branch it started
+on, or with a recorded reason why it did not, and a second run in the same
+directory starts from a known branch.
+
+Read first: design §9.1, §15.47; `record-format.md` deliverable fields;
+`SKILL.md` steps 7 and 14.
+
+## T18 — Sweep for stale status claims before a change lands
+
+Status: open
+Depends on: nothing
+Stage: any
+
+Every file that says what is built goes stale the moment a stage lands, and the
+session that lands it is the session least likely to notice — it has just spent
+its context on the change, not on the sentences the change falsified.
+
+Three instances in one day, 2026-09-02: the README's banner and status row
+still said no run had convened a council after §15.47's run did; design §13's
+stage-6 row said the procedure was unexercised in the same file that recorded
+the run; and crew's own `crew:ic-instructions`, in a fix round, reintroduced
+"Councils are not built" into `SKILL.md` (§15.48, §15.49). Two were caught by a
+code review, one by a rebase conflict. None by reading.
+
+`CLAUDE.md` and `writing-standard.md` already carry the rule — keep every "not
+built" claim true whenever a stage lands. The rule is not the gap. The gap is
+that nothing runs at the end, when the claims have actually changed.
+
+Build the check:
+
+- A grep over the change's own diff for the vocabulary that dates: "not built",
+  "no run has", "unexercised", "not yet", "stub", "does not exist yet",
+  "deferred". The list belongs in one file, not in each agent's head.
+- Say who runs it. The project lead at integration (`SKILL.md` step 12) is the
+  natural owner, because that is where it already edits shared files. An IC
+  cannot own it: an IC sees one package's file set, and a claim in `README.md`
+  is stale because of a change in `agents/`.
+- Decide whether `crew:deliverable-reviewer` gets it as an eighth check
+  instead. It already reads the whole diff against the spec, which is the same
+  shape of work. One owner, not two.
+
+Done when: a run that lands a stage leaves no file claiming that stage is
+unbuilt, and the check is stated in exactly one place.
+
+Read first: design §15.48, §15.49; `writing-standard.md`'s "Keep the status
+true"; `SKILL.md` step 12; `agents/deliverable-reviewer.md`.
+

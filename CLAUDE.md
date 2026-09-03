@@ -5,8 +5,9 @@ to a reviewable draft PR and picks the cheapest model for each piece of work.
 The repo root is the plugin root.
 
 Almost every file here is markdown. Verifying a change is reading, not
-running — there is no build, no test suite and no CI. The exception is
-`hooks/session-end.py`: it is code, run against a seeded record (design §15.38).
+running — there is no build, no test suite and no CI. The exceptions are the
+two hooks and the two scripts under `skills/project-lead/scripts/`: they are
+code, run against a seeded record (design §15.38, §15.50).
 
 ## Layout
 
@@ -17,7 +18,8 @@ running — there is no build, no test suite and no CI. The exception is
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the simple-path loop | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `hooks/hooks.json`, `hooks/session-end.py` | the `SessionEnd` hook, which marks a dead run interrupted | the plugin loader, in every session |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts | the project lead, from Bash |
+| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |

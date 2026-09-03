@@ -20,6 +20,40 @@ Every relative path named in `state.json` resolves against this directory
 root. `worktrees.json`'s `worktree` field is the one path that is already
 absolute.
 
+The root is `$CREW_RECORD_ROOT` when that variable is set, and
+`~/.claude/crew/` otherwise. Both hooks check both places. Set it to keep
+two runs of one charter apart, as an experiment does (design §15.50).
+
+**Write `state.json` with `scripts/crew-record.py`**, beside this skill:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> state in-flight
+python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rounds_used 1
+python3 <skill-dir>/scripts/crew-record.py <record-dir> deliverable <id> state draft-pr-opened --pr-url <url>
+python3 <skill-dir>/scripts/crew-record.py <record-dir> run state complete
+python3 <skill-dir>/scripts/crew-record.py <record-dir> spend "<agent>" <total_tokens|null> [--estimated]
+python3 <skill-dir>/scripts/crew-record.py <record-dir> session-id "$CLAUDE_CODE_SESSION_ID"
+```
+
+It stamps `state_changed_at`, sums `spend`, and replaces the file in one
+step. It checks no transition; this file owns those. Rewriting the whole
+file by hand costs a turn of output per transition and is where the invented
+session id came from (design §15.39, §15.50).
+
+## `charter.md`
+
+The goal and its falsifiable acceptance criteria, as the principal wrote
+them or as the project lead expanded a goal string. Two optional lines,
+each on its own, anywhere in the file:
+
+- `Ceiling: <tokens>` — the run's spend ceiling. Without it the project lead
+  estimates one at the split (`full-path.md` step 1) and the default in
+  `SKILL.md` step 1 holds until then.
+- `Favour: time` or `Favour: spend` — what the split optimises. `time`
+  splits into parallel territories; `spend` keeps one territory and one IC
+  that carries its context from package to package. `spend` is the default
+  (design §15.50).
+
 ## `reports/`, `plans/`, `diffs/`, and `reviews/`
 
 Four directories hold per-run output. Each has one writer and a fixed
@@ -285,8 +319,9 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 |---|---|
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
-| `spend` | `{ceiling, measured_tokens, estimated_tokens, council_tokens, by_agent}`. See Spend below. |
+| `spend` | `{ceiling, ceiling_estimate, measured_tokens, estimated_tokens, council_tokens, by_agent, transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
+| `compactions` | a list of `{session_id, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts: the project lead's own, or an IC teammate's. Before accepting a report from an IC whose session appears here since its last accepted package, verify that package's worktree as `full-path.md` step 6 says and read its plan back to it. Absent until the first compaction. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
 prints this session's own id, and it is the same string the `SessionEnd` hook
@@ -315,11 +350,13 @@ largest in a run.
 
 | Field | Meaning |
 |---|---|
-| `ceiling` | the run's spend ceiling (design §8). Crossing it escalates. |
+| `ceiling` | the run's spend ceiling (design §8). Crossing it escalates. The charter's `Ceiling:` line when it has one; else the default until the split, then `ceiling_estimate`. |
+| `ceiling_estimate` | the project lead's estimate at the split, from `full-path.md` step 1's arithmetic; `null` on the simple path. Written to `decisions.md` with its working. |
 | `measured_tokens` | sum of `total_tokens` from subagent completion notifications (design §8) |
 | `estimated_tokens` | the project lead's estimate of teammate spend, which is not reported this way |
 | `council_tokens` | tokens attributed to council advocacy and adjudication (design §6.1) |
 | `by_agent` | a list of `{agent, total_tokens, measured}`. `total_tokens` here is design §8's own per-agent name; `measured` is `false` for a teammate's estimate. |
+| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over every transcript that ran from the checkout since the record was created, the project lead's own session and the teammates included. The only complete count (design §15.50). `autonomy-contract.md` says when to run it and which count the ceiling reads. |
 
 ### Escalations
 
@@ -578,7 +615,11 @@ Every name this file defines, with what consumes it.
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
-- `reviews/` — writer: the project lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `charter.md` `Ceiling:` and `Favour:` lines — consumer: `SKILL.md` step 1 (ceiling), `full-path.md` step 1 (split shape and ceiling estimate)
+- `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md` step 6 (re-verify after an IC compacts), step 8a (respawn)
+- `run.spend.transcript` — writer: `scripts/spend.py`. Consumer: `autonomy-contract.md` (the ceiling check), design §8
+- `run.spend.ceiling_estimate` — writer: the project lead at `full-path.md` step 1. Consumer: `autonomy-contract.md` trigger 5
 
 **`split.md` sections and fields**
 - `Global Constraints` — consumer: stage 4/5 (project lead copies it into every IC spawn prompt, design §5)

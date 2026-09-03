@@ -3,7 +3,7 @@ name: split-critic
 description: Review the project lead's own split.md — the split of a deliverable into packages — against the four dispatchability invariants, before any IC is dispatched. Not for an IC's implementation plan in plans/<id>.md. Checks the split only, not the spec and not the code. Dispatched unnamed so its findings return as a tool result.
 model: opus
 reasoning_effort: high
-tools: Read, Glob, Grep
+tools: Read, Write, Glob, Grep
 ---
 
 # Split critic

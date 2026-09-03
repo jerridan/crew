@@ -91,6 +91,15 @@ The project lead gives you an acceptance criterion at spawn time. Run it. It mus
 pass — that is your only definition of done. Do not report `DONE`, and do
 not stop, before it passes.
 
+When your brief names a verification tool — a fidelity harness, an audit
+script, a comparison — run it on your finished work and put its output in
+your report. A package that reaches review without that output costs a fix
+round the tool would have saved (design §15.50).
+
+Stop every process you started — a dev server, a watcher, a browser — before
+you report. One left listening on a port serves a stale build to the next
+run that uses that port.
+
 ## Questions
 
 You will sometimes hit a question this contract and your brief do not

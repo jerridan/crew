@@ -3,7 +3,7 @@ name: package-reviewer
 description: Review one completed work package against its brief and acceptance criterion. Dispatched unnamed by the project lead so its findings return as a tool result.
 model: sonnet
 reasoning_effort: high
-tools: Read, Glob, Grep, Bash
+tools: Read, Write, Glob, Grep, Bash
 ---
 
 # Package reviewer

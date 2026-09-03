@@ -60,12 +60,36 @@ packages grouped into territories. One IC owns one territory and works its
 packages in the listed order. Mirror every field into `state.json`'s
 `packages[]`.
 
+Four rules shape the split (design §15.50):
+
+- **Read the charter's `Favour:` line first.** `spend`, the default, is one
+  territory and one IC that carries its context from package to package.
+  `time` is one territory per disjoint region of the tree, worked in
+  parallel. The same goal ran both ways: parallel finished sooner and cost
+  15 fix rounds and half again the tokens; sequential cost no fix rounds.
+- **The verification tool is the first package.** When an acceptance
+  criterion needs a tool the repo does not have — a screenshot diff, an
+  audit, a comparison — build it first, and have its IC prove it
+  deterministic against a known-equal pair before any package that uses it
+  starts. Then every later brief names the tool, and `ic-contract.md` makes
+  the IC run it before reporting.
+- **Fewer, larger packages in a territory.** Packages in one territory run in
+  sequence, so a finer split there buys no parallelism and costs a plan, a
+  review, a merge and a suite run per package. Split a territory only where
+  a review boundary earns its cost: a different band, or an interface
+  another package consumes.
+- **Estimate the ceiling.** Sum 300k tokens per `standard` or `light`
+  package and 500k per `deep` one, add 200k per package for its reviews,
+  and add 30% for fix rounds. Write the arithmetic to `decisions.md` and the
+  result to `spend.ceiling_estimate`. It becomes `spend.ceiling` unless the
+  charter carries a `Ceiling:` line, which wins.
+
 ## 2. Have the split reviewed
 
 Dispatch `crew:split-critic`, unnamed, with `split.md`, `spec.md`, the repo
-path, and `review-output.md` whole. Write its findings to
-`reviews/<deliverable-id>-split-critic-r<n>.md`, `<n>` being one more than
-the highest already on disk under that name.
+path, `review-output.md` whole, and the absolute path it writes its findings
+to: `reviews/<deliverable-id>-split-critic-r<n>.md`, `<n>` being one more
+than the highest already on disk under that name.
 
 Adjudicate as `SKILL.md` step 4 does. A failed invariant is not a style
 note — fix the split and dispatch again. Three re-splits is the cap;
@@ -150,6 +174,12 @@ The IC writes `plans/<id>.md` and waits. Read it, then approve it or send it
 back with what to change. `SendMessage` the IC its go-ahead, and set
 `plan_approved_at`.
 
+For a `standard` or `light` package, check two things and approve: every
+file the plan names is in the file set, and the plan changes no `produces`
+signature. Read a `deep` package's plan in full. A plan gate that reads
+every plan in full cost a run a round trip per package for no finding
+(design §15.50).
+
 While `plans/<id>.md` exists and `plan_approved_at` is `null`, that IC's
 idle is an expected pause and not a fault (design §15.8).
 
@@ -223,6 +253,11 @@ A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules
 say what each cause earns. Committing on a blocked IC's behalf is a normal
 outcome here, not a failure (design §15.12).
 
+Read `run.compactions` before you accept. An entry for this IC's session
+since its last accepted package means it lost the context it planned in:
+send it its plan back with the go-ahead for the fix round, and treat its
+report's claims about earlier packages as unverified.
+
 ## 7. Review the package
 
 Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
@@ -236,10 +271,10 @@ An instruction package gets its acceptance checklist file instead.
 Dispatch `crew:package-reviewer`, unnamed, with all five inputs it requires:
 the package's record entry (`file_set`, `interface_contract`,
 `acceptance_criterion`), the worktree path, the IC's report, the diff or
-checklist path, and the brief. Inject `review-output.md` whole.
-
-Write its findings to `reviews/<id>-package-review-r<n>.md`, `<n>` being
-`fix_rounds_used`.
+checklist path, and the brief. Inject `review-output.md` whole, and name the
+absolute path it writes to: `reviews/<id>-package-review-r<n>.md`, `<n>`
+being `fix_rounds_used`. Its result is three lines; open the file only when
+the count says there are findings to adjudicate.
 
 ## 8. Fix rounds
 
@@ -272,6 +307,14 @@ send the IC its next package and return to step 5. An IC works its packages
 in the listed order. Write the new package's `base` as you send it — the
 worktree head as it stands now, which is the accepted package's last commit.
 That is what keeps the next review diff to the next package's own work.
+
+**Respawn instead of sending** when `run.compactions` lists the IC's session,
+or when the IC has finished four packages. Neither you nor the IC can read
+its context, so the count is the proxy: one IC carried five packages to 66%
+of its window without compacting, and the next one may not (design §15.50).
+Stand the IC down, then spawn a fresh one at the new package's band, with
+the brief step 13 rule 3 describes: what its worktree already holds, and
+which steps are done.
 
 Reach step 9 only when every territory has finished every package it owns.
 
@@ -330,10 +373,11 @@ next reviewer's shared-file check exists to read (design §15.24).
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`,
 the repo path and base ref, the fresh diff path, every accepted package
-review, and `review-output.md` whole. Four of its seven checks read the
-record rather than the diff, so a diff-only dispatch cannot run them.
+review, `review-output.md` whole, and the absolute path it writes to:
+`reviews/<deliverable-id>-deliverable-review.md`. Four of its seven checks
+read the record rather than the diff, so a diff-only dispatch cannot run
+them.
 
-Write its findings to `reviews/<deliverable-id>-deliverable-review.md`.
 Adjudicate as `SKILL.md` step 4 does, and clear every `[Critical]` before
 the PR opens.
 
@@ -348,7 +392,8 @@ that procedure too, and `record-format.md` owns what the state means.
 ## 12. Clean up
 
 Remove each IC worktree when the deliverable closes, and prune its
-registration from `worktrees.json`.
+registration from `worktrees.json`. `SKILL.md` step 14 owns the process
+sweep that comes first.
 
 **Never force a removal.** A refusal means files exist nowhere else. Commit
 them to that IC's branch, or surface them. Remove only worktrees this run

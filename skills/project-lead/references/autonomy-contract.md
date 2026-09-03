@@ -190,6 +190,22 @@ only its final text (design §15.26d). Record that agent with
 Writing `measured: true` over an absent number is a fabricated measurement,
 and it is worse than the gap it hides.
 
-Crossing `ceiling` — counting `measured_tokens` and `estimated_tokens`
-together — is trigger 5. When every agent is unmeasured the ceiling cannot
-fire, so say so in the record rather than reporting a run as within budget.
+**Read the number from the completion notification, never from
+`TaskOutput`.** Only the notification carries `total_tokens`; the tool
+returns the agent's text alone. A run that polled every agent through
+`TaskOutput` recorded `measured_tokens: 0` and could never trip its ceiling
+(design §15.50).
+
+**The transcripts are the only complete count.** After each package
+integrates, and again before the PR opens, run
+`python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
+prices every session that ran from the checkout — yours and the teammates'
+included — into `spend.transcript` (`record-format.md`). Two runs of one
+goal measured 1.2M and 1.6M tokens in `measured_tokens` against 187M and 389M
+in the transcripts (design §15.50).
+
+Crossing `ceiling` is trigger 5. Read `transcript.total_tokens` against it
+when `transcript` exists, and `measured_tokens` plus `estimated_tokens`
+otherwise. When every agent is unmeasured and `transcript` is absent, the
+ceiling cannot fire, so say so in the record rather than reporting a run as
+within budget.

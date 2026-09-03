@@ -602,3 +602,42 @@ unbuilt, and the check is stated in exactly one place.
 Read first: design §15.48, §15.49; `writing-standard.md`'s "Keep the status
 true"; `SKILL.md` step 12; `agents/deliverable-reviewer.md`.
 
+
+## T19 — Probe: `PreCompact` for an in-process teammate
+
+Status: open
+Depends on: nothing
+Stage: any (design §13.1, §15.50)
+
+`hooks/pre-compact.py` appends to `run.compactions` when the compacting
+session belongs to a live run, matched by `run.session_ids` or a worktree's
+`session_ids`. It was tested with a seeded payload and a record copy. Nothing
+has shown that the harness fires `PreCompact` for an in-process teammate at
+all, or what `session_id` the payload carries when it does — the teammate's
+own, or the project lead's.
+
+Done when: an IC teammate is driven past its compaction threshold in an
+interactive session with agent teams on, and `run.compactions` holds an
+entry that `full-path.md` step 6 can match to that IC. Record the payload
+shape in design §15.
+
+Read first: design §13.1, §15.50; `hooks/pre-compact.py`; `full-path.md`
+steps 6 and 8a.
+
+## T20 — Probe: a review agent's write to the record root
+
+Status: open
+Depends on: nothing
+Stage: any (design §15.50)
+
+`review-output.md` now has every review agent write its report to the path
+its dispatch names and return three lines. An IC's record writes are denied
+in some dispatch shapes (design §15.26b, §15.31b), and the same may hold for
+an unnamed reviewer. The fallback is in place — the whole report returns when
+the write is denied — but the saving only lands when the write succeeds.
+
+Done when: one run on each path shows a `reviews/` file written by the
+reviewer itself, or the denial is recorded in design §15 with the dispatch
+shape that produced it.
+
+Read first: design §15.26, §15.31, §15.50; `review-output.md`.

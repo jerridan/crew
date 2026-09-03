@@ -18,12 +18,17 @@ LIVE_STATES = ("active", "blocked")
 def crew_roots() -> list[Path]:
     """Every place a record may live.
 
-    `record-format.md` hardcodes `~/.claude/crew/`, so that path is always
-    checked. `CLAUDE_CONFIG_DIR` relocates the config dir, and a project lead
-    on such a machine may follow the harness rather than the reference, so
-    check that too. Looking in both costs one `is_dir` and cannot miss a run.
+    `record-format.md` puts the record under `$CREW_RECORD_ROOT` when that is
+    set and under `~/.claude/crew/` otherwise, so both are checked.
+    `CLAUDE_CONFIG_DIR` relocates the config dir, and a project lead on such a
+    machine may follow the harness rather than the reference, so check that
+    too. Each extra root costs one `is_dir` and cannot miss a run.
     """
-    roots = [Path.home() / ".claude" / "crew"]
+    roots = []
+    explicit = os.environ.get("CREW_RECORD_ROOT")
+    if explicit:
+        roots.append(Path(explicit))
+    roots.append(Path.home() / ".claude" / "crew")
     config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
     if config_dir:
         relocated = Path(config_dir) / "crew"

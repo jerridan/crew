@@ -249,8 +249,26 @@ has an outgoing transition (design §10).
 These arrows are **transitions**: one-way project lead decisions. A
 **reconciliation** is different — after a crash, design §10.1 rewrites
 `state.json` to match git, and that correction may move a wrongly recorded
-value in either direction, including out of a mistaken `integrated`,
-`draft-pr-opened`, or `work-complete`.
+value in either direction, including out of a mistaken `integrated` or
+`draft-pr-opened`.
+
+**`work-complete` is the exception, because git cannot prove it.** Every other
+terminal state has evidence outside the record: `integrated` has a merge,
+`draft-pr-opened` has a `pr_url`. A `work-complete` deliverable looks exactly
+like an `in-flight` one that died just before step 14 — commits on a branch,
+a clean tree, no PR. A resume that reconciles from git alone would re-enter
+step 14 and open the very PR the principal refused.
+
+So the evidence for `work-complete` lives in the record, and a resume reads it
+there: the `escalations` entry whose `answer` records what the principal said.
+**Never move a deliverable out of `work-complete` on git evidence alone.**
+Move it only when the principal says to.
+
+Write the deliverable's `work-complete` and the run's `complete` in **one**
+write, against the usual rule of one write per transition. Split across two,
+a crash between them leaves `work-complete` under a live `run_state`, which
+`SessionEnd` then marks `interrupted` — the state this exception exists to
+protect, wearing the one label that invites a resume to redo it.
 
 ### At creation
 
@@ -585,7 +603,7 @@ Every name this file defines, with what consumes it.
 - `id` (deliverable) — consumer: `packages[].deliverable` cross-reference; `reviews/<deliverable-id>-*` filenames
 - `branch` (deliverable) — consumer: stage 5 (merge target, design §9.3)
 - `base` — consumer: stage 5 (recovery, `git log <base>..HEAD`, design §10.1)
-- `state` (deliverable) — consumer: stage 5 (integration and re-plan, design §9.3, §10); shares `pending`/`in-flight`/`abandoned` with a package's `state`, but not `integrated` or `work-complete`
+- `state` (deliverable) — consumer: stage 5 (integration and re-plan, design §9.3, §10); shares `pending`/`in-flight`/`abandoned` with a package's `state`. `integrated` is a package's alone; `draft-pr-opened` and `work-complete` are a deliverable's alone
 - `state_changed_at` (deliverable) — consumer: a human auditing the record's timeline; stage 6
 - `pr_url` — consumer: stage 4 (draft PR opened in `draft-pr-opened`, design §9.3); Task 11
 
@@ -615,7 +633,7 @@ Every name this file defines, with what consumes it.
 - `in-flight` — consumer: stage 5 (project lead loop, idle check)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
 - `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
-- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14, `full-path.md` step 11)
+- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14); stage 5 (`full-path.md` step 11)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
 
 **`state.json` band values** (canonical definitions live in Task 5's

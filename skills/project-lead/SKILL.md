@@ -199,6 +199,7 @@ on one long line — GitHub renders a single newline as a line break.
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it.
 
-When the push or `gh pr create` cannot run, or the principal refuses it,
-escalate first (`autonomy-contract.md`). Then record `work-complete` with
-`pr_url: null` and `run_state: complete`, and hand the principal the branch.
+When the push or `gh pr create` cannot run, ask the principal and **wait for
+the answer** — `blocked` until it lands, then `active`. One who already refused
+the PR has answered; do not ask twice. Then record `work-complete`,
+`pr_url: null` and `run_state: complete` in one write, and hand over the branch.

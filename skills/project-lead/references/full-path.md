@@ -342,11 +342,8 @@ the PR opens.
 `SKILL.md` step 14 owns this, unchanged. One deliverable is one branch and
 one draft PR however many packages it took.
 
-When the push or `gh pr create` cannot run, or the principal refuses it,
-escalate first, then record `work-complete` with `pr_url: null` and
-`run_state: complete`, and hand the principal the branch name instead of a
-PR. `SKILL.md` step 14 owns the procedure, and `record-format.md` owns what
-the state means.
+A deliverable that cannot open a PR ends in `work-complete`. Step 14 owns
+that procedure too, and `record-format.md` owns what the state means.
 
 ## 12. Clean up
 

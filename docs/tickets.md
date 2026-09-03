@@ -512,5 +512,16 @@ Done when: a run in a repo with no remote reaches a truthful terminal state
 with `pr_url: null`, `record-format.md`'s transition diagram covers it, and
 T11's ticket names it as the state its report path ends in.
 
-Read first: design §15.40f, §9.3, §10; `record-format.md` deliverable states
-and transitions; T11.
+`work-complete` landed on 2026-09-02, written by a `/crew:project-lead` run on
+this ticket (design §15.47). The name came from a council. Two of the three
+clauses are met: the diagram covers it, and T11 names it.
+
+The first clause is not. **No run has reached `work-complete`**, so the path
+that writes it is unexercised — the same shape as T7's nudge clause. An
+independent review then found six defects in the run's own output, three of
+them substantive, including a recovery hazard that would have re-opened a
+refused PR (§15.49). Those are fixed here. Close the last clause from a run in
+a repo with no remote.
+
+Read first: design §15.40f, §15.47, §15.49, §9.3, §10; `record-format.md`
+deliverable states and transitions; T11.

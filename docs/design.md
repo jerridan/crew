@@ -3472,18 +3472,19 @@ Deliberately different:
     and `deep`, and two elsewhere, state no verdict at all.
 
     **The deliverable reviewer's 8% is the metric failing, not the agent.**
-    Four deliverable reviews returned `accepted` and still listed findings the
-    project lead fixed — `no-pr-terminal-state-9a32`'s carried four, all
-    accepted and fixed in one commit. The verdict answers "does this block the
-    next step", not "did this change the code".
+    Nine of the thirteen deliverable reviews returned `accepted` and still
+    listed tagged findings. `no-pr-terminal-state-9a32`'s listed four, and its
+    own adjudication line records all four accepted and fixed in commit
+    `195d823`. The verdict answers "does this block the next step", not "did
+    this change the code".
 
     **Findings that led to a commit, counted by hand.** Five package reviews
     across the thirteen records produced a commit, holding eleven findings.
     Only one of the five was adjudicated down: `authors-route`'s reviewer
     raised four findings, the project lead applied one and overruled three.
     The other four package reviews had every finding applied. The remaining 27
-    package reviews changed nothing, and 24 of the 29 packages had a review
-    that returned `accepted` at every round.
+    package reviews changed nothing, and 24 of the 29 packages went through
+    package review without one line of their code changing because of it.
 
     **What drove the seventeen fix rounds.** Read from the IC reports, which
     name the trigger at the top of each `## Fix round` section.
@@ -3528,9 +3529,9 @@ Deliberately different:
       value catch on the record came from a sonnet reviewer at `high` effort
       that wrote its own probe. `fidelity-harness` r1 built a 900 by 900 image
       against a 390 by 901 one, ran the harness on the pair, and demonstrated
-      a false pass in the instrument. Eight earlier reviews had not measured
-      it that way. The escapes sit outside one package's diff, where no model
-      in that seat can reach them.
+      a false pass in the instrument. The review file records that the defect
+      had survived six rounds of the harness's own use. The escapes sit
+      outside one package's diff, where no model in that seat can reach them.
 
     So `band-rubric.md` keeps the package reviewer at the package's own band,
     and both paths keep the review. The layer that caught the cross-package

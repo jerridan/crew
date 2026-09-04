@@ -885,7 +885,10 @@ a second copy of a rule is the drift `CLAUDE.md` forbids.
 Write a goal-and-constraints form of `SKILL.md` and `simple-path.md` that
 keeps every rule and every pointer to a reference, under a temporary second
 skill name so both forms load. Run one simple-path goal with each, on Fable at high effort, in
-fresh clones, with `CREW_RECORD_ROOT` set per arm. Compare lead turns, lead
+fresh clones, with `CREW_RECORD_ROOT` set per arm. Pass `--model fable` on
+each launch: the two 2026-09-04 runs under T27 and T28 launched with
+`--effort high` and no model flag, and both ran on Opus 5 (§15.58, §15.59),
+so a run that omits the flag measures the wrong seat. Compare lead turns, lead
 spend from `scripts/spend.py`, decisions, critic rounds, fix rounds and the
 independent check of the two PRs.
 
@@ -1134,4 +1137,30 @@ step says who runs it, and a package whose new test passed from the start is
 rejected by that check rather than by a reviewer noticing.
 
 Read first: design §7, §9.5, §5 (invariant 1); `ic-contract.md`;
-`SKILL.md` steps 8 and 9; `record-format.md` `acceptance_criterion`.
+`simple-path.md` steps 8 and 9; `record-format.md` `acceptance_criterion`.
+
+## T33 — Give a bounded edit a package entry, or take `split.md` out of its path
+
+Status: open
+Depends on: nothing
+Stage: any (design §9.1, §15.59)
+
+`SKILL.md`'s shape table sends a bounded edit to `simple-path.md` step 7,
+then steps 12 to 14. No `split.md` is written and no `packages[]` entry
+exists, yet step 12 marks a package `integrated` and step 13 hands `split.md`
+to the deliverable reviewer. Nothing has run this row; the gap was found by
+T27's code review, which left it because fixing it changes what a bounded
+edit does.
+
+Decide which of the two is right, and make the other file agree. Either a
+bounded edit writes a one-package `split.md` and its `packages[]` entry
+before step 7, so steps 12 and 13 hold as written, or the row skips step 12
+and step 13 takes a bounded edit with no `split.md`. `record-format.md` owns
+what the entry and the review need; design §9.1 owns what a bounded edit is.
+
+Done when: a bounded-edit run reaches a draft PR with zero prompts, every
+field steps 12 to 14 write exists in its record, and the row and the steps it
+names agree.
+
+Read first: design §9.1, §15.59; `SKILL.md` shape table; `simple-path.md`
+steps 7 and 12 to 14; `record-format.md` `split.md` and `packages[]`.

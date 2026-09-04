@@ -4171,9 +4171,10 @@ Deliberately different:
        in `auto` permission mode, spawns each reviewer with the `Agent` tool
        as an unnamed background subagent, with no spawn-time `model`. The
        agent frontmatter therefore picks the model: opus for
-       `crew:spec-critic` and `crew:deliverable-reviewer`, sonnet for
-       `crew:package-reviewer`. The reviewer's cwd is the target repo, and
-       the record root is outside it. No `--add-dir` and no allow rule was
+       `crew:spec-critic`, `crew:split-critic` and
+       `crew:deliverable-reviewer`, sonnet for `crew:package-reviewer`. The
+       reviewer's cwd is the target repo, and the record root is outside
+       it. No `--add-dir` and no allow rule was
        added for the write. The full path changes none of this: its ICs are
        teammates, but its reviewers stay unnamed subagents of the project
        lead, so both paths share one dispatch shape for a review.

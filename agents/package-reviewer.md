@@ -1,6 +1,6 @@
 ---
 name: package-reviewer
-description: Review one completed work package against its brief and acceptance criterion. Dispatched unnamed by the project lead; writes its findings to the record path the dispatch names and returns the verdict lines.
+description: Review one completed work package against its brief and acceptance criterion. Dispatched unnamed by the project lead; writes its findings to the record path the dispatch names and returns the short result `review-output.md` defines.
 model: sonnet
 reasoning_effort: high
 tools: Read, Write, Glob, Grep, Bash

@@ -701,8 +701,8 @@ rule, and every reviewer wrote its own file. Two runs answered this ticket
 directly: `~/.claude/crew/add-truncate-and-slugify-9140/` on the simple path
 and `~/.claude/crew/add-titlecase-decodequery-b150/` on the full path, the
 second holding the first `crew:split-critic` file written under the rule. The
-PR also removed two stale copies of the result's line count, in `SKILL.md`
-step 4 and `full-path.md` step 7.
+PR also removed every stale copy of the result's shape: `SKILL.md` step 4,
+`full-path.md` step 7, and the `description` of all four review agents.
 
 Read first: design §15.26, §15.31, §15.50, §15.67; `review-output.md`.
 

@@ -2827,8 +2827,9 @@ Deliberately different:
     to converge on the same fidelity. Fable also cut half as many packages,
     kept one IC teammate across all five so the ported CSS and the harness
     were learned once, and did the lead's work in a third of the turns. At
-    Opus prices the same Fable session would have cost about $29, so the
-    cache-read price was not the story either way.
+    Opus prices the same Fable session would have cost about $34 against its
+    $38, and at Fable prices the Opus session about $93 against its $113. The
+    price sheet moved a few dollars; the turn count moved the rest.
 
     **Neither lead escalated the question the answer key marked as the
     principal's** — whether `/book` gets per-book routes. Both resolved it

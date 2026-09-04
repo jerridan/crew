@@ -40,8 +40,7 @@ expand into `charter.md`: the goal, and one falsifiable acceptance criterion.
 
 **`--resume` skips the rest of this step.** It reopens the existing record —
 never a new directory — appends this session's id to `run.session_ids`, and
-reconciles. `worktrees.json` says which path you are resuming, because the
-simple path never writes it: with it, `full-path.md` step 13 owns the
+reconciles. With `worktrees.json`, `full-path.md` step 13 owns the
 reconciliation; without it, `git log` on the deliverable branch is the whole
 job. Re-enter at the first unfinished step and re-run no finished one. A
 resumed run writes no charter, no spec and no new branch.
@@ -94,8 +93,6 @@ A finding is a claim, not a verdict.
 | A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Run step 7, then steps 12-14. |
 | One package, short enough to run unattended | Run steps 6-14 |
 | More than one package, or work long enough to need steering | Read `references/full-path.md` and run it in place of steps 6-14 |
-
-Your own context is the most expensive place to work.
 
 ## 6. Write the split
 
@@ -173,6 +170,9 @@ suite on the branch head and read the output yourself. Then edit the shared
 files: read the target repo's own instructions for which must change
 together, and keep the values they require equal. Commit them, and mark the
 package `integrated`.
+
+**Sweep for stale status claims.** You own this check alone. Run the grep in
+`writing-standard.md`'s "Keep the status true" over this branch's own diff.
 
 **Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. Step
 10's diff predates the fix rounds and the shared-file edits you just made,

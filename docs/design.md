@@ -2990,3 +2990,25 @@ Deliberately different:
     where a list belongs, and a checkout path holding `~` — zsh does not
     expand a tilde after `=`, so the documented `--repo slug=~/path` form
     priced nothing at all until the script expanded it itself.
+
+52. **The stale-status-claim sweep, and why the project lead owns it —
+    2026-09-03 (T18).** §15.48 and §15.49 each caught a claim about what is
+    built that the same session had already falsified. `CLAUDE.md` and
+    `writing-standard.md` carried the rule for both. The gap was not the
+    rule; nothing ran at the end, when the claims had changed.
+
+    **The owner is the project lead, at `SKILL.md` step 12.** That is where
+    it already edits the shared files a stale claim lives in, and it is the
+    only seat that sees the whole diff before the PR opens.
+    `crew:deliverable-reviewer` does not get an eighth check: two owners for
+    one check means each one can assume the other ran it.
+
+    **The vocabulary list lives in `writing-standard.md`**, in a
+    `## Keep the status true` section, with the runnable `grep -inE` beside
+    it. `SKILL.md` step 12 points at it, and `full-path.md` step 9 points at
+    step 12. One copy of the pattern, so a term added later reaches every
+    caller.
+
+    The sweep reads the change's own diff. When the change lands a stage it
+    also reads the whole repo, because §15.48's stale README sentence was
+    stale for a change in another directory.

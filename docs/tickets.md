@@ -602,6 +602,12 @@ unbuilt, and the check is stated in exactly one place.
 Read first: design §15.48, §15.49; `writing-standard.md`'s "Keep the status
 true"; `SKILL.md` step 12; `agents/deliverable-reviewer.md`.
 
+2026-09-03: the check and its owner landed. `writing-standard.md`'s "Keep the
+status true" holds the vocabulary list and the grep; `SKILL.md` step 12 runs
+it; `crew:deliverable-reviewer` got no eighth check (design §15.52). The
+ticket stays open for what remains: a run that lands a stage and leaves no
+file claiming that stage is unbuilt.
+
 
 ## T19 — Probe: `PreCompact` for an in-process teammate
 

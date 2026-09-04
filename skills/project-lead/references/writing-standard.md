@@ -51,8 +51,7 @@ on it. That changes what belongs in it.
 - **No bolded lead-in followed by its own explanation.** Two or three of
   those in a row is design voice, and it is the drift to watch for.
 - **Keep the status true.** A README that calls a built thing a stub is
-  worse than one that says nothing. Check every "not built" claim in it
-  against the repo whenever a stage lands.
+  worse than one that says nothing. The section below owns this rule.
 
 The same rules hold for a PR body, an issue and a comment.
 
@@ -60,6 +59,32 @@ The same rules hold for a PR body, an issue and a comment.
 goes on one long line. GitHub renders a single newline as a line break, so a
 wrapped body renders as a narrow column. Files in this repo stay hard
 wrapped; only the text you send to GitHub does not.
+
+## Keep the status true
+
+Every sentence that says what is built goes stale when a stage lands. The
+session that lands the stage is the one least likely to notice it (design
+§15.48, §15.49, §15.52). Reading does not catch this. A grep does.
+
+This is the vocabulary that dates. It is the canonical list, and no other
+file keeps a copy:
+
+`not built`, `unbuilt`, `no run has`, `no session has`,
+`nothing dispatches`, `unexercised`, `not yet`, `stub`,
+`does not exist yet`, `deferred`.
+
+Sweep the change's own diff for it before the change lands:
+
+```
+git diff <base>...HEAD | grep -inE 'not built|unbuilt|no run has|no session has|nothing dispatches|unexercised|not yet|stub|does not exist yet|deferred'
+```
+
+Read every hit. Fix a hit that this change makes false. Leave a hit that is
+still true. When the change lands a stage, run the same pattern over the
+whole repo as well — `grep -rinE '<the pattern above>' .` — because a file
+the change never touched can still claim that stage is unbuilt.
+
+`SKILL.md` step 12 says who runs this sweep, and when.
 
 ## Write for what the reader already has
 

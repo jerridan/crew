@@ -375,7 +375,7 @@ Read first: design §2, §5 (invariant 1), §6.1, §9.1, §14; the
 superpowers debugging skill the checklist copies from.
 
 Landed 2026-09-04 as design §9.5, five §14 rows, and `diagnosis.md` in
-`record-format.md` (§15.55). The tickets it implies are T12 below, T31 and
+`record-format.md` (§15.56). The tickets it implies are T12 below, T31 and
 T32.
 
 ## T12 — Implement the investigation path

@@ -3374,7 +3374,7 @@ Deliberately different:
     dispatches an instrument yet — that work folds into T4's territory, per
     T14's own ticket, and stays there until a run needs one.
 
-55. **The investigation path is designed, and five choices in it were not
+56. **The investigation path is designed, and five choices in it were not
     obvious — 2026-09-04, T11.** §9.5 is the section, §14 carries the five
     deviations, and `record-format.md` owns `diagnosis.md`. Nothing runs it
     yet; T12 implements it, and T31 and T32 are the two pieces it needs

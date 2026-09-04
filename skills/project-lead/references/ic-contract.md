@@ -79,6 +79,21 @@ and stop. The project lead dispatches you again to implement, and names your
 plan's path. Read the plan first — you hold none of the first dispatch's
 context.
 
+## Write the failing test first
+
+When your acceptance criterion is a test your package adds, write that test
+before you write the code that makes it pass. Run the criterion, see it fail,
+and commit the test on its own — a red commit. Then write the code.
+
+The project lead runs the criterion again at that commit. A criterion that
+passes there means the test proves nothing, and the package comes back to you
+as a fix round. So commit the test alone: a commit that carries the code as
+well passes the check and fails you.
+
+This holds for a new test only. A criterion that names a test which already
+exists and already fails needs no red commit, and neither does a reviewer
+checklist for an instruction package.
+
 ## Commit discipline
 
 Commit after every green step — a passing test for a code package, or the
@@ -161,6 +176,8 @@ Include:
 - Your status, one of the four above. A `BLOCKED` status names its cause:
   `capability` or `environment`.
 - The commits you made.
+- Your red commit's sha, and the criterion's failing output at it, when the
+  section "Write the failing test first" applies to you.
 - Every assumption you took, from the Questions protocol.
 - Every question you raised, and how you resolved it or why it is still
   open.

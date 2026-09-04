@@ -559,6 +559,20 @@ never reaches the project lead at all. So:
 | An IC finished | `git -C <worktree> log` and `diff` show the work, on the right branch | the IC's report |
 | Tests pass | a fresh run's output, 0 failures | a previous run, "should pass" |
 | Requirements met | a line-by-line check against the charter | tests passing |
+| A new test proves the change | the acceptance criterion fails at the commit that adds the test, on a run the project lead performed itself | the criterion passing at the branch head |
+
+**"Passes after" is half a criterion.** A test that never failed satisfies row
+2 and proves nothing. So when a package's acceptance criterion is a test the
+package adds, the IC writes that test first and commits it red, before it
+writes the code that makes it pass (`ic-contract.md`). The project lead runs
+the criterion at that commit when it verifies the package, and a criterion
+that passes there sends the package back to a fix round. A reviewer reading
+the diff is not what catches this.
+
+Two criteria need no red commit. A reviewer checklist for an instruction
+package is not executable (section 5, invariant 1). The investigation path's
+reproduction already failed before the IC was dispatched, and `diagnosis.md`
+holds that failing output (section 9.5).
 
 **An IC's report is a claim, not evidence.** Every IC completion is checked
 against its worktree before the project lead believes it. That check also
@@ -750,9 +764,8 @@ extra turn.
 
 The acceptance criterion is a **reproduction**: one test or one command that
 fails now and passes after the fix. Both clauses are required. A criterion
-that only says "passes after" is satisfied by a test that never failed. Crew
-does not check the "fails now" clause yet, on any path — §7's table has no
-row for it, and T32 in `docs/tickets.md` is the ticket that adds one.
+that only says "passes after" is satisfied by a test that never failed. §7's
+table carries the row that checks the "fails now" clause, on every path.
 
 **The reproduction is written twice.** At step 1 the charter carries the
 symptom, stated so that some future command could falsify it. The command

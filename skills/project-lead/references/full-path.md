@@ -241,6 +241,11 @@ Check three things, every time:
 - The commits are on the IC's own branch, in the IC's own worktree. A commit
   anywhere else means the IC wandered, and nothing else detects that.
 - The acceptance criterion passes on a fresh run you performed yourself.
+- The criterion fails at the red commit, when the package adds the test the
+  criterion names (design §7). The IC's report gives the sha
+  (`ic-contract.md`). Check it out on a detached head in that worktree, run
+  the criterion, and switch back. A criterion that passes there is a fix
+  round: the test proves nothing.
 
 A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules
 say what each cause earns. Committing on a blocked IC's behalf is a normal

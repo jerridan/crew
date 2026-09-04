@@ -50,6 +50,12 @@ The IC's report is a claim; `git -C <repo> log` and `diff` are the evidence.
 Check the diff's file list against the declared file set, and run the acceptance
 criterion yourself. `band-rubric.md` says what a `BLOCKED` cause earns.
 
+**Run the criterion at the red commit too**, when the package adds the test
+its criterion names. The IC's report gives the sha (`ic-contract.md`). Check
+that sha out on a detached head, run the criterion, and switch back to the
+branch. It must fail there (design §7). A criterion that passes at the red
+commit is a fix round: the test proves nothing.
+
 ## 10. Review the package
 
 Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:

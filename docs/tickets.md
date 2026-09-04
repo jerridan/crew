@@ -1007,7 +1007,7 @@ Read first: design §15.51; `record-format.md` `run_state` transitions and
 
 ## T29 — Check for a remote before the run starts
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §6, §15.52, §15.53)
 
@@ -1106,7 +1106,7 @@ Read first: design §6.1, §9.5; `agents/council-advocate.md`;
 
 ## T32 — Prove the reproduction fails before the fix
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §7, §9.5)
 
@@ -1139,9 +1139,13 @@ rejected by that check rather than by a reviewer noticing.
 Read first: design §7, §9.5, §5 (invariant 1); `ic-contract.md`;
 `simple-path.md` steps 8 and 9; `record-format.md` `acceptance_criterion`.
 
+Landed 2026-09-04 as design §7's fourth row, `ic-contract.md`'s "Write the
+failing test first", the red-commit check in both path files, and
+`record-format.md`'s `reports/` entry (§15.61). The IC owns the red commit.
+
 ## T33 — Give a bounded edit a package entry, or take `split.md` out of its path
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §9.1, §15.59)
 

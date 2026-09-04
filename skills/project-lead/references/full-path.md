@@ -246,13 +246,19 @@ Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
 denies any command that changes directory before it runs git, allow rule or
 not (design §15.23b).
 
-Check three things, every time:
+Check four things, every time:
 
 - The diff's file list matches the declared file set. A file outside it is
   scope drift.
 - The commits are on the IC's own branch, in the IC's own worktree. A commit
   anywhere else means the IC wandered, and nothing else detects that.
 - The acceptance criterion passes on a fresh run you performed yourself.
+- The criterion fails at the red commit, when the package adds the test the
+  criterion names (design §7). `ic-contract.md`'s "Write the failing test
+  first" owns this check: it gives the procedure, the clean-tree
+  precondition, and what a criterion that passes there costs. Run it in the
+  IC's worktree, against the sha the IC's report gives. An IC may not switch
+  branches, so switch the worktree back before you do anything else.
 
 A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules
 say what each cause earns. Committing on a blocked IC's behalf is a normal

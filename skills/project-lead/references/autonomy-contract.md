@@ -125,9 +125,11 @@ with no citation is not confidence, and it routes to a council.
    answer written after the advocate reports is a reaction, not a prior, and
    it cannot be compared with the adjudication later.
 2. **Dispatch one `crew:council-advocate` to argue the opposite.** Give it the
-   question, your prior as the position to argue against, its own assigned
-   position, the repo path, and whatever context you already hold. Take the
-   model from `band-rubric.md`; pass no `reasoning_effort`.
+   question, its own assigned position, the repo path, and whatever context
+   you already hold. Give it your prior as the position to argue against, and
+   with it the reasoning and the citations that produced the prior — an
+   advocate handed a bare answer has nothing to aim at. Take the model from
+   `band-rubric.md`; pass no `reasoning_effort`.
 3. **Adjudicate at your own model**, by the rules below.
 4. **Rebut the case in writing, or change your answer.** Keeping your prior
    costs one written rebuttal on the entry's `Losing:` line, against the
@@ -149,6 +151,12 @@ costs (design §15.47).
    conditions, not either. A low-confidence choice that is cheap to reverse is
    a fix round, not a council. A costly choice you hold at medium confidence
    or better gets one adversary.
+
+   **"No precedent" means nothing analogous in the repo, not "nothing that
+   decides it".** A partial precedent, a near neighbour and a split precedent
+   are each precedent held, and each puts the question back on one adversary.
+   Read this condition strictly: it is what stops case 1 from collapsing into
+   "a low-confidence prior", and three advocates cost about six times one.
 2. **Competing root-cause hypotheses on the investigation path** (design
    §9.5), over one named evidence set. Assigned positions are what that shape
    is for.

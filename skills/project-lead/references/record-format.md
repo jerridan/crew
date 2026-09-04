@@ -674,13 +674,16 @@ holding it.
   line is that a later pass can compare it with `Answer:`.
 - `Positions:` — every position the project lead framed, in the order they
   were framed. An adversary council holds two: the prior, and the position the
-  advocate argued against it. Never reorder them once the winner is known: an
-  entry whose winner always sits first cannot show an audit that the council
-  was open.
+  advocate argued against it. Never reorder them once the winner is known. On
+  a three-advocate entry that order is what shows an audit the council did not
+  simply ratify its first option. On an adversary entry the prior sits first
+  by construction, so `Prior:` carries that evidence instead: it says what the
+  project lead held before the advocate reported.
 - `Losing:` — one line per losing position: the best argument it made, and why
   it lost. On an adversary entry whose prior survived, this line is the
   project lead's written rebuttal of the adversary's strongest point.
-- `Models:` — the model every advocate ran, as `<n> advocate(s), <model>`.
+- `Models:` — the model every advocate ran, as `1 advocate, <model>` or
+  `<n> advocates, <model>`.
   Every advocate in one council runs the same model (`band-rubric.md`), so
   this is one value, not one per advocate. Name your own adjudicating model
   after it.

@@ -364,7 +364,9 @@ same one `record-format.md` already defines.
 
 **Three assigned advocates stay for two cases.** The first is a choice that is
 both costly to reverse and unclear in the moment: the prior carries low
-confidence, **and** the repo holds no precedent. Both conditions. A
+confidence, **and** the repo holds nothing analogous. Both conditions, and
+"no precedent" is read strictly — a partial or split precedent is precedent
+held, which keeps the question on one adversary (`autonomy-contract.md`). A
 low-confidence choice that is cheap to reverse is a fix round; a costly choice
 the project lead is confident in gets one adversary. The second is §9.5's
 investigation path, where competing root-cause hypotheses over one body of
@@ -379,8 +381,10 @@ why positions are assigned rather than discovered.
 the records on one machine, compare each `Prior:` with its `Answer:`. An
 adversary that never moved an answer is not worth its dispatch, and the
 default becomes an inline answer with a citation, leaving only the two
-three-advocate cases above. `crew-stats.py` counts councils already, so the
-comparison is a pass over `decisions.md`, not new bookkeeping.
+three-advocate cases above. `crew-stats.py` counts a council entry today but
+reads neither `Prior:` nor the advocate count, so nothing yet trips the
+tenth-entry threshold. T34 in `docs/tickets.md` owns the count and the
+decision.
 
 **When a council is balanced** — the project lead cannot pick a winner at medium
 confidence or better — **and the question is architecture-moving, the project lead
@@ -854,10 +858,9 @@ full shape rather than a single adversary. Competing root causes over one body
 of evidence is what assigned positions are for. One surviving hypothesis is
 not a council. The project lead tests it under Phase 3 and moves on.
 
-T22 in `docs/tickets.md` narrows the full council to two cases, and this is
-its second. That ticket is open, so §6.1 does not yet carry the narrowing. If
-T22 lands with a different case list, this paragraph is one of the places it
-has to reach.
+§6.1 narrows the full council to two cases, and this is its second (§15.64).
+The entry carries `Prior:` like any other council entry; an investigation that
+holds no leading hypothesis writes `Prior: none`.
 
 Three rules on top of §6.1:
 
@@ -3753,7 +3756,7 @@ Deliberately different:
        by shape, not a closed config object — cost the prior one citation. The
        `Losing:` line holds the rebuttal, as step 4 requires. So on n=1 the
        adversary is not a ratification. Nine more entries decide whether it
-       stays (item 64a).
+       stays; T34 in `docs/tickets.md` owns that count.
 
     e. **The cost is a sixth of a full council.** 16,027 tokens for one
        advocate, against 169,257 (§15.43) and 126,168 (§15.47) for three. The

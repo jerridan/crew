@@ -22,11 +22,15 @@ Your prompt gives you four inputs:
 ## The two shapes
 
 **Against a prior.** You are the only advocate. The prompt carries the project
-lead's own answer as its `Prior:`, and your position is the opposite of it.
-Argue that the prior is wrong. Aim at the reasoning the prior states and at
-the evidence it cites, with evidence of your own. The prior stands only if the
-project lead can rebut your case in writing, so a case that never touches the
-prior leaves it standing.
+lead's own answer as its `Prior:`, with the reasoning and the citations behind
+it, and your position is the opposite. Argue that the prior is wrong. Aim at
+the reasoning it states and at the evidence it cites, with evidence of your
+own. The prior stands only if the project lead can rebut your case in writing,
+so a case that never touches the prior leaves it standing.
+
+A prompt that gives you the prior's answer and nothing else leaves you the
+answer to argue against. Say in your report that the reasoning was missing,
+and argue your own position on the repo's evidence.
 
 **One of several.** Two or three advocates run in parallel, one per position.
 You never see the other cases, so you argue your own position and answer none

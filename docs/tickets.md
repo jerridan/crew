@@ -732,7 +732,7 @@ Read first: design §6, §6.2, §15.22b, §15.50, §15.53; `autonomy-contract.md
 
 ## T22 — Redesign the council: one adversary by default, three advocates by exception
 
-Status: open
+Status: done
 Depends on: T21
 Stage: any (design §6.1, §15.43, §15.47, §15.50)
 
@@ -775,6 +775,16 @@ case 3.
 Done when: the two references carry the three rules, `agents/council-advocate.md`
 argues one position against a stated prior as well as one of several, and
 the next council that runs is an adversary entry with `Prior:` filled.
+
+2026-09-04: done. `autonomy-contract.md` and `record-format.md` carry the
+three rules, `record-format.md` owns the new `Prior:` field, and
+`agents/council-advocate.md` has a two-shape section. The next council ran
+the same day: `slugify-helper-d1ad/` framed one adversary against a
+medium-confidence `Prior:`, kept the prior on the signature, and dropped its
+unknown-key guard on the adversary's evidence. It cost 16,027 tokens against
+a three-advocate council's 126,168 to 169,257 (design §6.1, §15.64).
+The measurement this ticket asks for needs ten adversary entries, and one
+exists. Design §6.1 holds the rule that opens it.
 
 Read first: design §6.1, §6.2, §15.43, §15.47, §15.50; `autonomy-contract.md`;
 `record-format.md` council entry; `agents/council-advocate.md`; T11, T21.

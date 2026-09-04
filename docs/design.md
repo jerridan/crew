@@ -313,7 +313,7 @@ wrongly routed. Routing without a recorded reason is a defect.
 | Route | For | How |
 |---|---|---|
 | **Precedent** | "How does this work here?" / anything an instruction covers | Section 6.2 |
-| **Council** | Judgment with a determinable answer, and **every** question touching a data model, public interface, service boundary, or cross-cutting pattern | Section 6.1 |
+| **Council** | Judgment with a determinable answer **the repo does not already hold**, and **every** such question touching a data model, public interface, service boundary, or cross-cutting pattern | Section 6.1 |
 | **Preference** | What the human wants, where evidence cannot decide: opt-in or not, match old behavior or fix it, is this worth doing | Resolve from `CLAUDE.md`, `.claude/rules/`, or an explicit prior decision. Otherwise **escalate**. Never debate. |
 
 The preference route exists because a council will always name a winner, grounded
@@ -338,20 +338,49 @@ without a citation is not confidence, and it routes to a council.
 
 ### 6.1 Council
 
-Adapted from the `resolve-ticket` plugin.
+Adapted from the `resolve-ticket` plugin, and cut down by §15.64.
 
-1. Frame 2 or more candidate positions. Cap at 3.
-2. Dispatch one `crew:council-advocate` per position, unnamed, in parallel, in
-   a single batch. The definition carries the rules: argue **for** your
+**Nothing the repo settles reaches a council**, and no preference question
+does. A question an instruction, a prior decision or repo precedent answers
+routes to precedent with the citation (§6.2); a question about what the
+principal wants routes to §6.3's sweep or to an escalation.
+
+**The default council is one adversary.**
+
+1. The project lead writes its own answer and its confidence into the entry as
+   `Prior:`, before it dispatches.
+2. It dispatches one `crew:council-advocate`, unnamed, to argue the opposite,
+   with citations. The definition carries the rules: argue **for** your
    assigned position, gather cited evidence from code and docs, make the
    strongest case, and name the strongest objection to your own side.
-3. The project lead adjudicates and picks a winner.
-4. Record the decision, the losing arguments, the citations, and a confidence
-   level. Never record high confidence without a citation.
+3. The project lead adjudicates. Keeping the prior costs a written rebuttal of
+   the adversary's strongest point. A prior it cannot rebut in writing does
+   not stand: it adopts the adversary's position, or escalates.
+4. It records the decision, the losing argument, the citations, and a
+   confidence level. Never record high confidence without a citation.
+
+`Positions` holds two on such an entry, and the entry shape is otherwise the
+same one `record-format.md` already defines.
+
+**Three assigned advocates stay for two cases.** The first is a choice that is
+both costly to reverse and unclear in the moment: the prior carries low
+confidence, **and** the repo holds no precedent. Both conditions. A
+low-confidence choice that is cheap to reverse is a fix round; a costly choice
+the project lead is confident in gets one adversary. The second is §9.5's
+investigation path, where competing root-cause hypotheses over one body of
+evidence is what assigned positions are for. Beyond those two, a full council
+is not worth its cost (§15.50, §15.64).
 
 A council is adversarial advocacy with one judge, not a poll. Agreement between
 agents from the same base model measures shared priors, not correctness, which is
 why positions are assigned rather than discovered.
+
+**The adversary is on probation.** After ten adversary entries exist across
+the records on one machine, compare each `Prior:` with its `Answer:`. An
+adversary that never moved an answer is not worth its dispatch, and the
+default becomes an inline answer with a citation, leaving only the two
+three-advocate cases above. `crew-stats.py` counts councils already, so the
+comparison is a pass over `decisions.md`, not new bookkeeping.
 
 **When a council is balanced** — the project lead cannot pick a winner at medium
 confidence or better — **and the question is architecture-moving, the project lead
@@ -377,8 +406,8 @@ Two rules on top:
 Raise every advocate to opus together when the decision is `deep`-band. Record
 which model a council used, so promotion data covers councils too.
 
-Council spend is logged. It is expected to be the largest single line item in a
-run.
+Council spend is logged. Three advocates cost about what a small package costs
+(§15.43, §15.47), which is the cost one adversary is meant to cut.
 
 ### 6.2 Precedent and competing patterns
 
@@ -390,6 +419,11 @@ at the first answer:
    nested `CLAUDE.md` closer to the files being changed.
 2. **An explicit prior decision** recorded in `decisions.md` this run.
 3. **Repo precedent.**
+
+**A question this search answers never reaches a council.** The project lead
+records the answer with its citation and moves on. A council over settled
+ground pays an advocate to re-derive an answer the repo already holds, and it
+can only agree with the repo or contradict it (§15.64).
 
 **An instruction is the final word.** When an instruction says not to use a
 pattern and the repo is full of that pattern, the instruction wins. The
@@ -3672,3 +3706,58 @@ Deliberately different:
        that front-loads its references pays for both path files unless the
        route comes first, and T26's A/B is the next thing to measure that
        against.
+
+64. **The council is one adversary now, and the first one moved the answer —
+    2026-09-04, T22.** Three councils had run before this change (§15.43,
+    §15.47, and the CSS-strategy one in §15.50's Opus arm). None of them
+    produced an answer the record shows the project lead would not have
+    reached alone, and the one judgment failure both A/B leads shared — a
+    preference question answered as if it had precedent — is one a council
+    would have buried (§15.50). Three sonnet advocates cost 169,257 and
+    126,168 tokens for that. §6.1 now routes a settled question to precedent,
+    keeps preference questions out of a council entirely, makes one adversary
+    against the project lead's written `Prior:` the default, and keeps three
+    assigned advocates for two named cases.
+
+    a. **`Prior:` is what makes the adversary measurable.** The project lead
+       writes its own answer and its confidence into the `decisions.md` entry
+       before it dispatches, beside `Positions` and `Route: council`, and never
+       rewrites it. Keeping the prior then costs a written rebuttal on
+       `Losing:`. Without the field an adjudication cannot be told from a
+       ratification, which is the question this change opens and item 64d
+       leaves open.
+
+    b. **A council entry now carries five extra lines, not four.**
+       `record-format.md` owns them: `Prior`, `Positions`, `Losing`, `Models`,
+       `Spend`. `Models` gained the singular — `1 advocate, <model>`.
+       `agents/council-advocate.md` gained a two-shape section: against a
+       stated prior, or one of several. Nothing else in the definition
+       changed, because nothing else depends on how many advocates run.
+
+    c. **One live run, and it routed as the change intends — 2026-09-04.**
+       `slugify-helper-d1ad/`, an Opus 5 project lead at `--effort high` on the
+       string-kit fixture, with the plugin loaded from this branch. The goal
+       carried one signature choice with no repo precedent: how the caller
+       passes a separator and a maximum length to a new `slugify`. The lead
+       convened **one** advocate, and it routed the two other questions it met
+       — the helper's file and test shape, and the package band — to
+       precedent, with citations. Zero escalations, zero fix rounds, 23 tests
+       passing, draft PR, `checkout_restored: true`, $8.56 at list price.
+
+    d. **The first adversary changed the answer, in part.** The `Prior:` was
+       an options object at medium confidence, with unknown keys throwing a
+       `TypeError`. The adversary argued two positional parameters and lost,
+       but it cost the prior its guard: the lead dropped the unknown-key throw
+       because `CLAUDE.md`'s error rule covers wrong types only, and the
+       adversary's reading of `encodeQuery` — an open-keyed subject validated
+       by shape, not a closed config object — cost the prior one citation. The
+       `Losing:` line holds the rebuttal, as step 4 requires. So on n=1 the
+       adversary is not a ratification. Nine more entries decide whether it
+       stays (item 64a).
+
+    e. **The cost is a sixth of a full council.** 16,027 tokens for one
+       advocate, against 169,257 (§15.43) and 126,168 (§15.47) for three. The
+       advocate ran **opus**, not sonnet: the package was `deep`-band, so
+       `band-rubric.md`'s promotion applied to the council as well. One opus
+       advocate therefore costs less than three sonnet ones, which is a
+       stronger result than the change assumed.

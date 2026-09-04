@@ -654,44 +654,61 @@ escalated, in the order it asked them. An entry with `Answer: none` needs no
 
 ### A council entry
 
-A council-route entry carries four more lines (design §6.1). `Positions` and
-`Losing` are what let an audit see the whole council rather than its winner.
+A council-route entry carries five more lines (design §6.1). `Prior`,
+`Positions` and `Losing` are what let an audit see the whole council rather
+than its winner.
 
 **A council entry is written twice.** `autonomy-contract.md` has the project
-lead write the question, `Route: council` and `Positions` **before** it
-dispatches, which is what proves the routing came first. At that point no
+lead write the question, `Route: council`, `Prior` and `Positions` **before**
+it dispatches, which is what proves the routing came first. At that point no
 answer exists, so `Answer` and `Confidence` both read `pending`, and
 `Citation`, `Losing`, `Models`, `Spend` and `Timestamp` are absent. The
 adjudication fills them in. `pending` is the only sanctioned placeholder, and
 the no-citation-at-high-confidence check does not apply to an entry still
 holding it.
 
+- `Prior:` — the project lead's own answer, and the confidence it held that
+  answer at, as `<the answer> (<high | medium | low>)`. Every council entry
+  carries it. An investigation council with no leading hypothesis writes
+  `Prior: none`. Never rewrite it to match the winner: the whole point of the
+  line is that a later pass can compare it with `Answer:`.
 - `Positions:` — every position the project lead framed, in the order they
-  were framed. Never reorder them once the winner is known: an entry whose
-  winner always sits first cannot show an audit that the council was open.
+  were framed. An adversary council holds two: the prior, and the position the
+  advocate argued against it. Never reorder them once the winner is known: an
+  entry whose winner always sits first cannot show an audit that the council
+  was open.
 - `Losing:` — one line per losing position: the best argument it made, and why
-  it lost.
-- `Models:` — the model every advocate ran, as `<n> advocates, <model>`. Every
-  advocate in one council runs the same model (`band-rubric.md`), so this is
-  one value, not one per advocate. Name your own adjudicating model after it.
+  it lost. On an adversary entry whose prior survived, this line is the
+  project lead's written rebuttal of the adversary's strongest point.
+- `Models:` — the model every advocate ran, as `<n> advocate(s), <model>`.
+  Every advocate in one council runs the same model (`band-rubric.md`), so
+  this is one value, not one per advocate. Name your own adjudicating model
+  after it.
 - `Spend:` — the advocates' `total_tokens`, summed from their completion
   notifications; `unmeasured` when a dispatch shape reported none.
+
+The default shape, one adversary against the project lead's prior:
 
 ```markdown
 ## Where does the retry budget live: the client or the call site?
 Route: council
-Positions: B. each call site owns it. A. the client owns it. C. a policy object both read.
+Prior: the client owns it (medium)
+Positions: A. the client owns it. B. each call site owns it.
 Answer: A — the client owns it.
 Citation: src/http/client.ts:44 already holds the timeout and the backoff, and
 CLAUDE.md "HTTP" says one place owns transport policy.
-Losing: B argued call sites vary (src/sync/push.ts:80 retries 5 times), which
-the client's per-request override already covers. C added a type no caller
-asks for.
+Losing: B argued call sites vary (src/sync/push.ts:80 retries 5 times). The
+client's per-request override at src/http/client.ts:61 already covers that,
+so the variation costs no second owner.
 Confidence: high
-Models: 3 advocates, sonnet. Adjudicated at opus.
-Spend: 41200 tokens
+Models: 1 advocate, sonnet. Adjudicated at opus.
+Spend: 14800 tokens
 Timestamp: 2026-08-24T14:32:00Z
 ```
+
+A three-advocate council (`autonomy-contract.md` names the two cases that earn
+one) writes the same fields. `Positions` then holds three, `Losing` one line
+per loser, and `Prior` the low-confidence answer that triggered it.
 
 A balanced council is not an entry to finish alone. When the project lead
 cannot pick a winner at medium confidence or better and the question is
@@ -828,6 +845,7 @@ Every name this file defines, with what consumes it.
 - `Citation` — consumer: stage 6 (the confidence rule)
 - `Confidence` — consumer: stage 6 (the confidence rule)
 - `Confidence` values `high`, `medium`, `low` — consumer: stage 6
+- `Prior` — consumer: stage 6 (council entries only, design §6.1); a later pass measuring whether the adversary moved the answer
 - `Positions` — consumer: stage 6 (council entries only, design §6.1)
 - `Losing` — consumer: stage 6 (council entries only, design §6.1)
 - `Models` — consumer: stage 6 (council entries only); Task 5 (`band-rubric.md`'s promotion data covers councils, design §15.9)

@@ -18,7 +18,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the simple-path loop | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils and reviews over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews and the review catch rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |

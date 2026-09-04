@@ -781,7 +781,7 @@ Read first: design §6.1, §6.2, §15.43, §15.47, §15.50; `autonomy-contract.m
 
 ## T23 — Measure the review layer's catch rate
 
-Status: open
+Status: done
 Depends on: T25
 Stage: any (design §7, §15.49, §15.50)
 
@@ -798,6 +798,12 @@ skips package review and relies on the deliverable review; whether the
 package reviewer moves to opus; or whether nothing changes.
 
 Done when: the catch rate is in design §15 with the decision it supports.
+
+Done 2026-09-04: `crew-stats.py` prints a catch-rate table, and §15.57 holds
+the numbers. Package reviews act on 4 of 32, and drive 5 of the 17 fix rounds.
+Nothing changes: a green acceptance tool does not predict a clean review, and
+every escape sits outside one package's diff, where opus in that seat cannot
+reach it either.
 
 Read first: design §7, §15.49, §15.50; `agents/package-reviewer.md`;
 `review-output.md`.

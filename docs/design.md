@@ -3448,3 +3448,128 @@ Deliberately different:
     in the same run or as a second deliverable is left to T12 — one run has
     to happen before that is anything but a guess. §9.5 says only that the
     fix goes back to §9.1's table.
+
+57. **The review layer's catch rate: 4 of 32 package reviews sent a package
+    back, and package reviews drove 5 of 17 fix rounds — 2026-09-04, T23.**
+    `crew-stats.py` now prints a catch-rate table. The numbers below come from
+    the thirteen records under `~/.claude/crew/`: 29 packages, 72 reviews and
+    17 fix rounds. The script's review total reads 73, because one file under
+    a `reviews/` directory is an acceptance checklist, which it counts as
+    `other`.
+
+    **How a catch is counted.** A review "acted" when its `Verdict:` line is
+    the second of its agent's two verdict strings — `fix round needed`,
+    `re-spec needed` or `re-split needed`. That line is the only statement the
+    record makes, per review, about whether the review changed anything.
+
+    | kind | reviews | acted | rate |
+    |---|---|---|---|
+    | package review | 32 | 4 | 12.5% |
+    | spec critic | 20 | 7 | 35.0% |
+    | split critic | 7 | 3 | 42.9% |
+    | deliverable review | 13 | 1 | 7.7% |
+
+    By band, package reviews act at 0.0% on `light` (1 review), 12.0% on
+    `standard` (25) and 16.7% on `deep` (6). The band here is the
+    **package's**, not the reviewer's: `band-rubric.md` gives a reviewer no
+    band, so every one of these 32 reviews ran on sonnet.
+
+    Two of the 72 reviews score as neither acted nor clean, and the script
+    names both. `fidelity-harness-package-review-r2.md` states no verdict.
+    `no-pr-terminal-state-9a32/spec-critic-r2.md` states `spec accepted`,
+    which is neither of `crew:spec-critic`'s two strings — a drifted verdict,
+    counted as unscored rather than silently as clean.
+
+    **The deliverable reviewer's 7.7% is the metric failing, not the agent.**
+    Nine of the thirteen deliverable reviews returned `accepted` and still
+    listed tagged findings. `no-pr-terminal-state-9a32`'s listed four, and its
+    own adjudication line records all four accepted and fixed in commit
+    `195d823`. The verdict answers "does this block the next step", not "did
+    this change the code".
+
+    **Findings that led to a commit, counted by hand.** Five package reviews
+    across the thirteen records produced a commit. They raised fourteen
+    findings between them, and eleven of the fourteen led to a commit. Only
+    one of the five was adjudicated down: `authors-route`'s reviewer raised
+    four findings, and the project lead applied one and overruled three. The
+    other four package reviews had every finding applied. The remaining 27
+    package reviews changed nothing, and 24 of the 29 packages went through
+    package review without one line of their code changing because of it.
+
+    **What drove the seventeen fix rounds.** Read from the IC reports, which
+    name the trigger at the top of each `## Fix round` section.
+
+    | trigger | rounds |
+    |---|---|
+    | a package review finding | 5 |
+    | the fidelity gate, or the project lead's own measurement | 5 |
+    | the IC re-checking its own merged work | 2 |
+    | a ruling the project lead reversed mid-run | 2 |
+    | a lint rule that fires only after the merge | 1 |
+    | not recorded | 2 |
+
+    One of those five measurement rounds produced no commit at all:
+    `home-route`'s round 2 reported the bug already fixed before the
+    measurement reached the IC.
+
+    **Against the defects found later, the package reviewer caught none.**
+    §15.49's six defects came out of `no-pr-terminal-state-9a32`. That run's
+    package review caught two findings and its deliverable review caught four.
+    All six escapes were about what the package implied for a file it never
+    touched. In §15.50's Opus arm, seven routes served one identical
+    `<title>`. The deliverable reviewer found it, and wrote that no package
+    reviewer could see it, because each route was a separate package. In the
+    Fable arm all five package reviews returned `accepted`, and an independent
+    check at 390px found the 2.60% fidelity pair afterwards.
+
+    **The decision: nothing changes.** Both proposed changes fail against
+    these numbers.
+
+    - **A green `standard` package does not earn a skip.** Three of the five
+      commit-producing package reviews sat on `standard` packages. In all
+      three the package's own acceptance criterion was already green when the
+      review found its defect. `submissions-route` reported "Fix applied
+      before green", then took two more from review. `authors-route` was green
+      on tests, lint and types after every commit. `work-complete-state`'s
+      reviewer confirmed R1 through R11 before it raised its two. A green tool
+      does not predict a clean review, so the skip would drop catches with no
+      signal to drop them by.
+    - **Opus for the package reviewer buys the wrong thing.** Every defect
+      found later needed a wider scope, not a stronger reader. The highest
+      value catch on the record came from a sonnet reviewer at `high` effort
+      that wrote its own probe. `fidelity-harness` r1 built a 900 by 900 image
+      against a 390 by 901 one, ran the harness on the pair, and demonstrated
+      a false pass in the instrument. The review file records that the defect
+      had survived six rounds of the harness's own use. The escapes sit
+      outside one package's diff, where no model in that seat can reach them.
+
+    So `agents/package-reviewer.md` keeps `model: sonnet`, `band-rubric.md`
+    keeps its rule that a reviewer takes no band, and both paths keep the
+    review. The layer that caught the cross-package class is the deliverable
+    review, which already has the scope.
+
+    **What the record could not tell me.** Four gaps, all in the record
+    format rather than in the runs.
+
+    a. **No per-finding adjudication.** Nothing states, per finding, whether
+       the project lead accepted it and whether a commit followed. The
+       fourteen-against-eleven count above is hand-read from IC reports and
+       review prose, and it is not reproducible by a script.
+
+    b. **Earlier review rounds are not always on disk.** `graduate-pages-v3-b7d4`
+       records 15 fix rounds but holds 11 package review files, and three
+       packages hold only their final round. `books-route`'s round 2 says "All
+       four review findings addressed" against a review file that does not
+       exist.
+
+    c. **A verdict string can drift, and a report can be a transcript.** Three
+       files in `two-string-kit-helpers-ea68` carry a project-lead transcript
+       whose verdict sits mid-line, and one `spec-critic` file states `spec
+       accepted` where the agent names `ready to split`. The script reads the
+       first shape and flags the second. Only a review agent writing its own
+       report keeps both shapes out of the record.
+
+    d. **Two fix rounds have no recorded cause.** `titlecase-converter`'s
+       round removed a dead `.toLowerCase()` after a review that found
+       nothing, and `about-route`'s round 1 is absent from its report. Neither
+       record says who found the defect.

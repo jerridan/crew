@@ -155,7 +155,10 @@ with no citation is not confidence, and it routes to a council.
    adversary's strongest point, with a citation. A prior you cannot rebut in
    writing does not stand: adopt the adversary's position when its case
    decides the question. A council you can settle neither way is balanced —
-   see below.
+   see below. One exception: an adversary that concedes on the investigation
+   path (design §9.5) made no case, so nothing is left to rebut. Your prior
+   stands on the citation the concession carries, and that citation is what
+   `Losing:` holds.
 
 The entry shape does not change. `record-format.md` says what `Positions`
 holds on an adversary entry.

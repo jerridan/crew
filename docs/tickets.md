@@ -1115,8 +1115,11 @@ Read first: design §6.1, §9.5; `agents/council-advocate.md`;
 `record-format.md` `diagnosis.md` and the council entry; T22.
 
 Landed 2026-09-04 as `agents/council-advocate.md`'s third shape and its
-concession report, plus `record-format.md`'s `conceded` line on `Losing:`
-(§15.66). Two hand-dispatched advocates over a seeded bug proved both halves.
+concession report, plus `record-format.md`'s `conceded` line on `Losing:` and
+`autonomy-contract.md`'s concession exception to the rebuttal rule (§15.66).
+Two hand-dispatched advocates over a seeded bug proved both halves. The
+citation clause passed with one exception: the arguing advocate cited a line
+in an evidence file's own subject that no evidence line points at (§15.66d).
 
 ## T32 — Prove the reproduction fails before the fix
 

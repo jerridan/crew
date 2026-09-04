@@ -4100,12 +4100,23 @@ Deliberately different:
        replacement hypothesis — §9.5 gives the runner-up no default. Thin
        evidence is not a contradiction, and the design shapes never concede.
 
-    b. **`record-format.md` gained one line, and nothing else moved.** A
+    b. **Two reference files gained one clause each.** In `record-format.md` a
        conceded position made no argument, so its `Losing:` line reads
-       `conceded` and carries the contradicting citation. `autonomy-contract.md`
-       needed no change: its three-advocate case 2 already sends the reader to
-       §9.5, which owns the evidence-set rule and the concession rule. §6.1 and
-       §9.5 are unchanged — this ticket implemented them.
+       `conceded` and carries the contradicting citation. In
+       `autonomy-contract.md` a conceding adversary is the one exception to
+       step 4's rebuttal: nothing is left to rebut, so the prior stands on the
+       concession's citation. Neither file gets a copy of the evidence-set rule
+       — its three-advocate case 2 already sends the reader to §9.5, which owns
+       it. §6.1 and §9.5 are unchanged; this ticket implemented them.
+
+       The adversary sub-shape needed the negation said out loud. §9.5
+       dispatches that advocate to argue the written root cause is **wrong**,
+       so that, and not the root cause, is its assigned position. Without the
+       line an advocate would read the root cause as its own hypothesis,
+       concede when the evidence refuted it, and hand the judge a concession
+       exactly when the diagnosis failed its only verification. The agent body
+       now states the position and says what a concession means there: the
+       evidence supports the written root cause.
 
     c. **Both halves ran, on a seeded bug — 2026-09-04.** A four-file Python
        package whose `export` loops `range(len(rows) - 1)` and drops the last

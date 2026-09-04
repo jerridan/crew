@@ -569,10 +569,11 @@ the criterion at that commit when it verifies the package, and a criterion
 that passes there sends the package back to a fix round. A reviewer reading
 the diff is not what catches this.
 
-Two criteria need no red commit. A reviewer checklist for an instruction
-package is not executable (section 5, invariant 1). The investigation path's
-reproduction already failed before the IC was dispatched, and `diagnosis.md`
-holds that failing output (section 9.5).
+Two criteria need no red commit, and neither is a test the package adds. A
+reviewer checklist for an instruction package is not executable (section 5,
+invariant 1). A test that already exists and already fails was proved before
+the dispatch — the investigation path's reproduction is that case, and
+`diagnosis.md` holds its failing output (section 9.5).
 
 **An IC's report is a claim, not evidence.** Every IC completion is checked
 against its worktree before the project lead believes it. That check also
@@ -765,7 +766,9 @@ extra turn.
 The acceptance criterion is a **reproduction**: one test or one command that
 fails now and passes after the fix. Both clauses are required. A criterion
 that only says "passes after" is satisfied by a test that never failed. §7's
-table carries the row that checks the "fails now" clause, on every path.
+table carries the row that checks the "fails now" clause. On this path the
+reproduction fails before the IC is dispatched, so the evidence is
+`diagnosis.md`, and §7 exempts the fix package from a red commit.
 
 **The reproduction is written twice.** At step 1 the charter carries the
 symptom, stated so that some future command could falsify it. The command
@@ -3685,3 +3688,85 @@ Deliberately different:
        that front-loads its references pays for both path files unless the
        route comes first, and T26's A/B is the next thing to measure that
        against.
+
+61. **The IC owns the red commit, and the project lead re-runs it — 2026-09-04,
+    T32.** §7's table has a fourth row: a new test proves nothing until the
+    criterion fails at the commit that adds it. `ic-contract.md` owns the step
+    that produces the evidence, and both path files own the check that reads
+    it — `simple-path.md` step 9 and `full-path.md` step 6, each beside the
+    "criterion passes on a fresh run" check it pairs with.
+
+    **Why the IC, and not the project lead at dispatch.** The ticket offered
+    both. A project lead that runs the criterion before the IC starts runs it
+    against a test file that does not exist yet, so the failure it records is
+    a missing path, not a reproduced defect. That failure is satisfied by any
+    test the IC later writes, which is the hole the row exists to close. The
+    IC is the only party that can run the criterion at the moment the test
+    exists and the fix does not. The "an IC cannot fake it" argument for the
+    other owner survives anyway: the IC's report is a claim, and the project
+    lead runs the criterion at the sha itself, as §7 requires of every claim.
+
+    **No `state.json` field.** The red commit is in `git log`, and the failing
+    output goes in the IC's report. `record-format.md`'s `reports/` entry says
+    so. A field would hold a claim the project lead re-runs anyway.
+
+    **Two criteria are exempt.** A reviewer checklist for an instruction
+    package is not executable. The investigation path's reproduction already
+    failed before dispatch, and `diagnosis.md`'s `## Reproduction` holds that
+    output — §9.5 said this before the row existed.
+
+    a. **A live simple-path run followed every half of the rule.**
+       `encodequery-skip-nullish-7e8f`, an Opus 5 project lead at
+       `--effort high` with a Sonnet 5 IC, plugin loaded from this ticket's
+       worktree, against the string-kit fixture. The goal was a bug fix with
+       a new test: `encodeQuery` encoded a `undefined` or `null` value as
+       literal text. Each of the three new rules reached the run without a
+       prompt. `split.md`'s acceptance criterion ended "and the new test
+       fails at the red commit". The IC's plan named a red commit, and its
+       report carried the sha and the failing output the report contract now
+       asks for. The project lead ran the check itself:
+
+       ```
+       git -C $REPO switch --detach 864cb73 -q
+       cd $REPO && npm test ...
+       node -e '...' ; echo "cmd1 exit=$?"
+       git -C $REPO switch -q crew/encodequery-skip-nullish-7e8f/deliverable-1
+       ```
+
+       ```
+       ℹ tests 11
+       ℹ pass 10
+       ℹ fail 1
+       cmd1 exit=1
+       crew/encodequery-skip-nullish-7e8f/deliverable-1
+       ```
+
+    b. **The rejection is proved against a seeded record, not against that
+       run.** A live run cannot be made to produce a package whose new test
+       passed from the start without telling the IC to break its own
+       contract, so the negative case was seeded: a clone of the fixture on
+       `crew/seed-t32/d1`, a "red commit" `3a44d62` whose added test asserts
+       behaviour the unfixed helper already had, a fix commit `14ded5e`, and
+       a report claiming the criterion failed at `3a44d62`. Running
+       `simple-path.md` step 9 over it: the criterion passes at the branch
+       head, and at `3a44d62` it exits 0 with `pass 4, fail 0`. The step
+       rejects the package there. Nothing about the diff looks wrong, which
+       is why a reviewer was never the thing that caught it.
+
+    c. **The check is per criterion, not per test.** The live run's red
+       commit held two test blocks, and only one of them was red — the IC
+       said so in its report, unprompted. `npm test` fails when any one test
+       fails, so the criterion still failed and the package still passed the
+       check. A test added green inside a red commit is invisible to this
+       row. Splitting a criterion per test block would cost a suite run per
+       block, which buys too little for the price.
+
+    d. **The rule had to reach `agents/ic.md`, which the code review caught.**
+       That file's loop ended a test-first cycle with one `Commit` after the
+       code went green, so an IC that followed its own definition would have
+       produced no red commit at all and earned a fix round for it. The loop
+       now commits the criterion's failing test alone first. The live run
+       still produced a red commit because `ic-contract.md` reaches the IC in
+       the spawn prompt and it is the contract that governs — but a
+       split-pane teammate reads the agent body in place of its default
+       prompt (§15.20d), so the two had to agree.

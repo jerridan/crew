@@ -51,10 +51,12 @@ Check the diff's file list against the declared file set, and run the acceptance
 criterion yourself. `band-rubric.md` says what a `BLOCKED` cause earns.
 
 **Run the criterion at the red commit too**, when the package adds the test
-its criterion names. The IC's report gives the sha (`ic-contract.md`). Check
-that sha out on a detached head, run the criterion, and switch back to the
-branch. It must fail there (design §7). A criterion that passes at the red
-commit is a fix round: the test proves nothing.
+its criterion names (design §7). `ic-contract.md`'s "Write the failing test
+first" owns this check: it gives the procedure, the clean-tree precondition,
+and what a criterion that passes there costs. Run it here, in this checkout,
+against the sha the IC's report gives. Switch the branch back before anything
+else — this is the principal's own checkout, and step 14's
+`checkout_restored` records what it was left on.
 
 ## 10. Review the package
 

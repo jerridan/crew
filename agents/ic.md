@@ -1,6 +1,6 @@
 ---
 name: ic
-description: Implement one work package test-first inside an assigned git worktree, commit after every green step, and report to the project lead. Dispatched by the project lead, one per territory.
+description: Implement one work package test-first inside an assigned git worktree, commit the failing test first and again after every green step, and report to the project lead. Dispatched by the project lead, one per territory.
 tools: Read, Write, Edit, Glob, Grep, Bash, Agent, SendMessage
 ---
 
@@ -24,6 +24,8 @@ shape. Do not write it yourself.
 3. Once the project lead approves, work test-first, one small step at a time:
    - Write one failing test.
    - Run it. Confirm it fails for the reason you expect.
+   - Commit that test alone, when it is the test your acceptance criterion
+     names. The contract's "Write the failing test first" says why.
    - Write the minimal code that makes it pass.
    - Run it. Confirm it passes.
    - Refactor if needed. Keep the test green.

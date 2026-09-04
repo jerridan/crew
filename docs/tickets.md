@@ -1035,7 +1035,7 @@ sweep"; `full-path.md` step 0; `simple-path.md` step 14.
 
 ## T30 — Write a preference answer into the target repo as precedent
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §6, §15.53)
 

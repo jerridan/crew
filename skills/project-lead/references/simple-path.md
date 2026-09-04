@@ -107,6 +107,11 @@ on the branch head and read the output. Then read the target repo's own
 instructions for which shared files must change together, edit them, and keep
 the values they require equal. Commit them, and mark the package `integrated`.
 
+**Write back every preference answer the principal approved for recording.**
+Each becomes one rule in this repo's own instruction files. Commit them here,
+or the next two steps never see them. `autonomy-contract.md`'s "Record the
+answer as precedent" owns the rule.
+
 **Sweep for stale status claims.** You own this check alone. Run the block in
 `writing-standard.md`'s "Keep the status true" over the deliverable branch.
 

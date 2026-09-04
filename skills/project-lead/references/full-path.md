@@ -377,6 +377,11 @@ for which files must change together, and keep the values they require equal.
 Crew's own two-manifest version rule is crew's, not every repo's — a repo that
 bumps at release wants no bump here at all. Commit them.
 
+**Write back every preference answer the principal approved for recording.**
+Each becomes one rule in this repo's own instruction files. Commit them here,
+or the next two steps never see them. `autonomy-contract.md`'s "Record the
+answer as precedent" owns the rule.
+
 Then sweep for stale status claims, as `simple-path.md` step 12 does: run
 the block in `writing-standard.md`'s "Keep the status true" over the
 deliverable branch.

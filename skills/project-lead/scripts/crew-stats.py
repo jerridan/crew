@@ -167,8 +167,12 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         except OSError as err:
             skips.append(f"{record.name}/{name}: no verdict — {err}")
             text = ""
-        verdict = VERDICT.search(text)
-        acted = bool(verdict and verdict.group(1).strip().lower().startswith(ACTION_VERDICTS))
+        # `review-output.md` puts the verdict at the end of the report, so the
+        # last match wins. A report that quotes an earlier round's verdict in
+        # its prose must not be read by that quote.
+        found_verdicts = VERDICT.findall(text)
+        verdict = found_verdicts[-1] if found_verdicts else None
+        acted = bool(verdict and verdict.strip().lower().startswith(ACTION_VERDICTS))
         by_kind[kind]["reviews"] += 1
         if verdict:
             by_kind[kind]["acted"] += acted

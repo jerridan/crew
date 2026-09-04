@@ -3622,7 +3622,7 @@ Deliberately different:
     truncate-stage-2-efa7     1      0       0      7         0      0        0        3  4.87
     ```
 
-55. **The simple path is its own reference now, and a run read it — 2026-09-04,
+59. **The simple path is its own reference now, and a run read it — 2026-09-04,
     T27.** `SKILL.md` had sat at the writing standard's 200-line cap since T18,
     and each new rule was paid for with a sentence that was not a rule. Steps 6
     to 14 moved to `skills/project-lead/references/simple-path.md`. `SKILL.md`

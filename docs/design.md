@@ -3574,7 +3574,7 @@ Deliberately different:
        nothing, and `about-route`'s round 1 is absent from its report. Neither
        record says who found the defect.
 
-55. **`run.completed_at` has an owner, and `crew-stats.py`'s `abandoned`
+58. **`run.completed_at` has an owner, and `crew-stats.py`'s `abandoned`
     disagreement was its own bug — 2026-09-04, T28.** §15.51 found the field
     unwritten, undocumented, and consulted by only one script. `crew-record.py`
     now stamps it with the current UTC time on every write that sets

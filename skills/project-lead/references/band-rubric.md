@@ -41,7 +41,7 @@ Any "yes" past the first two is a signal toward `deep`.
 - **A bounded edit's package is `light`.** The project lead does that work
   itself (design §9.1), so this band dispatches nobody and names no model.
   The package carries it so that the record holds a band, and so that
-  `crew-stats.py` counts the run at all.
+  `crew-stats.py` can put the run in its by-band tables.
 - **Promotion.** Re-dispatch a package one band up, with no human
   involvement, when its IC reports `BLOCKED` with a `capability` cause,
   exhausts its fix rounds, or goes idle without meeting its acceptance

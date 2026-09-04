@@ -383,10 +383,11 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 `null` for the run.
 
 A bounded edit's package is the same entry with no IC behind it. Nothing ever
-writes its `plans/<id>.md` or its `reports/<id>.md`, and `plan_approved_at`,
-`fix_rounds_used` and `nudges_used` keep their creation values. Every other
-field carries a real value, because steps 12 to 14 of `simple-path.md` read
-them.
+writes its `plans/<id>.md` or its `reports/<id>.md`, so `plan_path` and
+`report_path` name files that never exist, and `plan_approved_at`,
+`fix_rounds_used` and `nudges_used` keep their creation values. `id`, `band`,
+`file_set`, `interface_contract`, `acceptance_criterion`, `base` and `state`
+all carry real values, because steps 12 to 14 of `simple-path.md` read them.
 
 ### Per-run fields (inside `run`)
 

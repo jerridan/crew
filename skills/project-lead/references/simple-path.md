@@ -13,7 +13,7 @@ critic runs, no worktree is created and nothing merges.
 **A bounded edit runs a subset of these steps.** `SKILL.md`'s shape table
 sends it here for steps 6 and 7, then 12 to 14. You make the edit yourself,
 so steps 8 to 11 have no IC to dispatch and no package review to run. Every
-other step holds as written, with the two exceptions steps 6 and 13 name.
+other step holds as written, with the three exceptions steps 6, 7 and 13 name.
 
 ## 6. Write the split
 
@@ -23,11 +23,10 @@ package, banded by `band-rubric.md`, mirrored into `state.json`'s
 `crew:deliverable-reviewer` reads it at step 13.
 
 A bounded edit writes the same file and the same entry, so that steps 12 and
-13 have a package to mark and a split to read. Its file set is the files you
-will touch, it consumes and produces nothing, and its acceptance criterion is
-the charter's. No IC is dispatched, so set the package and its deliverable
-`in-flight` when you start the edit, and give the package the deliverable's
-`base`.
+13 have a package to mark and a split to read. It consumes and produces
+nothing, and its acceptance criterion is the charter's. Its file set is the
+files the edit touches, less any shared file: `record-format.md` keeps those
+out of every file set, and step 12 is where you edit them.
 
 ## 7. Create the branch
 
@@ -35,6 +34,11 @@ Read the checkout's branch: `git -C <repo> branch --show-current`. Then `git -C
 <repo> switch -c crew/<goal-slug>/<deliverable-id>`; never work on the main
 branch. Write the `deliverables[]` entry now — `id`, branch, the head sha as
 `base`, `state: pending`, `pr_url: null`, and that branch as `checkout_branch`.
+
+**A bounded edit makes its change here**, on the branch this step just
+created. Copy this entry's `base` to the package's `base`, and set the package
+and the deliverable `in-flight`, before you touch the file. Commit the change
+when the edit is done.
 
 ## 8. Dispatch the IC
 

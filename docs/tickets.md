@@ -641,3 +641,117 @@ reviewer itself, or the denial is recorded in design §15 with the dispatch
 shape that produced it.
 
 Read first: design §15.26, §15.31, §15.50; `review-output.md`.
+
+## T21 — Batch the principal's questions before the split
+
+Status: open
+Depends on: nothing
+Stage: any (design §6, §15.50)
+
+Six runs, zero escalations. In the A/B both leads answered a question the
+charter left open on purpose and that only the principal could answer —
+whether `/book` gets per-book routes — by calling it precedent (§15.50).
+`autonomy-contract.md` says a question about what the principal wants is
+never debated, but nothing makes the project lead look for one at the
+moment it can still ask cheaply.
+
+Add a step between the spec and the split: list every open question in the
+charter and the spec that turns on the principal's preference rather than
+on the repo, and escalate them as one batch. One interruption, before any
+IC runs. A lead session answers the batch by message; a human answers it in
+the session. `autonomy-contract.md` owns the routing rule; `SKILL.md` gains
+the step.
+
+Done when: a run on a charter with one seeded preference question escalates
+it before the split, and a run on a charter with none escalates nothing.
+
+Read first: design §6, §6.2, §15.22b, §15.50; `autonomy-contract.md`.
+
+## T22 — Measure whether the council changes outcomes
+
+Status: open
+Depends on: nothing
+Stage: any (design §6.1, §15.43, §15.47, §15.50)
+
+Three councils have run: a README owner, a state name, and a CSS strategy.
+The third question was settled from precedent by the other arm of the same
+experiment. No council has yet produced an answer the record shows the
+project lead would not have reached alone.
+
+Before convening, the project lead writes its own answer and confidence to
+the council entry as `Prior:`. `record-format.md` owns the field. After ten
+councils, compare `Prior:` with the adjudication: if they agree every time,
+cut the council and route those questions to precedent with the prior as the
+answer.
+
+Done when: `Prior:` is in the council entry format and in the next council
+that runs.
+
+Read first: design §6.1, §15.43, §15.47; `autonomy-contract.md`;
+`record-format.md` council entry.
+
+## T23 — Measure the review layer's catch rate
+
+Status: open
+Depends on: T25
+Stage: any (design §7, §15.49, §15.50)
+
+Package reviews are the largest fixed cost per package: 17 in one arm of the
+A/B, 10 in the other. In the Opus arm several pages passed review with zero
+findings and then failed the fidelity harness; §15.49's six defects passed
+two reviews and were found by an outside code review. The record holds every
+review and every fix round, so the catch rate is computable: findings that
+led to a commit, by reviewer, by band, against defects found later.
+
+Compute it with T25's script over every record on the machine. Then decide,
+with the numbers: whether a `standard` package with a green acceptance tool
+skips package review and relies on the deliverable review; whether the
+package reviewer moves to opus; or whether nothing changes.
+
+Done when: the catch rate is in design §15 with the decision it supports.
+
+Read first: design §7, §15.49, §15.50; `agents/package-reviewer.md`;
+`review-output.md`.
+
+## T24 — Recommend a launch model for the project lead
+
+Status: open
+Depends on: nothing
+Stage: any (design §8, §15.50)
+
+`README.md`'s model table says the project lead runs on "your session's"
+model and never says which to choose. §15.50 measured two: on the goal that
+could separate them, the Fable 5.1 lead cost two thirds of the Opus 5 lead,
+took no fix rounds, and made the better process choices.
+
+Decide whether the README names a recommended launch model and effort, and
+whether design §8 records the reasoning. The principal owns this call: the
+model is billed to the principal's account, and Fable is not the default on
+any plan.
+
+Done when: the README's model table and its launch example agree with each
+other and with §8, and neither presents "your session's" as the only answer.
+
+Read first: design §8, §15.50; `README.md` "What each agent runs on".
+
+## T25 — A stats script over every record
+
+Status: open
+Depends on: nothing
+Stage: any (design §8, §15.50)
+
+Design §8 promised the band rubric would turn from a guess into a
+measurement. The data now exists: `band_history`, `fix_rounds_used`,
+`spend.by_agent`, `spend.transcript`, `run.compactions`, and every review
+and report file. Nothing reads it across runs.
+
+Add `skills/project-lead/scripts/crew-stats.py`: over every record under the
+record root, print cost per package by band, fix rounds by band, promotions,
+councils and their spend, escalations, compactions, review counts and, once
+T23 defines it, review catch rate. Use it to re-fit the ceiling arithmetic
+in `full-path.md` step 1, which is calibrated on two runs.
+
+Done when: the script runs over the records on the machine that ran the A/B
+and its numbers for the two §15.50 runs match the ones recorded there.
+
+Read first: design §8, §15.50; `record-format.md`; `scripts/spend.py`.

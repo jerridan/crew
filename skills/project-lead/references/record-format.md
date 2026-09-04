@@ -115,7 +115,13 @@ naming convention. Do not mix their contents.
 
 - **`reports/`** — one file per package, `reports/<id>.md`. It holds that
   package's own IC's report and nothing else. `state.json`'s `report_path`
-  for a package always equals `reports/<id>.md`.
+  for a package always equals `reports/<id>.md`. It is also where the "fails
+  before" evidence is kept (design §7): the IC's report names the red commit's
+  sha and carries the criterion's failing output at it. No `state.json` field
+  holds either — the commit is in `git log`, and the project lead re-runs the
+  criterion at it rather than trusting a field. On the investigation path the
+  evidence is `diagnosis.md`'s `## Reproduction` instead, and the fix package
+  needs no red commit.
 - **`plans/`** — one file per package, `plans/<id>.md`. It holds the IC's
   implementation plan, written before the project lead's go-ahead (design
   §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
@@ -729,7 +735,7 @@ Every name this file defines, with what consumes it.
 - `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
-- `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report)
+- `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report); design §7 (the red commit's sha and its failing output)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 - `charter.md` `Budget:` and `Favour:` lines — consumer: `SKILL.md` step 1 (budget), `full-path.md` step 1 (split shape)

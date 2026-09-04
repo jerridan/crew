@@ -66,6 +66,14 @@ The IC's report is a claim; `git -C <repo> log` and `diff` are the evidence.
 Check the diff's file list against the declared file set, and run the acceptance
 criterion yourself. `band-rubric.md` says what a `BLOCKED` cause earns.
 
+**Run the criterion at the red commit too**, when the package adds the test
+its criterion names (design §7). `ic-contract.md`'s "Write the failing test
+first" owns this check: it gives the procedure, the clean-tree precondition,
+and what a criterion that passes there costs. Run it here, in this checkout,
+against the sha the IC's report gives. Switch the branch back before anything
+else — this is the principal's own checkout, and step 14's
+`checkout_restored` records what it was left on.
+
 ## 10. Review the package
 
 Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:

@@ -723,10 +723,17 @@ council, and `record-format.md`, which owns the entry:
    `crew:council-advocate` to argue the opposite with citations. A prior the
    project lead cannot rebut in writing is an escalation. Same entry shape,
    `Positions` holding two.
-3. **Three assigned advocates stay for two cases only:** an irreversible
-   architecture choice with no precedent in the repo, and T11's
+3. **Three assigned advocates stay for two cases only.** The first is a
+   choice that is both costly to reverse and unclear in the moment: the
+   project lead's `Prior:` carries low confidence, and the repo holds no
+   precedent. Both conditions, not either. A low-confidence choice that is
+   cheap to reverse is a fix round, not a council; a costly choice the
+   project lead is confident in gets one adversary. The second is T11's
    investigation path, where competing root-cause hypotheses over one body
-   of evidence is what assigned positions are for.
+   of evidence is what assigned positions are for. Beyond those two, a full
+   council is not worth its cost (§15.50, and the 2026-09-04 runs under
+   T21: two advocates settled an ellipsis character the charter's own
+   invariant already answered).
 
 Then measure: after ten adversary entries, compare `Prior:` with the
 adjudication. If the adversary never moved the answer, cut it and keep only
@@ -947,3 +954,66 @@ its open-ended-cost skip line.
 Read first: design §15.51; `record-format.md` `run_state` transitions and
 `created_at`; `scripts/crew-record.py` `close`; `scripts/crew-stats.py`
 `run_end`.
+
+## T29 — Check for a remote before the run starts
+
+Status: open
+Depends on: nothing
+Stage: any (design §6, §15.52, §15.53)
+
+Both 2026-09-04 runs under T21 ran the whole loop, then escalated at step 14:
+the fixture had no git remote, so the push and `gh pr create` could not run.
+That was knowable at step 1 from one `git -C <repo> remote` call. A run with a
+preference question and no remote interrupts the principal twice, which is
+what T21's batch exists to prevent; a run with no preference question spends
+its whole budget before it asks whether a PR is possible at all.
+
+Add "can this run push and open a draft PR" to the checks that run before the
+preference batch. `full-path.md` step 0 owns the launch checks and T21's rule
+in `autonomy-contract.md` already folds them into the batch; add the remote
+check beside them, so it applies on both paths. The question to the principal
+offers the same three ends step 14 offers today: add a remote, keep the work
+local as `work-complete`, or stop. An answer given at the start is recorded
+once and step 14 never asks again.
+
+Done when: a run on a checkout with no remote asks about the PR in the same
+batch as its preference questions, before the split, and step 14 ends the run
+without a second ask.
+
+Read first: design §15.52, §15.53; `autonomy-contract.md` "The preference
+sweep"; `full-path.md` step 0; `SKILL.md` step 14.
+
+## T30 — Write a preference answer into the target repo as precedent
+
+Status: open
+Depends on: nothing
+Stage: any (design §6, §15.53)
+
+Run B under T21 asked the principal what `slugify` does with `café`, got
+"strip the accents first", and recorded the answer in the run's `decisions.md`
+and `escalations`. Nothing wrote it into the target repo. The next run on
+that repo will find no precedent and ask the same question. The project lead
+saw this and, in its closing message, proposed one line for the repo's
+`CLAUDE.md`. Make that a step, so each preference question is asked of a
+repo once.
+
+The rule: when the principal answers a preference question, the answer
+becomes an instruction package in the split. Its brief carries the answer;
+its deliverable is one rule in the target repo's instruction files; its
+acceptance is `writing-standard.md`'s checklist. That checklist is what keeps
+the addition short, keeps it from competing with a rule the repo already has,
+and puts it in the right container: a rule that applies to one area of the
+repo goes in a `.claude/rules/` file scoped to that path, not in the root
+`CLAUDE.md`. The container-choice check decides. `crew:ic-instructions` owns
+instruction packages (design §3.1), and this is one; decide whether a
+one-line package earns a dispatch or whether the project lead writes it at
+integration under the same checklist, and say why in `autonomy-contract.md`.
+
+Done when: a run that escalates a preference question ends with the answer
+in the target repo's instruction files, in the container the checklist
+chooses, and a second run on that repo with the same question resolves it as
+precedent with a citation and escalates nothing.
+
+Read first: design §3.1, §6, §15.53; `autonomy-contract.md` "The preference
+sweep" and the routing table; `writing-standard.md` container rules;
+`agents/ic-instructions.md`.

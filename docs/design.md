@@ -3452,8 +3452,10 @@ Deliberately different:
 56. **The review layer's catch rate: 4 of 32 package reviews sent a package
     back, and package reviews drove 5 of 17 fix rounds — 2026-09-04, T23.**
     `crew-stats.py` now prints a catch-rate table. The numbers below come from
-    the thirteen records under `~/.claude/crew/`: 29 packages, 72 reviews, 17
-    fix rounds.
+    the thirteen records under `~/.claude/crew/`: 29 packages, 72 reviews and
+    17 fix rounds. The script's review total reads 73, because one file under
+    a `reviews/` directory is an acceptance checklist, which it counts as
+    `other`.
 
     **How a catch is counted.** A review "acted" when its `Verdict:` line is
     the second of its agent's two verdict strings — `fix round needed`,

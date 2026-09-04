@@ -135,7 +135,7 @@ prediction and promotion is logged, which turns the rubric into a measurement.
 claude --model fable --effort high
 ```
 
-The project lead, the ICs and the scouts all take your session's effort, so set it before the run starts. Fable is not the default on any plan, and on a subscription it bills usage credits. Why Fable: design §8 and §15.50.
+The project lead, the ICs and the scouts all take your session's effort, so set it before the run starts. Why Fable: design §8 and §15.50.
 
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's

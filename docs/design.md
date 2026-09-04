@@ -3096,5 +3096,37 @@ Deliberately different:
        list, so the batch would have dropped every earlier ask.
        `crew-record.py` now has `escalation add` and `escalation answer`.
 
-    e. **Unproven.** The two runs T21 asks for have not run: one charter with
-       a seeded preference question, one with none.
+    e. **Both runs behaved as T21 asks — 2026-09-04.** Simple path on a
+       string-kit fixture, a small node library with a `node --test` suite, a
+       Fable project lead at `--effort high`, the plugin loaded from a local
+       stack of this branch with T17 and T18.
+
+       **The run with nothing to ask** is `truncate-helper-bfa8/`: a charter
+       for a `truncate` helper. The sweep entry reads `Answer: none`, no
+       preference entry reached `escalations`, and the run went to the split
+       without stopping. The one question the charter left open — which
+       ellipsis character — went to a council earlier in the run and was
+       settled from the charter's own "never longer than maxLength"
+       invariant. That is a repo answer, so the sweep was right to pass it
+       over: the sweep filters for what the repo cannot say, not for what is
+       merely unstated.
+
+       **The run with one to ask** is `slugify-stage-3-fa89/`: a charter for
+       a `slugify` helper that said input can carry accented letters such as
+       `café` and never said what to return for them. After spec critic round
+       2 the project lead ran the sweep, wrote one `escalations` entry with
+       trigger "preference question with no instruction (trigger 2)" at
+       2026-09-04T03:14:57Z, set `run_state: blocked`, and asked one question
+       with two readings and a recommendation — before any split. The
+       principal answered "strip diacritics first". The `decisions.md` entry
+       carries `Questions:` and `Answer:` with that answer, and cites
+       `charter.md`, `CLAUDE.md`, `README.md` and the three existing helpers
+       as holding no rule on non-ASCII text. The run then split, built,
+       passed both reviews with zero fix rounds, and ended `work-complete` at
+       $7.23 list.
+
+       **The ask landed where it is cheapest.** Requirement 4 and a non-goal
+       both turned on the answer, and the spec critic's round-2 findings on
+       them were left open until the sweep settled it. One interruption
+       rewrote two spec lines; after the split it would have been a fix
+       round.

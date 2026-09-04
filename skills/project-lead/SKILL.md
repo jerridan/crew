@@ -128,16 +128,14 @@ a subagent has no channel to wait on. Read it, approve it or send it back, set
 the IC every record write (§15.26b, §15.31b) puts the plan or report in its
 final message. Transcribe it, and say that you did.
 
-Set the package and its deliverable `in-flight` at the first dispatch, and
-write the package's `base`: the deliverable's `base`, since there is one
-package.
+Set the package and its deliverable `in-flight` at the first dispatch, and write
+the package's `base`: the deliverable's `base`, since there is one package.
 
 ## 9. Verify before you believe
 
 The IC's report is a claim; `git -C <repo> log` and `diff` are the evidence.
-Check the diff's file list against the declared file set, and run the
-acceptance criterion yourself. A `BLOCKED` report names its cause;
-`band-rubric.md` says what each earns.
+Check the diff's file list against the declared file set, and run the acceptance
+criterion yourself. `band-rubric.md` says what a `BLOCKED` cause earns.
 
 ## 10. Review the package
 

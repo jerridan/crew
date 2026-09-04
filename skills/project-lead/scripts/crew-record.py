@@ -19,8 +19,11 @@ usage:
 
 `init` creates state.json with `created_at`. `close` sets the deliverable's
 terminal state and `run_state: complete` in one write, which
-`record-format.md` requires for `work-complete`. `run set` takes a dotted
-path, so `run set spend.budget 60` changes one key and keeps the rest.
+`record-format.md` requires for `work-complete`. Any write that sets
+`run_state` to `complete` — `close`, `run state complete`, or
+`run set run_state complete` — also stamps `run.completed_at`.
+`run set` takes a dotted path, so `run set spend.budget 60` changes one key
+and keeps the rest.
 `escalation add` appends one ask and stamps `asked_at`, so a batch is one
 call per question and no earlier ask is lost; it prints the new entry's
 index, which `escalation answer` takes.
@@ -142,8 +145,14 @@ def main(argv: list[str]) -> None:
     elif kind == "run":
         if arg(rest, 0) == "state":
             run["run_state"] = arg(rest, 1)
+            if run["run_state"] == "complete":
+                run["completed_at"] = now()
         elif rest[0] == "set":
-            set_dotted(run, arg(rest, 1), json.loads(arg(rest, 2)))
+            dotted = arg(rest, 1)
+            value = json.loads(arg(rest, 2))
+            set_dotted(run, dotted, value)
+            if dotted == "run_state" and value == "complete":
+                run["completed_at"] = now()
         else:
             usage()
     elif kind == "escalation":
@@ -173,6 +182,7 @@ def main(argv: list[str]) -> None:
         if url:
             dl["pr_url"] = url
         run["run_state"] = "complete"
+        run["completed_at"] = now()
     else:
         usage()
 

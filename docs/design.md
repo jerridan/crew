@@ -3573,3 +3573,51 @@ Deliberately different:
        round removed a dead `.toLowerCase()` after a review that found
        nothing, and `about-route`'s round 1 is absent from its report. Neither
        record says who found the defect.
+
+55. **`run.completed_at` has an owner, and `crew-stats.py`'s `abandoned`
+    disagreement was its own bug — 2026-09-04, T28.** §15.51 found the field
+    unwritten, undocumented, and consulted by only one script. `crew-record.py`
+    now stamps it with the current UTC time on every write that sets
+    `run_state` to `complete` — the `close` command, `run state complete`, and
+    `run set run_state complete` — and `record-format.md` documents it beside
+    `created_at`: its consumer, the order rule against `spend.py --write`, and
+    that an `interrupted` run never gets one and `--resume` never sets one.
+
+    **The `abandoned` disagreement was `crew-stats.py`'s bug, not
+    `record-format.md`'s.** `crew-stats.py`'s `run_end` treated `abandoned` as
+    a terminal `run_state`, alongside `complete`. Nothing in the codebase ever
+    sets `run_state` to `abandoned` — `crew-record.py`'s only writers of that
+    field write `active` (`init`) or a caller-supplied string, and every
+    caller that sets it to something besides `active` or `blocked` sets
+    `complete`. `abandoned` is a `packages[].state` and `deliverables[].state`
+    value only (design §10, §11), which `record-format.md`'s `run_state`
+    table (`active`, `blocked`, `interrupted`, `complete`) already got right.
+    `run_end` now checks only `complete`.
+
+    **A live simple-path run, `truncate-stage-2-efa7`.** Opus 5 at
+    `--effort high`, plugin loaded from this ticket's worktree, against the
+    string-kit fixture. `state.json`'s `run` block ended:
+
+    ```json
+    "run_state": "complete",
+    "completed_at": "2026-09-04T13:41:11Z",
+    "spend": {
+      "transcript": {
+        "measured_at": "2026-09-04T13:41:11Z",
+        "total_tokens": 5208784,
+        "usd_list_price": 4.87
+      }
+    }
+    ```
+
+    `completed_at` and `spend.transcript.measured_at` land in the same
+    second here, because `SKILL.md`'s closing steps run `close` immediately
+    before `spend.py --write` with no other work between them — the order
+    rule holds even when the two timestamps round together.
+    `scripts/crew-stats.py --record-root <this run's root>` priced it with no
+    open-ended-cost skip line:
+
+    ```
+    run                    pkgs  fixes  promos  decis  councils  escal  compact  reviews   usd
+    truncate-stage-2-efa7     1      0       0      7         0      0        0        3  4.87
+    ```

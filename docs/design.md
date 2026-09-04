@@ -464,9 +464,9 @@ The project lead **proposes** the instruction text and never writes it without
 your explicit approval — instructions are configuration, and changing them is
 your decision, not a side effect of a run.
 
-This is the one escalation that pays for itself. Every answer becomes an
-instruction that resolves the same question in every future run, so the question
-rate should fall over time instead of staying flat.
+This is the one escalation that pays for itself. Every approved answer becomes
+an instruction the project lead writes back at integration (§6.3, §15.63), so
+the question rate falls over time instead of staying flat.
 
 **ICs never escalate to the human — they escalate to the project lead.** An IC
 that hits pattern ambiguity inside a package messages the project lead. The
@@ -519,6 +519,11 @@ the split the answer costs a fix round.
 A run whose sweep finds no preference question escalates nothing. It records
 the sweep either way, so an audit can tell "none found" from "never looked".
 `autonomy-contract.md` owns the rule and `record-format.md` the entry.
+
+Every answer the principal approves for recording is written back into the
+target repo's instruction files at integration, as one rule, by the project
+lead itself (§15.63). That is what makes each preference question a
+once-per-repo cost.
 
 ### Escalation triggers
 
@@ -597,6 +602,21 @@ never reaches the project lead at all. So:
 | An IC finished | `git -C <worktree> log` and `diff` show the work, on the right branch | the IC's report |
 | Tests pass | a fresh run's output, 0 failures | a previous run, "should pass" |
 | Requirements met | a line-by-line check against the charter | tests passing |
+| A new test proves the change | the acceptance criterion fails at the commit that adds the test, on a run the project lead performed itself | the criterion passing at the branch head |
+
+**"Passes after" is half a criterion.** A test that never failed satisfies row
+2 and proves nothing. So when a package's acceptance criterion is a test the
+package adds, the IC writes that test first and commits it red, before it
+writes the code that makes it pass (`ic-contract.md`). The project lead runs
+the criterion at that commit when it verifies the package, and a criterion
+that passes there sends the package back to a fix round. A reviewer reading
+the diff is not what catches this.
+
+Two criteria need no red commit, and neither is a test the package adds. A
+reviewer checklist for an instruction package is not executable (section 5,
+invariant 1). A test that already exists and already fails was proved before
+the dispatch — the investigation path's reproduction is that case, and
+`diagnosis.md` holds its failing output (section 9.5).
 
 **An IC's report is a claim, not evidence.** Every IC completion is checked
 against its worktree before the project lead believes it. That check also
@@ -788,9 +808,10 @@ extra turn.
 
 The acceptance criterion is a **reproduction**: one test or one command that
 fails now and passes after the fix. Both clauses are required. A criterion
-that only says "passes after" is satisfied by a test that never failed. Crew
-does not check the "fails now" clause yet, on any path — §7's table has no
-row for it, and T32 in `docs/tickets.md` is the ticket that adds one.
+that only says "passes after" is satisfied by a test that never failed. §7's
+table carries the row that checks the "fails now" clause. On this path the
+reproduction fails before the IC is dispatched, so the evidence is
+`diagnosis.md`, and §7 exempts the fix package from a red commit.
 
 **The reproduction is written twice.** At step 1 the charter carries the
 symptom, stated so that some future command could falsify it. The command
@@ -3709,6 +3730,279 @@ Deliberately different:
        that front-loads its references pays for both path files unless the
        route comes first, and T26's A/B is the next thing to measure that
        against.
+
+60. **A bounded edit now writes a split and a package entry — 2026-09-04,
+    T33.** `SKILL.md`'s shape table sent §9.1's bounded-edit row to
+    `simple-path.md` step 7, then steps 12 to 14. Those steps mark a package
+    `integrated` and hand `split.md` to `crew:deliverable-reviewer`, and the
+    row created neither. The row now runs step 6 as well, so a bounded edit
+    writes a one-package `split.md` and its `packages[]` entry before it
+    takes the branch. The
+    other shape — drop step 12 and let step 13 run without a split — was
+    rejected. Step 12 is not only the `integrated` write: it runs the suite,
+    edits the shared files the target repo pairs together, sweeps for stale
+    status claims and writes the final diff. A bounded edit needs all four.
+
+    a. **The package entry is what makes the run measurable.** `crew-stats.py`
+       keeps a package-less record in its Runs table and its totals — the
+       `if not packages` branch only notes a skip and falls through — but it
+       builds every by-band row from the packages, so a bounded-edit run
+       would have carried no band, no fix-round rate and no cost per package.
+       The deliverable reviewer loses two checks as well: check 4 compares
+       the diff's file list against the `file_set`s, and check 2 reads the
+       `Produces` and `Consumes` lines.
+
+    b. **The band names no model here.** `band-rubric.md` gives a bounded
+       edit's package `light`, and says plainly that the band dispatches
+       nobody, because the project lead does the work at its own model. The
+       field exists so the record holds a band and the stats count the run.
+       `crew-stats.py` splits a run's cost evenly over its packages, so a
+       bounded-edit run puts its whole cost in the `light` row against work
+       haiku never did. That column is already labelled an estimate.
+
+    c. **Four files carry the exception, one subject each.**
+       `simple-path.md` owns the loop: which steps a bounded edit runs, what
+       its split holds, and where it makes the edit. `band-rubric.md` owns the
+       band. `record-format.md` documents the state machine and names the
+       package fields that stay at their creation values; it mirrors the
+       `in-flight` move the same way it already mirrors step 8's, so no rule
+       gains a second owner. `agents/deliverable-reviewer.md` carries the one
+       rule that had to move into an agent: its "drop every lesser defect
+       inside a package's file set" rule assumed a package reviewer had
+       weighed it, and on a bounded edit none did. The dispatch cannot lift a
+       rule the agent's own body states, so the body now states the
+       exception.
+
+    d. **The row ran end to end.** `encode-query-jsdoc-ampersand-9b9f/`, an
+       Opus 5 project lead at `--effort high` on the string-kit fixture, with
+       the plugin loaded from this branch. Goal: extend one JSDoc line above
+       `encodeQuery` to name `&` as the separator. It reached a draft PR in 10
+       minutes 25 seconds for $3.69 at list price, with zero escalations, zero
+       fix rounds and zero re-specs. The record holds every field steps 12 to
+       14 write: the package `integrated`, `diffs/deliverable-1-final.patch`,
+       the deliverable review at `accepted` with 0 critical, `pr_url`,
+       `draft-pr-opened`, `run_state: complete` with its `completed_at`,
+       `spend.transcript`, and `checkout_restored: true`. `plans/` and
+       `reports/` are empty, as the new rule says they stay.
+
+    e. **The spec critic still earned its place on a one-line goal.** It
+       returned 0 critical and 4 lesser findings, one of which was a wrong
+       measurement the scout had reported — sibling JSDoc lines given as 88 to
+       96 characters, actually 77, 83 and 87. The run measured them and
+       corrected the spec. A bounded edit skips the IC, not the review.
+
+    f. **The run passed a step order that a code review then rejected.** The
+       first draft put the `in-flight` move and the package's `base` in step
+       6, which runs before step 7 creates the branch — so the `base` did not
+       exist yet, and step 7's `deliverables[]` write would have put the
+       deliverable back to `pending`. The run wrote a correct record anyway:
+       it read both steps before it acted, and ran the branch switch and the
+       three record writes as one command. Both clauses now sit in step 7,
+       with the sentence that says where the edit happens. A live run is
+       evidence that the route reaches a PR. It is not evidence that the
+       steps are in the right order. What the run did is now what the file
+       says: switch the branch, then write the deliverable `in-flight`, the
+       package's `base`, and the package `in-flight`.
+
+61. **The IC owns the red commit, and the project lead re-runs it — 2026-09-04,
+    T32.** §7's table has a fourth row: a new test proves nothing until the
+    criterion fails at the commit that adds it. `ic-contract.md` owns the step
+    that produces the evidence, and both path files own the check that reads
+    it — `simple-path.md` step 9 and `full-path.md` step 6, each beside the
+    "criterion passes on a fresh run" check it pairs with.
+
+    **Why the IC, and not the project lead at dispatch.** The ticket offered
+    both. A project lead that runs the criterion before the IC starts runs it
+    against a test file that does not exist yet, so the failure it records is
+    a missing path, not a reproduced defect. That failure is satisfied by any
+    test the IC later writes, which is the hole the row exists to close. The
+    IC is the only party that can run the criterion at the moment the test
+    exists and the fix does not. The "an IC cannot fake it" argument for the
+    other owner survives anyway: the IC's report is a claim, and the project
+    lead runs the criterion at the sha itself, as §7 requires of every claim.
+
+    **No `state.json` field.** The red commit is in `git log`, and the failing
+    output goes in the IC's report. `record-format.md`'s `reports/` entry says
+    so. A field would hold a claim the project lead re-runs anyway.
+
+    **Two criteria are exempt.** A reviewer checklist for an instruction
+    package is not executable. The investigation path's reproduction already
+    failed before dispatch, and `diagnosis.md`'s `## Reproduction` holds that
+    output — §9.5 said this before the row existed.
+
+    a. **A live simple-path run followed every half of the rule.**
+       `encodequery-skip-nullish-7e8f`, an Opus 5 project lead at
+       `--effort high` with a Sonnet 5 IC, plugin loaded from this ticket's
+       worktree, against the string-kit fixture. The goal was a bug fix with
+       a new test: `encodeQuery` encoded a `undefined` or `null` value as
+       literal text. Each of the three new rules reached the run without a
+       prompt. `split.md`'s acceptance criterion ended "and the new test
+       fails at the red commit". The IC's plan named a red commit, and its
+       report carried the sha and the failing output the report contract now
+       asks for. The project lead ran the check itself:
+
+       ```
+       git -C $REPO switch --detach 864cb73 -q
+       cd $REPO && npm test ...
+       node -e '...' ; echo "cmd1 exit=$?"
+       git -C $REPO switch -q crew/encodequery-skip-nullish-7e8f/deliverable-1
+       ```
+
+       ```
+       ℹ tests 11
+       ℹ pass 10
+       ℹ fail 1
+       cmd1 exit=1
+       crew/encodequery-skip-nullish-7e8f/deliverable-1
+       ```
+
+       The package reviewer then ran the same check its own way — a
+       disposable `git worktree` at `864cb73`, so the reviewed tree stayed
+       where it was — and got the same failure. That is the safer procedure
+       where it works, and it is not what `ic-contract.md` asks for, because
+       a fresh worktree holds no installed dependencies: in a repo that needs
+       an install, the criterion would fail there for a reason that is not
+       the bug.
+
+       The run finished at draft PR 4 on the fixture repo: one package, zero
+       fix rounds, zero escalations, `checkout_restored: true`, and $5.00 at
+       list price.
+
+    b. **The rejection is proved against a seeded record, not against that
+       run.** A live run cannot be made to produce a package whose new test
+       passed from the start without telling the IC to break its own
+       contract, so the negative case was seeded: a clone of the fixture on
+       `crew/seed-t32/d1`, a "red commit" `3a44d62` whose added test asserts
+       behaviour the unfixed helper already had, a fix commit `14ded5e`, and
+       a report claiming the criterion failed at `3a44d62`. Running
+       `simple-path.md` step 9 over it: the criterion passes at the branch
+       head, and at `3a44d62` it exits 0 with `pass 4, fail 0`. The step
+       rejects the package there. Nothing about the diff looks wrong, which
+       is why a reviewer was never the thing that caught it.
+
+    c. **The check is per criterion, not per test.** The live run's red
+       commit held two test blocks, and only one of them was red — the IC
+       said so in its report, unprompted. `npm test` fails when any one test
+       fails, so the criterion still failed and the package still passed the
+       check. A test added green inside a red commit is invisible to this
+       row. Splitting a criterion per test block would cost a suite run per
+       block, which buys too little for the price.
+
+    d. **The rule had to reach `agents/ic.md`, which the code review caught.**
+       That file's loop ended a test-first cycle with one `Commit` after the
+       code went green, so an IC that followed its own definition would have
+       produced no red commit at all and earned a fix round for it. The loop
+       now commits the criterion's failing test alone first. The live run
+       still produced a red commit because `ic-contract.md` reaches the IC in
+       the spawn prompt and it is the contract that governs — but a
+       split-pane teammate reads the agent body in place of its default
+       prompt (§15.20d), so the two had to agree.
+
+62. **The remote check moved into the preference sweep, and a run proved it
+    asks once — 2026-09-04, T29.** Two T17 runs on 2026-09-04 (item 54) reused
+    a fixture with no remote and reached step 14 before finding out, asking
+    only after the whole loop had already run. `full-path.md` step 0 gains a
+    third launch check — can this run push and open a draft PR, checked with
+    `git -C <repo> remote` — beside the two full-path-only checks. Unlike
+    those two, it runs on every goal: `SKILL.md` step 4a runs before step 5
+    chooses a shape, so `autonomy-contract.md`'s preference sweep folds check
+    3 into the same batch for a bounded edit too, offering the three ends
+    `simple-path.md` step 14 already offered a run that found out late — add
+    a remote, keep the work local as `work-complete`, or stop. Step 14 now
+    reads the sweep's answer from `escalations` before asking; only a
+    checkout that had a remote at sweep time, and lost push or PR access
+    afterwards, still asks there, because the sweep wrote no entry for it to
+    read.
+
+    **A live run proved the batch and the silence —
+    `add-slugify-helper-41b2/`.** Simple path on a clone of
+    `jerridan/crew-fixture-string-kit` with `git remote remove origin` run
+    first, an Opus 5 project lead at `--effort high`, the plugin loaded from
+    this branch. The goal was a `slugify` helper with the same
+    café/diacritics gap as item 53e's slugify run. `state.json`'s
+    `escalations` holds two entries stamped the same `asked_at`,
+    `2026-09-04T18:11:51Z` — the accent question and `launch check 3: the
+    checkout has no remote to push to` — both before the split, answered in
+    one `AskUserQuestion` batch with two tabs. The principal chose "keep the
+    work local." The run split, built, passed both reviews with one fix (a
+    deliverable-review nit), and ended `work-complete` with `pr_url: null` at
+    step 14 with no second ask: "Ending the run as work-complete, per your
+    answer to keep the work local." Cost $5.51 at list price.
+
+63. **A preference answer becomes a rule in the target repo, and the project
+    lead writes it — 2026-09-04, T30.** T21's run B asked what `slugify` does
+    with `café`, got an answer, and wrote it into the run record alone. The
+    next run on that repo would find no precedent and ask it again. The
+    project lead noticed and proposed a `CLAUDE.md` line in its closing
+    message, but nothing made that a step.
+
+    `autonomy-contract.md` gains **Record the answer as precedent**. Every
+    preference escalation now carries a `Record it?` line, and every answer
+    the principal approves becomes one rule in the target repo's own
+    instruction files. `record-format.md`'s sweep entry ends each `Answer:`
+    line with the file the rule landed in, or `not recorded` on a refusal.
+
+    a. **The project lead writes it, and dispatches nothing.** A repo's
+       instruction files are shared files, and §5 gives every shared file to
+       the project lead; an IC editing a root `CLAUDE.md` from its worktree
+       collides with every other package. The project lead also holds the
+       answer already, so a `crew:ic-instructions` dispatch would re-send the
+       contract, the brief and the checklist to deliver one line, and on the
+       simple path the plan gate makes that two dispatches. `ic-instructions`
+       keeps the case the checklist cannot pass as one rule: that is a
+       package, it belongs in the split, and a second package sends the run
+       down the full path.
+
+    b. **`writing-standard.md`'s checklist picks the container.** Both runs
+       put their rule in the fixture's existing "Rules for a helper" list in
+       the root `CLAUDE.md`, as one bullet each. Neither invented a
+       `.claude/rules/` file, which is right for a repo whose every session
+       writes helpers.
+
+    c. **Two live simple-path runs proved it — 2026-09-04.** One clone of
+       `jerridan/crew-fixture-string-kit` per arm, a Fable project lead at
+       `--effort high` with `--model opus`, ICs and the spec prose writer at
+       Sonnet, the plugin loaded from this branch.
+
+       **Run A** (`add-slugify-helper-6304/`, $6.13 list) charted a `slugify`
+       helper whose input can carry accented letters. The sweep escalated one
+       question, and the ask surfaced as two: the accent question, and
+       `Record it?` with proposed text. Both were answered yes. At
+       integration the project lead committed "A helper that writes a URL
+       part removes the accent mark from a Latin letter. A letter of any
+       other script stays as it is." to the fixture's `CLAUDE.md`, ran the
+       suite green at 17 tests, and opened a draft PR.
+
+       **Run B** (`add-querykey-helper-5400/`, $7.62 list) ran on a clone
+       carrying run A's rule, with a `queryKey` charter of the same shape.
+       The sweep's `Citation:` line opens "CLAUDE.md settles the accent
+       rule", and no accent question reached `escalations`. The rule then
+       held twice more without an ask: the spec critic found the charter's
+       own wording contradicted it and the project lead recorded "the
+       instruction wins"; and a later `decisions.md` entry, "Does queryKey
+       keep the umlaut in Größe?", is `Route: precedent` and quotes the rule.
+       Run B escalated one question, and it was a new one the repo could not
+       answer — what shape a query key takes. That is the sweep working, not
+       a failure: a recorded answer retires its own question, not every
+       question.
+
+    d. **Run B recorded its answer too.** The `Record it?` line fired
+       unprompted on the second run, and the fixture's `CLAUDE.md` ended with
+       two rules from two runs. The mechanism compounds.
+
+    e. **A diff-wide review found four defects in the first draft**, which is
+       §15.48's finding holding for the fourth time. The `Record it?` template
+       asked for a filename, so a "yes" approved a location and never the
+       wording the run would commit — the exact approval §6.2 forbids
+       skipping. The write-back paragraph named no commit, and the two steps
+       after it read committed history only, so an approved rule could miss
+       the PR entirely. The `crew:ic-instructions` escape hatch sat at
+       integration, where no run can add a package to a split that is already
+       built. And `record-format.md` asked the sweep entry to name a file it
+       cannot know at the time it is completed: the reply lands before the
+       split, the rule lands at integration. The template now carries the
+       rule text, the step commits, the checklist fit is judged at the sweep,
+       and the sweep entry is finished in three writes rather than two.
 
 64. **The council is one adversary now, and the first one moved the answer —
     2026-09-04, T22.** Three councils had run before this change (§15.43,

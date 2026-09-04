@@ -10,6 +10,11 @@ steps it borrows: steps 7, 12 and 14 below, which it cites from its own steps
 One unnamed subagent does the work, in this checkout, on one branch. No split
 critic runs, no worktree is created and nothing merges.
 
+**A bounded edit runs a subset of these steps.** `SKILL.md`'s shape table
+sends it here for steps 6 and 7, then 12 to 14. You make the edit yourself,
+so steps 8 to 11 have no IC to dispatch and no package review to run. Every
+other step holds as written, with the three exceptions steps 6, 7 and 13 name.
+
 ## 6. Write the split
 
 Write `split.md` in `record-format.md`'s format, one deliverable and one
@@ -17,12 +22,23 @@ package, banded by `band-rubric.md`, mirrored into `state.json`'s
 `packages[]`. No split critic runs — one package has no sibling to overlap.
 `crew:deliverable-reviewer` reads it at step 13.
 
+A bounded edit writes the same file and the same entry, so that steps 12 and
+13 have a package to mark and a split to read. It consumes and produces
+nothing, and its acceptance criterion is the charter's. Its file set is the
+files the edit touches, less any shared file: `record-format.md` keeps those
+out of every file set, and step 12 is where you edit them.
+
 ## 7. Create the branch
 
 Read the checkout's branch: `git -C <repo> branch --show-current`. Then `git -C
 <repo> switch -c crew/<goal-slug>/<deliverable-id>`; never work on the main
 branch. Write the `deliverables[]` entry now — `id`, branch, the head sha as
 `base`, `state: pending`, `pr_url: null`, and that branch as `checkout_branch`.
+
+**A bounded edit makes its change here**, on the branch this step just
+created. Copy this entry's `base` to the package's `base`, and set the package
+and the deliverable `in-flight`, before you touch the file. Commit the change
+when the edit is done.
 
 ## 8. Dispatch the IC
 
@@ -49,6 +65,14 @@ the package's `base`: the deliverable's `base`, since there is one package.
 The IC's report is a claim; `git -C <repo> log` and `diff` are the evidence.
 Check the diff's file list against the declared file set, and run the acceptance
 criterion yourself. `band-rubric.md` says what a `BLOCKED` cause earns.
+
+**Run the criterion at the red commit too**, when the package adds the test
+its criterion names (design §7). `ic-contract.md`'s "Write the failing test
+first" owns this check: it gives the procedure, the clean-tree precondition,
+and what a criterion that passes there costs. Run it here, in this checkout,
+against the sha the IC's report gives. Switch the branch back before anything
+else — this is the principal's own checkout, and step 14's
+`checkout_restored` records what it was left on.
 
 ## 10. Review the package
 
@@ -83,6 +107,11 @@ on the branch head and read the output. Then read the target repo's own
 instructions for which shared files must change together, edit them, and keep
 the values they require equal. Commit them, and mark the package `integrated`.
 
+**Write back every preference answer the principal approved for recording.**
+Each becomes one rule in this repo's own instruction files. Commit them here,
+or the next two steps never see them. `autonomy-contract.md`'s "Record the
+answer as precedent" owns the rule.
+
 **Sweep for stale status claims.** You own this check alone. Run the block in
 `writing-standard.md`'s "Keep the status true" over the deliverable branch.
 
@@ -99,6 +128,9 @@ review, `review-output.md` whole, and its absolute path:
 seven checks need the record. Adjudicate as in `SKILL.md` step 4; clear every
 `[Critical]` first.
 
+A bounded edit has no package review, because no package reviewer ran. Send
+the other inputs, and say in the dispatch that you made the edit yourself.
+
 ## 14. End the run
 
 Push the branch. Fill the repo's pull request template if it has one, and put
@@ -110,10 +142,22 @@ item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 `scripts/spend.py --write` (`autonomy-contract.md`), and stop every process
 the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
-When the push or `gh pr create` cannot run, ask the principal and **wait for
-the answer** — `blocked` until it lands, then `active`. One who already refused
-the PR has answered; do not ask twice. Then record `work-complete`,
-`pr_url: null` and `run_state: complete` in one write, and hand over the branch.
+When the push or `gh pr create` cannot run, check `escalations` first for the
+entry with trigger text `launch check 3 (trigger 7): no remote` — the
+preference sweep writes it only when `full-path.md` step 0's check 3 failed,
+before the split (`autonomy-contract.md`). Found: act on the answer, and do
+not ask again. "Keep the work local" means skip straight to `work-complete`
+below. "Add a remote" means one should already exist — push. If it still
+fails, the promised remote never arrived: that is new information, so
+escalate it now, plainly, the same way as below.
+
+No such entry means check 3 passed at the sweep — this checkout had a remote
+then. A push or `gh pr create` failure here is a different problem: expired
+auth, a rejected push, a repo setting. Ask the principal, plainly, and
+**wait for the answer**: `blocked` until it lands, then `active`. One who
+already refused the PR has answered; do not ask twice. Then record
+`work-complete`, `pr_url: null` and `run_state: complete` in one write, and
+hand over the branch.
 
 **Restore the checkout at every end.** With a clean tree and a
 `checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record

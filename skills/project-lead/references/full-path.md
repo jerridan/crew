@@ -4,7 +4,10 @@ This file owns the loop for a deliverable with more than one package
 (design §9.2). `SKILL.md` runs steps 1 to 5 first, then sends you here.
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this
-file borrows three of its steps: 7, 12 and 14 there, named below.
+file borrows three of its steps: 7, 12 and 14 there, named below. Step 0's
+third check is the one exception: it runs once for every goal, at the
+preference sweep, before either path is chosen — `autonomy-contract.md` owns
+when.
 
 This file runs **one** deliverable. Deliverables run sequentially and
 `split.md` carries `Depends on` to order them, but no loop reads it yet, so a
@@ -27,8 +30,8 @@ in a run stays unnamed, because you must read its result (design §3,
 
 ## 0. Check the launch conditions
 
-Two you can check, with the command that checks them. Run both before you
-write the split, and escalate on either — neither can be fixed mid-run.
+Three checks bear on launch. Escalate on any that fails — none can be fixed
+mid-run.
 
 1. **Agent teams are on.** `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
    prints `1`. With the flag off, a named agent launches as a plain subagent
@@ -37,8 +40,17 @@ write the split, and escalate on either — neither can be fixed mid-run.
    worktree other than your own: an isolated session is refused outright, and
    the refusal names the reason. That command is the whole verification step
    (design §15.10, §15.23f).
+3. **This run can push and open a draft PR.** `git -C <repo> remote` prints
+   at least one line. A checkout with no remote cannot push or open a PR
+   (design §15.53).
 
-State which one failed. Do not start the run and discover it later.
+Run checks 1 and 2 here, before you write the split, and state which one
+failed. Do not start the run and discover it later.
+
+**Check 3 already ran, at the preference sweep, before you reached this
+step — `autonomy-contract.md` says why. Do not run it again here.** Its
+outcome is settled: either the sweep escalated it and the principal answered,
+or the checkout had a remote and there was nothing to ask.
 
 Two more conditions you cannot check in advance. A display mode must work —
 iTerm2 with its Python API, a session inside tmux, or
@@ -234,13 +246,19 @@ Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
 denies any command that changes directory before it runs git, allow rule or
 not (design §15.23b).
 
-Check three things, every time:
+Check four things, every time:
 
 - The diff's file list matches the declared file set. A file outside it is
   scope drift.
 - The commits are on the IC's own branch, in the IC's own worktree. A commit
   anywhere else means the IC wandered, and nothing else detects that.
 - The acceptance criterion passes on a fresh run you performed yourself.
+- The criterion fails at the red commit, when the package adds the test the
+  criterion names (design §7). `ic-contract.md`'s "Write the failing test
+  first" owns this check: it gives the procedure, the clean-tree
+  precondition, and what a criterion that passes there costs. Run it in the
+  IC's worktree, against the sha the IC's report gives. An IC may not switch
+  branches, so switch the worktree back before you do anything else.
 
 A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules
 say what each cause earns. Committing on a blocked IC's behalf is a normal
@@ -358,6 +376,11 @@ Then edit the shared files yourself. Read the target repo's own instructions
 for which files must change together, and keep the values they require equal.
 Crew's own two-manifest version rule is crew's, not every repo's — a repo that
 bumps at release wants no bump here at all. Commit them.
+
+**Write back every preference answer the principal approved for recording.**
+Each becomes one rule in this repo's own instruction files. Commit them here,
+or the next two steps never see them. `autonomy-contract.md`'s "Record the
+answer as precedent" owns the rule.
 
 Then sweep for stale status claims, as `simple-path.md` step 12 does: run
 the block in `writing-standard.md`'s "Keep the status true" over the

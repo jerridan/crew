@@ -115,7 +115,13 @@ naming convention. Do not mix their contents.
 
 - **`reports/`** — one file per package, `reports/<id>.md`. It holds that
   package's own IC's report and nothing else. `state.json`'s `report_path`
-  for a package always equals `reports/<id>.md`.
+  for a package always equals `reports/<id>.md`. It is also where the "fails
+  before" evidence is kept (design §7): the IC's report names the red commit's
+  sha and carries the criterion's failing output at it. No `state.json` field
+  holds either — the commit is in `git log`, and the project lead re-runs the
+  criterion at it rather than trusting a field. On the investigation path the
+  evidence is `diagnosis.md`'s `## Reproduction` instead, and the fix package
+  needs no red commit.
 - **`plans/`** — one file per package, `plans/<id>.md`. It holds the IC's
   implementation plan, written before the project lead's go-ahead (design
   §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
@@ -312,7 +318,7 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
     abandoned                          (terminal)
 ```
 
-- `pending → in-flight`: the project lead dispatches an IC for the package.
+- `pending → in-flight`: the project lead dispatches an IC for the package. On a bounded edit (design §9.1) it dispatches none, so it moves the package when it starts the edit itself.
 - `in-flight → integrated`: the package passed review, and its work is on the deliverable branch with the suite green there. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   package, or the fix-round breaker parks it (design §9.2, §10).
@@ -381,6 +387,13 @@ A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
 name files that do not exist yet. On the simple path (design §9.1) the project lead never writes
 `worktrees.json`: there is one package, no territory, and `ic_name` stays
 `null` for the run.
+
+A bounded edit's package is the same entry with no IC behind it. Nothing ever
+writes its `plans/<id>.md` or its `reports/<id>.md`, so `plan_path` and
+`report_path` name files that never exist, and `plan_approved_at`,
+`fix_rounds_used` and `nudges_used` keep their creation values. `id`, `band`,
+`file_set`, `interface_contract`, `acceptance_criterion`, `base` and `state`
+all carry real values, because steps 12 to 14 of `simple-path.md` read them.
 
 ### Per-run fields (inside `run`)
 
@@ -626,12 +639,12 @@ looks harmless.
 `autonomy-contract.md`'s sweep writes one entry before the split, on every
 run, including a run that found nothing.
 
-**A sweep entry is written twice, like a council entry.** Before the ask it
-carries the questions and `Answer: pending`, which proves the routing came
-first. The principal's reply completes it: one `Answer:` line per question,
-each naming the question it settles, so `decisions.md` holds what was decided
-and not only that something was asked. A sweep that found nothing is finished
-in one write, with `Answer: none`.
+**A sweep entry starts like a council entry.** Before the ask it carries the
+questions and `Answer: pending`, which proves the routing came first. The
+principal's reply completes each answer: one `Answer:` line per question, each
+naming the question it settles, so `decisions.md` holds what was decided and
+not only that something was asked. A sweep that found nothing is finished in
+one write, with `Answer: none`.
 
 `Citation:` names the files the sweep read. Each escalated question also gets
 its own `escalations` entry, written with `escalation add` above, so one
@@ -641,7 +654,7 @@ batch reads as one interruption in `state.json` too.
 ## Preference sweep: what does the principal want that the repo cannot say?
 Route: preference
 Questions: 1. Does each book get its own route? 2. Is the old URL kept?
-Answer: 1. Yes, one route per book. 2. No, the old URL redirects.
+Answer: 1. Yes, one route per book — recorded in CLAUDE.md. 2. No — not recorded.
 Citation: charter.md and spec.md hold no other open question that an
 instruction, a prior decision or repo precedent settles.
 Confidence: high
@@ -651,6 +664,16 @@ Timestamp: 2026-08-24T14:32:00Z
 `Questions:` is the sweep's own field, and it holds every question the sweep
 escalated, in the order it asked them. An entry with `Answer: none` needs no
 `Questions:` line.
+
+**Each answer ends with where it was written back**: the target repo file
+that now carries it as a rule, or `not recorded` when the principal refused
+(`autonomy-contract.md`). That lets an audit tell a refusal from a step the
+run skipped.
+
+That makes the sweep entry the one entry written three times. The reply
+completes every answer; the file name lands later, at integration, because
+that is when the rule is written and the container check can move it. Reopen
+the entry there and finish the line.
 
 ### A council entry
 
@@ -742,7 +765,7 @@ Every name this file defines, with what consumes it.
 - `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
-- `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report)
+- `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report); design §7 (the red commit's sha and its failing output)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 - `charter.md` `Budget:` and `Favour:` lines — consumer: `SKILL.md` step 1 (budget), `full-path.md` step 1 (split shape)

@@ -64,17 +64,36 @@ Ask one block per question:
 <the question, in one line>
 Options: <each option, and what the run commits to under it>
 My recommendation: <which, and why>
+Record it? <the rule, in the words you would commit>
 ```
+
+The `Record it?` line asks for permission to write the answer into the target
+repo, so the next run finds it as precedent. Quote the rule you would commit,
+word for word — approval of a filename is not approval of wording. Record the
+answer as precedent, below, owns what happens next.
+
+**Check the wording against `writing-standard.md`'s checklist before you ask.**
+An answer that cannot pass it as one rule is a package, and the split is still
+ahead of you here. Nothing can add a package at integration.
 
 Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
 have nothing to say about any other kind of question.
 
-**Run `full-path.md` step 0's two launch checks before you send the batch**
-when the goal may need more than one package, and put either failure in the
-same batch. Both are trigger 7, neither depends on an answer, and neither can
-be fixed mid-run. A run that asks the preference questions first and fails a
-launch check afterwards has interrupted the principal twice.
+**Run `full-path.md` step 0's launch check 3 here, every time, and put its
+failure in the same batch.** It is trigger 7, does not depend on an answer,
+and cannot be fixed mid-run. Checks 1 and 2 there stay where they are — they
+only ever matter once the goal has already been sent to the full path, so
+`full-path.md` step 0 runs them, not the sweep. A run that asks the
+preference questions first and fails a launch check afterwards has
+interrupted the principal twice.
+
+Check 3's failure is a preference question, not a plain block: offer the
+three ends `simple-path.md` step 14 names. Write it with `escalation add`
+using the trigger text `launch check 3 (trigger 7): no remote` — a fixed
+phrase, so step 14 can find this entry among any others trigger 7 wrote.
+Step 14 reads the answer instead of asking again: one answer, recorded once,
+settles both ends of the run.
 
 A lead session answers the batch by message; a human answers it in the
 session. Write each question with `crew-record.py escalation add`
@@ -238,9 +257,10 @@ one interruption; a run built in the wrong direction costs a day.
    or credentials.
 5. The charter's budget is exceeded (Spend, below).
 6. The fix-round breaker fired at the top band.
-7. The goal needs the full path and one of the two conditions you can check
-   fails — agent teams off, or a worktree-isolated session (`full-path.md`
-   step 0). Neither can be fixed mid-run.
+7. One of `full-path.md` step 0's three launch checks fails: the goal needs
+   the full path and agent teams are off or the session is worktree-isolated,
+   or — on any goal — the checkout has no remote to push to. None can be
+   fixed mid-run.
 8. The goal needs more than one **deliverable**. `full-path.md` runs one
    deliverable's packages; nothing loops over deliverables or reads
    `split.md`'s `Depends on` yet. Say which deliverables you would cut it
@@ -275,8 +295,40 @@ the right .claude/rules/ file> so the question does not come back?
 An instruction is configuration, and changing it is the principal's
 decision, not a side effect of a run.
 
-This is the one escalation that pays for itself: every answer becomes an
-instruction that settles the same question in every later run.
+## Record the answer as precedent
+
+An answer that stays in the record settles the question for this run alone.
+The next run on the same repo finds no precedent and asks it again. So every
+preference answer the principal approves becomes **one rule in the target
+repo's own instruction files**, on the deliverable branch.
+
+**You write it yourself, at integration** — `simple-path.md` step 12, or
+`full-path.md` step 9 — beside the other shared-file edits you make there.
+Dispatch nothing for it, for two reasons. A repo's instruction files are
+shared files, and you own every shared file; an IC that edits a root
+`CLAUDE.md` from its worktree collides with every other package. You also
+hold the answer already, so a dispatch would re-send the contract, the brief
+and the checklist to deliver one line.
+
+Write the wording the principal approved, and **commit it in that step**. An
+uncommitted rule reaches no reviewer and no PR: the stale-status sweep and the
+final diff both read committed history.
+
+`writing-standard.md`'s `## Before you open the PR` checklist picks the
+container: a rule every session in the repo needs goes in the root
+`CLAUDE.md`, and a rule that covers one area of the repo goes in a
+`.claude/rules/` file scoped to that path. You ran that checklist at the
+sweep, on the wording you proposed. Run its container check again now, since
+the repo may have changed under you, and **name the file you wrote the rule
+into on the sweep entry's `Answer:` line** (`record-format.md`).
+
+`crew:ic-instructions` owns the answer that cannot pass the checklist as one
+rule. That is a package, so it goes in the split — which is why the sweep,
+not this step, judges the fit.
+
+Write nothing when the principal refuses, or answers the question and not the
+`Record it?` line. Record the refusal in the sweep entry instead
+(`record-format.md`), so an audit can tell a refusal from a step you skipped.
 
 ## Spend
 

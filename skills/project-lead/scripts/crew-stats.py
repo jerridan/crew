@@ -14,11 +14,16 @@ into a measurement, and to give a principal a defensible charter `Budget:`.
 Dollars come from `spend.py`, which this script imports. It never holds a
 second price table. A run is priced in this order:
 
-1. `run.spend.transcript.usd_list_price`, when `spend.py --write` already
-   stored it.
-2. `spend.py` over the run's checkout, when the record names one in `repo` or
-   a `--repo <slug>=<checkout>` flag names one.
-3. Not priced. The run still counts everywhere else, and a skip line says so.
+1. `spend.py` over the checkout a `--repo <slug>=<checkout>` flag names. An
+   explicit flag always wins, because a stored figure can be stale (§15.51).
+2. `run.spend.transcript.usd_list_price`, when `spend.py --write` stored it.
+3. `spend.py` over the checkout the record names in `repo`.
+4. Not priced. The run still counts everywhere else, and a skip line says so.
+
+Two runs can share one checkout, so a run priced here closes its window at
+`run.completed_at`, or at its latest `state_changed_at`. Without that bound
+each run absorbs its neighbours' cost and the totals double count. A run with
+no recorded end prices open-ended, and a skip line says so.
 
 An older or partial record never stops the script. A missing field is skipped,
 the record is still counted, and one line names what was skipped.
@@ -27,6 +32,7 @@ The script only reads. It writes nothing into the record root.
 """
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -38,6 +44,20 @@ import spend  # noqa: E402  the price table and the transcript pricing live ther
 
 BANDS = ["light", "standard", "deep"]
 
+def as_list(value) -> list:
+    """The value when it is a list, and an empty list otherwise.
+
+    An older record can hold a scalar, or nothing, where a list belongs.
+    """
+    return value if isinstance(value, list) else []
+
+
+def fixes(package: dict) -> int:
+    """The package's fix rounds, and 0 when the field is missing or not a number."""
+    value = package.get("fix_rounds_used")
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
 REVIEW_KINDS = [
     ("package review", re.compile(r"-package-review-r\d+\.md$")),
     ("spec critic", re.compile(r"^spec-critic-r\d+\.md$")),
@@ -46,23 +66,56 @@ REVIEW_KINDS = [
 ]
 
 
-def price_run(record: Path, state: dict, checkout: str | None, skips: list) -> float | None:
+def run_end(state: dict) -> float | None:
+    """The moment the run stopped changing, from the record's own timestamps.
+
+    Two runs can share one checkout, so a run priced from that checkout must
+    close its window or it absorbs its neighbours' cost. `run.completed_at` is
+    the answer when the record carries it; the latest `state_changed_at`
+    across the deliverables and the packages is the fallback. A run that is
+    still live has no end, and prices open-ended.
+    """
+    run = state.get("run")
+    run = run if isinstance(run, dict) else {}
+    stamps = [run.get("completed_at")]
+    for key in ("deliverables", "packages"):
+        for entry in as_list(state.get(key)):
+            if isinstance(entry, dict):
+                stamps.append(entry.get("state_changed_at"))
+    if run.get("run_state") not in ("complete", "abandoned") and not run.get("completed_at"):
+        return None
+    latest = max((s for s in stamps if isinstance(s, str)), default=None)
+    if not latest:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(latest.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def price_run(record: Path, state: dict, checkout: str | None, forced: bool, skips: list) -> float | None:
     """Return the run's cost in US dollars, or None when nothing can price it."""
     stored = ((state.get("run") or {}).get("spend") or {}).get("transcript") or {}
-    if stored.get("usd_list_price") is not None:
+    # An explicit --repo wins over a stored figure. §15.51 shows a stored
+    # figure can be stale, and this is the only way to recompute one.
+    if not forced and isinstance(stored, dict) and stored.get("usd_list_price") is not None:
         return float(stored["usd_list_price"])
     if not checkout:
         skips.append(f"{record.name}: no cost — the record has no spend.transcript and names no checkout")
         return None
+    checkout = os.path.expanduser(checkout)
     dirs = spend.project_dirs(checkout)
     if not dirs:
         skips.append(f"{record.name}: no cost — no transcripts for checkout {checkout}")
         return None
     try:
-        totals = spend.collect(dirs, spend.start_time(record, state))
-    except OSError as err:
+        until = run_end(state)
+        totals = spend.collect(dirs, spend.start_time(record, state), until)
+    except (OSError, ValueError) as err:
         skips.append(f"{record.name}: no cost — {err}")
         return None
+    if until is None:
+        skips.append(f"{record.name}: open-ended cost — the run records no end, so the price covers every later session in {checkout}")
     return sum(t["usd"] for t in totals.values())
 
 
@@ -83,31 +136,42 @@ def count_reviews(record: Path, skips: list) -> dict:
     return counts
 
 
-def read_councils(record: Path, skips: list) -> tuple[int, int]:
-    """Return the council count and the tokens those councils spent."""
+def read_decisions(record: Path, skips: list) -> tuple[int, int, int]:
+    """Return the decision count, the council count and the council tokens."""
     path = record / "decisions.md"
     if not path.is_file():
-        skips.append(f"{record.name}: no councils — the record has no decisions.md")
-        return 0, 0
+        skips.append(f"{record.name}: no decisions — the record has no decisions.md")
+        return 0, 0, 0
     text = path.read_text(encoding="utf-8", errors="replace")
+    entries = re.split(r"^## ", text, flags=re.M)[1:]
     councils = 0
     tokens = 0
-    for entry in re.split(r"^## ", text, flags=re.M)[1:]:
+    for entry in entries:
         if not re.search(r"^Route:\s*council\b", entry, flags=re.M):
             continue
         councils += 1
-        found = re.search(r"^Spend:[^\d]*([\d,]+)\s*tokens", entry, flags=re.M)
+        # `Spend:` reads `unmeasured` when the dispatch reported no tokens,
+        # and a council still awaiting adjudication has no `Spend:` line at
+        # all (`record-format.md`). Both leave the token total short, so both
+        # get a skip line.
+        found = re.search(r"^Spend:[^\d\n]*([\d,]+)\s*tokens", entry, flags=re.M)
         if found:
             tokens += int(found.group(1).replace(",", ""))
-    return councils, tokens
+        else:
+            title = entry.splitlines()[0].strip()
+            skips.append(f"{record.name}: no council spend — the entry \"{title}\" states no token count")
+    return len(entries), councils, tokens
 
 
-def read_record(record: Path, checkout: str | None, skips: list) -> dict:
-    state = json.loads((record / "state.json").read_text(encoding="utf-8"))
-    run = state.get("run") or {}
-    packages = state.get("packages") or []
+def read_record(record: Path, state: dict, checkout: str | None, forced: bool, skips: list) -> dict:
+    run = state.get("run")
+    run = run if isinstance(run, dict) else {}
+    listed = as_list(state.get("packages"))
+    packages = [p for p in listed if isinstance(p, dict)]
+    if len(packages) != len(listed):
+        skips.append(f"{record.name}: {len(listed) - len(packages)} package entries dropped — they are not objects")
     if not packages:
-        skips.append(f"{record.name}: no packages — the record has an empty packages list")
+        skips.append(f"{record.name}: no packages — the record lists none")
 
     per_band = {}
     promotions = 0
@@ -118,26 +182,27 @@ def read_record(record: Path, checkout: str | None, skips: list) -> dict:
             band = "unknown"
         counts = per_band.setdefault(band, {"packages": 0, "fix_rounds": 0, "promotions": 0})
         counts["packages"] += 1
-        counts["fix_rounds"] += package.get("fix_rounds_used") or 0
+        counts["fix_rounds"] += fixes(package)
         # A band_history entry with a cause is a promotion; the first entry is
         # the prediction and carries none (record-format.md, design §8).
-        moved = sum(1 for h in package.get("band_history") or [] if h.get("cause"))
+        moved = sum(1 for h in as_list(package.get("band_history")) if isinstance(h, dict) and h.get("cause"))
         counts["promotions"] += moved
         promotions += moved
 
-    councils, council_tokens = read_councils(record, skips)
-    usd = price_run(record, state, checkout, skips)
+    decisions, councils, council_tokens = read_decisions(record, skips)
+    usd = price_run(record, state, checkout, forced, skips)
     return {
         "run": record.name,
         "run_state": run.get("run_state"),
         "packages": len(packages),
         "by_band": per_band,
-        "fix_rounds": sum(p.get("fix_rounds_used") or 0 for p in packages),
+        "fix_rounds": sum(fixes(p) for p in packages),
         "promotions": promotions,
+        "decisions": decisions,
         "councils": councils,
         "council_tokens": council_tokens,
-        "escalations": len(run.get("escalations") or []),
-        "compactions": len(run.get("compactions") or []),
+        "escalations": len(as_list(run.get("escalations"))),
+        "compactions": len(as_list(run.get("compactions"))),
         "reviews": count_reviews(record, skips),
         "usd": usd,
         # TODO(T23): review catch rate belongs here, once T23 defines it.
@@ -161,11 +226,11 @@ def money(value) -> str:
 def report(records: list[dict], skips: list[str]) -> None:
     print("Runs\n")
     rows = [
-        [r["run"], r["packages"], r["fix_rounds"], r["promotions"], r["councils"],
+        [r["run"], r["packages"], r["fix_rounds"], r["promotions"], r["decisions"], r["councils"],
          r["escalations"], r["compactions"], sum(r["reviews"].values()), money(r["usd"])]
         for r in records
     ]
-    print(table(["run", "pkgs", "fixes", "promos", "councils", "escal", "compact", "reviews", "usd"], rows))
+    print(table(["run", "pkgs", "fixes", "promos", "decis", "councils", "escal", "compact", "reviews", "usd"], rows))
 
     # A run's dollars cover the whole run. Nothing in the record attributes
     # them to one package, so a priced run splits its cost evenly over its
@@ -209,6 +274,7 @@ def report(records: list[dict], skips: list[str]) -> None:
         ["packages", sum(r["packages"] for r in records)],
         ["fix rounds", sum(r["fix_rounds"] for r in records)],
         ["promotions", sum(r["promotions"] for r in records)],
+        ["decisions", sum(r["decisions"] for r in records)],
         ["councils", councils],
         ["council tokens", council_tokens],
         ["escalations", sum(r["escalations"] for r in records)],
@@ -251,11 +317,21 @@ def main(argv: list[str]) -> None:
             continue
         try:
             state = json.loads((record / "state.json").read_text(encoding="utf-8"))
-        except ValueError as err:
+        except (OSError, ValueError) as err:
             skips.append(f"{record.name}: unreadable state.json — {err}")
             continue
-        checkout = overrides.get(record.name) or state.get("repo") or (state.get("run") or {}).get("repo")
-        records.append(read_record(record, checkout, skips))
+        if not isinstance(state, dict):
+            skips.append(f"{record.name}: unreadable state.json — it holds a {type(state).__name__}, not an object")
+            continue
+        run = state.get("run")
+        stored_repo = state.get("repo") or (run.get("repo") if isinstance(run, dict) else None)
+        forced = record.name in overrides
+        checkout = overrides.get(record.name) or stored_repo
+        # One malformed record must not take the other ten down with it.
+        try:
+            records.append(read_record(record, state, checkout, forced, skips))
+        except (AttributeError, KeyError, TypeError, ValueError) as err:
+            skips.append(f"{record.name}: unreadable record — {type(err).__name__}: {err}")
 
     if not records:
         sys.exit(f"no records under {root}")

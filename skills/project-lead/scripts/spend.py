@@ -56,7 +56,27 @@ def project_dirs(checkout: str) -> list[Path]:
     return found
 
 
-def collect(dirs: list[Path], since: float) -> dict:
+def stamp(entry: dict) -> float | None:
+    """The entry's own wall-clock time, or None when it carries none."""
+    value = entry.get("timestamp")
+    if not value:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def collect(dirs: list[Path], since: float, until: float | None = None) -> dict:
+    """Price every assistant message in the checkout's transcripts.
+
+    `since` filters whole files by modification time. `until`, when given,
+    closes the window at the entry level: an entry stamped after it is
+    dropped, and so is one stamped before `since`. An entry that carries no
+    timestamp stays, because nothing places it. Pass `until` to price one run
+    of several that share a checkout; leave it out to price everything since
+    `since`, which is what this script's own command line does.
+    """
     messages = {}
     for d in dirs:
         for f in glob.glob(str(d / "**" / "*.jsonl"), recursive=True):
@@ -72,6 +92,10 @@ def collect(dirs: list[Path], since: float) -> dict:
                     usage = msg.get("usage")
                     if entry.get("type") != "assistant" or not usage:
                         continue
+                    if until is not None:
+                        at = stamp(entry)
+                        if at is not None and not since <= at <= until:
+                            continue
                     key = msg.get("id") or (f, entry.get("uuid"))
                     cache = usage.get("cache_creation") or {}
                     w5 = cache.get("ephemeral_5m_input_tokens", 0) if cache else usage.get("cache_creation_input_tokens", 0)

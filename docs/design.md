@@ -2924,21 +2924,48 @@ Deliberately different:
     against 0, escalations 0 against 0. Every one of those comes out of
     `state.json`, `decisions.md` and `reviews/`.
 
-    **Dollars.** The Fable arm prices at $144.36, against the $144 recorded.
-    The Opus arm prices at $224.29, against the $215.39 recorded. The
-    difference is in the data, not in the script: the A/B's own scripts
-    (`~/src/ab/spend.py`) now return $224.29 for that arm too. The Opus
-    session was left open after the figure was taken, and three more opus
-    messages and 0.8M more one-hour cache writes landed in its transcript.
-    The sonnet half is byte-identical across the two measurements. **A
-    transcript-priced figure is only stable once the session that wrote it
-    is closed.** Take the number, then close the session.
+    **Dollars, and why a run's price needs an end as well as a start.**
+    `spend.py`'s command line takes a start and no end, which is right for
+    the run it is pricing while that run is live. It is wrong across runs: two
+    goals worked in one checkout each absorb the other's transcripts, and a
+    priced figure keeps growing every time anyone opens any session in that
+    checkout. `spend.collect` therefore takes an optional `until`, applied at
+    the entry level, and `crew-stats.py` passes each run's own end —
+    `run.completed_at`, or the latest `state_changed_at` in the record. The
+    command line is unchanged and still prices open-ended.
+
+    Bounded, the Opus arm is $213.91 and the Fable arm $142.37. Open-ended
+    today they are $224.29 and $144.36, against $215.39 and $144 recorded in
+    §15.50. Three numbers, and none of them is wrong:
+
+    - The **open-ended figure is an upper bound that grows**. The Opus session
+      was left open after §15.50's figure was taken, and three more opus
+      messages and 0.8M more one-hour cache writes landed in its transcript.
+      The sonnet half is byte-identical across both measurements, which pins
+      the drift to that open session. The A/B's own `~/src/ab/spend.py` now
+      returns $224.29 for that arm too, so the script agrees with the tool it
+      is checked against.
+    - The **bounded figure is a lower bound**. It stops at the last write to
+      the record, so it drops the run's own tail — the turns that open the PR
+      and write the closing summary after the last `state_changed_at`. That
+      tail is $10.38 for Opus and $1.99 for Fable.
+    - §15.50's figure sits between them, because it was taken by hand shortly
+      after each arm finished.
+
+    Nothing distinguishes a run's own tail from the next unrelated session in
+    the same checkout, so the bound is the only rule available and it
+    under-counts by the tail. **Prefer the bounded figure across runs and
+    treat it as a floor.** Two rules follow. Take a transcript price only
+    after the session that wrote it is closed. And `run.completed_at` needs an
+    owner: one of eleven records carries it, `record-format.md` does not
+    document it, and nothing writes it, so a completed run has no end but its
+    last state write. That is a ticket, not a change made here.
 
     **Per-package cost is an estimate, not a measurement.** A run's dollars
     cover the whole run, and nothing in the record attributes them to one
     package. The by-band table splits each priced run's cost evenly over its
     packages, and the header says so. Over the two priced runs the bands come
-    out near each other — light $22.43, standard $24.58, deep $25.01 per
+    out near each other — light $21.39, standard $23.75, deep $24.22 per
     package — which is what an even split must produce, so it says nothing
     about the bands yet. A per-package figure needs an IC's own transcript
     mapped to the package it worked, which `ic_name` and `worktrees.json`
@@ -2952,3 +2979,14 @@ Deliberately different:
 
     Review catch rate is not in the script. T23 defines it; one comment
     marks where it goes.
+
+    **A code review of the script found eight defects, and the two that
+    mattered were both about the shape of the data, not the code.** The
+    unbounded pricing window above is one. The other is that a council entry
+    can say `Spend: unmeasured`, or carry no `Spend:` line at all before its
+    adjudication, and the token total then reads short with nothing to say
+    so; the script now names each such entry. The rest were hardening: a
+    malformed `created_at`, a `state.json` that parses to a list, a scalar
+    where a list belongs, and a checkout path holding `~` — zsh does not
+    expand a tilde after `=`, so the documented `--repo slug=~/path` form
+    priced nothing at all until the script expanded it itself.

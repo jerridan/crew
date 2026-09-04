@@ -777,10 +777,12 @@ T23 defines it, review catch rate. Use it to give a principal a defensible
 Done when: the script runs over the records on the machine that ran the A/B
 and its numbers for the two §15.50 runs match the ones recorded there.
 
-Done 2026-09-03: `skills/project-lead/scripts/crew-stats.py`. Its counts for
-the two §15.50 runs match. Its Fable dollars match; its Opus dollars are
-$224.29 against the recorded $215.39, because the Opus session stayed open
-after the figure was taken. §15.51 records both.
+Done 2026-09-03: `skills/project-lead/scripts/crew-stats.py`. Every count for
+the two §15.50 runs matches, decisions included. The dollars need a run end as
+well as a start, which `spend.py` did not take: bounded to each run, the arms
+price at $213.91 and $142.37, against $215.39 and $144 recorded. §15.51
+records why the bounded figure is a floor and the open-ended one a rising
+ceiling.
 
 Read first: design §8, §15.50, §15.51; `record-format.md`; `scripts/spend.py`.
 

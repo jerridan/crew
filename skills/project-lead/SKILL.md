@@ -27,8 +27,7 @@ The **simple path** is steps 6-14 below; the **full path** is
 
 Write `state.json` after **every** transition, never batched, with
 `scripts/crew-record.py` beside this file (`record-format.md` shows each
-call). Read a background agent's result from its completion notification,
-never by polling `TaskOutput` — only the notification carries its spend.
+call). Every path you hand an agent is absolute: its cwd is not yours.
 
 ## 1. Take the goal
 
@@ -50,9 +49,8 @@ resumed run writes no charter, no spec and no new branch.
 On a new goal: write no falsifiable criterion, do no work — escalate and stop.
 Otherwise create `<record-root>/<slug>-<4 hex chars>/`, generating the suffix
 once; `record-format.md` says where the root is. Write `charter.md`, then
-`state.json` with `run_state: active`, the charter's `Ceiling:` as the spend
-ceiling or 2,000,000 tokens until the split estimates one, and
-`run.session_ids` — read it, never invent it (`record-format.md`).
+`crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
+it — and `run set spend.budget` when the charter carries a `Budget:` line.
 
 ## 2. Scout
 
@@ -151,7 +149,8 @@ An instruction package gets its checklist file instead.
 package's record entry (`file_set`, `interface_contract`,
 `acceptance_criterion`), the checkout path, the IC's report, the diff or
 checklist path, and the brief. Inject `review-output.md` too, and name its
-path: `reviews/<id>-package-review-r<n>.md`, `<n>` being `fix_rounds_used`.
+absolute path: `<record-root>/reviews/<id>-package-review-r<n>.md`, `<n>`
+being `fix_rounds_used`.
 
 ## 11. Fix rounds
 
@@ -183,9 +182,10 @@ which the next reviewer's shared-file check exists to read.
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`,
 the checkout path and base ref, the fresh diff path, the accepted package
-review, `review-output.md` whole, and its path:
-`reviews/<deliverable-id>-deliverable-review.md`. Four of its seven checks
-need the record. Adjudicate as in step 4; clear every `[Critical]` first.
+review, `review-output.md` whole, and its absolute path:
+`<record-root>/reviews/<deliverable-id>-deliverable-review.md`. Four of its
+seven checks need the record. Adjudicate as in step 4; clear every
+`[Critical]` first.
 
 ## 14. Open the draft PR
 

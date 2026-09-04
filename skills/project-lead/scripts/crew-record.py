@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""Write one field of a crew record's state.json, with the timestamp the
-format requires, in one atomic replace.
+"""Write a crew record's state.json: one change per call, timestamped, in one
+atomic replace.
 
 usage:
+  crew-record.py <record-dir> init <goal> <goal-slug> <session-id>
+  crew-record.py <record-dir> session-id <id>
+  crew-record.py <record-dir> deliverable add <json-object>
+  crew-record.py <record-dir> deliverable <id> state <state> [--pr-url <url>]
+  crew-record.py <record-dir> package add <json-object>
   crew-record.py <record-dir> package <id> state <state>
   crew-record.py <record-dir> package <id> set <field> <json>
-  crew-record.py <record-dir> deliverable <id> state <state> [--pr-url <url>]
   crew-record.py <record-dir> run state <state>
-  crew-record.py <record-dir> run set <field> <json>
-  crew-record.py <record-dir> spend <agent> <total_tokens|null> [--estimated]
-  crew-record.py <record-dir> session-id <id>
+  crew-record.py <record-dir> run set <dotted.field> <json>
+  crew-record.py <record-dir> close <deliverable-id> <deliverable-state> [--pr-url <url>]
 
-`record-format.md` owns every field name and every transition. This script
-sets what it is told and stamps `state_changed_at`; it does not validate a
-transition. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
+`init` creates state.json with `created_at`. `close` sets the deliverable's
+terminal state and `run_state: complete` in one write, which
+`record-format.md` requires for `work-complete`. `run set` takes a dotted
+path, so `run set spend.budget 60` changes one key and keeps the rest.
+`record-format.md` owns every field name and every transition; this script
+checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 """
 
 import datetime
@@ -28,67 +34,119 @@ def now() -> str:
 
 
 def write_json(path: Path, data) -> None:
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     with tmp.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=2, ensure_ascii=False)
         handle.write("\n")
     os.replace(tmp, path)
 
 
-def find(items, key, value):
+def find(items, value):
     for item in items:
-        if item.get(key) == value:
+        if item.get("id") == value:
             return item
-    sys.exit(f"no entry with {key} == {value}")
+    sys.exit(f"no entry with id {value}")
+
+
+def usage() -> None:
+    sys.exit(__doc__)
+
+
+def arg(rest: list[str], i: int) -> str:
+    if i >= len(rest):
+        usage()
+    return rest[i]
+
+
+def flag(rest: list[str], name: str):
+    return rest[rest.index(name) + 1] if name in rest else None
+
+
+def set_dotted(target: dict, dotted: str, value) -> None:
+    keys = dotted.split(".")
+    for key in keys[:-1]:
+        target = target.setdefault(key, {})
+    target[keys[-1]] = value
 
 
 def main(argv: list[str]) -> None:
-    if len(argv) < 3:
-        sys.exit(__doc__)
-    state_path = Path(argv[0]) / "state.json"
-    state = json.loads(state_path.read_text(encoding="utf-8"))
+    if len(argv) < 2:
+        usage()
+    record = Path(argv[0])
+    state_path = record / "state.json"
     kind, rest = argv[1], argv[2:]
 
-    if kind == "package":
-        pkg = find(state.setdefault("packages", []), "id", rest[0])
-        if rest[1] == "state":
-            pkg["state"] = rest[2]
-            pkg["state_changed_at"] = now()
-        elif rest[1] == "set":
-            pkg[rest[2]] = json.loads(rest[3])
-        else:
-            sys.exit(__doc__)
-    elif kind == "deliverable":
-        dl = find(state.setdefault("deliverables", []), "id", rest[0])
-        if rest[1] != "state":
-            sys.exit(__doc__)
-        dl["state"] = rest[2]
-        dl["state_changed_at"] = now()
-        if "--pr-url" in rest:
-            dl["pr_url"] = rest[rest.index("--pr-url") + 1]
-    elif kind == "run":
-        run = state.setdefault("run", {})
-        if rest[0] == "state":
-            run["run_state"] = rest[1]
-        elif rest[0] == "set":
-            run[rest[1]] = json.loads(rest[2])
-        else:
-            sys.exit(__doc__)
-    elif kind == "spend":
-        spend = state.setdefault("run", {}).setdefault("spend", {})
-        tokens = None if rest[1] == "null" else int(rest[1])
-        measured = tokens is not None and "--estimated" not in rest
-        spend.setdefault("by_agent", []).append(
-            {"agent": rest[0], "total_tokens": tokens, "measured": measured}
-        )
-        key = "measured_tokens" if measured else "estimated_tokens"
-        spend[key] = spend.get(key, 0) + (tokens or 0)
-    elif kind == "session-id":
-        ids = state.setdefault("run", {}).setdefault("session_ids", [])
-        if rest[0] not in ids:
+    if kind == "init":
+        state = {
+            "goal": arg(rest, 0),
+            "goal_slug": arg(rest, 1),
+            "deliverables": [],
+            "run": {
+                "run_state": "active",
+                "session_ids": [arg(rest, 2)],
+                "created_at": now(),
+                "spend": {},
+                "escalations": [],
+            },
+            "packages": [],
+        }
+        record.mkdir(parents=True, exist_ok=True)
+        write_json(state_path, state)
+        print("ok")
+        return
+
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    run = state.setdefault("run", {})
+
+    if kind == "session-id":
+        ids = run.setdefault("session_ids", [])
+        if arg(rest, 0) not in ids:
             ids.append(rest[0])
+    elif kind == "deliverable":
+        if arg(rest, 0) == "add":
+            entry = json.loads(arg(rest, 1))
+            entry.setdefault("state_changed_at", now())
+            state.setdefault("deliverables", []).append(entry)
+        else:
+            dl = find(state.get("deliverables", []), rest[0])
+            if arg(rest, 1) != "state":
+                usage()
+            dl["state"] = arg(rest, 2)
+            dl["state_changed_at"] = now()
+            url = flag(rest, "--pr-url")
+            if url:
+                dl["pr_url"] = url
+    elif kind == "package":
+        if arg(rest, 0) == "add":
+            entry = json.loads(arg(rest, 1))
+            entry.setdefault("state_changed_at", now())
+            state.setdefault("packages", []).append(entry)
+        else:
+            pkg = find(state.get("packages", []), rest[0])
+            if arg(rest, 1) == "state":
+                pkg["state"] = arg(rest, 2)
+                pkg["state_changed_at"] = now()
+            elif rest[1] == "set":
+                pkg[arg(rest, 2)] = json.loads(arg(rest, 3))
+            else:
+                usage()
+    elif kind == "run":
+        if arg(rest, 0) == "state":
+            run["run_state"] = arg(rest, 1)
+        elif rest[0] == "set":
+            set_dotted(run, arg(rest, 1), json.loads(arg(rest, 2)))
+        else:
+            usage()
+    elif kind == "close":
+        dl = find(state.get("deliverables", []), arg(rest, 0))
+        dl["state"] = arg(rest, 1)
+        dl["state_changed_at"] = now()
+        url = flag(rest, "--pr-url")
+        if url:
+            dl["pr_url"] = url
+        run["run_state"] = "complete"
     else:
-        sys.exit(__doc__)
+        usage()
 
     write_json(state_path, state)
     print("ok")

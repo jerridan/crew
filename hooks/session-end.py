@@ -24,16 +24,19 @@ def crew_roots() -> list[Path]:
     machine may follow the harness rather than the reference, so check that
     too. Each extra root costs one `is_dir` and cannot miss a run.
     """
-    roots = []
+    candidates = []
     explicit = os.environ.get("CREW_RECORD_ROOT")
     if explicit:
-        roots.append(Path(explicit))
-    roots.append(Path.home() / ".claude" / "crew")
+        candidates.append(Path(explicit))
+    candidates.append(Path.home() / ".claude" / "crew")
     config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
     if config_dir:
-        relocated = Path(config_dir) / "crew"
-        if relocated not in roots:
-            roots.append(relocated)
+        candidates.append(Path(config_dir) / "crew")
+    roots = []
+    for c in candidates:
+        r = c.resolve()
+        if r not in roots:
+            roots.append(r)
     return roots
 
 
@@ -44,7 +47,7 @@ def read_json(path: Path):
 
 def write_json(path: Path, data) -> None:
     """Replace the file in one step, so a killed hook leaves no half-file."""
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     with tmp.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=2, ensure_ascii=False)
         handle.write("\n")

@@ -613,12 +613,12 @@ Stage: any (design §13.1, §15.50)
 session belongs to a live run, matched by `run.session_ids` or a worktree's
 `session_ids`. It was tested with a seeded payload and a record copy. Nothing
 has shown that the harness fires `PreCompact` for an in-process teammate at
-all, or what `session_id` the payload carries when it does — the teammate's
-own, or the project lead's.
+all, or that its payload carries `agent_id` and a `transcript_path` whose
+sibling `.meta.json` names the teammate, which is how the hook attributes it.
 
 Done when: an IC teammate is driven past its compaction threshold in an
 interactive session with agent teams on, and `run.compactions` holds an
-entry that `full-path.md` step 6 can match to that IC. Record the payload
+entry whose `agent` is that IC's name, as `full-path.md` step 6 matches it. Record the payload
 shape in design §15.
 
 Read first: design §13.1, §15.50; `hooks/pre-compact.py`; `full-path.md`
@@ -765,14 +765,14 @@ Stage: any (design §8, §15.50)
 
 Design §8 promised the band rubric would turn from a guess into a
 measurement. The data now exists: `band_history`, `fix_rounds_used`,
-`spend.by_agent`, `spend.transcript`, `run.compactions`, and every review
+`spend.transcript`, `run.compactions`, and every review
 and report file. Nothing reads it across runs.
 
 Add `skills/project-lead/scripts/crew-stats.py`: over every record under the
 record root, print cost per package by band, fix rounds by band, promotions,
 councils and their spend, escalations, compactions, review counts and, once
-T23 defines it, review catch rate. Use it to re-fit the ceiling arithmetic
-in `full-path.md` step 1, which is calibrated on two runs.
+T23 defines it, review catch rate. Use it to give a principal a defensible
+`Budget:` figure for a goal of a given size.
 
 Done when: the script runs over the records on the machine that ran the A/B
 and its numbers for the two §15.50 runs match the ones recorded there.
@@ -789,7 +789,7 @@ The project lead now runs on Fable 5.1 (T24). Fable's own guidance says
 prompts written for prior models are often too prescriptive and reduce
 output quality, and that stating the goal and constraints beats enumerating
 steps. `SKILL.md` is a fourteen-step numbered loop and `full-path.md` a
-thirteen-step one. The evidence so far cuts the other way: a Fable lead ran
+thirteen-step one. The evidence so far cuts the other way: a Fable project lead ran
 the numbered loop in 130 turns with zero fix rounds (§15.50). So this is a
 measurement, not a rewrite.
 

@@ -482,7 +482,7 @@ Triggers are batched into one interruption where possible.
 3. A **balanced council** on an architecture-moving question.
 4. Any action outside an isolated workspace: the main branch, production, or
    credentials.
-5. The spend ceiling is crossed.
+5. The charter's budget is exceeded (section 8).
 6. A package reached the fix-round breaker at the top band.
 
 Everything else the project lead settles itself and records — unless it judges
@@ -555,26 +555,21 @@ Rules:
   involvement.
 - Every promotion is logged with predicted band, actual band, and cause. That
   turns the rubric from a guess into a measurement.
-- Each run has a spend ceiling. Crossing it escalates.
+- A charter may name a budget in dollars. Exceeding it escalates.
 
-Spend is measured from the `usage` block on each subagent's completion
-notification, which carries `total_tokens` per agent. A teammate's spend is
-not reported this way, so the project lead records an estimate for teammates
-and marks it as such. This is a known weakness of the ceiling: it undercounts
-exactly the agents that cost the most. Treat the first runs' numbers as a
-floor.
+Spend is measured from the transcripts. Every session that runs from the
+checkout — the project lead's own, each teammate, each subagent — writes its
+per-request usage to `~/.claude/projects/<checkout>/`, and
+`skills/project-lead/scripts/spend.py` prices all of it at list price into
+`spend.transcript`. `autonomy-contract.md` says when the project lead runs
+it.
 
-The complete count comes from the transcripts. Every session that runs from
-the checkout — the project lead's own, each teammate, each subagent — writes
-its per-request usage to `~/.claude/projects/<checkout>/`, and
-`skills/project-lead/scripts/spend.py` prices all of it into
-`spend.transcript` (§15.50). `autonomy-contract.md` says when the project
-lead runs it and which count the ceiling reads.
-
-The ceiling itself is estimated at the split from the package count, and a
-charter's `Ceiling:` line overrides it; `full-path.md` step 1 holds the
-arithmetic. The old fixed default undercounted a ten-package run by an order
-of magnitude (§15.50).
+The token ceiling this section once required is gone (§15.50). It counted
+subagent completion notifications only, which missed the project lead's own
+session and every teammate — 90% of a measured run — so it never fired in
+seven runs, and the one time spend mattered the user's subscription limit
+fired first. A dollar figure from the transcripts is the whole of what
+remains, and a charter `Budget:` line is the only gate on it.
 
 One `crew:ic` definition serves all three bands, because a spawn-time `model`
 overrides the definition's frontmatter (section 12).
@@ -582,8 +577,8 @@ overrides the definition's frontmatter (section 12).
 **The project lead runs on Fable 5.1 at high effort.** The seat is the run's
 judgment, not its volume: it writes the spec and the split, decides the
 order of work, and adjudicates every review. §15.50 measured the two
-candidates on one full-path goal. The Fable lead cost two thirds of the Opus
-lead's arm, did the lead's own work in a third of the turns, took no fix
+candidates on one full-path goal. The Fable project lead cost two thirds of
+the Opus arm, did the lead's own work in a third of the turns, took no fix
 rounds where Opus took fifteen, and made the process choices — harness
 first, fewer packages, one IC carrying its context — that produced that
 result. The per-token price difference was not the reason; the order of
@@ -2788,12 +2783,13 @@ Deliberately different:
     **Goal 1, simple path, `convert-keys-js`:** two new key converters with
     tests and docs. Both leads took the simple path, dispatched one sonnet
     IC, needed zero fix rounds and zero escalations, and produced
-    near-identical diffs. Fable: 22 minutes, $7.07, 34 lead turns. Opus: 24
-    minutes, $6.40, 65 lead turns. Too easy to separate them. It did expose
-    one defect: the Fable lead read every background agent's result through
+    near-identical diffs. Fable: 22 minutes, $7.07, 34 project-lead turns. Opus: 24
+    minutes, $6.40, 65 project-lead turns. Too easy to separate them. It did expose
+    one defect: the Fable project lead read every background agent's result through
     `TaskOutput`, which carries no usage, so its record had
-    `measured_tokens: 0` and its ceiling could never fire.
-    `autonomy-contract.md` now says to read the completion notification.
+    `measured_tokens: 0` and its ceiling could never fire. The ceiling and
+    that count are gone (below); `Spend:` on a council entry still reads the
+    notification.
 
     **Goal 2, full path, the `websites` monorepo:** graduate a seven-page
     static prototype into Next.js app routes, following a sibling site's
@@ -2804,11 +2800,11 @@ Deliberately different:
     prices computed over every transcript under each arm's project
     directory by `scripts/spend.py`.
 
-    | | Opus 5 lead | Fable 5.1 lead |
+    | | Opus 5 project lead | Fable 5.1 project lead |
     |---|---|---|
     | Draft PR | #23, 106 files | #24, 118 files |
     | Arm total | $215 | $144 |
-    | Lead's own session | $113, 350 turns, peak context 827k | $38, 130 turns, peak context 481k |
+    | Project lead's own session | $113, 350 turns, peak context 827k | $38, 130 turns, peak context 481k |
     | Packages | 10 in 4 territories, parallel | 5 in 1 territory, sequential |
     | Fix rounds | 15 | 0 |
     | Reviews | 17 | 10 |
@@ -2816,7 +2812,7 @@ Deliberately different:
     | Escalations | 0 | 0 |
     | Independent fidelity check, worst pair | 0.30% | 2.60%, 18 of 21 at 0.00% |
     | Tests, a11y | 221 pass, clean | 249 pass, clean |
-    | Record's own `measured_tokens` | 1.56M | 1.21M |
+    | Record's own notification count | 1.56M | 1.21M |
     | Transcript tokens | 389M | 187M |
 
     **What separated them was the order of work, not the model's price.**
@@ -2826,12 +2822,12 @@ Deliberately different:
     to Tailwind utilities, built the harness last, and paid fifteen fix rounds
     to converge on the same fidelity. Fable also cut half as many packages,
     kept one IC teammate across all five so the ported CSS and the harness
-    were learned once, and did the lead's work in a third of the turns. At
+    were learned once, and did the project lead's work in a third of the turns. At
     Opus prices the same Fable session would have cost about $34 against its
     $38, and at Fable prices the Opus session about $93 against its $113. The
     price sheet moved a few dollars; the turn count moved the rest.
 
-    **Neither lead escalated the question the answer key marked as the
+    **Neither project lead escalated the question the answer key marked as the
     principal's** — whether `/book` gets per-book routes. Both resolved it
     from precedent the same way. No judgment difference showed on the open
     questions.
@@ -2852,24 +2848,25 @@ Deliberately different:
     measure.
 
     **The IC teammate reached 66% of its window without compacting.** 560
-    turns, 659k tokens peak. Neither the lead nor the IC can read that
+    turns, 659k tokens peak. Neither the project lead nor the IC can read that
     number, so the reuse decision was blind to it. The `PreCompact` hook now
     records a compaction into the run, and step 8a respawns after four
-    packages as the proxy the lead can count.
+    packages as the proxy the project lead can count.
 
     **The record's spend count is an order of magnitude short.** Opus's
     record said 1.56M tokens; its transcripts held 389M, of which 232M were
     the lead's own cache reads. The lead's session and the teammates were
     never counted, and the 2M default ceiling could not have protected the
-    user's limit, which fired first in both arms. `scripts/spend.py` and the
-    split-time ceiling estimate close this.
+    user's limit, which fired first in both arms. The token ceiling and its
+    per-agent bookkeeping are removed; `scripts/spend.py` prices the
+    transcripts in dollars, and a charter `Budget:` line is the only gate.
 
     **Both arms left a `next start` listening on port 3002.** The first one
     served HTML pointing at chunks from an earlier build, so the stylesheet
     500'd and the independent check saw an unstyled page until the server was
     killed. `ic-contract.md` and `SKILL.md` step 14 now sweep processes.
 
-    **One leak in the protocol.** The Fable lead's first decision records
+    **One leak in the protocol.** The Fable project lead's first decision records
     that it found the Opus record and PR #23 by listing `~/.claude/crew/`,
     and that it read nothing from them. Its split, its CSS strategy and its
     harness differ enough from Opus's to make that credible, but the record
@@ -2880,15 +2877,15 @@ Deliberately different:
 
     | Inefficiency | Evidence | Change |
     |---|---|---|
-    | The lead's context is the bill | 232M cache-read tokens, $116 of $215 | Review agents write their report to the record and return three lines (`review-output.md`); diffs already stay out |
-    | The most expensive model writes the longest documents | 324-line spec, 273-line split, as lead output | A sonnet subagent drafts from the lead's outline (`SKILL.md` step 3) |
+    | The project lead's context is the bill | 232M cache-read tokens, $116 of $215 | Review agents write their report to the record and return three lines (`review-output.md`); diffs already stay out |
+    | The most expensive model writes the longest documents | 324-line spec, 273-line split, as project-lead output | A sonnet subagent drafts from the lead's outline (`SKILL.md` step 3) |
     | Fix rounds as the quality mechanism | 15 rounds vs 0, decided by harness order | Verification tool is package one; ICs run it before reporting (`full-path.md` step 1, `ic-contract.md`) |
     | Record bookkeeping by hand | hundreds of heredoc turns; the invented session id | `scripts/crew-record.py` |
     | Critic rounds on enumerations | 3 spec rounds, each one item missing from a closed list | `[Critical]` redefined; enumerations are `[Concern]` (`review-output.md`, `agents/spec-critic.md`, `SKILL.md` step 3) |
     | Plan gate round trip per package | late idle notices, no findings | Two-check approval for `standard` and `light` (`full-path.md` step 5) |
     | Package count | 10 packages vs 5 for one goal | Fewer, larger packages per territory (`full-path.md` step 1) |
-    | Spend blind spots | 1.56M recorded vs 389M real | `scripts/spend.py`, `spend.transcript`, split-time ceiling estimate |
-    | Compaction invisible | 66% of window, unobserved | `PreCompact` hook, `run.compactions`, respawn rule |
+    | Spend blind spots | 1.56M recorded vs 389M real | Token ceiling removed; `scripts/spend.py`, `spend.transcript`, charter `Budget:` |
+    | Compaction invisible | 66% of window, unobserved | `PreCompact` hook records the compacting agent's name, `run.compactions`, respawn rule |
     | Time-versus-spend unstated | parallel cost 15 rounds; sequential cost hours | Charter `Favour:` line (`record-format.md`) |
     | Stale processes | `next start` on 3002 in both arms | Process sweep in `ic-contract.md` and `SKILL.md` step 14 |
     | Prior run visible | Fable saw Opus's record | `CREW_RECORD_ROOT` |

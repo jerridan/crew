@@ -26,7 +26,8 @@ code, run against a seeded record (design §15.38, §15.50).
 | `.github/pull_request_template.md` | the PR body skeleton | GitHub, when you open a PR |
 
 A run's own output — charter, spec, plan, state, reports, reviews — never
-lands in this repo. It goes to `~/.claude/crew/<goal-slug>/`.
+lands in this repo. It goes to `<record-root>/<goal-slug>/`, where the root
+is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 
 ## Build state
 

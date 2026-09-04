@@ -60,7 +60,7 @@ packages grouped into territories. One IC owns one territory and works its
 packages in the listed order. Mirror every field into `state.json`'s
 `packages[]`.
 
-Four rules shape the split (design §15.50):
+Three rules shape the split (design §15.50):
 
 - **Read the charter's `Favour:` line first.** `spend`, the default, is one
   territory and one IC that carries its context from package to package.
@@ -78,11 +78,6 @@ Four rules shape the split (design §15.50):
   review, a merge and a suite run per package. Split a territory only where
   a review boundary earns its cost: a different band, or an interface
   another package consumes.
-- **Estimate the ceiling.** Sum 300k tokens per `standard` or `light`
-  package and 500k per `deep` one, add 200k per package for its reviews,
-  and add 30% for fix rounds. Write the arithmetic to `decisions.md` and the
-  result to `spend.ceiling_estimate`. It becomes `spend.ceiling` unless the
-  charter carries a `Ceiling:` line, which wins.
 
 ## 2. Have the split reviewed
 
@@ -253,10 +248,12 @@ A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules
 say what each cause earns. Committing on a blocked IC's behalf is a normal
 outcome here, not a failure (design §15.12).
 
-Read `run.compactions` before you accept. An entry for this IC's session
-since its last accepted package means it lost the context it planned in:
-send it its plan back with the go-ahead for the fix round, and treat its
-report's claims about earlier packages as unverified.
+Read `run.compactions` before you accept. An entry whose `agent` is this
+IC's name, dated since its last accepted package, means it lost the context
+it planned in: send it its plan back with the go-ahead for the fix round,
+and treat its report's claims about earlier packages as unverified. An entry
+with `agent: null` is your own session's compaction; re-read the record
+before your next decision.
 
 ## 7. Review the package
 
@@ -308,8 +305,8 @@ in the listed order. Write the new package's `base` as you send it — the
 worktree head as it stands now, which is the accepted package's last commit.
 That is what keeps the next review diff to the next package's own work.
 
-**Respawn instead of sending** when `run.compactions` lists the IC's session,
-or when the IC has finished four packages. Neither you nor the IC can read
+**Respawn instead of sending** when `run.compactions` names the IC in
+`agent`, or when the IC has finished four packages. Neither you nor the IC can read
 its context, so the count is the proxy: one IC carried five packages to 66%
 of its window without compacting, and the next one may not (design §15.50).
 Stand the IC down, then spawn a fresh one at the new package's band, with

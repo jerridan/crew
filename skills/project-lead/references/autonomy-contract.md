@@ -103,19 +103,12 @@ any other entry.
 
 ### Council spend
 
-Sum the advocates' `total_tokens` into `spend.council_tokens`, and record each
-advocate in `spend.by_agent` and `measured_tokens` the way you record any
-subagent. `council_tokens` is a line item over that same spend, not a second
-budget, so it never exceeds `measured_tokens`.
-
-**Your own adjudication is not in it.** Nothing reports your tokens to you —
-`measured_tokens` counts subagent notifications and `estimated_tokens` covers
-teammates, and neither has a place for the project lead's own. A council
-therefore costs more than its line item says. Say so in the record rather than
-inventing a number for yourself.
-
-A council is expected to be the largest single line item in a run. The `Spend`
-section below owns what to do with a number you did not receive.
+Write the advocates' `total_tokens`, summed from their completion
+notifications, on the entry's `Spend:` line (`record-format.md`). Read the
+number from the notification, not from `TaskOutput`, which returns the text
+alone; write `unmeasured` when no notification carried one. Your own
+adjudication is not in it. The run's dollar cost, adjudication included, is
+what `spend.py` measures (Spend below).
 
 ## Escalation triggers
 
@@ -131,7 +124,7 @@ one interruption; a run built in the wrong direction costs a day.
    question you can neither answer with a citation nor frame into positions.
 4. Any action outside the deliverable branch: the main branch, production,
    or credentials.
-5. The spend ceiling is crossed.
+5. The charter's budget is exceeded (Spend, below).
 6. The fix-round breaker fired at the top band.
 7. The goal needs the full path and one of the two conditions you can check
    fails — agent teams off, or a worktree-isolated session (`full-path.md`
@@ -175,37 +168,15 @@ instruction that settles the same question in every later run.
 
 ## Spend
 
-Read `total_tokens` from each subagent's completion notification into
-`spend.by_agent` with `measured: true`, and add it to `measured_tokens`. A
-subagent you spawned yourself reports its spend. A teammate's spend is never
-reported, so every full-path IC costs you an estimate with
-`measured: false`. That undercounts exactly the agents that cost the most —
-treat a full-path total as a floor, and say so in the record.
-
-**A number you did not receive is never `measured: true`.** Some dispatch
-shapes report no `total_tokens` at all — a nested headless process returns
-only its final text (design §15.26d). Record that agent with
-`total_tokens: null` and `measured: false`, estimate it into
-`estimated_tokens`, and say in the record which shape gave you no number.
-Writing `measured: true` over an absent number is a fabricated measurement,
-and it is worse than the gap it hides.
-
-**Read the number from the completion notification, never from
-`TaskOutput`.** Only the notification carries `total_tokens`; the tool
-returns the agent's text alone. A run that polled every agent through
-`TaskOutput` recorded `measured_tokens: 0` and could never trip its ceiling
-(design §15.50).
-
-**The transcripts are the only complete count.** After each package
-integrates, and again before the PR opens, run
+A run's cost is measured from its transcripts, in dollars at list price.
+After each package integrates, and again before the PR opens, run
 `python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
-prices every session that ran from the checkout — yours and the teammates'
-included — into `spend.transcript` (`record-format.md`). Two runs of one
-goal measured 1.2M and 1.6M tokens in `measured_tokens` against 187M and 389M
-in the transcripts (design §15.50).
+prices every session that ran from the checkout since the record was
+created — yours and the teammates' included — into `spend.transcript`
+(`record-format.md`). Nothing else counts the project lead's own session or
+a teammate, and those were 90% of two measured runs (design §15.50).
 
-Crossing `ceiling` is trigger 5. Read `transcript.total_tokens` against it
-when `transcript` exists, and `measured_tokens` plus `estimated_tokens`
-otherwise. When every agent is unmeasured and `transcript` is absent, the
-ceiling cannot fire, so say so in the record rather than reporting a run as
-within budget.
+**Trigger 5 is the budget.** When the charter carries a `Budget:` line, it is
+`spend.budget`; when `spend.transcript.usd_list_price` exceeds it after a
+`spend.py` run, stop and escalate with the number. A charter with no
+`Budget:` sets no limit, and the transcript figure is a report, not a gate.

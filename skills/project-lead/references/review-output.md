@@ -42,11 +42,18 @@ finished. Quote the exact line, file or name it sits on.
 ## Return path
 
 Your dispatch names an absolute path under the record's `reviews/`. Write
-your whole report there. Then make your tool result exactly three lines: the
-path you wrote, the number of findings by tag, and the two verdict lines
-below. Nothing else. The project lead's context is the most expensive place
-in the run, and a full report there is read on every later turn (design
-§15.50).
+your whole report there. Then make your tool result exactly four lines, in
+this order, and nothing else:
+
+```
+Wrote: <the absolute path>
+Findings: <n> critical, <n> concern, <n> nit
+Verdict: <one of your two verdict strings>
+Critical count: <n>
+```
+
+The project lead's context is the most expensive place in the run, and a
+full report there is read on every later turn (design §15.50).
 
 When the write is denied, your tool result is the whole report. Say so in
 its first line and name the denied path. Never say you wrote a file you
@@ -57,7 +64,7 @@ nobody.
 
 ## The two verdict lines
 
-End your report with exactly two lines, in this order:
+End your report file with the same two lines that end your tool result:
 
 ```
 Verdict: <one of your two verdict strings>

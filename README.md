@@ -144,8 +144,8 @@ confidence with no citation is a defect.
 
 **A contract for when to ask you.** Questions route three ways: precedent, a
 council, or you. The project lead escalates on a fixed set of triggers — a goal
-with no falsifiable acceptance criterion, a council it cannot settle, a crossed
-spend ceiling. Questions about what *you* want are never debated, because a
+with no falsifiable acceptance criterion, a council it cannot settle, an
+exceeded budget. Questions about what *you* want are never debated, because a
 council always names a winner and would bury "we do not know what you want" as
 "we established you want X".
 

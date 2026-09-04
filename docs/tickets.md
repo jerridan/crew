@@ -1145,7 +1145,7 @@ failing test first", the red-commit check in both path files, and
 
 ## T33 — Give a bounded edit a package entry, or take `split.md` out of its path
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §9.1, §15.59)
 

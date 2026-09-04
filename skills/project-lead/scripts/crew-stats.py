@@ -221,8 +221,12 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
 FIELD_START = re.compile(r"^[A-Z][A-Za-z]*(?: [A-Za-z]+)?:")
 
 # `Positions:` lists each position as `<letter>. <text>`, in framing order —
-# the prior first on an adversary entry (`record-format.md`).
-POSITION = re.compile(r"([A-Z])\.\s*(.*?)(?=\s[A-Z]\.\s|$)", re.S)
+# the prior first on an adversary entry (`record-format.md`). A label opens
+# only at the start of the field or right after the previous position's own
+# closing ". ", never mid-sentence — a position's prose can otherwise name a
+# capital letter of its own (a variable, a lone-letter name) that reads like
+# a label to a looser pattern.
+POSITION_LABEL = re.compile(r"(?:^|(?<=\.\s))([A-Z])\.\s+")
 
 # `Answer:` on a lettered entry opens with the winning letter, then a dash.
 # An entry with no lettered positions (an older or a non-adversary shape)
@@ -261,6 +265,33 @@ def normalize(text: str) -> str:
     return re.sub(r"[^a-z0-9 ]", "", text.lower()).strip()
 
 
+def positions_of(positions_text: str) -> list[tuple[str, str]]:
+    """Split `Positions:` into `(letter, text)` pairs, in the order framed."""
+    labels = list(POSITION_LABEL.finditer(positions_text))
+    pairs = []
+    for i, label in enumerate(labels):
+        end = labels[i + 1].start() if i + 1 < len(labels) else len(positions_text)
+        pairs.append((label.group(1), positions_text[label.end():end].strip()))
+    return pairs
+
+
+# Below this share of overlapping words, two answers read as different claims
+# rather than the same one worded differently. Whole-word overlap forgives a
+# rewording; it still catches a dropped guard or a dropped clause, which
+# leaves fewer words shared than a rewording does (§15.64d's "prior kept,
+# guard dropped" is what this threshold has to tell apart from a paraphrase).
+# The number is a judgment call, not a measurement — there is no labelled
+# adversary entry on this machine yet to calibrate it against.
+SAME_CLAIM = 0.8
+
+
+def same_claim(a: str, b: str) -> bool:
+    words_a, words_b = set(a.split()), set(b.split())
+    if not words_a or not words_b:
+        return a == b
+    return len(words_a & words_b) / len(words_a | words_b) >= SAME_CLAIM
+
+
 def classify_adversary(entry: str) -> str | None:
     """One of `whole`, `part`, `overturned`, or `None` when the shape will not parse.
 
@@ -275,7 +306,7 @@ def classify_adversary(entry: str) -> str | None:
     if not prior or not positions_text or not answer or prior.strip().lower() == "none":
         return None
     prior_answer = normalize(PRIOR_CONFIDENCE.sub("", prior))
-    positions = POSITION.findall(positions_text)
+    positions = positions_of(positions_text)
     if len(positions) != 2:
         return None
     prior_letter, adversary_letter = positions[0][0], positions[1][0]
@@ -287,7 +318,7 @@ def classify_adversary(entry: str) -> str | None:
         return "overturned"
     if winner != prior_letter:
         return None
-    return "whole" if answer_text == prior_answer else "part"
+    return "whole" if same_claim(answer_text, prior_answer) else "part"
 
 
 def read_decisions(record: Path, skips: list) -> tuple[int, int, int, dict]:

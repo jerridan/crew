@@ -12,6 +12,12 @@ counts and the review catch rate. Design §8 asks for these numbers to turn the
 band rubric from a guess into a measurement, and to give a principal a
 defensible charter `Budget:`.
 
+It also reads every council entry's `Prior:`, `Positions:`, `Answer:` and
+`Models:` lines and reports the one-advocate ("adversary") entries: how many
+kept the project lead's prior whole, how many changed it in part, and how
+many the advocate overturned. Design §6.1 puts the adversary on probation
+until ten such entries exist; T34 in `docs/tickets.md` owns the count.
+
 The catch rate is one number per review kind: the share of that kind's reviews
 that returned an action verdict. A review file's `Verdict:` line is the only
 machine-readable statement the record holds about whether a review changed
@@ -207,20 +213,103 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
     return counts, by_kind, by_band
 
 
-def read_decisions(record: Path, skips: list) -> tuple[int, int, int]:
-    """Return the decision count, the council count and the council tokens."""
+# A field's value can wrap across several plain lines (`record-format.md`
+# gives `Citation:` and `Losing:` no other way to hold a paragraph). It runs
+# until the next line that opens a new field or the entry ends. A field name
+# is one or two capitalized words, which is every name the format uses
+# (`Prior`, `Positions`, `Answer`, `Models`, ...).
+FIELD_START = re.compile(r"^[A-Z][A-Za-z]*(?: [A-Za-z]+)?:")
+
+# `Positions:` lists each position as `<letter>. <text>`, in framing order —
+# the prior first on an adversary entry (`record-format.md`).
+POSITION = re.compile(r"([A-Z])\.\s*(.*?)(?=\s[A-Z]\.\s|$)", re.S)
+
+# `Answer:` on a lettered entry opens with the winning letter, then a dash.
+# An entry with no lettered positions (an older or a non-adversary shape)
+# never matches, and is read as unlettered.
+ANSWER_LETTER = re.compile(r"^\s*([A-Z])\s*[-—.]\s*(.*)$", re.S)
+
+# `Prior:` and `Models:` shapes, from `record-format.md`'s council entry.
+PRIOR_CONFIDENCE = re.compile(r"\s*\((?:high|medium|low)\)\s*$", re.I)
+ONE_ADVOCATE = re.compile(r"^\s*1\s+advocate\b", re.I)
+
+
+def field_text(entry: str, name: str) -> str | None:
+    """The full text of a `<name>:` field, its wrapped lines joined by a space.
+
+    `None` when the entry carries no such field — a `pending` council entry
+    read before its adjudication, or an older record missing the field.
+    """
+    lines = entry.splitlines()
+    collected = None
+    for i, line in enumerate(lines):
+        if collected is None:
+            found = re.match(rf"^{re.escape(name)}:\s?(.*)", line)
+            if found:
+                collected = [found.group(1)]
+            continue
+        if FIELD_START.match(line) or line.startswith("#"):
+            break
+        collected.append(line)
+    if collected is None:
+        return None
+    return re.sub(r"\s+", " ", " ".join(collected)).strip()
+
+
+def normalize(text: str) -> str:
+    """Fold case, punctuation and spacing so two renderings of one answer match."""
+    return re.sub(r"[^a-z0-9 ]", "", text.lower()).strip()
+
+
+def classify_adversary(entry: str) -> str | None:
+    """One of `whole`, `part`, `overturned`, or `None` when the shape will not parse.
+
+    The comparison design §6.1 asks for: does `Answer:` read as the project
+    lead's own `Prior:`, a rewording of it, or the position the advocate
+    argued instead. `Positions:` puts the prior first on an adversary entry,
+    so its letter is `positions[0]` and the advocate's is `positions[1]`.
+    """
+    prior = field_text(entry, "Prior")
+    positions_text = field_text(entry, "Positions")
+    answer = field_text(entry, "Answer")
+    if not prior or not positions_text or not answer or prior.strip().lower() == "none":
+        return None
+    prior_answer = normalize(PRIOR_CONFIDENCE.sub("", prior))
+    positions = POSITION.findall(positions_text)
+    if len(positions) != 2:
+        return None
+    prior_letter, adversary_letter = positions[0][0], positions[1][0]
+    lettered = ANSWER_LETTER.match(answer)
+    if not lettered:
+        return None
+    winner, answer_text = lettered.group(1), normalize(lettered.group(2))
+    if winner == adversary_letter:
+        return "overturned"
+    if winner != prior_letter:
+        return None
+    return "whole" if answer_text == prior_answer else "part"
+
+
+def read_decisions(record: Path, skips: list) -> tuple[int, int, int, dict]:
+    """Return the decision count, the council count, the council tokens, and
+    the one-advocate ("adversary") entries broken down by what happened to
+    the prior: kept `whole`, changed `in part`, or `overturned`, plus how many
+    could not be classified from the entry's text.
+    """
     path = record / "decisions.md"
     if not path.is_file():
         skips.append(f"{record.name}: no decisions — the record has no decisions.md")
-        return 0, 0, 0
+        return 0, 0, 0, blank_adversary()
     text = path.read_text(encoding="utf-8", errors="replace")
     entries = re.split(r"^## ", text, flags=re.M)[1:]
     councils = 0
     tokens = 0
+    adversary = blank_adversary()
     for entry in entries:
         if not re.search(r"^Route:\s*council\b", entry, flags=re.M):
             continue
         councils += 1
+        title = entry.splitlines()[0].strip()
         # `Spend:` reads `unmeasured` when the dispatch reported no tokens,
         # and a council still awaiting adjudication has no `Spend:` line at
         # all (`record-format.md`). Both leave the token total short, so both
@@ -229,9 +318,23 @@ def read_decisions(record: Path, skips: list) -> tuple[int, int, int]:
         if found:
             tokens += int(found.group(1).replace(",", ""))
         else:
-            title = entry.splitlines()[0].strip()
             skips.append(f"{record.name}: no council spend — the entry \"{title}\" states no token count")
-    return len(entries), councils, tokens
+        models = field_text(entry, "Models")
+        if not models or not ONE_ADVOCATE.match(models):
+            continue
+        adversary["entries"] += 1
+        outcome = classify_adversary(entry)
+        if outcome is None:
+            adversary["unparsed"] += 1
+            skips.append(f"{record.name}: adversary entry \"{title}\" does not parse — "
+                         "its Prior, Positions or Answer line is missing or unlettered")
+        else:
+            adversary[outcome] += 1
+    return len(entries), councils, tokens, adversary
+
+
+def blank_adversary() -> dict:
+    return {"entries": 0, "whole": 0, "part": 0, "overturned": 0, "unparsed": 0}
 
 
 def read_record(record: Path, state: dict, checkout: str | None, forced: bool, skips: list) -> dict:
@@ -260,7 +363,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         counts["promotions"] += moved
         promotions += moved
 
-    decisions, councils, council_tokens = read_decisions(record, skips)
+    decisions, councils, council_tokens, adversary = read_decisions(record, skips)
     bands = {p.get("id"): (p.get("band") if p.get("band") in BANDS else "unknown") for p in packages}
     reviews, catch, catch_by_band = read_reviews(record, bands, skips)
     usd = price_run(record, state, checkout, forced, skips)
@@ -274,6 +377,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "decisions": decisions,
         "councils": councils,
         "council_tokens": council_tokens,
+        "adversary": adversary,
         "escalations": len(as_list(run.get("escalations"))),
         "compactions": len(as_list(run.get("compactions"))),
         "reviews": reviews,
@@ -307,10 +411,11 @@ def report(records: list[dict], skips: list[str]) -> None:
     print("Runs\n")
     rows = [
         [r["run"], r["packages"], r["fix_rounds"], r["promotions"], r["decisions"], r["councils"],
-         r["escalations"], r["compactions"], sum(r["reviews"].values()), money(r["usd"])]
+         r["adversary"]["entries"], r["escalations"], r["compactions"], sum(r["reviews"].values()), money(r["usd"])]
         for r in records
     ]
-    print(table(["run", "pkgs", "fixes", "promos", "decis", "councils", "escal", "compact", "reviews", "usd"], rows))
+    print(table(["run", "pkgs", "fixes", "promos", "decis", "councils", "advers", "escal", "compact", "reviews", "usd"],
+                rows))
 
     # A run's dollars cover the whole run. Nothing in the record attributes
     # them to one package, so a priced run splits its cost evenly over its
@@ -337,6 +442,23 @@ def report(records: list[dict], skips: list[str]) -> None:
         rows.append([band, t["packages"], t["priced"], f"{t['fix_rounds'] / t['packages']:.2f}",
                      t["promotions"], money(t["usd"] if t["priced"] else None), mean])
     print(table(["band", "pkgs", "priced", "fixes/pkg", "promos", "usd", "usd/pkg"], rows))
+
+    # A one-advocate ("adversary") entry: did the answer keep the project
+    # lead's `Prior:` whole, change it in part, or did the advocate overturn
+    # it. Design §6.1 puts the adversary on probation for ten of these.
+    print("\nAdversary councils (one advocate against the project lead's Prior)\n")
+    adversary = blank_adversary()
+    for r in records:
+        for key, value in r["adversary"].items():
+            adversary[key] += value
+    rows = [
+        ["kept whole", adversary["whole"]],
+        ["changed in part", adversary["part"]],
+        ["overturned", adversary["overturned"]],
+        ["unparsed", adversary["unparsed"]],
+        ["total", adversary["entries"]],
+    ]
+    print(table(["outcome", "count"], rows))
 
     print("\nReviews\n")
     kinds = [name for name, _ in REVIEW_KINDS] + ["other"]
@@ -382,6 +504,7 @@ def report(records: list[dict], skips: list[str]) -> None:
         ["decisions", sum(r["decisions"] for r in records)],
         ["councils", councils],
         ["council tokens", council_tokens],
+        ["adversary entries", adversary["entries"]],
         ["escalations", sum(r["escalations"] for r in records)],
         ["compactions", sum(r["compactions"] for r in records)],
         ["usd, priced runs", money(sum(priced) if priced else None)],

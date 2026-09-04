@@ -4058,3 +4058,25 @@ Deliberately different:
        `band-rubric.md`'s promotion applied to the council as well. One opus
        advocate therefore costs less than three sonnet ones, which is a
        stronger result than the change assumed.
+
+65. **The adversary now has a counter, and it reads zero on this machine —
+    2026-09-04, T34.** `crew-stats.py` reads every council entry's `Prior:`,
+    `Positions:` and `Answer:` lines and sorts each one-advocate entry into
+    one of three outcomes: the prior kept whole, changed in part, or
+    overturned. §15.64d's finding — prior kept, guard dropped — is why a
+    two-state count would not do; the script keeps the three states the
+    finding needs.
+
+    **The count today is zero, not one.** §15.64c and d describe a live
+    run, `slugify-helper-d1ad/`, whose one adversary entry changed the prior
+    in part. That record is not under `~/.claude/crew/` on this machine —
+    the script found six council entries across five records, and none
+    carries a `Prior:` line, so none is an adversary entry it can count. The
+    finding in §15.64d stands as what was read from that run at the time;
+    the counter here reports what the current record root holds, which is
+    fewer entries than the design text describes.
+
+    **The decision waits.** Ten adversary entries are the threshold §6.1
+    sets, and the record root holds zero it can count today. Nothing in
+    `docs/tickets.md` T34 closes until a run produces the count. `T34`'s
+    landing note says the same.

@@ -1208,3 +1208,10 @@ decision the numbers support.
 
 Read first: design §6.1, §15.64; `autonomy-contract.md` Council;
 `record-format.md` council entry; `skills/project-lead/scripts/crew-stats.py`.
+
+Part 1 landed 2026-09-04: `crew-stats.py` reads `Prior:`, `Positions:` and
+`Answer:` on every council entry and reports each one-advocate entry as
+kept whole, changed in part, or overturned (§15.65). Part 2 does not: the
+record root holds zero adversary entries the script can count today, ten
+short of the threshold, so no decision follows from the numbers yet. Status
+stays open until a run adds enough entries to count.

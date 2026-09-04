@@ -3469,7 +3469,9 @@ Deliberately different:
 
     By band, package reviews act at 0% on `light` (1 review), 12% on
     `standard` (25) and 17% on `deep` (6). One review in each of `standard`
-    and `deep`, and two elsewhere, state no verdict at all.
+    and `deep`, and two elsewhere, state no verdict at all. The band here is
+    the **package's**, not the reviewer's: `band-rubric.md` gives a reviewer
+    no band, so every one of these 32 reviews ran on sonnet.
 
     **The deliverable reviewer's 8% is the metric failing, not the agent.**
     Nine of the thirteen deliverable reviews returned `accepted` and still
@@ -3533,9 +3535,10 @@ Deliberately different:
       had survived six rounds of the harness's own use. The escapes sit
       outside one package's diff, where no model in that seat can reach them.
 
-    So `band-rubric.md` keeps the package reviewer at the package's own band,
-    and both paths keep the review. The layer that caught the cross-package
-    class is the deliverable review, which already has the scope.
+    So `agents/package-reviewer.md` keeps `model: sonnet`, `band-rubric.md`
+    keeps its rule that a reviewer takes no band, and both paths keep the
+    review. The layer that caught the cross-package class is the deliverable
+    review, which already has the scope.
 
     **What the record could not tell me.** Three gaps, all in the record
     format rather than in the runs.

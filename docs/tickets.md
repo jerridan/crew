@@ -564,7 +564,7 @@ Read first: design §9.1, §15.47; `record-format.md` deliverable fields;
 
 ## T18 — Sweep for stale status claims before a change lands
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any
 
@@ -601,6 +601,18 @@ unbuilt, and the check is stated in exactly one place.
 
 Read first: design §15.48, §15.49; `writing-standard.md`'s "Keep the status
 true"; `SKILL.md` step 12; `agents/deliverable-reviewer.md`.
+
+2026-09-04, done. `writing-standard.md`'s "Keep the status true" holds the
+vocabulary list and the commands; `SKILL.md` step 12 runs them;
+`crew:deliverable-reviewer` got no eighth check. The terms quoted in the
+first bullet above are this ticket's original ask, not a second list —
+`writing-standard.md` is the one that counts, and it has grown three terms
+since. A run then landed a stage with the sweep on:
+`~/.claude/crew/truncate-helper-bfa8/`, a simple-path run on a string-kit
+fixture. At step 12 the project lead found two stale claims that no IC file
+set held — the fixture's `README.md` roadmap row and its `CLAUDE.md` line
+about `truncate` — fixed both, and left the still-true `slugify` rows. Design
+§15.52 holds the evidence.
 
 
 ## T19 — Probe: `PreCompact` for an in-process teammate

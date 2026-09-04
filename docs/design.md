@@ -4196,20 +4196,25 @@ Deliberately different:
 
        All eight wrote their own file and returned the four lines. The
        full-path run is the first evidence for `crew:split-critic` under
-       the rule: it wrote
-       `reviews/deliverable-1-split-critic-r1.md` and returned `Verdict:
-       dispatchable`, `Critical count: 0`. Every one of crew's four review
-       agents has now written into the record root itself.
+       the rule: it wrote `reviews/deliverable-1-split-critic-r1.md` and
+       returned `Verdict: dispatchable`, `Critical count: 0`. Every one of
+       crew's four review agents has now written into the record root
+       itself.
 
     e. **A two-territory goal with no `Favour:` line takes the simple
        path.** The first run was meant to be the full-path one. Its goal
        named two helpers in two directories, and the project lead still
-       chose one package. The charter carried no `Favour:` line, which
-       defaults to spend, and one package is the cheaper split. The second
-       run got the full path from a charter file with `Favour: time`. So
-       territory count alone does not pick the shape, and a probe that
-       needs the full path must say `Favour: time` rather than trust the
-       goal to force it.
+       chose one package, and `SKILL.md` step 5 sends one package to the
+       simple path. The choice was deliberate and it is in `decisions.md`,
+       under "Which path, and how many packages?", with two citations:
+       `record-format.md`'s "`spend` is the default", and `full-path.md`
+       step 1's rule that a territory splits only where a review boundary
+       earns its cost. The charter carried no `Favour:` line, and neither
+       helper consumed the other. The second run carried `Favour: time` in
+       a charter file and reached the full path. So a goal's territory
+       count does not pick the shape, and a probe that needs the full path
+       writes `Favour: time` in the charter rather than trusting the goal
+       to force it.
 
     f. **The contrast run, before the rule.** `graduate-pages-v3-85b3`
        started at 2026-09-03T16:02Z. Its dispatches carried no Return

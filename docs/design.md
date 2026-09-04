@@ -3749,6 +3749,10 @@ Deliberately different:
        an install, the criterion would fail there for a reason that is not
        the bug.
 
+       The run finished at draft PR 4 on the fixture repo: one package, zero
+       fix rounds, zero escalations, `checkout_restored: true`, and $5.00 at
+       list price.
+
     b. **The rejection is proved against a seeded record, not against that
        run.** A live run cannot be made to produce a package whose new test
        passed from the start without telling the IC to break its own

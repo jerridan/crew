@@ -32,8 +32,9 @@ Each container has a different cost to the reader:
 A README, and reader-facing prose in general, is none of these four. A
 person opens it directly; nothing loads it automatically. Hold it to this
 standard's prose rules, skip the container-choice check — no cheaper
-container exists to route it to — and add the section below. Who owns
-reader-facing prose is still open (design §15.17); how to write it is not.
+container exists to route it to — and add the section below. It is a fifth
+container type, owned by `crew:ic-instructions` alongside the four above
+(design §15.17, §3.1).
 
 ## Writing for a person
 

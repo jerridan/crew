@@ -316,7 +316,7 @@ Read first: design §15.21, §15.22, §1, §4.
 
 ## T10 — Decide the README container owner
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §15.17)
 

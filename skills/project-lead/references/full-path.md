@@ -121,7 +121,8 @@ Name an IC `ic-<territory-slug>`.
 
 Spawn one **named** teammate per territory, at the band of the package it
 starts on: `crew:ic` for code, `crew:ic-instructions` for a `CLAUDE.md`, a
-`.claude/rules/` file, a `SKILL.md` or an agent definition.
+`.claude/rules/` file, a `SKILL.md`, an agent definition, or reader-facing
+prose such as a README (design §3.1).
 
 Pass the band's model at spawn time, as `band-rubric.md` says. Pass it for an
 IC and never for a critic or a reviewer.

@@ -697,6 +697,12 @@ shape that produced it.
 
 Read first: design §15.26, §15.31, §15.50; `review-output.md`.
 
+Half landed 2026-09-04 as design §15.67: eight simple-path and bounded-edit
+runs made 25 review dispatches after the Return path rule, and every reviewer
+wrote its own file, two of them under `~/.claude/crew/`. No denial. The full
+path and `crew:split-critic` still need one run, because every run since the
+rule landed took a shape that writes no `split.md`.
+
 ## T21 — Batch the principal's questions before the split
 
 Status: done

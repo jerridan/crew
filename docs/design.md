@@ -4144,3 +4144,46 @@ Deliberately different:
        hypothesis without naming one. Both reports are honest and neither
        hedged, so the concession reads as the finding §9.5 wants rather than a
        failed dispatch.
+
+67. **A review agent writes its own file into the record root — 2026-09-04,
+    T20.** Item 26b denied every IC write under `~/.claude`, and item 31b
+    traced that denial to the nested headless `claude -p` shape.
+    `review-output.md`'s **Return path**, added on 2026-09-04T02:00Z with
+    §15.50's changes, tells each review agent to write its whole report to
+    the absolute path its dispatch names and to return four lines. T20 asked
+    whether that write is allowed. It is. No run since the rule landed shows
+    a denial.
+
+    a. **Eight runs, 25 review dispatches, zero denials.** Two runs kept
+       their record under `~/.claude/crew/` — `truncate-helper-bfa8` and
+       `slugify-stage-3-fa89`, both on 2026-09-04 — so the write went to the
+       same sensitive path item 26b named. Six more ran with
+       `$CREW_RECORD_ROOT` in a scratchpad: `slugify-helper-d1ad`,
+       `add-slugify-helper-41b2`, `add-querykey-helper-5400`,
+       `add-slugify-helper-6304`, `encodequery-skip-nullish-7e8f` and
+       `encode-query-jsdoc-ampersand-9b9f`. Every dispatch returned the
+       four-line result with a real `Wrote:` path, and every named file is
+       on disk. The fallback for a denied write was never taken.
+
+    b. **The dispatch shape that produced it.** An interactive project lead,
+       in `auto` permission mode, spawns each reviewer with the `Agent` tool
+       as an unnamed background subagent, with no spawn-time `model`. The
+       agent frontmatter therefore picks the model: opus for
+       `crew:spec-critic` and `crew:deliverable-reviewer`, sonnet for
+       `crew:package-reviewer`. The reviewer's cwd is the target repo, and
+       the record root is outside it. No `--add-dir` and no allow rule was
+       added for the write.
+
+    c. **The saving is real.** The project lead reads the four lines, then
+       reads only the parts of the report file it needs, with `grep` and
+       `sed`. In `truncate-helper-bfa8` it made three review dispatches and
+       never held a whole report in its context.
+
+    d. **The full path and `crew:split-critic` have no evidence yet.** The
+       last full-path run, `graduate-pages-v3-85b3`, started at
+       2026-09-03T16:02Z — before the rule. Its dispatches carried no
+       Return path, so the project lead saved each review file itself, with
+       a Bash script that read the critic's transcript for the block that
+       holds `Verdict:`. Every run since the rule is a simple path or a
+       bounded edit, and neither writes a `split.md` for a split critic to
+       review. T20 stays open for one full-path run.

@@ -3855,3 +3855,34 @@ Deliberately different:
        the spawn prompt and it is the contract that governs — but a
        split-pane teammate reads the agent body in place of its default
        prompt (§15.20d), so the two had to agree.
+
+62. **The remote check moved into the preference sweep, and a run proved it
+    asks once — 2026-09-04, T29.** Two T17 runs on 2026-09-04 (item 54) reused
+    a fixture with no remote and reached step 14 before finding out, asking
+    only after the whole loop had already run. `full-path.md` step 0 gains a
+    third launch check — can this run push and open a draft PR, checked with
+    `git -C <repo> remote` — beside the two full-path-only checks. Unlike
+    those two, it runs on every goal: `SKILL.md` step 4a runs before step 5
+    chooses a shape, so `autonomy-contract.md`'s preference sweep folds check
+    3 into the same batch for a bounded edit too, offering the three ends
+    `simple-path.md` step 14 already offered a run that found out late — add
+    a remote, keep the work local as `work-complete`, or stop. Step 14 now
+    reads the sweep's answer from `escalations` before asking; only a
+    checkout that had a remote at sweep time, and lost push or PR access
+    afterwards, still asks there, because the sweep wrote no entry for it to
+    read.
+
+    **A live run proved the batch and the silence —
+    `add-slugify-helper-41b2/`.** Simple path on a clone of
+    `jerridan/crew-fixture-string-kit` with `git remote remove origin` run
+    first, an Opus 5 project lead at `--effort high`, the plugin loaded from
+    this branch. The goal was a `slugify` helper with the same
+    café/diacritics gap as item 53e's slugify run. `state.json`'s
+    `escalations` holds two entries stamped the same `asked_at`,
+    `2026-09-04T18:11:51Z` — the accent question and `launch check 3: the
+    checkout has no remote to push to` — both before the split, answered in
+    one `AskUserQuestion` batch with two tabs. The principal chose "keep the
+    work local." The run split, built, passed both reviews with one fix (a
+    deliverable-review nit), and ended `work-complete` with `pr_url: null` at
+    step 14 with no second ask: "Ending the run as work-complete, per your
+    answer to keep the work local." Cost $5.51 at list price.

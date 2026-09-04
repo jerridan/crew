@@ -1007,7 +1007,7 @@ Read first: design §15.51; `record-format.md` `run_state` transitions and
 
 ## T29 — Check for a remote before the run starts
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §6, §15.52, §15.53)
 

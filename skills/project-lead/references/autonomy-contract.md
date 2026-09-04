@@ -70,11 +70,20 @@ Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
 have nothing to say about any other kind of question.
 
-**Run `full-path.md` step 0's two launch checks before you send the batch**
-when the goal may need more than one package, and put either failure in the
-same batch. Both are trigger 7, neither depends on an answer, and neither can
-be fixed mid-run. A run that asks the preference questions first and fails a
-launch check afterwards has interrupted the principal twice.
+**Run `full-path.md` step 0's launch check 3 here, every time, and put its
+failure in the same batch.** It is trigger 7, does not depend on an answer,
+and cannot be fixed mid-run. Checks 1 and 2 there stay where they are — they
+only ever matter once the goal has already been sent to the full path, so
+`full-path.md` step 0 runs them, not the sweep. A run that asks the
+preference questions first and fails a launch check afterwards has
+interrupted the principal twice.
+
+Check 3's failure is a preference question, not a plain block: offer the
+three ends `simple-path.md` step 14 names. Write it with `escalation add`
+using the trigger text `launch check 3 (trigger 7): no remote` — a fixed
+phrase, so step 14 can find this entry among any others trigger 7 wrote.
+Step 14 reads the answer instead of asking again: one answer, recorded once,
+settles both ends of the run.
 
 A lead session answers the batch by message; a human answers it in the
 session. Write each question with `crew-record.py escalation add`
@@ -183,9 +192,10 @@ one interruption; a run built in the wrong direction costs a day.
    or credentials.
 5. The charter's budget is exceeded (Spend, below).
 6. The fix-round breaker fired at the top band.
-7. The goal needs the full path and one of the two conditions you can check
-   fails — agent teams off, or a worktree-isolated session (`full-path.md`
-   step 0). Neither can be fixed mid-run.
+7. One of `full-path.md` step 0's three launch checks fails: the goal needs
+   the full path and agent teams are off or the session is worktree-isolated,
+   or — on any goal — the checkout has no remote to push to. None can be
+   fixed mid-run.
 8. The goal needs more than one **deliverable**. `full-path.md` runs one
    deliverable's packages; nothing loops over deliverables or reads
    `split.md`'s `Depends on` yet. Say which deliverables you would cut it

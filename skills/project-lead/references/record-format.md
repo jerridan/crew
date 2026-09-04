@@ -641,7 +641,8 @@ batch reads as one interruption in `state.json` too.
 ## Preference sweep: what does the principal want that the repo cannot say?
 Route: preference
 Questions: 1. Does each book get its own route? 2. Is the old URL kept?
-Answer: 1. Yes, one route per book. 2. No, the old URL redirects.
+Answer: 1. Yes, one route per book — recorded in .claude/rules/routes.md.
+2. No, the old URL redirects — not recorded.
 Citation: charter.md and spec.md hold no other open question that an
 instruction, a prior decision or repo precedent settles.
 Confidence: high
@@ -651,6 +652,11 @@ Timestamp: 2026-08-24T14:32:00Z
 `Questions:` is the sweep's own field, and it holds every question the sweep
 escalated, in the order it asked them. An entry with `Answer: none` needs no
 `Questions:` line.
+
+Each `Answer:` line ends with where the answer was written back: the target
+repo file that now carries it as a rule, or `not recorded` when the principal
+refused (`autonomy-contract.md`). That lets an audit tell a refusal from a
+step the run skipped.
 
 ### A council entry
 

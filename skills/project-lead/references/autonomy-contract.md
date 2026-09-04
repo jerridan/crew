@@ -64,7 +64,12 @@ Ask one block per question:
 <the question, in one line>
 Options: <each option, and what the run commits to under it>
 My recommendation: <which, and why>
+Record it? <the file the rule would land in>
 ```
+
+The `Record it?` line asks for one thing: permission to write the answer
+into the target repo, so the next run finds it as precedent. The section
+Record the answer as precedent, below, owns what happens next.
 
 Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
@@ -220,8 +225,35 @@ the right .claude/rules/ file> so the question does not come back?
 An instruction is configuration, and changing it is the principal's
 decision, not a side effect of a run.
 
-This is the one escalation that pays for itself: every answer becomes an
-instruction that settles the same question in every later run.
+## Record the answer as precedent
+
+An answer that stays in the record settles the question for this run alone.
+The next run on the same repo finds no precedent and asks it again. So every
+preference answer the principal approves becomes **one rule in the target
+repo's own instruction files**, on the deliverable branch.
+
+**You write it yourself, at integration** — `simple-path.md` step 12, or
+`full-path.md` step 9 — beside the other shared-file edits you make there.
+Dispatch nothing for it, for two reasons. A repo's instruction files are
+shared files, and you own every shared file; an IC that edits a root
+`CLAUDE.md` from its worktree collides with every other package. You also
+hold the answer already, so a dispatch would re-send the contract, the brief
+and the checklist to deliver one line.
+
+Hold the rule to `writing-standard.md`'s `## Before you open the PR`
+checklist. Its container check decides where the rule lands: a rule every
+session in the repo needs goes in the root `CLAUDE.md`, and a rule that
+covers one area of the repo goes in a `.claude/rules/` file scoped to that
+path. Its no-duplication check stops the rule competing with one the repo
+already states. Its size check keeps it short.
+
+Dispatch `crew:ic-instructions` only when the answer cannot pass that
+checklist as one rule. That is a package, it belongs in the split, and a
+second package sends the run down the full path.
+
+Write nothing when the principal refuses, or answers the question and not the
+`Record it?` line. Record the refusal in the sweep entry instead
+(`record-format.md`), so an audit can tell a refusal from a step you skipped.
 
 ## Spend
 

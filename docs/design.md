@@ -426,9 +426,9 @@ The project lead **proposes** the instruction text and never writes it without
 your explicit approval — instructions are configuration, and changing them is
 your decision, not a side effect of a run.
 
-This is the one escalation that pays for itself. Every answer becomes an
-instruction that resolves the same question in every future run, so the question
-rate should fall over time instead of staying flat.
+This is the one escalation that pays for itself. Every approved answer becomes
+an instruction the project lead writes back at integration (§6.3, §15.63), so
+the question rate falls over time instead of staying flat.
 
 **ICs never escalate to the human — they escalate to the project lead.** An IC
 that hits pattern ambiguity inside a package messages the project lead. The
@@ -481,6 +481,11 @@ the split the answer costs a fix round.
 A run whose sweep finds no preference question escalates nothing. It records
 the sweep either way, so an audit can tell "none found" from "never looked".
 `autonomy-contract.md` owns the rule and `record-format.md` the entry.
+
+Every answer the principal approves for recording is written back into the
+target repo's instruction files at integration, as one rule, by the project
+lead itself (§15.63). That is what makes each preference question a
+once-per-repo cost.
 
 ### Escalation triggers
 
@@ -3672,3 +3677,64 @@ Deliberately different:
        that front-loads its references pays for both path files unless the
        route comes first, and T26's A/B is the next thing to measure that
        against.
+
+63. **A preference answer becomes a rule in the target repo, and the project
+    lead writes it — 2026-09-04, T30.** T21's run B asked what `slugify` does
+    with `café`, got an answer, and wrote it into the run record alone. The
+    next run on that repo would find no precedent and ask it again. The
+    project lead noticed and proposed a `CLAUDE.md` line in its closing
+    message, but nothing made that a step.
+
+    `autonomy-contract.md` gains **Record the answer as precedent**. Every
+    preference escalation now carries a `Record it?` line, and every answer
+    the principal approves becomes one rule in the target repo's own
+    instruction files. `record-format.md`'s sweep entry ends each `Answer:`
+    line with the file the rule landed in, or `not recorded` on a refusal.
+
+    a. **The project lead writes it, and dispatches nothing.** A repo's
+       instruction files are shared files, and §5 gives every shared file to
+       the project lead; an IC editing a root `CLAUDE.md` from its worktree
+       collides with every other package. The project lead also holds the
+       answer already, so a `crew:ic-instructions` dispatch would re-send the
+       contract, the brief and the checklist to deliver one line, and on the
+       simple path the plan gate makes that two dispatches. `ic-instructions`
+       keeps the case the checklist cannot pass as one rule: that is a
+       package, it belongs in the split, and a second package sends the run
+       down the full path.
+
+    b. **`writing-standard.md`'s checklist picks the container.** Both runs
+       put their rule in the fixture's existing "Rules for a helper" list in
+       the root `CLAUDE.md`, as one bullet each. Neither invented a
+       `.claude/rules/` file, which is right for a repo whose every session
+       writes helpers.
+
+    c. **Two live simple-path runs proved it — 2026-09-04.** One clone of
+       `jerridan/crew-fixture-string-kit` per arm, a Fable project lead at
+       `--effort high` with `--model opus`, ICs and the spec prose writer at
+       Sonnet, the plugin loaded from this branch.
+
+       **Run A** (`add-slugify-helper-6304/`, $6.13 list) charted a `slugify`
+       helper whose input can carry accented letters. The sweep escalated one
+       question, and the ask surfaced as two: the accent question, and
+       `Record it?` with proposed text. Both were answered yes. At
+       integration the project lead committed "A helper that writes a URL
+       part removes the accent mark from a Latin letter. A letter of any
+       other script stays as it is." to the fixture's `CLAUDE.md`, ran the
+       suite green at 17 tests, and opened a draft PR.
+
+       **Run B** (`add-querykey-helper-5400/`, $7.62 list) ran on a clone
+       carrying run A's rule, with a `queryKey` charter of the same shape.
+       The sweep's `Citation:` line opens "CLAUDE.md settles the accent
+       rule", and no accent question reached `escalations`. The rule then
+       held twice more without an ask: the spec critic found the charter's
+       own wording contradicted it and the project lead recorded "the
+       instruction wins"; and a later `decisions.md` entry, "Does queryKey
+       keep the umlaut in Größe?", is `Route: precedent` and quotes the rule.
+       Run B escalated one question, and it was a new one the repo could not
+       answer — what shape a query key takes. That is the sweep working, not
+       a failure: a recorded answer retires its own question, not every
+       question.
+
+    d. **Run B recorded its answer too.** The `Record it?` line fired
+       unprompted on the second run, and the fixture's `CLAUDE.md` ended with
+       two rules from two runs. The mechanism compounds.

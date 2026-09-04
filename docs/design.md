@@ -512,6 +512,35 @@ Everything else the project lead settles itself and records — unless it judges
 that getting it wrong would take the work off the rails, in which case it asks
 anyway.
 
+### 6.4 Instruments
+
+A target repo can carry its own investigation skills or agents — a database
+query, an internal endpoint lookup — with access crew must never hold on its
+own. Crew ships none of these, discovers none by scanning the repo, and never
+dispatches one that the charter does not name.
+
+**The principal names the list at hand-off.** The charter carries an explicit
+list of repo-local skills or agents this run may dispatch, called its
+instruments. A run with no `Instruments:` line has none, and the project lead
+never invents one from what it finds in the repo. `record-format.md` owns the
+field.
+
+**Only the project lead or a researcher may dispatch a listed instrument**,
+and only during scouting or research, before any package is split out. An IC
+may not: its worktree and file set are already the bound on what it can touch
+(section 3, "What each role may not do"), and an instrument's access was
+vetted for the dispatch that named it, not for whatever an IC's territory
+turns out to need.
+
+**An instrument's output is a claim, not evidence**, treated exactly like an
+IC's report (section 7): the project lead restates it, checks it against
+whatever the repo or the record can confirm, and never acts on it unverified.
+An instrument that returns a fact no other source confirms is a lead to
+follow, not a fact to build on.
+
+Every dispatch of a listed instrument is recorded in the run's record.
+`record-format.md` owns where the entry lives.
+
 ---
 
 ## 7. Verification
@@ -3164,3 +3193,12 @@ Deliberately different:
     and 14. `full-path.md` carries two pointers instead of a copy — one at
     step 3, to record the branch, and one at step 11, to restore it — which is
     the shape this repo uses wherever one path borrows another's step.
+
+55. **Instruments are designed, not yet dispatched — 2026-09-04, T14.** §6.4
+    gives a target repo's own investigation skills or agents a name and a
+    gate: the charter's optional `Instruments:` line lists them, and only the
+    project lead or a researcher may dispatch one, during scouting or
+    research, never an IC. `record-format.md` owns the charter line and the
+    `run.instruments_used` field that logs every dispatch. Nothing in crew
+    dispatches an instrument yet — that work folds into T4's territory, per
+    T14's own ticket, and stays there until a run needs one.

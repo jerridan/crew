@@ -72,6 +72,10 @@ each on its own, anywhere in the file:
   splits into parallel territories; `spend` keeps one territory and one IC
   that carries its context from package to package. `spend` is the default
   (design §15.50).
+- `Instruments: <name>, <name>, ...` — the repo-local skills or agents this
+  run may dispatch (design §6.4). Comma-separated, by their invoke name.
+  Without this line the run has none, and the project lead never dispatches
+  one it finds in the repo but the charter does not name.
 
 ## `reports/`, `plans/`, `diffs/`, and `reviews/`
 
@@ -344,6 +348,7 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | `spend` | `{budget, transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md` steps 6 and 8a consume it. Absent until the first compaction. |
+| `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
 prints this session's own id, and it is the same string the `SessionEnd` hook
@@ -667,8 +672,10 @@ Every name this file defines, with what consumes it.
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 - `charter.md` `Budget:` and `Favour:` lines — consumer: `SKILL.md` step 1 (budget), `full-path.md` step 1 (split shape)
+- `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py`
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md` step 6 (re-verify after an IC compacts), step 8a (respawn)
+- `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
 - `run.spend.budget` — writer: `SKILL.md` step 1 from the charter. Consumer: `autonomy-contract.md` trigger 5
 - `run.spend.transcript` — writer: `scripts/spend.py`. Consumer: `autonomy-contract.md` trigger 5, design §8
 

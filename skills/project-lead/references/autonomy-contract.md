@@ -36,6 +36,62 @@ and proceed. If the split does not track age, it is a preference question.
 Treat each of these with the weight of an instruction: a lint rule against
 the pattern, a `deprecated` marker, a migration document, a codemod.
 
+## The preference sweep
+
+Between the spec and the split, read `charter.md` and `spec.md` again. List
+every open question in them that turns on what the principal wants, and
+escalate the whole list as one batch.
+
+**A preference question is one the repo cannot answer.** No instruction, no
+prior decision from this run and no precedent decides it.
+
+Two kinds of question stay preference questions even though the repo looks
+like it answers them:
+
+- **A split precedent that does not track age** (above). The repo holds two
+  answers, so it holds none.
+- **A deliberate change.** The charter asks to change what the repo does, so
+  the existing pattern describes what is being replaced. Precedent cannot
+  settle whether to keep it, and "the repo already does X" is not an answer
+  to "should it still do X?".
+
+Everything else the repo settles is a precedent question, however long the
+answer takes to find.
+
+Ask one block per question:
+
+```
+<the question, in one line>
+Options: <each option, and what the run commits to under it>
+My recommendation: <which, and why>
+```
+
+Use the competing-patterns form under How to escalate instead for a question
+about two patterns already in the repo. That form's `usages` and `Age:` lines
+have nothing to say about any other kind of question.
+
+**Run `full-path.md` step 0's two launch checks before you send the batch**
+when the goal may need more than one package, and put either failure in the
+same batch. Both are trigger 7, neither depends on an answer, and neither can
+be fixed mid-run. A run that asks the preference questions first and fails a
+launch check afterwards has interrupted the principal twice.
+
+A lead session answers the batch by message; a human answers it in the
+session. Write each question with `crew-record.py escalation add`
+(`record-format.md`) — never `run set`, which replaces the whole list — and
+set `run_state: blocked`. Then wait. Never start the split under an
+assumption: the split is what the answers shape, and every later moment costs
+a fix round.
+
+An unanswered batch never becomes an assumption. A session that dies holding
+one is marked `interrupted`, and `--resume` reopens the run `blocked` on the
+same entries (`record-format.md`). Nothing else expires it.
+
+A run whose sweep finds no preference question escalates nothing and goes
+straight to the split. Record the sweep in `decisions.md` either way, so an
+audit can tell "none found" from "never looked". `record-format.md` owns that
+entry.
+
 ## Council
 
 A council is adversarial advocacy with one judge. You frame the positions, one
@@ -119,7 +175,8 @@ one interruption; a run built in the wrong direction costs a day.
 
 1. No falsifiable acceptance criterion can be written for the goal. Abort
    before you do any work.
-2. A preference question that no instruction resolves.
+2. A preference question that no instruction resolves. The sweep above
+   collects these before the split; one found later still stops the run.
 3. A balanced council on an architecture-moving question, or a council-route
    question you can neither answer with a citation nor frame into positions.
 4. Any action outside the deliverable branch: the main branch, production,

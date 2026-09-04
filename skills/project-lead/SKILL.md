@@ -5,18 +5,16 @@ description: Take one goal to a reviewable draft PR without stopping for approva
 
 # Project lead
 
-You take one goal to a reviewable draft PR. You answer your own questions,
-and you stop for the **principal** — whoever handed you this goal, the human
-in this session today and a lead session later — only when you cannot
-proceed correctly.
+You take one goal to a reviewable draft PR. You answer your own questions, and
+you stop for the **principal** only when you cannot proceed correctly.
 
 ## The references
 
 The **simple path** is steps 6-14 below; the **full path** is
 `references/full-path.md`, and step 5 routes between them.
 
-- `references/autonomy-contract.md` owns routing, councils, escalation and
-  spend. Read it before your first question, not when you hit one.
+- `references/autonomy-contract.md` owns routing, councils, escalation, spend,
+  and who the principal is. Read it before your first question, not at one.
 - `references/record-format.md` owns the record: every file, field and
   state transition. Read it before you create the record.
 - `references/band-rubric.md` owns the band.
@@ -53,10 +51,9 @@ it — and `run set spend.budget` when the charter carries a `Budget:` line.
 
 ## 2. Scout
 
-Keep the reading out of your own context: dispatch `Explore` subagents and
-read their answers. Settle four questions. Does an analogous implementation
-exist? Do tests cover this surface? What runs the suite? Which instruction
-files apply?
+Keep the reading out of your own context: dispatch `Explore` subagents and read
+their answers. Settle four questions. Does an analogous implementation exist?
+Do tests cover this surface? What runs the suite? Which instruction files apply?
 
 ## 3. Write the spec
 
@@ -67,9 +64,8 @@ the non-goals. State requirements, never implementations. A constraint
 points at a file; it never enumerates the file's contents, because a closed
 list is one missed item from a critic round (design §15.50).
 
-Your output is the run's most expensive. Outline the spec yourself, have an
-unnamed `general-purpose` subagent at `sonnet` write the prose from the
-outline, and revise what it returns. The spec is yours.
+Outline the spec yourself, have an unnamed `general-purpose` subagent at
+`sonnet` write the prose, and revise what it returns. The spec is yours.
 
 ## 4. Have the spec reviewed
 
@@ -86,6 +82,11 @@ Adjudicate every review the same way: restate each finding in your own words,
 verify it against the repo, and push back in writing where it is wrong here.
 A finding is a claim, not a verdict.
 
+## 4a. Sweep for preference questions
+
+Escalate every question in `charter.md` and `spec.md` that the repo cannot
+answer, as one batch, before you split. `autonomy-contract.md` owns the rule.
+
 ## 5. Choose the shape
 
 | The work is | You |
@@ -93,6 +94,8 @@ A finding is a claim, not a verdict.
 | A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Run step 7, then steps 12-14. |
 | One package, short enough to run unattended | Run steps 6-14 |
 | More than one package, or work long enough to need steering | Read `references/full-path.md` and run it in place of steps 6-14 |
+
+Your own context is the most expensive place to work.
 
 ## 6. Write the split
 
@@ -125,16 +128,14 @@ a subagent has no channel to wait on. Read it, approve it or send it back, set
 the IC every record write (§15.26b, §15.31b) puts the plan or report in its
 final message. Transcribe it, and say that you did.
 
-Set the package and its deliverable `in-flight` at the first dispatch, and
-write the package's `base`: the deliverable's `base`, since there is one
-package.
+Set the package and its deliverable `in-flight` at the first dispatch, and write
+the package's `base`: the deliverable's `base`, since there is one package.
 
 ## 9. Verify before you believe
 
 The IC's report is a claim; `git -C <repo> log` and `diff` are the evidence.
-Check the diff's file list against the declared file set, and run the
-acceptance criterion yourself. A `BLOCKED` report names its cause;
-`band-rubric.md` says what each earns.
+Check the diff's file list against the declared file set, and run the acceptance
+criterion yourself. `band-rubric.md` says what a `BLOCKED` cause earns.
 
 ## 10. Review the package
 
@@ -165,11 +166,10 @@ recorded. At the top band, escalate instead.
 
 ## 12. Integrate
 
-Nothing merges — the work is already on the deliverable branch. Run the
-suite on the branch head and read the output yourself. Then edit the shared
-files: read the target repo's own instructions for which must change
-together, and keep the values they require equal. Commit them, and mark the
-package `integrated`.
+Nothing merges — the work is already on the deliverable branch. Run the suite
+on the branch head and read the output yourself. Then edit the shared files:
+the target repo's own instructions say which must change together, and keep
+the values they require equal. Commit them, and mark the package `integrated`.
 
 **Sweep for stale status claims.** You own this check alone. Run the block in
 `writing-standard.md`'s "Keep the status true" over the deliverable branch.
@@ -190,8 +190,8 @@ seven checks need the record. Adjudicate as in step 4; clear every
 ## 14. Open the draft PR
 
 Push the branch. Fill the repo's pull request template if it has one, and put
-`spec.md` and `decisions.md` in the body. Write each paragraph and list item
-on one long line — GitHub renders a single newline as a line break.
+`spec.md` and `decisions.md` in the body, one long line per paragraph and list
+item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it. Then run

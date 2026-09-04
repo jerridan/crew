@@ -36,8 +36,15 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> state in-fl
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rounds_used 1
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run state blocked
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run set spend.budget 60
+python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation add "<trigger>" "<question>"
+python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation answer <index> "<answer>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> close <deliverable-id> draft-pr-opened --pr-url <url>
 ```
+
+**Never write `escalations` with `run set`.** That command replaces the key,
+so it drops every ask already in the list. `escalation add` appends one ask,
+stamps `asked_at`, and prints the index that `escalation answer` takes. A
+batch of questions is one call per question.
 
 `init` creates the file with `created_at`. `close` writes the deliverable's
 terminal state and `run_state: complete` together, which the
@@ -548,6 +555,37 @@ An entry with high confidence and no citation is a defect.
 midnight, which makes a decision trail a human cannot order (design §15.47).
 This is the same failure as an invented session id (§15.39), in a field that
 looks harmless.
+
+### A preference-sweep entry
+
+`autonomy-contract.md`'s sweep writes one entry before the split, on every
+run, including a run that found nothing.
+
+**A sweep entry is written twice, like a council entry.** Before the ask it
+carries the questions and `Answer: pending`, which proves the routing came
+first. The principal's reply completes it: one `Answer:` line per question,
+each naming the question it settles, so `decisions.md` holds what was decided
+and not only that something was asked. A sweep that found nothing is finished
+in one write, with `Answer: none`.
+
+`Citation:` names the files the sweep read. Each escalated question also gets
+its own `escalations` entry, written with `escalation add` above, so one
+batch reads as one interruption in `state.json` too.
+
+```markdown
+## Preference sweep: what does the principal want that the repo cannot say?
+Route: preference
+Questions: 1. Does each book get its own route? 2. Is the old URL kept?
+Answer: 1. Yes, one route per book. 2. No, the old URL redirects.
+Citation: charter.md and spec.md hold no other open question that an
+instruction, a prior decision or repo precedent settles.
+Confidence: high
+Timestamp: 2026-08-24T14:32:00Z
+```
+
+`Questions:` is the sweep's own field, and it holds every question the sweep
+escalated, in the order it asked them. An entry with `Answer: none` needs no
+`Questions:` line.
 
 ### A council entry
 

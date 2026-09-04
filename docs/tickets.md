@@ -656,7 +656,7 @@ Read first: design §15.26, §15.31, §15.50; `review-output.md`.
 
 ## T21 — Batch the principal's questions before the split
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §6, §15.50)
 
@@ -677,7 +677,15 @@ the step.
 Done when: a run on a charter with one seeded preference question escalates
 it before the split, and a run on a charter with none escalates nothing.
 
-Read first: design §6, §6.2, §15.22b, §15.50; `autonomy-contract.md`.
+2026-09-04: done. `SKILL.md` step 4a sweeps `charter.md` and `spec.md` before
+the split, `autonomy-contract.md` owns the rule under The preference sweep,
+`record-format.md` owns the entry, and `crew-record.py` gained `escalation
+add` so a batch appends instead of replacing the list. Both runs behaved as
+this ticket asks: `~/.claude/crew/slugify-stage-3-fa89/` escalated one seeded
+question before the split, and `~/.claude/crew/truncate-helper-bfa8/` found
+none and recorded `Answer: none` (design §6.3, §15.53).
+
+Read first: design §6, §6.2, §15.22b, §15.50, §15.53; `autonomy-contract.md`.
 
 ## T22 — Redesign the council: one adversary by default, three advocates by exception
 

@@ -458,6 +458,28 @@ interface contract blocks — the project lead cannot split the work without it.
 Any other pattern choice is batched: the project lead does everything that
 does not depend on the answer first, then asks once.
 
+### 6.3 The preference sweep
+
+Between the spec and the split, the project lead reads the charter and the spec
+again, lists every open question in them that turns on what the principal wants,
+and escalates the list as one batch. One interruption, before any IC runs.
+
+A preference question is one the repo cannot answer: no instruction, no prior
+decision this run, and no precedent settles it. A split precedent that does not
+track age (section 6.2) is one. So is a deliberate change, where the charter
+asks to change what the repo does and the existing pattern is what is being
+replaced — "the repo already does X" does not answer "should it still do X?".
+
+The sweep exists because the preference route was passive. Six runs escalated
+nothing, and in the §15.50 A/B both project leads settled the one question the
+answer key marked as the principal's by calling it precedent. Nothing made the
+project lead look for such a question while asking was still cheap, and after
+the split the answer costs a fix round.
+
+A run whose sweep finds no preference question escalates nothing. It records
+the sweep either way, so an audit can tell "none found" from "never looked".
+`autonomy-contract.md` owns the rule and `record-format.md` the entry.
+
 ### Escalation triggers
 
 **This list is a floor, not a ceiling.** These are the cases where the project
@@ -3033,3 +3055,78 @@ Deliberately different:
     **The owner decision is the part the run confirms.** A claim outside
     every file set is invisible to the two reviewers that read a file set.
     Only the seat that owns the shared files finds it.
+
+53. **The preference sweep: one batched ask between the spec and the split —
+    2026-09-03, T21.** Six runs produced zero escalations. In the §15.50 A/B
+    both project leads answered the one question the answer key marked as the
+    principal's — whether each book gets its own route — by calling it
+    precedent. §6's preference route already forbids that. Nothing made the
+    project lead look for such a question at the moment asking is still cheap.
+
+    `SKILL.md` gains step **4a**, between the spec review and the shape
+    choice: read `charter.md` and `spec.md` again, list every question the
+    repo cannot answer, and escalate the list as one batch.
+    `autonomy-contract.md` owns the rule, under The preference sweep, and
+    `record-format.md` owns the `decisions.md` entry that records the sweep
+    ran, including on a run that found nothing.
+
+    a. **A lettered step, not a renumbering.** Numbering the step `5` and
+       pushing the rest down would have invalidated about thirty citations of
+       a `SKILL.md` step number, most of them in this section, where they are
+       evidence and must stay true. `full-path.md` already carries steps 5a
+       and 8a for the same reason.
+
+    b. **The step sits in the shared prefix.** `full-path.md` replaces
+       `SKILL.md` steps 6 to 14 and runs steps 1 to 5 first, so both paths
+       inherit step 4a and the rule stays in one file.
+
+    c. **No new timeout.** An unanswered batch expires by the mechanism that
+       already exists: `SessionEnd` marks the dead run `interrupted`, and
+       `--resume` reopens it `blocked` on the same `escalations` entries.
+
+    d. **A diff-wide review found four defects in the first draft**, which is
+       §15.48's finding holding again. The definition of a preference question
+       said any question the repo answers is a precedent question, which
+       re-licensed the exact failure the sweep exists to stop — §6.2's split
+       precedent and a deliberate change both look answered. The sweep blocked
+       before `full-path.md` step 0's launch checks, so a full-path run would
+       have interrupted the principal twice. The `decisions.md` entry recorded
+       a count and never the answers. And "write one `escalations` entry per
+       question" had no append command: `run set escalations` replaces the
+       list, so the batch would have dropped every earlier ask.
+       `crew-record.py` now has `escalation add` and `escalation answer`.
+
+    e. **Both runs behaved as T21 asks — 2026-09-04.** Simple path on a
+       string-kit fixture, a small node library with a `node --test` suite, a
+       Fable project lead at `--effort high`, the plugin loaded from a local
+       stack of this branch with T17 and T18.
+
+       **The run with nothing to ask** is `truncate-helper-bfa8/`: a charter
+       for a `truncate` helper. The sweep entry reads `Answer: none`, no
+       preference entry reached `escalations`, and the run went to the split
+       without stopping. The one question the charter left open — which
+       ellipsis character — went to a council earlier in the run and was
+       settled from the charter's own "never longer than maxLength"
+       invariant. That is a repo answer, so the sweep was right to pass it
+       over: the sweep filters for what the repo cannot say, not for what is
+       merely unstated.
+
+       **The run with one to ask** is `slugify-stage-3-fa89/`: a charter for
+       a `slugify` helper that said input can carry accented letters such as
+       `café` and never said what to return for them. After spec critic round
+       2 the project lead ran the sweep, wrote one `escalations` entry with
+       trigger "preference question with no instruction (trigger 2)" at
+       2026-09-04T03:14:57Z, set `run_state: blocked`, and asked one question
+       with two readings and a recommendation — before any split. The
+       principal answered "strip diacritics first". The `decisions.md` entry
+       carries `Questions:` and `Answer:` with that answer, and cites
+       `charter.md`, `CLAUDE.md`, `README.md` and the three existing helpers
+       as holding no rule on non-ASCII text. The run then split, built,
+       passed both reviews with zero fix rounds, and ended `work-complete` at
+       $7.23 list.
+
+       **The ask landed where it is cheapest.** Requirement 4 and a non-goal
+       both turned on the answer, and the spec critic's round-2 findings on
+       them were left open until the sweep settled it. One interruption
+       rewrote two spec lines; after the split it would have been a fix
+       round.

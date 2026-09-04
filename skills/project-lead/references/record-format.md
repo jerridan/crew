@@ -383,6 +383,7 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it. |
+| `completed_at` | ISO-8601 UTC timestamp `crew-record.py` stamps on every write that sets `run_state` to `complete` — the `close` command, `run state complete`, and `run set run_state complete`. `crew-stats.py` prices a run through this bound, or the latest `state_changed_at` when it is absent, so a `complete` run without it prices short of its own tail (design §15.51). An `interrupted` run never gets one, and `--resume` never sets one — only a later natural completion does. |
 | `spend` | `{budget, transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md` steps 6 and 8a consume it. Absent until the first compaction. |
@@ -405,6 +406,12 @@ writes no `worktrees.json`, but it still writes `run.session_ids`.
 | `interrupted` | `blocked` | `--resume`, when an `escalations` entry has no `answer` yet |
 | `interrupted` | `active` | `--resume`, when no `escalations` entry is missing an `answer` |
 | `active` | `complete` | the project lead finishes the run |
+
+**Write `complete` before `spend.py --write`.** The `complete` write stamps
+`completed_at` before the pricing run starts, so `spend.transcript.measured_at`
+lands after `completed_at`. `crew-stats.py` prefers a stored `spend.transcript`
+over recomputing one, so a run priced in this order keeps its own tail — the
+turns that open the PR and write the closing summary.
 
 ### Spend
 
@@ -715,6 +722,7 @@ Every name this file defines, with what consumes it.
 - `charter.md` `Budget:` and `Favour:` lines — consumer: `SKILL.md` step 1 (budget), `full-path.md` step 1 (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py`
+- `run.completed_at` — writer: `crew-record.py`, on `close`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md` step 6 (re-verify after an IC compacts), step 8a (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
 - `run.spend.budget` — writer: `SKILL.md` step 1 from the charter. Consumer: `autonomy-contract.md` trigger 5

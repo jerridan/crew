@@ -19,8 +19,11 @@ usage:
 
 `init` creates state.json with `created_at`. `close` sets the deliverable's
 terminal state and `run_state: complete` in one write, which
-`record-format.md` requires for `work-complete`. `run set` takes a dotted
-path, so `run set spend.budget 60` changes one key and keeps the rest.
+`record-format.md` requires for `work-complete`. Any write that sets
+`run_state` to `complete` — `close`, `run state complete`, or
+`run set run_state complete` — also stamps `run.completed_at`.
+`run set` takes a dotted path, so `run set spend.budget 60` changes one key
+and keeps the rest.
 `escalation add` appends one ask and stamps `asked_at`, so a batch is one
 call per question and no earlier ask is lost; it prints the new entry's
 index, which `escalation answer` takes.
@@ -73,6 +76,16 @@ def set_dotted(target: dict, dotted: str, value) -> None:
     for key in keys[:-1]:
         target = target.setdefault(key, {})
     target[keys[-1]] = value
+
+
+def stamp_on_completion(run: dict, was_complete: bool) -> None:
+    """Stamp `completed_at` the moment `run_state` becomes `complete`.
+
+    `was_complete` is the state before this write, so a later write that
+    leaves `run_state` at `complete` never moves the stamp.
+    """
+    if not was_complete and run.get("run_state") == "complete":
+        run["completed_at"] = now()
 
 
 def main(argv: list[str]) -> None:
@@ -140,10 +153,13 @@ def main(argv: list[str]) -> None:
             else:
                 usage()
     elif kind == "run":
+        was_complete = run.get("run_state") == "complete"
         if arg(rest, 0) == "state":
             run["run_state"] = arg(rest, 1)
+            stamp_on_completion(run, was_complete)
         elif rest[0] == "set":
             set_dotted(run, arg(rest, 1), json.loads(arg(rest, 2)))
+            stamp_on_completion(run, was_complete)
         else:
             usage()
     elif kind == "escalation":
@@ -172,7 +188,9 @@ def main(argv: list[str]) -> None:
         url = flag(rest, "--pr-url")
         if url:
             dl["pr_url"] = url
+        was_complete = run.get("run_state") == "complete"
         run["run_state"] = "complete"
+        stamp_on_completion(run, was_complete)
     else:
         usage()
 

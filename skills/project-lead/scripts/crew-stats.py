@@ -102,7 +102,7 @@ def run_end(state: dict) -> float | None:
         for entry in as_list(state.get(key)):
             if isinstance(entry, dict):
                 stamps.append(entry.get("state_changed_at"))
-    if run.get("run_state") not in ("complete", "abandoned") and not run.get("completed_at"):
+    if run.get("run_state") != "complete" and not run.get("completed_at"):
         return None
     latest = max((s for s in stamps if isinstance(s, str)), default=None)
     if not latest:

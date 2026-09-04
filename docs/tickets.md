@@ -956,7 +956,7 @@ Read first: design §15.25, §15.29a, §15.50; `writing-standard.md` rule 4;
 
 ## T28 — Give `run.completed_at` an owner
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §8, §15.51)
 

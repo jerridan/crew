@@ -3170,7 +3170,7 @@ Deliberately different:
 
     | Inefficiency | Evidence | Change |
     |---|---|---|
-    | The project lead's context is the bill | 232M cache-read tokens, $116 of $215 | Review agents write their report to the record and return three lines (`review-output.md`); diffs already stay out |
+    | The project lead's context is the bill | 232M cache-read tokens, $116 of $215 | Review agents write their report to the record and return four lines (`review-output.md`); diffs already stay out |
     | The most expensive model writes the longest documents | 324-line spec, 273-line split, as project-lead output | A sonnet subagent drafts from the lead's outline (`SKILL.md` step 3) |
     | Fix rounds as the quality mechanism | 15 rounds vs 0, decided by harness order | Verification tool is package one; ICs run it before reporting (`full-path.md` step 1, `ic-contract.md`) |
     | Record bookkeeping by hand | hundreds of heredoc turns; the invented session id | `scripts/crew-record.py` |
@@ -4185,5 +4185,6 @@ Deliberately different:
        Return path, so the project lead saved each review file itself, with
        a Bash script that read the critic's transcript for the block that
        holds `Verdict:`. Every run since the rule is a simple path or a
-       bounded edit, and neither writes a `split.md` for a split critic to
-       review. T20 stays open for one full-path run.
+       bounded edit. Both write a `split.md`, but only `full-path.md`
+       dispatches `crew:split-critic`, so no split critic has run under the
+       rule. T20 stays open for one full-path run.

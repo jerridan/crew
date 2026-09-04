@@ -3449,7 +3449,7 @@ Deliberately different:
     to happen before that is anything but a guess. §9.5 says only that the
     fix goes back to §9.1's table.
 
-56. **The review layer's catch rate: 4 of 32 package reviews sent a package
+57. **The review layer's catch rate: 4 of 32 package reviews sent a package
     back, and package reviews drove 5 of 17 fix rounds — 2026-09-04, T23.**
     `crew-stats.py` now prints a catch-rate table. The numbers below come from
     the thirteen records under `~/.claude/crew/`: 29 packages, 72 reviews and

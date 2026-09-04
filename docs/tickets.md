@@ -799,7 +799,7 @@ package reviewer moves to opus; or whether nothing changes.
 
 Done when: the catch rate is in design §15 with the decision it supports.
 
-Done 2026-09-04: `crew-stats.py` prints a catch-rate table, and §15.56 holds
+Done 2026-09-04: `crew-stats.py` prints a catch-rate table, and §15.57 holds
 the numbers. Package reviews act on 4 of 32, and drive 5 of the 17 fix rounds.
 Nothing changes: a green acceptance tool does not predict a clean review, and
 every escape sits outside one package's diff, where opus in that seat cannot

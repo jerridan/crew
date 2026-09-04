@@ -16,7 +16,7 @@ The catch rate is one number per review kind: the share of that kind's reviews
 that returned an action verdict. A review file's `Verdict:` line is the only
 machine-readable statement the record holds about whether a review changed
 anything. The record carries no per-finding adjudication, so a review that was
-accepted and still produced a commit counts as no catch here (§15.56).
+accepted and still produced a commit counts as no catch here (§15.57).
 
 Dollars come from `spend.py`, which this script imports. It never holds a
 second price table. A run is priced in this order:
@@ -346,7 +346,7 @@ def report(records: list[dict], skips: list[str]) -> None:
 
     # A review "acted" when its verdict sent the artifact back for another
     # round. That is the whole of what the record states. A review that was
-    # accepted and still produced a commit is not counted (§15.56).
+    # accepted and still produced a commit is not counted (§15.57).
     print("\nCatch rate (share of reviews whose verdict sent the artifact back)\n")
     rows = []
     for kind, _ in REVIEW_KINDS:

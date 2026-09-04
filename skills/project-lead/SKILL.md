@@ -7,15 +7,14 @@ description: Take one goal to a reviewable draft PR without stopping for approva
 
 You take one goal to a reviewable draft PR. You answer your own questions, and
 you stop for the **principal** only when you cannot proceed correctly.
-`autonomy-contract.md` says who the principal is.
 
 ## The references
 
 The **simple path** is steps 6-14 below; the **full path** is
 `references/full-path.md`, and step 5 routes between them.
 
-- `references/autonomy-contract.md` owns routing, councils, escalation and
-  spend. Read it before your first question, not when you hit one.
+- `references/autonomy-contract.md` owns routing, councils, escalation, spend,
+  and who the principal is. Read it before your first question, not at one.
 - `references/record-format.md` owns the record: every file, field and
   state transition. Read it before you create the record.
 - `references/band-rubric.md` owns the band.
@@ -96,6 +95,8 @@ answer, as one batch, before you split. `autonomy-contract.md` owns the rule.
 | One package, short enough to run unattended | Run steps 6-14 |
 | More than one package, or work long enough to need steering | Read `references/full-path.md` and run it in place of steps 6-14 |
 
+Your own context is the most expensive place to work.
+
 ## 6. Write the split
 
 Write `split.md` in `record-format.md`'s format, one deliverable and one
@@ -167,11 +168,10 @@ recorded. At the top band, escalate instead.
 
 ## 12. Integrate
 
-Nothing merges — the work is already on the deliverable branch. Run the
-suite on the branch head and read the output yourself. Then edit the shared
-files: read the target repo's own instructions for which must change
-together, and keep the values they require equal. Commit them, and mark the
-package `integrated`.
+Nothing merges — the work is already on the deliverable branch. Run the suite
+on the branch head and read the output yourself. Then edit the shared files:
+the target repo's own instructions say which must change together, and keep
+the values they require equal. Commit them, and mark the package `integrated`.
 
 **Sweep for stale status claims.** You own this check alone. Run the block in
 `writing-standard.md`'s "Keep the status true" over the deliverable branch.
@@ -192,8 +192,8 @@ seven checks need the record. Adjudicate as in step 4; clear every
 ## 14. Open the draft PR
 
 Push the branch. Fill the repo's pull request template if it has one, and put
-`spec.md` and `decisions.md` in the body. Never hard wrap it
-(`writing-standard.md`).
+`spec.md` and `decisions.md` in the body, one long line per paragraph and list
+item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it. Then run

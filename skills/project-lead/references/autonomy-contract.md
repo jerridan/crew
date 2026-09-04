@@ -43,14 +43,45 @@ every open question in them that turns on what the principal wants, and
 escalate the whole list as one batch.
 
 **A preference question is one the repo cannot answer.** No instruction, no
-prior decision from this run and no precedent decides it. A question the repo
-does answer is a precedent question, however long the answer takes to find.
+prior decision from this run and no precedent decides it.
 
-Escalate the batch in the form under How to escalate, one block per question.
+Two kinds of question stay preference questions even though the repo looks
+like it answers them:
+
+- **A split precedent that does not track age** (above). The repo holds two
+  answers, so it holds none.
+- **A deliberate change.** The charter asks to change what the repo does, so
+  the existing pattern describes what is being replaced. Precedent cannot
+  settle whether to keep it, and "the repo already does X" is not an answer
+  to "should it still do X?".
+
+Everything else the repo settles is a precedent question, however long the
+answer takes to find.
+
+Ask one block per question:
+
+```
+<the question, in one line>
+Options: <each option, and what the run commits to under it>
+My recommendation: <which, and why>
+```
+
+Use the competing-patterns form under How to escalate instead for a question
+about two patterns already in the repo. That form's `usages` and `Age:` lines
+have nothing to say about any other kind of question.
+
+**Run `full-path.md` step 0's two launch checks before you send the batch**
+when the goal may need more than one package, and put either failure in the
+same batch. Both are trigger 7, neither depends on an answer, and neither can
+be fixed mid-run. A run that asks the preference questions first and fails a
+launch check afterwards has interrupted the principal twice.
+
 A lead session answers the batch by message; a human answers it in the
-session. Write one `escalations` entry per question and set `run_state:
-blocked`. Then wait. Never start the split under an assumption: the split is
-what the answers shape, and every later moment costs a fix round.
+session. Write each question with `crew-record.py escalation add`
+(`record-format.md`) — never `run set`, which replaces the whole list — and
+set `run_state: blocked`. Then wait. Never start the split under an
+assumption: the split is what the answers shape, and every later moment costs
+a fix round.
 
 An unanswered batch never becomes an assumption. A session that dies holding
 one is marked `interrupted`, and `--resume` reopens the run `blocked` on the

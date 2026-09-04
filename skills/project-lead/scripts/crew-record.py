@@ -12,12 +12,17 @@ usage:
   crew-record.py <record-dir> package <id> set <field> <json>
   crew-record.py <record-dir> run state <state>
   crew-record.py <record-dir> run set <dotted.field> <json>
+  crew-record.py <record-dir> escalation add <trigger> <question>
+  crew-record.py <record-dir> escalation answer <index> <answer>
   crew-record.py <record-dir> close <deliverable-id> <deliverable-state> [--pr-url <url>]
 
 `init` creates state.json with `created_at`. `close` sets the deliverable's
 terminal state and `run_state: complete` in one write, which
 `record-format.md` requires for `work-complete`. `run set` takes a dotted
 path, so `run set spend.budget 60` changes one key and keeps the rest.
+`escalation add` appends one ask and stamps `asked_at`, so a batch is one
+call per question and no earlier ask is lost; it prints the new entry's
+index, which `escalation answer` takes.
 `record-format.md` owns every field name and every transition; this script
 checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 """
@@ -135,6 +140,25 @@ def main(argv: list[str]) -> None:
             run["run_state"] = arg(rest, 1)
         elif rest[0] == "set":
             set_dotted(run, arg(rest, 1), json.loads(arg(rest, 2)))
+        else:
+            usage()
+    elif kind == "escalation":
+        asks = run.setdefault("escalations", [])
+        if arg(rest, 0) == "add":
+            asks.append({
+                "trigger": arg(rest, 1),
+                "question": arg(rest, 2),
+                "asked_at": now(),
+                "answer": None,
+            })
+            write_json(state_path, state)
+            print(len(asks) - 1)
+            return
+        elif rest[0] == "answer":
+            index = int(arg(rest, 1))
+            if index < 0 or index >= len(asks):
+                sys.exit(f"no escalation at index {index}")
+            asks[index]["answer"] = arg(rest, 2)
         else:
             usage()
     elif kind == "close":

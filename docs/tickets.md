@@ -679,8 +679,10 @@ it before the split, and a run on a charter with none escalates nothing.
 
 2026-09-03: the step and the routing rule landed. `SKILL.md` step 4a sweeps
 `charter.md` and `spec.md` before the split, `autonomy-contract.md` owns the
-rule under The preference sweep, and `record-format.md` owns the entry that
-records the sweep (design §15.51). The ticket stays open for the two runs
+rule under The preference sweep, `record-format.md` owns the entry that
+records the sweep, and `crew-record.py` gained `escalation add` so a batch
+appends instead of replacing the list (design §6.3, §15.51). The ticket
+stays open for the two runs
 above: one charter with a seeded preference question, one with none.
 
 Read first: design §6, §6.2, §15.22b, §15.50; `autonomy-contract.md`.

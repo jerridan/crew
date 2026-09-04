@@ -458,6 +458,28 @@ interface contract blocks — the project lead cannot split the work without it.
 Any other pattern choice is batched: the project lead does everything that
 does not depend on the answer first, then asks once.
 
+### 6.3 The preference sweep
+
+Between the spec and the split, the project lead reads the charter and the spec
+again, lists every open question in them that turns on what the principal wants,
+and escalates the list as one batch. One interruption, before any IC runs.
+
+A preference question is one the repo cannot answer: no instruction, no prior
+decision this run, and no precedent settles it. A split precedent that does not
+track age (section 6.2) is one. So is a deliberate change, where the charter
+asks to change what the repo does and the existing pattern is what is being
+replaced — "the repo already does X" does not answer "should it still do X?".
+
+The sweep exists because the preference route was passive. Six runs escalated
+nothing, and in the §15.50 A/B both project leads settled the one question the
+answer key marked as the principal's by calling it precedent. Nothing made the
+project lead look for such a question while asking was still cheap, and after
+the split the answer costs a fix round.
+
+A run whose sweep finds no preference question escalates nothing. It records
+the sweep either way, so an audit can tell "none found" from "never looked".
+`autonomy-contract.md` owns the rule and `record-format.md` the entry.
+
 ### Escalation triggers
 
 **This list is a floor, not a ceiling.** These are the cases where the project
@@ -3062,5 +3084,17 @@ Deliberately different:
        already exists: `SessionEnd` marks the dead run `interrupted`, and
        `--resume` reopens it `blocked` on the same `escalations` entries.
 
-    d. **Unproven.** The two runs T21 asks for have not run: one charter with
+    d. **A diff-wide review found four defects in the first draft**, which is
+       §15.48's finding holding again. The definition of a preference question
+       said any question the repo answers is a precedent question, which
+       re-licensed the exact failure the sweep exists to stop — §6.2's split
+       precedent and a deliberate change both look answered. The sweep blocked
+       before `full-path.md` step 0's launch checks, so a full-path run would
+       have interrupted the principal twice. The `decisions.md` entry recorded
+       a count and never the answers. And "write one `escalations` entry per
+       question" had no append command: `run set escalations` replaces the
+       list, so the batch would have dropped every earlier ask.
+       `crew-record.py` now has `escalation add` and `escalation answer`.
+
+    e. **Unproven.** The two runs T21 asks for have not run: one charter with
        a seeded preference question, one with none.

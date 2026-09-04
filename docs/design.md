@@ -3006,10 +3006,30 @@ Deliberately different:
     **The vocabulary list lives in `writing-standard.md`**, in a
     `## Keep the status true` section, with the runnable block beside it —
     one `pattern` variable, one grep over the change's added lines, one
-    `git grep` over the repo. `SKILL.md` step 12 points at it, and `full-path.md` step 9 points at
-    step 12. One copy of the pattern, so a term added later reaches every
-    caller.
+    `git grep` over the repo. `SKILL.md` step 12 and `full-path.md` step 9
+    both point at that section. One copy of the pattern, so a term added
+    later reaches every caller.
 
     The sweep reads the change's own diff. When the change lands a stage it
     also reads the whole repo, because §15.48's stale README sentence was
     stale for a change in another directory.
+
+    **A run then exercised it — 2026-09-04.** The record is
+    `~/.claude/crew/truncate-helper-bfa8/`: a simple-path run on a
+    string-kit fixture, a Fable project lead at `--effort high`, one
+    `standard` package, zero fix rounds. The charter asked for "stage 2 of
+    the roadmap", a `truncate` helper. Two files carried a claim that stage 2
+    was unbuilt — the fixture's `README.md` roadmap row and its `CLAUDE.md`
+    line "Stage 2, `truncate`, is not yet built, so callers cut strings by
+    hand." Neither file was in the IC's file set, so no IC and no package
+    reviewer could have seen them. The project lead ran the sweep at step 12,
+    fixed both in "Export truncate and mark roadmap stage 2 built" on
+    `crew/truncate-helper-bfa8/deliverable-1`, and left the stage 3
+    `slugify` rows alone: "The remaining stale-status hits are about
+    slugify, which is still true." Its `decisions.md` entry "Which file
+    changes belong to the project lead at integration?" cites
+    `writing-standard.md`'s "Keep the status true" and both file lines.
+
+    **The owner decision is the part the run confirms.** A claim outside
+    every file set is invisible to the two reviewers that read a file set.
+    Only the seat that owns the shared files finds it.

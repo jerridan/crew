@@ -237,6 +237,12 @@ Rules the format carries:
   earlier deliverable, or code the repo already holds. An entry naming a package
   in a concurrent territory is a serialization bug, and `crew:split-critic`
   check 5 rejects it.
+- **The verification tool is the first package.** When an acceptance criterion
+  needs a tool the repo does not have — a screenshot diff, an audit, a
+  comparison — build it first, and have its IC prove it deterministic against a
+  known-equal pair before any package that uses it starts. Then every later
+  brief names the tool, and `ic-contract.md` makes the IC run it before
+  reporting (design §15.50).
 - **Shared files never appear in a file set.** Version manifests, lockfiles,
   barrel and `index` files, and shared config belong to the project lead at
   integration (design §5).

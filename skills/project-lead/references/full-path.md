@@ -60,19 +60,14 @@ packages grouped into territories. One IC owns one territory and works its
 packages in the listed order. Mirror every field into `state.json`'s
 `packages[]`.
 
-Three rules shape the split (design §15.50):
+Two rules shape the full path's split, on top of the format rules
+`record-format.md` carries (design §15.50):
 
 - **Read the charter's `Favour:` line first.** `spend`, the default, is one
   territory and one IC that carries its context from package to package.
   `time` is one territory per disjoint region of the tree, worked in
   parallel. The same goal ran both ways: parallel finished sooner and cost
   15 fix rounds and half again the tokens; sequential cost no fix rounds.
-- **The verification tool is the first package.** When an acceptance
-  criterion needs a tool the repo does not have — a screenshot diff, an
-  audit, a comparison — build it first, and have its IC prove it
-  deterministic against a known-equal pair before any package that uses it
-  starts. Then every later brief names the tool, and `ic-contract.md` makes
-  the IC run it before reporting.
 - **Fewer, larger packages in a territory.** Packages in one territory run in
   sequence, so a finer split there buys no parallelism and costs a plan, a
   review, a merge and a suite run per package. Split a territory only where

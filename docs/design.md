@@ -3627,7 +3627,7 @@ Deliberately different:
     and each new rule was paid for with a sentence that was not a rule. Steps 6
     to 14 moved to `skills/project-lead/references/simple-path.md`. `SKILL.md`
     keeps the shared prefix — the reference list, steps 1 to 5 with 4a, and the
-    shape table — and its body is 97 lines. Both paths are now reference files
+    shape table — and its body is 96 lines. Both paths are now reference files
     that step 5 routes to, which is the shape item 30a chose for the full path.
 
     a. **The step numbers did not move.** `simple-path.md` starts at step 6 and

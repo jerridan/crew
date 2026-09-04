@@ -11,8 +11,8 @@ you stop for the **principal** only when you cannot proceed correctly.
 ## The references
 
 This file owns steps 1 to 5. Step 5 then sends you to one path file, which
-owns steps 6 to 14: `references/simple-path.md` for one package,
-`references/full-path.md` for more than one.
+owns the rest of the run: `references/simple-path.md`, steps 6 to 14, for one
+package; `references/full-path.md`, its own steps 0 to 13, for more than one.
 
 - `references/autonomy-contract.md` owns routing, councils, escalation, spend,
   and who the principal is. Read it before your first question, not at one.

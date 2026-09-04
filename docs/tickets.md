@@ -955,7 +955,7 @@ Read first: design §15.25, §15.30a, §15.50; `writing-standard.md` rule 4;
 `SKILL.md`; `full-path.md`.
 
 2026-09-04: done. `simple-path.md` holds steps 6 to 14, `SKILL.md`'s body is
-97 lines, and the step numbers did not move. The three sentences are back in
+96 lines, and the step numbers did not move. The three sentences are back in
 steps 3, 4 and 5. `writing-standard.md` rule 4 now carries a 200-line target,
 the 500-line limit and no cap for a reference. A run proved it:
 `truncate-stage-2-0722/` read `simple-path.md`, never opened `full-path.md`,

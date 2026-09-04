@@ -4,20 +4,18 @@ This file owns the loop for one deliverable with one package (design §9.1).
 `SKILL.md` runs steps 1 to 5 first, then sends you here.
 
 The full path is `full-path.md`. Nothing here applies to it, except the three
-steps it borrows: steps 12 and 14 below, which it names from its own steps 9,
-11 and 12.
+steps it borrows: steps 7, 12 and 14 below, which it cites from its own steps
+3, 9, 11 and 12.
 
-One unnamed subagent does the work, in this checkout, on one branch. Nothing
-merges and no worktree is created. `full-path.md`'s "What changes" table is
-the column-by-column comparison.
+One unnamed subagent does the work, in this checkout, on one branch. No split
+critic runs, no worktree is created and nothing merges.
 
 ## 6. Write the split
 
 Write `split.md` in `record-format.md`'s format, one deliverable and one
 package, banded by `band-rubric.md`, mirrored into `state.json`'s
 `packages[]`. No split critic runs — one package has no sibling to overlap.
-`crew:deliverable-reviewer` reads it at step 13. `full-path.md` step 1's
-verification-tool rule holds here too.
+`crew:deliverable-reviewer` reads it at step 13.
 
 ## 7. Create the branch
 

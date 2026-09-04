@@ -97,6 +97,10 @@ permission prompts, and the record audits cleanly.
 Read first: design §9.1, §9.3, §6, §7, §15.22; `record-format.md`;
 `ic-contract.md`; `band-rubric.md`.
 
+Note (T14): the charter's optional `Instruments:` line, and the
+`run.instruments_used` record field it feeds, are `record-format.md`'s
+(design §6.4). This does not reopen T4.
+
 ## T5 — Probe: `TeammateIdle`
 
 Status: done
@@ -418,7 +422,7 @@ Read first: design §3, §9.1, §15.20; `writing-standard.md`.
 
 ## T14 — Design run instruments
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: design (`docs/design.md`); implementation folds into T4
 

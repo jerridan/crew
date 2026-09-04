@@ -98,8 +98,9 @@ duties.
 ### 3.1 Specialist ICs
 
 `crew:ic-instructions` is the first specialist. It owns any package whose
-deliverable is an instruction file: `CLAUDE.md`, a `.claude/rules/` file, a
-`SKILL.md`, or an agent definition.
+deliverable is an instruction file — `CLAUDE.md`, a `.claude/rules/` file, a
+`SKILL.md`, or an agent definition — or reader-facing prose that is a
+deliverable in its own right, such as a README (§15.17).
 
 It exists because the **acceptance mechanism differs**, not because the subject
 matter does. A code IC runs test-first and "green" means a passing test. No test
@@ -123,8 +124,8 @@ skill invocation, so there is no fork risk: the IC reads it with its own
 applies to itself: a second copy of a rule is worse than no copy, because
 nothing decides which copy wins.
 
-It covers all four container types this IC owns directly, with no hand-off to
-another skill for two of the four.
+It covers all five container types this IC owns directly, with no hand-off to
+another skill for two of the five.
 
 `crew:package-reviewer` reviews its work as usual, with the checklist as the
 rubric instead of a diff-and-tests review. The project lead passes it the
@@ -1135,6 +1136,11 @@ Deliberately different:
     T10 still owns the file alignment this implies, and one sub-question the
     council raised: a specialist named `ic-instructions` whose container list
     now includes non-instructions may need a different name.
+
+    **Decided: the name stays.** T10 aligned §3.1, `agents/ic-instructions.md`
+    and `writing-standard.md`'s README note with the council's decision above.
+    A rename touches every dispatch pointer to `crew:ic-instructions`, and the
+    name still fits four of the five containers. **This item is Decided.**
 18. **Should an environmental block and a capability block get the same
     `BLOCKED` response?** `ic-contract.md`'s `BLOCKED` row directs the project
     lead to promote the package one band up, or stop the run at a breaker.

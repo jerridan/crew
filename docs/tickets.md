@@ -778,3 +778,39 @@ Done when: the script runs over the records on the machine that ran the A/B
 and its numbers for the two §15.50 runs match the ones recorded there.
 
 Read first: design §8, §15.50; `record-format.md`; `scripts/spend.py`.
+
+## T26 — A/B a goal-and-constraints form of `SKILL.md` on Fable
+
+Status: open
+Depends on: nothing
+Stage: any (design §8, §15.50)
+
+The project lead now runs on Fable 5.1 (T24). Fable's own guidance says
+prompts written for prior models are often too prescriptive and reduce
+output quality, and that stating the goal and constraints beats enumerating
+steps. `SKILL.md` is a fourteen-step numbered loop and `full-path.md` a
+thirteen-step one. The evidence so far cuts the other way: a Fable lead ran
+the numbered loop in 130 turns with zero fix rounds (§15.50). So this is a
+measurement, not a rewrite.
+
+Crew's files already sort by reader. The project lead's files are read by
+Fable; `ic-contract.md`, the IC and review agents, `review-output.md` and the
+advocate are read by sonnet and opus, which do better with explicit steps.
+Only the project lead's files are candidates, and no file gets two variants —
+a second copy of a rule is the drift `CLAUDE.md` forbids.
+
+Write a goal-and-constraints form of `SKILL.md` that keeps every rule and
+every pointer to a reference, under a temporary second skill name so both
+forms load. Run one simple-path goal with each, on Fable at high effort, in
+fresh clones, with `CREW_RECORD_ROOT` set per arm. Compare lead turns, lead
+spend from `scripts/spend.py`, decisions, critic rounds, fix rounds and the
+independent check of the two PRs.
+
+Done when: design §15 records the comparison and the decision. If the goal
+form wins, it replaces `SKILL.md` and the same treatment goes to
+`full-path.md` under its own A/B. If it does not, the numbered form stays and
+the entry says why.
+
+Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
+`full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
+carries under "Long-running agent recommendations".

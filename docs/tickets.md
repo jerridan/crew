@@ -681,7 +681,7 @@ steps 6 and 8a.
 
 ## T20 — Probe: a review agent's write to the record root
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §15.50)
 
@@ -695,12 +695,14 @@ Done when: one run on each path shows a `reviews/` file written by the
 reviewer itself, or the denial is recorded in design §15 with the dispatch
 shape that produced it.
 
-2026-09-04: half landed, as design §15.67. Eight simple-path and bounded-edit
-runs made 25 review dispatches after the Return path rule, and every reviewer
-wrote its own file, two of them under `~/.claude/crew/`. No denial. The full
-path and `crew:split-critic` still need one run: only `full-path.md`
-dispatches a split critic, and no full-path run has started since the rule
-landed.
+2026-09-04: done, as design §15.67. The write is allowed, so there is no
+denial to record. Ten runs made 33 review dispatches after the Return path
+rule, and every reviewer wrote its own file. Two runs answered this ticket
+directly: `~/.claude/crew/add-truncate-and-slugify-9140/` on the simple path
+and `~/.claude/crew/add-titlecase-decodequery-b150/` on the full path, the
+second holding the first `crew:split-critic` file written under the rule. The
+PR also removed two stale copies of the result's line count, in `SKILL.md`
+step 4 and `full-path.md` step 7.
 
 Read first: design §15.26, §15.31, §15.50, §15.67; `review-output.md`.
 

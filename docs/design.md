@@ -4154,16 +4154,18 @@ Deliberately different:
     whether that write is allowed. It is. No run since the rule landed shows
     a denial.
 
-    a. **Eight runs, 25 review dispatches, zero denials.** Two runs kept
-       their record under `~/.claude/crew/` — `truncate-helper-bfa8` and
-       `slugify-stage-3-fa89`, both on 2026-09-04 — so the write went to the
-       same sensitive path item 26b named. Six more ran with
-       `$CREW_RECORD_ROOT` in a scratchpad: `slugify-helper-d1ad`,
+    a. **Ten runs, 33 review dispatches, zero denials.** Four runs kept
+       their record under `~/.claude/crew/`, so the write went to the same
+       sensitive path item 26b named: `truncate-helper-bfa8`,
+       `slugify-stage-3-fa89`, and T20's own two runs below. Six more ran
+       with `$CREW_RECORD_ROOT` in a scratchpad: `slugify-helper-d1ad`,
        `add-slugify-helper-41b2`, `add-querykey-helper-5400`,
        `add-slugify-helper-6304`, `encodequery-skip-nullish-7e8f` and
        `encode-query-jsdoc-ampersand-9b9f`. Every dispatch returned the
        four-line result with a real `Wrote:` path, and every named file is
-       on disk. The fallback for a denied write was never taken.
+       on disk. The fallback for a denied write was never taken. Every
+       "denied" string in those transcripts belongs to the injected
+       contract text, not to an agent's answer.
 
     b. **The dispatch shape that produced it.** An interactive project lead,
        in `auto` permission mode, spawns each reviewer with the `Agent` tool
@@ -4172,19 +4174,45 @@ Deliberately different:
        `crew:spec-critic` and `crew:deliverable-reviewer`, sonnet for
        `crew:package-reviewer`. The reviewer's cwd is the target repo, and
        the record root is outside it. No `--add-dir` and no allow rule was
-       added for the write.
+       added for the write. The full path changes none of this: its ICs are
+       teammates, but its reviewers stay unnamed subagents of the project
+       lead, so both paths share one dispatch shape for a review.
 
     c. **The saving is real.** The project lead reads the four lines, then
        reads only the parts of the report file it needs, with `grep` and
        `sed`. In `truncate-helper-bfa8` it made three review dispatches and
        never held a whole report in its context.
 
-    d. **The full path and `crew:split-critic` have no evidence yet.** The
-       last full-path run, `graduate-pages-v3-85b3`, started at
-       2026-09-03T16:02Z — before the rule. Its dispatches carried no
-       Return path, so the project lead saved each review file itself, with
-       a Bash script that read the critic's transcript for the block that
-       holds `Verdict:`. Every run since the rule is a simple path or a
-       bounded edit. Both write a `split.md`, but only `full-path.md`
-       dispatches `crew:split-critic`, so no split critic has run under the
-       rule. T20 stays open for one full-path run.
+    d. **Two runs answered T20's own question, one per path.** Both on the
+       `jerridan/crew-fixture-string-kit` fixture, both with a Fable 5.1
+       project lead at `--effort high` in tmux, in `auto` permission mode,
+       with the record root left at `~/.claude/crew/`.
+
+       - Simple path: `add-truncate-and-slugify-9140`, one `helpers`
+         package, three reviewers, draft PR #8, $7.43 at list price.
+       - Full path: `add-titlecase-decodequery-b150`, two packages worked
+         by the teammates `ic-text` and `ic-url` in worktrees, five
+         reviewers, draft PR #9, $8.43 at list price.
+
+       All eight wrote their own file and returned the four lines. The
+       full-path run is the first evidence for `crew:split-critic` under
+       the rule: it wrote
+       `reviews/deliverable-1-split-critic-r1.md` and returned `Verdict:
+       dispatchable`, `Critical count: 0`. Every one of crew's four review
+       agents has now written into the record root itself.
+
+    e. **A two-territory goal with no `Favour:` line takes the simple
+       path.** The first run was meant to be the full-path one. Its goal
+       named two helpers in two directories, and the project lead still
+       chose one package. The charter carried no `Favour:` line, which
+       defaults to spend, and one package is the cheaper split. The second
+       run got the full path from a charter file with `Favour: time`. So
+       territory count alone does not pick the shape, and a probe that
+       needs the full path must say `Favour: time` rather than trust the
+       goal to force it.
+
+    f. **The contrast run, before the rule.** `graduate-pages-v3-85b3`
+       started at 2026-09-03T16:02Z. Its dispatches carried no Return
+       path, so the project lead saved each review file itself, with a
+       Bash script that read the critic's transcript for the block that
+       holds `Verdict:`. That is the cost the rule removes.

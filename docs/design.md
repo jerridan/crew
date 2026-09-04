@@ -3130,3 +3130,37 @@ Deliberately different:
        them were left open until the sweep settled it. One interruption
        rewrote two spec lines; after the split it would have been a fix
        round.
+
+54. **Both paths now put the checkout back on the branch it started on, and
+    two runs proved it — 2026-09-04, T17.** §9.1 puts the simple path on the
+    current checkout by design, and nothing switched it back, so the §15.47 run
+    left the T8 session on the run's branch. The run now records the branch it
+    found in `deliverables[].checkout_branch`, and switches back at every end,
+    the `work-complete` one included. Two cases stop the switch: a dirty tree,
+    which is the principal's work, and a principal who keeps the deliverable
+    branch. Either case writes the reason to `deliverables[].checkout_restored`,
+    and the last message names both branches, so one command undoes it.
+
+    **Two simple-path runs, one fixture checkout.** Fable at `--effort high`,
+    the plugin loaded from a local stack of this branch with T18 and T21.
+    `~/.claude/crew/truncate-helper-bfa8/` records `checkout_branch: "main"`
+    and `checkout_restored: true` on a `work-complete` deliverable — the
+    fixture has no remote, so the principal chose `work-complete` in session.
+    The checkout was on `main` and clean afterwards, and the project lead's
+    last message named both branches: "The checkout is back on main", and the
+    deliverable branch `crew/truncate-helper-bfa8/deliverable-1`. The second
+    run, `~/.claude/crew/slugify-stage-3-fa89/`, started in that same directory
+    from `main`, recorded the same two fields and ended the same way. That
+    second start is T17's "a second run in the same directory starts from a
+    known branch", observed rather than argued.
+
+    **The full path has the same defect, and takes the same rule.** T17 read
+    the worktrees as the reason the full path was safe. They are not: its ICs
+    work in worktrees, but `full-path.md` step 3 switches the project lead's
+    own checkout the same way §9.1's simple path does. No run has exercised
+    the full path's restore.
+
+    **The rule still lives in one file.** Its text is in `SKILL.md` steps 7
+    and 14. `full-path.md` carries two pointers instead of a copy — one at
+    step 3, to record the branch, and one at step 11, to restore it — which is
+    the shape this repo uses wherever one path borrows another's step.

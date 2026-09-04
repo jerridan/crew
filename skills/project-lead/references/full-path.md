@@ -92,10 +92,11 @@ escalate at it.
 
 ## 3. Create the branch and the worktrees
 
-Branch from the current head:
-`git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. Write the
-`deliverables[]` entry now — `id`, branch, the head sha as `base`,
-`state: pending`, `pr_url: null`.
+This step switches the checkout, so read its branch **before** you switch and
+record it as `checkout_branch`, as `SKILL.md` step 7 says. Then branch from the
+current head: `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. Write
+the `deliverables[]` entry now — `id`, branch, the head sha as `base`,
+`state: pending`, `pr_url: null`, and `checkout_branch`.
 
 Then one worktree per territory, all branching from that same head, so
 integration is a merge and never a rebase (design §9.3):
@@ -389,6 +390,9 @@ one draft PR however many packages it took.
 
 A deliverable that cannot open a PR ends in `work-complete`. Step 14 owns
 that procedure too, and `record-format.md` owns what the state means.
+
+At either end, restore the checkout to `checkout_branch`, as `SKILL.md` step
+14 says.
 
 ## 12. Clean up
 

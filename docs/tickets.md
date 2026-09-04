@@ -878,7 +878,18 @@ Do the same for the simple path:
   two path files.
 - Steps 12 to 14 are shared between the two paths. Keep each in one file and
   point at it from the other, as `full-path.md` already does for step 14.
-- Put the two cut sentences back where the reader now has room for them.
+- Put back what the cap cost. Three sentences are in no file the project
+  lead reads at runtime: "A finding is a claim, not a verdict" (step 4, the
+  heuristic behind the adjudication rule; §15.46 is why it matters), "Your
+  own context is the most expensive place to work" (after the step 5 table;
+  design §9.1 and `review-output.md` say it, and neither is the project
+  lead's file), and "Your output is the run's most expensive" (step 3, the
+  reason a sonnet subagent writes the spec prose). Restore all three. The
+  other cuts moved to their owners and stay pointers: the principal's
+  definition (`autonomy-contract.md`), the write-every-transition rule
+  (`record-format.md`), the hard-wrap rule (`writing-standard.md`), and
+  `checkout_restored: null` at creation (`record-format.md` documents the
+  default).
 - Rewrite `writing-standard.md` rule 4: 200 lines is a target for a
   `SKILL.md` body, 500 is the limit the skill guidance sets, and a reference
   file has no cap. Say why in one sentence.

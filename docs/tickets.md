@@ -667,28 +667,47 @@ it before the split, and a run on a charter with none escalates nothing.
 
 Read first: design §6, §6.2, §15.22b, §15.50; `autonomy-contract.md`.
 
-## T22 — Measure whether the council changes outcomes
+## T22 — Redesign the council: one adversary by default, three advocates by exception
 
 Status: open
-Depends on: nothing
+Depends on: T21
 Stage: any (design §6.1, §15.43, §15.47, §15.50)
 
 Three councils have run: a README owner, a state name, and a CSS strategy.
 The third question was settled from precedent by the other arm of the same
 experiment. No council has yet produced an answer the record shows the
-project lead would not have reached alone.
+project lead would not have reached alone, and the one judgment failure both
+A/B leads shared — answering a preference question as if it had precedent —
+is one a council would have buried, not caught (§15.50). A Fable project lead
+finds precedent reliably and judges sonnet advocates from above, so three
+advocates is the wrong shape for most questions.
 
-Before convening, the project lead writes its own answer and confidence to
-the council entry as `Prior:`. `record-format.md` owns the field. After ten
-councils, compare `Prior:` with the adjudication: if they agree every time,
-cut the council and route those questions to precedent with the prior as the
-answer.
+Change three things, in `autonomy-contract.md`, which owns routing and the
+council, and `record-format.md`, which owns the entry:
 
-Done when: `Prior:` is in the council entry format and in the next council
-that runs.
+1. **No council for a question with repo precedent.** Route it to precedent
+   with the citation. Preference questions go to T21's batch, never to a
+   council.
+2. **The default council is one adversary.** The project lead writes its own
+   answer and confidence to the entry as `Prior:` first, then dispatches one
+   `crew:council-advocate` to argue the opposite with citations. A prior the
+   project lead cannot rebut in writing is an escalation. Same entry shape,
+   `Positions` holding two.
+3. **Three assigned advocates stay for two cases only:** an irreversible
+   architecture choice with no precedent in the repo, and T11's
+   investigation path, where competing root-cause hypotheses over one body
+   of evidence is what assigned positions are for.
 
-Read first: design §6.1, §15.43, §15.47; `autonomy-contract.md`;
-`record-format.md` council entry.
+Then measure: after ten adversary entries, compare `Prior:` with the
+adjudication. If the adversary never moved the answer, cut it and keep only
+case 3.
+
+Done when: the two references carry the three rules, `agents/council-advocate.md`
+argues one position against a stated prior as well as one of several, and
+the next council that runs is an adversary entry with `Prior:` filled.
+
+Read first: design §6.1, §6.2, §15.43, §15.47, §15.50; `autonomy-contract.md`;
+`record-format.md` council entry; `agents/council-advocate.md`; T11, T21.
 
 ## T23 — Measure the review layer's catch rate
 

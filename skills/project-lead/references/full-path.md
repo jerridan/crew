@@ -1,10 +1,10 @@
 # Full path
 
 This file owns the loop for a deliverable with more than one package
-(design §9.2). `SKILL.md` runs steps 1 to 5 first, then sends you here in
-place of its steps 6 to 14.
+(design §9.2). `SKILL.md` runs steps 1 to 5 first, then sends you here.
 
-The simple path stays in `SKILL.md`. Nothing here applies to it.
+The simple path is `simple-path.md`. Nothing here applies to it, and this
+file borrows three of its steps: 7, 12 and 14 there, named below.
 
 This file runs **one** deliverable. Deliverables run sequentially and
 `split.md` carries `Depends on` to order them, but no loop reads it yet, so a
@@ -93,8 +93,9 @@ escalate at it.
 ## 3. Create the branch and the worktrees
 
 This step switches the checkout, so read its branch **before** you switch and
-record it as `checkout_branch`, as `SKILL.md` step 7 says. Then branch from the
-current head: `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. Write
+record it as `checkout_branch`, as `simple-path.md` step 7 says. Then branch
+from the current head:
+`git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. Write
 the `deliverables[]` entry now — `id`, branch, the head sha as `base`,
 `state: pending`, `pr_url: null`, and `checkout_branch`.
 
@@ -363,8 +364,9 @@ for which files must change together, and keep the values they require equal.
 Crew's own two-manifest version rule is crew's, not every repo's — a repo that
 bumps at release wants no bump here at all. Commit them.
 
-Then sweep for stale status claims, as `SKILL.md` step 12 does: run the block
-in `writing-standard.md`'s "Keep the status true" over the deliverable branch.
+Then sweep for stale status claims, as `simple-path.md` step 12 does: run
+the block in `writing-standard.md`'s "Keep the status true" over the
+deliverable branch.
 
 ## 10. Review the deliverable
 
@@ -385,19 +387,19 @@ the PR opens.
 
 ## 11. Open the draft PR
 
-`SKILL.md` step 14 owns this, unchanged. One deliverable is one branch and
+`simple-path.md` step 14 owns this, unchanged. One deliverable is one branch and
 one draft PR however many packages it took.
 
 A deliverable that cannot open a PR ends in `work-complete`. Step 14 owns
 that procedure too, and `record-format.md` owns what the state means.
 
-At either end, restore the checkout to `checkout_branch`, as `SKILL.md` step
-14 says.
+At either end, restore the checkout to `checkout_branch`, as `simple-path.md`
+step 14 says.
 
 ## 12. Clean up
 
 Remove each IC worktree when the deliverable closes, and prune its
-registration from `worktrees.json`. `SKILL.md` step 14 owns the process
+registration from `worktrees.json`. `simple-path.md` step 14 owns the process
 sweep that comes first.
 
 **Never force a removal.** A refusal means files exist nowhere else. Commit

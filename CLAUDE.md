@@ -16,7 +16,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `.claude-plugin/plugin.json` | plugin manifest | the plugin loader |
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
-| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the simple-path loop | its skill trigger |
+| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — steps 1 to 5, then a route to one path file | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews and the review catch rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
@@ -31,7 +31,7 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 
 ## Build state
 
-Stages 0 through 6 are built: eight agents, seven references, the
+Stages 0 through 6 are built: eight agents, eight references, the
 `SessionEnd` hook, and both of `/crew:project-lead`'s paths. The **simple
 path** is one package on one branch, driven by one unnamed subagent. The
 **full path** is several packages in worktrees, worked by named IC teammates,
@@ -52,6 +52,8 @@ Each reference owns one subject and is canonical for it:
 
 - `autonomy-contract.md` — how a question is routed, when the project lead
   escalates and to whom, and how a run's spend is counted.
+- `simple-path.md` — the loop for one package: one unnamed IC subagent, one
+  branch in this checkout, no merge.
 - `full-path.md` — the loop for more than one package: worktrees, IC
   teammates, merges, promotion and recovery.
 - `record-format.md` — the record directory, every `state.json`,

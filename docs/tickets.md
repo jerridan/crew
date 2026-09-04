@@ -1109,7 +1109,7 @@ Stage: any (design §7, §9.5)
 
 Design §9.5 makes the reproduction the fix package's acceptance criterion,
 and it requires two clauses: the test fails now, and it passes after. Crew
-checks only the second. `SKILL.md` step 9 runs the acceptance criterion after
+checks only the second. `simple-path.md` step 9 runs the acceptance criterion after
 the IC reports, and §7's verification table has no "before" row. A test that
 never failed passes that check and proves nothing.
 

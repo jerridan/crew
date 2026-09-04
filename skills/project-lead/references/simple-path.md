@@ -110,10 +110,16 @@ item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 `scripts/spend.py --write` (`autonomy-contract.md`), and stop every process
 the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
-When the push or `gh pr create` cannot run, ask the principal and **wait for
-the answer** — `blocked` until it lands, then `active`. One who already refused
-the PR has answered; do not ask twice. Then record `work-complete`,
-`pr_url: null` and `run_state: complete` in one write, and hand over the branch.
+When the push or `gh pr create` cannot run, check `escalations` first for the
+trigger 7 entry the preference sweep wrote for `full-path.md` step 0's third
+check (`autonomy-contract.md`). Almost every run has one, answered before the
+split: act on it and do not ask again. "Add a remote" means a remote should
+already exist — push. "Keep the work local" means skip straight to
+`work-complete` below. Only a run with no such entry — the bounded-edit path,
+which skips the sweep — asks here, and **waits for the answer**: `blocked`
+until it lands, then `active`. One who already refused the PR has answered;
+do not ask twice. Then record `work-complete`, `pr_url: null` and
+`run_state: complete` in one write, and hand over the branch.
 
 **Restore the checkout at every end.** With a clean tree and a
 `checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record

@@ -4,7 +4,9 @@ This file owns the loop for a deliverable with more than one package
 (design §9.2). `SKILL.md` runs steps 1 to 5 first, then sends you here.
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this
-file borrows three of its steps: 7, 12 and 14 there, named below.
+file borrows three of its steps: 7, 12 and 14 there, named below. Step 0's
+third check is the one exception: `autonomy-contract.md`'s preference sweep
+runs it for every goal, before either path is chosen.
 
 This file runs **one** deliverable. Deliverables run sequentially and
 `split.md` carries `Depends on` to order them, but no loop reads it yet, so a
@@ -27,8 +29,9 @@ in a run stays unnamed, because you must read its result (design §3,
 
 ## 0. Check the launch conditions
 
-Two you can check, with the command that checks them. Run both before you
-write the split, and escalate on either — neither can be fixed mid-run.
+Three you can check, with the command that checks them. Run all three before
+you write the split, and escalate on any that fails — none can be fixed
+mid-run.
 
 1. **Agent teams are on.** `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
    prints `1`. With the flag off, a named agent launches as a plain subagent
@@ -37,8 +40,15 @@ write the split, and escalate on either — neither can be fixed mid-run.
    worktree other than your own: an isolated session is refused outright, and
    the refusal names the reason. That command is the whole verification step
    (design §15.10, §15.23f).
+3. **This run can push and open a draft PR.** `git -C <repo> remote` prints
+   at least one line. A checkout with no remote cannot push or open a PR
+   (design §15.53). Unlike the first two, this check runs on every goal, not
+   only one that may need the full path — `autonomy-contract.md`'s preference
+   sweep says where.
 
-State which one failed. Do not start the run and discover it later.
+State which one failed. Do not start the run and discover it later. Checks 1
+and 2 fail only when the goal may need the full path; check 3 fails on either
+path.
 
 Two more conditions you cannot check in advance. A display mode must work —
 iTerm2 with its Python API, a session inside tmux, or

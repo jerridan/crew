@@ -3672,3 +3672,30 @@ Deliberately different:
        that front-loads its references pays for both path files unless the
        route comes first, and T26's A/B is the next thing to measure that
        against.
+
+62. **The remote check moved into the preference sweep, and a run proved it
+    asks once — 2026-09-04, T29.** Two 2026-09-04 T21 runs (item 53e) reached
+    step 14 with a fixture that had no remote and asked there, after the whole
+    loop had already run. `full-path.md` step 0 gains a third launch check —
+    can this run push and open a draft PR, checked with `git -C <repo>
+    remote` — beside the two full-path-only checks. Unlike those two, it runs
+    on every goal: `autonomy-contract.md`'s preference sweep now folds it into
+    the same batch regardless of shape, offering the three ends `simple-path.md`
+    step 14 already offered a run that found out late — add a remote, keep the
+    work local as `work-complete`, or stop. Step 14 now reads the sweep's
+    answer from `escalations` before asking; only a bounded-edit run, which
+    skips the sweep, still asks there.
+
+    **A live run proved the batch and the silence — `add-slugify-helper-41b2/`.**
+    Simple path on a clone of `jerridan/crew-fixture-string-kit` with `git
+    remote remove origin` run first, an Opus 5 project lead at `--effort
+    high`, the plugin loaded from this branch. The goal was a `slugify`
+    helper with the same café/diacritics gap as item 53e's run. `state.json`'s
+    `escalations` holds two entries stamped the same `asked_at`,
+    `2026-09-04T18:11:51Z` — the accent question and `launch check 3: the
+    checkout has no remote to push to` — both before the split, answered in
+    one `AskUserQuestion` batch with two tabs. The principal chose "keep the
+    work local." The run split, built, passed both reviews with one fix (a
+    deliverable-review nit), and ended `work-complete` with `pr_url: null` at
+    step 14 with no second ask: "Ending the run as work-complete, per your
+    answer to keep the work local." Cost $5.51 at list price.

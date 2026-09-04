@@ -92,7 +92,7 @@ answer, as one batch, before you split. `autonomy-contract.md` owns the rule.
 
 | The work is | You |
 |---|---|
-| A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Read `references/simple-path.md`, run its step 7, then its steps 12-14. |
+| A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Read `references/simple-path.md`, run its steps 6 and 7, then its steps 12-14. |
 | One package, short enough to run unattended | Read `references/simple-path.md` and run its steps 6-14 |
 | More than one package, or work long enough to need steering | Read `references/full-path.md` and run its steps 0-13 |
 

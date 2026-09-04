@@ -3672,3 +3672,55 @@ Deliberately different:
        that front-loads its references pays for both path files unless the
        route comes first, and T26's A/B is the next thing to measure that
        against.
+
+60. **A bounded edit now writes a split and a package entry — 2026-09-04,
+    T33.** §9.1's first row sent the project lead to `simple-path.md` step 7,
+    then steps 12 to 14. Those steps mark a package `integrated` and hand
+    `split.md` to `crew:deliverable-reviewer`, and the row created neither.
+    The row now runs step 6 as well, so a bounded edit writes a one-package
+    `split.md` and its `packages[]` entry before it takes the branch. The
+    other shape — drop step 12 and let step 13 run without a split — was
+    rejected. Step 12 is not only the `integrated` write: it runs the suite,
+    edits the shared files the target repo pairs together, sweeps for stale
+    status claims and writes the final diff. A bounded edit needs all four.
+
+    a. **The package entry is what makes the run countable.** Without it
+       `crew-stats.py` drops the whole record — `if not packages` skips it
+       before it prices anything — so every bounded-edit run would have been
+       invisible to the cost and band tables. The deliverable reviewer loses
+       two checks as well: check 4 compares the diff's file list against the
+       `file_set`s, and check 2 reads the `Produces` and `Consumes` lines.
+
+    b. **The band names no model here.** `band-rubric.md` gives a bounded
+       edit's package `light`, and says plainly that the band dispatches
+       nobody, because the project lead does the work at its own model. The
+       field exists so the record holds a band and the stats count the run.
+       `crew-stats.py` splits a run's cost evenly over its packages, so a
+       bounded-edit run puts its whole cost in the `light` row against work
+       haiku never did. That column is already labelled an estimate.
+
+    c. **Three files carry the exception, one subject each.**
+       `simple-path.md` owns the loop: which steps a bounded edit runs, what
+       its split holds, and when it moves the package to `in-flight`.
+       `band-rubric.md` owns the band. `record-format.md` documents the
+       state machine and names the package fields that stay at their creation
+       values. It mirrors the `in-flight` move the same way it already
+       mirrors step 8's, so no rule gains a second owner.
+
+    d. **The row ran end to end.** `encode-query-jsdoc-ampersand-9b9f/`, an
+       Opus 5 project lead at `--effort high` on the string-kit fixture, with
+       the plugin loaded from this branch. Goal: extend one JSDoc line above
+       `encodeQuery` to name `&` as the separator. It reached a draft PR in 10
+       minutes 25 seconds for $3.69 at list price, with zero escalations, zero
+       fix rounds and zero re-specs. The record holds every field steps 12 to
+       14 write: the package `integrated`, `diffs/deliverable-1-final.patch`,
+       the deliverable review at `accepted` with 0 critical, `pr_url`,
+       `draft-pr-opened`, `run_state: complete` with its `completed_at`,
+       `spend.transcript`, and `checkout_restored: true`. `plans/` and
+       `reports/` are empty, as the new rule says they stay.
+
+    e. **The spec critic still earned its place on a one-line goal.** It
+       returned 0 critical and 4 lesser findings, one of which was a wrong
+       measurement the scout had reported — sibling JSDoc lines given as 88 to
+       96 characters, actually 77, 83 and 87. The run measured them and
+       corrected the spec. A bounded edit skips the IC, not the review.

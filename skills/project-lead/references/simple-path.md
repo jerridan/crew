@@ -10,12 +10,24 @@ steps it borrows: steps 7, 12 and 14 below, which it cites from its own steps
 One unnamed subagent does the work, in this checkout, on one branch. No split
 critic runs, no worktree is created and nothing merges.
 
+**A bounded edit runs a subset of these steps.** `SKILL.md`'s shape table
+sends it here for steps 6 and 7, then 12 to 14. You make the edit yourself,
+so steps 8 to 11 have no IC to dispatch and no package review to run. Every
+other step holds as written, with the two exceptions steps 6 and 13 name.
+
 ## 6. Write the split
 
 Write `split.md` in `record-format.md`'s format, one deliverable and one
 package, banded by `band-rubric.md`, mirrored into `state.json`'s
 `packages[]`. No split critic runs — one package has no sibling to overlap.
 `crew:deliverable-reviewer` reads it at step 13.
+
+A bounded edit writes the same file and the same entry, so that steps 12 and
+13 have a package to mark and a split to read. Its file set is the files you
+will touch, it consumes and produces nothing, and its acceptance criterion is
+the charter's. No IC is dispatched, so set the package and its deliverable
+`in-flight` when you start the edit, and give the package the deliverable's
+`base`.
 
 ## 7. Create the branch
 
@@ -98,6 +110,9 @@ review, `review-output.md` whole, and its absolute path:
 `<record-root>/reviews/<deliverable-id>-deliverable-review.md`. Four of its
 seven checks need the record. Adjudicate as in `SKILL.md` step 4; clear every
 `[Critical]` first.
+
+A bounded edit has no package review, because no package reviewer ran. Send
+the other inputs, and say in the dispatch that you made the edit yourself.
 
 ## 14. End the run
 

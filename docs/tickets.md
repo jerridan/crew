@@ -1141,7 +1141,7 @@ Read first: design §7, §9.5, §5 (invariant 1); `ic-contract.md`;
 
 ## T33 — Give a bounded edit a package entry, or take `split.md` out of its path
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §9.1, §15.59)
 

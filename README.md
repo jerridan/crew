@@ -119,7 +119,7 @@ prediction and promotion is logged, which turns the rubric into a measurement.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|
-| Project lead | your session's — launch with `fable` | your session's — launch with `high` |
+| Project lead | your session's: use `fable` | your session's: use `high` |
 | IC, Instruction IC | the package's band: haiku, sonnet or opus | your session's |
 | Scout | haiku or sonnet | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |
@@ -129,13 +129,13 @@ prediction and promotion is logged, which turns the rubric into a measurement.
 | Decomposition critic | opus | high |
 | Deliverable reviewer | opus | high |
 
-**Launch the project lead on Fable 5.1 at high effort:**
+**Launch the session with Fable at high effort:**
 
 ```
 claude --model fable --effort high
 ```
 
-The project lead runs on your session's model, and Fable is the one to give it: on the same goal it cost two thirds of an Opus 5 lead, took no fix rounds where Opus took fifteen, and reached the same fidelity (design §15.50). Fable is not the default on any plan, so select it explicitly; on a subscription it bills usage credits. Effort cannot be passed to an agent at dispatch, so an IC and a scout work at the effort of the session you launched.
+The project lead, the ICs and the scouts all take your session's effort, so set it before the run starts. Fable is not the default on any plan, and on a subscription it bills usage credits. Why Fable: design §8 and §15.50.
 
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's

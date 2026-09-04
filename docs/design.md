@@ -3483,10 +3483,11 @@ Deliberately different:
     this change the code".
 
     **Findings that led to a commit, counted by hand.** Five package reviews
-    across the thirteen records produced a commit, holding eleven findings.
-    Only one of the five was adjudicated down: `authors-route`'s reviewer
-    raised four findings, the project lead applied one and overruled three.
-    The other four package reviews had every finding applied. The remaining 27
+    across the thirteen records produced a commit. They raised fourteen
+    findings between them, and eleven of the fourteen led to a commit. Only
+    one of the five was adjudicated down: `authors-route`'s reviewer raised
+    four findings, and the project lead applied one and overruled three. The
+    other four package reviews had every finding applied. The remaining 27
     package reviews changed nothing, and 24 of the 29 packages went through
     package review without one line of their code changing because of it.
 
@@ -3547,8 +3548,8 @@ Deliberately different:
 
     a. **No per-finding adjudication.** Nothing states, per finding, whether
        the project lead accepted it and whether a commit followed. The
-       eleven-finding count above is hand-read from IC reports and review
-       prose, and it is not reproducible by a script.
+       fourteen-against-eleven count above is hand-read from IC reports and
+       review prose, and it is not reproducible by a script.
 
     b. **Earlier review rounds are not always on disk.** `graduate-pages-v3-b7d4`
        records 15 fix rounds but holds 11 package review files, and three

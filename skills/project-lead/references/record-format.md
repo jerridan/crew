@@ -94,12 +94,19 @@ absent from every other run. Five headings, in this order:
 - `## Ruled out` — one line per rejected hypothesis, each with the evidence
   that rejected it. A later run reads this as precedent (design §6.2), so an
   empty entry costs the next run a council.
-- `## Outcome` — `fix` with the deliverable id, or `no change` with the
-  reason. `no change` is what ends the run at `work-complete`.
+- `## Outcome` — `fix`, with one line naming the change to make, or
+  `no change`, with the reason. Nothing here names a deliverable: the fix's
+  deliverable does not exist when this file is written. `no change` is what
+  ends the run at `work-complete`.
 
 A council on competing hypotheses writes its own entry to `decisions.md` as
 usual. `diagnosis.md` names the winner and points there; it holds no second
 copy of the losing arguments.
+
+An `Outcome: no change` needs the adversary review design §9.5 requires:
+`reviews/diagnosis-adversary.md`, written by one `crew:council-advocate`
+arguing the root cause is wrong. An `Outcome: fix` needs none — the fix
+package's own review covers it.
 
 ## `reports/`, `plans/`, `diffs/`, and `reviews/`
 
@@ -134,7 +141,10 @@ naming convention. Do not mix their contents.
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
   critic on the same deliverable),
-  `reviews/<deliverable-id>-deliverable-review.md`. Design §9.2 allows up to
+  `reviews/<deliverable-id>-deliverable-review.md`, and
+  `reviews/diagnosis-adversary.md` for the one advocate that argues against a
+  report ending's root cause (design §9.5; the diagnosis is per goal, so this
+  name carries no deliverable id). Design §9.2 allows up to
   five review rounds per package, and a goal can hold several deliverables —
   a shared filename per kind would let a later round, a later deliverable,
   or a later re-plan silently destroy an earlier review, which is this run's
@@ -253,13 +263,13 @@ One entry per deliverable (design §5):
 | Field | Meaning |
 |---|---|
 | `id` | referenced by each package's `deliverable` field |
-| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). |
-| `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1) |
+| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). `null` on an investigation run that ends in a report: nothing is edited, so no branch is created (design §9.5). |
+| `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1). `null` when `branch` is `null`. |
 | `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
 | `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for an investigation run that ends in a report and not a change, `diagnosis.md` (design §9.5). |
-| `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `SKILL.md` step 7 on the simple path, `full-path.md` step 3 on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head (design §15.54). |
-| `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `SKILL.md` step 14 says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. |
+| `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `SKILL.md` step 7 on the simple path, `full-path.md` step 3 on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head, and `null` on an investigation run that ends in a report, which never switches the checkout (design §15.54, §9.5). |
+| `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `SKILL.md` step 14 says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. Stays `null` when `checkout_branch` is `null`: there was nothing to restore. |
 
 Deliverables run sequentially (design §5), so at most one is ever
 `in-flight`.
@@ -819,3 +829,4 @@ Every name this file defines, with what consumes it.
 - `reviews/<id>-package-review-r<n>.md` — consumer: Task 9 (`crew:package-reviewer` output, one file per fix round)
 - `reviews/<deliverable-id>-split-critic-r<n>.md` — consumer: stage 3 (`split-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
 - `reviews/<deliverable-id>-deliverable-review.md` — consumer: stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/diagnosis-adversary.md` — writer: `crew:council-advocate` on the investigation path. Consumer: design §9.5 (a report ending's only verification evidence, design §7)

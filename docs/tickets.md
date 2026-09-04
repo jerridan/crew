@@ -402,8 +402,10 @@ run meets them:
    what moves it `in-flight`.
 4. **The two endings.** `Outcome: fix` rejoins step 5's table with the
    reproduction as the package's acceptance criterion and `diagnosis.md` in
-   the IC spawn prompt and the PR body. `Outcome: no change` ends the run
-   `work-complete` with `pr_url: null`.
+   the IC spawn prompt and the PR body. `Outcome: no change` runs the
+   adversary review first (`reviews/diagnosis-adversary.md`), then ends the
+   run `work-complete` with `pr_url: null` and four `null` branch and
+   checkout fields.
 
 `SKILL.md` is at its size limit and T27 splits it, so the loop's text goes
 in a reference, not in the body. Decide with T27 whether that is

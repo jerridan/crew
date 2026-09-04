@@ -23,9 +23,8 @@ The **simple path** is steps 6-14 below; the **full path** is
 - `references/review-output.md` is the shape every review agent reports in.
   Inject it whole into every review dispatch. You do not follow it.
 
-Write `state.json` after **every** transition, never batched, with
-`scripts/crew-record.py` beside this file (`record-format.md` shows each
-call). Every path you hand an agent is absolute: its cwd is not yours.
+`record-format.md` says how to write `state.json`, with `scripts/crew-record.py`
+beside this file. Every path you hand an agent is absolute: its cwd is not yours.
 
 ## 1. Take the goal
 
@@ -80,7 +79,6 @@ again. Three re-specs is the cap; escalate at it.
 
 Adjudicate every review the same way: restate each finding in your own words,
 verify it against the repo, and push back in writing where it is wrong here.
-A finding is a claim, not a verdict.
 
 ## 4a. Sweep for preference questions
 
@@ -95,8 +93,6 @@ answer, as one batch, before you split. `autonomy-contract.md` owns the rule.
 | One package, short enough to run unattended | Run steps 6-14 |
 | More than one package, or work long enough to need steering | Read `references/full-path.md` and run it in place of steps 6-14 |
 
-Your own context is the most expensive place to work.
-
 ## 6. Write the split
 
 Write `split.md` in `record-format.md`'s format, one deliverable and one
@@ -107,9 +103,10 @@ verification-tool rule holds here too.
 
 ## 7. Create the branch
 
-`git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>` from the current
-head; never work on the main branch. Write the `deliverables[]` entry now —
-`id`, branch, the head sha as `base`, `state: pending`, `pr_url: null`.
+Read the checkout's branch: `git -C <repo> branch --show-current`. Then `git -C
+<repo> switch -c crew/<goal-slug>/<deliverable-id>`; never work on the main
+branch. Write the `deliverables[]` entry now — `id`, branch, the head sha as
+`base`, `state: pending`, `pr_url: null`, and that branch as `checkout_branch`.
 
 ## 8. Dispatch the IC
 
@@ -143,12 +140,11 @@ Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
 `git -C <repo> diff <base>..HEAD > <path>`, `base` being the deliverable's.
 An instruction package gets its checklist file instead.
 
-`crew:package-reviewer` requires five inputs and says so. Send all five: the
-package's record entry (`file_set`, `interface_contract`,
-`acceptance_criterion`), the checkout path, the IC's report, the diff or
-checklist path, and the brief. Inject `review-output.md` too, and name its
-absolute path: `<record-root>/reviews/<id>-package-review-r<n>.md`, `<n>`
-being `fix_rounds_used`.
+`crew:package-reviewer` requires five inputs. Send all five: the package's
+record entry (`file_set`, `interface_contract`, `acceptance_criterion`), the
+checkout path, the IC's report, the diff or checklist path, and the brief.
+Inject `review-output.md` too, at its absolute path:
+`<record-root>/reviews/<id>-package-review-r<n>.md`, `<n>` being `fix_rounds_used`.
 
 ## 11. Fix rounds
 
@@ -167,8 +163,8 @@ recorded. At the top band, escalate instead.
 ## 12. Integrate
 
 Nothing merges — the work is already on the deliverable branch. Run the suite
-on the branch head and read the output yourself. Then edit the shared files:
-the target repo's own instructions say which must change together, and keep
+on the branch head and read the output. Then read the target repo's own
+instructions for which shared files must change together, edit them, and keep
 the values they require equal. Commit them, and mark the package `integrated`.
 
 **Sweep for stale status claims.** You own this check alone. Run the block in
@@ -187,7 +183,7 @@ review, `review-output.md` whole, and its absolute path:
 seven checks need the record. Adjudicate as in step 4; clear every
 `[Critical]` first.
 
-## 14. Open the draft PR
+## 14. End the run
 
 Push the branch. Fill the repo's pull request template if it has one, and put
 `spec.md` and `decisions.md` in the body, one long line per paragraph and list
@@ -202,3 +198,7 @@ When the push or `gh pr create` cannot run, ask the principal and **wait for
 the answer** — `blocked` until it lands, then `active`. One who already refused
 the PR has answered; do not ask twice. Then record `work-complete`,
 `pr_url: null` and `run_state: complete` in one write, and hand over the branch.
+
+**Restore the checkout at every end.** With a clean tree and a
+`checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
+why not in `checkout_restored`. Name both branches in your last message.

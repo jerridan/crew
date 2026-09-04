@@ -7,6 +7,7 @@ usage:
   crew-record.py <record-dir> session-id <id>
   crew-record.py <record-dir> deliverable add <json-object>
   crew-record.py <record-dir> deliverable <id> state <state> [--pr-url <url>]
+  crew-record.py <record-dir> deliverable <id> set <field> <json>
   crew-record.py <record-dir> package add <json-object>
   crew-record.py <record-dir> package <id> state <state>
   crew-record.py <record-dir> package <id> set <field> <json>
@@ -114,13 +115,16 @@ def main(argv: list[str]) -> None:
             state.setdefault("deliverables", []).append(entry)
         else:
             dl = find(state.get("deliverables", []), rest[0])
-            if arg(rest, 1) != "state":
+            if arg(rest, 1) == "state":
+                dl["state"] = arg(rest, 2)
+                dl["state_changed_at"] = now()
+                url = flag(rest, "--pr-url")
+                if url:
+                    dl["pr_url"] = url
+            elif arg(rest, 1) == "set":
+                dl[arg(rest, 2)] = json.loads(arg(rest, 3))
+            else:
                 usage()
-            dl["state"] = arg(rest, 2)
-            dl["state_changed_at"] = now()
-            url = flag(rest, "--pr-url")
-            if url:
-                dl["pr_url"] = url
     elif kind == "package":
         if arg(rest, 0) == "add":
             entry = json.loads(arg(rest, 1))

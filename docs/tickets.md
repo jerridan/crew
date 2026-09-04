@@ -528,7 +528,7 @@ deliverable states and transitions; T11.
 
 ## T17 — Restore the checkout's branch when a simple-path run ends
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any
 
@@ -551,13 +551,23 @@ step:
 - Say what happens when the tree is dirty at the end, or when the principal
   wants to stay on the deliverable branch to look at it. Switching a checkout
   out from under a person is its own failure.
-- The full path does not have this problem — its ICs work in worktrees — so
-  the rule belongs in `SKILL.md`, not `full-path.md`. Say so, rather than
-  adding a step to both.
+- Both paths switch the checkout: `SKILL.md` step 7 on the simple path, and
+  `full-path.md` step 3 on the full path, whose ICs work in worktrees but whose
+  project lead does not. The rule's text lives in `SKILL.md`, and `full-path.md`
+  points at it twice, rather than carrying a copy.
 
 Done when: a simple-path run ends with the checkout on the branch it started
 on, or with a recorded reason why it did not, and a second run in the same
 directory starts from a known branch.
+
+2026-09-04: done. `SKILL.md` step 7 records `deliverables[].checkout_branch`
+and step 14 switches back; `deliverables[].checkout_restored` holds `true` or
+the reason it did not. `full-path.md` points at those two steps from its own
+step 3 and step 11. Two simple-path runs in one fixture checkout proved it:
+`~/.claude/crew/truncate-helper-bfa8/` and, from the same directory,
+`~/.claude/crew/slugify-stage-3-fa89/`. Both record `checkout_branch: "main"`
+and `checkout_restored: true`, and both left the checkout on `main` and clean
+(design §15.54). No run has exercised the full path's restore.
 
 Read first: design §9.1, §15.47; `record-format.md` deliverable fields;
 `SKILL.md` steps 7 and 14.

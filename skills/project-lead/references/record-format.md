@@ -31,6 +31,7 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> init "<goal>" <goal-slug
 python3 <skill-dir>/scripts/crew-record.py <record-dir> session-id "$CLAUDE_CODE_SESSION_ID"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> deliverable add '<json object>'
 python3 <skill-dir>/scripts/crew-record.py <record-dir> deliverable <id> state in-flight
+python3 <skill-dir>/scripts/crew-record.py <record-dir> deliverable <id> set checkout_restored '"dirty tree, 3 files modified"'
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package add '<json object>'
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> state in-flight
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rounds_used 1
@@ -53,6 +54,10 @@ replaces the file in one step. It checks no transition; this file owns
 those. Rewriting the whole file by hand costs a turn of output per
 transition and is where the invented session id came from (design §15.39,
 §15.50).
+
+A `set` value is JSON, so a string carries its own quotes inside the shell
+quotes, as the `checkout_restored` line above shows. A bare sentence fails to
+parse and writes nothing.
 
 ## `charter.md`
 
@@ -225,6 +230,8 @@ One entry per deliverable (design §5):
 | `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
 | `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for a run that ends in a report and not a change, the record itself. |
+| `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `SKILL.md` step 7 on the simple path, `full-path.md` step 3 on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head (design §15.54). |
+| `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `SKILL.md` step 14 says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. |
 
 Deliverables run sequentially (design §5), so at most one is ever
 `in-flight`.
@@ -391,7 +398,9 @@ One run, two packages, in different states:
       "base": "a1b2c3d",
       "state": "in-flight",
       "state_changed_at": "2026-08-24T14:05:00Z",
-      "pr_url": null
+      "pr_url": null,
+      "checkout_branch": "main",
+      "checkout_restored": null
     }
   ],
   "run": {
@@ -689,6 +698,8 @@ Every name this file defines, with what consumes it.
 - `state` (deliverable) — consumer: stage 5 (integration and re-plan, design §9.3, §10); shares `pending`/`in-flight`/`abandoned` with a package's `state`. `integrated` is a package's alone; `draft-pr-opened` and `work-complete` are a deliverable's alone
 - `state_changed_at` (deliverable) — consumer: a human auditing the record's timeline; stage 6
 - `pr_url` — consumer: stage 4 (draft PR opened in `draft-pr-opened`, design §9.3); Task 11
+- `checkout_branch` — consumer: stage 4 (`SKILL.md` step 14 switches the checkout back to it, design §15.54)
+- `checkout_restored` — consumer: a human, or a next session, asking why the checkout is on the deliverable branch (design §15.54)
 
 **`state.json` per-package fields**
 - `id` — consumer: this file's `reports/<id>.md`, `plans/<id>.md`, `reviews/<id>-package-review-r<n>.md` naming; stage 3 (`split-critic` identifies packages)

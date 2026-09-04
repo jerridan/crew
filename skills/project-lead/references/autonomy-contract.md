@@ -64,12 +64,17 @@ Ask one block per question:
 <the question, in one line>
 Options: <each option, and what the run commits to under it>
 My recommendation: <which, and why>
-Record it? <the file the rule would land in>
+Record it? <the rule, in the words you would commit>
 ```
 
-The `Record it?` line asks for one thing: permission to write the answer
-into the target repo, so the next run finds it as precedent. The section
-Record the answer as precedent, below, owns what happens next.
+The `Record it?` line asks for permission to write the answer into the target
+repo, so the next run finds it as precedent. Quote the rule you would commit,
+word for word — approval of a filename is not approval of wording. Record the
+answer as precedent, below, owns what happens next.
+
+**Check the wording against `writing-standard.md`'s checklist before you ask.**
+An answer that cannot pass it as one rule is a package, and the split is still
+ahead of you here. Nothing can add a package at integration.
 
 Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
@@ -240,16 +245,21 @@ shared files, and you own every shared file; an IC that edits a root
 hold the answer already, so a dispatch would re-send the contract, the brief
 and the checklist to deliver one line.
 
-Hold the rule to `writing-standard.md`'s `## Before you open the PR`
-checklist. Its container check decides where the rule lands: a rule every
-session in the repo needs goes in the root `CLAUDE.md`, and a rule that
-covers one area of the repo goes in a `.claude/rules/` file scoped to that
-path. Its no-duplication check stops the rule competing with one the repo
-already states. Its size check keeps it short.
+Write the wording the principal approved, and **commit it in that step**. An
+uncommitted rule reaches no reviewer and no PR: the stale-status sweep and the
+final diff both read committed history.
 
-Dispatch `crew:ic-instructions` only when the answer cannot pass that
-checklist as one rule. That is a package, it belongs in the split, and a
-second package sends the run down the full path.
+`writing-standard.md`'s `## Before you open the PR` checklist picks the
+container: a rule every session in the repo needs goes in the root
+`CLAUDE.md`, and a rule that covers one area of the repo goes in a
+`.claude/rules/` file scoped to that path. You ran that checklist at the
+sweep, on the wording you proposed. Run its container check again now, since
+the repo may have changed under you, and **name the file you wrote the rule
+into on the sweep entry's `Answer:` line** (`record-format.md`).
+
+`crew:ic-instructions` owns the answer that cannot pass the checklist as one
+rule. That is a package, so it goes in the split — which is why the sweep,
+not this step, judges the fit.
 
 Write nothing when the principal refuses, or answers the question and not the
 `Record it?` line. Record the refusal in the sweep entry instead

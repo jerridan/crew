@@ -626,12 +626,12 @@ looks harmless.
 `autonomy-contract.md`'s sweep writes one entry before the split, on every
 run, including a run that found nothing.
 
-**A sweep entry is written twice, like a council entry.** Before the ask it
-carries the questions and `Answer: pending`, which proves the routing came
-first. The principal's reply completes it: one `Answer:` line per question,
-each naming the question it settles, so `decisions.md` holds what was decided
-and not only that something was asked. A sweep that found nothing is finished
-in one write, with `Answer: none`.
+**A sweep entry starts like a council entry.** Before the ask it carries the
+questions and `Answer: pending`, which proves the routing came first. The
+principal's reply completes each answer: one `Answer:` line per question, each
+naming the question it settles, so `decisions.md` holds what was decided and
+not only that something was asked. A sweep that found nothing is finished in
+one write, with `Answer: none`.
 
 `Citation:` names the files the sweep read. Each escalated question also gets
 its own `escalations` entry, written with `escalation add` above, so one
@@ -641,8 +641,7 @@ batch reads as one interruption in `state.json` too.
 ## Preference sweep: what does the principal want that the repo cannot say?
 Route: preference
 Questions: 1. Does each book get its own route? 2. Is the old URL kept?
-Answer: 1. Yes, one route per book — recorded in .claude/rules/routes.md.
-2. No, the old URL redirects — not recorded.
+Answer: 1. Yes, one route per book — recorded in CLAUDE.md. 2. No — not recorded.
 Citation: charter.md and spec.md hold no other open question that an
 instruction, a prior decision or repo precedent settles.
 Confidence: high
@@ -653,10 +652,15 @@ Timestamp: 2026-08-24T14:32:00Z
 escalated, in the order it asked them. An entry with `Answer: none` needs no
 `Questions:` line.
 
-Each `Answer:` line ends with where the answer was written back: the target
-repo file that now carries it as a rule, or `not recorded` when the principal
-refused (`autonomy-contract.md`). That lets an audit tell a refusal from a
-step the run skipped.
+**Each answer ends with where it was written back**: the target repo file
+that now carries it as a rule, or `not recorded` when the principal refused
+(`autonomy-contract.md`). That lets an audit tell a refusal from a step the
+run skipped.
+
+That makes the sweep entry the one entry written three times. The reply
+completes every answer; the file name lands later, at integration, because
+that is when the rule is written and the container check can move it. Reopen
+the entry there and finish the line.
 
 ### A council entry
 

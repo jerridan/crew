@@ -3738,3 +3738,17 @@ Deliberately different:
     d. **Run B recorded its answer too.** The `Record it?` line fired
        unprompted on the second run, and the fixture's `CLAUDE.md` ended with
        two rules from two runs. The mechanism compounds.
+
+    e. **A diff-wide review found four defects in the first draft**, which is
+       §15.48's finding holding for the fourth time. The `Record it?` template
+       asked for a filename, so a "yes" approved a location and never the
+       wording the run would commit — the exact approval §6.2 forbids
+       skipping. The write-back paragraph named no commit, and the two steps
+       after it read committed history only, so an approved rule could miss
+       the PR entirely. The `crew:ic-instructions` escape hatch sat at
+       integration, where no run can add a package to a split that is already
+       built. And `record-format.md` asked the sweep entry to name a file it
+       cannot know at the time it is completed: the reply lands before the
+       split, the rule lands at integration. The template now carries the
+       rule text, the step commits, the checklist fit is judged at the sweep,
+       and the sweep entry is finished in three writes rather than two.

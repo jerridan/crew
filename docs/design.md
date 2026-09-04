@@ -521,9 +521,8 @@ dispatches one that the charter does not name.
 
 **The principal names the list at hand-off.** The charter carries an explicit
 list of repo-local skills or agents this run may dispatch, called its
-instruments. A run with no `Instruments:` line has none, and the project lead
-never invents one from what it finds in the repo. `record-format.md` owns the
-field.
+instruments. `record-format.md` owns the charter's `Instruments:` field and
+what it means for a run to have none.
 
 **Only the project lead or a researcher may dispatch a listed instrument**,
 and only during scouting or research, before any package is split out. An IC

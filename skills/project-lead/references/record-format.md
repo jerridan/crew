@@ -73,7 +73,9 @@ each on its own, anywhere in the file:
   that carries its context from package to package. `spend` is the default
   (design §15.50).
 - `Instruments: <name>, <name>, ...` — the repo-local skills or agents this
-  run may dispatch (design §6.4). Comma-separated, by their invoke name.
+  run may dispatch (design §6.4). Comma-separated, each the exact name the
+  principal would type to invoke that skill or agent in the target repo — a
+  slash command without its leading `/`, or an agent's frontmatter `name`.
   Without this line the run has none, and the project lead never dispatches
   one it finds in the repo but the charter does not name.
 

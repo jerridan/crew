@@ -549,6 +549,24 @@ midnight, which makes a decision trail a human cannot order (design §15.47).
 This is the same failure as an invented session id (§15.39), in a field that
 looks harmless.
 
+### A preference-sweep entry
+
+`autonomy-contract.md`'s sweep writes one entry before the split, on every
+run, including a run that found nothing. `Answer:` counts the questions it
+escalated, or reads `none`. `Citation:` names the two files it read. Each
+escalated question also gets its own `escalations` entry, with the same
+`asked_at`, so one batch reads as one interruption.
+
+```markdown
+## Preference sweep: what does the principal want that the repo cannot say?
+Route: preference
+Answer: 1 escalated — whether each book gets its own route.
+Citation: charter.md and spec.md hold no other open question that an
+instruction, a prior decision or repo precedent settles.
+Confidence: high
+Timestamp: 2026-08-24T14:32:00Z
+```
+
 ### A council entry
 
 A council-route entry carries four more lines (design §6.1). `Positions` and

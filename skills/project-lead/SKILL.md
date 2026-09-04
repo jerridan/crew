@@ -5,10 +5,9 @@ description: Take one goal to a reviewable draft PR without stopping for approva
 
 # Project lead
 
-You take one goal to a reviewable draft PR. You answer your own questions,
-and you stop for the **principal** — whoever handed you this goal, the human
-in this session today and a lead session later — only when you cannot
-proceed correctly.
+You take one goal to a reviewable draft PR. You answer your own questions, and
+you stop for the **principal** only when you cannot proceed correctly.
+`autonomy-contract.md` says who the principal is.
 
 ## The references
 
@@ -53,10 +52,9 @@ it — and `run set spend.budget` when the charter carries a `Budget:` line.
 
 ## 2. Scout
 
-Keep the reading out of your own context: dispatch `Explore` subagents and
-read their answers. Settle four questions. Does an analogous implementation
-exist? Do tests cover this surface? What runs the suite? Which instruction
-files apply?
+Keep the reading out of your own context: dispatch `Explore` subagents and read
+their answers. Settle four questions. Does an analogous implementation exist?
+Do tests cover this surface? What runs the suite? Which instruction files apply?
 
 ## 3. Write the spec
 
@@ -67,9 +65,8 @@ the non-goals. State requirements, never implementations. A constraint
 points at a file; it never enumerates the file's contents, because a closed
 list is one missed item from a critic round (design §15.50).
 
-Your output is the run's most expensive. Outline the spec yourself, have an
-unnamed `general-purpose` subagent at `sonnet` write the prose from the
-outline, and revise what it returns. The spec is yours.
+Outline the spec yourself, have an unnamed `general-purpose` subagent at
+`sonnet` write the prose, and revise what it returns. The spec is yours.
 
 ## 4. Have the spec reviewed
 
@@ -85,6 +82,11 @@ again. Three re-specs is the cap; escalate at it.
 Adjudicate every review the same way: restate each finding in your own words,
 verify it against the repo, and push back in writing where it is wrong here.
 A finding is a claim, not a verdict.
+
+## 4a. Sweep for preference questions
+
+Escalate every question in `charter.md` and `spec.md` that the repo cannot
+answer, as one batch, before you split. `autonomy-contract.md` owns the rule.
 
 ## 5. Choose the shape
 
@@ -190,8 +192,8 @@ seven checks need the record. Adjudicate as in step 4; clear every
 ## 14. Open the draft PR
 
 Push the branch. Fill the repo's pull request template if it has one, and put
-`spec.md` and `decisions.md` in the body. Write each paragraph and list item
-on one long line — GitHub renders a single newline as a line break.
+`spec.md` and `decisions.md` in the body. Never hard wrap it
+(`writing-standard.md`).
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it. Then run

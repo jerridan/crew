@@ -3033,3 +3033,34 @@ Deliberately different:
     **The owner decision is the part the run confirms.** A claim outside
     every file set is invisible to the two reviewers that read a file set.
     Only the seat that owns the shared files finds it.
+
+53. **The preference sweep: one batched ask between the spec and the split —
+    2026-09-03, T21.** Six runs produced zero escalations. In the §15.50 A/B
+    both project leads answered the one question the answer key marked as the
+    principal's — whether each book gets its own route — by calling it
+    precedent. §6's preference route already forbids that. Nothing made the
+    project lead look for such a question at the moment asking is still cheap.
+
+    `SKILL.md` gains step **4a**, between the spec review and the shape
+    choice: read `charter.md` and `spec.md` again, list every question the
+    repo cannot answer, and escalate the list as one batch.
+    `autonomy-contract.md` owns the rule, under The preference sweep, and
+    `record-format.md` owns the `decisions.md` entry that records the sweep
+    ran, including on a run that found nothing.
+
+    a. **A lettered step, not a renumbering.** Numbering the step `5` and
+       pushing the rest down would have invalidated about thirty citations of
+       a `SKILL.md` step number, most of them in this section, where they are
+       evidence and must stay true. `full-path.md` already carries steps 5a
+       and 8a for the same reason.
+
+    b. **The step sits in the shared prefix.** `full-path.md` replaces
+       `SKILL.md` steps 6 to 14 and runs steps 1 to 5 first, so both paths
+       inherit step 4a and the rule stays in one file.
+
+    c. **No new timeout.** An unanswered batch expires by the mechanism that
+       already exists: `SessionEnd` marks the dead run `interrupted`, and
+       `--resume` reopens it `blocked` on the same `escalations` entries.
+
+    d. **Unproven.** The two runs T21 asks for have not run: one charter with
+       a seeded preference question, one with none.

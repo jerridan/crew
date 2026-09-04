@@ -20,6 +20,47 @@ Every relative path named in `state.json` resolves against this directory
 root. `worktrees.json`'s `worktree` field is the one path that is already
 absolute.
 
+The root is `$CREW_RECORD_ROOT` when that variable is set, and
+`~/.claude/crew/` otherwise. Both hooks check both places. Set it to keep
+two runs of one charter apart, as an experiment does (design §15.50).
+
+**Write `state.json` with `scripts/crew-record.py`**, beside this skill:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> init "<goal>" <goal-slug> "$CLAUDE_CODE_SESSION_ID"
+python3 <skill-dir>/scripts/crew-record.py <record-dir> session-id "$CLAUDE_CODE_SESSION_ID"
+python3 <skill-dir>/scripts/crew-record.py <record-dir> deliverable add '<json object>'
+python3 <skill-dir>/scripts/crew-record.py <record-dir> deliverable <id> state in-flight
+python3 <skill-dir>/scripts/crew-record.py <record-dir> package add '<json object>'
+python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> state in-flight
+python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rounds_used 1
+python3 <skill-dir>/scripts/crew-record.py <record-dir> run state blocked
+python3 <skill-dir>/scripts/crew-record.py <record-dir> run set spend.budget 60
+python3 <skill-dir>/scripts/crew-record.py <record-dir> close <deliverable-id> draft-pr-opened --pr-url <url>
+```
+
+`init` creates the file with `created_at`. `close` writes the deliverable's
+terminal state and `run_state: complete` together, which the
+`work-complete` exception below requires. It stamps `state_changed_at` and
+replaces the file in one step. It checks no transition; this file owns
+those. Rewriting the whole file by hand costs a turn of output per
+transition and is where the invented session id came from (design §15.39,
+§15.50).
+
+## `charter.md`
+
+The goal and its falsifiable acceptance criteria, as the principal wrote
+them or as the project lead expanded a goal string. Two optional lines,
+each on its own, anywhere in the file:
+
+- `Budget: <dollars>` — the most the run may cost at Anthropic list price,
+  as `spend.py` computes it. Copied to `spend.budget`. Without it the run has
+  no budget and `autonomy-contract.md` trigger 5 never fires.
+- `Favour: time` or `Favour: spend` — what the split optimises. `time`
+  splits into parallel territories; `spend` keeps one territory and one IC
+  that carries its context from package to package. `spend` is the default
+  (design §15.50).
+
 ## `reports/`, `plans/`, `diffs/`, and `reviews/`
 
 Four directories hold per-run output. Each has one writer and a fixed
@@ -61,9 +102,9 @@ naming convention. Do not mix their contents.
   The spec and split critics have no counter in `state.json`, so their `<n>`
   is one more than the highest already on disk under that same name. Reading
   it from disk is what keeps a resumed run from overwriting a review it wrote
-  before the crash. The project lead writes every file under `reviews/`, from the
-  reviewer's returned findings — a reviewer agent has no `Write` tool and
-  returns its findings as a tool result.
+  before the crash. The review agent writes its own file, at the absolute
+  path the dispatch names (`review-output.md`); the project lead transcribes
+  it only when the write was denied.
 
 The project lead never has to parse a review to find a report or a plan. It reads
 `report_path` or `plan_path` from `state.json` and opens that file directly.
@@ -285,8 +326,10 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 |---|---|
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
-| `spend` | `{ceiling, measured_tokens, estimated_tokens, council_tokens, by_agent}`. See Spend below. |
+| `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it. |
+| `spend` | `{budget, transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
+| `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md` steps 6 and 8a consume it. Absent until the first compaction. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
 prints this session's own id, and it is the same string the `SessionEnd` hook
@@ -308,18 +351,14 @@ writes no `worktrees.json`, but it still writes `run.session_ids`.
 
 ### Spend
 
-Design §8 requires a teammate's spend to be recorded as an **estimate**,
-marked as such, because it is not reported the way a subagent's is; design
-§6.1 requires council spend as its own line item, expected to be the
-largest in a run.
+Spend is measured from the transcripts, not from agent notifications, because
+the transcripts are the only count that includes the project lead's own
+session and the teammates (design §8, §15.50).
 
 | Field | Meaning |
 |---|---|
-| `ceiling` | the run's spend ceiling (design §8). Crossing it escalates. |
-| `measured_tokens` | sum of `total_tokens` from subagent completion notifications (design §8) |
-| `estimated_tokens` | the project lead's estimate of teammate spend, which is not reported this way |
-| `council_tokens` | tokens attributed to council advocacy and adjudication (design §6.1) |
-| `by_agent` | a list of `{agent, total_tokens, measured}`. `total_tokens` here is design §8's own per-agent name; `measured` is `false` for a teammate's estimate. |
+| `budget` | dollars at list price, from the charter's `Budget:` line; absent when the charter has none. Exceeding it is `autonomy-contract.md` trigger 5. |
+| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over every transcript that ran from the checkout since `created_at`. `autonomy-contract.md` says when to run it. |
 
 ### Escalations
 
@@ -351,15 +390,15 @@ One run, two packages, in different states:
   "run": {
     "run_state": "active",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
+    "created_at": "2026-08-30T14:02:11Z",
     "spend": {
-      "ceiling": 5000000,
-      "measured_tokens": 812000,
-      "estimated_tokens": 150000,
-      "council_tokens": 0,
-      "by_agent": [
-        { "agent": "split-critic", "total_tokens": 210000, "measured": true },
-        { "agent": "ic-middleware", "total_tokens": 0, "measured": false }
-      ]
+      "budget": 60,
+      "transcript": {
+        "measured_at": "2026-08-30T16:40:03Z",
+        "total_tokens": 41200000,
+        "usd_list_price": 23.10,
+        "by_model": { "opus": { "messages": 140, "input": 300, "cache_write_5m": 0, "cache_write_1h": 420000, "cache_read": 38000000, "output": 90000, "usd": 20.35 }, "sonnet": { "messages": 60, "input": 120, "cache_write_5m": 310000, "cache_write_1h": 0, "cache_read": 2400000, "output": 12000, "usd": 2.75 } }
+      }
     },
     "escalations": [
       {
@@ -532,7 +571,8 @@ holding it.
 - `Models:` — the model every advocate ran, as `<n> advocates, <model>`. Every
   advocate in one council runs the same model (`band-rubric.md`), so this is
   one value, not one per advocate. Name your own adjudicating model after it.
-- `Spend:` — the tokens this council added to `spend.council_tokens`.
+- `Spend:` — the advocates' `total_tokens`, summed from their completion
+  notifications; `unmeasured` when a dispatch shape reported none.
 
 ```markdown
 ## Where does the retry budget live: the client or the call site?
@@ -578,7 +618,12 @@ Every name this file defines, with what consumes it.
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
-- `reviews/` — writer: the project lead, from each reviewer's returned findings. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `charter.md` `Budget:` and `Favour:` lines — consumer: `SKILL.md` step 1 (budget), `full-path.md` step 1 (split shape)
+- `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py`
+- `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md` step 6 (re-verify after an IC compacts), step 8a (respawn)
+- `run.spend.budget` — writer: `SKILL.md` step 1 from the charter. Consumer: `autonomy-contract.md` trigger 5
+- `run.spend.transcript` — writer: `scripts/spend.py`. Consumer: `autonomy-contract.md` trigger 5, design §8
 
 **`split.md` sections and fields**
 - `Global Constraints` — consumer: stage 4/5 (project lead copies it into every IC spawn prompt, design §5)
@@ -646,15 +691,7 @@ Every name this file defines, with what consumes it.
 - `run_state` — consumer: crew's `SessionEnd` hook (writer, `hooks/session-end.py`); stage 5
 - `run_state` values `active`, `blocked`, `interrupted`, `complete` — consumer: this file's `run_state` transitions table; crew's `SessionEnd` hook; stage 5, stage 6
 - `run.session_ids` — consumer: stage 5 (resume, matches this run's project lead sessions)
-- `spend` — consumer: design §8 spend ceiling, stage 6 (escalation on crossing it)
-- `spend.ceiling` — consumer: stage 6 (spend ceiling check, design §8)
-- `spend.measured_tokens` — consumer: stage 6 (spend ceiling check, design §8)
-- `spend.estimated_tokens` — consumer: stage 6 (spend ceiling check, design §8's teammate-estimate rule)
-- `spend.council_tokens` — consumer: stage 6 (council spend line item, design §6.1)
-- `spend.by_agent` — consumer: stage 6 (per-agent spend detail)
-- `spend.by_agent[].agent` — consumer: stage 6
-- `spend.by_agent[].total_tokens` — consumer: stage 6 (design §8's per-agent usage name)
-- `spend.by_agent[].measured` — consumer: stage 6 (marks an estimate as such, design §8)
+- `spend` — consumer: design §8, `autonomy-contract.md` trigger 5 (the budget check)
 - `escalations` — consumer: stage 6 (design §6 triggers); this file's `run_state` transitions table
 - `escalations[].trigger` — consumer: stage 6
 - `escalations[].question` — consumer: stage 6; the human answering it
@@ -683,7 +720,7 @@ Every name this file defines, with what consumes it.
 - `Positions` — consumer: stage 6 (council entries only, design §6.1)
 - `Losing` — consumer: stage 6 (council entries only, design §6.1)
 - `Models` — consumer: stage 6 (council entries only); Task 5 (`band-rubric.md`'s promotion data covers councils, design §15.9)
-- `Spend` — consumer: stage 6 (council entries only); mirrors `spend.council_tokens`
+- `Spend` — consumer: stage 6 (council entries only)
 - `Timestamp` — consumer: a human auditing the record's timeline; stage 6
 
 **Goal-slug format**

@@ -1,9 +1,9 @@
 ---
 name: spec-critic
-description: Review the project lead's own spec.md against the charter, before the goal is split into packages. Checks the spec only — not the split in split.md, not the code. Catches an unfalsifiable acceptance criterion, a contradiction, and a charter requirement the spec dropped. Dispatched unnamed so its findings return as a tool result.
+description: Review the project lead's own spec.md against the charter, before the goal is split into packages. Checks the spec only — not the split in split.md, not the code. Catches an unfalsifiable acceptance criterion, a contradiction, and a charter requirement the spec dropped. Dispatched unnamed; writes its findings to the record path the dispatch names and returns the verdict lines.
 model: opus
 reasoning_effort: high
-tools: Read, Glob, Grep
+tools: Read, Write, Glob, Grep
 ---
 
 # Spec critic
@@ -62,6 +62,11 @@ A spec that dictates function names, file layouts, or an implementation an IC
 should choose is a `[Concern]`, not a strength. Name the line that
 over-specifies, and say what it should state instead — the requirement, not the
 solution.
+
+A constraint that enumerates a file's contents as a closed list is the same
+finding. Report the missing item as a `[Concern]` and the enumeration as the
+cause; do not return a re-spec for it. One spec took three critic rounds, each
+for one item missing from one list (design §15.50).
 
 ## Findings
 

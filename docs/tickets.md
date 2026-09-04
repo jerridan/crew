@@ -602,3 +602,215 @@ unbuilt, and the check is stated in exactly one place.
 Read first: design §15.48, §15.49; `writing-standard.md`'s "Keep the status
 true"; `SKILL.md` step 12; `agents/deliverable-reviewer.md`.
 
+
+## T19 — Probe: `PreCompact` for an in-process teammate
+
+Status: open
+Depends on: nothing
+Stage: any (design §13.1, §15.50)
+
+`hooks/pre-compact.py` appends to `run.compactions` when the compacting
+session belongs to a live run, matched by `run.session_ids` or a worktree's
+`session_ids`. It was tested with a seeded payload and a record copy. Nothing
+has shown that the harness fires `PreCompact` for an in-process teammate at
+all, or that its payload carries `agent_id` and a `transcript_path` whose
+sibling `.meta.json` names the teammate, which is how the hook attributes it.
+
+Done when: an IC teammate is driven past its compaction threshold in an
+interactive session with agent teams on, and `run.compactions` holds an
+entry whose `agent` is that IC's name, as `full-path.md` step 6 matches it. Record the payload
+shape in design §15.
+
+Read first: design §13.1, §15.50; `hooks/pre-compact.py`; `full-path.md`
+steps 6 and 8a.
+
+## T20 — Probe: a review agent's write to the record root
+
+Status: open
+Depends on: nothing
+Stage: any (design §15.50)
+
+`review-output.md` now has every review agent write its report to the path
+its dispatch names and return three lines. An IC's record writes are denied
+in some dispatch shapes (design §15.26b, §15.31b), and the same may hold for
+an unnamed reviewer. The fallback is in place — the whole report returns when
+the write is denied — but the saving only lands when the write succeeds.
+
+Done when: one run on each path shows a `reviews/` file written by the
+reviewer itself, or the denial is recorded in design §15 with the dispatch
+shape that produced it.
+
+Read first: design §15.26, §15.31, §15.50; `review-output.md`.
+
+## T21 — Batch the principal's questions before the split
+
+Status: open
+Depends on: nothing
+Stage: any (design §6, §15.50)
+
+Six runs, zero escalations. In the A/B both leads answered a question the
+charter left open on purpose and that only the principal could answer —
+whether `/book` gets per-book routes — by calling it precedent (§15.50).
+`autonomy-contract.md` says a question about what the principal wants is
+never debated, but nothing makes the project lead look for one at the
+moment it can still ask cheaply.
+
+Add a step between the spec and the split: list every open question in the
+charter and the spec that turns on the principal's preference rather than
+on the repo, and escalate them as one batch. One interruption, before any
+IC runs. A lead session answers the batch by message; a human answers it in
+the session. `autonomy-contract.md` owns the routing rule; `SKILL.md` gains
+the step.
+
+Done when: a run on a charter with one seeded preference question escalates
+it before the split, and a run on a charter with none escalates nothing.
+
+Read first: design §6, §6.2, §15.22b, §15.50; `autonomy-contract.md`.
+
+## T22 — Redesign the council: one adversary by default, three advocates by exception
+
+Status: open
+Depends on: T21
+Stage: any (design §6.1, §15.43, §15.47, §15.50)
+
+Three councils have run: a README owner, a state name, and a CSS strategy.
+The third question was settled from precedent by the other arm of the same
+experiment. No council has yet produced an answer the record shows the
+project lead would not have reached alone, and the one judgment failure both
+A/B leads shared — answering a preference question as if it had precedent —
+is one a council would have buried, not caught (§15.50). A Fable project lead
+finds precedent reliably and judges sonnet advocates from above, so three
+advocates is the wrong shape for most questions.
+
+Change three things, in `autonomy-contract.md`, which owns routing and the
+council, and `record-format.md`, which owns the entry:
+
+1. **No council for a question with repo precedent.** Route it to precedent
+   with the citation. Preference questions go to T21's batch, never to a
+   council.
+2. **The default council is one adversary.** The project lead writes its own
+   answer and confidence to the entry as `Prior:` first, then dispatches one
+   `crew:council-advocate` to argue the opposite with citations. A prior the
+   project lead cannot rebut in writing is an escalation. Same entry shape,
+   `Positions` holding two.
+3. **Three assigned advocates stay for two cases only:** an irreversible
+   architecture choice with no precedent in the repo, and T11's
+   investigation path, where competing root-cause hypotheses over one body
+   of evidence is what assigned positions are for.
+
+Then measure: after ten adversary entries, compare `Prior:` with the
+adjudication. If the adversary never moved the answer, cut it and keep only
+case 3.
+
+Done when: the two references carry the three rules, `agents/council-advocate.md`
+argues one position against a stated prior as well as one of several, and
+the next council that runs is an adversary entry with `Prior:` filled.
+
+Read first: design §6.1, §6.2, §15.43, §15.47, §15.50; `autonomy-contract.md`;
+`record-format.md` council entry; `agents/council-advocate.md`; T11, T21.
+
+## T23 — Measure the review layer's catch rate
+
+Status: open
+Depends on: T25
+Stage: any (design §7, §15.49, §15.50)
+
+Package reviews are the largest fixed cost per package: 17 in one arm of the
+A/B, 10 in the other. In the Opus arm several pages passed review with zero
+findings and then failed the fidelity harness; §15.49's six defects passed
+two reviews and were found by an outside code review. The record holds every
+review and every fix round, so the catch rate is computable: findings that
+led to a commit, by reviewer, by band, against defects found later.
+
+Compute it with T25's script over every record on the machine. Then decide,
+with the numbers: whether a `standard` package with a green acceptance tool
+skips package review and relies on the deliverable review; whether the
+package reviewer moves to opus; or whether nothing changes.
+
+Done when: the catch rate is in design §15 with the decision it supports.
+
+Read first: design §7, §15.49, §15.50; `agents/package-reviewer.md`;
+`review-output.md`.
+
+## T24 — Recommend a launch model for the project lead
+
+Status: done
+Depends on: nothing
+Stage: any (design §8, §15.50)
+
+`README.md`'s model table says the project lead runs on "your session's"
+model and never says which to choose. §15.50 measured two: on the goal that
+could separate them, the Fable 5.1 lead cost two thirds of the Opus 5 lead,
+took no fix rounds, and made the better process choices.
+
+Decide whether the README names a recommended launch model and effort, and
+whether design §8 records the reasoning. The principal owns this call: the
+model is billed to the principal's account, and Fable is not the default on
+any plan.
+
+Done when: the README's model table and its launch example agree with each
+other and with §8, and neither presents "your session's" as the only answer.
+
+Decided 2026-09-03 on §15.50's evidence: the project lead launches on Fable
+5.1 at high effort. `README.md` carries the launch command and the model
+table row; design §8 carries the reasoning.
+
+Read first: design §8, §15.50; `README.md` "What each agent runs on".
+
+## T25 — A stats script over every record
+
+Status: open
+Depends on: nothing
+Stage: any (design §8, §15.50)
+
+Design §8 promised the band rubric would turn from a guess into a
+measurement. The data now exists: `band_history`, `fix_rounds_used`,
+`spend.transcript`, `run.compactions`, and every review
+and report file. Nothing reads it across runs.
+
+Add `skills/project-lead/scripts/crew-stats.py`: over every record under the
+record root, print cost per package by band, fix rounds by band, promotions,
+councils and their spend, escalations, compactions, review counts and, once
+T23 defines it, review catch rate. Use it to give a principal a defensible
+`Budget:` figure for a goal of a given size.
+
+Done when: the script runs over the records on the machine that ran the A/B
+and its numbers for the two §15.50 runs match the ones recorded there.
+
+Read first: design §8, §15.50; `record-format.md`; `scripts/spend.py`.
+
+## T26 — A/B a goal-and-constraints form of `SKILL.md` on Fable
+
+Status: open
+Depends on: nothing
+Stage: any (design §8, §15.50)
+
+The project lead now runs on Fable 5.1 (T24). Fable's own guidance says
+prompts written for prior models are often too prescriptive and reduce
+output quality, and that stating the goal and constraints beats enumerating
+steps. `SKILL.md` is a fourteen-step numbered loop and `full-path.md` a
+thirteen-step one. The evidence so far cuts the other way: a Fable project lead ran
+the numbered loop in 130 turns with zero fix rounds (§15.50). So this is a
+measurement, not a rewrite.
+
+Crew's files already sort by reader. The project lead's files are read by
+Fable; `ic-contract.md`, the IC and review agents, `review-output.md` and the
+advocate are read by sonnet and opus, which do better with explicit steps.
+Only the project lead's files are candidates, and no file gets two variants —
+a second copy of a rule is the drift `CLAUDE.md` forbids.
+
+Write a goal-and-constraints form of `SKILL.md` that keeps every rule and
+every pointer to a reference, under a temporary second skill name so both
+forms load. Run one simple-path goal with each, on Fable at high effort, in
+fresh clones, with `CREW_RECORD_ROOT` set per arm. Compare lead turns, lead
+spend from `scripts/spend.py`, decisions, critic rounds, fix rounds and the
+independent check of the two PRs.
+
+Done when: design §15 records the comparison and the decision. If the goal
+form wins, it replaces `SKILL.md` and the same treatment goes to
+`full-path.md` under its own A/B. If it does not, the numbered form stays and
+the entry says why.
+
+Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
+`full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
+carries under "Long-running agent recommendations".

@@ -50,6 +50,14 @@ Any "yes" past the first two is a signal toward `deep`.
 - Log every prediction and every promotion into `state.json`'s
   `band_history` (see `record-format.md`'s `band_history` row for its
   fields). Logging it turns the rubric from a guess into a measurement.
+- **A territory runs at the band of the package it starts on**, and keeps
+  that model for every package the same IC carries, whatever those
+  packages' own bands say. A `deep` first package therefore puts the whole
+  territory on opus, and the context the IC keeps is what pays for it: one
+  run so ordered took zero fix rounds where a fresh-IC run took fifteen
+  (design §15.50). Order the territory's packages with that in mind. The
+  IC respawns at the new package's band only when `full-path.md` step 8a
+  says to respawn.
 
 ## Critics and reviewers take their own model
 

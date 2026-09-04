@@ -97,7 +97,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
 | `crew:council-advocate`, and councils | built, convened in a run |
-| Hooks | `SessionEnd` built; the rest deferred |
+| Hooks | `SessionEnd` and `PreCompact` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports
 and reviews are kept verbatim in [`docs/stage-2-run/`](docs/stage-2-run). Later
@@ -119,7 +119,7 @@ prediction and promotion is logged, which turns the rubric into a measurement.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|
-| Project lead | your session's | your session's |
+| Project lead | your session's: use `fable` | your session's: use `high` |
 | IC, Instruction IC | the package's band: haiku, sonnet or opus | your session's |
 | Scout | haiku or sonnet | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |
@@ -129,7 +129,13 @@ prediction and promotion is logged, which turns the rubric into a measurement.
 | Decomposition critic | opus | high |
 | Deliverable reviewer | opus | high |
 
-**Set your session effort before you start a run.** Effort cannot be passed to an agent at dispatch, so an IC and a scout work at the effort of the session you launched.
+**Launch the session with Fable at high effort:**
+
+```
+claude --model fable --effort high
+```
+
+The project lead, the ICs and the scouts all take your session's effort, so set it before the run starts. Why Fable: design §8 and §15.50.
 
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's
@@ -138,8 +144,8 @@ confidence with no citation is a defect.
 
 **A contract for when to ask you.** Questions route three ways: precedent, a
 council, or you. The project lead escalates on a fixed set of triggers — a goal
-with no falsifiable acceptance criterion, a council it cannot settle, a crossed
-spend ceiling. Questions about what *you* want are never debated, because a
+with no falsifiable acceptance criterion, a council it cannot settle, an
+exceeded budget. Questions about what *you* want are never debated, because a
 council always names a winner and would bury "we do not know what you want" as
 "we established you want X".
 

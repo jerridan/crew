@@ -1,9 +1,9 @@
 ---
 name: deliverable-reviewer
-description: Review one whole deliverable after every package merges and before the draft PR opens. Checks the merged result — the seams between packages, the shared files the project lead edited itself, and the spec's acceptance criteria — not one package against its brief, which crew:package-reviewer already did. Dispatched unnamed so its findings return as a tool result.
+description: Review one whole deliverable after every package merges and before the draft PR opens. Checks the merged result — the seams between packages, the shared files the project lead edited itself, and the spec's acceptance criteria — not one package against its brief, which crew:package-reviewer already did. Dispatched unnamed; writes its findings to the record path the dispatch names and returns the verdict lines.
 model: opus
 reasoning_effort: high
-tools: Read, Glob, Grep, Bash
+tools: Read, Write, Glob, Grep, Bash
 ---
 
 # Deliverable reviewer

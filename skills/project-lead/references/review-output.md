@@ -12,7 +12,12 @@ would not resolve: a review agent's cwd is the target repo, not the plugin.
 Tag each finding with one of:
 
 - `[Critical]` — blocks the project lead's next step. Each agent states what
-  that step is.
+  that step is. The artifact cannot be used as written: a requirement is
+  wrong or missing, an invariant is broken, a check fails. A gap the next
+  step can absorb — an enumeration that misses an item, a wording that a
+  reader would still act on correctly — is not blocking. Tag it `[Concern]`.
+  Each `[Critical]` costs a full round of the artifact's author and of you
+  (design §15.50).
 - `[Concern]` — likely to cause a problem; should be addressed.
 - `[Nit]` — minor, take it or leave it.
 
@@ -36,12 +41,30 @@ finished. Quote the exact line, file or name it sits on.
 
 ## Return path
 
-Your findings return only as this agent's tool result. You carry no
-`SendMessage`, so a finding you leave out of the report reaches nobody.
+Your dispatch names an absolute path under the record's `reviews/`. Write
+your whole report there. Then make your tool result exactly four lines, in
+this order, and nothing else:
+
+```
+Wrote: <the absolute path>
+Findings: <n> critical, <n> concern, <n> nit
+Verdict: <one of your two verdict strings>
+Critical count: <n>
+```
+
+The project lead's context is the most expensive place in the run, and a
+full report there is read on every later turn (design §15.50).
+
+When the write is denied, your tool result is the whole report. Say so in
+its first line and name the denied path. Never say you wrote a file you
+could not write.
+
+You carry no `SendMessage`, so a finding you leave out of the report reaches
+nobody.
 
 ## The two verdict lines
 
-End your report with exactly two lines, in this order:
+End your report file with the same two lines that end your tool result:
 
 ```
 Verdict: <one of your two verdict strings>

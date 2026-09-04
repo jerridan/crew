@@ -579,6 +579,18 @@ of magnitude (§15.50).
 One `crew:ic` definition serves all three bands, because a spawn-time `model`
 overrides the definition's frontmatter (section 12).
 
+**The project lead runs on Fable 5.1 at high effort.** The seat is the run's
+judgment, not its volume: it writes the spec and the split, decides the
+order of work, and adjudicates every review. §15.50 measured the two
+candidates on one full-path goal. The Fable lead cost two thirds of the Opus
+lead's arm, did the lead's own work in a third of the turns, took no fix
+rounds where Opus took fifteen, and made the process choices — harness
+first, fewer packages, one IC carrying its context — that produced that
+result. The per-token price difference was not the reason; the order of
+work was. Fable's cache-read price only starts to pay in a session over a
+few hundred turns, which a project lead reaches and an IC does not. ICs,
+reviewers and critics keep their bands and their own models.
+
 ---
 
 ## 9. The execution loop

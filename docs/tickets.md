@@ -715,7 +715,7 @@ Read first: design §7, §15.49, §15.50; `agents/package-reviewer.md`;
 
 ## T24 — Recommend a launch model for the project lead
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §8, §15.50)
 
@@ -731,6 +731,10 @@ any plan.
 
 Done when: the README's model table and its launch example agree with each
 other and with §8, and neither presents "your session's" as the only answer.
+
+Decided 2026-09-03 on §15.50's evidence: the project lead launches on Fable
+5.1 at high effort. `README.md` carries the launch command and the model
+table row; design §8 carries the reasoning.
 
 Read first: design §8, §15.50; `README.md` "What each agent runs on".
 

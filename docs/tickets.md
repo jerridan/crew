@@ -856,7 +856,7 @@ carries under "Long-running agent recommendations".
 
 Status: open
 Depends on: nothing
-Stage: any (design §15.25, §15.34a)
+Stage: any (design §15.25, §15.29a)
 
 `SKILL.md`'s body has sat at the writing standard's 200-line cap since T18
 landed. T17, T18 and T21 each paid for a new rule by cutting a sentence that
@@ -867,7 +867,7 @@ lines, and says that a workflow that grows large moves into its own file
 which the skill tells the reader to load by task.
 
 The full path already works this way: `full-path.md` replaces steps 6 to 14
-when the shape is more than one package (§15.34a). The simple path has no
+when the shape is more than one package (§15.29a). The simple path has no
 such file, so every rule added to the run loop lands in the fullest file.
 
 Do the same for the simple path:
@@ -894,7 +894,7 @@ Done when: `SKILL.md`'s body is under 120 lines, a simple-path run reads
 `simple-path.md` and reaches a draft PR with zero prompts, and no rule has two
 copies.
 
-Read first: design §15.25, §15.34a, §15.50; `writing-standard.md` rule 4;
+Read first: design §15.25, §15.29a, §15.50; `writing-standard.md` rule 4;
 `SKILL.md`; `full-path.md`.
 
 ## T28 — Give `run.completed_at` an owner

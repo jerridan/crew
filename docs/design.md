@@ -3464,18 +3464,23 @@ Deliberately different:
 
     | kind | reviews | acted | rate |
     |---|---|---|---|
-    | package review | 32 | 4 | 12% |
-    | spec critic | 20 | 7 | 35% |
-    | split critic | 7 | 3 | 43% |
-    | deliverable review | 13 | 1 | 8% |
+    | package review | 32 | 4 | 12.5% |
+    | spec critic | 20 | 7 | 35.0% |
+    | split critic | 7 | 3 | 42.9% |
+    | deliverable review | 13 | 1 | 7.7% |
 
-    By band, package reviews act at 0% on `light` (1 review), 12% on
-    `standard` (25) and 17% on `deep` (6). One review in each of `standard`
-    and `deep`, and two elsewhere, state no verdict at all. The band here is
-    the **package's**, not the reviewer's: `band-rubric.md` gives a reviewer
-    no band, so every one of these 32 reviews ran on sonnet.
+    By band, package reviews act at 0.0% on `light` (1 review), 12.0% on
+    `standard` (25) and 16.7% on `deep` (6). The band here is the
+    **package's**, not the reviewer's: `band-rubric.md` gives a reviewer no
+    band, so every one of these 32 reviews ran on sonnet.
 
-    **The deliverable reviewer's 8% is the metric failing, not the agent.**
+    Two of the 72 reviews score as neither acted nor clean, and the script
+    names both. `fidelity-harness-package-review-r2.md` states no verdict.
+    `no-pr-terminal-state-9a32/spec-critic-r2.md` states `spec accepted`,
+    which is neither of `crew:spec-critic`'s two strings — a drifted verdict,
+    counted as unscored rather than silently as clean.
+
+    **The deliverable reviewer's 7.7% is the metric failing, not the agent.**
     Nine of the thirteen deliverable reviews returned `accepted` and still
     listed tagged findings. `no-pr-terminal-state-9a32`'s listed four, and its
     own adjudication line records all four accepted and fixed in commit
@@ -3543,7 +3548,7 @@ Deliberately different:
     review. The layer that caught the cross-package class is the deliverable
     review, which already has the scope.
 
-    **What the record could not tell me.** Three gaps, all in the record
+    **What the record could not tell me.** Four gaps, all in the record
     format rather than in the runs.
 
     a. **No per-finding adjudication.** Nothing states, per finding, whether
@@ -3557,7 +3562,14 @@ Deliberately different:
        four review findings addressed" against a review file that does not
        exist.
 
-    c. **Two fix rounds have no recorded cause.** `titlecase-converter`'s
+    c. **A verdict string can drift, and a report can be a transcript.** Three
+       files in `two-string-kit-helpers-ea68` carry a project-lead transcript
+       whose verdict sits mid-line, and one `spec-critic` file states `spec
+       accepted` where the agent names `ready to split`. The script reads the
+       first shape and flags the second. Only a review agent writing its own
+       report keeps both shapes out of the record.
+
+    d. **Two fix rounds have no recorded cause.** `titlecase-converter`'s
        round removed a dead `.toLowerCase()` after a review that found
        nothing, and `about-route`'s round 1 is absent from its report. Neither
        record says who found the defect.

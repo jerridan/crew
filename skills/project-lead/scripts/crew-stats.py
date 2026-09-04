@@ -68,16 +68,22 @@ def fixes(package: dict) -> int:
 REVIEW_KINDS = [
     ("package review", re.compile(r"^(?P<subject>.+)-package-review-r\d+\.md$")),
     ("spec critic", re.compile(r"^spec-critic-r\d+\.md$")),
-    ("split critic", re.compile(r"^(?P<subject>.+)-split-critic-r\d+\.md$")),
-    ("deliverable review", re.compile(r"^(?P<subject>.+)-deliverable-review\.md$")),
+    ("split critic", re.compile(r"-split-critic-r\d+\.md$")),
+    ("deliverable review", re.compile(r"-deliverable-review\.md$")),
 ]
 
-# The verdict that sends the artifact back for another round. Each review agent
-# names its own two verdict strings; these are the second string of each pair
+# Each review agent names its own two verdict strings. The first of each pair
+# accepts the artifact and the second sends it back for another round
 # (`agents/package-reviewer.md`, `spec-critic.md`, `split-critic.md`,
-# `deliverable-reviewer.md`). A verdict outside both pairs counts as no action.
+# `deliverable-reviewer.md`). A verdict outside all eight gets a skip line: it
+# is a drifted string, not a clean review, and counting it as clean would
+# deflate the catch rate without saying so.
 ACTION_VERDICTS = ("fix round needed", "re-spec needed", "re-split needed")
-VERDICT = re.compile(r"^Verdict:\s*(.+)$", re.M)
+CLEAN_VERDICTS = ("accepted", "ready to split", "dispatchable")
+# `Verdict:` is not anchored to column 0. `record-format.md` lets the project
+# lead transcribe a report whose write was denied, and a transcript can put the
+# verdict mid-line.
+VERDICT = re.compile(r"Verdict:\s*([^\n.]+)")
 
 
 def run_end(state: dict) -> float | None:
@@ -142,8 +148,9 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
 
     A review "acted" when its `Verdict:` line is one of `ACTION_VERDICTS` —
     the record's only machine-readable statement that the review sent the
-    artifact back. A file with no `Verdict:` line is counted as a review and
-    as `unverdicted`, never as a catch.
+    artifact back. A file with no verdict, or with a verdict outside the eight
+    the agents name, is counted as a review and as `unverdicted`, never as a
+    catch, and it gets a skip line that says which of the two it is.
     """
     counts = {name: 0 for name, _ in REVIEW_KINDS}
     counts["other"] = 0
@@ -164,21 +171,27 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         counts[kind] += 1
         try:
             text = (directory / name).read_text(encoding="utf-8", errors="replace")
+            reason = None
         except OSError as err:
-            skips.append(f"{record.name}/{name}: no verdict — {err}")
             text = ""
+            reason = str(err)
         # `review-output.md` puts the verdict at the end of the report, so the
         # last match wins. A report that quotes an earlier round's verdict in
         # its prose must not be read by that quote.
         found_verdicts = VERDICT.findall(text)
-        verdict = found_verdicts[-1] if found_verdicts else None
-        acted = bool(verdict and verdict.strip().lower().startswith(ACTION_VERDICTS))
+        verdict = found_verdicts[-1].strip().lower() if found_verdicts else None
+        acted = bool(verdict and verdict.startswith(ACTION_VERDICTS))
+        known = bool(verdict and verdict.startswith(ACTION_VERDICTS + CLEAN_VERDICTS))
+        if reason is None and verdict is None:
+            reason = "the file states no Verdict: line"
+        elif reason is None and not known:
+            reason = f"its verdict {verdict!r} is none of the eight the agents name"
         by_kind[kind]["reviews"] += 1
-        if verdict:
+        if known:
             by_kind[kind]["acted"] += acted
         else:
             by_kind[kind]["unverdicted"] += 1
-            skips.append(f"{record.name}/{name}: no catch — the file states no Verdict: line")
+            skips.append(f"{record.name}/{name}: no catch — {reason}")
         if kind != "package review":
             continue
         # A package review's file name opens with its package id, so the band
@@ -187,7 +200,7 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         band = bands.get(found.group("subject"), "unknown")
         counts_for = by_band.setdefault(band, blank_catch())
         counts_for["reviews"] += 1
-        if verdict:
+        if known:
             counts_for["acted"] += acted
         else:
             counts_for["unverdicted"] += 1
@@ -285,7 +298,9 @@ def money(value) -> str:
 
 
 def rate(part: int, whole: int) -> str:
-    return "-" if not whole else f"{100 * part / whole:.0f}%"
+    # One decimal, because 4 of 32 is 12.5 and `.0f` would resolve that tie by
+    # Python's rounding rule rather than by the data.
+    return "-" if not whole else f"{100 * part / whole:.1f}%"
 
 
 def report(records: list[dict], skips: list[str]) -> None:
@@ -339,7 +354,7 @@ def report(records: list[dict], skips: list[str]) -> None:
         acted = sum(r["catch"][kind]["acted"] for r in records)
         blank = sum(r["catch"][kind]["unverdicted"] for r in records)
         rows.append([kind, total, acted, rate(acted, total), blank])
-    print(table(["kind", "reviews", "acted", "rate", "no verdict"], rows))
+    print(table(["kind", "reviews", "acted", "rate", "unscored"], rows))
 
     print("\nPackage reviews by band\n")
     per_band = {}
@@ -352,7 +367,7 @@ def report(records: list[dict], skips: list[str]) -> None:
     rows = [[band, per_band[band]["reviews"], per_band[band]["acted"],
              rate(per_band[band]["acted"], per_band[band]["reviews"]),
              per_band[band]["unverdicted"]] for band in order]
-    print(table(["band", "reviews", "acted", "rate", "no verdict"], rows))
+    print(table(["band", "reviews", "acted", "rate", "unscored"], rows))
 
     print("\nTotals\n")
     priced = [r["usd"] for r in records if r["usd"] is not None]

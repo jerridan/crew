@@ -3741,6 +3741,14 @@ Deliberately different:
        crew/encodequery-skip-nullish-7e8f/deliverable-1
        ```
 
+       The package reviewer then ran the same check its own way — a
+       disposable `git worktree` at `864cb73`, so the reviewed tree stayed
+       where it was — and got the same failure. That is the safer procedure
+       where it works, and it is not what `ic-contract.md` asks for, because
+       a fresh worktree holds no installed dependencies: in a repo that needs
+       an install, the criterion would fail there for a reason that is not
+       the bug.
+
     b. **The rejection is proved against a seeded record, not against that
        run.** A live run cannot be made to produce a package whose new test
        passed from the start without telling the IC to break its own

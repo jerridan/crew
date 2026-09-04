@@ -78,6 +78,16 @@ def set_dotted(target: dict, dotted: str, value) -> None:
     target[keys[-1]] = value
 
 
+def stamp_on_completion(run: dict, was_complete: bool) -> None:
+    """Stamp `completed_at` the moment `run_state` becomes `complete`.
+
+    `was_complete` is the state before this write, so a later write that
+    leaves `run_state` at `complete` never moves the stamp.
+    """
+    if not was_complete and run.get("run_state") == "complete":
+        run["completed_at"] = now()
+
+
 def main(argv: list[str]) -> None:
     if len(argv) < 2:
         usage()
@@ -143,16 +153,13 @@ def main(argv: list[str]) -> None:
             else:
                 usage()
     elif kind == "run":
+        was_complete = run.get("run_state") == "complete"
         if arg(rest, 0) == "state":
             run["run_state"] = arg(rest, 1)
-            if run["run_state"] == "complete":
-                run["completed_at"] = now()
+            stamp_on_completion(run, was_complete)
         elif rest[0] == "set":
-            dotted = arg(rest, 1)
-            value = json.loads(arg(rest, 2))
-            set_dotted(run, dotted, value)
-            if dotted == "run_state" and value == "complete":
-                run["completed_at"] = now()
+            set_dotted(run, arg(rest, 1), json.loads(arg(rest, 2)))
+            stamp_on_completion(run, was_complete)
         else:
             usage()
     elif kind == "escalation":
@@ -181,8 +188,9 @@ def main(argv: list[str]) -> None:
         url = flag(rest, "--pr-url")
         if url:
             dl["pr_url"] = url
+        was_complete = run.get("run_state") == "complete"
         run["run_state"] = "complete"
-        run["completed_at"] = now()
+        stamp_on_completion(run, was_complete)
     else:
         usage()
 

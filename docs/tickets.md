@@ -723,10 +723,17 @@ council, and `record-format.md`, which owns the entry:
    `crew:council-advocate` to argue the opposite with citations. A prior the
    project lead cannot rebut in writing is an escalation. Same entry shape,
    `Positions` holding two.
-3. **Three assigned advocates stay for two cases only:** an irreversible
-   architecture choice with no precedent in the repo, and T11's
+3. **Three assigned advocates stay for two cases only.** The first is a
+   choice that is both costly to reverse and unclear in the moment: the
+   project lead's `Prior:` carries low confidence, and the repo holds no
+   precedent. Both conditions, not either. A low-confidence choice that is
+   cheap to reverse is a fix round, not a council; a costly choice the
+   project lead is confident in gets one adversary. The second is T11's
    investigation path, where competing root-cause hypotheses over one body
-   of evidence is what assigned positions are for.
+   of evidence is what assigned positions are for. Beyond those two, a full
+   council is not worth its cost (§15.50, and the 2026-09-04 runs under
+   T21: two advocates settled an ellipsis character the charter's own
+   invariant already answered).
 
 Then measure: after ten adversary entries, compare `Prior:` with the
 adjudication. If the adversary never moved the answer, cut it and keep only
@@ -851,3 +858,162 @@ the entry says why.
 Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
 `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
+
+## T27 — Move the simple-path loop out of `SKILL.md`
+
+Status: open
+Depends on: nothing
+Stage: any (design §15.25, §15.29a)
+
+`SKILL.md`'s body has sat at the writing standard's 200-line cap since T18
+landed. T17, T18 and T21 each paid for a new rule by cutting a sentence that
+was not a rule: "A finding is a claim, not a verdict" and "Your own context is
+the most expensive place to work" are both gone. The cap is crew's own
+(`writing-standard.md` rule 4); Anthropic's skill guidance says under 500
+lines, and says that a workflow that grows large moves into its own file
+which the skill tells the reader to load by task.
+
+The full path already works this way: `full-path.md` replaces steps 6 to 14
+when the shape is more than one package (§15.29a). The simple path has no
+such file, so every rule added to the run loop lands in the fullest file.
+
+Do the same for the simple path:
+
+- Add `references/simple-path.md` holding steps 6 to 14, the same shape as
+  `full-path.md`. `SKILL.md` keeps the shared prefix — the reference list,
+  steps 1 to 5 with 4a, and the shape table — which then points at one of the
+  two path files.
+- Steps 12 to 14 are shared between the two paths. Keep each in one file and
+  point at it from the other, as `full-path.md` already does for step 14.
+- Put back what the cap cost. Three sentences are in no file the project
+  lead reads at runtime: "A finding is a claim, not a verdict" (step 4, the
+  heuristic behind the adjudication rule; §15.46 is why it matters), "Your
+  own context is the most expensive place to work" (after the step 5 table;
+  design §9.1 and `review-output.md` say it, and neither is the project
+  lead's file), and "Your output is the run's most expensive" (step 3, the
+  reason a sonnet subagent writes the spec prose). Restore all three. The
+  other cuts moved to their owners and stay pointers: the principal's
+  definition (`autonomy-contract.md`), the write-every-transition rule
+  (`record-format.md`), the hard-wrap rule (`writing-standard.md`), and
+  `checkout_restored: null` at creation (`record-format.md` documents the
+  default).
+- Rewrite `writing-standard.md` rule 4: 200 lines is a target for a
+  `SKILL.md` body, 500 is the limit the skill guidance sets, and a reference
+  file has no cap. Say why in one sentence.
+- Every citation of a `SKILL.md` step number in `full-path.md`,
+  `record-format.md`, `autonomy-contract.md`, `writing-standard.md` and
+  `docs/tickets.md` still resolves: keep the step numbers, so §15's findings
+  stay true.
+
+Do this before T26. If the goal-and-constraints form wins that A/B, it is the
+path files that shrink, and the split should already be in place.
+
+Done when: `SKILL.md`'s body is under 120 lines, a simple-path run reads
+`simple-path.md` and reaches a draft PR with zero prompts, and no rule has two
+copies.
+
+Read first: design §15.25, §15.29a, §15.50; `writing-standard.md` rule 4;
+`SKILL.md`; `full-path.md`.
+
+## T28 — Give `run.completed_at` an owner
+
+Status: open
+Depends on: nothing
+Stage: any (design §8, §15.51)
+
+`crew-stats.py` bounds a run's cost at `run.completed_at`, or at the latest
+`state_changed_at` in the record when that field is absent. One of eleven
+records carries it, `record-format.md` does not document it, and nothing
+writes it (§15.51). So every priced run is bounded at its last state write,
+which drops the run's own tail: the turns that open the PR and write the
+closing summary. That tail was $10.38 on the Opus arm and $1.99 on the Fable
+arm.
+
+Make the field real:
+
+- `crew-record.py` stamps `run.completed_at` with the current time on every
+  write that sets `run_state` to `complete` — the `close` command and
+  `run set run_state complete`. The project lead writes nothing extra; the
+  transition is the trigger.
+- `record-format.md` documents the field beside `created_at`, names its
+  consumer (`crew-stats.py`), and adds it to the name inventory. Say that an
+  `interrupted` run has no `completed_at`, and that `--resume` never sets one.
+- Order at the end of a run: the `complete` write comes before
+  `spend.py --write`, so `spend.transcript.measured_at` sits after
+  `completed_at`. `crew-stats.py` prefers a stored `spend.transcript` when
+  one exists, so a run priced at its end keeps its tail; say so in the field's
+  row.
+- `crew-stats.py` treats `abandoned` as a terminal `run_state`, and
+  `record-format.md`'s transitions table has no such value. Decide which file
+  is right and fix the other.
+
+Done when: a simple-path run ends with `run.completed_at` set by the script,
+not by the project lead, and `crew-stats.py` prices that run without printing
+its open-ended-cost skip line.
+
+Read first: design §15.51; `record-format.md` `run_state` transitions and
+`created_at`; `scripts/crew-record.py` `close`; `scripts/crew-stats.py`
+`run_end`.
+
+## T29 — Check for a remote before the run starts
+
+Status: open
+Depends on: nothing
+Stage: any (design §6, §15.52, §15.53)
+
+Both 2026-09-04 runs under T21 ran the whole loop, then escalated at step 14:
+the fixture had no git remote, so the push and `gh pr create` could not run.
+That was knowable at step 1 from one `git -C <repo> remote` call. A run with a
+preference question and no remote interrupts the principal twice, which is
+what T21's batch exists to prevent; a run with no preference question spends
+its whole budget before it asks whether a PR is possible at all.
+
+Add "can this run push and open a draft PR" to the checks that run before the
+preference batch. `full-path.md` step 0 owns the launch checks and T21's rule
+in `autonomy-contract.md` already folds them into the batch; add the remote
+check beside them, so it applies on both paths. The question to the principal
+offers the same three ends step 14 offers today: add a remote, keep the work
+local as `work-complete`, or stop. An answer given at the start is recorded
+once and step 14 never asks again.
+
+Done when: a run on a checkout with no remote asks about the PR in the same
+batch as its preference questions, before the split, and step 14 ends the run
+without a second ask.
+
+Read first: design §15.52, §15.53; `autonomy-contract.md` "The preference
+sweep"; `full-path.md` step 0; `SKILL.md` step 14.
+
+## T30 — Write a preference answer into the target repo as precedent
+
+Status: open
+Depends on: nothing
+Stage: any (design §6, §15.53)
+
+Run B under T21 asked the principal what `slugify` does with `café`, got
+"strip the accents first", and recorded the answer in the run's `decisions.md`
+and `escalations`. Nothing wrote it into the target repo. The next run on
+that repo will find no precedent and ask the same question. The project lead
+saw this and, in its closing message, proposed one line for the repo's
+`CLAUDE.md`. Make that a step, so each preference question is asked of a
+repo once.
+
+The rule: when the principal answers a preference question, the answer
+becomes an instruction package in the split. Its brief carries the answer;
+its deliverable is one rule in the target repo's instruction files; its
+acceptance is `writing-standard.md`'s checklist. That checklist is what keeps
+the addition short, keeps it from competing with a rule the repo already has,
+and puts it in the right container: a rule that applies to one area of the
+repo goes in a `.claude/rules/` file scoped to that path, not in the root
+`CLAUDE.md`. The container-choice check decides. `crew:ic-instructions` owns
+instruction packages (design §3.1), and this is one; decide whether a
+one-line package earns a dispatch or whether the project lead writes it at
+integration under the same checklist, and say why in `autonomy-contract.md`.
+
+Done when: a run that escalates a preference question ends with the answer
+in the target repo's instruction files, in the container the checklist
+chooses, and a second run on that repo with the same question resolves it as
+precedent with a citation and escalates nothing.
+
+Read first: design §3.1, §6, §15.53; `autonomy-contract.md` "The preference
+sweep" and the routing table; `writing-standard.md` container rules;
+`agents/ic-instructions.md`.

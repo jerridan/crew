@@ -111,15 +111,21 @@ item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
 When the push or `gh pr create` cannot run, check `escalations` first for the
-trigger 7 entry the preference sweep wrote for `full-path.md` step 0's third
-check (`autonomy-contract.md`). Almost every run has one, answered before the
-split: act on it and do not ask again. "Add a remote" means a remote should
-already exist — push. "Keep the work local" means skip straight to
-`work-complete` below. Only a run with no such entry — the bounded-edit path,
-which skips the sweep — asks here, and **waits for the answer**: `blocked`
-until it lands, then `active`. One who already refused the PR has answered;
-do not ask twice. Then record `work-complete`, `pr_url: null` and
-`run_state: complete` in one write, and hand over the branch.
+entry with trigger text `launch check 3 (trigger 7): no remote` — the
+preference sweep writes it only when `full-path.md` step 0's check 3 failed,
+before the split (`autonomy-contract.md`). Found: act on the answer, and do
+not ask again. "Keep the work local" means skip straight to `work-complete`
+below. "Add a remote" means one should already exist — push. If it still
+fails, the promised remote never arrived: that is new information, so
+escalate it now, plainly, the same way as below.
+
+No such entry means check 3 passed at the sweep — this checkout had a remote
+then. A push or `gh pr create` failure here is a different problem: expired
+auth, a rejected push, a repo setting. Ask the principal, plainly, and
+**wait for the answer**: `blocked` until it lands, then `active`. One who
+already refused the PR has answered; do not ask twice. Then record
+`work-complete`, `pr_url: null` and `run_state: complete` in one write, and
+hand over the branch.
 
 **Restore the checkout at every end.** With a clean tree and a
 `checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record

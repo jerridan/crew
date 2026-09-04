@@ -5,8 +5,9 @@ This file owns the loop for a deliverable with more than one package
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this
 file borrows three of its steps: 7, 12 and 14 there, named below. Step 0's
-third check is the one exception: `autonomy-contract.md`'s preference sweep
-runs it for every goal, before either path is chosen.
+third check is the one exception: it runs once for every goal, at the
+preference sweep, before either path is chosen — `autonomy-contract.md` owns
+when.
 
 This file runs **one** deliverable. Deliverables run sequentially and
 `split.md` carries `Depends on` to order them, but no loop reads it yet, so a
@@ -29,8 +30,7 @@ in a run stays unnamed, because you must read its result (design §3,
 
 ## 0. Check the launch conditions
 
-Three you can check, with the command that checks them. Run all three before
-you write the split, and escalate on any that fails — none can be fixed
+Three checks bear on launch. Escalate on any that fails — none can be fixed
 mid-run.
 
 1. **Agent teams are on.** `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
@@ -42,13 +42,15 @@ mid-run.
    (design §15.10, §15.23f).
 3. **This run can push and open a draft PR.** `git -C <repo> remote` prints
    at least one line. A checkout with no remote cannot push or open a PR
-   (design §15.53). Unlike the first two, this check runs on every goal, not
-   only one that may need the full path — `autonomy-contract.md`'s preference
-   sweep says where.
+   (design §15.53).
 
-State which one failed. Do not start the run and discover it later. Checks 1
-and 2 fail only when the goal may need the full path; check 3 fails on either
-path.
+Run checks 1 and 2 here, before you write the split, and state which one
+failed. Do not start the run and discover it later.
+
+**Check 3 already ran, at the preference sweep, before you reached this
+step — `autonomy-contract.md` says why. Do not run it again here.** Its
+outcome is settled: either the sweep escalated it and the principal answered,
+or the checkout had a remote and there was nothing to ask.
 
 Two more conditions you cannot check in advance. A display mode must work —
 iTerm2 with its Python API, a session inside tmux, or

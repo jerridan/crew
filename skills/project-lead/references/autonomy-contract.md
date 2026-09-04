@@ -70,23 +70,20 @@ Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
 have nothing to say about any other kind of question.
 
-**Run `full-path.md` step 0's three launch checks before you send the
-batch**, and put every failure in the same batch. Checks 1 and 2 — agent
-teams, worktree isolation — matter only when the goal may need more than one
-package; run those two then. Check 3 — can this run push and open a draft
-PR — matters to every goal, because both paths end that way; run it always.
-All three are trigger 7, none depends on an answer, and none can be fixed
-mid-run. A run that asks the preference questions first and fails a launch
-check afterwards has interrupted the principal twice.
+**Run `full-path.md` step 0's launch check 3 here, every time, and put its
+failure in the same batch.** It is trigger 7, does not depend on an answer,
+and cannot be fixed mid-run. Checks 1 and 2 there stay where they are — they
+only ever matter once the goal has already been sent to the full path, so
+`full-path.md` step 0 runs them, not the sweep. A run that asks the
+preference questions first and fails a launch check afterwards has
+interrupted the principal twice.
 
-**Check 3's failure is a preference question, not a plain block.** Ask it in
-the same batch, with the same three-line block as any other, and offer the
-three ends `simple-path.md` step 14 offers a run that discovers the same
-thing late: add a remote and push when the run ends, keep the work local and
-end `work-complete`, or stop now. Record the answer with `escalation add` /
-`escalation answer` like any other sweep entry. Step 14 reads that entry
-instead of asking again — one answer, recorded once, settles both the start
-and the end of the run.
+Check 3's failure is a preference question, not a plain block: offer the
+three ends `simple-path.md` step 14 names. Write it with `escalation add`
+using the trigger text `launch check 3 (trigger 7): no remote` — a fixed
+phrase, so step 14 can find this entry among any others trigger 7 wrote.
+Step 14 reads the answer instead of asking again: one answer, recorded once,
+settles both ends of the run.
 
 A lead session answers the batch by message; a human answers it in the
 session. Write each question with `crew-record.py escalation add`

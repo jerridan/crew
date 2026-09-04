@@ -732,7 +732,7 @@ Read first: design §6, §6.2, §15.22b, §15.50, §15.53; `autonomy-contract.md
 
 ## T22 — Redesign the council: one adversary by default, three advocates by exception
 
-Status: open
+Status: done
 Depends on: T21
 Stage: any (design §6.1, §15.43, §15.47, §15.50)
 
@@ -775,6 +775,16 @@ case 3.
 Done when: the two references carry the three rules, `agents/council-advocate.md`
 argues one position against a stated prior as well as one of several, and
 the next council that runs is an adversary entry with `Prior:` filled.
+
+2026-09-04: done. `autonomy-contract.md` and `record-format.md` carry the
+three rules, `record-format.md` owns the new `Prior:` field, and
+`agents/council-advocate.md` has a two-shape section. The next council ran
+the same day: `slugify-helper-d1ad/` framed one adversary against a
+medium-confidence `Prior:`, kept the prior on the signature, and dropped its
+unknown-key guard on the adversary's evidence. It cost 16,027 tokens against
+a three-advocate council's 126,168 to 169,257 (design §6.1, §15.64).
+The measurement this ticket asks for needs ten adversary entries, and one
+exists. T34 owns it.
 
 Read first: design §6.1, §6.2, §15.43, §15.47, §15.50; `autonomy-contract.md`;
 `record-format.md` council entry; `agents/council-advocate.md`; T11, T21.
@@ -1168,3 +1178,33 @@ names agree.
 
 Read first: design §9.1, §15.59; `SKILL.md` shape table; `simple-path.md`
 steps 7 and 12 to 14; `record-format.md` `split.md` and `packages[]`.
+
+## T34 — Decide whether the adversary earns its dispatch
+
+Status: open
+Depends on: T22
+Stage: any (design §6.1, §15.64)
+
+T22 made one adversary the default council and design §6.1 put it on
+probation: after ten adversary entries exist, compare each `Prior:` with its
+`Answer:`. Nothing carries that trigger today. `crew-stats.py` counts a
+`Route: council` entry but reads neither `Prior:` nor whether the entry held
+one advocate or three, so the tenth entry can land with nobody watching.
+
+Two pieces:
+
+1. **Count them.** `crew-stats.py` gains a council column that reads `Prior:`
+   and `Models:` over every record, and reports adversary entries, how many
+   kept their prior whole, how many changed it in part, and how many the
+   advocate overturned. §15.64d is entry one: prior kept, guard dropped, so a
+   two-state count is not enough.
+2. **Decide with the numbers.** An adversary that never moved an answer is
+   cut, and §6.1's default becomes an inline answer with a citation, leaving
+   only the two three-advocate cases. An adversary that moved answers stays,
+   and the probation clause comes out of §6.1.
+
+Done when: ten adversary entries are counted, and design §15 holds the
+decision the numbers support.
+
+Read first: design §6.1, §15.64; `autonomy-contract.md` Council;
+`record-format.md` council entry; `skills/project-lead/scripts/crew-stats.py`.

@@ -16,7 +16,7 @@ to an audit. Routing with no recorded reason is a defect.
 | Route | For | How |
 |---|---|---|
 | precedent | Anything an instruction or the repo already settles | An explicit instruction wins over repo precedent, however common that precedent is. Then a prior decision from this run. Then the repo. |
-| council | Judgment on a data model, a public interface, a service boundary, or a cross-cutting pattern | Convene a council — the section below. Answer inline **only** if you can cite why every alternative is implausible. |
+| council | Judgment on a data model, a public interface, a service boundary, or a cross-cutting pattern, **that the repo does not already settle** | Convene a council — the section below. Answer inline **only** if you can cite why every alternative is implausible. |
 | preference | What the principal wants, where evidence cannot decide | Resolve from `CLAUDE.md`, `.claude/rules/`, or a prior decision. Otherwise escalate. Never debate a preference. |
 
 Answer a question inline only when you can cite why every alternative is
@@ -113,10 +113,20 @@ entry.
 
 ## Council
 
-A council is adversarial advocacy with one judge. You frame the positions, one
-advocate argues each, and you decide. It is not a poll. Agreement between
-agents built on the same base model measures shared priors, not correctness,
-which is why you assign the positions instead of asking for opinions.
+A council is adversarial advocacy with one judge. You hold a position, an
+advocate argues against it, and you decide. It is not a poll. Agreement
+between agents built on the same base model measures shared priors, not
+correctness, which is why you assign the opposing position instead of asking
+for an opinion.
+
+### What never reaches a council
+
+- **A question the repo settles.** Route it to precedent and record the
+  citation. An instruction, a prior decision from this run, or repo precedent
+  each end the question (Routing above). A council over settled ground buys a
+  second answer to a question that already has one.
+- **A preference question.** It goes to the sweep above, or to an escalation
+  when it surfaces later. Never debate what the principal wants.
 
 **The council is discretionary.** The ladder is: confident, so answer it and
 record why; unsure, so convene a council; council inconclusive, so escalate.
@@ -127,26 +137,66 @@ One constraint on that discretion: **an architecture-moving question you
 answer inline must cite why every alternative is implausible.** Confidence
 with no citation is not confidence, and it routes to a council.
 
-### How to run one
+### The default council is one adversary
 
-1. **Frame the positions.** Two at least, three at most. Each must be a
-   position an advocate can argue from this repo's own evidence, not a
-   preference. Write the question and the positions into `decisions.md` before
-   you dispatch, with `Route: council`.
-2. **Dispatch one `crew:council-advocate` per position, unnamed, in a single
-   batch** — every dispatch in one message, or they run one after another.
-   Give each advocate the question, its own assigned position, the other
-   positions, the repo path, and whatever context you already hold. Take the
-   model from `band-rubric.md`; pass no `reasoning_effort`.
-3. **Adjudicate at your own model.** Read every case, check each citation
-   against the repo, and pick a winner. A case that cited a line that does not
-   say what the advocate claimed loses on that. The judgment is the expensive
-   part of a council, which is why the advocates run cheaper than you do.
+1. **Write your own answer first.** Put it in the `decisions.md` entry as
+   `Prior:`, with the confidence you hold it at, before you dispatch. An
+   answer written after the advocate reports is a reaction, not a prior, and
+   it cannot be compared with the adjudication later.
+2. **Dispatch one `crew:council-advocate` to argue the opposite.** Give it the
+   question, its own assigned position, the repo path, and whatever context
+   you already hold. Give it your prior as the position to argue against, and
+   with it the reasoning and the citations that produced the prior — an
+   advocate handed a bare answer has nothing to aim at. Take the model from
+   `band-rubric.md`; pass no `reasoning_effort`.
+3. **Adjudicate at your own model**, by the rules below.
+4. **Rebut the case in writing, or change your answer.** Keeping your prior
+   costs one written rebuttal on the entry's `Losing:` line, against the
+   adversary's strongest point, with a citation. A prior you cannot rebut in
+   writing does not stand: adopt the adversary's position when its case
+   decides the question. A council you can settle neither way is balanced —
+   see below.
 
-   **Look each cited line up. Never judge an anchor by eye.** A project lead
-   doing this from memory has already reported drift in citations that were
-   correct (design §15.46), which costs an advocate a point it earned.
-4. **Record it** — the section below.
+The entry shape does not change. `record-format.md` says what `Positions`
+holds on an adversary entry.
+
+### When three advocates are worth it
+
+Two cases, and nothing else. A full council costs about what a small package
+costs (design §15.47).
+
+1. **A choice that is both costly to reverse and unclear now.** Your prior
+   carries **low** confidence, **and** the repo holds no precedent. Both
+   conditions, not either. A low-confidence choice that is cheap to reverse is
+   a fix round, not a council. A costly choice you hold at medium confidence
+   or better gets one adversary.
+
+   **"No precedent" means nothing analogous in the repo, not "nothing that
+   decides it".** A partial precedent, a near neighbour and a split precedent
+   are each precedent held, and each puts the question back on one adversary.
+   Read this condition strictly: it is what stops case 1 from collapsing into
+   "a low-confidence prior", and three advocates cost about six times one.
+2. **Competing root-cause hypotheses on the investigation path** (design
+   §9.5), over one named evidence set. Assigned positions are what that shape
+   is for.
+
+Frame two or three positions. Each must be a position an advocate can argue
+from this repo's own evidence, not a preference. Write the question, the
+positions and your prior into `decisions.md` before you dispatch, then send
+every dispatch in one message, or the advocates run one after another.
+
+### How to adjudicate
+
+Read every case at your own model, check each citation against the repo, and
+pick a winner. A case that cited a line that does not say what the advocate
+claimed loses on that. The judgment is the expensive part of a council, which
+is why the advocates run cheaper than you do.
+
+**Look each cited line up. Never judge an anchor by eye.** A project lead
+doing this from memory has already reported drift in citations that were
+correct (design §15.46), which costs an advocate a point it earned.
+
+Then record it — the section below.
 
 ### When a council is balanced
 
@@ -161,17 +211,22 @@ does not.
 ### Record the decision
 
 Write one `decisions.md` entry per council, in `record-format.md`'s council
-entry shape. That file owns the four fields a council adds — `Positions`,
-`Losing`, `Models` and `Spend`. Two of them need saying why:
+entry shape. That file owns the five fields a council adds — `Prior`,
+`Positions`, `Losing`, `Models` and `Spend`. Three of them need saying why:
 
+- `Prior:`, your own answer and confidence, written before the dispatch. It is
+  what makes the adversary measurable: a later pass compares it with the
+  adjudication.
 - `Losing:`, the losing positions and the best argument each made. An audit
-  needs to see what was weighed, not only what won.
+  needs to see what was weighed, not only what won. On an adversary entry this
+  line carries your rebuttal.
 - `Models:`, the model every advocate ran. This is what lets promotion data
   cover councils and not only packages.
 
-You wrote `Positions` before you dispatched. Leave that line as it stands —
-reordering it to put the winner first destroys the only evidence that the
-council was open when it started.
+You wrote `Prior` and `Positions` before you dispatched. Leave both lines as
+they stand — rewriting a prior to match the winner, or reordering the
+positions to put the winner first, destroys the only evidence that the council
+was open when it started.
 
 A council entry with high confidence and no citation is a defect, the same as
 any other entry.

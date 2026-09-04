@@ -98,10 +98,12 @@ case is a spawn-time override.
 - **Sonnet is the floor.** Haiku produces weak cases, which corrupts the
   adjudication the same way a mismatch does.
 - Raise every advocate to **opus**, together, when the decision belongs to a
-  `deep`-band package.
+  `deep`-band package. A council of one adversary takes the same promotion:
+  that one advocate runs opus.
 - Record which model the advocates ran, on the council entry's `Models:` line
   (`record-format.md`). This is what lets promotion data cover councils, not
   only packages.
 
 `agents/council-advocate.md` carries `model: sonnet` as that default; the
-`opus` case is a spawn-time override, passed to every advocate in the batch.
+`opus` case is a spawn-time override, passed on every advocate dispatch the
+council makes.

@@ -87,7 +87,7 @@ claim that stage is unbuilt. Run it only when the change lands a stage.
 Read every hit. Fix a hit that this change makes false. Leave a hit that is
 still true.
 
-`SKILL.md` step 12 says who runs this sweep, and when.
+`simple-path.md` step 12 says who runs this sweep, and when.
 
 ## Write for what the reader already has
 
@@ -146,10 +146,12 @@ not done.
    hop — that is how a rule keeps one owner — but a reference that sends
    you to a second file to learn what to do next is.
 4. **Size.** A `CLAUDE.md` or a `.claude/rules/` file is at most 150
-   lines. A `SKILL.md` body is at most 200. Count every line the file
-   holds — blank lines included — from the line after the closing `---`
-   of the frontmatter to the end, and count no file under `references/`.
-   Over either limit, move the excess into a reference file.
+   lines. A `SKILL.md` body targets 200 lines and never passes the 500
+   the skill guidance sets. A file under `references/` has no cap,
+   because a reference loads only when a step sends the reader to it.
+   Count every line the file holds — blank lines included — from the
+   line after the closing `---` of the frontmatter to the end. Over a
+   limit, move the excess into a reference file.
 5. **ASD-STE100 prose.** Every sentence is short, uses active voice, and
    carries exactly one instruction. A sentence you must reread to parse
    is too long — split it.

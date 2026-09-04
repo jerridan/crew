@@ -3621,3 +3621,54 @@ Deliberately different:
     run                    pkgs  fixes  promos  decis  councils  escal  compact  reviews   usd
     truncate-stage-2-efa7     1      0       0      7         0      0        0        3  4.87
     ```
+
+59. **The simple path is its own reference now, and a run read it — 2026-09-04,
+    T27.** `SKILL.md` had sat at the writing standard's 200-line cap since T18,
+    and each new rule was paid for with a sentence that was not a rule. Steps 6
+    to 14 moved to `skills/project-lead/references/simple-path.md`. `SKILL.md`
+    keeps the shared prefix — the reference list, steps 1 to 5 with 4a, and the
+    shape table — and its body is 96 lines. Both paths are now reference files
+    that step 5 routes to, which is the shape item 30a chose for the full path.
+
+    a. **The step numbers did not move.** `simple-path.md` starts at step 6 and
+       ends at step 14, so about thirty citations of a `SKILL.md` step number
+       stay true. What changed is the file name in front of the number:
+       `full-path.md`, `record-format.md`, `writing-standard.md` and
+       `docs/tickets.md` now cite `simple-path.md` for steps 7, 12 and 14, and
+       `SKILL.md` for steps 1 and 4. This section keeps its own citations
+       unedited — they are dated evidence, and item 53a's reason for a lettered
+       step applies to renaming them as well.
+
+    b. **Three sentences came back.** "A finding is a claim, not a verdict"
+       (step 4), "Your output is the run's most expensive" (step 3) and "Your
+       own context is the most expensive place to work" (after the step 5
+       table) were all cut for space and were in no file the project lead reads
+       at runtime. All three sit in the prefix, which is where the decisions
+       they govern are made. The other cuts stay pointers, because their rules
+       have owners: `autonomy-contract.md`, `record-format.md` and
+       `writing-standard.md`.
+
+    c. **`writing-standard.md` rule 4 now has three numbers, not one.** 200
+       lines is a target for a `SKILL.md` body, 500 is the limit the skill
+       guidance sets, and a reference file has no cap because it loads only
+       when a step sends the reader to it. The old rule read as one hard cap,
+       and a hard cap is what made a new rule cost an old sentence.
+
+    d. **The run read `simple-path.md` and never opened `full-path.md`.**
+       `truncate-stage-2-0722/`, an Opus 5 project lead at `--effort high` on
+       the string-kit fixture, with the plugin loaded from this branch. It
+       reached draft PR 2 on the fixture repo in 19 minutes and 92 turns, with
+       zero escalations, zero fix rounds, zero re-specs and $6.27 at list
+       price. `checkout_restored` is `true`. The transcript holds three tool
+       calls naming `simple-path.md` — one `cat` of the whole file, and two
+       later citations of its steps 11 and 12 — and none naming
+       `full-path.md`.
+
+    e. **The lead read every reference up front, before step 5 routed it.**
+       The `cat` of `simple-path.md` sits in the same command as
+       `autonomy-contract.md` and `band-rubric.md`, six minutes before the
+       shape table was reached. So the split's saving on this run was the file
+       it did not read, not a delayed read of the one it did. A project lead
+       that front-loads its references pays for both path files unless the
+       route comes first, and T26's A/B is the next thing to measure that
+       against.

@@ -237,6 +237,12 @@ Rules the format carries:
   earlier deliverable, or code the repo already holds. An entry naming a package
   in a concurrent territory is a serialization bug, and `crew:split-critic`
   check 5 rejects it.
+- **The verification tool is the first package.** When an acceptance criterion
+  needs a tool the repo does not have — a screenshot diff, an audit, a
+  comparison — build it first, and have its IC prove it deterministic against a
+  known-equal pair before any package that uses it starts. Then every later
+  brief names the tool, and `ic-contract.md` makes the IC run it before
+  reporting (design §15.50).
 - **Shared files never appear in a file set.** Version manifests, lockfiles,
   barrel and `index` files, and shared config belong to the project lead at
   integration (design §5).
@@ -268,8 +274,8 @@ One entry per deliverable (design §5):
 | `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
 | `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for an investigation run that ends in a report and not a change, `diagnosis.md` (design §9.5). |
-| `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `SKILL.md` step 7 on the simple path, `full-path.md` step 3 on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head, and `null` on an investigation run that ends in a report, which never switches the checkout (design §15.54, §9.5). |
-| `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `SKILL.md` step 14 says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. Stays `null` when `checkout_branch` is `null`: there was nothing to restore. |
+| `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `simple-path.md` step 7 on the simple path, `full-path.md` step 3 on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head, and `null` on an investigation run that ends in a report, which never switches the checkout (design §15.54, §9.5). |
+| `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `simple-path.md` step 14 says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. Stays `null` when `checkout_branch` is `null`: there was nothing to restore. |
 
 Deliverables run sequentially (design §5), so at most one is ever
 `in-flight`.
@@ -333,7 +339,7 @@ pending ──▶ in-flight ──┤
 - `in-flight → draft-pr-opened`: every package integrates and the project lead
   opens the draft PR (design §9.3).
 - `in-flight → work-complete`: the work is complete and reviewed, and the push
-  or the draft PR was impossible or refused (`SKILL.md` step 14). Or the run
+  or the draft PR was impossible or refused (`simple-path.md` step 14). Or the run
   took the investigation path and its `diagnosis.md` `Outcome` is `no change`,
   so there was never a PR to open (design §9.5).
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
@@ -754,7 +760,7 @@ Every name this file defines, with what consumes it.
 - `state` (deliverable) — consumer: stage 5 (integration and re-plan, design §9.3, §10); shares `pending`/`in-flight`/`abandoned` with a package's `state`. `integrated` is a package's alone; `draft-pr-opened` and `work-complete` are a deliverable's alone
 - `state_changed_at` (deliverable) — consumer: a human auditing the record's timeline; stage 6
 - `pr_url` — consumer: stage 4 (draft PR opened in `draft-pr-opened`, design §9.3); Task 11
-- `checkout_branch` — consumer: stage 4 (`SKILL.md` step 14 switches the checkout back to it, design §15.54)
+- `checkout_branch` — consumer: stage 4 (`simple-path.md` step 14 switches the checkout back to it, design §15.54)
 - `checkout_restored` — consumer: a human, or a next session, asking why the checkout is on the deliverable branch (design §15.54)
 
 **`state.json` per-package fields**
@@ -783,7 +789,7 @@ Every name this file defines, with what consumes it.
 - `in-flight` — consumer: stage 5 (project lead loop, idle check)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
 - `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
-- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14); stage 5 (`full-path.md` step 11); the investigation path's report ending (design §9.5)
+- `work-complete` (deliverable only) — consumer: stage 4 (`simple-path.md` step 14); stage 5 (`full-path.md` step 11); the investigation path's report ending (design §9.5)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
 
 **`state.json` band values** (canonical definitions live in Task 5's

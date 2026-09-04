@@ -531,7 +531,7 @@ Add the fourth terminal state and thread it through:
   deliverable field table, to the state-transition diagram and its arrow list,
   and to the consumer index. Say what `pr_url` holds in it, and that the branch
   name is what the principal is handed instead.
-- `SKILL.md` step 14 and `full-path.md` step 11 both say to push and open a
+- `simple-path.md` step 14 and `full-path.md` step 11 both say to push and open a
   draft PR. Each needs the branch for when that is impossible or refused.
 - Keep the escalation. Both runs asked the principal before closing, and that
   was right — this ticket changes what gets recorded after the answer, not
@@ -584,16 +584,16 @@ step:
 - Say what happens when the tree is dirty at the end, or when the principal
   wants to stay on the deliverable branch to look at it. Switching a checkout
   out from under a person is its own failure.
-- Both paths switch the checkout: `SKILL.md` step 7 on the simple path, and
+- Both paths switch the checkout: `simple-path.md` step 7 on the simple path, and
   `full-path.md` step 3 on the full path, whose ICs work in worktrees but whose
-  project lead does not. The rule's text lives in `SKILL.md`, and `full-path.md`
+  project lead does not. The rule's text lives in `simple-path.md`, and `full-path.md`
   points at it twice, rather than carrying a copy.
 
 Done when: a simple-path run ends with the checkout on the branch it started
 on, or with a recorded reason why it did not, and a second run in the same
 directory starts from a known branch.
 
-2026-09-04: done. `SKILL.md` step 7 records `deliverables[].checkout_branch`
+2026-09-04: done. `simple-path.md` step 7 records `deliverables[].checkout_branch`
 and step 14 switches back; `deliverables[].checkout_restored` holds `true` or
 the reason it did not. `full-path.md` points at those two steps from its own
 step 3 and step 11. Two simple-path runs in one fixture checkout proved it:
@@ -603,7 +603,7 @@ and `checkout_restored: true`, and both left the checkout on `main` and clean
 (design §15.54). No run has exercised the full path's restore.
 
 Read first: design §9.1, §15.47; `record-format.md` deliverable fields;
-`SKILL.md` steps 7 and 14.
+`simple-path.md` steps 7 and 14.
 
 ## T18 — Sweep for stale status claims before a change lands
 
@@ -631,7 +631,7 @@ Build the check:
 - A grep over the change's own diff for the vocabulary that dates: "not built",
   "no run has", "unexercised", "not yet", "stub", "does not exist yet",
   "deferred". The list belongs in one file, not in each agent's head.
-- Say who runs it. The project lead at integration (`SKILL.md` step 12) is the
+- Say who runs it. The project lead at integration (`simple-path.md` step 12) is the
   natural owner, because that is where it already edits shared files. An IC
   cannot own it: an IC sees one package's file set, and a claim in `README.md`
   is stale because of a change in `agents/`.
@@ -643,10 +643,10 @@ Done when: a run that lands a stage leaves no file claiming that stage is
 unbuilt, and the check is stated in exactly one place.
 
 Read first: design §15.48, §15.49; `writing-standard.md`'s "Keep the status
-true"; `SKILL.md` step 12; `agents/deliverable-reviewer.md`.
+true"; `simple-path.md` step 12; `agents/deliverable-reviewer.md`.
 
 2026-09-04, done. `writing-standard.md`'s "Keep the status true" holds the
-vocabulary list and the commands; `SKILL.md` step 12 runs them;
+vocabulary list and the commands; `simple-path.md` step 12 runs them;
 `crew:deliverable-reviewer` got no eighth check. The terms quoted in the
 first bullet above are this ticket's original ask, not a second list —
 `writing-standard.md` is the one that counts, and it has grown three terms
@@ -871,8 +871,8 @@ Stage: any (design §8, §15.50)
 The project lead now runs on Fable 5.1 (T24). Fable's own guidance says
 prompts written for prior models are often too prescriptive and reduce
 output quality, and that stating the goal and constraints beats enumerating
-steps. `SKILL.md` is a fourteen-step numbered loop and `full-path.md` a
-thirteen-step one. The evidence so far cuts the other way: a Fable project lead ran
+steps. `SKILL.md` and `simple-path.md` are a fourteen-step numbered loop, and
+`full-path.md` a thirteen-step one. The evidence so far cuts the other way: a Fable project lead ran
 the numbered loop in 130 turns with zero fix rounds (§15.50). So this is a
 measurement, not a rewrite.
 
@@ -882,9 +882,9 @@ advocate are read by sonnet and opus, which do better with explicit steps.
 Only the project lead's files are candidates, and no file gets two variants —
 a second copy of a rule is the drift `CLAUDE.md` forbids.
 
-Write a goal-and-constraints form of `SKILL.md` that keeps every rule and
-every pointer to a reference, under a temporary second skill name so both
-forms load. Run one simple-path goal with each, on Fable at high effort, in
+Write a goal-and-constraints form of `SKILL.md` and `simple-path.md` that
+keeps every rule and every pointer to a reference, under a temporary second
+skill name so both forms load. Run one simple-path goal with each, on Fable at high effort, in
 fresh clones, with `CREW_RECORD_ROOT` set per arm. Compare lead turns, lead
 spend from `scripts/spend.py`, decisions, critic rounds, fix rounds and the
 independent check of the two PRs.
@@ -895,14 +895,14 @@ form wins, it replaces `SKILL.md` and the same treatment goes to
 the entry says why.
 
 Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
-`full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
+`simple-path.md`; `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
 
 ## T27 — Move the simple-path loop out of `SKILL.md`
 
-Status: open
+Status: done
 Depends on: nothing
-Stage: any (design §15.25, §15.29a)
+Stage: any (design §15.25, §15.30a)
 
 `SKILL.md`'s body has sat at the writing standard's 200-line cap since T18
 landed. T17, T18 and T21 each paid for a new rule by cutting a sentence that
@@ -913,7 +913,7 @@ lines, and says that a workflow that grows large moves into its own file
 which the skill tells the reader to load by task.
 
 The full path already works this way: `full-path.md` replaces steps 6 to 14
-when the shape is more than one package (§15.29a). The simple path has no
+when the shape is more than one package (§15.30a). The simple path has no
 such file, so every rule added to the run loop lands in the fullest file.
 
 Do the same for the simple path:
@@ -951,8 +951,16 @@ Done when: `SKILL.md`'s body is under 120 lines, a simple-path run reads
 `simple-path.md` and reaches a draft PR with zero prompts, and no rule has two
 copies.
 
-Read first: design §15.25, §15.29a, §15.50; `writing-standard.md` rule 4;
+Read first: design §15.25, §15.30a, §15.50; `writing-standard.md` rule 4;
 `SKILL.md`; `full-path.md`.
+
+2026-09-04: done. `simple-path.md` holds steps 6 to 14, `SKILL.md`'s body is
+96 lines, and the step numbers did not move. The three sentences are back in
+steps 3, 4 and 5. `writing-standard.md` rule 4 now carries a 200-line target,
+the 500-line limit and no cap for a reference. A run proved it:
+`truncate-stage-2-0722/` read `simple-path.md`, never opened `full-path.md`,
+and reached draft PR 2 on the fixture repo with zero prompts, zero fix rounds
+and $6.27 at list price (design §15.59).
 
 ## T28 — Give `run.completed_at` an owner
 
@@ -1020,7 +1028,7 @@ batch as its preference questions, before the split, and step 14 ends the run
 without a second ask.
 
 Read first: design §15.52, §15.53; `autonomy-contract.md` "The preference
-sweep"; `full-path.md` step 0; `SKILL.md` step 14.
+sweep"; `full-path.md` step 0; `simple-path.md` step 14.
 
 ## T30 — Write a preference answer into the target repo as precedent
 
@@ -1101,7 +1109,7 @@ Stage: any (design §7, §9.5)
 
 Design §9.5 makes the reproduction the fix package's acceptance criterion,
 and it requires two clauses: the test fails now, and it passes after. Crew
-checks only the second. `SKILL.md` step 9 runs the acceptance criterion after
+checks only the second. `simple-path.md` step 9 runs the acceptance criterion after
 the IC reports, and §7's verification table has no "before" row. A test that
 never failed passes that check and proves nothing.
 

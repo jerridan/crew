@@ -312,7 +312,7 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
     abandoned                          (terminal)
 ```
 
-- `pending → in-flight`: the project lead dispatches an IC for the package.
+- `pending → in-flight`: the project lead dispatches an IC for the package. On a bounded edit (design §9.1) it dispatches none, so it moves the package when it starts the edit itself.
 - `in-flight → integrated`: the package passed review, and its work is on the deliverable branch with the suite green there. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   package, or the fix-round breaker parks it (design §9.2, §10).
@@ -381,6 +381,13 @@ A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
 name files that do not exist yet. On the simple path (design §9.1) the project lead never writes
 `worktrees.json`: there is one package, no territory, and `ic_name` stays
 `null` for the run.
+
+A bounded edit's package is the same entry with no IC behind it. Nothing ever
+writes its `plans/<id>.md` or its `reports/<id>.md`, so `plan_path` and
+`report_path` name files that never exist, and `plan_approved_at`,
+`fix_rounds_used` and `nudges_used` keep their creation values. `id`, `band`,
+`file_set`, `interface_contract`, `acceptance_criterion`, `base` and `state`
+all carry real values, because steps 12 to 14 of `simple-path.md` read them.
 
 ### Per-run fields (inside `run`)
 

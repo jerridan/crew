@@ -704,7 +704,9 @@ holding it.
   project lead held before the advocate reported.
 - `Losing:` — one line per losing position: the best argument it made, and why
   it lost. On an adversary entry whose prior survived, this line is the
-  project lead's written rebuttal of the adversary's strongest point.
+  project lead's written rebuttal of the adversary's strongest point. A
+  position whose advocate conceded (design §9.5) made no argument, so its line
+  reads `conceded` and carries the citation that contradicted it.
 - `Models:` — the model every advocate ran, as `1 advocate, <model>` or
   `<n> advocates, <model>`.
   Every advocate in one council runs the same model (`band-rubric.md`), so

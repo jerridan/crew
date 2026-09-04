@@ -1080,7 +1080,7 @@ sweep" and the routing table; `writing-standard.md` container rules;
 
 ## T31 — Let a council advocate argue a root cause, and concede one
 
-Status: open
+Status: done
 Depends on: T22
 Stage: after 4 (design §6.1, §9.5)
 
@@ -1113,6 +1113,10 @@ with the citation instead of arguing.
 
 Read first: design §6.1, §9.5; `agents/council-advocate.md`;
 `record-format.md` `diagnosis.md` and the council entry; T22.
+
+Landed 2026-09-04 as `agents/council-advocate.md`'s third shape and its
+concession report, plus `record-format.md`'s `conceded` line on `Losing:`
+(§15.66). Two hand-dispatched advocates over a seeded bug proved both halves.
 
 ## T32 — Prove the reproduction fails before the fix
 

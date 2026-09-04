@@ -51,7 +51,7 @@ on it. That changes what belongs in it.
 - **No bolded lead-in followed by its own explanation.** Two or three of
   those in a row is design voice, and it is the drift to watch for.
 - **Keep the status true.** A README that calls a built thing a stub is
-  worse than one that says nothing. The section below owns this rule.
+  worse than one that says nothing. `## Keep the status true` owns this rule.
 
 The same rules hold for a PR body, an issue and a comment.
 
@@ -66,23 +66,26 @@ Every sentence that says what is built goes stale when a stage lands. The
 session that lands the stage is the one least likely to notice it (design
 §15.48, §15.49, §15.52). Reading does not catch this. A grep does.
 
-This is the vocabulary that dates. It is the canonical list, and no other
-file keeps a copy:
-
-`not built`, `unbuilt`, `no run has`, `no session has`,
-`nothing dispatches`, `unexercised`, `not yet`, `stub`,
-`does not exist yet`, `deferred`.
-
-Sweep the change's own diff for it before the change lands:
+The `pattern` line below is the vocabulary that dates. It is the canonical
+list. An instruction file that needs the vocabulary points here; it never
+copies the terms. Run this block before the change lands, with `<repo>` the
+absolute path to the checkout and `<base>` the branch's base ref:
 
 ```
-git diff <base>...HEAD | grep -inE 'not built|unbuilt|no run has|no session has|nothing dispatches|unexercised|not yet|stub|does not exist yet|deferred'
+pattern='not built|unbuilt|no run has|no session has|nothing dispatches|unexercised|not yet|stub|does not exist yet|deferred'
+
+# every change: the lines this change adds
+git -C <repo> diff <base>...HEAD | grep -inE "^\+.*($pattern)"
+
+# a change that lands a stage: the whole repo as well
+git -C <repo> grep -inE "$pattern"
 ```
+
+The second grep exists because a file the change never touched can still
+claim that stage is unbuilt. Run it only when the change lands a stage.
 
 Read every hit. Fix a hit that this change makes false. Leave a hit that is
-still true. When the change lands a stage, run the same pattern over the
-whole repo as well — `grep -rinE '<the pattern above>' .` — because a file
-the change never touched can still claim that stage is unbuilt.
+still true.
 
 `SKILL.md` step 12 says who runs this sweep, and when.
 

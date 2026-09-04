@@ -362,7 +362,8 @@ for which files must change together, and keep the values they require equal.
 Crew's own two-manifest version rule is crew's, not every repo's — a repo that
 bumps at release wants no bump here at all. Commit them.
 
-`SKILL.md` step 12 owns the stale-status-claim sweep that follows, unchanged.
+Then sweep for stale status claims, as `SKILL.md` step 12 does: run the block
+in `writing-standard.md`'s "Keep the status true" over the deliverable branch.
 
 ## 10. Review the deliverable
 

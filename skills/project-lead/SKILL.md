@@ -171,8 +171,8 @@ files: read the target repo's own instructions for which must change
 together, and keep the values they require equal. Commit them, and mark the
 package `integrated`.
 
-**Sweep for stale status claims.** You own this check alone. Run the grep in
-`writing-standard.md`'s "Keep the status true" over this branch's own diff.
+**Sweep for stale status claims.** You own this check alone. Run the block in
+`writing-standard.md`'s "Keep the status true" over the deliverable branch.
 
 **Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. Step
 10's diff predates the fix rounds and the shared-file edits you just made,

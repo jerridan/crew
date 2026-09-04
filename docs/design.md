@@ -3004,8 +3004,9 @@ Deliberately different:
     one check means each one can assume the other ran it.
 
     **The vocabulary list lives in `writing-standard.md`**, in a
-    `## Keep the status true` section, with the runnable `grep -inE` beside
-    it. `SKILL.md` step 12 points at it, and `full-path.md` step 9 points at
+    `## Keep the status true` section, with the runnable block beside it —
+    one `pattern` variable, one grep over the change's added lines, one
+    `git grep` over the repo. `SKILL.md` step 12 points at it, and `full-path.md` step 9 points at
     step 12. One copy of the pattern, so a term added later reaches every
     caller.
 

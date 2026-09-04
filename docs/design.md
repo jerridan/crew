@@ -565,6 +565,13 @@ per-request usage to `~/.claude/projects/<checkout>/`, and
 `spend.transcript`. `autonomy-contract.md` says when the project lead runs
 it.
 
+`skills/project-lead/scripts/crew-stats.py` reads the whole record root and
+prints cost per package by band, fix rounds by band, promotions, councils and
+their spend, escalations, compactions and review counts. It imports
+`spend.py` for the prices, so there is one price table. A person runs it; no
+agent does. It turns this section's rubric into a measurement, and it gives a
+charter `Budget:` a number to start from (§15.51).
+
 The token ceiling this section once required is gone (§15.50). It counted
 subagent completion notifications only, which missed the project lead's own
 session and every teammate — 90% of a measured run — so it never fired in
@@ -2904,3 +2911,44 @@ Deliberately different:
     `PreCompact` fires for an in-process teammate (T19), and that a review
     agent's write to the record root is allowed in the sandboxes that deny
     an IC's (T20).
+
+51. **`crew-stats.py` reads every record, and it reproduces §15.50's counts
+    but not its Opus dollars — 2026-09-03, T25.**
+    `skills/project-lead/scripts/crew-stats.py` walks the record root and
+    prints one row per run, a by-band table, a review table and the totals.
+    It imports `spend.py` for the price table and the transcript pricing, so
+    the two scripts cannot drift apart. It writes nothing.
+
+    **Counts that match §15.50 exactly.** Packages 10 against 5, fix rounds
+    15 against 0, reviews 17 against 10, decisions 17 against 23, councils 1
+    against 0, escalations 0 against 0. Every one of those comes out of
+    `state.json`, `decisions.md` and `reviews/`.
+
+    **Dollars.** The Fable arm prices at $144.36, against the $144 recorded.
+    The Opus arm prices at $224.29, against the $215.39 recorded. The
+    difference is in the data, not in the script: the A/B's own scripts
+    (`~/src/ab/spend.py`) now return $224.29 for that arm too. The Opus
+    session was left open after the figure was taken, and three more opus
+    messages and 0.8M more one-hour cache writes landed in its transcript.
+    The sonnet half is byte-identical across the two measurements. **A
+    transcript-priced figure is only stable once the session that wrote it
+    is closed.** Take the number, then close the session.
+
+    **Per-package cost is an estimate, not a measurement.** A run's dollars
+    cover the whole run, and nothing in the record attributes them to one
+    package. The by-band table splits each priced run's cost evenly over its
+    packages, and the header says so. Over the two priced runs the bands come
+    out near each other — light $22.43, standard $24.58, deep $25.01 per
+    package — which is what an even split must produce, so it says nothing
+    about the bands yet. A per-package figure needs an IC's own transcript
+    mapped to the package it worked, which `ic_name` and `worktrees.json`
+    make possible and this script does not yet do.
+
+    **Nine of eleven records cannot be priced.** They carry neither
+    `spend.transcript` nor a checkout path, because both fields are newer
+    than the runs. The script counts them everywhere else and names each one
+    in a `Skipped` block. `--repo <slug>=<checkout>` supplies the missing
+    path by hand, which is how the Opus arm was priced above.
+
+    Review catch rate is not in the script. T23 defines it; one comment
+    marks where it goes.

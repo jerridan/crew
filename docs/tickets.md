@@ -759,7 +759,7 @@ Read first: design §8, §15.50; `README.md` "What each agent runs on".
 
 ## T25 — A stats script over every record
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §8, §15.50)
 
@@ -777,7 +777,12 @@ T23 defines it, review catch rate. Use it to give a principal a defensible
 Done when: the script runs over the records on the machine that ran the A/B
 and its numbers for the two §15.50 runs match the ones recorded there.
 
-Read first: design §8, §15.50; `record-format.md`; `scripts/spend.py`.
+Done 2026-09-03: `skills/project-lead/scripts/crew-stats.py`. Its counts for
+the two §15.50 runs match. Its Fable dollars match; its Opus dollars are
+$224.29 against the recorded $215.39, because the Opus session stayed open
+after the figure was taken. §15.51 records both.
+
+Read first: design §8, §15.50, §15.51; `record-format.md`; `scripts/spend.py`.
 
 ## T26 — A/B a goal-and-constraints form of `SKILL.md` on Fable
 

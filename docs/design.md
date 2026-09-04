@@ -204,6 +204,8 @@ An entry with high confidence and no citation is a defect.
   one draft PR. Deliverables run **sequentially**, because a later one may build
   on an earlier one.
 - A deliverable splits into 1..M **packages**. Packages run **in parallel**.
+  The one exception is §9.5's report ending: a deliverable whose product is a
+  diagnosis and no change holds no package and no branch.
 
 The project lead decides both counts after scouting. A goal that is too large
 for one PR gets several deliverables; that judgment is the project lead's to
@@ -667,6 +669,10 @@ The project lead does work itself only for bounded edits. Its own context is
 the most expensive place to do anything: it runs at your model and effort, and
 everything it reads inflates every later turn.
 
+This table assumes the goal names a change. A goal that names a symptom takes
+the investigation path first (§9.5), and comes back to this table only when it
+has a diagnosis to build from.
+
 ### 9.2 Full path, per deliverable
 
 1. Create a worktree and branch per IC. Record them in `worktrees.json`.
@@ -727,6 +733,162 @@ prunes stale registrations. Copied from
 **Never force a worktree removal.** A refusal means files exist nowhere else.
 Commit them to the IC branch or surface them. Clean up only worktrees `crew`
 created.
+
+### 9.5 The investigation path
+
+§9.1 assumes the goal names a change. A bug report and a support ticket do
+not. They name a symptom, and the cause is unknown. Most of the work is
+diagnosis, and such a run can end correctly with no code change at all.
+
+**Pick the path at `SKILL.md` step 1, from the charter.** The test is what
+the goal names: a change to make, or a symptom whose cause is unknown. "The
+export drops the last row" is a symptom. "Add a `--json` flag" is a change.
+The project lead reads the charter at that step anyway, so this costs no
+extra turn.
+
+#### The bug charter
+
+The acceptance criterion is a **reproduction**: one test or one command that
+fails now and passes after the fix. Both clauses are required. A criterion
+that only says "passes after" is satisfied by a test that never failed. Crew
+does not check the "fails now" clause yet, on any path — §7's table has no
+row for it, and T32 in `docs/tickets.md` is the ticket that adds one.
+
+**The reproduction is written twice.** At step 1 the charter carries the
+symptom, stated so that some future command could falsify it. The command
+itself comes out of Phase 1 below, because writing it needs what step 2's
+scouting finds — what runs the suite, and where the surface is. Step 1 cannot
+produce a failing command in a repo it has not read yet.
+
+When Phase 1 ends with no way to make the symptom happen on demand, the run
+has no falsifiable criterion. §6 trigger 1 fires and the run stops, having
+spent one scouting pass and nothing more. "Gather more data" is the
+escalation, not a hypothesis.
+
+#### The checklist
+
+Copied word for word from `superpowers:systematic-debugging` (§2, §14). The
+project lead follows it, and so does every IC it dispatches on this path.
+
+> ```
+> NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
+> ```
+
+> | Phase | Key Activities | Success Criteria |
+> |-------|---------------|------------------|
+> | **1. Root Cause** | Read errors, reproduce, check changes, gather evidence | Understand WHAT and WHY |
+> | **2. Pattern** | Find working examples, compare | Identify differences |
+> | **3. Hypothesis** | Form theory, test minimally | Confirmed or new hypothesis |
+> | **4. Implementation** | Create test, fix, verify | Bug resolved, tests pass |
+
+> If you catch yourself thinking:
+> - "Quick fix for now, investigate later"
+> - "Just try changing X and see if it works"
+> - "Add multiple changes, run tests"
+> - "Skip the test, I'll manually verify"
+> - "It's probably X, let me fix that"
+> - "I don't fully understand but this might work"
+> - "Pattern says X but I'll adapt it differently"
+> - "Here are the main problems: [lists fixes without investigation]"
+> - Proposing solutions before tracing data flow
+> - **"One more fix attempt" (when already tried 2+)**
+> - **Each fix reveals new problem in different place**
+>
+> **ALL of these mean: STOP. Return to Phase 1.**
+>
+> **If 3+ fixes failed:** Question the architecture (see Phase 4.5)
+
+Phase 1 is scouting with a different question. §9.1's step 2 asks what the
+repo already does; here the project lead dispatches `Explore` subagents and
+`crew:researcher` to ask where the value goes wrong. `crew:researcher` exists
+for the hop-by-hop question a one-shot scout cannot answer (§3), and this path
+is its first caller.
+
+Evidence is a file, not a memory. Each scout writes what it found to the
+record, and the project lead reads the paths. The same rule as a review diff
+(§9.2 step 5), for the same reason: the reading must not inflate the judge's
+context.
+
+#### Competing hypotheses go to a council
+
+Phase 3 tells one debugger to hold one hypothesis at a time. Crew has several
+agents and one judge, so it tests the survivors against each other instead.
+
+When Phase 2 leaves **more than one** hypothesis standing, the project lead
+convenes a council (§6.1) with three assigned advocates — §6.1's cap, and its
+full shape rather than a single adversary. Competing root causes over one body
+of evidence is what assigned positions are for. One surviving hypothesis is
+not a council. The project lead tests it under Phase 3 and moves on.
+
+T22 in `docs/tickets.md` narrows the full council to two cases, and this is
+its second. That ticket is open, so §6.1 does not yet carry the narrowing. If
+T22 lands with a different case list, this paragraph is one of the places it
+has to reach.
+
+Three rules on top of §6.1:
+
+- **Every advocate reads the same evidence set.** The project lead names the
+  paths in the spawn prompt. An advocate that gathers its own evidence is
+  arguing about a different bug.
+- **An advocate may concede.** A design council has no true answer, so a
+  losing case is still worth making. A root cause does have one, and an
+  advocate that argues a refuted hypothesis anyway hands the judge a case
+  built on nothing. An advocate that finds its assigned hypothesis
+  contradicted reports that, with the citation that contradicts it.
+- **The winner is a claim until a change proves it.** The adjudication picks
+  the hypothesis to test first. Phase 3 tests it minimally, and a failed test
+  returns to Phase 1 with what the failure taught, never to the runner-up by
+  default.
+
+#### The diagnosis artifact
+
+The project lead writes `diagnosis.md` into the record: the reproduction, the
+evidence with its paths, the root cause, and every hypothesis it ruled out
+with the evidence that ruled it out. `record-format.md` owns the name and the
+fields.
+
+The ruled-out list is the part that pays. A later run on the same symptom
+reads it as precedent (§6.2) and does not re-run the councils this one paid
+for.
+
+**A diagnosis is verified like any other claim.** §7 forbids a completion
+claim with no fresh evidence, and a report ending produces no diff, so neither
+the package reviewer nor the deliverable reviewer can run over it. The project
+lead's own artifact would otherwise be its own evidence. So before it writes
+`Outcome: no change`, it dispatches one `crew:council-advocate` over the same
+evidence set to argue that the root cause is wrong. A conclusion the project
+lead cannot defend in writing against that case is an escalation, not a
+finished run. This is T22's default adversary, applied to the artifact instead
+of to a question, and it is one sonnet call.
+
+#### Where the path rejoins, and where it stops
+
+A diagnosed fix is normal work. The project lead goes back to §9.1's table
+with it, and a fix is usually one package on the simple path. Two things
+carry across:
+
+- The reproduction is the package's acceptance criterion (§5 invariant 1). It
+  already fails, so the "fails now" clause is evidence, not a claim.
+- `diagnosis.md` goes into the IC's spawn prompt and into the PR body. An IC
+  that gets the symptom without the cause fixes the symptom.
+
+A run that finds no change to make still finishes. The diagnosis is the
+deliverable: the project lead ends it `work-complete` with `pr_url: null`,
+and the record is what the principal is handed. That covers the bug that is
+not a bug, the bug whose fix belongs to another team, and the question the
+principal asked to have answered rather than fixed.
+
+**A report ending is §5's one exception to a deliverable holding at least one
+package.** It holds none, and it needs no branch either: nothing is edited, so
+`branch`, `base`, `checkout_branch` and `checkout_restored` are all `null`,
+and `SKILL.md` step 14's checkout restore has nothing to put back.
+`record-format.md` carries each of those `null` cases in the field row that
+owns it. The moment a fix package exists the deliverable is a normal one, and
+step 7 creates its branch as usual.
+
+**A run does not choose the report ending to avoid the work.** It ends there
+only when the diagnosis says there is no change to make in this repo, and
+`diagnosis.md` says which. Every other ending is a fix.
 
 ---
 
@@ -961,7 +1123,12 @@ dead run, so it never depended on `TeammateIdle`.
 
 Copied as-is, so it stays easy to re-sync: the `Interfaces` block, the
 `Global Constraints` block, task right-sizing, the no-placeholders list, the
-verification table, the adjudication procedure, the worktree cleanup guard.
+verification table, the adjudication procedure, the worktree cleanup guard,
+and the debugging checklist in section 9.5.
+
+The debugging checklist comes from `superpowers:systematic-debugging` at
+plugin version 6.3.0, commit `b36e0829c6d0140e93cfef2ca599b1b07d4a7797`.
+Re-sync against that file, not against a paraphrase of it.
 
 Deliberately different:
 
@@ -976,6 +1143,11 @@ Deliberately different:
 | Subagents throughout | Teammates for ICs, subagents for everything one-shot | Steering and attach |
 | One plan, one branch | Goal → deliverables → packages | A goal too large for one PR |
 | One worker per task | One IC per territory, several packages each | Agent-team guidance; fewer spawns |
+| `systematic-debugging` Phase 3: one debugger forms one hypothesis at a time | More than one surviving hypothesis goes to a three-advocate council over one shared evidence set (section 9.5) | Several agents and one judge; assigned positions beat one agent's prior |
+| `systematic-debugging` Phase 4.5: after 3 failed fixes, "discuss with your human partner" | The fix-round breaker at five rounds, then escalation trigger 6 (sections 9.2, 6) | A later stop, reached by a rule instead of a conversation. Rounds 4 and 5 promote a band, which is crew's answer to "question the architecture" |
+| `systematic-debugging` Phase 4 invokes the TDD and verification skills | Section 7 and `ic-contract.md` carry the equivalents | crew never invokes a superpowers skill (section 2) |
+| `systematic-debugging` reads its human partner's wording for signs it is off track | The record: the evidence paths, the ruled-out list, and the council entry (section 9.5) | Nobody is watching a no-prompt run |
+| Every superpowers workflow ends in a change | An investigation run can end at `diagnosis.md` with no change, as `work-complete` | A diagnosis is a deliverable |
 
 ---
 
@@ -3201,3 +3373,78 @@ Deliberately different:
     `run.instruments_used` field that logs every dispatch. Nothing in crew
     dispatches an instrument yet — that work folds into T4's territory, per
     T14's own ticket, and stays there until a run needs one.
+
+56. **The investigation path is designed, and five choices in it were not
+    obvious — 2026-09-04, T11.** §9.5 is the section, §14 carries the five
+    deviations, and `record-format.md` owns `diagnosis.md`. Nothing runs it
+    yet; T12 implements it, and T31 and T32 are the two pieces it needs
+    first. Recorded here is what the design decided and why, so T12 does not
+    reopen it.
+
+    **The copy is from an installed skill, not from GitHub.**
+    `superpowers:systematic-debugging` at plugin version 6.3.0, commit
+    `b36e0829c6d0140e93cfef2ca599b1b07d4a7797`, found on this machine under
+    `~/.claude/plugins/cache/`. §14 records the commit so a re-sync compares
+    against the same text. Three blocks are copied whole: the Iron Law, the
+    Quick Reference table of four phases, and the Red Flags list. The rest of
+    that skill is examples and rationalisation tables, which a capable model
+    does not need.
+
+    **The path is chosen at `SKILL.md` step 1, not at step 5.** §9.1's table
+    is the shape choice and it runs after scouting. This choice has to come
+    before scouting, because it changes what the scouts are asked. The test is
+    what the charter names — a change to make, or a symptom whose cause is
+    unknown. An earlier draft tested the acceptance criterion instead ("a goal
+    whose criterion cannot be written yet"), which a review showed was
+    self-defeating: every run that test selected would then abort on §6
+    trigger 1 for the same reason. That is also why the reproduction is
+    written in two stages. The charter carries the symptom at step 1; the
+    failing command comes out of Phase 1, because step 1 cannot write a
+    command in a repo it has not scouted.
+
+    **A report ending needs its own verification, and it is one adversary.**
+    §7 forbids a completion claim with no fresh evidence. Both review agents
+    read a diff, and a run that ends at `diagnosis.md` produces none, so the
+    project lead's own artifact would be its only evidence. One
+    `crew:council-advocate` argues the root cause is wrong over the same
+    evidence, and writes `reviews/diagnosis-adversary.md`. That is T22's
+    default adversary aimed at an artifact instead of at a question, and it
+    costs one sonnet call. `Outcome: fix` needs none — the fix package carries
+    a normal review.
+
+    **A report ending is §5's one exception to a deliverable holding a
+    package.** It holds none, and it opens no branch, so `branch`, `base`,
+    `checkout_branch` and `checkout_restored` are all `null`. §5 and each of
+    those four field rows say so where they are defined. T17 landed the last
+    two one commit earlier, and their text asserted that every run switches
+    the checkout; this is the first ending that does not.
+
+    **No new deliverable state.** T16's `work-complete` already reads "the
+    work is complete and trusted but no PR was opened", and its `pr_url` row
+    already anticipated a run that ends in a report. The only edits needed
+    were to the two transition arrows and to the evidence rule: a resume
+    proves a diagnosis run's `work-complete` from `diagnosis.md`'s
+    `Outcome: no change`, where a blocked-push run proves it from the
+    `escalations` answer. A second state would have split one meaning across
+    two names for no gain.
+
+    **The advocate may concede, and that is new.** §6.1 assigns positions on
+    purpose, because agreement between agents from one base model measures
+    shared priors. That argument holds for a design question, which has no
+    true answer. A root cause does have one. An advocate assigned a
+    hypothesis the evidence refutes, and forbidden to say so, hands the judge
+    a case built on nothing — and the three cases are the judge's whole
+    input. T31 adds the third report shape. This is the first place where
+    crew's council rules split by question type.
+
+    **The ruled-out list is the artifact's payload.** Evidence and a root
+    cause are what the fix needs, and a run could stop there. The rejected
+    hypotheses are what the *next* run needs: §6.2 reads them as precedent,
+    so an empty `## Ruled out` costs the next run on the same symptom the
+    councils this one already paid for. That is the same reason §8 logs a
+    band promotion nobody reads until later.
+
+    **What the design did not settle.** Whether the fix rejoins as a package
+    in the same run or as a second deliverable is left to T12 — one run has
+    to happen before that is anything but a guess. §9.5 says only that the
+    fix goes back to §9.1's table.

@@ -6,6 +6,7 @@ One directory per goal, outside the target repo (design §4):
 ~/.claude/crew/<goal-slug>/
 ├── charter.md        goal + falsifiable acceptance criterion
 ├── spec.md           the spec the project lead wrote after scouting
+├── diagnosis.md      investigation path only: repro, evidence, root cause, ruled out
 ├── split.md          deliverables → packages, with interfaces and bands
 ├── state.json        deliverables, per-package state, band history, spend, escalations
 ├── decisions.md      every judgment call, with its citation, confidence, and timestamp
@@ -79,6 +80,34 @@ each on its own, anywhere in the file:
   Without this line the run has none, and the project lead never dispatches
   one it finds in the repo but the charter does not name.
 
+## `diagnosis.md`
+
+The investigation path's artifact (design §9.5). Written by the project lead,
+absent from every other run. Five headings, in this order:
+
+- `## Reproduction` — the test or command that fails now, with the failing
+  output. This is the charter's acceptance criterion, and it becomes the fix
+  package's `acceptance_criterion` when the run goes on to build one.
+- `## Evidence` — one line per finding, each with the repo path or command
+  that produced it. A finding with no path is a memory, not evidence.
+- `## Root cause` — one paragraph, with the citation that proves it.
+- `## Ruled out` — one line per rejected hypothesis, each with the evidence
+  that rejected it. A later run reads this as precedent (design §6.2), so an
+  empty entry costs the next run a council.
+- `## Outcome` — `fix`, with one line naming the change to make, or
+  `no change`, with the reason. Nothing here names a deliverable: the fix's
+  deliverable does not exist when this file is written. `no change` is what
+  ends the run at `work-complete`.
+
+A council on competing hypotheses writes its own entry to `decisions.md` as
+usual. `diagnosis.md` names the winner and points there; it holds no second
+copy of the losing arguments.
+
+An `Outcome: no change` needs the adversary review design §9.5 requires:
+`reviews/diagnosis-adversary.md`, written by one `crew:council-advocate`
+arguing the root cause is wrong. An `Outcome: fix` needs none — the fix
+package's own review covers it.
+
 ## `reports/`, `plans/`, `diffs/`, and `reviews/`
 
 Four directories hold per-run output. Each has one writer and a fixed
@@ -112,7 +141,10 @@ naming convention. Do not mix their contents.
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
   critic on the same deliverable),
-  `reviews/<deliverable-id>-deliverable-review.md`. Design §9.2 allows up to
+  `reviews/<deliverable-id>-deliverable-review.md`, and
+  `reviews/diagnosis-adversary.md` for the one advocate that argues against a
+  report ending's root cause (design §9.5; the diagnosis is per goal, so this
+  name carries no deliverable id). Design §9.2 allows up to
   five review rounds per package, and a goal can hold several deliverables —
   a shared filename per kind would let a later round, a later deliverable,
   or a later re-plan silently destroy an earlier review, which is this run's
@@ -231,13 +263,13 @@ One entry per deliverable (design §5):
 | Field | Meaning |
 |---|---|
 | `id` | referenced by each package's `deliverable` field |
-| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). |
-| `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1) |
+| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). `null` on an investigation run that ends in a report: nothing is edited, so no branch is created (design §9.5). |
+| `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1). `null` when `branch` is `null`. |
 | `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
-| `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for a run that ends in a report and not a change, the record itself. |
-| `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `SKILL.md` step 7 on the simple path, `full-path.md` step 3 on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head (design §15.54). |
-| `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `SKILL.md` step 14 says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. |
+| `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for an investigation run that ends in a report and not a change, `diagnosis.md` (design §9.5). |
+| `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `SKILL.md` step 7 on the simple path, `full-path.md` step 3 on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head, and `null` on an investigation run that ends in a report, which never switches the checkout (design §15.54, §9.5). |
+| `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `SKILL.md` step 14 says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. Stays `null` when `checkout_branch` is `null`: there was nothing to restore. |
 
 Deliverables run sequentially (design §5), so at most one is ever
 `in-flight`.
@@ -296,11 +328,14 @@ pending ──▶ in-flight ──┤
 ```
 
 - `pending → in-flight`: the project lead dispatches the deliverable's first
-  package.
+  package. On the investigation path a diagnosis deliverable has no package,
+  so the first evidence dispatch moves it (design §9.5).
 - `in-flight → draft-pr-opened`: every package integrates and the project lead
   opens the draft PR (design §9.3).
 - `in-flight → work-complete`: the work is complete and reviewed, and the push
-  or the draft PR was impossible or refused (`SKILL.md` step 14).
+  or the draft PR was impossible or refused (`SKILL.md` step 14). Or the run
+  took the investigation path and its `diagnosis.md` `Outcome` is `no change`,
+  so there was never a PR to open (design §9.5).
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   deliverable (design §10).
 
@@ -321,7 +356,8 @@ a clean tree, no PR. A resume that reconciles from git alone would re-enter
 step 14 and open the very PR the principal refused.
 
 So the evidence for `work-complete` lives in the record, and a resume reads it
-there: the `escalations` entry whose `answer` records what the principal said.
+there: the `escalations` entry whose `answer` records what the principal said,
+or, on the investigation path, `diagnosis.md`'s `Outcome: no change`.
 **Never move a deliverable out of `work-complete` on git evidence alone.**
 Move it only when the principal says to.
 
@@ -666,6 +702,9 @@ Every name this file defines, with what consumes it.
 **Layout entries (design §4, this file's directory tree)**
 - `charter.md` — consumer: stage 4 (project lead writes it after scouting)
 - `spec.md` — consumer: stage 4 (project lead writes it); Task 11 (copied into the PR body)
+- `diagnosis.md` — writer: the project lead on the investigation path (design §9.5). Consumer: the fix package's spawn prompt and the PR body; a later run reading `## Ruled out` as precedent (design §6.2)
+- `diagnosis.md` headings `Reproduction`, `Evidence`, `Root cause`, `Ruled out`, `Outcome` — consumer: design §9.5
+- `Outcome` values `fix` and `no change` — consumer: design §9.5; this file's `in-flight → work-complete` transition
 - `split.md` — consumer: stage 3 (`crew:split-critic` and the `split.md` format)
 - `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
@@ -736,7 +775,7 @@ Every name this file defines, with what consumes it.
 - `in-flight` — consumer: stage 5 (project lead loop, idle check)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
 - `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
-- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14); stage 5 (`full-path.md` step 11)
+- `work-complete` (deliverable only) — consumer: stage 4 (`SKILL.md` step 14); stage 5 (`full-path.md` step 11); the investigation path's report ending (design §9.5)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
 
 **`state.json` band values** (canonical definitions live in Task 5's
@@ -790,3 +829,4 @@ Every name this file defines, with what consumes it.
 - `reviews/<id>-package-review-r<n>.md` — consumer: Task 9 (`crew:package-reviewer` output, one file per fix round)
 - `reviews/<deliverable-id>-split-critic-r<n>.md` — consumer: stage 3 (`split-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
 - `reviews/<deliverable-id>-deliverable-review.md` — consumer: stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/diagnosis-adversary.md` — writer: `crew:council-advocate` on the investigation path. Consumer: design §9.5 (a report ending's only verification evidence, design §7)

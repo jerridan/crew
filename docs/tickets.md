@@ -344,7 +344,7 @@ Read first: design §15.17, §15.43, §3.1; `writing-standard.md`.
 
 ## T11 — Design the investigation path
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: design (`docs/design.md`)
 
@@ -374,24 +374,53 @@ deviations, and the implementation tickets it implies are added here.
 Read first: design §2, §5 (invariant 1), §6.1, §9.1, §14; the
 superpowers debugging skill the checklist copies from.
 
+Landed 2026-09-04 as design §9.5, five §14 rows, and `diagnosis.md` in
+`record-format.md` (§15.56). The tickets it implies are T12 below, T31 and
+T32.
+
 ## T12 — Implement the investigation path
 
 Status: open
-Depends on: T4, T11
+Depends on: T4, T11, T31, T32
 Stage: after 4
 
-Extend `/crew:project-lead` with T11's design: accept a bug-shaped
-charter, run the diagnosis loop — scouts gather evidence, a council
-weighs hypotheses when more than one survives — write the diagnosis
-artifact, then either stop at the report or hand the fix to the simple
-path with the reproduction as its acceptance test.
+Extend `/crew:project-lead` with design §9.5. Four pieces, in the order a
+run meets them:
+
+1. **The choice at step 1.** §9.5 picks the path from the charter, before
+   scouting, not at step 5's shape table. A goal whose acceptance criterion
+   cannot be written until something is diagnosed is a symptom. Step 1
+   already writes that criterion, so this is a branch in an existing step,
+   not a new one.
+2. **The diagnosis loop.** `Explore` subagents and `crew:researcher` gather
+   evidence to files; the project lead reads the paths, never the reading.
+   This is `crew:researcher`'s first caller — nothing dispatches it today.
+   More than one surviving hypothesis convenes a three-advocate council
+   (§6.1, T22 case 2) over one named evidence set.
+3. **`diagnosis.md`.** Five headings, in `record-format.md`'s order. A
+   diagnosis deliverable holds no package, so the first evidence dispatch is
+   what moves it `in-flight`.
+4. **The two endings.** `Outcome: fix` rejoins step 5's table with the
+   reproduction as the package's acceptance criterion and `diagnosis.md` in
+   the IC spawn prompt and the PR body. `Outcome: no change` runs the
+   adversary review first (`reviews/diagnosis-adversary.md`), then ends the
+   run `work-complete` with `pr_url: null` and four `null` branch and
+   checkout fields.
+
+`SKILL.md` is at its size limit and T27 splits it, so the loop's text goes
+in a reference, not in the body. Decide with T27 whether that is
+`simple-path.md` or a file of its own. §9.5's three council rules belong in
+`autonomy-contract.md`, which owns the council; the loop file points at
+them.
 
 Done when: one real bug goes from ticket text to a draft PR whose new
 test reproduces the bug and passes after the fix, with zero prompts; and
 one no-code-change question ends in a recorded diagnosis instead of a
 PR.
 
-Read first: T11's design section; design §9.1; `record-format.md`.
+Read first: design §9.5, §9.1, §6.1, §14; `record-format.md`
+`diagnosis.md` and the deliverable transitions; `autonomy-contract.md`;
+`SKILL.md` steps 1 and 5; T27, T31, T32.
 
 ## T13 — Researcher agent
 
@@ -1021,3 +1050,74 @@ precedent with a citation and escalates nothing.
 Read first: design §3.1, §6, §15.53; `autonomy-contract.md` "The preference
 sweep" and the routing table; `writing-standard.md` container rules;
 `agents/ic-instructions.md`.
+
+## T31 — Let a council advocate argue a root cause, and concede one
+
+Status: open
+Depends on: T22
+Stage: after 4 (design §6.1, §9.5)
+
+Design §9.5 sends competing root causes to a three-advocate council. That is
+T22's second exception, and `agents/council-advocate.md` cannot serve it yet.
+Two things are different from a design council.
+
+**The evidence set is given, not gathered.** A design advocate searches the
+repo for its own citations. A root-cause advocate must argue over the same
+evidence as its two siblings, or the three cases are about different bugs.
+The dispatch names the evidence paths from `diagnosis.md`, and the advocate
+cites those files. It may read the repo to understand a path it was given; it
+may not go looking for a fact nobody else has.
+
+**An advocate may concede.** A design question has no true answer, so the
+strongest case for a losing position is still worth writing. A root cause has
+one. An advocate that argues a refuted hypothesis anyway hands the judge a
+case built on nothing, and the judge's whole input is these three cases. Give
+the agent a third report shape: the assigned hypothesis is contradicted, with
+the citation that contradicts it. That shape is a finding, not a failure.
+
+Keep it one agent. A second definition would hold two copies of the advocacy
+rules, and `review-output.md` already shows how one output shape serves
+several callers.
+
+Done when: `agents/council-advocate.md` takes an evidence set and an assigned
+hypothesis, a hand-dispatched advocate over a seeded bug cites only the given
+evidence, and an advocate assigned a hypothesis the evidence refutes concedes
+with the citation instead of arguing.
+
+Read first: design §6.1, §9.5; `agents/council-advocate.md`;
+`record-format.md` `diagnosis.md` and the council entry; T22.
+
+## T32 — Prove the reproduction fails before the fix
+
+Status: open
+Depends on: nothing
+Stage: any (design §7, §9.5)
+
+Design §9.5 makes the reproduction the fix package's acceptance criterion,
+and it requires two clauses: the test fails now, and it passes after. Crew
+checks only the second. `SKILL.md` step 9 runs the acceptance criterion after
+the IC reports, and §7's verification table has no "before" row. A test that
+never failed passes that check and proves nothing.
+
+This is not only the investigation path's problem. Any package whose
+acceptance criterion is a new test has it, which is why the rule belongs in
+§7 and `ic-contract.md` rather than in §9.5.
+
+Decide who runs the failing case and where the output lands:
+
+- The IC writes the test first and commits it red, which `ic-contract.md`
+  already implies but never states. A commit whose suite is red is the
+  evidence, and `git log` holds it.
+- Or the project lead runs the criterion at dispatch, before the IC starts,
+  and records the failure. That costs a suite run and cannot be faked by an
+  IC, which is the argument for it.
+
+Pick one, and say in `record-format.md` where the failing output is kept. Do
+not add a second `state.json` field if a commit already proves it.
+
+Done when: §7's table carries the "fails before" row, the file that owns the
+step says who runs it, and a package whose new test passed from the start is
+rejected by that check rather than by a reviewer noticing.
+
+Read first: design §7, §9.5, §5 (invariant 1); `ic-contract.md`;
+`SKILL.md` steps 8 and 9; `record-format.md` `acceptance_criterion`.

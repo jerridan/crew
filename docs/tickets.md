@@ -851,3 +851,88 @@ the entry says why.
 Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
 `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
+
+## T27 — Move the simple-path loop out of `SKILL.md`
+
+Status: open
+Depends on: nothing
+Stage: any (design §15.25, §15.34a)
+
+`SKILL.md`'s body has sat at the writing standard's 200-line cap since T18
+landed. T17, T18 and T21 each paid for a new rule by cutting a sentence that
+was not a rule: "A finding is a claim, not a verdict" and "Your own context is
+the most expensive place to work" are both gone. The cap is crew's own
+(`writing-standard.md` rule 4); Anthropic's skill guidance says under 500
+lines, and says that a workflow that grows large moves into its own file
+which the skill tells the reader to load by task.
+
+The full path already works this way: `full-path.md` replaces steps 6 to 14
+when the shape is more than one package (§15.34a). The simple path has no
+such file, so every rule added to the run loop lands in the fullest file.
+
+Do the same for the simple path:
+
+- Add `references/simple-path.md` holding steps 6 to 14, the same shape as
+  `full-path.md`. `SKILL.md` keeps the shared prefix — the reference list,
+  steps 1 to 5 with 4a, and the shape table — which then points at one of the
+  two path files.
+- Steps 12 to 14 are shared between the two paths. Keep each in one file and
+  point at it from the other, as `full-path.md` already does for step 14.
+- Put the two cut sentences back where the reader now has room for them.
+- Rewrite `writing-standard.md` rule 4: 200 lines is a target for a
+  `SKILL.md` body, 500 is the limit the skill guidance sets, and a reference
+  file has no cap. Say why in one sentence.
+- Every citation of a `SKILL.md` step number in `full-path.md`,
+  `record-format.md`, `autonomy-contract.md`, `writing-standard.md` and
+  `docs/tickets.md` still resolves: keep the step numbers, so §15's findings
+  stay true.
+
+Do this before T26. If the goal-and-constraints form wins that A/B, it is the
+path files that shrink, and the split should already be in place.
+
+Done when: `SKILL.md`'s body is under 120 lines, a simple-path run reads
+`simple-path.md` and reaches a draft PR with zero prompts, and no rule has two
+copies.
+
+Read first: design §15.25, §15.34a, §15.50; `writing-standard.md` rule 4;
+`SKILL.md`; `full-path.md`.
+
+## T28 — Give `run.completed_at` an owner
+
+Status: open
+Depends on: nothing
+Stage: any (design §8, §15.51)
+
+`crew-stats.py` bounds a run's cost at `run.completed_at`, or at the latest
+`state_changed_at` in the record when that field is absent. One of eleven
+records carries it, `record-format.md` does not document it, and nothing
+writes it (§15.51). So every priced run is bounded at its last state write,
+which drops the run's own tail: the turns that open the PR and write the
+closing summary. That tail was $10.38 on the Opus arm and $1.99 on the Fable
+arm.
+
+Make the field real:
+
+- `crew-record.py` stamps `run.completed_at` with the current time on every
+  write that sets `run_state` to `complete` — the `close` command and
+  `run set run_state complete`. The project lead writes nothing extra; the
+  transition is the trigger.
+- `record-format.md` documents the field beside `created_at`, names its
+  consumer (`crew-stats.py`), and adds it to the name inventory. Say that an
+  `interrupted` run has no `completed_at`, and that `--resume` never sets one.
+- Order at the end of a run: the `complete` write comes before
+  `spend.py --write`, so `spend.transcript.measured_at` sits after
+  `completed_at`. `crew-stats.py` prefers a stored `spend.transcript` when
+  one exists, so a run priced at its end keeps its tail; say so in the field's
+  row.
+- `crew-stats.py` treats `abandoned` as a terminal `run_state`, and
+  `record-format.md`'s transitions table has no such value. Decide which file
+  is right and fix the other.
+
+Done when: a simple-path run ends with `run.completed_at` set by the script,
+not by the project lead, and `crew-stats.py` prices that run without printing
+its open-ended-cost skip line.
+
+Read first: design §15.51; `record-format.md` `run_state` transitions and
+`created_at`; `scripts/crew-record.py` `close`; `scripts/crew-stats.py`
+`run_end`.

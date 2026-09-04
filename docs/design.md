@@ -951,13 +951,13 @@ Deliberately different:
 5. **Territory count.** Guidance says 3-5 workers. Whether that holds for a
    repo this small is untested.
 6. **How general crew's writing standard needs to be.** Resolved:
-   `writing-standard.md` is crew's own, written directly for the four
-   container types this plugin's IC owns — the container-routing table, the
-   reader-context section, the frontmatter block, the revise-down rule, and
-   the final checklist. It is not split from, or a pointer into, any other
-   repo's internal standard. `crew` keeps no copy of anything external and
-   carries no repo-specific layer to strip out, so it can ship and sync on
-   its own.
+   `writing-standard.md` is crew's own, written directly for the container
+   types this plugin's IC owns (five as of T10, §15.17) — the
+   container-routing table, the reader-context section, the frontmatter
+   block, the revise-down rule, and the final checklist. It is not split
+   from, or a pointer into, any other repo's internal standard. `crew` keeps
+   no copy of anything external and carries no repo-specific layer to strip
+   out, so it can ship and sync on its own.
 7. **Is a "parked" package ever recoverable?** §9.2's breaker (line 601-602)
    gives three outcomes — fix, park with recorded reasoning, or defer — but
    §10 (line 655-656) maps only "defer" to `abandoned` and calls `abandoned`

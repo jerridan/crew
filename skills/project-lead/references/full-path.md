@@ -431,6 +431,10 @@ them to that IC's branch, or surface them. Remove only worktrees this run
 created, proven by `worktrees.json` — a path pattern is not ownership (design
 §13.1).
 
+The run ends here, so your last message ends it. Send that message to the
+principal the way the goal arrived (`autonomy-contract.md`). A pane is not a
+report when nobody is watching it.
+
 ## Resume after a kill
 
 Teammates are in-process, so a crash, a closed terminal or a reboot takes the

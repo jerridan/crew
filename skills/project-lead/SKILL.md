@@ -40,6 +40,11 @@ the goal yourself is not the job (design §15.32).
 Your argument is one of three: `--resume <goal-slug>`, a goal string, or a path
 to a charter.
 
+**Note who handed you the goal.** A goal that arrived as a
+`<cross-session-message>` makes the sending session your principal. Keep that
+envelope's `from-name` for the record step below. `autonomy-contract.md` owns
+how you reach it.
+
 **`--resume <goal-slug>` skips the rest of this rule.** It reopens the existing
 record, never a new directory. Append this session's id to `run.session_ids`,
 reconcile, re-enter at the first unfinished work, and re-run nothing already
@@ -79,7 +84,9 @@ can be written.
 Then the record: `<record-root>/<slug>-<4 hex chars>/`, the suffix generated
 once; `record-format.md` says where the root is. Write `charter.md`, then
 `crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
-it — and `run set spend.budget` when the charter carries a `Budget:` line.
+it — `run set spend.budget` when the charter carries a `Budget:` line, and
+`run set principal` with the `from-name` you kept above when the goal arrived
+by message.
 
 **The path you picked is the first entry in `decisions.md`**, once the record
 exists. It is a precedent-route entry in `record-format.md`'s full shape,

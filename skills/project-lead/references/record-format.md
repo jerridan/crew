@@ -420,6 +420,7 @@ deliverable" and "End the run" read them.
 |---|---|
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
+| `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it. |
 | `completed_at` | ISO-8601 UTC timestamp `crew-record.py` stamps on every write that sets `run_state` to `complete` — the `close` command, `run state complete`, and `run set run_state complete`. `crew-stats.py` prices a run through this bound, or the latest `state_changed_at` when it is absent, so a `complete` run without it prices short of its own tail (design §15.51). An `interrupted` run never gets one, and `--resume` never sets one — only a later natural completion does. |
 | `spend` | `{budget, transcript}`. See Spend below. |
@@ -868,6 +869,7 @@ Every name this file defines, with what consumes it.
 - `run_state` — consumer: crew's `SessionEnd` hook (writer, `hooks/session-end.py`); stage 5
 - `run_state` values `active`, `blocked`, `interrupted`, `complete` — consumer: this file's `run_state` transitions table; crew's `SessionEnd` hook; stage 5, stage 6
 - `run.session_ids` — consumer: stage 5 (resume, matches this run's project lead sessions)
+- `run.principal` — consumer: `autonomy-contract.md` (The principal); stage 5 (resume, which reads it instead of a message it no longer has)
 - `spend` — consumer: design §8, `autonomy-contract.md` trigger 5 (the budget check)
 - `escalations` — consumer: stage 6 (design §6 triggers); this file's `run_state` transitions table
 - `escalations[].trigger` — consumer: stage 6

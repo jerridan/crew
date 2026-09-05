@@ -31,15 +31,16 @@ behalf so you can audit them at review time.
 - Autonomous progress from hand-off to draft PR.
 - Model chosen per unit of work, after investigation.
 - A durable record you can read, audit, and resume from.
+- **The lead tier**, in this repo and this plugin, as the stage after the
+  project lead (§15.70). It holds a portfolio of goals, spawns one
+  project-lead session per goal, and answers their escalations. Until it is
+  built, the human is the lead (§15.22).
 
 ### Out of scope
 
 - **Autonomous merging.** The draft PR is the terminus. A human merges.
-- **A tier above the project lead.** No router, no roster, no `lead` tier
-  (§15 items 19, 21, 22). Item 22 names what stage 4 must build so that
-  tier can attach later without a rewrite.
-- **Concurrent goals.** One goal per project lead session. Run more sessions
-  for more.
+- **Concurrent goals in one project-lead session.** One goal per project
+  lead session. The lead tier runs more sessions for more goals.
 - **An org-wide view.** No dashboard, no cross-session sweep, no supervision.
 - **Replacing CI review.** The existing reviewer fleet stays the quality gate.
   `crew` feeds it.
@@ -1095,6 +1096,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
+| 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per goal (§15.70; T36, T37, T9) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead |
 
 ### 13.1 Hooks
 
@@ -4503,3 +4505,22 @@ Deliberately different:
     no scaffolding. `full-path.md`'s own A/B is where that fits, and the step
     numbers should be retired in the same change rather than mapped. T35
     carries both.
+
+70. **The lead tier is in scope, in this repo and this plugin — 2026-09-04,
+    T9 split.** §1 had kept the tier above the project lead out of scope, and
+    T9 asked whether it lives here or in a sibling plugin. The principal
+    decided: here. The hierarchy has been the goal from the start — lead →
+    project leads → ICs (§15.19, §15.21) — and crew is the plugin that
+    builds all three tiers. §1 now lists the lead tier in scope as the stage
+    after the project lead, and the one thing still out of scope on that
+    axis is more than one goal in one project-lead session.
+
+    T9 bundled a decision, an unproven mechanism and a build behind one
+    "done when", and each could fail on its own. It is now three tickets in
+    dependency order. T36 probes the plumbing: one session launching another
+    under §15.22c's three rules, a charter sent by cross-session
+    `SendMessage`, and an escalation coming back. Nothing in crew has
+    exercised cross-session messaging yet, and the tier stands on it, so it
+    is proved first and cheaply. T37 builds the lead skill on what T36
+    found. T9 keeps its original proof: two concurrent goals from one lead
+    session, every escalation reaching the human through the lead.

@@ -299,24 +299,27 @@ decisive.
 Read first: design §6, §6.1, §6.2, §15.9, §15.41; `record-format.md`;
 `band-rubric.md` council rules.
 
-## T9 — The lead tier
+## T9 — The lead tier: two goals from one lead session
 
 Status: open
-Depends on: T6
-Stage: beyond crew (design §1, §15.21-22)
+Depends on: T37
+Stage: 7 (design §1, §15.21-22, §15.70)
 
-Build the tier above: a session that holds a portfolio of goals, writes
-charters, spawns one project-lead session per goal under §15.22c's three
-launch rules, messages them by cross-session `SendMessage`, reads their
-records under `~/.claude/crew/`, answers their escalations, and batches
-what only the human can decide. First decision inside the ticket: does it
-live in this repo or as a sibling plugin? Design §1 scopes it out of
-crew, so building it here revises §1 — say so in the PR.
+The proof of the tier T36 and T37 build. Run two goals concurrently from one
+lead session: the lead writes both charters, spawns one project-lead session
+per goal, reads both records under `~/.claude/crew/`, answers what it can,
+and batches for the human what only the human can decide.
+
+Split 2026-09-04 (§15.70): the decision the ticket carried is made — the
+lead lives in this repo and this plugin — and the mechanism and the build
+are T36 and T37. This ticket is the end-to-end proof only.
 
 Done when: two concurrent goals run in two project-lead sessions from one
 lead session, and every escalation reaches the human through the lead.
+Record what the run showed in design §15.
 
-Read first: design §15.21, §15.22, §1, §4.
+Read first: design §15.70, §15.21, §15.22, §1, §4; T36's and T37's §15
+entries.
 
 ## T10 — Decide the README container owner
 
@@ -1288,3 +1291,74 @@ Read first: design §8, §15.50, §15.69; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; `investigation-path.md`; the Fable 5.1
 prompting guidance the `claude-api` skill carries under "Long-running agent
 recommendations".
+
+## T36 — Probe: one session drives another
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.21, §15.22c, §15.70)
+
+The lead tier stands on two things no crew run has exercised: a session
+launching a project-lead session by rule, and the two talking by
+cross-session message. Prove both before anything is built on them.
+
+From one interactive session, launch a second `claude` session under
+§15.22c's three rules — interactive, outside any worktree, with its
+permissions pre-approved — for example with `tmux new-window`. Then:
+
+- Find it with `ListAgents` and send it a charter path by `SendMessage`. It
+  must start `/crew:project-lead <charter path>` on that message alone.
+- Have the charter carry a seeded preference question. The project lead's
+  sweep (`autonomy-contract.md`) must send the escalation to the session
+  that handed it the goal, not to the human in its own pane, and the first
+  session must receive it, answer it by message, and see the run continue.
+- Kill the first session mid-run and confirm the record, not the message
+  channel, is what the run stands on (§15.21: a lost message costs latency,
+  never correctness).
+
+Record in design §15 what fired, what did not, the exact launch command and
+env that worked, and the message shapes both directions. If `SendMessage`
+cannot reach a session that is mid-turn, or the escalation cannot name a
+session as its principal, say so: that decides T37's design.
+
+Done when: a charter sent by message starts a run, an escalation comes back
+by message and its answer unblocks the run, and design §15 holds the payloads.
+
+Read first: design §15.21, §15.22, §15.70, §6.2; `autonomy-contract.md`
+escalation section; `record-format.md` `escalations`.
+
+## T37 — Build the lead skill
+
+Status: open
+Depends on: T36
+Stage: 7 (design §1, §15.70)
+
+Build `/crew:lead` in this plugin: a session that holds a portfolio of
+goals and drives one project-lead session per goal. Four pieces:
+
+1. **The portfolio record.** One directory per lead session under the record
+   root, listing each goal, its charter path, its project-lead record and
+   session id, and its state. `record-format.md` owns it, in the same style
+   as `state.json`.
+2. **Charters.** The lead writes `charter.md` for each goal from the
+   principal's brief, in the shape `record-format.md` already defines, and
+   hands the path by message (§15.22a).
+3. **Spawning and steering.** One project-lead session per goal, launched
+   the way T36 proved, with `--resume` on a dead one. The lead reads records,
+   never transcripts.
+4. **Escalations.** The lead answers what its charters and the records
+   settle, and batches for the human what only the human can decide, in one
+   message per batch (§15.22b). The human is the lead's principal, so
+   `autonomy-contract.md`'s ladder gains its top rung without a second copy
+   of the rules.
+
+The bare word `lead` has meant this tier since §15.19; the skill and its
+files take that name. `CLAUDE.md`'s hierarchy line and README's status table
+change with it. Whatever T36 found impossible, design around here and say so
+in §15.
+
+Done when: one goal runs from brief to draft PR through the lead with no
+human turn except the batch it sends, and the portfolio record shows it.
+
+Read first: design §15.70, §15.21, §15.22, §1, §4, §6.2; T36's §15 entry;
+`record-format.md`; `autonomy-contract.md`.

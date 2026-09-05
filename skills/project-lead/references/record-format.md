@@ -1,5 +1,10 @@
 # Record format
 
+This file owns two records. **The goal record** is one directory per goal,
+written by the project lead, and it is everything down to "Authority rule".
+**The portfolio record** is one directory per lead, written by the lead, and
+`## The portfolio record` near the end owns it.
+
 One directory per goal, outside the target repo (design §4):
 
 ```
@@ -756,6 +761,186 @@ cannot pick a winner at medium confidence or better and the question is
 architecture-moving, it escalates (`autonomy-contract.md`), and the entry's
 `Answer` is the principal's.
 
+## The portfolio record
+
+One directory per lead, beside the goal records under the same root (design
+§1, §15.70):
+
+```
+<record-root>/lead-<YYYY-MM-DD>-<4 hex chars>/
+├── portfolio.json    every item, its state, and what the lead expects next
+├── decisions.md      every answer the principal gave, and every call the lead made
+├── charters/         one charter per item, charters/<item-id>.md
+└── runs/<item-id>/   the item's own record root, one directory per item
+```
+
+The suffix rule is the goal slug's (Goal-slug uniqueness above), and for the
+same reason: two leads on one machine share no lock.
+
+**A lead finds its portfolio by glob, never by memory.** Every start reads
+`<record-root>/*/portfolio.json` and takes the one whose `lead.state` is not
+`closed`. Two open portfolios is a question for the principal, not a guess.
+That glob is what makes the record the ledger and the context a cache of it
+(`skills/lead/SKILL.md`).
+
+**`runs/<item-id>/` is the item's `CREW_RECORD_ROOT`.** The lead exports it
+when it launches the item's project-lead session, so the run's own record
+lands under the portfolio and the lead finds it with one glob. A launcher
+never learns the session id of the session it launched (design §15.72b), and
+the goal slug carries a random suffix, so a predictable root is the only
+thing that maps an item to its record without a message.
+
+**Write `portfolio.json` with `scripts/crew-portfolio.py`**, beside the lead
+skill:
+
+```
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> init "<title>" <portfolio-slug> "$CLAUDE_CODE_SESSION_ID"
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> session-id "$CLAUDE_CODE_SESSION_ID"
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> lead state closed
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> lead set principal '"jerridan"'
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item add '<json object>'
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> state running
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set record_dir '"/abs/path"'
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> expect "<one line>"
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> escalation add <item-id> "<question>"
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> escalation answer <index> "<answer>"
+```
+
+The rules are `crew-record.py`'s, for the same reasons: never write
+`escalations` with `lead set`, which replaces the whole list; a `set` value
+is JSON and carries its own quotes; and the script checks no field and no
+transition, because this file owns both. `expect` is the exception that takes
+plain text, because it is rewritten every turn. `init` also creates
+`charters/` and an empty `decisions.md`, and `item add` refuses an id the
+portfolio already holds. Every call stamps `lead.updated_at`.
+
+**Never rewrite `portfolio.json` by hand.** Both hooks append to it, and a
+whole-file write from the lead drops whatever a hook wrote since the lead read
+it — a `lead.compactions` entry above all, which the lead reads a turn later
+to learn its own context was cut. The script does the same read and write, but
+in one process and in milliseconds rather than across a turn. That narrows the
+window; it does not close it, and no lock exists to.
+
+### Per-lead fields (inside `lead`)
+
+| Field | Meaning |
+|---|---|
+| `state` | one of `active`, `interrupted`, `closed`. `interrupted` is written by `SessionEnd` when a live lead session ends; the next `/crew:lead` sets it back to `active`. `closed` is the principal's word that the portfolio is finished, and it is what takes the portfolio out of the glob above. |
+| `session_ids` | a list, appended to on every start, never overwritten — `run.session_ids`' rule, for `SessionEnd`'s sake. |
+| `principal` | who to send an escalation to, by `autonomy-contract.md`'s "Reach the principal". Absent when the human typed the brief in this session, which is the usual case. |
+| `created_at` | ISO-8601 UTC, written by `init`. |
+| `updated_at` | ISO-8601 UTC, stamped on every write. It says when the portfolio last moved; it never chooses between two open portfolios, which is a question for the principal (above). |
+| `escalations` | a list of `{item, question, asked_at, answer}` — what the lead asked the principal, and what came back. `item` names the item the question belongs to, in place of the goal record's `trigger`: a lead's questions come from its items, not from design §6's trigger list. An entry with `answer: null` is open, and a restarted lead re-sends it. |
+| `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook, in `run.compactions`' shape. Absent until the first compaction. It is how a lead learns its context was cut rather than merely short. |
+
+### Per-item fields
+
+| Field | Meaning |
+|---|---|
+| `id` | the item's identity. Names its charter (`charters/<id>.md`), its record root (`runs/<id>/`) and, on a goal, the session that runs it. |
+| `kind` | `goal` or `task`. A goal gets its own project-lead session; a task gets one IC the lead dispatches itself (T39). |
+| `title` | one line, from the principal's brief. |
+| `repo` | the absolute path to the target-repo checkout this item runs in. |
+| `charter` | `charters/<id>.md`, relative to the portfolio directory. |
+| `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. |
+| `session_name` | the `--name` the item's project-lead session was launched under. It is the address `SendMessage` takes, and it survives a restart, which a socket path does not (design §15.72f). `null` on a task, which has no session of its own. |
+| `state` | one of `pending`, `running`, `blocked`, `done`, `abandoned`. See the transitions below. |
+| `state_changed_at` | ISO-8601 UTC timestamp of this item's last `state` transition. |
+| `expect` | one line: what the lead expects next on this item, and what it will do when that arrives. It is the ledger — a restarted lead reads this line and knows what its own last turn was waiting for. |
+| `outcome` | the PR url, or the terminal state the run reported; `null` until the item is `done` or `abandoned`. |
+
+An item's `state` is the **lead's** view of the item, not the run's. The run's
+own state lives in `record_dir`'s `state.json`, and that file stays
+authoritative for the run (Authority rule below). The lead never copies a
+package, a band or a spend figure into `portfolio.json`; it reads them where
+they live.
+
+### Item state transitions
+
+```
+pending ──▶ running ──▶ done        (terminal)
+   │           │  ▲
+   │           ▼  │
+   │        blocked
+   │           │
+   └────┬──────┘
+        ▼
+    abandoned                       (terminal)
+```
+
+- `pending → running`: the charter is written and the work is dispatched — a
+  project-lead session launched and handed the charter, or, for a task, an IC
+  dispatched.
+- `running → blocked`: the item is waiting on an answer only the principal can
+  give. The matching `escalations` entry is what says which question.
+- `blocked → running`: the lead sent the answer on.
+- `running → done`: the run reported a terminal state, and the record proves
+  it. `outcome` holds the PR url or the state.
+- `pending → abandoned` or `running → abandoned`: the principal dropped the
+  item, or the run failed in a way no resume fixes.
+
+**A `done` item needs the record, not a message.** A project lead's closing
+report can be lost — the send fails when the lead session has restarted
+(design §15.72g) — so the lead confirms a terminal state by reading
+`record_dir`'s `state.json`, never by waiting for a report.
+
+### `decisions.md`
+
+The portfolio's own decision log, in the goal record's `decisions.md` shape
+and with its rules: one entry per question, `Route`, `Answer`, `Citation`,
+`Confidence`, `Timestamp`, and the clock read rather than remembered.
+
+Two things go in it, and nothing else:
+
+- **Every answer the principal gives.** `Route: preference`, and the
+  `Citation:` names the item the question came from. A restarted lead reads
+  this file before it asks anything, so it never asks twice.
+- **Every call the lead makes for a project lead** — a question it answered
+  from a charter or a record instead of passing on. `Route: precedent`, and
+  the `Citation:` names the charter line or the record path that settled it.
+
+A preference the principal states in passing — "always squash", "never touch
+the changelog" — is an entry too. It is the answer to the next question, and
+nothing else in the portfolio holds it.
+
+### Worked example
+
+```json
+{
+  "title": "Wednesday: string-kit roadmap",
+  "portfolio_slug": "lead-2026-09-05-a1b2",
+  "lead": {
+    "state": "active",
+    "session_ids": ["3355ca2a-1f0e-4c22-9c31-6b0d51a9e004"],
+    "created_at": "2026-09-05T13:02:11Z",
+    "updated_at": "2026-09-05T13:44:52Z",
+    "escalations": [
+      {
+        "item": "truncate-7f31",
+        "question": "Does truncate count the ellipsis inside the limit?",
+        "asked_at": "2026-09-05T13:31:09Z",
+        "answer": "Yes — the result is never longer than the limit."
+      }
+    ]
+  },
+  "items": [
+    {
+      "id": "truncate-7f31",
+      "kind": "goal",
+      "title": "Add truncate to the string-kit roadmap",
+      "repo": "/tmp/string-kit",
+      "charter": "charters/truncate-7f31.md",
+      "record_dir": "/Users/x/.claude/crew/lead-2026-09-05-a1b2/runs/truncate-7f31/truncate-a75d",
+      "session_name": "crew-pl-truncate-7f31",
+      "state": "running",
+      "state_changed_at": "2026-09-05T13:44:52Z",
+      "expect": "the closing report with a PR url; then read state.json and set done",
+      "outcome": null
+    }
+  ]
+}
+```
+
 ## Authority rule
 
 `state.json` is authoritative for the plan: which packages exist, their bands,
@@ -906,3 +1091,20 @@ Every name this file defines, with what consumes it.
 - `reviews/<deliverable-id>-deliverable-review.md` — consumer: stage 4 (`crew:deliverable-reviewer` output)
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts
 - `reviews/diagnosis-adversary.md` — writer: the project lead, copying the case one `crew:council-advocate` returned on the investigation path; an advocate writes no file (`agents/council-advocate.md`). Consumer: design §9.5 (a report ending's only verification evidence, design §7)
+
+**The portfolio record** (writer: the lead, through
+`skills/lead/scripts/crew-portfolio.py`, except where noted)
+- `lead-<YYYY-MM-DD>-<4 hex chars>/` — consumer: `skills/lead/SKILL.md` ("Start from the record"), which globs the root for it
+- `portfolio.json` — consumer: `skills/lead/SKILL.md`; both hooks
+- `charters/<item-id>.md` — consumer: the item's project-lead session, which adopts it as `charter.md` (design §15.22a)
+- `runs/<item-id>/` — consumer: the item's run, as its `CREW_RECORD_ROOT`; the lead, which globs it for `record_dir`
+- `decisions.md` (portfolio) — consumer: `skills/lead/SKILL.md` (a restarted lead reads it before it asks anything)
+- `lead.state` and its values `active`, `interrupted`, `closed` — writer: the lead; `hooks/session-end.py` writes `interrupted`. Consumer: `skills/lead/SKILL.md`'s portfolio glob
+- `lead.session_ids` — consumer: both hooks (they match a portfolio to the ending or compacting session)
+- `lead.principal` — consumer: `autonomy-contract.md` ("Reach the principal")
+- `lead.created_at`, `lead.updated_at` — consumer: a person, and `skills/lead/SKILL.md`, reading when the portfolio last moved
+- `lead.escalations` — consumer: `skills/lead/SKILL.md` ("Batch what only the principal can answer"); a restarted lead re-sends every entry with `answer: null`
+- `lead.compactions` — writer: `hooks/pre-compact.py`. Consumer: `skills/lead/SKILL.md`
+- `items[].id`, `kind`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`
+- `items[].kind` values `goal` and `task` — consumer: T39's triage step
+- `items[].state` values `pending`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions

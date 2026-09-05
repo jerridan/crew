@@ -2,11 +2,13 @@
 """PreCompact: record that a session in a live crew run is about to compact.
 
 Appends `{session_id, agent_id, agent, trigger, at}` to `run.compactions`
-in the run's `state.json`. A hook that fires inside a subagent or an
-in-process teammate carries `agent_id`; `agent` is the name resolved from
-the transcript's sibling `.meta.json`, which is the teammate's name the
-project lead spawned it under. No `agent_id` means the project lead's own
-session compacted. Writes only; deletes nothing; fails open (design §15.50).
+in the run's `state.json`, and to `lead.compactions` in a live lead's
+`portfolio.json`. A hook that fires inside a subagent or an in-process
+teammate carries `agent_id`; `agent` is the name resolved from the
+transcript's sibling `.meta.json`, which is the teammate's name the project
+lead spawned it under. No `agent_id` means the project lead's or the lead's
+own session compacted. Writes only; deletes nothing; fails open (design
+§15.50).
 """
 
 import datetime
@@ -82,6 +84,24 @@ def record(state_path: Path, entry: dict) -> None:
     write_json(state_path, state)
 
 
+def record_portfolio(portfolio_path: Path, entry: dict) -> None:
+    """Log the compaction into a live lead's portfolio (`record-format.md`).
+
+    The lead has no `state.json`, so the run glob above never sees it, and its
+    context is a cache of this file — a compaction it cannot see is a cache it
+    trusts too far.
+    """
+    with portfolio_path.open(encoding="utf-8") as handle:
+        portfolio = json.load(handle)
+    lead = portfolio.get("lead") or {}
+    if lead.get("state") != "active":
+        return
+    if entry["session_id"] not in lead.get("session_ids", []):
+        return
+    lead.setdefault("compactions", []).append(entry)
+    write_json(portfolio_path, portfolio)
+
+
 def main() -> None:
     roots = [r for r in crew_roots() if r.is_dir()]
     if not roots:
@@ -101,6 +121,11 @@ def main() -> None:
         for state_path in sorted(root.glob("*/state.json")):
             try:
                 record(state_path, entry)
+            except Exception:
+                continue
+        for portfolio_path in sorted(root.glob("*/portfolio.json")):
+            try:
+                record_portfolio(portfolio_path, entry)
             except Exception:
                 continue
 

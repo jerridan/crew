@@ -549,6 +549,24 @@ def report(records: list[dict], skips: list[str]) -> None:
             print(f"  {line}")
 
 
+def candidates(root: Path) -> list[Path]:
+    """Every goal record under `root`, the lead-driven ones included.
+
+    A lead's portfolio directory holds a `portfolio.json` and no `state.json`,
+    and the runs it drove sit two levels below it, at
+    `runs/<item-id>/<goal-slug>/`, because each item gets its own
+    `CREW_RECORD_ROOT` (`record-format.md`). Reading one level only would make
+    every lead-driven run invisible to this report.
+    """
+    found = []
+    for child in sorted(p for p in root.iterdir() if p.is_dir()):
+        if (child / "portfolio.json").is_file():
+            found.extend(p.parent for p in sorted(child.glob("runs/*/*/state.json")))
+        else:
+            found.append(child)
+    return found
+
+
 def main(argv: list[str]) -> None:
     parser = argparse.ArgumentParser(description="Print crew statistics over every record.")
     parser.add_argument("--record-root", help="the record root; default $CREW_RECORD_ROOT or ~/.claude/crew/")
@@ -570,7 +588,7 @@ def main(argv: list[str]) -> None:
 
     skips: list[str] = []
     records = []
-    for record in sorted(p for p in root.iterdir() if p.is_dir()):
+    for record in sorted(candidates(root)):
         if not (record / "state.json").is_file():
             skips.append(f"{record.name}: not a record — no state.json")
             continue

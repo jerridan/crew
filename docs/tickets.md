@@ -892,7 +892,7 @@ Read first: design §8, §15.50, §15.51; `record-format.md`; `scripts/spend.py`
 
 ## T26 — A/B a goal-and-constraints form of `SKILL.md` on Fable
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §8, §15.50)
 
@@ -929,25 +929,15 @@ Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
 
-2026-09-04: the variant is written and the two runs are pending. The
-temporary skill is `skills/project-lead-goal/`: its own `SKILL.md` and its
-own `references/simple-path.md`, with every other reference read from
-`skills/project-lead/references/` and every script from
-`skills/project-lead/scripts/`. Each file carries a table that maps the step
-numbers other files cite to the rule that owns it, so no pointer breaks while
-both forms load, and each opens with a comment naming the other arm. **This
-skill is temporary and never lands in `main`.** It is the one exception to
-"no file gets two variants" above, and the exception ends when the ticket
-does: the ticket closes when design §15.69 records the comparison and the
-losing form is deleted.
-
-Two conditions the comparison must state. The variant carries about 350 words
-that exist only because it is a temporary sibling — the two step-number maps,
-the path preamble in each file and the two deletion comments. Net of those it
-is about 5% longer than the numbered form, and the gross figure is 22%, so a
-result that turns on length is not a result about form. And a change to a
-rule in either arm between now and the runs invalidates both: check the two
-`simple-path.md` files against each other before launch.
+Done 2026-09-05: the numbered form stays, and the temporary skill
+`skills/project-lead-goal/` is deleted, so nothing in `skills/` changed. Both
+arms ran the same goal on the fixture on Fable 5.1 at high effort, in
+parallel from separate clones, and both reached an accepted draft PR with one
+spec-critic round, zero fix rounds and zero escalations. The goal form spent
+$1.05 less in the project lead's own seat and $0.73 more on its subagents,
+for arm totals of $6.31 against $6.61. Design §15.69 holds the table, the
+length confound the two loaded forms could not remove, and what would decide
+the question: the full path, not another simple-path goal.
 
 ## T27 — Move the simple-path loop out of `SKILL.md`
 

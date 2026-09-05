@@ -13,6 +13,8 @@ you stop for the **principal** only when you cannot proceed correctly.
 This file owns steps 1 to 5. Step 5 then sends you to one path file, which
 owns the rest of the run: `references/simple-path.md`, steps 6 to 14, for one
 package; `references/full-path.md`, its own steps 0 to 13, for more than one.
+A goal that names a symptom takes `references/investigation-path.md` between
+steps 2 and 3, and comes back to step 3 with a fix or ends the run there.
 
 - `references/autonomy-contract.md` owns routing, councils, escalation, spend,
   and who the principal is. Read it before your first question, not at one.
@@ -43,17 +45,33 @@ reconciliation; without it, `git log` on the deliverable branch is the whole
 job. Re-enter at the first unfinished step and re-run no finished one. A
 resumed run writes no charter, no spec and no new branch.
 
+**Pick the path here, from the charter** (design §9.5). The test is what the
+goal names. A change to make — "add a `--json` flag" — goes on down this file.
+A **symptom** whose cause is unknown — "the export drops the last row", a bug
+report, a support ticket, a question about why the code behaves as it does —
+takes `references/investigation-path.md`. Read that file at the end of step 2,
+not now. Say in your reply which path you picked and on which words.
+
 On a new goal: write no falsifiable criterion, do no work — escalate and stop.
 Otherwise create `<record-root>/<slug>-<4 hex chars>/`, generating the suffix
 once; `record-format.md` says where the root is. Write `charter.md`, then
 `crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
 it — and `run set spend.budget` when the charter carries a `Budget:` line.
 
+**The investigation path's criterion is a reproduction**, and only step 2's
+scouting makes one writable. So the charter carries the symptom, stated so
+that some future command could falsify it, and `investigation-path.md` Phase 1
+writes the command. Escalation trigger 1 fires there instead of here when no
+reproduction can be written.
+
 ## 2. Scout
 
 Keep the reading out of your own context: dispatch `Explore` subagents and read
 their answers. Settle four questions. Does an analogous implementation exist?
 Do tests cover this surface? What runs the suite? Which instruction files apply?
+
+On the investigation path, read `references/investigation-path.md` now and run
+its phases. It sends you back to step 3, or it ends the run itself.
 
 ## 3. Write the spec
 

@@ -188,6 +188,28 @@ from this repo's own evidence, not a preference. Write the question, the
 positions and your prior into `decisions.md` before you dispatch, then send
 every dispatch in one message, or the advocates run one after another.
 
+### An investigation council
+
+Three rules on top, on both of the investigation path's councils — the three
+advocates over competing hypotheses, and the single adversary over a written
+root cause (design §9.5). `investigation-path.md` runs the loop that convenes
+them.
+
+- **Every advocate reads the same evidence set.** Name those paths in each
+  spawn prompt, and let no advocate gather its own. An advocate arguing from
+  evidence the others do not hold is arguing about a different bug.
+- **An advocate may concede.** A root cause has one true answer, so a case for
+  a refuted hypothesis gives you nothing. An advocate that finds its assigned
+  hypothesis contradicted reports that with the contradicting citation, and
+  step 4 above says what a concession leaves you to rebut.
+- **The winner is a claim until a change proves it.** Your adjudication picks
+  the hypothesis to test first, not the cause. Test it minimally. A failed
+  test returns to Phase 1 with what the failure taught, never to the runner-up
+  by default.
+
+A council with no leading hypothesis writes `Prior: none`
+(`record-format.md`).
+
 ### How to adjudicate
 
 Read every case at your own model, check each citation against the repo, and

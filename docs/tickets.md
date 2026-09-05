@@ -380,7 +380,7 @@ T32.
 
 ## T12 — Implement the investigation path
 
-Status: open
+Status: done
 Depends on: T4, T11, T31, T32
 Stage: after 4
 
@@ -421,6 +421,12 @@ PR.
 Read first: design §9.5, §9.1, §6.1, §14; `record-format.md`
 `diagnosis.md` and the deliverable transitions; `autonomy-contract.md`;
 `SKILL.md` steps 1 and 5; T27, T31, T32.
+
+Landed 2026-09-04 as the path choice in `SKILL.md` steps 1 and 2, the new
+`references/investigation-path.md`, the three council rules in
+`autonomy-contract.md`, and `record-format.md`'s `evidence/` directory
+(§15.68). The loop got a file of its own, a fix rejoins at step 3, and
+`crew-record.py` needed no new command.
 
 ## T13 — Researcher agent
 

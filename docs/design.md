@@ -4222,3 +4222,71 @@ Deliberately different:
        path, so the project lead saved each review file itself, with a
        Bash script that read the critic's transcript for the block that
        holds `Verdict:`. That is the cost the rule removes.
+
+68. **The investigation path is built — 2026-09-04, T12.** §9.5's four pieces
+    are in the plugin: the path choice at `SKILL.md` step 1, the diagnosis
+    loop in a new `references/investigation-path.md`, `diagnosis.md`, and the
+    two endings. Five decisions the ticket left open:
+
+    a. **The loop got a file of its own, not `simple-path.md`.** T12 asked
+       whether the loop's text belongs in `simple-path.md` or in a new
+       reference. It is a new one. `simple-path.md` states its own scope in
+       its first line: one deliverable with one package, steps 6 to 14, with
+       `full-path.md` borrowing three of those steps. The diagnosis loop
+       holds no package, creates no branch and runs before step 3, so every
+       step number in that file would have to be qualified. The two files
+       also have different readers: a run reads `simple-path.md` after the
+       shape table, and it reads `investigation-path.md` before the spec
+       exists. A reference has no line cap (`writing-standard.md`), so
+       nothing was saved by merging them, and the merge would have cost
+       every simple-path run the diagnosis text it never needs.
+
+    b. **A fix rejoins at step 3, not at step 5.** §9.5 says the diagnosed
+       fix "goes back to §9.1's table", which is step 5. Entering there
+       would skip steps 3, 4 and 4a, and three later steps need what those
+       produce: `crew:deliverable-reviewer` takes `spec.md` as an input
+       (`simple-path.md` step 13), the preference sweep is the run's only
+       preference check, and the spec critic never runs. So
+       `investigation-path.md` returns the run to step 3 and steps 3 to 5
+       run as written. Step 5's table still picks the shape, which is what
+       §9.5 meant.
+
+    c. **Evidence needed a directory.** §9.5 says each scout writes what it
+       found to the record and the project lead reads the paths, but
+       `record-format.md` named no place to write it. The four per-run
+       directories all have another writer and another consumer, so a fifth
+       was added: `evidence/<n>-<slug>.md`, written by the `Explore`
+       subagent or the `crew:researcher` that found it, at the absolute path
+       its dispatch names. The counter reads off disk, like the spec
+       critic's, because no `state.json` field holds it. These files are
+       also the named evidence set every advocate in an investigation
+       council is given, which is what makes §9.5's "every advocate reads
+       the same evidence set" checkable rather than a matter of trust.
+
+    d. **`crew-record.py` needed nothing.** Every write the loop makes is an
+       existing command. A seeded record proved it: `init`, then
+       `deliverable add` with `branch`, `base`, `pr_url`, `checkout_branch`
+       and `checkout_restored` all `null`, then `deliverable d1 state
+       in-flight` at the first evidence dispatch, then `close d1
+       work-complete` — which wrote the deliverable's terminal state,
+       `run_state: complete` and `completed_at` in one write, with `pr_url`
+       still `null`. The fix ending reuses the same entry: `deliverable d1
+       set branch` and `set checkout_branch` fill it in at
+       `simple-path.md` step 7, so no second deliverable is created and no
+       new subcommand is needed.
+
+    e. **`crew-stats.py` reads a package-less record correctly.** The same
+       seeded record ran through it. The run counts everywhere, its
+       by-band share is skipped rather than divided by zero, and one skip
+       line says "no packages — the record lists none".
+       `reviews/diagnosis-adversary.md` falls into the `other` review
+       bucket and never enters the catch rate, which is right: an
+       advocate's case carries no `Verdict:` line, and scoring it as a
+       review would deflate the rate with a file no reviewer wrote.
+
+    f. **One new rule, not in §9.5: a diagnosis loop has a breaker.** §9.5
+       sends a failed minimal test back to Phase 1 and sets no limit, and a
+       no-prompt run can circle there. `investigation-path.md` Phase 3 caps
+       it at two returns and escalates on the third, under §6's rule that
+       the trigger list is a floor and the project lead escalates on its own
+       judgment.

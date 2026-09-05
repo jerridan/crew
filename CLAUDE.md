@@ -31,15 +31,17 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 
 ## Build state
 
-Stages 0 through 6 are built: eight agents, eight references, the
-`SessionEnd` hook, and both of `/crew:project-lead`'s paths. The **simple
-path** is one package on one branch, driven by one unnamed subagent. The
-**full path** is several packages in worktrees, worked by named IC teammates,
-with a split critic, a squash merge per package and `--resume` recovery. Both
-paths have run end to end against a real repo with a test suite.
+Stages 0 through 6 are built: eight agents, nine references, the
+`SessionEnd` hook, and all three of `/crew:project-lead`'s paths. The
+**simple path** runs one package on one branch under one unnamed subagent;
+the **full path** runs several packages in worktrees under named IC
+teammates, with a split critic, a squash merge per package and `--resume`
+recovery. Both have run end to end against a real repo with a test suite.
+The **investigation path** takes a symptom to a diagnosis, then to a fix or
+to a report ending; no run has exercised it, and it is `crew:researcher`'s
+only caller.
 
-Nothing dispatches `crew:researcher` yet. `docs/design.md` §13 holds the build
-order and `docs/tickets.md` the backlog. Never write about an unbuilt stage as
+`docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog. Never write about an unbuilt stage as
 if it runs, or about a built one as if a run has exercised it.
 
 ## Authority
@@ -56,6 +58,8 @@ Each reference owns one subject and is canonical for it:
   branch in this checkout, no merge.
 - `full-path.md` — the loop for more than one package: worktrees, IC
   teammates, merges, promotion and recovery.
+- `investigation-path.md` — the loop from a symptom to a diagnosis: the
+  debugging checklist, the evidence files, and the two endings.
 - `record-format.md` — the record directory, every `state.json`,
   `worktrees.json` and `decisions.md` field, and every state transition.
 - `band-rubric.md` — which model a package or a council gets, and when to

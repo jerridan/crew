@@ -55,7 +55,10 @@ goal names. A change to make — "add a `--json` flag" — goes on down this fil
 A **symptom** whose cause is unknown — "the export drops the last row", a bug
 report, a support ticket, a question about why the code behaves as it does —
 takes `references/investigation-path.md`. Read that file at the end of step 2,
-not now. Say in your reply which path you picked and on which words.
+not now. **Write the choice into `decisions.md`** — the question, `Route:
+precedent`, the answer, and the words in the goal you read it from. Nothing
+else in the record says an investigation run was chosen rather than fallen
+into.
 
 On a new goal: write no falsifiable criterion, do no work — escalate and stop.
 Otherwise create `<record-root>/<slug>-<4 hex chars>/`, generating the suffix

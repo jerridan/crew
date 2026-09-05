@@ -4226,8 +4226,9 @@ Deliberately different:
 68. **The investigation path is built — 2026-09-04, T12.** §9.5's four pieces
     are in the plugin: the path choice at `SKILL.md` step 1, the diagnosis
     loop in a new `references/investigation-path.md`, `diagnosis.md`, and the
-    two endings. Five decisions the ticket left open, and one rule §9.5 does
-    not carry:
+    two endings. Both live runs landed on the fixture, in item j. Five
+    decisions the ticket left open, one rule §9.5 does not carry, and what
+    the runs showed:
 
     a. **The loop got a file of its own, not `simple-path.md`.** T12 asked
        whether the loop's text belongs in `simple-path.md` or in a new
@@ -4316,3 +4317,59 @@ Deliberately different:
        `full-path.md`'s verification list did not say so, so a run would
        have sent its own fix package to a fix round for a red commit the
        diagnosis had already made unnecessary.
+
+    j. **Both runs landed — 2026-09-04, on `jerridan/crew-fixture-string-kit`
+       with a Fable 5.1 project lead at `--effort high`, `auto` permission
+       mode, the record root at its default. Zero prompts in either.**
+
+       - **The bug run.** `buildsearchurl-page-zero-empty-query-bbf2`, 9m
+         54s, $5.28 at list price. A seeded `buildSearchUrl` skipped every
+         falsy parameter with `if (!value) continue;`, so page 0 and an
+         empty query never reached `encodeQuery`, while the seeded suite
+         stayed green. The run reproduced it, wrote two evidence files,
+         ruled out four hypotheses including `encodeQuery` itself, and
+         opened draft PR #10 on the fixture. Verified by hand afterwards:
+         `npm test` is 14 pass 0 fail at the branch head, and restoring
+         `src/url/buildSearchUrl.js` from the base commit makes the new test
+         fail. That is T12's Done when, proved rather than claimed.
+       - **The no-change run.** `encodequery-array-join-7d5a`, 6m 45s,
+         $3.19. It answered why `encodeQuery({tags:["a","b"]})` yields
+         `tags=a%2Cb`, ran the adversary over the same evidence set, rebutted
+         its strongest point in writing, and ended `work-complete` with
+         `pr_url`, `branch`, `base`, `checkout_branch` and
+         `checkout_restored` all `null`, `packages` empty, and
+         `completed_at` equal to the deliverable's `state_changed_at` —
+         which is the one-write rule holding. The fixture kept a clean tree,
+         no branch and no PR. The advocate held its case at low confidence
+         and conceded one of the three questions, so §15.66's concession
+         shape ran a second time, here as the diagnosis adversary.
+
+    k. **One hypothesis survived in each run, so no three-advocate council
+       convened, and `crew:researcher` still has no dispatch.** Both bugs
+       were one file deep, and one `Explore` answered each. The council
+       branch of Phase 3 and the researcher's first call are unexercised.
+       A deeper seeded bug is what would exercise them.
+
+    l. **Two council-entry lines drifted, and `crew-stats.py` silently lost
+       the entry.** The no-change run wrote `Models: sonnet` and `Spend:
+       23652`. The script recognises a one-advocate council only by `1
+       advocate, <model>` and counts tokens only from a figure followed by
+       the word `tokens`, so it read that run as one council with zero
+       adversary entries and no spend. `record-format.md` carries the exact
+       template and the run did not open it, so `investigation-path.md` now
+       names the template at both councils and says which lines the script
+       parses. Left alone, §6.1's ten-entry probation would never have
+       counted an investigation adversary.
+
+    m. **The bug run recorded no shape choice, and its fix took the bounded
+       edit.** The project lead made the one-line fix itself, so no IC was
+       dispatched and no package review ran; the deliverable reviewer
+       noticed and reviewed every defect at the severity it earned rather
+       than only the critical ones. The call is defensible — the project
+       lead had already read the file to diagnose it — but nothing in
+       `decisions.md` recorded it, and §15.67e shows that entry is the one
+       an audit needs. A diagnosed fix will keep looking bounded for exactly
+       the reason the diagnosis exists, so `investigation-path.md` now asks
+       for the entry and for the reason. The path choice at step 1 went
+       unrecorded in the same run and recorded in the other, so `SKILL.md`
+       now requires that entry too.

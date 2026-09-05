@@ -38,8 +38,8 @@ the **full path** runs several packages in worktrees under named IC teammates,
 with a split critic, a squash merge per package and `--resume` recovery. Both
 have run end to end against a real repo with a test suite. The
 **investigation path** takes a symptom to a diagnosis, then to a fix or to a
-report ending; no run has exercised it, and it is `crew:researcher`'s only
-caller.
+report ending; both endings have run against that repo, and it is
+`crew:researcher`'s only caller, which no run has dispatched yet.
 
 `docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
 Never write about an unbuilt stage as if it runs, or about a built one as if

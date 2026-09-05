@@ -114,6 +114,12 @@ three investigation rules, and the entry you write before you dispatch.
 Name the same evidence paths in every advocate's prompt, and send every
 dispatch in one message.
 
+**Copy the entry from `record-format.md`'s council template**, field for
+field. `Positions:` takes lettered positions and `Answer:` opens with the
+winning letter; `Models:` reads `<n> advocates, <model>` and `Spend:` ends in
+the word `tokens`. `crew-stats.py` parses those four lines, and an entry that
+paraphrases them counts as an unparsed council.
+
 **Return to Phase 1 twice at most.** A failed minimal test sends you back
 there — that is the third of `autonomy-contract.md`'s three rules. On a third
 return, escalate instead: the trigger list is a floor, and an investigation
@@ -152,6 +158,13 @@ simple path. Four things carry across:
   (`record-format.md`).
 - **The checklist above travels with the IC.** Quote it in the spawn prompt.
 
+**Record the shape you picked at step 5, with its reason.** A diagnosed fix
+often reads as a bounded edit, because you have already read the code — and a
+bounded edit gets no package review at all (`simple-path.md` step 13), so the
+first agent to read the fix is the deliverable reviewer. That can be the right
+call, and the entry is what makes it a call rather than a drift. Say in the
+deliverable-review dispatch that you made the edit yourself.
+
 ## Ending two: `Outcome: no change`
 
 A run that finds no change to make still finishes. That covers the bug that is
@@ -167,6 +180,12 @@ diff, so no reviewer can run over it, and your own artifact would otherwise be
 its own evidence (design §7). Write the council entry first, then dispatch one
 `crew:council-advocate`, unnamed, at `band-rubric.md`'s council model. Give it
 your root cause as the position to argue against, and the same evidence paths.
+
+**This is a one-advocate council, and its entry is the default shape**
+`record-format.md` shows. Take that template field for field — `Models: 1
+advocate, <model>` and `Spend: <n> tokens`, in those words. Design §6.1 counts
+ten adversary entries before it decides whether the adversary earns its
+dispatch, and `crew-stats.py` recognises one only by those two lines.
 
 **You save its case yourself**, to `reviews/diagnosis-adversary.md`. An
 advocate writes nothing outside its report (`agents/council-advocate.md`), so

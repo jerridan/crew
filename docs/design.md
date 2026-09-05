@@ -5028,3 +5028,18 @@ Deliberately different:
        an idle lead as a new turn; none was lost and none needed a nudge, so
        mid-turn delivery (§15.72i) is **still** untested and the tier has not
        needed it.
+
+75. **The size caps were invented — 2026-09-05.** `writing-standard.md` item
+    4 said a `CLAUDE.md` is at most 150 lines and a `SKILL.md` body targets
+    200. Neither figure cited anything; both arrived with the first docs
+    commit. The Claude Code documentation sets a target of under 200 lines
+    for a `CLAUDE.md` ("longer files consume more context and reduce
+    adherence"; the only hard limit is 4 MiB, above which the file is
+    skipped) and under 500 lines for a `SKILL.md`. The 200-line `SKILL.md`
+    figure had cost real work: §15.59 records the skill sitting at that cap
+    from T18 to T27 with "each new rule paid for with a sentence that was not
+    a rule", and T27 moved the simple path out to make room. Item 4 now
+    carries the documentation's two targets with their citations, says they
+    are targets and not limits, and drops the two invented numbers. This
+    repo's `CLAUDE.md`, at 177 lines after T37, sits inside the target and
+    needs no cut.

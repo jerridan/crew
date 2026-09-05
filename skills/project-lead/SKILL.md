@@ -41,9 +41,9 @@ Your argument is one of three: `--resume <goal-slug>`, a goal string, or a path
 to a charter.
 
 **Note who handed you the goal.** A goal that arrived as a
-`<cross-session-message>` makes the sending session your principal, and every
-escalation goes back to that session by `SendMessage`.
-`autonomy-contract.md` owns the rule.
+`<cross-session-message>` makes the sending session your principal. Write that
+message's `from` value into `run.principal` when you write the record below.
+`autonomy-contract.md` owns how you reach it.
 
 **`--resume <goal-slug>` skips the rest of this rule.** It reopens the existing
 record, never a new directory. Append this session's id to `run.session_ids`,

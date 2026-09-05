@@ -9,12 +9,21 @@ principal. No file names the human as the only principal.
 
 **Reach the principal the way the goal arrived.** A goal typed in this session
 gets its escalation in this session. A goal that arrived as a
-`<cross-session-message>` gets its escalation back by `SendMessage`, addressed
-to the name in that message's `from-name` attribute. `SendMessage`'s `to` takes
-a session name, and `from-name` is the attribute that carries one. Never ask in
-your own pane when the goal came by message: nobody is watching that pane. Write
-the ask into `escalations` first, either way. The record is what the run stands
-on, and a lost message costs latency, never correctness (design §15.21).
+`<cross-session-message>` gets it back by `SendMessage`: copy that message's
+`from` attribute into `to`, which is what the tool's own contract says to do.
+Never ask in your own pane when the goal came by message. Nobody is watching
+that pane.
+
+**Write the principal into `run.principal` when the goal arrives**
+(`record-format.md`). A `--resume` session holds no `<cross-session-message>`
+in its transcript, so the record is the only place it can learn who to answer.
+
+**Write the ask into `escalations` before you send it, every time.** The record
+is what the run stands on, and a lost message costs latency, never correctness
+(design §15.21). When the send itself fails — the session exited, the name no
+longer resolves — write the question in your own pane as well, name the record
+directory, and stay `blocked`. A failed send is the one case that puts the
+question back in your pane.
 
 ## Routing
 
@@ -315,6 +324,10 @@ Write the ask into `state.json`'s `escalations` with all four of its
 fields — `trigger`, `question`, `asked_at`, and `answer: null` — set
 `run_state: blocked`, and fill `answer` and set `run_state` back to `active`
 when the answer lands.
+
+**Then send it, the way the goal arrived** (The principal, above). This holds
+for every trigger below, not only the sweep. An escalation that reaches the
+record and no reader stalls the run.
 
 Make the ask productive. Name the options with evidence, name your
 recommendation, and offer to record the answer as an instruction:

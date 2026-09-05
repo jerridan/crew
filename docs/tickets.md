@@ -1418,6 +1418,19 @@ goals and drives one project-lead session per goal. Four pieces:
    message per batch (§15.22b). The human is the lead's principal, so
    `autonomy-contract.md`'s ladder gains its top rung without a second copy
    of the rules.
+5. **The ledger.** The principal keeps one lead session open all day and
+   does most of their interfacing through it, so the lead's context will be
+   compacted or cleared many times. The portfolio record is the ledger and
+   the context is a cache of it. Three rules: every turn ends with the
+   record updated, including one line per goal or task that says what the
+   lead expects next; `/crew:lead` starts from the record, not from memory,
+   whether fresh, after `/clear` or after a compaction, so it reads the
+   portfolio, calls `ListAgents` to see which project-lead sessions are
+   alive, resumes the dead ones and re-sends any open escalation; and every
+   answer or preference the principal gives lands in the portfolio's
+   decisions file, so a resumed lead never asks twice. `hooks/pre-compact.py`
+   logs a compaction into the portfolio the way it does into a run. Keep the
+   lead's skill short, because it is re-read after every compaction.
 
 The bare word `lead` has meant this tier since §15.19; the skill and its
 files take that name. `CLAUDE.md`'s hierarchy line and README's status table
@@ -1425,7 +1438,9 @@ change with it. Whatever T36 found impossible, design around here and say so
 in §15.
 
 Done when: one goal runs from brief to draft PR through the lead with no
-human turn except the batch it sends, and the portfolio record shows it.
+human turn except the batch it sends, and the portfolio record shows it; and
+a lead killed mid-portfolio and started again continues from the record with
+no human turn.
 
 Read first: design §15.70, §15.21, §15.22, §1, §4, §6.2; T36's §15 entry;
 `record-format.md`; `autonomy-contract.md`. T39 adds the triage step

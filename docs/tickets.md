@@ -931,12 +931,23 @@ carries under "Long-running agent recommendations".
 
 2026-09-04: the variant is written and the two runs are pending. The
 temporary skill is `skills/project-lead-goal/`: its own `SKILL.md` and its
-own `references/simple-path.md`, with every other reference and every script
-read from the sibling `skills/project-lead/`. Each file carries a table that
-maps the step numbers other files cite to the rule that owns it, so no
-pointer breaks while both forms load. **This skill is temporary and never
-lands in `main`.** The ticket closes when design §15.69 records the
-comparison and the loser is deleted.
+own `references/simple-path.md`, with every other reference read from
+`skills/project-lead/references/` and every script from
+`skills/project-lead/scripts/`. Each file carries a table that maps the step
+numbers other files cite to the rule that owns it, so no pointer breaks while
+both forms load, and each opens with a comment naming the other arm. **This
+skill is temporary and never lands in `main`.** It is the one exception to
+"no file gets two variants" above, and the exception ends when the ticket
+does: the ticket closes when design §15.69 records the comparison and the
+losing form is deleted.
+
+Two conditions the comparison must state. The variant carries about 350 words
+that exist only because it is a temporary sibling — the two step-number maps,
+the path preamble in each file and the two deletion comments. Net of those it
+is about 5% longer than the numbered form, and the gross figure is 22%, so a
+result that turns on length is not a result about form. And a change to a
+rule in either arm between now and the runs invalidates both: check the two
+`simple-path.md` files against each other before launch.
 
 ## T27 — Move the simple-path loop out of `SKILL.md`
 

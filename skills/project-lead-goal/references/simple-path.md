@@ -1,14 +1,20 @@
 # Simple path
 
+<!-- Temporary. This file is the goal-form arm of the T26 A/B; the numbered
+form is `skills/project-lead/references/simple-path.md`. Both arms hold the
+same rules, so a change to one is a change to both. Delete this directory
+when T26 closes. -->
+
 This file owns the run for one deliverable with one package (design §9.1),
 from the point where `SKILL.md` has the charter, the record, the spec and the
 shape.
 
 Every other reference this file names — `record-format.md`, `band-rubric.md`,
 `ic-contract.md`, `review-output.md`, `writing-standard.md`,
-`autonomy-contract.md`, `full-path.md` — and every script lives in the
-sibling skill directory `../../project-lead/`. Resolve it to an absolute path
-once.
+`autonomy-contract.md`, `full-path.md` — is in
+`../../project-lead/references/`, and every script in
+`../../project-lead/scripts/`. Resolve both to absolute paths once. Below, a
+bare file name means the `../../project-lead/references/` copy.
 
 The full path is `full-path.md`. Nothing here applies to it, except the three
 rules it borrows and cites as steps 7, 12 and 14: the branch, integration and
@@ -165,8 +171,9 @@ item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable
 `draft-pr-opened` and `run_state: complete`. A human merges it. Then run
-`scripts/spend.py --write` (`autonomy-contract.md`), and stop every process
-the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
+`../../project-lead/scripts/spend.py --write` (`autonomy-contract.md`), and
+stop every process the run left listening — `lsof -iTCP -sTCP:LISTEN` names
+them (§15.50).
 
 When the push or `gh pr create` cannot run, check `escalations` first for the
 entry with trigger text `launch check 3 (trigger 7): no remote` — the

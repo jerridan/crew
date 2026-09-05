@@ -1,9 +1,14 @@
 ---
 name: project-lead-goal
-description: Take one goal to a reviewable draft PR without stopping for approval, stated as a goal and its constraints instead of a numbered loop. Use only when the launch names this form — `project-lead` is the default. Triggers on "run this as a project, goal form", "hand this to crew, goal form".
+description: The goal-and-constraints arm of the T26 A/B of the crew project lead. Loads only when a launch types /crew:project-lead-goal. Never match a plain request to run a goal, hand work to crew, or take work to a draft PR — the project-lead skill owns those.
 ---
 
 # Project lead
+
+<!-- Temporary. This skill is the goal-form arm of the T26 A/B; the numbered
+form is `skills/project-lead/`. Both arms hold the same rules, so a change to
+one is a change to both. Delete this directory when T26 closes. -->
+
 
 Take one goal to a reviewable draft PR that a human can merge. Answer your
 own questions. Stop for the **principal** only when you cannot proceed
@@ -16,28 +21,35 @@ own context is the most expensive place to work.
 ## Where the rules live
 
 One reference sits beside this file: `references/simple-path.md`. Every other
-reference and every script lives in the sibling skill directory
-`../project-lead/`. Resolve that to an absolute path once, and use absolute
-paths from then on. Every path you hand an agent is absolute: its cwd is not
-yours.
+reference is in `../project-lead/references/`, and every script in
+`../project-lead/scripts/`, beside this skill's own directory. Resolve both
+to absolute paths once, and use absolute paths from then on. Every path you
+hand an agent is absolute: its cwd is not yours.
 
 | File | What it owns | When you read it |
 |---|---|---|
-| `autonomy-contract.md` | routing, councils, escalation, spend, and who the principal is | before your first question, not at one |
-| `record-format.md` | the record: every file, field and state transition, and how `scripts/crew-record.py` writes `state.json` | before you create the record |
-| `band-rubric.md` | the band | at the split |
-| `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
-| `writing-standard.md` | any instruction file you draft | before you draft one |
-| `ic-contract.md` | the IC's rules | you do not follow it |
+| `../project-lead/references/autonomy-contract.md` | routing, councils, escalation, spend, and who the principal is | before your first question, not at one |
+| `../project-lead/references/record-format.md` | the record: every file, field and state transition, and how `../project-lead/scripts/crew-record.py` writes `state.json` | before you create the record |
+| `../project-lead/references/band-rubric.md` | the band | at the split |
+| `../project-lead/references/review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
+| `../project-lead/references/writing-standard.md` | any instruction file you draft | before you draft one |
+| `../project-lead/references/ic-contract.md` | the IC's rules | you do not follow it |
 | `references/simple-path.md`, beside this file | the whole run for one package | when the shape is one package |
 | `../project-lead/references/full-path.md` | the whole run for more than one package | when the shape is more than one |
 
-Other files cite this file by step number. Two rules carry those citations:
+Below, and in every file that cites this one, a bare file name means the
+`../project-lead/references/` copy.
+
+Other files cite this file by step number. The rules those numbers name:
 
 | Cited as | The rule here |
 |---|---|
-| `SKILL.md` step 4 | **How you adjudicate a review** |
-| `SKILL.md`'s shape table | **The shape** |
+| `SKILL.md` step 1 | **The charter and the record** |
+| `SKILL.md` step 2 | **What you must know before you write a spec** |
+| `SKILL.md` step 3 | **The spec** |
+| `SKILL.md` step 4 | **The spec review**, and **How you adjudicate a review** |
+| `SKILL.md` step 4a | **The preference sweep** |
+| `SKILL.md` step 5, and `SKILL.md`'s shape table | **The shape** |
 
 ## Before anything
 
@@ -59,13 +71,17 @@ section applies to it.
 
 **A path that exists on disk** becomes `charter.md` unchanged. **Any other
 string** you expand into `charter.md`: the goal, and one falsifiable
-acceptance criterion. A goal you cannot give a falsifiable criterion is not a
-run — escalate and stop, before you do any work.
+acceptance criterion.
+
+**Every new goal needs that criterion, whichever form it arrived in.** Write
+none — because you cannot, or because the charter on disk carries none — and
+there is no run: escalate and stop, before you do any work.
 
 Then the record: `<record-root>/<slug>-<4 hex chars>/`, the suffix generated
 once; `record-format.md` says where the root is. Write `charter.md`, then
-`crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
-it — and `run set spend.budget` when the charter carries a `Budget:` line.
+`../project-lead/scripts/crew-record.py init` with
+`$CLAUDE_CODE_SESSION_ID` — read it, never invent it — and `run set
+spend.budget` when the charter carries a `Budget:` line.
 
 ## What you must know before you write a spec
 

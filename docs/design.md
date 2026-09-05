@@ -88,7 +88,8 @@ The prohibitions bound cost and blast radius, so they matter more than the
 duties.
 
 - The **project lead** does not read code broadly. It dispatches scouts. It
-  writes no implementation code except bounded edits (section 9.3).
+  writes no implementation code. Its only edits in the target repo are the
+  shared files at integration (section 9.3).
 - An **IC** does not touch files outside its declared set, does not renegotiate
   its own scope, does not push to a remote, and does not spawn a reviewer or
   another implementer. It may spawn read-only lookup subagents only.
@@ -716,7 +717,6 @@ for a conversation, not the size of the work.**
 
 | Situation | Shape |
 |---|---|
-| A bounded edit: 1-2 tool calls, no file reading needed | The project lead does it itself |
 | One simple package | **Simple path:** one unnamed subagent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. Its result returns as a normal tool result. |
 | Several packages, or work long enough to need steering | **Full path:** IC teammates in worktrees |
 
@@ -724,9 +724,11 @@ The simple path is much cheaper and is expected to be the common case for
 small goals. The project lead is idle while the subagent works, so sharing the
 tree costs nothing.
 
-The project lead does work itself only for bounded edits. Its own context is
+The project lead dispatches every package, however small. Its own context is
 the most expensive place to do anything: it runs at your model and effort, and
-everything it reads inflates every later turn.
+everything it reads inflates every later turn. A one-line change is one package
+on the simple path, with the same dispatch and the same package review as any
+other (§15.73).
 
 This table assumes the goal names a change. A goal that names a symptom takes
 the investigation path first (§9.5), and comes back to this table only when it
@@ -4807,3 +4809,38 @@ Deliberately different:
        message-borne goal is where those three get tested.
 
        One goal, one machine, one pair of sessions.
+
+73. **The bounded edit left the project lead — 2026-09-05, T38.** §9.1's shape
+    table had one row where the project lead did the work itself: a bounded
+    edit of one or two tool calls. §15.68m shows the row in use — a diagnosed
+    fix read as bounded, the project lead made the edit, no IC ran and no
+    package review ran, and the deliverable reviewer was the first agent to
+    read the change. The principal's rule for the hierarchy is that a lead of
+    any tier triages, dispatches, reads the record and answers questions. A
+    lead that edits code is busy, and busy at the most expensive seat in the
+    run.
+
+    The row is gone. A one-line change is one package on the simple path, at
+    the band `band-rubric.md` gives it, dispatched to one unnamed IC, with the
+    package review it used to skip. Four files carried the exception and lost
+    it: `SKILL.md`'s shape table, `simple-path.md`'s "Write the split",
+    "Create the branch" and "Review the deliverable", `band-rubric.md`'s
+    `light` rule, and `record-format.md`'s package transition and creation
+    text. `investigation-path.md` loses the exemption its `Outcome: fix`
+    ending named, and now says the opposite: a diagnosed fix reads as small
+    work because the diagnosis exists, and size is not a shape.
+
+    a. **What the dispatch costs against the edit it replaced.** PLACEHOLDER —
+       the live run for this ticket is not priced yet. Fill in from
+       `scripts/spend.py` on the run's record: total tokens and dollars, the
+       IC's share, the package review's share, and the same two figures from
+       a bounded-edit run for comparison (§15.68m's bug run is the nearest).
+       The question this answers is whether one `light` IC plus one package
+       review costs less than the project lead reading the file at its own
+       band, not more.
+
+    b. **One project-lead edit outside integration survives.** The fix-round
+       breaker still says "fix the package yourself" at the five-round cap
+       (`simple-path.md`, `full-path.md`, design §10). That is a different
+       rule with a different trigger. Leave it until a run reaches the cap and
+       shows what the project lead does there.

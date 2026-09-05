@@ -165,12 +165,9 @@ shape — usually one package on the simple path. Four things carry across:
 - **The checklist above travels with the IC.** Quote it in the spawn prompt.
 
 **Record the shape you picked at "Choose the shape", with its reason.** A
-diagnosed fix often reads as a bounded edit, because you have already read the
-code — and a bounded edit gets no package review at all (`simple-path.md`'s
-"Review the deliverable"), so the first agent to read the fix is the
-deliverable reviewer. That can be the right call, and the entry is what makes
-it a call rather than a drift. Say in the deliverable-review dispatch that you
-made the edit yourself.
+diagnosed fix reads as small work, because you have already read the code. Size
+is not a shape: the fix is a package, and an IC makes the edit. Never edit the
+target repo yourself here (design §9.1).
 
 ## Ending two: `Outcome: no change`
 

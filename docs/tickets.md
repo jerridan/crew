@@ -1434,7 +1434,7 @@ the portfolio record so a task-shaped run fits it.
 
 ## T38 — Take the bounded edit away from the project lead
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §9.1, §15.60, §15.68m)
 
@@ -1470,6 +1470,15 @@ that dispatch against the bounded edit it replaced.
 Read first: design §9.1, §9.3, §15.60, §15.68m; `SKILL.md` "Choose the
 shape"; `simple-path.md`; `band-rubric.md`; `investigation-path.md`
 "Ending one".
+
+Landed 2026-09-05. Design §9.1 lost the row and the sentence, and §3 no longer
+names a bounded edit as the project lead's one exception. `SKILL.md`'s shape
+table is two rows, `simple-path.md` lost all three exceptions,
+`investigation-path.md`'s `Outcome: fix` ending now forbids the edit,
+`band-rubric.md` bands a small package like any other, and `record-format.md`
+gives every package an IC (§15.73). `crew-stats.py` needed no change: it
+counted no bounded-edit field. The cost of the dispatch against the edit it
+replaced lands in §15.73a after the live run is priced.
 
 ## T39 — The lead triages by size: a task gets one IC, a goal gets a project lead
 

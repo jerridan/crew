@@ -1,10 +1,10 @@
 # Investigation path
 
 This file owns the loop from a symptom to a diagnosis (design §9.5).
-`SKILL.md` step 1 picks this path from the charter, and you arrive here at the
-end of step 2. You leave in one of two ways: back to `SKILL.md` step 3 with a
-fix to build, or out of the run at `work-complete` with a diagnosis and no
-change.
+`SKILL.md`'s "Take the goal" picks this path from the charter, and you arrive
+here at the end of "Scout". You leave in one of two ways: back to `SKILL.md`'s
+"Write the spec" with a fix to build, or out of the run at `work-complete`
+with a diagnosis and no change.
 
 Nothing here replaces `simple-path.md` or `full-path.md`. A diagnosed fix is
 normal work, and one of those files runs it.
@@ -55,15 +55,15 @@ branch and switches no checkout (`record-format.md`).
 Move that entry `in-flight` at your first evidence dispatch. A diagnosis
 deliverable holds no package, so that dispatch is what starts its work.
 
-Write no `split.md` yet. A fix writes one at `simple-path.md` step 6, like any
-other package.
+Write no `split.md` yet. A fix writes one at `simple-path.md`'s "Write the
+split", like any other package.
 
 ## Phase 1. Root cause
 
 **Write the reproduction first.** It is one test or one command that fails
-now and passes after the fix. Step 2 told you what runs the suite, so run the
-symptom against it yourself and keep the failing output. That output is
-`diagnosis.md`'s `## Reproduction`, and it is this path's evidence for design
+now and passes after the fix. `SKILL.md`'s "Scout" told you what runs the
+suite, so run the symptom against it yourself and keep the failing output.
+That output is `diagnosis.md`'s `## Reproduction`, and it is this path's evidence for design
 §7's "fails now" clause.
 
 **No reproduction ends the run.** When this phase finds no way to make the
@@ -71,16 +71,17 @@ symptom happen on demand, the goal has no falsifiable criterion. Escalation
 trigger 1 fires here, and `autonomy-contract.md` says what that costs and what
 to leave behind. "Gather more data" is the escalation, not a hypothesis.
 
-**Then ask where the value goes wrong.** Step 2 asked what the repo already
-does; this phase asks why it does the wrong thing. Dispatch `Explore`
-subagents for a lookup, and `crew:researcher` for a question that needs
+**Then ask where the value goes wrong.** `SKILL.md`'s "Scout" asked what the
+repo already does; this phase asks why it does the wrong thing. Dispatch
+`Explore` subagents for a lookup, and `crew:researcher` for a question that needs
 several hops and a synthesis — this path is its only caller (design §3).
 `band-rubric.md` bands a researcher dispatch.
 
 **Evidence is a file, not a memory.** Every finding lands in
 `evidence/<n>-<slug>.md`, and you cite the path from then on. The *reading*
 must not inflate your context, for the same reason a review diff never enters
-it (`simple-path.md` step 10). Two writers, because the two agents differ:
+it (`simple-path.md`'s "Review the package"). Two writers, because the two
+agents differ:
 
 - **`crew:researcher` writes its own file.** Name the absolute path in the
   dispatch and it returns four lines, the way a review agent does. Read the
@@ -136,9 +137,9 @@ list costs that run a council.
 
 ## Ending one: `Outcome: fix`
 
-Return to `SKILL.md` step 3 and run steps 3 to 5 as written. The spec is the
-fix's spec, and step 5's table picks the shape — usually one package on the
-simple path. Four things carry across:
+Return to `SKILL.md`'s "Write the spec" and run that file from there as
+written. The spec is the fix's spec, and "Choose the shape"'s table picks the
+shape — usually one package on the simple path. Four things carry across:
 
 - **The reproduction is the package's acceptance criterion** (design §5
   invariant 1). It already fails, so this package writes no red commit:
@@ -152,19 +153,20 @@ simple path. Four things carry across:
   opens for nobody reading the PR. **Resolve every record path out of the
   body as you copy it** — an `evidence/` citation becomes the repo `path:line`
   that evidence file rests on, or it goes. That holds for the `Citation:`
-  lines in the `decisions.md` you paste beside it (`simple-path.md` step 14),
-  which cite `evidence/` the same way.
-- **The deliverable you opened above is now a normal one.** `simple-path.md`
-  step 7 creates its branch, so fill `branch`, `base` and `checkout_branch` on
-  that same entry. Add no second deliverable, and **leave `state` alone**:
-  yours is already `in-flight`, and step 7's `state: pending` is for an entry
-  it creates. `in-flight → pending` is backwards on a one-way graph
-  (`record-format.md`).
+  lines in the `decisions.md` you paste beside it (`simple-path.md`'s "End the
+  run"), which cite `evidence/` the same way.
+- **The deliverable you opened above is now a normal one.** `simple-path.md`'s
+  "Create the branch" creates its branch, so fill `branch`, `base` and
+  `checkout_branch` on that same entry. Add no second deliverable, and **leave
+  `state` alone**: yours is already `in-flight`, and that rule's
+  `state: pending` is for an entry it creates. `in-flight → pending` is
+  backwards on a one-way graph (`record-format.md`).
 - **The checklist above travels with the IC.** Quote it in the spawn prompt.
 
-**Record the shape you picked at step 5, with its reason.** A diagnosed fix
-often reads as a bounded edit, because you have already read the code — and a
-bounded edit gets no package review at all (`simple-path.md` step 13), so the
+**Record the shape you picked at "Choose the shape", with its reason.** A
+diagnosed fix often reads as a bounded edit, because you have already read the code — and a
+bounded edit gets no package review at all (`simple-path.md`'s "Review the
+deliverable"), so the
 first agent to read the fix is the deliverable reviewer. That can be the right
 call, and the entry is what makes it a call rather than a drift. Say in the
 deliverable-review dispatch that you made the edit yourself.

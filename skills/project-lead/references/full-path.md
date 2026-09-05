@@ -1,13 +1,14 @@
 # Full path
 
 This file owns the loop for a deliverable with more than one package
-(design §9.2). `SKILL.md` runs steps 1 to 5 first, then sends you here.
+(design §9.2). `SKILL.md` runs as far as "Choose the shape" first, then sends
+you here.
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this
-file borrows three of its steps: 7, 12 and 14 there, named below. Step 0's
-third check is the one exception: it runs once for every goal, at the
-preference sweep, before either path is chosen — `autonomy-contract.md` owns
-when.
+file borrows three of its rules: "Create the branch", "Integrate" and "End the
+run", named below. The third check under "Check the launch conditions" is the
+one exception: it runs once for every goal, at the preference sweep, before
+either path is chosen — `autonomy-contract.md` owns when.
 
 This file runs **one** deliverable. Deliverables run sequentially and
 `split.md` carries `Depends on` to order them, but no loop reads it yet, so a
@@ -48,7 +49,7 @@ Run checks 1 and 2 here, before you write the split, and state which one
 failed. Do not start the run and discover it later.
 
 **Check 3 already ran, at the preference sweep, before you reached this
-step — `autonomy-contract.md` says why. Do not run it again here.** Its
+rule — `autonomy-contract.md` says why. Do not run it again here.** Its
 outcome is settled: either the sweep escalated it and the principal answered,
 or the checkout had a remote and there was nothing to ask.
 
@@ -93,15 +94,15 @@ path, `review-output.md` whole, and the absolute path it writes its findings
 to: `reviews/<deliverable-id>-split-critic-r<n>.md`, `<n>` being one more
 than the highest already on disk under that name.
 
-Adjudicate as `SKILL.md` step 4 does. A failed invariant is not a style
-note — fix the split and dispatch again. Three re-splits is the cap;
+Adjudicate as `SKILL.md`'s "Have the spec reviewed" does. A failed invariant
+is not a style note — fix the split and dispatch again. Three re-splits is the cap;
 escalate at it.
 
 ## 3. Create the branch and the worktrees
 
 This step switches the checkout, so read its branch **before** you switch and
-record it as `checkout_branch`, as `simple-path.md` step 7 says. Then branch
-from the current head:
+record it as `checkout_branch`, as `simple-path.md`'s "Create the branch"
+says. Then branch from the current head:
 `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. Write
 the `deliverables[]` entry now — `id`, branch, the head sha as `base`,
 `state: pending`, `pr_url: null`, and `checkout_branch`.
@@ -160,15 +161,16 @@ first package that equals the deliverable's `base`.
 
 ## Servicing several territories
 
-Steps 5 to 8a are written for one IC and you will be running several. You are
-not stepping them in lockstep: service whichever IC reports next, and let the
-others keep working. Each territory walks its own packages at its own pace.
+The rules from "The plan gate" to "The territory's next package" are written
+for one IC and you will be running several. You are not stepping them in
+lockstep: service whichever IC reports next, and let the others keep working.
+Each territory walks its own packages at its own pace.
 
 Two rules keep that honest. Every IC's state lives in the record, not in your
 head — `plan_approved_at`, `state` and `fix_rounds_used` per package — so read
-the record, not your memory of who was where. And step 9 merges one package at
-a time regardless of which territory produced it, because a suite run only
-attributes a failure when a single package moved.
+the record, not your memory of who was where. And "Integrate" merges one
+package at a time regardless of which territory produced it, because a suite
+run only attributes a failure when a single package moved.
 
 ## 5. The plan gate
 
@@ -196,8 +198,8 @@ does this — a message does (design §13.1, §15.29).
 
 | What the record holds | The idle means | What you do |
 |---|---|---|
-| `plans/<id>.md` exists, `plan_approved_at` is `null` | the plan gate | Nothing. Go to step 5. |
-| A report **for this dispatch** | the IC finished, or stopped and said why | Go to step 6. |
+| `plans/<id>.md` exists, `plan_approved_at` is `null` | the plan gate | Nothing. Go to "The plan gate". |
+| A report **for this dispatch** | the IC finished, or stopped and said why | Go to "Verify before you believe". |
 | No such report, `nudges_used` is 0 | the IC stopped with nothing on disk | Nudge it, once. |
 | No such report, `nudges_used` is 1 | the nudge did not land | Fail the package (below). |
 
@@ -207,14 +209,15 @@ dispatch its existence is enough. After that it is not: a round-1 report sitting
 on disk would make a round-2 IC that wrote nothing look finished, and the
 project lead would verify a range whose HEAD never moved. So from the first fix
 round on, the report counts only when it carries a `## Fix round <n>` heading
-for the round now running (step 8 tells the IC to append one). A re-planned IC
-is the same case: set `plan_approved_at` back to `null` when you send a plan
+for the round now running ("Fix rounds" tells the IC to append one). A
+re-planned IC is the same case: set `plan_approved_at` back to `null` when you send a plan
 back, and its idle reads as the plan gate again.
 
 An idle notification carries the IC's final message. When that message is
 the report itself — `ic-contract.md` makes it the report when the record
 write was denied — transcribe it to `reports/<id>.md`, say in the file that
-you transcribed it, and go to step 6. That is a report, not an empty idle.
+you transcribed it, and go to "Verify before you believe". That is a report,
+not an empty idle.
 
 **One nudge per dispatch.** `SendMessage` the IC what is missing and the
 absolute path to write it to. Then increment `nudges_used` and write
@@ -223,8 +226,8 @@ idle, as the table's last two rows do: it is the only thing that tells a
 resumed session a nudge already went out.
 
 Failing the package is what the second empty idle earns. Verify the worktree
-as step 6 says, commit any uncommitted work yourself, and treat the package as
-`BLOCKED` with cause `capability`. `band-rubric.md`'s promotion rules take it
+as "Verify before you believe" says, commit any uncommitted work yourself,
+and treat the package as `BLOCKED` with cause `capability`. `band-rubric.md`'s promotion rules take it
 from there.
 
 `nudges_used` counts one dispatch, not the package's life. Reset it to 0
@@ -299,8 +302,8 @@ Run a round only on `Verdict: fix round needed`. Five is the cap.
 
 - **Rounds 1 to 3** message the same IC. It keeps its context, which is the
   point of a teammate. Tell it to append a `## Fix round <n>` section to
-  `reports/<id>.md` rather than write a new file — step 5a reads that heading
-  to tell this round's report from the last one's.
+  `reports/<id>.md` rather than write a new file — "The idle nudge" reads that
+  heading to tell this round's report from the last one's.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
   up**. A fresh IC holds no context, so its prompt describes what is already
   committed — `git -C <worktree> log --oneline` plus `git -C <worktree> diff
@@ -314,14 +317,15 @@ Run a round only on `Verdict: fix round needed`. Five is the cap.
 runs — `record-format.md` says why the counter moves before the files it
 names.
 
-Then the round goes back through steps 6 and 7. A fix nobody re-reviewed is a
-claim. Leave this step only on `Verdict: accepted`.
+Then the round goes back through "Verify before you believe" and "Review the
+package". A fix nobody re-reviewed is a claim. Leave this rule only on
+`Verdict: accepted`.
 
 ## 8a. The territory's next package
 
 On `Verdict: accepted`, if that territory has another package in `split.md`,
-send the IC its next package and return to step 5. An IC works its packages
-in the listed order. Write the new package's `base` as you send it — the
+send the IC its next package and return to "The plan gate". An IC works its
+packages in the listed order. Write the new package's `base` as you send it — the
 worktree head as it stands now, which is the accepted package's last commit.
 That is what keeps the next review diff to the next package's own work.
 
@@ -330,10 +334,11 @@ That is what keeps the next review diff to the next package's own work.
 its context, so the count is the proxy: one IC carried five packages to 66%
 of its window without compacting, and the next one may not (design §15.50).
 Stand the IC down, then spawn a fresh one at the new package's band, with
-the brief step 13 rule 3 describes: what its worktree already holds, and
-which steps are done.
+the brief rule 3 of "Resume after a kill" describes: what its worktree
+already holds, and which work is done.
 
-Reach step 9 only when every territory has finished every package it owns.
+Reach "Integrate" only when every territory has finished every package it
+owns.
 
 ## 9. Integrate
 
@@ -347,7 +352,8 @@ git -C <repo> commit -m "<package one-liner>"
 ```
 
 `<package-head>` is the worktree head when you accepted the package — the
-same sha you write as the next package's `base` at step 8.
+same sha you write as the next package's `base` at "The territory's next
+package".
 
 Apply the package's own commit range, never `merge --squash` of the territory
 branch. That branch holds every package the territory has finished, so a
@@ -362,9 +368,9 @@ run only proves the tree it ran on.
 **On a red suite, revert that commit and open a fix round** on the package
 that caused it. `git -C <repo> reset --hard HEAD~1` on the deliverable branch
 undoes the cherry-pick; the package's own worktree and branch still hold the
-work, so nothing is lost. The package goes back to `in-flight` and step 8
-counts the round. A merge you leave red makes every later package's suite run
-meaningless.
+work, so nothing is lost. The package goes back to `in-flight` and "Fix
+rounds" counts the round. A merge you leave red makes every later package's
+suite run meaningless.
 
 One squashed commit per package gives a reviewer a narrative to read, and
 the IC's per-green-step commits stay on its own branch, which is what makes
@@ -386,14 +392,14 @@ Each becomes one rule in this repo's own instruction files. Commit them here,
 or the next two steps never see them. `autonomy-contract.md`'s "Record the
 answer as precedent" owns the rule.
 
-Then sweep for stale status claims, as `simple-path.md` step 12 does: run
-the block in `writing-standard.md`'s "Keep the status true" over the
+Then sweep for stale status claims, as `simple-path.md`'s "Integrate" does:
+run the block in `writing-standard.md`'s "Keep the status true" over the
 deliverable branch.
 
 ## 10. Review the deliverable
 
-**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. Step
-7's diffs predate the fix rounds and
+**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. The
+diffs written at "Review the package" predate the fix rounds and
 every shared-file edit you just made, and those edits are exactly what the
 next reviewer's shared-file check exists to read (design §15.24).
 
@@ -404,25 +410,25 @@ review, `review-output.md` whole, and the absolute path it writes to:
 read the record rather than the diff, so a diff-only dispatch cannot run
 them.
 
-Adjudicate as `SKILL.md` step 4 does, and clear every `[Critical]` before
-the PR opens.
+Adjudicate as `SKILL.md`'s "Have the spec reviewed" does, and clear every
+`[Critical]` before the PR opens.
 
 ## 11. Open the draft PR
 
-`simple-path.md` step 14 owns this, unchanged. One deliverable is one branch and
-one draft PR however many packages it took.
+`simple-path.md`'s "End the run" owns this, unchanged. One deliverable is one
+branch and one draft PR however many packages it took.
 
-A deliverable that cannot open a PR ends in `work-complete`. Step 14 owns
-that procedure too, and `record-format.md` owns what the state means.
+A deliverable that cannot open a PR ends in `work-complete`. "End the run"
+owns that procedure too, and `record-format.md` owns what the state means.
 
-At either end, restore the checkout to `checkout_branch`, as `simple-path.md`
-step 14 says.
+At either end, restore the checkout to `checkout_branch`, as `simple-path.md`'s
+"End the run" says.
 
 ## 12. Clean up
 
 Remove each IC worktree when the deliverable closes, and prune its
-registration from `worktrees.json`. `simple-path.md` step 14 owns the process
-sweep that comes first.
+registration from `worktrees.json`. `simple-path.md`'s "End the run" owns the
+process sweep that comes first.
 
 **Never force a removal.** A refusal means files exist nowhere else. Commit
 them to that IC's branch, or surface them. Remove only worktrees this run

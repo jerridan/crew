@@ -1,32 +1,34 @@
 # Simple path
 
 This file owns the loop for one deliverable with one package (design §9.1).
-`SKILL.md` runs steps 1 to 5 first, then sends you here.
+`SKILL.md` runs as far as "Choose the shape" first, then sends you here.
 
 The full path is `full-path.md`. Nothing here applies to it, except the three
-steps it borrows: steps 7, 12 and 14 below, which it cites from its own steps
-3, 9, 11 and 12.
+rules it borrows: "Create the branch", "Integrate" and "End the run" below.
 
 One unnamed subagent does the work, in this checkout, on one branch. No split
 critic runs, no worktree is created and nothing merges.
 
-**A bounded edit runs a subset of these steps.** `SKILL.md`'s shape table
-sends it here for steps 6 and 7, then 12 to 14. You make the edit yourself,
-so steps 8 to 11 have no IC to dispatch and no package review to run. Every
-other step holds as written, with the three exceptions steps 6, 7 and 13 name.
+**A bounded edit runs a subset.** `SKILL.md`'s shape table sends it here for
+"Write the split" and "Create the branch", then "Integrate", "Review the
+deliverable" and "End the run". You make the edit yourself, so there is no IC
+to dispatch and no package review to run. Every other rule holds as written,
+with the three exceptions "Write the split", "Create the branch" and "Review
+the deliverable" name.
 
 ## 6. Write the split
 
 Write `split.md` in `record-format.md`'s format, one deliverable and one
 package, banded by `band-rubric.md`, mirrored into `state.json`'s
 `packages[]`. No split critic runs — one package has no sibling to overlap.
-`crew:deliverable-reviewer` reads it at step 13.
+`crew:deliverable-reviewer` reads it at "Review the deliverable".
 
-A bounded edit writes the same file and the same entry, so that steps 12 and
-13 have a package to mark and a split to read. It consumes and produces
-nothing, and its acceptance criterion is the charter's. Its file set is the
-files the edit touches, less any shared file: `record-format.md` keeps those
-out of every file set, and step 12 is where you edit them.
+A bounded edit writes the same file and the same entry, so that "Integrate"
+has a package to mark and "Review the deliverable" a split to read. It
+consumes and produces nothing, and its acceptance criterion is the charter's.
+Its file set is the files the edit touches, less any shared file:
+`record-format.md` keeps those out of every file set, and "Integrate" is where
+you edit them.
 
 ## 7. Create the branch
 
@@ -35,7 +37,7 @@ Read the checkout's branch: `git -C <repo> branch --show-current`. Then `git -C
 branch. Write the `deliverables[]` entry now — `id`, branch, the head sha as
 `base`, `state: pending`, `pr_url: null`, and that branch as `checkout_branch`.
 
-**A bounded edit makes its change here**, on the branch this step just
+**A bounded edit makes its change here**, on the branch this rule just
 created. Copy this entry's `base` to the package's `base`, and set the package
 and the deliverable `in-flight`, before you touch the file. Commit the change
 when the edit is done.
@@ -71,7 +73,7 @@ its criterion names (design §7). `ic-contract.md`'s "Write the failing test
 first" owns this check: it gives the procedure, the clean-tree precondition,
 and what a criterion that passes there costs. Run it here, in this checkout,
 against the sha the IC's report gives. Switch the branch back before anything
-else — this is the principal's own checkout, and step 14's
+else — this is the principal's own checkout, and "End the run"'s
 `checkout_restored` records what it was left on.
 
 **A fix package from the investigation path is exempt.** Its reproduction
@@ -98,10 +100,11 @@ subagent, so its prompt describes what is already committed — `git log
 --oneline` plus `git diff --stat` — and which findings to fix. Rounds 4 and 5
 promote a band; `band-rubric.md` says what a `deep` package does instead.
 
-**Every round goes back through steps 9 and 10** — a fix nobody re-reviewed
-is a claim. Leave only on `Verdict: accepted`. Increment `fix_rounds_used`
-**before** the round runs — steps 10 and 11 name their files from it, so a
-late increment overwrites the previous round's files. Five is the cap: at
+**Every round goes back through "Verify before you believe" and "Review the
+package"** — a fix nobody re-reviewed is a claim. Leave only on
+`Verdict: accepted`. Increment `fix_rounds_used` **before** the round runs —
+"Review the package" and this rule name their files from it, so a late
+increment overwrites the previous round's files. Five is the cap: at
 it, fix the package yourself or park it as `abandoned` with your reasoning
 recorded. At the top band, escalate instead.
 
@@ -114,15 +117,16 @@ the values they require equal. Commit them, and mark the package `integrated`.
 
 **Write back every preference answer the principal approved for recording.**
 Each becomes one rule in this repo's own instruction files. Commit them here,
-or the next two steps never see them. `autonomy-contract.md`'s "Record the
+or the next two rules never see them. `autonomy-contract.md`'s "Record the
 answer as precedent" owns the rule.
 
 **Sweep for stale status claims.** You own this check alone. Run the block in
 `writing-standard.md`'s "Keep the status true" over the deliverable branch.
 
-**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. Step
-10's diff predates the fix rounds and the shared-file edits you just made,
-which the next reviewer's shared-file check exists to read.
+**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. The
+diff written at "Review the package" predates the fix rounds and the
+shared-file edits you just made, which the next reviewer's shared-file check
+exists to read.
 
 ## 13. Review the deliverable
 
@@ -130,8 +134,8 @@ Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`,
 the checkout path and base ref, the fresh diff path, the accepted package
 review, `review-output.md` whole, and its absolute path:
 `<record-root>/reviews/<deliverable-id>-deliverable-review.md`. Four of its
-seven checks need the record. Adjudicate as in `SKILL.md` step 4; clear every
-`[Critical]` first.
+seven checks need the record. Adjudicate as `SKILL.md`'s "Have the spec
+reviewed" says; clear every `[Critical]` first.
 
 A bounded edit has no package review, because no package reviewer ran. Send
 the other inputs, and say in the dispatch that you made the edit yourself.
@@ -149,9 +153,9 @@ the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
 When the push or `gh pr create` cannot run, check `escalations` first for the
 entry with trigger text `launch check 3 (trigger 7): no remote` — the
-preference sweep writes it only when `full-path.md` step 0's check 3 failed,
-before the split (`autonomy-contract.md`). Found: act on the answer, and do
-not ask again. "Keep the work local" means skip straight to `work-complete`
+preference sweep writes it only when check 3 of `full-path.md`'s "Check the
+launch conditions" failed, before the split (`autonomy-contract.md`). Found:
+act on the answer, and do not ask again. "Keep the work local" means skip straight to `work-complete`
 below. "Add a remote" means one should already exist — push. If it still
 fails, the promised remote never arrived: that is new information, so
 escalate it now, plainly, the same way as below.

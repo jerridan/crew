@@ -10,11 +10,11 @@ you stop for the **principal** only when you cannot proceed correctly.
 
 ## The references
 
-This file owns steps 1 to 5. Step 5 then sends you to one path file, which
-owns the rest of the run: `references/simple-path.md`, steps 6 to 14, for one
-package; `references/full-path.md`, its own steps 0 to 13, for more than one.
-A goal that names a symptom takes `references/investigation-path.md` between
-steps 2 and 3, and comes back to step 3 with a fix or ends the run there.
+This file owns the run as far as "Choose the shape", which sends you to one
+path file that owns the rest: `references/simple-path.md` for one package,
+`references/full-path.md` for more than one. A goal that names a symptom takes
+`references/investigation-path.md` between "Scout" and "Write the spec", and
+comes back to "Write the spec" with a fix or ends the run there.
 
 - `references/autonomy-contract.md` owns routing, councils, escalation, spend,
   and who the principal is. Read it before your first question, not at one.
@@ -40,9 +40,9 @@ expand into `charter.md`: the goal, and one falsifiable acceptance criterion.
 
 **`--resume` skips the rest of this step.** It reopens the existing record —
 never a new directory — appends this session's id to `run.session_ids`, and
-reconciles. With `worktrees.json`, `full-path.md` step 13 owns the
-reconciliation; without it, `git log` on the deliverable branch is the whole
-job. Re-enter at the first unfinished step and re-run no finished one. A
+reconciles. With `worktrees.json`, `full-path.md`'s "Resume after a kill" owns
+the reconciliation; without it, `git log` on the deliverable branch is the
+whole job. Re-enter at the first unfinished step and re-run no finished one. A
 resumed run writes no charter, no spec and no new branch.
 
 **A resume picks the path too.** Read the reopened `charter.md` by the test
@@ -54,9 +54,9 @@ none re-enters at `investigation-path.md`'s first unfinished phase.
 goal names. A change to make — "add a `--json` flag" — goes on down this file.
 A **symptom** whose cause is unknown — "the export drops the last row", a bug
 report, a support ticket, a question about why the code behaves as it does —
-takes `references/investigation-path.md`. Read that file at the end of step 2,
-not now. **Write the choice into `decisions.md`** as the first entry, once the
-record below exists. It is a precedent-route entry in `record-format.md`'s
+takes `references/investigation-path.md`. Read that file at the end of
+"Scout", not now. **Write the choice into `decisions.md`** as the first entry,
+once the record below exists. It is a precedent-route entry in `record-format.md`'s
 full shape, every field included, and its `Citation:` quotes the words in the
 goal you read the path off. Nothing else in the record says an investigation
 run was chosen rather than fallen into.
@@ -67,8 +67,8 @@ once; `record-format.md` says where the root is. Write `charter.md`, then
 `crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
 it — and `run set spend.budget` when the charter carries a `Budget:` line.
 
-**The investigation path's criterion is a reproduction**, and only step 2's
-scouting makes one writable. So the charter carries the symptom, stated so
+**The investigation path's criterion is a reproduction**, and only "Scout"
+makes one writable. So the charter carries the symptom, stated so
 that some future command could falsify it, and `investigation-path.md` Phase 1
 writes the command. Escalation trigger 1 fires there instead of here when no
 reproduction can be written.
@@ -80,7 +80,7 @@ their answers. Settle four questions. Does an analogous implementation exist?
 Do tests cover this surface? What runs the suite? Which instruction files apply?
 
 On the investigation path, read `references/investigation-path.md` now and run
-its phases. It sends you back to step 3, or it ends the run itself.
+its phases. It sends you back to "Write the spec", or it ends the run itself.
 
 ## 3. Write the spec
 
@@ -120,9 +120,9 @@ answer, as one batch, before you split. `autonomy-contract.md` owns the rule.
 
 | The work is | You |
 |---|---|
-| A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Read `references/simple-path.md`, run its steps 6 and 7, then its steps 12-14. |
-| One package, short enough to run unattended | Read `references/simple-path.md` and run its steps 6-14 |
-| More than one package, or work long enough to need steering | Read `references/full-path.md` and run its steps 0-13 |
+| A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Read `references/simple-path.md`; its "A bounded edit runs a subset" names the rules that apply. |
+| One package, short enough to run unattended | Read `references/simple-path.md`. It owns the rest of the run. |
+| More than one package, or work long enough to need steering | Read `references/full-path.md`. It owns the rest of the run. |
 
 **Your own context is the most expensive place to work.** Dispatch the
 reading, the drafting and the diffs; keep the decisions.

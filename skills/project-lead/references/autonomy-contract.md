@@ -80,20 +80,20 @@ Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
 have nothing to say about any other kind of question.
 
-**Run `full-path.md` step 0's launch check 3 here, every time, and put its
-failure in the same batch.** It is trigger 7, does not depend on an answer,
-and cannot be fixed mid-run. Checks 1 and 2 there stay where they are — they
-only ever matter once the goal has already been sent to the full path, so
-`full-path.md` step 0 runs them, not the sweep. A run that asks the
+**Run launch check 3 of `full-path.md`'s "Check the launch conditions" here,
+every time, and put its failure in the same batch.** It is trigger 7, does not
+depend on an answer, and cannot be fixed mid-run. Checks 1 and 2 there stay
+where they are — they only ever matter once the goal has already been sent to
+the full path, so that rule runs them, not the sweep. A run that asks the
 preference questions first and fails a launch check afterwards has
 interrupted the principal twice.
 
 Check 3's failure is a preference question, not a plain block: offer the
-three ends `simple-path.md` step 14 names. Write it with `escalation add`
-using the trigger text `launch check 3 (trigger 7): no remote` — a fixed
-phrase, so step 14 can find this entry among any others trigger 7 wrote.
-Step 14 reads the answer instead of asking again: one answer, recorded once,
-settles both ends of the run.
+three ends `simple-path.md`'s "End the run" names. Write it with
+`escalation add` using the trigger text `launch check 3 (trigger 7): no
+remote` — a fixed phrase, so "End the run" can find this entry among any
+others trigger 7 wrote. It reads the answer instead of asking again: one
+answer, recorded once, settles both ends of the run.
 
 A lead session answers the batch by message; a human answers it in the
 session. Write each question with `crew-record.py escalation add`
@@ -201,7 +201,7 @@ them.
 - **An advocate may concede.** A root cause has one true answer, so a case for
   a refuted hypothesis gives you nothing. An advocate that finds its assigned
   hypothesis contradicted reports that with the contradicting citation, and
-  step 4 above says what a concession leaves you to rebut.
+  rule 4 above says what a concession leaves you to rebut.
 - **The winner is a claim until a change proves it.** On the hypothesis
   council, your adjudication picks the hypothesis to test first, and naming a
   winner does not confirm it. Test it minimally. A failed test returns to
@@ -286,10 +286,10 @@ one interruption; a run built in the wrong direction costs a day.
    or credentials.
 5. The charter's budget is exceeded (Spend, below).
 6. The fix-round breaker fired at the top band.
-7. One of `full-path.md` step 0's three launch checks fails: the goal needs
-   the full path and agent teams are off or the session is worktree-isolated,
-   or — on any goal — the checkout has no remote to push to. None can be
-   fixed mid-run.
+7. One of the three launch checks in `full-path.md`'s "Check the launch
+   conditions" fails: the goal needs the full path and agent teams are off or
+   the session is worktree-isolated, or — on any goal — the checkout has no
+   remote to push to. None can be fixed mid-run.
 8. The goal needs more than one **deliverable**. `full-path.md` runs one
    deliverable's packages; nothing loops over deliverables or reads
    `split.md`'s `Depends on` yet. Say which deliverables you would cut it
@@ -331,8 +331,8 @@ The next run on the same repo finds no precedent and asks it again. So every
 preference answer the principal approves becomes **one rule in the target
 repo's own instruction files**, on the deliverable branch.
 
-**You write it yourself, at integration** — `simple-path.md` step 12, or
-`full-path.md` step 9 — beside the other shared-file edits you make there.
+**You write it yourself, at integration** — "Integrate" in `simple-path.md`
+or in `full-path.md` — beside the other shared-file edits you make there.
 Dispatch nothing for it, for two reasons. A repo's instruction files are
 shared files, and you own every shared file; an IC that edits a root
 `CLAUDE.md` from its worktree collides with every other package. You also

@@ -175,4 +175,6 @@ branch.
 
 **Restore the checkout at every end.** With a clean tree and a
 `checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
-why not in `checkout_restored`. Name both branches in your last message.
+why not in `checkout_restored`. Name both branches in your last message, and
+send that message to the principal the way the goal arrived
+(`autonomy-contract.md`). A pane is not a report when nobody is watching it.

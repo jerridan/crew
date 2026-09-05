@@ -216,4 +216,5 @@ there is no checkout to restore.
 Then run `scripts/spend.py --write` (`autonomy-contract.md`), and stop every
 process the run left listening — `lsof -iTCP -sTCP:LISTEN` names them
 (design §15.50). Name `diagnosis.md`'s absolute path in your last message: the
-record is what the principal is handed.
+record is what the principal is handed. Send that message the way the goal
+arrived (`autonomy-contract.md`).

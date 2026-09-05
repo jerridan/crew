@@ -7,20 +7,30 @@ The **principal** is whoever handed the project lead its goal — the human in
 the session today, a lead session later. Every escalation goes to the
 principal. No file names the human as the only principal.
 
-**Reach the principal the way the goal arrived.** A goal typed in this session
-gets its escalation in this session. A goal that arrived as a
-`<cross-session-message>` gets it back by `SendMessage`: copy that message's
-`from` attribute into `to`, which is what the tool's own contract says to do.
-Never ask in your own pane when the goal came by message. Nobody is watching
-that pane.
+**Reach the principal the way the goal arrived.** Three cases, and only three:
+
+- **The goal was typed in this session.** Ask in this session.
+- **The goal arrived as a `<cross-session-message>`.** Send by `SendMessage`,
+  addressed to that envelope's `from-name`. Never ask in your own pane. Nobody
+  is watching that pane.
+- **This is a `--resume` and `run.principal` is set.** Send by `SendMessage`,
+  addressed to that value. A resumed session holds no envelope in its
+  transcript, so the record is the only place it can learn who to answer, and
+  the pane it would otherwise fall back to is the unwatched one.
+
+`SendMessage`'s own contract says to copy an incoming `from` into `to`, and a
+`from` does deliver (design §15.72f). Use `from-name` anyway. `from` is a
+socket path that dies with the process that opened it; a name still resolves
+through `ListAgents` after the peer restarts, so one address works live and in
+the record both.
 
 **Write the principal into `run.principal` when the goal arrives**
-(`record-format.md`). A `--resume` session holds no `<cross-session-message>`
-in its transcript, so the record is the only place it can learn who to answer.
-Store the envelope's `from-name`, not its `from`. `from` is a socket path, and
-a socket path dies with the process that opened it; a name still resolves
-through `ListAgents` after the peer restarts (design §15.72f). Store `from`
-only when the envelope carries no `from-name`.
+(`record-format.md`), from that same `from-name` — `from` only when the
+envelope carries no name.
+
+**Everything you send the principal goes by that route**, not escalations
+alone. The closing report at the end of the run is the other one: a lead that
+never learns the PR opened has to poll the record for it.
 
 **Write the ask into `escalations` before you send it, every time.** The record
 is what the run stands on, and a lost message costs latency, never correctness
@@ -28,6 +38,12 @@ is what the run stands on, and a lost message costs latency, never correctness
 longer resolves — write the question in your own pane as well, name the record
 directory, and stay `blocked`. A failed send is the one case that puts the
 question back in your pane.
+
+**A resumed run re-sends what is still open.** `--resume` reopens `blocked` on
+every `escalations` entry with no `answer` (`record-format.md`). Those asks
+were sent to a session that may be gone, so send each one again to
+`run.principal` before you wait. Nothing else re-delivers them, and an ask
+nobody holds stalls the run for good.
 
 ## Routing
 
@@ -121,8 +137,10 @@ A lead session answers the batch by message; a human answers it in the
 session. Send the batch the way the goal arrived (Reach the principal,
 above). Write each question with `crew-record.py escalation add`
 (`record-format.md`) — never `run set`, which replaces the whole list — and
-set `run_state: blocked`. Then wait. Never start the split under an
-assumption: the split is what the answers shape, and every later moment costs
+set `run_state: blocked`. Then wait — and when the batch went by message, wait
+by **ending your turn**. A message reaches an idle session as a new turn; a
+project lead that sits inside its own turn may never see the answer (design
+§15.72i). Never start the split under an assumption: the split is what the answers shape, and every later moment costs
 a fix round.
 
 An unanswered batch never becomes an assumption. A session that dies holding
@@ -330,7 +348,7 @@ fields — `trigger`, `question`, `asked_at`, and `answer: null` — set
 when the answer lands.
 
 **Then send it, the way the goal arrived** (The principal, above). This holds
-for every trigger below, not only the sweep. An escalation that reaches the
+for every trigger above, not only the sweep. An escalation that reaches the
 record and no reader stalls the run.
 
 Make the ask productive. Name the options with evidence, name your

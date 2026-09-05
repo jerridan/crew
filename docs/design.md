@@ -1579,7 +1579,11 @@ Deliberately different:
        stalls a session nobody watches (§15.20, item 12) — item 23 gives
        the verified mechanism. A human obeys these three rules by hand
        today; a lead automates the same three rules later, for example
-       with `tmux new-window 'claude ...'`.
+       with `tmux new-window 'claude ...'`. **There is a fourth rule, found
+       by the T36 probe: the directory must already be trusted.** §15.72a
+       owns it — a session launched into an untrusted directory stops on the
+       folder-trust dialog before it registers, so nothing can list it or
+       message it.
 
     Until a lead exists, the human is the lead: they hold the portfolio,
     write or approve charters, and answer escalations. That is the target
@@ -4769,19 +4773,37 @@ Deliberately different:
        the goal arrived", "How to escalate" says to send the ask for every
        trigger and not only the sweep, `record-format.md` owns
        `run.principal`, and `SKILL.md` names the sender as the principal.
-       Three of those five paragraphs exist because the branch's code review
-       found them missing, and two of the three fired in this run: the
-       every-trigger send rule carried the closing report, and the
-       failed-send fallback is the rule P cited in (g). The same review
-       caught a `from-name` attribute the first draft invented from a
-       documentation example, before the run could have been designed around
-       it.
+       Three of those paragraphs exist because the branch's first code review
+       found them missing, and one of them fired in the run: the failed-send
+       fallback is the rule P cited in (g). The same review caught a
+       `from-name` attribute the first draft invented from a documentation
+       example, before the run could have been designed around it.
+
+       **P sent its closing report without a rule telling it to.** No file
+       said where an end-of-run report goes; "End the run" put it in the
+       pane. P sent it anyway, and its send is what surfaced (g). A second
+       review after the run caught the gap, so `simple-path.md` and
+       `investigation-path.md` now send the last message the same way as an
+       escalation, and `autonomy-contract.md` says the route covers
+       everything the principal is sent, not escalations alone. Good
+       judgment in one run is not a rule, and the next project lead would
+       have had none.
 
     i. **What this run did not prove.** Mid-turn delivery is still untested.
        The docs say a message is read between tool calls inside a running
        turn; both messages here reached an idle P, because P ended its turn
-       after escalating. A lead that messages a working project lead is a
-       different case, and T37 will hit it. `--resume` after a
-       message-borne goal is also untested: `run.principal` was written but
-       never read back, and it held the stale form (f) rejects. One goal, one
-       machine, one pair of sessions.
+       after escalating. That P ended its turn is now the rule rather than
+       luck — `autonomy-contract.md`'s sweep says to wait by ending the turn,
+       because a project lead waiting inside its own turn may never be handed
+       the answer. A lead that messages a working project lead is a different
+       case, and T37 will hit it.
+
+       `--resume` after a message-borne goal is also untested. The second
+       code review found three holes on that path and each is now written,
+       none exercised: a resumed session must read `run.principal` instead of
+       falling back to its pane, it must re-send every `escalations` entry
+       that has no answer, and the field it reads has to hold a name rather
+       than the socket path P actually stored. The first run of a resumed
+       message-borne goal is where those three get tested.
+
+       One goal, one machine, one pair of sessions.

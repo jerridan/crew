@@ -4373,3 +4373,11 @@ Deliberately different:
        for the entry and for the reason. The path choice at step 1 went
        unrecorded in the same run and recorded in the other, so `SKILL.md`
        now requires that entry too.
+
+    n. **A record path in a PR body opens for nobody.** The bug run's PR
+       body copied the root cause in, which is right, but pointed at
+       `diagnosis.md` and cited `evidence/2-minimal-test.md` by name. The
+       record lives outside the repo, so both read as dead links to a human
+       reviewing the PR. `investigation-path.md` now says the reproduction
+       and the root cause are copied into the body in words, and that the
+       absolute path is for the IC, which can open it.

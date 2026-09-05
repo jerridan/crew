@@ -147,9 +147,12 @@ simple path. Four things carry across:
   `diagnosis.md` holds the failing output instead (design §7,
   `record-format.md`'s `reports/` row). Verify the criterion against the
   branch head as usual.
-- **`diagnosis.md` goes into the IC's spawn prompt and into the PR body**, at
-  its absolute path. An IC that gets the symptom without the cause fixes the
-  symptom.
+- **`diagnosis.md` goes into the IC's spawn prompt and into the PR body.** The
+  IC gets the absolute path; an IC that gets the symptom without the cause
+  fixes the symptom. The PR body gets `## Reproduction` and `## Root cause`
+  **copied in, in words** — the record sits outside the repo, so a path there
+  opens for nobody reading the PR, and a citation into `evidence/` reads as a
+  dead link.
 - **The deliverable you opened above is now a normal one.** `simple-path.md`
   step 7 creates its branch, so fill `branch`, `base` and `checkout_branch` on
   that same entry. Add no second deliverable, and **leave `state` alone**:

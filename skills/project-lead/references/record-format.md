@@ -811,11 +811,15 @@ The rules are `crew-record.py`'s, for the same reasons: never write
 is JSON and carries its own quotes; and the script checks no field and no
 transition, because this file owns both. `expect` is the exception that takes
 plain text, because it is rewritten every turn. `init` also creates
-`charters/`. Every call stamps `lead.updated_at`.
+`charters/` and an empty `decisions.md`, and `item add` refuses an id the
+portfolio already holds. Every call stamps `lead.updated_at`.
 
 **Never rewrite `portfolio.json` by hand.** Both hooks append to it, and a
 whole-file write from the lead drops whatever a hook wrote since the lead read
-it.
+it — a `lead.compactions` entry above all, which the lead reads a turn later
+to learn its own context was cut. The script does the same read and write, but
+in one process and in milliseconds rather than across a turn. That narrows the
+window; it does not close it, and no lock exists to.
 
 ### Per-lead fields (inside `lead`)
 
@@ -825,7 +829,7 @@ it.
 | `session_ids` | a list, appended to on every start, never overwritten — `run.session_ids`' rule, for `SessionEnd`'s sake. |
 | `principal` | who to send an escalation to, by `autonomy-contract.md`'s "Reach the principal". Absent when the human typed the brief in this session, which is the usual case. |
 | `created_at` | ISO-8601 UTC, written by `init`. |
-| `updated_at` | ISO-8601 UTC, stamped on every write. The newest open portfolio is the one the glob picks. |
+| `updated_at` | ISO-8601 UTC, stamped on every write. It says when the portfolio last moved; it never chooses between two open portfolios, which is a question for the principal (above). |
 | `escalations` | a list of `{item, question, asked_at, answer}` — what the lead asked the principal, and what came back. `item` names the item the question belongs to, in place of the goal record's `trigger`: a lead's questions come from its items, not from design §6's trigger list. An entry with `answer: null` is open, and a restarted lead re-sends it. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook, in `run.compactions`' shape. Absent until the first compaction. It is how a lead learns its context was cut rather than merely short. |
 
@@ -1098,7 +1102,7 @@ Every name this file defines, with what consumes it.
 - `lead.state` and its values `active`, `interrupted`, `closed` — writer: the lead; `hooks/session-end.py` writes `interrupted`. Consumer: `skills/lead/SKILL.md`'s portfolio glob
 - `lead.session_ids` — consumer: both hooks (they match a portfolio to the ending or compacting session)
 - `lead.principal` — consumer: `autonomy-contract.md` ("Reach the principal")
-- `lead.created_at`, `lead.updated_at` — consumer: `skills/lead/SKILL.md` (the newest open portfolio wins)
+- `lead.created_at`, `lead.updated_at` — consumer: a person, and `skills/lead/SKILL.md`, reading when the portfolio last moved
 - `lead.escalations` — consumer: `skills/lead/SKILL.md` ("Batch what only the principal can answer"); a restarted lead re-sends every entry with `answer: null`
 - `lead.compactions` — writer: `hooks/pre-compact.py`. Consumer: `skills/lead/SKILL.md`
 - `items[].id`, `kind`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`

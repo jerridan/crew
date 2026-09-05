@@ -14,8 +14,10 @@ usage:
   crew-portfolio.py <portfolio-dir> escalation add <item-id> <question>
   crew-portfolio.py <portfolio-dir> escalation answer <index> <answer>
 
-`init` creates portfolio.json with `created_at`. Every other call stamps
-`lead.updated_at`, so the newest open portfolio is always findable.
+`init` creates portfolio.json with `created_at`, plus `charters/` and an
+empty `decisions.md`. `item add` refuses a duplicate id.
+Every other call stamps
+`lead.updated_at`, which says when the portfolio last moved.
 `item ... expect` takes plain text, not JSON, because it is the one field
 the ledger rewrites every turn.
 `escalation add` appends one ask, stamps `asked_at`, and prints the new
@@ -91,6 +93,11 @@ def main(argv: list[str]) -> None:
         }
         portfolio.mkdir(parents=True, exist_ok=True)
         (portfolio / "charters").mkdir(exist_ok=True)
+        decisions = portfolio / "decisions.md"
+        if not decisions.exists():
+            # Every start reads this file whole, so it exists from the first
+            # turn rather than from the first entry.
+            decisions.write_text(f"# Decisions: {arg(rest, 1)}\n", encoding="utf-8")
         write_json(path, data)
         print("ok")
         return
@@ -113,8 +120,13 @@ def main(argv: list[str]) -> None:
     elif kind == "item":
         if arg(rest, 0) == "add":
             entry = json.loads(arg(rest, 1))
+            items = data.setdefault("items", [])
+            # A second entry under one id is invisible: every later write finds
+            # the first, and the ledger line the lead reads never moves.
+            if any(i.get("id") == entry.get("id") for i in items):
+                sys.exit(f"item {entry.get('id')} is already in this portfolio")
             entry.setdefault("state_changed_at", now())
-            data.setdefault("items", []).append(entry)
+            items.append(entry)
         else:
             item = find(data.get("items", []), rest[0])
             verb = arg(rest, 1)

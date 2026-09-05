@@ -4913,7 +4913,10 @@ Deliberately different:
        item to its record. Setting the launched session's record root per item
        makes the mapping a glob instead of a message. It also keeps two items'
        records apart, which is what the variable already existed for
-       (§15.50).
+       (§15.50). The cost is that a lead-driven record sits three levels below
+       the root, and `crew-stats.py` read one level: the branch's code review
+       caught it, and the script now walks a portfolio's `runs/` as well, or
+       every run the tier drives would be missing from the band data.
 
     c. **The trust dialog is a question, not a config write.** §15.72a left the
        fourth launch rule with no fix. `session-launch.md` checks

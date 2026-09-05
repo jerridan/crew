@@ -34,7 +34,8 @@ Your context is a cache of the portfolio. The portfolio is the truth. So every
 start — a fresh session, a `/clear`, or the turn after a compaction — begins
 the same way, and it costs four reads:
 
-1. Glob `<record-root>/*/portfolio.json` and open the one that is not `closed`
+1. Glob `<record-root>/*/portfolio.json` — the root is `$CREW_RECORD_ROOT` or
+   `~/.claude/crew/` — and open the one that is not `closed`
    (`record-format.md`). Two open portfolios is a question for the principal.
    None means this is a new portfolio: create it, and name it from the brief.
 2. Read the portfolio's `decisions.md` whole. It holds every answer the
@@ -42,9 +43,13 @@ the same way, and it costs four reads:
 3. Read each item's `expect` line. That is what your last turn was waiting for.
 4. Call `ListAgents` and match it against each `goal` item's `session_name`.
    A `running` item with no live session died: resume it
-   (`session-launch.md`). Then re-send every `lead.escalations` entry that
-   still has `answer: null`, because the session it was sent to may be the one
-   that died.
+   (`session-launch.md`).
+
+Then re-send every `lead.escalations` entry that still has `answer: null`.
+Those go **up**, to the principal, in one batch — they are your asks, not a
+project lead's, and the session that dropped them is yours. A `blocked` item
+whose project lead is waiting on an answer you already hold is the other half
+of this: send that answer down, from the portfolio's `decisions.md`.
 
 Append this session's id with `crew-portfolio.py session-id`, and set
 `lead.state` back to `active` if `SessionEnd` marked it `interrupted`.

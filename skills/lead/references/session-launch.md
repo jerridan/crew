@@ -23,8 +23,21 @@ the fourth is what T36 found (design §15.72a).
 when that variable is set — and looks for the item's repo path:
 
 ```
-python3 -c 'import json,os,sys; p=json.load(open(os.path.expanduser("~/.claude.json"))).get("projects",{}); print(bool(p.get(sys.argv[1],{}).get("hasTrustDialogAccepted")))' <repo>
+python3 -c 'import json,os,sys
+d = os.environ.get("CLAUDE_CONFIG_DIR")
+f = os.path.join(d, ".claude.json") if d else os.path.expanduser("~/.claude.json")
+try:
+    projects = json.load(open(f)).get("projects", {})
+except Exception:
+    projects = {}
+print(bool(projects.get(sys.argv[1], {}).get("hasTrustDialogAccepted")))' <repo>
 ```
+
+Pass the repo path exactly as `portfolio.json` holds it — the key is the
+absolute path, and a trailing slash or a symlink makes it miss.
+
+It prints `True` or `False` and never raises: a missing or unreadable file is
+`False`, because a file that cannot be read cannot prove trust.
 
 `False` means do not launch. It is a question for the principal, and it goes
 in the batch: ask them to open that directory once themselves, or to approve
@@ -93,6 +106,18 @@ The session starts its run on that message alone. T36's project lead loaded its
 skill about five seconds after the send, with nothing typed in its pane.
 
 Set the item `running` and write its `expect` line before you end the turn.
+
+**Find `record_dir` on your next turn**, once the run has created it:
+
+```
+python3 -c 'import glob,sys; print(next(iter(sorted(glob.glob(sys.argv[1] + "/runs/" + sys.argv[2] + "/*/state.json"))), ""))' <portfolio-dir> <item-id>
+```
+
+Write its directory with `crew-portfolio.py item <id> set record_dir`. Until
+that field holds a path you can read no `state.json`, build no `--resume`
+argument and confirm no terminal state — every later step here needs it. An
+empty result means the run has not created its record yet: leave the field
+`null`, say so in `expect`, and look again next turn.
 
 ## Steering a live session
 

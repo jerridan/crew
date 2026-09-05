@@ -4350,16 +4350,21 @@ Deliberately different:
        branch of Phase 3 and the researcher's first call are unexercised.
        A deeper seeded bug is what would exercise them.
 
-    l. **Two council-entry lines drifted, and `crew-stats.py` silently lost
-       the entry.** The no-change run wrote `Models: sonnet` and `Spend:
-       23652`. The script recognises a one-advocate council only by `1
-       advocate, <model>` and counts tokens only from a figure followed by
-       the word `tokens`, so it read that run as one council with zero
-       adversary entries and no spend. `record-format.md` carries the exact
-       template and the run did not open it, so `investigation-path.md` now
-       names the template at both councils and says which lines the script
-       parses. Left alone, §6.1's ten-entry probation would never have
-       counted an investigation adversary.
+    l. **The first one-advocate council on this machine drifted from the
+       template, and `crew-stats.py` lost it.** The no-change run's
+       diagnosis adversary wrote `Models: sonnet` and `Spend: 23652`. The
+       script recognises a one-advocate council only by `1 advocate,
+       <model>` and reads a token count only from a figure followed by the
+       word `tokens`, so it counted the council and neither the adversary
+       entry nor its spend. Across the nine records on this machine the
+       `Models:` lines read `2 advocates, sonnet`, `3 advocates, opus`, `3
+       advocates, sonnet`, `none dispatched` twice, and this one — so §6.1's
+       ten-entry probation still stands at zero, and this was its first
+       chance to move. `record-format.md` carries the exact template and the
+       run did not open it, so `investigation-path.md` now names the
+       template at both of its councils and says which lines the script
+       parses. T34 owns the counter; this is the first entry it should have
+       counted.
 
     m. **The bug run recorded no shape choice, and its fix took the bounded
        edit.** The project lead made the one-line fix itself, so no IC was

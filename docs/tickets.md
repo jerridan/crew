@@ -1434,7 +1434,7 @@ the portfolio record so a task-shaped run fits it.
 
 ## T38 — Take the bounded edit away from the project lead
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §9.1, §15.60, §15.68m)
 
@@ -1470,6 +1470,27 @@ that dispatch against the bounded edit it replaced.
 Read first: design §9.1, §9.3, §15.60, §15.68m; `SKILL.md` "Choose the
 shape"; `simple-path.md`; `band-rubric.md`; `investigation-path.md`
 "Ending one".
+
+Landed 2026-09-05. Design §9.1 lost the row and the sentence, and §3 now names
+integration and the fix-round breaker as the project lead's only edits.
+`SKILL.md`'s shape table is two rows, `simple-path.md` lost all three
+exceptions, `investigation-path.md`'s `Outcome: fix` ending now forbids the
+edit, `band-rubric.md` bands a small package like any other,
+`record-format.md` gives every package an IC, and
+`agents/deliverable-reviewer.md` no longer expects a package with no review
+(§15.73). §15.60 is marked superseded. `crew-stats.py` needed no change: it
+counted no bounded-edit field.
+
+All three "Done when" clauses are met. A live run on 2026-09-05 took a
+one-line goal to a draft PR through one `light` IC with a package review, no
+prompt and no escalation, and the project lead's transcript holds no `Edit` or
+`Write` call at all. §15.73a records the run and its cost: the IC and the
+package review together cost under $0.45 of $7.69, and the project lead's own
+seat is 82 percent of the run.
+
+The fix-round breaker still lets the project lead edit at the five-round cap.
+That is design §10's rule, out of this ticket's scope, and every file that
+states the prohibition now names it as the exception (§15.73b).
 
 ## T39 — The lead triages by size: a task gets one IC, a goal gets a project lead
 

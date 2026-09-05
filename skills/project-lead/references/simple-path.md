@@ -9,12 +9,10 @@ rules it borrows: "Create the branch", "Integrate" and "End the run".
 One unnamed subagent does the work, in this checkout, on one branch. No split
 critic runs, no worktree is created and nothing merges.
 
-**A bounded edit runs a subset.** `SKILL.md`'s shape table sends it here for
-"Write the split" and "Create the branch", then "Integrate", "Review the
-deliverable" and "End the run". You make the edit yourself, so there is no IC
-to dispatch and no package review to run. Every other rule holds as written,
-with the three exceptions "Write the split", "Create the branch" and "Review
-the deliverable" name.
+**Every rule below runs, however small the change is.** A one-line edit is one
+package, dispatched to an IC and reviewed like any other. You edit a file in
+the target repo at "Integrate" and nowhere else, with one exception: the
+fix-round breaker in "Fix rounds" below (design §9.1, §9.3, §10).
 
 ## Write the split
 
@@ -23,11 +21,10 @@ package, banded by `band-rubric.md`, mirrored into `state.json`'s `packages[]`.
 No split critic runs — one package has no sibling to overlap.
 `crew:deliverable-reviewer` reads it at "Review the deliverable".
 
-A bounded edit writes the same file and the same entry, so that "Integrate" has
-a package to mark and "Review the deliverable" a split to read. It consumes and
-produces nothing, and its acceptance criterion is the charter's. Its file set
-is the files the edit touches, less any shared file: `record-format.md` keeps
-those out of every file set, and "Integrate" is where you edit them.
+The one package consumes and produces nothing, and its acceptance criterion is
+the charter's. Its file set is the files the change touches, less any shared
+file: `record-format.md` keeps those out of every file set, and "Integrate" is
+where you edit them.
 
 ## Create the branch
 
@@ -36,11 +33,6 @@ Read the checkout's branch: `git -C <repo> branch --show-current`. Then `git -C
 branch. Write the `deliverables[]` entry now — `id`, branch, the head sha as
 `base`, `state: pending`, `pr_url: null`, and that branch as
 `checkout_branch`.
-
-**A bounded edit makes its change here**, on the branch this rule just created.
-Copy this entry's `base` to the package's `base`, and set the package and the
-deliverable `in-flight`, before you touch the file. Commit the change when the
-edit is done.
 
 ## Dispatch the IC
 
@@ -141,9 +133,6 @@ checkout path and base ref, the fresh diff path, the accepted package review,
 `<record-root>/reviews/<deliverable-id>-deliverable-review.md`. Four of its
 seven checks need the record. Adjudicate as `SKILL.md`'s "Have the spec
 reviewed" says; clear every `[Critical]` first.
-
-A bounded edit has no package review, because no package reviewer ran. Send the
-other inputs, and say in the dispatch that you made the edit yourself.
 
 ## End the run
 

@@ -88,7 +88,8 @@ The prohibitions bound cost and blast radius, so they matter more than the
 duties.
 
 - The **project lead** does not read code broadly. It dispatches scouts. It
-  writes no implementation code except bounded edits (section 9.3).
+  writes no implementation code, except the shared files at integration
+  (section 9.3) and the fix-round breaker at the cap (sections 9.2, 10).
 - An **IC** does not touch files outside its declared set, does not renegotiate
   its own scope, does not push to a remote, and does not spawn a reviewer or
   another implementer. It may spawn read-only lookup subagents only.
@@ -716,7 +717,6 @@ for a conversation, not the size of the work.**
 
 | Situation | Shape |
 |---|---|
-| A bounded edit: 1-2 tool calls, no file reading needed | The project lead does it itself |
 | One simple package | **Simple path:** one unnamed subagent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. Its result returns as a normal tool result. |
 | Several packages, or work long enough to need steering | **Full path:** IC teammates in worktrees |
 
@@ -724,9 +724,11 @@ The simple path is much cheaper and is expected to be the common case for
 small goals. The project lead is idle while the subagent works, so sharing the
 tree costs nothing.
 
-The project lead does work itself only for bounded edits. Its own context is
+The project lead dispatches every package, however small. Its own context is
 the most expensive place to do anything: it runs at your model and effort, and
-everything it reads inflates every later turn.
+everything it reads inflates every later turn. A one-line change is one package
+on the simple path, with the same dispatch and the same package review as any
+other (§15.73).
 
 This table assumes the goal names a change. A goal that names a symptom takes
 the investigation path first (§9.5), and comes back to this table only when it
@@ -3741,7 +3743,14 @@ Deliberately different:
        route comes first, and T26's A/B is the next thing to measure that
        against.
 
-60. **A bounded edit now writes a split and a package entry — 2026-09-04,
+60. **Superseded by §15.73 — the bounded edit is gone, and with it every rule
+    this item wrote.** T38 removed the shape, so the four files below no
+    longer carry an exception for it, and `agents/deliverable-reviewer.md`
+    no longer carries the rule sub-item (c) moved into it. Read this item as
+    the record of why the bounded edit needed five carriers, which is part of
+    why it went.
+
+    **A bounded edit now writes a split and a package entry — 2026-09-04,
     T33.** `SKILL.md`'s shape table sent §9.1's bounded-edit row to
     `simple-path.md` step 7, then steps 12 to 14. Those steps mark a package
     `integrated` and hand `split.md` to `crew:deliverable-reviewer`, and the
@@ -4807,3 +4816,70 @@ Deliberately different:
        message-borne goal is where those three get tested.
 
        One goal, one machine, one pair of sessions.
+
+73. **The bounded edit left the project lead — 2026-09-05, T38.** §9.1's shape
+    table had one row where the project lead did the work itself: a bounded
+    edit of one or two tool calls. §15.68m shows the row in use — a diagnosed
+    fix read as bounded, the project lead made the edit, no IC ran and no
+    package review ran, and the deliverable reviewer was the first agent to
+    read the change. The principal's rule for the hierarchy is that a lead of
+    any tier triages, dispatches, reads the record and answers questions. A
+    lead that edits code is busy, and busy at the most expensive seat in the
+    run.
+
+    The row is gone, and this item supersedes §15.60, which wrote the rules
+    that carried it. A one-line change is one package on the simple path, at
+    the band `band-rubric.md` gives it, dispatched to one unnamed IC, with the
+    package review it used to skip. Five files carried the exception and lost
+    it: `SKILL.md`'s shape table, `simple-path.md`'s "Write the split",
+    "Create the branch" and "Review the deliverable", `band-rubric.md`'s
+    `light` rule, `record-format.md`'s package transition and creation text,
+    and `agents/deliverable-reviewer.md`'s "package with no package review"
+    exception, which §15.60c had moved into that agent.
+    `investigation-path.md` loses the exemption its `Outcome: fix` ending
+    named, and now says the opposite: a diagnosed fix reads as small work
+    because the diagnosis exists, and size is not a shape.
+
+    a. **The dispatch is cheap; the seat that dispatches is not.** A live run
+       on 2026-09-05 took the goal "make `collapseWhitespace` treat a
+       zero-width space (U+200B) as whitespace too, and add one test for it"
+       to a draft PR with no prompt and no escalation, in 20 minutes. Record
+       `collapse-whitespace-zwsp-4115`. It ran exactly as this item requires:
+       one package `zwsp-collapse` at `light`, `ic_name: null`, a plan file
+       and a report file that both exist, a package review at `accepted` with
+       zero criticals, a deliverable review at `accepted`, and a
+       `decisions.md` band entry that cites `band-rubric.md`. The project
+       lead's transcript holds 33 `Bash` calls and 8 `Agent` calls and **zero
+       `Edit` or `Write` calls**; every write went to the record root, and
+       both commits on the PR are the IC's. That is the rule working.
+
+       `spend.py` priced the run at 6,728,240 tokens and $7.69 list. The
+       dispatch itself is the cheapest part of it: the haiku IC cost $0.20,
+       and the sonnet package reviewer shares $0.24 with the plan reviewer.
+       The project lead's own fable seat is $6.31 — 82 percent of the run.
+
+       **The comparison is not like for like, and it still answers the
+       question.** §15.68m's bug run cost $5.28 across 2,820,189 tokens, but
+       it is an investigation-path run, so its total carries a reproduction,
+       an evidence pass and a council that this run never needed. Compare the
+       seats instead. The dispatch added a haiku IC and a sonnet package
+       review — under $0.45 together — and the fable seat grew from 23
+       messages ($4.32) to 43 ($6.31) on the plan gate, the dispatch, the
+       verify pass and integration. So the review the bounded edit used to
+       skip costs cents, and the turns that arrange the dispatch cost about
+       two dollars at the project lead's own band.
+
+       **That cost belongs to the seat, not to the exception this item
+       removed.** Two spec-critic rounds ran on a one-line change in this run
+       and are charged to the same fable seat. The lever is whether a
+       one-line task gets a project-lead session at all, which T39's triage
+       owns, and the seat's model and turn count, which §8 owns — not whether
+       an IC does the work. Nothing here argues for giving the edit back.
+
+    b. **One project-lead edit outside integration survives.** The
+       fix-round breaker still says "fix the package yourself" at the
+       five-round cap (`simple-path.md`, `full-path.md`, §9.2, §10). §3,
+       `SKILL.md` and `simple-path.md` all name it as the exception, so
+       nothing contradicts it. It is a different rule with a different
+       trigger, and it stays until a run reaches the cap and shows what the
+       project lead does there.

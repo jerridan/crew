@@ -147,6 +147,10 @@ rule.
 
 | The work is | You |
 |---|---|
-| A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Read `references/simple-path.md`; the bolded "A bounded edit runs a subset" in its preamble names the rules that apply, and three of them carry an exception for it. |
 | One package, short enough to run unattended | Read `references/simple-path.md`. It owns the rest of the run. |
 | More than one package, or work long enough to need steering | Read `references/full-path.md`. It owns the rest of the run. |
+
+Size adds no third row. A one-line change is one package on the simple path,
+dispatched like any other. You edit a file in the target repo at "Integrate",
+where the shared files live, and at the fix-round breaker your path file names
+(design §9.3, §10). Nowhere else.

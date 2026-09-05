@@ -45,10 +45,9 @@ Report a package-local defect only when it is `[Critical]`. Drop every lesser
 defect that sits inside one package's file set — its reviewer weighed it
 already, and re-raising it costs a fix round that buys nothing.
 
-**The exception is a package with no package review.** Every package now gets
-one, so expect a review with every package. When a prompt sends you a package
-without one, you are the only reviewer it gets: report every defect in it, at
-the severity it earns, and say in your report that the review was missing.
+**Expect a package review with every package.** When a prompt sends you one
+without a review, you are its only reviewer: report every defect in it, at the
+severity it earns, and say in your report that the review was missing.
 
 Your subject is what no package reviewer could see: the seams, the shared
 files, and the deliverable as one change.

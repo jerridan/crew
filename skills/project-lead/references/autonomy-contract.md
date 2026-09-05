@@ -7,6 +7,14 @@ The **principal** is whoever handed the project lead its goal — the human in
 the session today, a lead session later. Every escalation goes to the
 principal. No file names the human as the only principal.
 
+**Reach the principal the way the goal arrived.** A goal typed in this session
+gets its escalation in this session. A goal that arrived as a
+`<cross-session-message>` gets its escalation back by `SendMessage`, addressed
+to the session that message names in its `from` attribute. Never ask in your
+own pane when the goal came by message: nobody is watching that pane. Write
+the ask into `escalations` first, either way. The record is what the run stands
+on, and a lost message costs latency, never correctness (design §15.21).
+
 ## Routing
 
 Classify every question, and **write the routing into `decisions.md` before
@@ -96,7 +104,8 @@ others trigger 7 wrote. It reads the answer instead of asking again: one
 answer, recorded once, settles both ends of the run.
 
 A lead session answers the batch by message; a human answers it in the
-session. Write each question with `crew-record.py escalation add`
+session. Send the batch the way the goal arrived (Reach the principal,
+above). Write each question with `crew-record.py escalation add`
 (`record-format.md`) — never `run set`, which replaces the whole list — and
 set `run_state: blocked`. Then wait. Never start the split under an
 assumption: the split is what the answers shape, and every later moment costs

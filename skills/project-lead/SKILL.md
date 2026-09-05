@@ -40,6 +40,11 @@ the goal yourself is not the job (design §15.32).
 Your argument is one of three: `--resume <goal-slug>`, a goal string, or a path
 to a charter.
 
+**Note who handed you the goal.** A goal that arrived as a
+`<cross-session-message>` makes the sending session your principal, and every
+escalation goes back to that session by `SendMessage`.
+`autonomy-contract.md` owns the rule.
+
 **`--resume <goal-slug>` skips the rest of this rule.** It reopens the existing
 record, never a new directory. Append this session's id to `run.session_ids`,
 reconcile, re-enter at the first unfinished work, and re-run nothing already

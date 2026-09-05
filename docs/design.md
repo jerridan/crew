@@ -4226,7 +4226,8 @@ Deliberately different:
 68. **The investigation path is built — 2026-09-04, T12.** §9.5's four pieces
     are in the plugin: the path choice at `SKILL.md` step 1, the diagnosis
     loop in a new `references/investigation-path.md`, `diagnosis.md`, and the
-    two endings. Five decisions the ticket left open:
+    two endings. Five decisions the ticket left open, and one rule §9.5 does
+    not carry:
 
     a. **The loop got a file of its own, not `simple-path.md`.** T12 asked
        whether the loop's text belongs in `simple-path.md` or in a new
@@ -4290,3 +4291,28 @@ Deliberately different:
        it at two returns and escalates on the third, under §6's rule that
        the trigger list is a floor and the project lead escalates on its own
        judgment.
+
+    g. **Two of the path's files have no agent that can write them.** The
+       code review on this branch caught both. `agents/council-advocate.md`
+       grants `Read, Glob, Grep, Bash` and says an advocate writes nothing
+       outside its report, so `reviews/diagnosis-adversary.md` cannot come
+       from the advocate: the project lead copies the returned case into it,
+       and it has to read that case to rebut it anyway. `Explore` is
+       read-only for the same reason, so the project lead writes an
+       `Explore` finding into `evidence/` itself — what returns is an answer
+       with citations, not the reading. `crew:researcher` is the one
+       evidence writer that can write its own file, and this change grants
+       it `Write` and a Return path in the shape §15.67 proved for the
+       review agents. `record-format.md` names the writer per file.
+
+    h. **The `evidence/` counter is allocated by the project lead.** Phase 1
+       sends several dispatches in one message, so a writer reading "one
+       more than the highest on disk" for itself would number every file in
+       the batch the same and the last write would win. The project lead
+       assigns each `<n>` before the batch goes out.
+
+    i. **The fix package is exempt from the red-commit check in both path
+       files.** §7 exempts it, but `simple-path.md` step 9 and
+       `full-path.md`'s verification list did not say so, so a run would
+       have sent its own fix package to a fix round for a red commit the
+       diagnosis had already made unnecessary.

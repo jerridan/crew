@@ -273,7 +273,11 @@ record that the ask was your judgment rather than a trigger. A question costs
 one interruption; a run built in the wrong direction costs a day.
 
 1. No falsifiable acceptance criterion can be written for the goal. Abort
-   before you do any work.
+   before you do any work. On the investigation path it fires later, from
+   Phase 1, because only a scouting pass can tell you that the symptom has no
+   reproduction (design §9.5). Abort there on that one pass: leave the
+   diagnosis deliverable in the state it reached, and change nothing in the
+   repo.
 2. A preference question that no instruction resolves. The sweep above
    collects these before the split; one found later still stops the run.
 3. A balanced council on an architecture-moving question, or a council-route

@@ -67,10 +67,9 @@ symptom against it yourself and keep the failing output. That output is
 §7's "fails now" clause.
 
 **No reproduction ends the run.** When this phase finds no way to make the
-symptom happen on demand, the goal has no falsifiable criterion. That is
-escalation trigger 1 (`autonomy-contract.md`): escalate and stop, on one
-scouting pass and nothing more. "Gather more data" is the escalation, not a
-hypothesis.
+symptom happen on demand, the goal has no falsifiable criterion. Escalation
+trigger 1 fires here, and `autonomy-contract.md` says what that costs and what
+to leave behind. "Gather more data" is the escalation, not a hypothesis.
 
 **Then ask where the value goes wrong.** Step 2 asked what the repo already
 does; this phase asks why it does the wrong thing. Dispatch `Explore`
@@ -78,13 +77,20 @@ subagents for a lookup, and `crew:researcher` for a question that needs
 several hops and a synthesis — this path is its only caller (design §3).
 `band-rubric.md` bands a researcher dispatch.
 
-**Evidence is a file, not a memory.** Every dispatch writes its finding to
-`evidence/<n>-<slug>.md` in the record, at the absolute path you name in its
-prompt, and you read the paths. The reading must not inflate the judge's
-context, for the same reason a review diff never enters it (`simple-path.md`
-step 10). `record-format.md` owns the name and the counter. A dispatch whose
-record write was denied returns the finding instead: transcribe it into the
-file yourself, and say that you did.
+**Evidence is a file, not a memory.** Every finding lands in
+`evidence/<n>-<slug>.md`, and you cite the path from then on. The *reading*
+must not inflate your context, for the same reason a review diff never enters
+it (`simple-path.md` step 10). Two writers, because the two agents differ:
+
+- **`crew:researcher` writes its own file.** Name the absolute path in the
+  dispatch and it returns four lines, the way a review agent does. Read the
+  file only where you need it.
+- **You write an `Explore` subagent's file.** `Explore` is read-only and
+  carries no `Write` tool. It has already done the reading, so what returns is
+  an answer with citations, not a dump: paste that into the file yourself.
+
+Say in either case which of you wrote the file. `record-format.md` owns the
+name and the counter.
 
 ## Phase 2. Pattern
 
@@ -140,7 +146,10 @@ simple path. Four things carry across:
   symptom.
 - **The deliverable you opened above is now a normal one.** `simple-path.md`
   step 7 creates its branch, so fill `branch`, `base` and `checkout_branch` on
-  that same entry. Add no second deliverable.
+  that same entry. Add no second deliverable, and **leave `state` alone**:
+  yours is already `in-flight`, and step 7's `state: pending` is for an entry
+  it creates. `in-flight → pending` is backwards on a one-way graph
+  (`record-format.md`).
 - **The checklist above travels with the IC.** Quote it in the spawn prompt.
 
 ## Ending two: `Outcome: no change`
@@ -157,10 +166,16 @@ when the diagnosis says there is no change to make in this repo, and
 diff, so no reviewer can run over it, and your own artifact would otherwise be
 its own evidence (design §7). Write the council entry first, then dispatch one
 `crew:council-advocate`, unnamed, at `band-rubric.md`'s council model. Give it
-your root cause as the position to argue against, the same evidence paths, and
-the absolute path it writes to: `reviews/diagnosis-adversary.md`. Rebut its
-case in writing on the entry's `Losing:` line, or change the diagnosis. A root
-cause you cannot defend in writing is an escalation, not a finished run.
+your root cause as the position to argue against, and the same evidence paths.
+
+**You save its case yourself**, to `reviews/diagnosis-adversary.md`. An
+advocate writes nothing outside its report (`agents/council-advocate.md`), so
+its case comes back as a tool result. Copy it into that file whole. You have
+to read it to judge it, so nothing is saved by asking it to write.
+
+Rebut the case in writing on the entry's `Losing:` line, or change the
+diagnosis. A root cause you cannot defend in writing is an escalation, not a
+finished run.
 
 **Then end the run in one write:** `crew-record.py close <deliverable-id>
 work-complete`. It sets the deliverable's terminal state and

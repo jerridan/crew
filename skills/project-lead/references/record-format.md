@@ -106,9 +106,10 @@ usual. `diagnosis.md` names the winner and points there; it holds no second
 copy of the losing arguments.
 
 An `Outcome: no change` needs the adversary review design §9.5 requires:
-`reviews/diagnosis-adversary.md`, written by one `crew:council-advocate`
-arguing the root cause is wrong. An `Outcome: fix` needs none — the fix
-package's own review covers it.
+`reviews/diagnosis-adversary.md`, the case one `crew:council-advocate` made
+against the root cause. The project lead copies that case into the file — an
+advocate writes no file (`agents/council-advocate.md`). An `Outcome: fix`
+needs none, because the fix package's own review covers it.
 
 ## `reports/`, `plans/`, `diffs/`, `evidence/`, and `reviews/`
 
@@ -142,16 +143,20 @@ naming convention. Do not mix their contents.
   of what a reviewer actually saw, so a later round never overwrites an
   earlier one.
 - **`evidence/`** — what one evidence dispatch found on the investigation
-  path, `evidence/<n>-<slug>.md`, absent from every other run. The writer is
-  the `Explore` subagent or the `crew:researcher` the project lead dispatched,
-  at the absolute path the dispatch names; the project lead transcribes the
-  finding when that write was denied, the same as it does for a plan or a
-  report (`simple-path.md` step 8). `<n>` is one more than the highest already
-  on disk, and `<slug>` names the question the dispatch answered. The counter
-  keeps a later dispatch from overwriting an earlier finding, and a resumed
-  run reads it off disk because no `state.json` field holds it. These files
-  are the evidence set every advocate in an investigation council is given
-  (`autonomy-contract.md`), and `diagnosis.md`'s `## Evidence` points at them.
+  path, `evidence/<n>-<slug>.md`, absent from every other run. It has two
+  writers, and `investigation-path.md` Phase 1 says which writes when: a
+  `crew:researcher` writes its own brief at the absolute path its dispatch
+  names, and the project lead writes the file itself for an `Explore`
+  subagent, which carries no `Write` tool. `<slug>` names the question the
+  dispatch answered. `<n>` counts up from the highest already on disk, and
+  **the project lead allocates one `<n>` per dispatch before it sends a
+  batch** — several dispatches go out in one message, so a writer that reads
+  the counter off disk for itself would give every file in the batch the same
+  number. The counter keeps a later dispatch from overwriting an earlier
+  finding, and a resumed run reads it off disk because no `state.json` field
+  holds it. These files are the evidence set every advocate in an
+  investigation council is given (`autonomy-contract.md`), and
+  `diagnosis.md`'s `## Evidence` points at them.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
   (`<n>` is the fix round, from `fix_rounds_used`),
@@ -782,7 +787,7 @@ Every name this file defines, with what consumes it.
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report); design §7 (the red commit's sha and its failing output)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
-- `evidence/` — writer: an `Explore` subagent or a `crew:researcher` on the investigation path, at the path its dispatch names; the project lead transcribes a denied write. Consumer: `investigation-path.md` Phases 1 to 3; every advocate in an investigation council (design §9.5); `diagnosis.md`'s `## Evidence`
+- `evidence/` — writer: a `crew:researcher`, at the path its dispatch names; the project lead itself for an `Explore` subagent's finding, and for a researcher whose write was denied. Consumer: `investigation-path.md` Phases 1 to 3; every advocate in an investigation council (design §9.5); `diagnosis.md`'s `## Evidence`
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 - `charter.md` `Budget:` and `Favour:` lines — consumer: `SKILL.md` step 1 (budget), `full-path.md` step 1 (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
@@ -904,4 +909,4 @@ Every name this file defines, with what consumes it.
 - `reviews/<deliverable-id>-split-critic-r<n>.md` — consumer: stage 3 (`split-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
 - `reviews/<deliverable-id>-deliverable-review.md` — consumer: stage 4 (`crew:deliverable-reviewer` output)
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts
-- `reviews/diagnosis-adversary.md` — writer: `crew:council-advocate` on the investigation path. Consumer: design §9.5 (a report ending's only verification evidence, design §7)
+- `reviews/diagnosis-adversary.md` — writer: the project lead, copying the case one `crew:council-advocate` returned on the investigation path; an advocate writes no file (`agents/council-advocate.md`). Consumer: design §9.5 (a report ending's only verification evidence, design §7)

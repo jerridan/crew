@@ -94,7 +94,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | `crew:spec-critic`, `crew:package-reviewer`, `crew:deliverable-reviewer` | built, dispatched |
 | `/crew:project-lead`, a symptom (the investigation path) | built, not driven end to end yet |
 | `crew:split-critic` | built, dispatched by the parallel path |
-| `crew:researcher` | built, called by the investigation path |
+| `crew:researcher` | built, the investigation path's only caller — no run has dispatched it |
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
 | `crew:council-advocate`, and councils | built, convened in a run |

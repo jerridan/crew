@@ -45,6 +45,11 @@ reconciliation; without it, `git log` on the deliverable branch is the whole
 job. Re-enter at the first unfinished step and re-run no finished one. A
 resumed run writes no charter, no spec and no new branch.
 
+**A resume picks the path too.** Read the reopened `charter.md` by the test
+below. A record holding `diagnosis.md` took the investigation path and got as
+far as the artifact, so re-enter by that file's `## Outcome`. A record with
+none re-enters at `investigation-path.md`'s first unfinished phase.
+
 **Pick the path here, from the charter** (design §9.5). The test is what the
 goal names. A change to make — "add a `--json` flag" — goes on down this file.
 A **symptom** whose cause is unknown — "the export drops the last row", a bug

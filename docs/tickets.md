@@ -1552,3 +1552,39 @@ repo.
 
 Read first: design §1, §9.1, §15.70, §15.72; T37 and its §15 entry; T38;
 `band-rubric.md`; `record-format.md`; `autonomy-contract.md`.
+
+## T40 — Probe: launch a project-lead session as a native iTerm2 tab
+
+Status: open
+Depends on: T37
+Stage: 7 (design §15.22c, §15.72)
+Priority: low
+
+`session-launch.md` opens every project-lead session with `tmux new-window`,
+so the principal watches the crew through tmux. iTerm2 users get the same
+view today through `tmux -CC`, which shows each tmux window as a native tab.
+This probe asks whether the lead can skip tmux and open the tab itself
+through iTerm2's Python API, so a principal who lives in iTerm2 never
+starts a tmux server.
+
+Find out four things:
+
+1. Whether a session started from an iTerm2 Python API script registers
+   with `ListAgents` under its `--name`, the same as one started by tmux.
+2. Whether the four launch rules in `session-launch.md` hold unchanged, in
+   particular the folder-trust rule.
+3. What a full-path project lead in that tab does for its IC teammates: the
+   teammate display mode it picks, and whether split panes read an agent
+   definition as design §15.20d describes.
+4. What the lead needs to kill or resume a tab, since `tmux kill-window` and
+   the window name no longer apply.
+
+If it works, `session-launch.md` gains one alternative launch block behind a
+setting, and nothing else changes: the launch command is one rule in one
+file. If it does not, record why in §15 and close.
+
+Done when: one goal reaches a draft PR through a project lead launched as an
+iTerm2 tab, or §15 says why it cannot.
+
+Read first: design §15.22c, §15.72, §15.20d, §15.21; `session-launch.md`;
+the iTerm2 Python API documentation on creating tabs and running commands.

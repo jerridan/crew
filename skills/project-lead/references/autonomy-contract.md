@@ -202,10 +202,10 @@ them.
   a refuted hypothesis gives you nothing. An advocate that finds its assigned
   hypothesis contradicted reports that with the contradicting citation, and
   step 4 above says what a concession leaves you to rebut.
-- **The winner is a claim until a change proves it.** Your adjudication picks
-  the hypothesis to test first, not the cause. Test it minimally. A failed
-  test returns to Phase 1 with what the failure taught, never to the runner-up
-  by default.
+- **The winner is a claim until a change proves it.** On the hypothesis
+  council, your adjudication picks the hypothesis to test first, and naming a
+  winner does not confirm it. Test it minimally. A failed test returns to
+  Phase 1 with what the failure taught, never to the runner-up by default.
 
 A council with no leading hypothesis writes `Prior: none`
 (`record-format.md`).

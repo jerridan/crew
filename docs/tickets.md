@@ -1350,7 +1350,7 @@ what the run does not prove.
 
 ## T36 — Probe: one session drives another
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: 7 (design §15.21, §15.22c, §15.70)
 
@@ -1382,6 +1382,17 @@ by message and its answer unblocks the run, and design §15 holds the payloads.
 
 Read first: design §15.21, §15.22, §15.70, §6.2; `autonomy-contract.md`
 escalation section; `record-format.md` `escalations`.
+
+Landed 2026-09-05 as design §15.72, `autonomy-contract.md`'s "Reach the
+principal the way the goal arrived" and its send step for every trigger,
+`record-format.md`'s `run.principal`, and `SKILL.md`'s note on who handed the
+goal over. Both directions fired: a charter sent by message started a run with
+nothing typed in that session's pane, and the escalation came back by message
+in under two seconds. The kill test held — the run finished on the record after
+its principal died, and only the closing report was lost. Two things the probe
+found that the design did not have: a launch into an untrusted directory blocks
+on the folder-trust dialog before the session can register, which §15.22c does
+not cover, and mid-turn delivery is still untested. Both go to T37.
 
 ## T37 — Build the lead skill
 

@@ -4647,3 +4647,141 @@ Deliberately different:
     gave those numbers meaning no longer exists. The `design §9.2 step 3`
     citations in `record-format.md` name this document's own numbering and are
     untouched.
+
+72. **One session drove another end to end, and the record survived the
+    channel — 2026-09-05, T36.** §15.21 fixed every tier boundary at a session
+    boundary and named cross-session messaging as the channel between them.
+    §15.22 named three rules a project-lead session must launch under, and
+    §15.22b said a project lead escalates to whoever handed it the goal.
+    Nothing in crew had exercised any of it. T36 ran two sessions on one
+    machine: **L**, a stand-in lead on Opus 5 at medium effort named
+    `crew-lead`, and **P**, a project lead on Fable at high effort named
+    `crew-pl`, launched by L. Nobody typed in P's pane after the folder-trust
+    answer below. Record: `~/.claude/crew-t36/slugify-a75d/`, `complete`,
+    $5.91 of a $10 budget, fixture draft PR
+    `jerridan/crew-fixture-string-kit#15`, 14 tests passing, zero criticals in
+    three reviews. Sessions `3355ca2a` (L) and `91f754f1` (P).
+
+    The goal was §15.53's `slugify` charter, reused byte for byte because it
+    is the one charter proven to seed exactly one preference question: it says
+    input can carry `café` and `naïve` and never says what to return for them.
+
+    **The launch command that worked**, run by L itself with `Bash`:
+
+    ```
+    tmux new-window -d -n crew-pl -c <clone> 'CREW_RECORD_ROOT=$HOME/.claude/crew-t36 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false claude --name crew-pl --model fable --effort high --permission-mode auto --plugin-dir <plugin worktree>'
+    ```
+
+    a. **§15.22c needs a fourth rule: the directory must already be trusted.**
+       P came up on the folder-trust dialog and sat there. It had not
+       registered, so L's first `ListAgents` did not list it, and no message
+       could have reached it. A human answered the dialog by hand in P's pane.
+       The three rules in §15.22c — interactive, outside any worktree,
+       permissions pre-approved — do not cover this: `--permission-mode auto`
+       is about tool calls, and trust is asked before the session exists.
+       A lead that launches into a fresh clone hits this every time. The fix
+       is not designed yet; the launcher has to mark the directory trusted
+       before it launches, or the launch has to be into a directory the user
+       has already opened. T37 cannot skip it.
+
+    b. **`--name` is not optional, and it is what makes a session
+       addressable.** `SendMessage`'s `to` takes a name, so a session launched
+       without `--name` cannot be reached. After the trust answer and one
+       `sleep 15`, L's second `ListAgents` listed it:
+
+       ```
+       crew-pl [8c7187]  ·  interactive · idle · tmux crew-t36:@1.%1 · started 12s ago
+       ```
+
+       `ListAgents` prints no model column. Anything that needs to know a
+       peer's model must ask it.
+
+    c. **A charter path sent by message started a run on its own.** L sent at
+       12:25:53Z; P's `SKILL.md` loaded at 12:25:57Z, about five seconds
+       later, with no other input. The envelope P received:
+
+       ```
+       <cross-session-message from="uds:/tmp/cc-socks/60502.sock" from-name="crew-lead" from-mode="prompting">
+       ```
+
+       The body carried the charter path, the repository path, `Run
+       /crew:project-lead on that charter path now`, and one sentence stating
+       the relationship: `I am the session that handed you this goal, so send
+       me every question by SendMessage instead of asking in your own pane`.
+       The harness wraps every such message in its own warning that a peer
+       cannot grant escalation and that a peer message is never the user's
+       approval.
+
+    d. **P followed the plugin rule, not that sentence.** P read
+       `autonomy-contract.md` whole at 12:26:05Z, before it had a question,
+       which is when the reference table tells it to. The proof it acted on
+       the rule rather than on L's sentence is `run.principal`: P wrote that
+       field, and nothing in L's message mentions it. The sentence in the
+       message is therefore removable, and T37's lead should not need it.
+
+    e. **The escalation went back by message, and the record carried it
+       first.** The sweep fired between the spec and the split. P wrote one
+       `escalations` entry — trigger `preference question with no instruction
+       (trigger 2)`, `asked_at` 12:28:09Z — set `run_state: blocked`, and only
+       then sent. `SendMessage` at 12:28:17Z returned
+       `{"success":true,...,"msg_id":"b7b02d03-..."}`. L's envelope, at
+       12:28:19Z, under two seconds later:
+
+       ```
+       <cross-session-message from="uds:/tmp/cc-socks/61701.sock" from-name="crew-pl" from-mode="prompting">
+       ```
+
+       P dispatched the spec critic in the same turn, then ended its turn
+       blocked. The answer arrived at 12:32:25Z into an idle P, which reacted
+       at 12:32:34Z and ran to the end with no further prompting.
+
+    f. **`to` takes either the name or the socket address, and the rule
+       should say the name.** L addressed P by the bare name `crew-pl`. P
+       addressed L by the `from` attribute, `uds:/tmp/cc-socks/60502.sock`,
+       which is what the `SendMessage` contract says to copy, and it
+       delivered. But `run.principal` then held a socket path, and a socket
+       path is a per-process artefact: it is the thing that went stale in (g).
+       The envelope carries `from-name` beside `from`, and a name survives a
+       peer restart and can be re-resolved through `ListAgents`. So the rule
+       is right about `to` and wrong about what to store: store the name.
+
+    g. **The kill test: the record won, exactly as §15.21 says.** L's window
+       was killed at 12:33:34Z, mid-run. P finished at 12:42Z — PR opened,
+       the approved accent rule committed into the fixture's `CLAUDE.md` on
+       the deliverable branch, checkout restored. Its closing report to L
+       failed:
+
+       ```
+       {"success":false,"message":"Failed to send to uds:/tmp/cc-socks/60502.sock: ENOENT: no such file or directory, lstat '/tmp/cc-socks/60502.sock' — the peer process may have restarted, so this socket path is stale. Call ListAgents to get the current address."}
+       ```
+
+       P called `ListAgents`, found no `crew-lead`, wrote the report into its
+       own pane and into `decisions.md`, and cited the rule that told it to:
+       `autonomy-contract.md "A failed send is the one case that puts the
+       question back in your pane."` A lost message cost the report's latency
+       and nothing else. Nothing in the deliverable depended on the channel.
+
+    h. **The plugin change T36 made, and where it came from.** Before this
+       ticket neither `SKILL.md` nor `autonomy-contract.md` said where an
+       escalation goes when the goal arrived by message. Both said where the
+       *answer* comes from. P would have blocked and asked in an unwatched
+       pane. `autonomy-contract.md` now carries "Reach the principal the way
+       the goal arrived", "How to escalate" says to send the ask for every
+       trigger and not only the sweep, `record-format.md` owns
+       `run.principal`, and `SKILL.md` names the sender as the principal.
+       Three of those five paragraphs exist because the branch's code review
+       found them missing, and two of the three fired in this run: the
+       every-trigger send rule carried the closing report, and the
+       failed-send fallback is the rule P cited in (g). The same review
+       caught a `from-name` attribute the first draft invented from a
+       documentation example, before the run could have been designed around
+       it.
+
+    i. **What this run did not prove.** Mid-turn delivery is still untested.
+       The docs say a message is read between tool calls inside a running
+       turn; both messages here reached an idle P, because P ended its turn
+       after escalating. A lead that messages a working project lead is a
+       different case, and T37 will hit it. `--resume` after a
+       message-borne goal is also untested: `run.principal` was written but
+       never read back, and it held the stale form (f) rejects. One goal, one
+       machine, one pair of sessions.

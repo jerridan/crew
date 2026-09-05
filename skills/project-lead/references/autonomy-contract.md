@@ -17,6 +17,10 @@ that pane.
 **Write the principal into `run.principal` when the goal arrives**
 (`record-format.md`). A `--resume` session holds no `<cross-session-message>`
 in its transcript, so the record is the only place it can learn who to answer.
+Store the envelope's `from-name`, not its `from`. `from` is a socket path, and
+a socket path dies with the process that opened it; a name still resolves
+through `ListAgents` after the peer restarts (design §15.72f). Store `from`
+only when the envelope carries no `from-name`.
 
 **Write the ask into `escalations` before you send it, every time.** The record
 is what the run stands on, and a lost message costs latency, never correctness

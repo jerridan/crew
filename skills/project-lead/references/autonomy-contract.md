@@ -4,8 +4,17 @@ This file decides how the project lead answers a question, when it stops to
 ask, and how it counts what a run spends (design §6, §8).
 
 The **principal** is whoever handed the project lead its goal — the human in
-the session today, a lead session later. Every escalation goes to the
-principal. No file names the human as the only principal.
+the session, or a lead session (`skills/lead/SKILL.md`). Every escalation goes
+to the principal. No file names the human as the only principal.
+
+**The ladder has a rung above the project lead.** A lead holds a portfolio and
+drives one project-lead session per goal, so an escalation that reaches a lead
+is a question a project lead could not settle. The lead answers it from the
+charter it wrote and from the item's own record when either settles it, and
+sends the rest to its own principal — the human — as one batch. Every rule in
+this file governs that rung too: the routing table, the triggers, the
+`escalations` entry before the send, and the failed-send fallback. The lead's
+own record is the portfolio, not `state.json` (`record-format.md`).
 
 **Reach the principal the way the goal arrived.** Three cases, and only three:
 

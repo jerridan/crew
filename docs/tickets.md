@@ -1396,7 +1396,7 @@ not cover, and mid-turn delivery is still untested. Both go to T37.
 
 ## T37 — Build the lead skill
 
-Status: open
+Status: done
 Depends on: T36
 Stage: 7 (design §1, §15.70)
 
@@ -1446,6 +1446,25 @@ Read first: design §15.70, §15.21, §15.22, §1, §4, §6.2; T36's §15 entry;
 `record-format.md`; `autonomy-contract.md`. T39 adds the triage step
 that sends a small task to one IC instead of a project-lead session; design
 the portfolio record so a task-shaped run fits it.
+
+Landed 2026-09-05. `/crew:lead` is `skills/lead/SKILL.md` with one reference,
+`session-launch.md`, and one script, `crew-portfolio.py`. It is written in the
+goal-and-constraints form (§15.71) and runs at `fable`, high effort.
+`record-format.md` owns the portfolio record — `portfolio.json`,
+`decisions.md`, `charters/` and `runs/<item-id>/` — and every item carries a
+`kind` of `goal` or `task`, so T39's task-shaped run needs no new shape.
+`autonomy-contract.md` gained the top rung and no second copy of the ladder.
+Both hooks reach the portfolio: `SessionEnd` marks a dead lead `interrupted`,
+`PreCompact` appends to `lead.compactions`. `CLAUDE.md`'s hierarchy line,
+README's status, roles and model tables, and design §1 and §15.22 all say the
+tier is built. §15.74 records the six design calls, the trust-dialog fix
+§15.72a left open among them.
+
+Neither "Done when" clause is met yet. Both wait on the live run the
+orchestrator drives: one goal from a brief to a draft PR with no human turn
+except the batch, then a lead killed mid-portfolio and started again from the
+record. §15.74's findings section is a marked placeholder until that run
+reports, and README's status row says "no live run yet".
 
 ## T38 — Take the bounded edit away from the project lead
 

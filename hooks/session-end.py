@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""SessionEnd: mark this session's crew run interrupted, and its worktrees
-orphaned.
+"""SessionEnd: mark this session's crew run interrupted, its worktrees
+orphaned, and its portfolio interrupted.
 
 Writes only. It never deletes a file, a record or a worktree (design 13.1).
 It fails open: any error exits 0 and changes nothing, because this hook runs
@@ -83,6 +83,23 @@ def interrupt_run(state_path: Path, session_id: str) -> None:
     orphan_worktrees(state_path.parent, session_id)
 
 
+def interrupt_lead(portfolio_path: Path, session_id: str) -> None:
+    """Mark a live lead's portfolio `interrupted` (`record-format.md`).
+
+    The next `/crew:lead` reads it, learns its predecessor died rather than
+    closed the portfolio, and sets it back to `active`. Without the mark a
+    killed lead and a finished one look the same on disk.
+    """
+    portfolio = read_json(portfolio_path)
+    lead = portfolio.get("lead") or {}
+    if session_id not in lead.get("session_ids", []):
+        return
+    if lead.get("state") != "active":
+        return
+    lead["state"] = "interrupted"
+    write_json(portfolio_path, portfolio)
+
+
 def main() -> None:
     roots = [r for r in crew_roots() if r.is_dir()]
     if not roots:
@@ -95,6 +112,11 @@ def main() -> None:
         for state_path in sorted(root.glob("*/state.json")):
             try:
                 interrupt_run(state_path, session_id)
+            except Exception:
+                continue
+        for portfolio_path in sorted(root.glob("*/portfolio.json")):
+            try:
+                interrupt_lead(portfolio_path, session_id)
             except Exception:
                 continue
 

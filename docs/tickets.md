@@ -208,8 +208,8 @@ probed end to end: a seeded record plus `claude -p --session-id <uuid>
 and left another session's worktree and a `complete` run untouched. Design
 §15.38 records the probe and three things it settles.
 
-The nudge is `full-path.md`'s "The idle nudge", with `nudges_used` in the record and the
-mechanism-block rule in `ic-contract.md`.
+The nudge is `full-path.md`'s "The idle nudge", with `nudges_used` in the
+record and the mechanism-block rule in `ic-contract.md`.
 
 Two runs against a scratch repo then tested it (§15.40). They found that a
 project lead invented its session id rather than reading it, which would have
@@ -393,23 +393,20 @@ run meets them:
 1. **The choice at "Take the goal".** §9.5 picks the path from the charter,
    before scouting, not at "Choose the shape"'s table. A goal whose acceptance
    criterion cannot be written until something is diagnosed is a symptom. That
-   rule
-   already writes that criterion, so this is a branch in an existing step,
-   not a new one.
-2. **The diagnosis loop.** `Explore` subagents and `crew:researcher` gather
-   evidence to files; the project lead reads the paths, never the reading.
-   This is `crew:researcher`'s first caller — nothing dispatches it today.
-   More than one surviving hypothesis convenes a three-advocate council
-   (§6.1, T22 case 2) over one named evidence set.
-3. **`diagnosis.md`.** Five headings, in `record-format.md`'s order. A
+   rule already writes that criterion, so this is a branch in an existing step,
+   not a new one. 2. **The diagnosis loop.** `Explore` subagents and
+   `crew:researcher` gather evidence to files; the project lead reads the
+   paths, never the reading. This is `crew:researcher`'s first caller — nothing
+   dispatches it today. More than one surviving hypothesis convenes a
+   three-advocate council (§6.1, T22 case 2) over one named evidence set. 3.
+   **`diagnosis.md`.** Five headings, in `record-format.md`'s order. A
    diagnosis deliverable holds no package, so the first evidence dispatch is
-   what moves it `in-flight`.
-4. **The two endings.** `Outcome: fix` rejoins "Choose the shape"'s table with the
-   reproduction as the package's acceptance criterion and `diagnosis.md` in
-   the IC spawn prompt and the PR body. `Outcome: no change` runs the
-   adversary review first (`reviews/diagnosis-adversary.md`), then ends the
-   run `work-complete` with `pr_url: null` and four `null` branch and
-   checkout fields.
+   what moves it `in-flight`. 4. **The two endings.** `Outcome: fix` rejoins
+   "Choose the shape"'s table with the reproduction as the package's acceptance
+   criterion and `diagnosis.md` in the IC spawn prompt and the PR body.
+   `Outcome: no change` runs the adversary review first
+   (`reviews/diagnosis-adversary.md`), then ends the run `work-complete` with
+   `pr_url: null` and four `null` branch and checkout fields.
 
 `SKILL.md` is at its size limit and T27 splits it, so the loop's text goes
 in a reference, not in the body. Decide with T27 whether that is
@@ -544,10 +541,10 @@ Add the fourth terminal state and thread it through:
 - `record-format.md` owns the vocabulary: name the state, add it to the
   deliverable field table, to the state-transition diagram and its arrow list,
   and to the consumer index. Say what `pr_url` holds in it, and that the branch
-  name is what the principal is handed instead.
-- `simple-path.md`'s "End the run" and `full-path.md`'s "Open the draft PR" both say to push and open a
-  draft PR. Each needs the branch for when that is impossible or refused.
-- Keep the escalation. Both runs asked the principal before closing, and that
+  name is what the principal is handed instead. - `simple-path.md`'s "End the
+  run" and `full-path.md`'s "Open the draft PR" both say to push and open a
+  draft PR. Each needs the branch for when that is impossible or refused. -
+  Keep the escalation. Both runs asked the principal before closing, and that
   was right — this ticket changes what gets recorded after the answer, not
   whether to ask.
 
@@ -580,9 +577,10 @@ Depends on: nothing
 Stage: any
 
 The simple path works on the current checkout by design (§9.1) — no worktree,
-one deliverable branch, `git switch -c` at "Create the branch". Nothing switches back. A run
-that finishes leaves the checkout on `crew/<goal-slug>/<deliverable-id>`, and
-the next person or session in that directory is on a branch it did not choose.
+one deliverable branch, `git switch -c` at "Create the branch". Nothing
+switches back. A run that finishes leaves the checkout on
+`crew/<goal-slug>/<deliverable-id>`, and the next person or session in that
+directory is on a branch it did not choose.
 
 This is not hypothetical. The §15.47 run left the T8 session on the run's
 branch, and that session's next two edits landed there before it noticed
@@ -608,13 +606,15 @@ on, or with a recorded reason why it did not, and a second run in the same
 directory starts from a known branch.
 
 2026-09-04: done. `simple-path.md`'s "Create the branch" records
-`deliverables[].checkout_branch` and "End the run" switches back; `deliverables[].checkout_restored` holds `true` or
-the reason it did not. `full-path.md` points at those two steps from its own
-"Create the branch and the worktrees" and "Open the draft PR". Two simple-path runs in one fixture checkout proved it:
-`~/.claude/crew/truncate-helper-bfa8/` and, from the same directory,
-`~/.claude/crew/slugify-stage-3-fa89/`. Both record `checkout_branch: "main"`
-and `checkout_restored: true`, and both left the checkout on `main` and clean
-(design §15.54). No run has exercised the full path's restore.
+`deliverables[].checkout_branch` and "End the run" switches back;
+`deliverables[].checkout_restored` holds `true` or the reason it did not.
+`full-path.md` points at those two steps from its own "Create the branch and
+the worktrees" and "Open the draft PR". Two simple-path runs in one fixture
+checkout proved it: `~/.claude/crew/truncate-helper-bfa8/` and, from the same
+directory, `~/.claude/crew/slugify-stage-3-fa89/`. Both record
+`checkout_branch: "main"` and `checkout_restored: true`, and both left the
+checkout on `main` and clean (design §15.54). No run has exercised the full
+path's restore.
 
 Read first: design §9.1, §15.47; `record-format.md` deliverable fields;
 `simple-path.md`'s "Create the branch" and "End the run".
@@ -644,14 +644,14 @@ Build the check:
 
 - A grep over the change's own diff for the vocabulary that dates: "not built",
   "no run has", "unexercised", "not yet", "stub", "does not exist yet",
-  "deferred". The list belongs in one file, not in each agent's head.
-- Say who runs it. The project lead at integration (`simple-path.md`'s "Integrate") is the
-  natural owner, because that is where it already edits shared files. An IC
+  "deferred". The list belongs in one file, not in each agent's head. - Say who
+  runs it. The project lead at integration (`simple-path.md`'s "Integrate") is
+  the natural owner, because that is where it already edits shared files. An IC
   cannot own it: an IC sees one package's file set, and a claim in `README.md`
-  is stale because of a change in `agents/`.
-- Decide whether `crew:deliverable-reviewer` gets it as an eighth check
-  instead. It already reads the whole diff against the spec, which is the same
-  shape of work. One owner, not two.
+  is stale because of a change in `agents/`. - Decide whether
+  `crew:deliverable-reviewer` gets it as an eighth check instead. It already
+  reads the whole diff against the spec, which is the same shape of work. One
+  owner, not two.
 
 Done when: a run that lands a stage leaves no file claiming that stage is
 unbuilt, and the check is stated in exactly one place.
@@ -686,11 +686,11 @@ all, or that its payload carries `agent_id` and a `transcript_path` whose
 sibling `.meta.json` names the teammate, which is how the hook attributes it.
 
 Done when: an IC teammate is driven past its compaction threshold in an
-interactive session with agent teams on, and `run.compactions` holds an
-entry whose `agent` is that IC's name, as `full-path.md`'s "Verify before you believe" matches it. Record the payload
-shape in design §15.
+interactive session with agent teams on, and `run.compactions` holds an entry
+whose `agent` is that IC's name, as `full-path.md`'s "Verify before you
+believe" matches it. Record the payload shape in design §15.
 
-Read first: design §13.1, §15.50; `hooks/pre-compact.py`; `full-path.md`
+Read first: design §13.1, §15.50; `hooks/pre-compact.py`; `full-path.md`'s
 "Verify before you believe" and "The territory's next package".
 
 ## T20 — Probe: a review agent's write to the record root
@@ -744,13 +744,14 @@ the step.
 Done when: a run on a charter with one seeded preference question escalates
 it before the split, and a run on a charter with none escalates nothing.
 
-2026-09-04: done. `SKILL.md`'s "Sweep for preference questions" sweeps `charter.md` and `spec.md` before
-the split, `autonomy-contract.md` owns the rule under The preference sweep,
-`record-format.md` owns the entry, and `crew-record.py` gained `escalation
-add` so a batch appends instead of replacing the list. Both runs behaved as
-this ticket asks: `~/.claude/crew/slugify-stage-3-fa89/` escalated one seeded
-question before the split, and `~/.claude/crew/truncate-helper-bfa8/` found
-none and recorded `Answer: none` (design §6.3, §15.53).
+2026-09-04: done. `SKILL.md`'s "Sweep for preference questions" sweeps
+`charter.md` and `spec.md` before the split, `autonomy-contract.md` owns the
+rule under The preference sweep, `record-format.md` owns the entry, and
+`crew-record.py` gained `escalation add` so a batch appends instead of
+replacing the list. Both runs behaved as this ticket asks:
+`~/.claude/crew/slugify-stage-3-fa89/` escalated one seeded question before the
+split, and `~/.claude/crew/truncate-helper-bfa8/` found none and recorded
+`Answer: none` (design §6.3, §15.53).
 
 Read first: design §6, §6.2, §15.22b, §15.50, §15.53; `autonomy-contract.md`.
 
@@ -966,35 +967,30 @@ such file, so every rule added to the run loop lands in the fullest file.
 
 Do the same for the simple path:
 
-- Add `references/simple-path.md` holding the loop after the shape, the same shape as
-  `full-path.md`. `SKILL.md` keeps the shared prefix — the reference list,
-  the goal, the scouting, the spec, the spec review, the preference sweep and
-  the shape table — which then points at one of the
-  two path files.
-- Integration, the deliverable review and the end of the run are shared
-  between the two paths. Keep each in one file and point at it from the other,
-  as `full-path.md` already does for the end of the run.
-- Put back what the cap cost. Three sentences are in no file the project
-  lead reads at runtime: "A finding is a claim, not a verdict" ("Have the spec
-  reviewed", the
-  heuristic behind the adjudication rule; §15.46 is why it matters), "Your
-  own context is the most expensive place to work" (after the shape table;
-  design §9.1 and `review-output.md` say it, and neither is the project
-  lead's file), and "Your output is the run's most expensive" ("Write the
-  spec", the
-  reason a sonnet subagent writes the spec prose). Restore all three. The
-  other cuts moved to their owners and stay pointers: the principal's
-  definition (`autonomy-contract.md`), the write-every-transition rule
+- Add `references/simple-path.md` holding the loop after the shape, the same
+  shape as `full-path.md`. `SKILL.md` keeps the shared prefix — the reference
+  list, the goal, the scouting, the spec, the spec review, the preference sweep
+  and the shape table — which then points at one of the two path files. -
+  Integration, the deliverable review and the end of the run are shared between
+  the two paths. Keep each in one file and point at it from the other, as
+  `full-path.md` already does for the end of the run. - Put back what the cap
+  cost. Three sentences are in no file the project lead reads at runtime: "A
+  finding is a claim, not a verdict" ("Have the spec reviewed", the heuristic
+  behind the adjudication rule; §15.46 is why it matters), "Your own context is
+  the most expensive place to work" (after the shape table; design §9.1 and
+  `review-output.md` say it, and neither is the project lead's file), and "Your
+  output is the run's most expensive" ("Write the spec", the reason a sonnet
+  subagent writes the spec prose). Restore all three. The other cuts moved to
+  their owners and stay pointers: the principal's definition
+  (`autonomy-contract.md`), the write-every-transition rule
   (`record-format.md`), the hard-wrap rule (`writing-standard.md`), and
   `checkout_restored: null` at creation (`record-format.md` documents the
-  default).
-- Rewrite `writing-standard.md` rule 4: 200 lines is a target for a
+  default). - Rewrite `writing-standard.md` rule 4: 200 lines is a target for a
   `SKILL.md` body, 500 is the limit the skill guidance sets, and a reference
-  file has no cap. Say why in one sentence.
-- Every citation of a `SKILL.md` step number in `full-path.md`,
-  `record-format.md`, `autonomy-contract.md`, `writing-standard.md` and
-  `docs/tickets.md` still resolves: keep the step numbers, so §15's findings
-  stay true.
+  file has no cap. Say why in one sentence. - Every citation of a `SKILL.md`
+  step number in `full-path.md`, `record-format.md`, `autonomy-contract.md`,
+  `writing-standard.md` and `docs/tickets.md` still resolves: keep the step
+  numbers, so §15's findings stay true.
 
 Do this before T26. If the goal-and-constraints form wins that A/B, it is the
 path files that shrink, and the split should already be in place.
@@ -1006,14 +1002,14 @@ copies.
 Read first: design §15.25, §15.30a, §15.50; `writing-standard.md` rule 4;
 `SKILL.md`; `full-path.md`.
 
-2026-09-04: done. `simple-path.md` holds the loop after the shape,
-`SKILL.md`'s body is
-96 lines, and the step numbers did not move. The three sentences are back in
-"Write the spec", "Have the spec reviewed" and "Choose the shape". `writing-standard.md` rule 4 now carries a 200-line target,
-the 500-line limit and no cap for a reference. A run proved it:
-`truncate-stage-2-0722/` read `simple-path.md`, never opened `full-path.md`,
-and reached draft PR 2 on the fixture repo with zero prompts, zero fix rounds
-and $6.27 at list price (design §15.59).
+2026-09-04: done. `simple-path.md` holds the loop after the shape, `SKILL.md`'s
+body is 96 lines, and the step numbers did not move. The three sentences are
+back in "Write the spec", "Have the spec reviewed" and "Choose the shape".
+`writing-standard.md` rule 4 now carries a 200-line target, the 500-line limit
+and no cap for a reference. A run proved it: `truncate-stage-2-0722/` read
+`simple-path.md`, never opened `full-path.md`, and reached draft PR 2 on the
+fixture repo with zero prompts, zero fix rounds and $6.27 at list price (design
+§15.59).
 
 ## T28 — Give `run.completed_at` an owner
 
@@ -1061,27 +1057,28 @@ Status: done
 Depends on: nothing
 Stage: any (design §6, §15.52, §15.53)
 
-Both 2026-09-04 runs under T21 ran the whole loop, then escalated at "End the run":
-the fixture had no git remote, so the push and `gh pr create` could not run.
-That was knowable at "Take the goal" from one `git -C <repo> remote` call. A run with a
-preference question and no remote interrupts the principal twice, which is
-what T21's batch exists to prevent; a run with no preference question spends
-its whole budget before it asks whether a PR is possible at all.
+Both 2026-09-04 runs under T21 ran the whole loop, then escalated at "End the
+run": the fixture had no git remote, so the push and `gh pr create` could not
+run. That was knowable at "Take the goal" from one `git -C <repo> remote` call.
+A run with a preference question and no remote interrupts the principal twice,
+which is what T21's batch exists to prevent; a run with no preference question
+spends its whole budget before it asks whether a PR is possible at all.
 
 Add "can this run push and open a draft PR" to the checks that run before the
-preference batch. `full-path.md`'s "Check the launch conditions" owns the launch checks and T21's rule
-in `autonomy-contract.md` already folds them into the batch; add the remote
-check beside them, so it applies on both paths. The question to the principal
-offers the same three ends "End the run" offers today: add a remote, keep the work
-local as `work-complete`, or stop. An answer given at the start is recorded
-once and "End the run" never asks again.
+preference batch. `full-path.md`'s "Check the launch conditions" owns the
+launch checks and T21's rule in `autonomy-contract.md` already folds them into
+the batch; add the remote check beside them, so it applies on both paths. The
+question to the principal offers the same three ends "End the run" offers
+today: add a remote, keep the work local as `work-complete`, or stop. An answer
+given at the start is recorded once and "End the run" never asks again.
 
 Done when: a run on a checkout with no remote asks about the PR in the same
-batch as its preference questions, before the split, and "End the run" ends the run
-without a second ask.
+batch as its preference questions, before the split, and "End the run" ends the
+run without a second ask.
 
 Read first: design §15.52, §15.53; `autonomy-contract.md` "The preference
-sweep"; `full-path.md`'s "Check the launch conditions"; `simple-path.md`'s "End the run".
+sweep"; `full-path.md`'s "Check the launch conditions"; `simple-path.md`'s "End
+the run".
 
 ## T30 — Write a preference answer into the target repo as precedent
 
@@ -1167,11 +1164,11 @@ Status: done
 Depends on: nothing
 Stage: any (design §7, §9.5)
 
-Design §9.5 makes the reproduction the fix package's acceptance criterion,
-and it requires two clauses: the test fails now, and it passes after. Crew
-checks only the second. `simple-path.md`'s "Verify before you believe" runs the acceptance criterion after
-the IC reports, and §7's verification table has no "before" row. A test that
-never failed passes that check and proves nothing.
+Design §9.5 makes the reproduction the fix package's acceptance criterion, and
+it requires two clauses: the test fails now, and it passes after. Crew checks
+only the second. `simple-path.md`'s "Verify before you believe" runs the
+acceptance criterion after the IC reports, and §7's verification table has no
+"before" row. A test that never failed passes that check and proves nothing.
 
 This is not only the investigation path's problem. Any package whose
 acceptance criterion is a new test has it, which is why the rule belongs in
@@ -1194,7 +1191,8 @@ step says who runs it, and a package whose new test passed from the start is
 rejected by that check rather than by a reviewer noticing.
 
 Read first: design §7, §9.5, §5 (invariant 1); `ic-contract.md`;
-`simple-path.md`'s "Dispatch the IC" and "Verify before you believe"; `record-format.md` `acceptance_criterion`.
+`simple-path.md`'s "Dispatch the IC" and "Verify before you believe";
+`record-format.md` `acceptance_criterion`.
 
 Landed 2026-09-04 as design §7's fourth row, `ic-contract.md`'s "Write the
 failing test first", the red-commit check in both path files, and
@@ -1226,8 +1224,9 @@ field "Integrate", "Review the deliverable" and "End the run" write exists in
 its record, and the row and the rules it
 names agree.
 
-Read first: design §9.1, §15.59; `SKILL.md` shape table; `simple-path.md`
-"Create the branch", "Integrate", "Review the deliverable" and "End the run"; `record-format.md` `split.md` and `packages[]`.
+Read first: design §9.1, §15.59; `SKILL.md` shape table; `simple-path.md`'s
+"Create the branch", "Integrate", "Review the deliverable" and "End the run";
+`record-format.md` `split.md` and `packages[]`.
 
 ## T34 — Decide whether the adversary earns its dispatch
 

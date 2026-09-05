@@ -4080,3 +4080,67 @@ Deliberately different:
     sets, and the record root holds zero it can count today. Nothing in
     `docs/tickets.md` T34 closes until a run produces the count. `T34`'s
     landing note says the same.
+
+66. **An advocate can argue a root cause, and one conceded — 2026-09-04,
+    T31.** §9.5 sends competing hypotheses to a council, and
+    `agents/council-advocate.md` served only design questions. It now carries a
+    third dispatch shape beside "against a prior" and "one of several": **a
+    root cause**, which takes an assigned hypothesis and the evidence set the
+    project lead named in `diagnosis.md`. The shape covers both §9.5
+    dispatches — one of three advocates on a competing hypothesis, and the
+    single adversary against a written root cause. It stays one agent, because
+    everything below the shape section is the same for all three.
+
+    a. **Two rules ride on that shape.** The advocate cites the given evidence
+       files, and a repo file only where an evidence line points into it. It
+       never searches for a fact the other advocates do not have, so the three
+       cases argue about one bug. And it concedes a hypothesis the evidence
+       contradicts, in a third report shape: the position, the concession, the
+       contradicting citation, the confidence. A concession names no
+       replacement hypothesis — §9.5 gives the runner-up no default. Thin
+       evidence is not a contradiction, and the design shapes never concede.
+
+    b. **Two reference files gained one clause each.** In `record-format.md` a
+       conceded position made no argument, so its `Losing:` line reads
+       `conceded` and carries the contradicting citation. In
+       `autonomy-contract.md` a conceding adversary is the one exception to
+       step 4's rebuttal: nothing is left to rebut, so the prior stands on the
+       concession's citation. Neither file gets a copy of the evidence-set rule
+       — its three-advocate case 2 already sends the reader to §9.5, which owns
+       it. §6.1 and §9.5 are unchanged; this ticket implemented them.
+
+       The adversary sub-shape needed the negation said out loud. §9.5
+       dispatches that advocate to argue the written root cause is **wrong**,
+       so that, and not the root cause, is its assigned position. Without the
+       line an advocate would read the root cause as its own hypothesis,
+       concede when the evidence refuted it, and hand the judge a concession
+       exactly when the diagnosis failed its only verification. The agent body
+       now states the position and says what a concession means there: the
+       evidence supports the written root cause.
+
+    c. **Both halves ran, on a seeded bug — 2026-09-04.** A four-file Python
+       package whose `export` loops `range(len(rows) - 1)` and drops the last
+       row, behind a `CsvWriter` that buffers and flushes on `close()`. Three
+       evidence files and a `diagnosis.md` held the evidence set, and the repo
+       carried two decoys the set does not name: a `CHANGELOG.md` blaming a
+       buffering change, and a `README.md` blaming it for slowness. The agent
+       body was pasted into two `general-purpose` sonnet subagents with the
+       dispatch text a project lead would send, because a plugin agent under
+       development is not loaded.
+
+    d. **The supported hypothesis argued, and cited nothing it went looking
+       for.** Advocate A took the loop hypothesis, cited all three evidence
+       files and the two repo lines the evidence points into, and touched
+       neither decoy. One over-reach: its objection section cited
+       `writer.py:5` for the `buffer_size=2` default, which no evidence line
+       points at. The rule caught the decoys and missed the near neighbour in
+       a file the set does open, which is the boundary to watch.
+
+    e. **The refuted hypothesis conceded, and stopped.** Advocate B took the
+       flush hypothesis, spent one tool call, and returned the concession
+       shape with the two citations that rule the buffer out. It built no case
+       and named no replacement. Its second citation says the loss happens
+       before the writer sees the row, which edges toward the rival
+       hypothesis without naming one. Both reports are honest and neither
+       hedged, so the concession reads as the finding §9.5 wants rather than a
+       failed dispatch.

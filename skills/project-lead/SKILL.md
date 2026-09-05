@@ -57,33 +57,35 @@ none re-enters at `investigation-path.md`'s first unfinished phase.
 string** you expand into `charter.md`: the goal, and one falsifiable acceptance
 criterion.
 
-**Every new goal needs that criterion, whichever form it arrived in.** Write
-none — because you cannot, or because the charter on disk carries none — and
-there is no run: escalate and stop, before you do any work.
+**Pick the path before you judge the criterion** (design §9.5), because the
+two paths need different things of it. The test is what the goal names. A
+change to make — "add a `--json` flag" — goes on down this file. A
+**symptom** whose cause is unknown — "the export drops the last row", a bug
+report, a support ticket, a question about why the code behaves as it does —
+takes
+`investigation-path.md`, read at the end of "Scout" and not before.
+
+**On the change path, every new goal needs that criterion.** Write none —
+because you cannot, or because the charter on disk carries none — and there is
+no run: escalate and stop, before you do any work.
+
+**On the investigation path the criterion is a reproduction**, and only
+"Scout" makes one writable, so the rule above does not apply and a charter
+carrying a bare symptom is correct. Write the symptom so that some future
+command could falsify it, and `investigation-path.md` Phase 1 writes the
+command. Escalation trigger 1 fires there instead of here when no reproduction
+can be written.
 
 Then the record: `<record-root>/<slug>-<4 hex chars>/`, the suffix generated
 once; `record-format.md` says where the root is. Write `charter.md`, then
 `crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
 it — and `run set spend.budget` when the charter carries a `Budget:` line.
 
-**The path is picked here, from the charter** (design §9.5). The test is what
-the goal names. A change to make — "add a `--json` flag" — goes on down this
-file. A **symptom** whose cause is unknown — "the export drops the last row",
-a bug report, a support ticket, a question about why the code behaves as it
-does — takes `investigation-path.md`, read at the end of "Scout" and not
-before.
-
-**The choice is the first entry in `decisions.md`**, once the record exists. It
-is a precedent-route entry in `record-format.md`'s full shape, every field
-included, and its `Citation:` quotes the words in the goal you read the path
-off. Nothing else in the record says an investigation run was chosen rather
-than fallen into.
-
-**The investigation path's criterion is a reproduction**, and only "Scout"
-makes one writable. So the charter carries the symptom, stated so that some
-future command could falsify it, and `investigation-path.md` Phase 1 writes the
-command. Escalation trigger 1 fires there instead of here when no reproduction
-can be written.
+**The path you picked is the first entry in `decisions.md`**, once the record
+exists. It is a precedent-route entry in `record-format.md`'s full shape,
+every field included, and its `Citation:` quotes the words in the goal you
+read the path off. Nothing else in the record says an investigation run was
+chosen rather than fallen into.
 
 ## Scout
 
@@ -130,14 +132,14 @@ back in writing where it is wrong here. **A finding is a claim, not a verdict.**
 
 ## Sweep for preference questions
 
-Every question in `charter.md` and `spec.md` that the repo cannot answer is
-escalated, as one batch, before you split. `autonomy-contract.md` owns the
+Escalate every question in `charter.md` and `spec.md` that the repo cannot
+answer, as one batch, before you split. `autonomy-contract.md` owns the
 rule.
 
 ## Choose the shape
 
 | The work is | You |
 |---|---|
-| A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Read `references/simple-path.md`; its "A bounded edit runs a subset" names the rules that apply. |
+| A bounded edit: 1-2 tool calls, no file reading | Do it yourself, on a branch. Read `references/simple-path.md`; the bolded "A bounded edit runs a subset" in its preamble names the rules that apply, and three of them carry an exception for it. |
 | One package, short enough to run unattended | Read `references/simple-path.md`. It owns the rest of the run. |
 | More than one package, or work long enough to need steering | Read `references/full-path.md`. It owns the rest of the run. |

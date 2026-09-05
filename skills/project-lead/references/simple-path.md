@@ -18,7 +18,7 @@ the deliverable" name.
 
 ## Write the split
 
-`split.md` goes in `record-format.md`'s format, one deliverable and one
+Write `split.md` in `record-format.md`'s format, one deliverable and one
 package, banded by `band-rubric.md`, mirrored into `state.json`'s `packages[]`.
 No split critic runs — one package has no sibling to overlap.
 `crew:deliverable-reviewer` reads it at "Review the deliverable".
@@ -33,8 +33,9 @@ those out of every file set, and "Integrate" is where you edit them.
 
 Read the checkout's branch: `git -C <repo> branch --show-current`. Then `git -C
 <repo> switch -c crew/<goal-slug>/<deliverable-id>`; never work on the main
-branch. The `deliverables[]` entry goes in now — `id`, branch, the head sha as
-`base`, `state: pending`, `pr_url: null`, and that branch as `checkout_branch`.
+branch. Write the `deliverables[]` entry now — `id`, branch, the head sha as
+`base`, `state: pending`, `pr_url: null`, and that branch as
+`checkout_branch`.
 
 **A bounded edit makes its change here**, on the branch this rule just created.
 Copy this entry's `base` to the package's `base`, and set the package and the
@@ -43,8 +44,8 @@ edit is done.
 
 ## Dispatch the IC
 
-One **unnamed** subagent at the package's band model does the work: `crew:ic`
-for code, `crew:ic-instructions` for an instruction file. It inherits no
+Dispatch one **unnamed** subagent at the package's band model: `crew:ic` for
+code, `crew:ic-instructions` for an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text, the
 brief, the file set, this checkout's path, the interface contract, the
 acceptance criterion, the global constraints section, the record root, the
@@ -99,7 +100,7 @@ Inject `review-output.md` too, at its absolute path:
 
 ## Fix rounds
 
-A round runs only on `Verdict: fix round needed`. Each round is a fresh
+Run a round only on `Verdict: fix round needed`. Each round is a fresh
 subagent, so its prompt describes what is already committed — `git log
 --oneline` plus `git diff --stat` — and which findings to fix. Rounds 4 and 5
 promote a band; `band-rubric.md` says what a `deep` package does instead.

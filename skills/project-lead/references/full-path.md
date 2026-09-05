@@ -30,8 +30,8 @@ run stays unnamed, because you must read its result (design §3, §15.20b).
 
 ## Check the launch conditions
 
-Three conditions bear on launch. Any that fails is an escalation — none can be
-fixed mid-run.
+Three checks bear on launch. Escalate on any that fails — none can be fixed
+mid-run.
 
 1. **Agent teams are on.** `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` prints
    `1`. With the flag off, a named agent launches as a plain subagent and every
@@ -44,8 +44,8 @@ fixed mid-run.
    least one line. A checkout with no remote cannot push or open a PR (design
    §15.53).
 
-Checks 1 and 2 belong here, before the split is written, and a failure names
-which one. Do not start the run and discover it later.
+Run checks 1 and 2 here, before you write the split, and state which one
+failed. Do not start the run and discover it later.
 
 **Check 3 already ran, at the preference sweep, before you reached this rule —
 `autonomy-contract.md` says why. Do not run it again here.** Its outcome is
@@ -61,21 +61,21 @@ permission mode, so the README names this as a launch requirement and the
 principal owns it. You may not widen it yourself either, because settings are
 configuration.
 
-What you do instead is fail fast on it. A first dispatch that stalls waiting
-for an approval stops there and escalates as an `environment` block. Do not
+What you do instead is fail fast on it. If your first dispatch stalls waiting
+for an approval, stop there and escalate as an `environment` block. Do not
 spawn the rest of the territories first; one stalled dispatch is a cheap
 lesson, and four is a wasted run.
 
 ## Write the split
 
-`split.md` goes in `record-format.md`'s format: one deliverable, its packages
+Write `split.md` in `record-format.md`'s format: one deliverable, its packages
 grouped into territories. One IC owns one territory and works its packages in
-the listed order. Every field is mirrored into `state.json`'s `packages[]`.
+the listed order. Mirror every field into `state.json`'s `packages[]`.
 
 Two rules shape the full path's split, on top of the format rules
 `record-format.md` carries (design §15.50):
 
-- **The charter's `Favour:` line decides the territories.** `spend`, the
+- **Read the charter's `Favour:` line first.** `spend`, the
   default, is one territory and one IC that carries its context from package to
   package. `time` is one territory per disjoint region of the tree, worked in
   parallel. The same goal ran both ways: parallel finished sooner and cost 15
@@ -99,9 +99,9 @@ cap; escalate at it.
 
 ## Create the branch and the worktrees
 
-This rule switches the checkout, so the checkout's branch is read **before**
-the switch and recorded as `checkout_branch`, as `simple-path.md`'s "Create the
-branch" says. Then branch from the current head:
+This rule switches the checkout, so read its branch **before** you switch and
+record it as `checkout_branch`, as `simple-path.md`'s "Create the branch"
+says. Then branch from the current head:
 `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. The
 `deliverables[]` entry goes in now — `id`, branch, the head sha as `base`,
 `state: pending`, `pr_url: null`, and `checkout_branch`.
@@ -113,18 +113,18 @@ integration is a merge and never a rebase (design §9.3):
 git -C <repo> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
-`<worktree-root>` is `<record-root>/worktrees`, outside the target repo. A
-repo-local root looks tidy and breaks the suite: a test runner that globs
+Put `<worktree-root>` at `<record-root>/worktrees`, outside the target repo.
+A repo-local root looks tidy and breaks the suite: a test runner that globs
 collects every worktree's tests as well as the repo's own, so the run measures
 the wrong tree (design §15.35b). Put the root inside the repo only with a
 reason, and record it.
 
-`worktrees.json` goes in now: the IC's name, the absolute worktree path, its
-branch, this session's id, and `orphaned: false`. Every package's `ic_name` is
-the name of the IC that owns its territory. Nothing else maps a package back to
-the worktree that must verify it.
+Write `worktrees.json` now: the IC's name, the absolute worktree path, its
+branch, this session's id, and `orphaned: false`. Set every package's
+`ic_name` to the name of the IC that owns its territory. Nothing else maps a
+package back to the worktree that must verify it.
 
-An IC is named `ic-<territory-slug>`.
+Name an IC `ic-<territory-slug>`.
 
 ## Spawn the ICs
 
@@ -133,8 +133,8 @@ One **named** teammate per territory, at the band of the package it starts on:
 `.claude/rules/` file, a `SKILL.md`, an agent definition, or reader-facing
 prose such as a README (design §3.1).
 
-The band's model is passed at spawn time, as `band-rubric.md` says. Pass it for
-an IC and never for a critic or a reviewer.
+Pass the band's model at spawn time, as `band-rubric.md` says. Pass it for an
+IC and never for a critic or a reviewer.
 
 A teammate inherits no conversation history, so the spawn prompt carries all
 of: `ic-contract.md`'s full text, the brief, the file set, **the absolute
@@ -149,7 +149,7 @@ the IC's final message its plan or its report, and that message reaches you in
 its idle notification. Transcribe it, and say in the file that you transcribed
 it.
 
-The contract travels as text. A teammate applies no `skills:` key and reads an
+Inject the contract as text. A teammate applies no `skills:` key and reads an
 agent body differently in each display mode (design §15.20d), so a link is not
 dependable and the prompt is.
 
@@ -179,9 +179,9 @@ The IC writes `plans/<id>.md` and waits. Read it, then approve it or send it
 back with what to change. `SendMessage` the IC its go-ahead, and set
 `plan_approved_at`.
 
-A `standard` or `light` package needs two things checked before the go-ahead:
-every file the plan names is in the file set, and the plan changes no
-`produces` signature. A `deep` package's plan is read in full. A plan gate that
+For a `standard` or `light` package, check two things and approve: every file
+the plan names is in the file set, and the plan changes no `produces`
+signature. Read a `deep` package's plan in full. A plan gate that
 reads every plan in full cost a run a round trip per package for no finding
 (design §15.50).
 
@@ -234,9 +234,9 @@ respawn after a crash.
 
 ## Verify before you believe
 
-`reports/<id>.md` is a claim and never evidence. The evidence is `git -C
-<worktree> log <package-base>..HEAD` and `git -C <worktree> diff
-<package-base>..HEAD`.
+Read `reports/<id>.md`, then treat it as a claim and never as evidence. The
+evidence is `git -C <worktree> log <package-base>..HEAD` and `git -C
+<worktree> diff <package-base>..HEAD`.
 
 `<package-base>` is that package's own `base`, not the deliverable's. A
 territory works its packages in sequence in one worktree, so a range from the
@@ -247,7 +247,7 @@ Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
 denies any command that changes directory before it runs git, allow rule or not
 (design §15.23b).
 
-Four things are checked, every time:
+Check four things, every time:
 
 - The diff's file list matches the declared file set. A file outside it is
   scope drift.
@@ -320,9 +320,9 @@ package". A fix nobody re-reviewed is a claim. Leave this rule only on
 
 ## The territory's next package
 
-On `Verdict: accepted`, a territory with another package in `split.md` gets it
-sent to the same IC, and that package returns to "The plan gate". An IC works
-its packages in the listed order. Write the new package's `base` as you send
+On `Verdict: accepted`, if that territory has another package in `split.md`,
+send the IC its next package and return to "The plan gate". An IC works its
+packages in the listed order. Write the new package's `base` as you send
 it — the worktree head as it stands now, which is the accepted package's last
 commit. That is what keeps the next review diff to the next package's own work.
 
@@ -357,7 +357,7 @@ branch-level squash collapses them into one commit and one suite run, which
 loses the per-package attribution the next two paragraphs promise (design
 §15.37b).
 
-**The suite runs after each merge, not after all of them.** A failure is then
+**Run the suite after each merge, not after all of them.** A failure is then
 attributable to one package with no bisect. Read the output yourself. A green
 run only proves the tree it ran on.
 
@@ -372,15 +372,15 @@ One squashed commit per package gives a reviewer a narrative to read, and the
 IC's per-green-step commits stay on its own branch, which is what makes a
 resume safe.
 
-Each package is marked `integrated` as its merge lands and its suite run
-passes.
+Mark each package `integrated` as its merge lands and its suite run passes.
 
 Textual conflicts should be impossible — disjoint file sets leave git nothing
 to conflict on, and you own every shared file. What remains is the semantic
 conflict, and the per-merge suite run is what catches it.
 
-Then the shared files, edited by you. Read the target repo's own instructions
-for which files must change together, and keep the values they require equal.
+Then edit the shared files yourself. Read the target repo's own instructions
+for which files must change together, and keep the values they require
+equal.
 Crew's own two-manifest version rule is crew's, not every repo's — a repo that
 bumps at release wants no bump here at all. Commit them.
 
@@ -417,14 +417,14 @@ branch and one draft PR however many packages it took.
 A deliverable that cannot open a PR ends in `work-complete`. "End the run" owns
 that procedure too, and `record-format.md` owns what the state means.
 
-At either end, the checkout is restored to `checkout_branch`, as
+At either end, restore the checkout to `checkout_branch`, as
 `simple-path.md`'s "End the run" says.
 
 ## Clean up
 
-Each IC worktree goes when the deliverable closes, and its registration is
-pruned from `worktrees.json`. `simple-path.md`'s "End the run" owns the process
-sweep that comes first.
+Remove each IC worktree when the deliverable closes, and prune its
+registration from `worktrees.json`. `simple-path.md`'s "End the run" owns the
+process sweep that comes first.
 
 **Never force a removal.** A refusal means files exist nowhere else. Commit
 them to that IC's branch, or surface them. Remove only worktrees this run
@@ -466,7 +466,7 @@ The deliverable branch reconciles the same way: `git -C <repo> log` shows which
 packages already merged. An `integrated` package is terminal and cannot be
 revised in place — correcting it takes a new package (design §10).
 
-`run_state` moves out of `interrupted` **first**, then `orphaned` clears on
+Move `run_state` out of `interrupted` **first**, then clear `orphaned` on
 each worktree as you reconcile it. In the other order, a session that dies
 mid-reconciliation leaves cleared worktrees behind a run the hook will not
 touch again, because the hook only acts on an `active` or `blocked` run.

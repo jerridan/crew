@@ -799,7 +799,7 @@ created.
 not. They name a symptom, and the cause is unknown. Most of the work is
 diagnosis, and such a run can end correctly with no code change at all.
 
-**Pick the path at `SKILL.md` step 1, from the charter.** The test is what
+**Pick the path at `SKILL.md`'s "Take the goal", from the charter.** The test is what
 the goal names: a change to make, or a symptom whose cause is unknown. "The
 export drops the last row" is a symptom. "Add a `--json` flag" is a change.
 The project lead reads the charter at that step anyway, so this costs no
@@ -940,10 +940,10 @@ principal asked to have answered rather than fixed.
 **A report ending is §5's one exception to a deliverable holding at least one
 package.** It holds none, and it needs no branch either: nothing is edited, so
 `branch`, `base`, `checkout_branch` and `checkout_restored` are all `null`,
-and `SKILL.md` step 14's checkout restore has nothing to put back.
-`record-format.md` carries each of those `null` cases in the field row that
-owns it. The moment a fix package exists the deliverable is a normal one, and
-step 7 creates its branch as usual.
+and the checkout restore in `simple-path.md`'s "End the run" has nothing to
+put back. `record-format.md` carries each of those `null` cases in the field
+row that owns it. The moment a fix package exists the deliverable is a normal
+one, and `simple-path.md`'s "Create the branch" creates its branch as usual.
 
 **A run does not choose the report ending to avoid the work.** It ends there
 only when the diagnosis says there is no change to make in this repo, and
@@ -1231,7 +1231,8 @@ Deliberately different:
    cost-per-package data. Start deliberately low and raise it.
 
    Decided 2026-08-31 (T4): the default is 2,000,000 tokens, set by
-   `SKILL.md` step 1 when the principal names no ceiling. It is a
+   `SKILL.md` step 1 (now "Take the goal", §15.71) when the principal names
+   no ceiling. It is a
    placeholder chosen low on purpose, not a measurement. Raise it from the
    first runs' `spend.by_agent` totals.
 4. **Whether the shared task list earns its launch flag.** It brings dependency
@@ -3417,13 +3418,16 @@ Deliberately different:
     **The full path has the same defect, and takes the same rule.** T17 read
     the worktrees as the reason the full path was safe. They are not: its ICs
     work in worktrees, but `full-path.md` step 3 switches the project lead's
-    own checkout the same way §9.1's simple path does. No run has exercised
-    the full path's restore.
+    own checkout the same way §9.1's simple path does. No run had exercised
+    the full path's restore when this was written; T35's two full-path runs
+    since have, and both recorded `checkout_restored: true` (§15.71).
 
-    **The rule still lives in one file.** Its text is in `SKILL.md` steps 7
-    and 14. `full-path.md` carries two pointers instead of a copy — one at
-    step 3, to record the branch, and one at step 11, to restore it — which is
-    the shape this repo uses wherever one path borrows another's step.
+    **The rule still lives in one file.** Its text is in `simple-path.md`,
+    under the steps then numbered 7 and 14 — now "Create the branch" and "End
+    the run" (§15.71). `full-path.md` carries two pointers instead of a
+    copy — one at step 3, to record the branch, and one at step 11, to restore
+    it — which is the shape this repo uses wherever one path borrows
+    another's rule.
 
 55. **Instruments are designed, not yet dispatched — 2026-09-04, T14.** §6.4
     gives a target repo's own investigation skills or agents a name and a

@@ -11,7 +11,8 @@ critic runs, no worktree is created and nothing merges.
 
 **Every rule below runs, however small the change is.** A one-line edit is one
 package, dispatched to an IC and reviewed like any other. You edit a file in
-the target repo only at "Integrate" (design §9.1, §9.3).
+the target repo at "Integrate" and nowhere else, with one exception: the
+fix-round breaker in "Fix rounds" below (design §9.1, §9.3, §10).
 
 ## Write the split
 

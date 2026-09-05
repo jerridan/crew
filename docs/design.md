@@ -88,8 +88,8 @@ The prohibitions bound cost and blast radius, so they matter more than the
 duties.
 
 - The **project lead** does not read code broadly. It dispatches scouts. It
-  writes no implementation code. Its only edits in the target repo are the
-  shared files at integration (section 9.3).
+  writes no implementation code, except the shared files at integration
+  (section 9.3) and the fix-round breaker at the cap (sections 9.2, 10).
 - An **IC** does not touch files outside its declared set, does not renegotiate
   its own scope, does not push to a remote, and does not spawn a reviewer or
   another implementer. It may spawn read-only lookup subagents only.
@@ -3743,7 +3743,14 @@ Deliberately different:
        route comes first, and T26's A/B is the next thing to measure that
        against.
 
-60. **A bounded edit now writes a split and a package entry — 2026-09-04,
+60. **Superseded by §15.73 — the bounded edit is gone, and with it every rule
+    this item wrote.** T38 removed the shape, so the four files below no
+    longer carry an exception for it, and `agents/deliverable-reviewer.md`
+    no longer carries the rule sub-item (c) moved into it. Read this item as
+    the record of why the bounded edit needed five carriers, which is part of
+    why it went.
+
+    **A bounded edit now writes a split and a package entry — 2026-09-04,
     T33.** `SKILL.md`'s shape table sent §9.1's bounded-edit row to
     `simple-path.md` step 7, then steps 12 to 14. Those steps mark a package
     `integrated` and hand `split.md` to `crew:deliverable-reviewer`, and the
@@ -4820,27 +4827,33 @@ Deliberately different:
     lead that edits code is busy, and busy at the most expensive seat in the
     run.
 
-    The row is gone. A one-line change is one package on the simple path, at
+    The row is gone, and this item supersedes §15.60, which wrote the rules
+    that carried it. A one-line change is one package on the simple path, at
     the band `band-rubric.md` gives it, dispatched to one unnamed IC, with the
-    package review it used to skip. Four files carried the exception and lost
+    package review it used to skip. Five files carried the exception and lost
     it: `SKILL.md`'s shape table, `simple-path.md`'s "Write the split",
     "Create the branch" and "Review the deliverable", `band-rubric.md`'s
-    `light` rule, and `record-format.md`'s package transition and creation
-    text. `investigation-path.md` loses the exemption its `Outcome: fix`
-    ending named, and now says the opposite: a diagnosed fix reads as small
-    work because the diagnosis exists, and size is not a shape.
+    `light` rule, `record-format.md`'s package transition and creation text,
+    and `agents/deliverable-reviewer.md`'s "package with no package review"
+    exception, which §15.60c had moved into that agent.
+    `investigation-path.md` loses the exemption its `Outcome: fix` ending
+    named, and now says the opposite: a diagnosed fix reads as small work
+    because the diagnosis exists, and size is not a shape.
 
-    a. **What the dispatch costs against the edit it replaced.** PLACEHOLDER —
-       the live run for this ticket is not priced yet. Fill in from
+    a. **Open: does the dispatch cost less than the edit it replaced?**
+       PLACEHOLDER — the live run for T38 is not priced, so this question has
+       no answer yet and no figure below is real. Fill it in from
        `scripts/spend.py` on the run's record: total tokens and dollars, the
        IC's share, the package review's share, and the same two figures from
        a bounded-edit run for comparison (§15.68m's bug run is the nearest).
-       The question this answers is whether one `light` IC plus one package
-       review costs less than the project lead reading the file at its own
-       band, not more.
+       The answer decides nothing on its own — the hierarchy rule stands
+       either way — but a dispatch that costs several times the edit is worth
+       knowing about before the lead tier multiplies it.
 
-    b. **One project-lead edit outside integration survives.** The fix-round
-       breaker still says "fix the package yourself" at the five-round cap
-       (`simple-path.md`, `full-path.md`, design §10). That is a different
-       rule with a different trigger. Leave it until a run reaches the cap and
-       shows what the project lead does there.
+    b. **Open: one project-lead edit outside integration survives.** The
+       fix-round breaker still says "fix the package yourself" at the
+       five-round cap (`simple-path.md`, `full-path.md`, §9.2, §10). §3,
+       `SKILL.md` and `simple-path.md` all name it as the exception, so
+       nothing contradicts it. It is a different rule with a different
+       trigger, and it stays until a run reaches the cap and shows what the
+       project lead does there.

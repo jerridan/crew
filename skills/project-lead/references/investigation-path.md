@@ -166,8 +166,8 @@ shape — usually one package on the simple path. Four things carry across:
 
 **Record the shape you picked at "Choose the shape", with its reason.** A
 diagnosed fix reads as small work, because you have already read the code. Size
-is not a shape: the fix is a package, and an IC makes the edit. Never edit the
-target repo yourself here (design §9.1).
+is not a shape: the fix is a package, and an IC makes the edit. Do not make it
+yourself (design §9.1).
 
 ## Ending two: `Outcome: no change`
 

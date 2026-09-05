@@ -1471,14 +1471,21 @@ Read first: design §9.1, §9.3, §15.60, §15.68m; `SKILL.md` "Choose the
 shape"; `simple-path.md`; `band-rubric.md`; `investigation-path.md`
 "Ending one".
 
-Landed 2026-09-05. Design §9.1 lost the row and the sentence, and §3 no longer
-names a bounded edit as the project lead's one exception. `SKILL.md`'s shape
-table is two rows, `simple-path.md` lost all three exceptions,
-`investigation-path.md`'s `Outcome: fix` ending now forbids the edit,
-`band-rubric.md` bands a small package like any other, and `record-format.md`
-gives every package an IC (§15.73). `crew-stats.py` needed no change: it
-counted no bounded-edit field. The cost of the dispatch against the edit it
-replaced lands in §15.73a after the live run is priced.
+Landed 2026-09-05. Design §9.1 lost the row and the sentence, and §3 now names
+integration and the fix-round breaker as the project lead's only edits.
+`SKILL.md`'s shape table is two rows, `simple-path.md` lost all three
+exceptions, `investigation-path.md`'s `Outcome: fix` ending now forbids the
+edit, `band-rubric.md` bands a small package like any other,
+`record-format.md` gives every package an IC, and
+`agents/deliverable-reviewer.md` no longer expects a package with no review
+(§15.73). §15.60 is marked superseded. `crew-stats.py` needed no change: it
+counted no bounded-edit field.
+
+Two of the three "Done when" clauses are open at landing, and §15.73a and
+§15.73b carry them. The live run and its cost land in a follow-up push to the
+same PR. The fix-round breaker still lets the project lead edit at the
+five-round cap; that is design §10's rule, out of this ticket's scope, and
+every file that states the prohibition now names it as the exception.
 
 ## T39 — The lead triages by size: a task gets one IC, a goal gets a project lead
 

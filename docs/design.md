@@ -4871,10 +4871,10 @@ Deliberately different:
 
        **That cost belongs to the seat, not to the exception this item
        removed.** Two spec-critic rounds ran on a one-line change in this run
-       and are charged to the same fable seat. The lever is the project
-       lead's model and the number of turns it takes, which §8 and T37's lead
-       tier own — not whether an IC does the work. Nothing here argues for
-       giving the edit back.
+       and are charged to the same fable seat. The lever is whether a
+       one-line task gets a project-lead session at all, which T39's triage
+       owns, and the seat's model and turn count, which §8 owns — not whether
+       an IC does the work. Nothing here argues for giving the edit back.
 
     b. **One project-lead edit outside integration survives.** The
        fix-round breaker still says "fix the package yourself" at the

@@ -1481,11 +1481,16 @@ edit, `band-rubric.md` bands a small package like any other,
 (§15.73). §15.60 is marked superseded. `crew-stats.py` needed no change: it
 counted no bounded-edit field.
 
-Two of the three "Done when" clauses are open at landing, and §15.73a and
-§15.73b carry them. The live run and its cost land in a follow-up push to the
-same PR. The fix-round breaker still lets the project lead edit at the
-five-round cap; that is design §10's rule, out of this ticket's scope, and
-every file that states the prohibition now names it as the exception.
+All three "Done when" clauses are met. A live run on 2026-09-05 took a
+one-line goal to a draft PR through one `light` IC with a package review, no
+prompt and no escalation, and the project lead's transcript holds no `Edit` or
+`Write` call at all. §15.73a records the run and its cost: the IC and the
+package review together cost under $0.45 of $7.69, and the project lead's own
+seat is 82 percent of the run.
+
+The fix-round breaker still lets the project lead edit at the five-round cap.
+That is design §10's rule, out of this ticket's scope, and every file that
+states the prohibition now names it as the exception (§15.73b).
 
 ## T39 — The lead triages by size: a task gets one IC, a goal gets a project lead
 

@@ -4840,17 +4840,43 @@ Deliberately different:
     named, and now says the opposite: a diagnosed fix reads as small work
     because the diagnosis exists, and size is not a shape.
 
-    a. **Open: does the dispatch cost less than the edit it replaced?**
-       PLACEHOLDER — the live run for T38 is not priced, so this question has
-       no answer yet and no figure below is real. Fill it in from
-       `scripts/spend.py` on the run's record: total tokens and dollars, the
-       IC's share, the package review's share, and the same two figures from
-       a bounded-edit run for comparison (§15.68m's bug run is the nearest).
-       The answer decides nothing on its own — the hierarchy rule stands
-       either way — but a dispatch that costs several times the edit is worth
-       knowing about before the lead tier multiplies it.
+    a. **The dispatch is cheap; the seat that dispatches is not.** A live run
+       on 2026-09-05 took the goal "make `collapseWhitespace` treat a
+       zero-width space (U+200B) as whitespace too, and add one test for it"
+       to a draft PR with no prompt and no escalation, in 20 minutes. Record
+       `collapse-whitespace-zwsp-4115`. It ran exactly as this item requires:
+       one package `zwsp-collapse` at `light`, `ic_name: null`, a plan file
+       and a report file that both exist, a package review at `accepted` with
+       zero criticals, a deliverable review at `accepted`, and a
+       `decisions.md` band entry that cites `band-rubric.md`. The project
+       lead's transcript holds 33 `Bash` calls and 8 `Agent` calls and **zero
+       `Edit` or `Write` calls**; every write went to the record root, and
+       both commits on the PR are the IC's. That is the rule working.
 
-    b. **Open: one project-lead edit outside integration survives.** The
+       `spend.py` priced the run at 6,728,240 tokens and $7.69 list. The
+       dispatch itself is the cheapest part of it: the haiku IC cost $0.20,
+       and the sonnet package reviewer shares $0.24 with the plan reviewer.
+       The project lead's own fable seat is $6.31 — 82 percent of the run.
+
+       **The comparison is not like for like, and it still answers the
+       question.** §15.68m's bug run cost $5.28 across 2,820,189 tokens, but
+       it is an investigation-path run, so its total carries a reproduction,
+       an evidence pass and a council that this run never needed. Compare the
+       seats instead. The dispatch added a haiku IC and a sonnet package
+       review — under $0.45 together — and the fable seat grew from 23
+       messages ($4.32) to 43 ($6.31) on the plan gate, the dispatch, the
+       verify pass and integration. So the review the bounded edit used to
+       skip costs cents, and the turns that arrange the dispatch cost about
+       two dollars at the project lead's own band.
+
+       **That cost belongs to the seat, not to the exception this item
+       removed.** Two spec-critic rounds ran on a one-line change in this run
+       and are charged to the same fable seat. The lever is the project
+       lead's model and the number of turns it takes, which §8 and T37's lead
+       tier own — not whether an IC does the work. Nothing here argues for
+       giving the edit back.
+
+    b. **One project-lead edit outside integration survives.** The
        fix-round breaker still says "fix the package yourself" at the
        five-round cap (`simple-path.md`, `full-path.md`, §9.2, §10). §3,
        `SKILL.md` and `simple-path.md` all name it as the exception, so

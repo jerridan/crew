@@ -4421,3 +4421,85 @@ Deliberately different:
        unreachable, which collapses the three states §15.64d says the count
        needs into two. T34 owns the number; this run is the first entry to
        measure it against, and one entry is not a calibration.
+
+69. **An A/B of the project lead's own form, numbered steps against goal and
+    constraints, on Fable 5.1 — 2026-09-04, T26.** Fable's migration guidance
+    says prompts written for prior models are often too prescriptive and
+    reduce output quality, and it asks for the goal and the constraints
+    instead of the enumerated steps. `SKILL.md` and `simple-path.md` are a
+    fourteen-step numbered loop, so T26 wrote a second copy of them in the
+    goal form under a temporary skill, `skills/project-lead-goal/`, and ran
+    one goal through each. Same goal text, same fixture
+    (`jerridan/crew-fixture-string-kit`), `--model fable --effort high`,
+    auto mode, one fresh clone and one record root per arm, session-memory
+    capture off, both arms started before T12 merged. Records:
+    `~/.claude/crew-t26-numbered/add-titlecase-wordcount-1a98/` and
+    `~/.claude/crew-t26-goal/add-titlecase-wordcount-e5f6/`.
+
+    | | Arm A, numbered | Arm B, goal form |
+    |---|---|---|
+    | Draft PR, on the fixture repo | #11 | #12 |
+    | Project lead turns | 86 | 73 |
+    | Project lead tool calls | 41 | 36 |
+    | Project lead spend (the `fable` row) | $5.71 | $4.66 |
+    | Arm total, list price | $6.61 | $6.31 |
+    | Subagents dispatched | 6 | 7 |
+    | Sonnet and opus spend | $0.91 | $1.64 |
+    | Wall clock | 12m 50s | 17m 06s |
+    | Spec critic rounds | 1, `ready to split` | 1, `ready to split` |
+    | Fix rounds | 0 | 0 |
+    | Escalations | 0 | 0 |
+    | Decisions | 5 | 8 |
+    | Independent check | 16 tests pass, both helpers correct | 16 tests pass, both helpers correct |
+
+    Every dollar row comes rounded from `spend.py`, and each arm total is the
+    unrounded sum, so the two seat rows add to a cent away from it.
+
+    **The decision: the numbered form stays, and the temporary skill is
+    deleted.** Not because the goal form lost. On the measure that decides a
+    run — does it reach an accepted draft PR without a fix round — the two
+    arms are indistinguishable, and the two diffs are near copies of each
+    other. The one number that separates them is the project lead's own seat,
+    and it does not survive being followed to the total: the goal form spent
+    $1.05 less in the `fable` seat and $0.73 more on its subagents, for a
+    total 4.5% apart on a run whose two arms differ by 4 minutes of wall
+    clock. That is inside one run's noise. Adopting the goal form is not
+    free: `record-format.md`, `full-path.md`, `investigation-path.md`,
+    `autonomy-contract.md` and `writing-standard.md` cite these two files by
+    step number in more than twenty places, `docs/tickets.md` in fifteen
+    more, and `full-path.md` would need its own A/B behind it.
+    `investigation-path.md` is the one to watch: T12 added it after this A/B
+    was written, it cites `simple-path.md` steps 6, 7, 10, 13 and 14 and
+    `SKILL.md` steps 1, 2, 3 and 5, and it is the path file an investigation
+    run reads at runtime. A 4.5% figure from one goal does not buy that.
+
+    **The confound the runs could not remove.** The variant had to say where
+    the shared references and scripts live, and had to map every cited step
+    number to the rule that now owns it, because both forms were loaded at
+    once. That is about 350 words the winning form would never carry: gross,
+    the variant is 22% longer than the numbered form; net of the scaffolding,
+    about 5%. A form-versus-form result on this goal would have been reading
+    that difference, not the framing.
+
+    **What each arm did that the other did not.** The goal-form lead moved
+    more of the work down — 7 subagents against 6, and 99 sonnet messages
+    against 54 — which is the behaviour the Fable guidance asks for, and it
+    is where its own seat's saving went. It also caught a real defect after
+    the deliverable review: an acceptance clause reading "`npm test` output
+    names it" that Node 24's default reporter can never fail, which it
+    replaced with a per-file exit code and a test count. Against that it
+    wrote `ic-prompt.md` into the record, which `record-format.md`'s
+    directory tree does not define, and its `titleCase` carries an
+    `input.length === 0` early return that the `replace` below it already
+    handles — the unrequested-extra behaviour the guidance warns about at
+    high effort. The numbered arm produced neither the defect catch nor the
+    two deviations.
+
+    **What would decide the question.** Not another simple-path goal: this
+    one was too easy to separate the arms, the same way §15.50's goal 1 was
+    too easy to separate Opus from Fable. It needs a goal where the project
+    lead's judgment is the bottleneck — the full path, several packages,
+    steering — and it needs the loser deletable, so the winning form carries
+    no scaffolding. `full-path.md`'s own A/B is where that fits, and the step
+    numbers should be retired in the same change rather than mapped. T35
+    carries both.

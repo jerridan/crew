@@ -892,7 +892,7 @@ Read first: design §8, §15.50, §15.51; `record-format.md`; `scripts/spend.py`
 
 ## T26 — A/B a goal-and-constraints form of `SKILL.md` on Fable
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §8, §15.50)
 
@@ -928,6 +928,16 @@ the entry says why.
 Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
+
+Done 2026-09-04: the numbered form stays, and the temporary skill
+`skills/project-lead-goal/` is deleted, so nothing in `skills/` changed. Both
+arms ran the same goal on the fixture on Fable 5.1 at high effort, in
+parallel from separate clones, and both reached an accepted draft PR with one
+spec-critic round, zero fix rounds and zero escalations. The goal form spent
+$1.05 less in the project lead's own seat and $0.73 more on its subagents,
+for arm totals of $6.31 against $6.61. Design §15.69 holds the table, the
+length confound the two loaded forms could not remove, and what would decide
+the question: the full path, not another simple-path goal.
 
 ## T27 — Move the simple-path loop out of `SKILL.md`
 
@@ -1240,3 +1250,41 @@ kept whole, changed in part, or overturned (§15.65). Part 2 does not: the
 record root holds zero adversary entries the script can count today, ten
 short of the threshold, so no decision follows from the numbers yet. Status
 stays open until a run adds enough entries to count.
+
+## T35 — A/B the goal-and-constraints form on the full path, and retire the step numbers
+
+Status: open
+Depends on: nothing
+Stage: any (design §15.69)
+
+T26 ran the goal-and-constraints form against the numbered form on one
+simple-path goal. The two arms could not be separated: both reached an
+accepted draft PR with one spec-critic round, zero fix rounds and zero
+escalations, and the arm totals were 4.5% apart. The numbered form stays
+(§15.69). Two things kept that run from answering the question.
+
+The goal was too easy. The project lead's judgment was never the bottleneck,
+so the form it reads could not show. §15.50 hit the same wall with its first
+goal, and only the full-path goal separated Opus from Fable.
+
+The variant had to carry scaffolding. Both forms were loaded at once, so the
+goal form spent about 350 words saying where the shared references live and
+mapping every cited step number to the rule that owns it. Gross, it was 22%
+longer than the form it was measured against; net, about 5%. A result that
+turns on length is not a result about form.
+
+So: run the same A/B on a full-path goal, with the losing form deletable.
+Retire the step numbers in the same change instead of mapping them.
+`record-format.md`, `full-path.md`, `investigation-path.md`,
+`autonomy-contract.md` and `writing-standard.md` cite `SKILL.md` and
+`simple-path.md` by step number in more than twenty places, `docs/tickets.md`
+in fifteen more, and `investigation-path.md` is the one an investigation run
+reads at runtime. Each citation becomes the name of the rule it means.
+
+Done when: design §15 records the full-path comparison and the decision, and
+no file cites a project-lead step by number.
+
+Read first: design §8, §15.50, §15.69; `writing-standard.md`; `SKILL.md`;
+`simple-path.md`; `full-path.md`; `investigation-path.md`; the Fable 5.1
+prompting guidance the `claude-api` skill carries under "Long-running agent
+recommendations".

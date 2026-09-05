@@ -929,6 +929,15 @@ Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
 
+2026-09-04: the variant is written and the two runs are pending. The
+temporary skill is `skills/project-lead-goal/`: its own `SKILL.md` and its
+own `references/simple-path.md`, with every other reference and every script
+read from the sibling `skills/project-lead/`. Each file carries a table that
+maps the step numbers other files cite to the rule that owns it, so no
+pointer breaks while both forms load. **This skill is temporary and never
+lands in `main`.** The ticket closes when design §15.69 records the
+comparison and the loser is deleted.
+
 ## T27 — Move the simple-path loop out of `SKILL.md`
 
 Status: done

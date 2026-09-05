@@ -51,9 +51,10 @@ acceptance criterion, the global constraints section, the record root, the
 package id, and **that it is a subagent** — `ic-contract.md`'s plan gate
 branches on it.
 
-**The plan gate is two dispatches here.** The first ends at `plans/<id>.md` — a
-subagent has no channel to wait on. Read it, approve it or send it back, set
-`plan_approved_at`, then dispatch again to implement, naming the plan's path.
+**The plan gate is two dispatches here.** The first ends at
+`plans/<id>.md` — a subagent has no channel to wait on. Read it, approve it or
+send it back, set `plan_approved_at`, then dispatch again to implement, naming
+the plan's path.
 
 **Expect the contents instead of the file.** A dispatch shape that denies the
 IC every record write (§15.26b, §15.31b) puts the plan or report in its final
@@ -150,9 +151,9 @@ Push the branch. Fill the repo's pull request template if it has one, and put
 item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable `draft-pr-opened`
-and `run_state: complete`. A human merges it. Then run `scripts/spend.py --write`
-(`autonomy-contract.md`), and stop every process the run left listening —
-`lsof -iTCP -sTCP:LISTEN` names them (§15.50).
+and `run_state: complete`. A human merges it. Then run
+`scripts/spend.py --write` (`autonomy-contract.md`), and stop every process
+the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
 When the push or `gh pr create` cannot run, check `escalations` first for the
 entry with trigger text `launch check 3 (trigger 7): no remote` — the
@@ -160,8 +161,8 @@ preference sweep writes it only when check 3 of `full-path.md`'s "Check the
 launch conditions" failed, before the split (`autonomy-contract.md`). Found:
 act on the answer, and do not ask again. "Keep the work local" means skip
 straight to `work-complete` below. "Add a remote" means one should already
-exist — push. If it still fails, the promised remote never arrived: that is new
-information, so escalate it now, plainly, the same way as below.
+exist — push. If it still fails, the promised remote never arrived: that is
+new information, so escalate it now, plainly, the same way as below.
 
 No such entry means check 3 passed at the sweep — this checkout had a remote
 then. A push or `gh pr create` failure here is a different problem: expired

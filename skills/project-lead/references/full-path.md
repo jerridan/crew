@@ -165,15 +165,15 @@ lockstep: service whichever IC reports next, and let the others keep working.
 Each territory walks its own packages at its own pace.
 
 Two rules keep that honest. Every IC's state lives in the record, not in your
-head — `plan_approved_at`, `state` and `fix_rounds_used` per package — so read
-the record, not your memory of who was where. And "Integrate" merges one
+head — `plan_approved_at`, `state` and `fix_rounds_used` per package — so
+read the record, not your memory of who was where. And "Integrate" merges one
 package at a time regardless of which territory produced it, because a suite
 run only attributes a failure when a single package moved.
 
 ## The plan gate
 
-A teammate has a message channel, so the gate is one dispatch and a reply — not
-the simple path's two dispatches.
+A teammate has a message channel, so the gate is one dispatch and a reply —
+not the simple path's two dispatches.
 
 The IC writes `plans/<id>.md` and waits. Read it, then approve it or send it
 back with what to change. `SendMessage` the IC its go-ahead, and set
@@ -191,8 +191,8 @@ is an expected pause and not a fault (design §15.8).
 ## The idle nudge
 
 An IC's idle notification is what tells you it stopped. Read the record before
-you answer one, and sort the idle into one of four kinds. No hook does this — a
-message does (design §13.1, §15.29).
+you answer one, and sort the idle into one of four kinds. No hook does
+this — a message does (design §13.1, §15.29).
 
 | What the record holds | The idle means | What you do |
 |---|---|---|
@@ -304,14 +304,15 @@ A round runs only on `Verdict: fix round needed`. Five is the cap.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band up**.
   A fresh IC holds no context, so its prompt describes what is already
   committed — `git -C <worktree> log --oneline` plus `git -C <worktree> diff
-  --stat` — and which findings it must fix. A `deep` package cannot promote, so
-  a `deep` package reaching round 4 escalates instead: respawn it at `deep`
+  --stat` — and which findings it must fix. A `deep` package cannot promote,
+  so a `deep` package reaching round 4 escalates instead: respawn it at `deep`
   only if the principal says to (`band-rubric.md`).
 - **At the cap**, fix the package yourself, or park it as `abandoned` with your
   reasoning recorded. At the top band, escalate instead.
 
 **Increment `fix_rounds_used` and write `state.json` first**, before the round
-runs — `record-format.md` says why the counter moves before the files it names.
+runs — `record-format.md` says why the counter moves before the files it
+names.
 
 Then the round goes back through "Verify before you believe" and "Review the
 package". A fix nobody re-reviewed is a claim. Leave this rule only on

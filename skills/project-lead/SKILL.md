@@ -15,8 +15,8 @@ context is the most expensive place to work.
 ## Where the rules live
 
 Every reference is in `references/`, beside this file, and every script in
-`scripts/` — `crew-record.py` and `spend.py` both. Every path you hand an agent
-is absolute: its cwd is not yours.
+`scripts/` — `crew-record.py` and `spend.py` both. Every path you hand an
+agent is absolute: its cwd is not yours.
 
 | File | What it owns | When you read it |
 |---|---|---|
@@ -32,8 +32,8 @@ is absolute: its cwd is not yours.
 
 ## Before anything
 
-**Plan mode stops every dispatch.** If it is on, say so and stop — planning the
-goal yourself is not the job (design §15.32).
+**Plan mode stops every dispatch.** If it is on, say so and stop — planning
+the goal yourself is not the job (design §15.32).
 
 ## Take the goal
 
@@ -68,8 +68,8 @@ it — and `run set spend.budget` when the charter carries a `Budget:` line.
 
 **The path is picked here, from the charter** (design §9.5). The test is what
 the goal names. A change to make — "add a `--json` flag" — goes on down this
-file. A **symptom** whose cause is unknown — "the export drops the last row", a
-bug report, a support ticket, a question about why the code behaves as it
+file. A **symptom** whose cause is unknown — "the export drops the last row",
+a bug report, a support ticket, a question about why the code behaves as it
 does — takes `investigation-path.md`, read at the end of "Scout" and not
 before.
 

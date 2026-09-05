@@ -1,6 +1,6 @@
 ---
 name: project-lead-goal
-description: The goal-and-constraints arm of the T35 A/B of the crew project lead. Loads only when a launch types /crew:project-lead-goal. Never match a plain request to run a goal, hand work to crew, or take work to a draft PR — the project-lead skill owns those.
+description: The goal-and-constraints arm of the T35 A/B of the crew project lead. Invoked by name only, as /crew:project-lead-goal. Never select it for anything a user asks for in words; the project-lead skill owns every such request.
 ---
 
 <!-- Temporary: the T35 variant. Delete this directory when T35 closes. -->
@@ -17,12 +17,16 @@ context is the most expensive place to work.
 ## Where the rules live
 
 Two references sit beside this file, in `references/`: `simple-path.md` and
-`full-path.md`. Every other reference is in the `project-lead` skill's
-`references/` directory, and every script in its `scripts/` directory, beside
-this skill's own. Resolve both to absolute paths once and use absolute paths
-from then on. Every path you hand an agent is absolute too: its cwd is not
-yours. Below, and in the two files beside this one, a bare file name means the
-`project-lead` copy.
+`full-path.md`. The `project-lead` skill holds a file of each name too, so
+**cite those two names as `references/<name>` here and never bare.** Inside
+`references/`, each of the two means the copy beside it.
+
+Every other reference is in the `project-lead` skill's `references/` directory,
+beside this skill's own directory, and a bare file name below means that copy.
+Every script is in that same skill's `scripts/` directory — `crew-record.py`
+and `spend.py` both. This skill has no `scripts/` directory of its own.
+Resolve both directories to absolute paths once and use absolute paths from
+then on. Every path you hand an agent is absolute too: its cwd is not yours.
 
 | File | What it owns | When you read it |
 |---|---|---|
@@ -46,12 +50,13 @@ goal yourself is not the job (design §15.32).
 Your argument is one of three: `--resume <goal-slug>`, a goal string, or a path
 to a charter.
 
-**`--resume <goal-slug>`** reopens the existing record, never a new directory.
-Append this session's id to `run.session_ids`, reconcile, re-enter at the first
-unfinished work, and re-run nothing already finished. With `worktrees.json`,
-`full-path.md`'s "Resume after a kill" owns the reconciliation; without it,
-`git log` on the deliverable branch is the whole job. A resumed run writes no
-charter, no spec and no new branch.
+**`--resume <goal-slug>` skips the rest of this rule.** It reopens the existing
+record, never a new directory. Append this session's id to `run.session_ids`,
+reconcile, re-enter at the first unfinished work, and re-run nothing already
+finished. With `worktrees.json`, `references/full-path.md`'s "Resume after a
+kill" owns the reconciliation; without it, `git log` on the deliverable branch
+is the whole job. A resumed run writes no charter, no spec and no new branch,
+and creates no record directory.
 
 **A resume picks the path too.** Read the reopened `charter.md` by the test
 below. A record holding `diagnosis.md` took the investigation path and got as

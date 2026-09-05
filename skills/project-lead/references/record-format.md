@@ -598,7 +598,8 @@ It marks a worktree only when that worktree's own run is being interrupted —
 the run's `run_state` was `active` or `blocked` and its `session_ids` hold the
 ending session's id — and then only the worktrees carrying that same id. A run
 already `complete` is left alone whatever its worktrees say, because a
-finished run's leftovers are work for `full-path.md`'s "Clean up", not an orphan. `--resume` clears it once a worktree is reconciled. It is a
+finished run's leftovers are work for `full-path.md`'s "Clean up", not an
+orphan. `--resume` clears it once a worktree is reconciled. It is a
 hint, not evidence: the hook fails open, so recovery still decides from git
 and from a recorded `integrated`, never from this field alone.
 

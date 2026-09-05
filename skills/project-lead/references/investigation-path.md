@@ -73,8 +73,9 @@ to leave behind. "Gather more data" is the escalation, not a hypothesis.
 
 **Then ask where the value goes wrong.** `SKILL.md`'s "Scout" asked what the
 repo already does; this phase asks why it does the wrong thing. Dispatch
-`Explore` subagents for a lookup, and `crew:researcher` for a question that
-needs several hops and a synthesis — this path is its only caller (design §3).
+`Explore` subagents for a lookup, and `crew:researcher` for a question
+needing several hops and a synthesis — this path is its only caller
+(design §3).
 `band-rubric.md` bands a researcher dispatch.
 
 **Evidence is a file, not a memory.** Every finding lands in

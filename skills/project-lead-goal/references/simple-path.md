@@ -5,8 +5,9 @@
 This file owns the run for one deliverable with one package (design §9.1), from
 the point where `SKILL.md` has the charter, the record, the spec and the shape.
 A bare file name below means a reference in the `project-lead` skill's
-`references/` directory, as `SKILL.md` says; `full-path.md` is the copy beside
-this one.
+`references/` directory, as `SKILL.md` says, and `scripts/` means that same
+skill's script directory. The one exception is `full-path.md`, which means the
+copy beside this file.
 
 The full path is `full-path.md`. Nothing here applies to it, except the three
 rules it borrows: "Create the branch", "Integrate" and "End the run".
@@ -155,7 +156,7 @@ Push the branch. Fill the repo's pull request template if it has one, and put
 item. Never hard wrap what you send to GitHub (`writing-standard.md`).
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable `draft-pr-opened`
-and `run_state: complete`. A human merges it. Then run `spend.py --write`
+and `run_state: complete`. A human merges it. Then run `scripts/spend.py --write`
 (`autonomy-contract.md`), and stop every process the run left listening —
 `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 

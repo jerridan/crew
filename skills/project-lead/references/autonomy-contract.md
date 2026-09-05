@@ -201,7 +201,8 @@ them.
 - **An advocate may concede.** A root cause has one true answer, so a case for
   a refuted hypothesis gives you nothing. An advocate that finds its assigned
   hypothesis contradicted reports that with the contradicting citation, and
-  rule 4 above says what a concession leaves you to rebut.
+  item 4 of "The default council is one adversary" says what a concession
+  leaves you to rebut.
 - **The winner is a claim until a change proves it.** On the hypothesis
   council, your adjudication picks the hypothesis to test first, and naming a
   winner does not confirm it. Test it minimally. A failed test returns to

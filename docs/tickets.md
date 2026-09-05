@@ -936,8 +936,9 @@ Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
 
-Done 2026-09-04: the numbered form stays, and the temporary skill
-`skills/project-lead-goal/` is deleted, so nothing in `skills/` changed. Both
+Done 2026-09-04: the numbered form stays, and that PR deleted its temporary
+skill `skills/project-lead-goal/` before it merged, so nothing in `skills/`
+changed. T35 recreates that directory for its own A/B and deletes it again. Both
 arms ran the same goal on the fixture on Fable 5.1 at high effort, in
 parallel from separate clones, and both reached an accepted draft PR with one
 spec-critic round, zero fix rounds and zero escalations. The goal form spent
@@ -1295,8 +1296,16 @@ Retire the step numbers in the same change instead of mapping them.
 in fifteen more, and `investigation-path.md` is the one an investigation run
 reads at runtime. Each citation becomes the name of the rule it means.
 
-Done when: design §15 records the full-path comparison and the decision, and
-no file cites a project-lead step by number.
+While this ticket is open, `skills/project-lead-goal/` holds the variant arm:
+`SKILL.md` and its own `simple-path.md` and `full-path.md`, with every other
+reference read from the `project-lead` skill. **That directory is deleted
+before this ticket's PR merges**, whichever arm wins. It is the one deliberate
+exception to `CLAUDE.md`'s rule that a rule has one owner, and the exception
+ends with the ticket.
+
+Done when: design §15 records the full-path comparison and the decision, no
+file cites a project-lead step by number, and `skills/project-lead-goal/` is
+gone again.
 
 Read first: design §8, §15.50, §15.69; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; `investigation-path.md`; the Fable 5.1

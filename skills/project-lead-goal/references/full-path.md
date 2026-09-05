@@ -5,8 +5,9 @@
 This file owns the run for one deliverable with more than one package (design
 §9.2), from the point where `SKILL.md` has the charter, the record, the spec
 and the shape. A bare file name below means a reference in the `project-lead`
-skill's `references/` directory, as `SKILL.md` says; `simple-path.md` is the
-copy beside this one.
+skill's `references/` directory, as `SKILL.md` says, and `scripts/` means that
+same skill's script directory. The one exception is `simple-path.md`, which
+means the copy beside this file.
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this file
 borrows three of its rules: "Create the branch", "Integrate" and "End the run",

@@ -155,10 +155,10 @@ When the push or `gh pr create` cannot run, check `escalations` first for the
 entry with trigger text `launch check 3 (trigger 7): no remote` — the
 preference sweep writes it only when check 3 of `full-path.md`'s "Check the
 launch conditions" failed, before the split (`autonomy-contract.md`). Found:
-act on the answer, and do not ask again. "Keep the work local" means skip straight to `work-complete`
-below. "Add a remote" means one should already exist — push. If it still
-fails, the promised remote never arrived: that is new information, so
-escalate it now, plainly, the same way as below.
+act on the answer, and do not ask again. "Keep the work local" means skip
+straight to `work-complete` below. "Add a remote" means one should already
+exist — push. If it still fails, the promised remote never arrived: that is
+new information, so escalate it now, plainly, the same way as below.
 
 No such entry means check 3 passed at the sweep — this checkout had a remote
 then. A push or `gh pr create` failure here is a different problem: expired

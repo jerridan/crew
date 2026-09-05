@@ -95,8 +95,8 @@ to: `reviews/<deliverable-id>-split-critic-r<n>.md`, `<n>` being one more
 than the highest already on disk under that name.
 
 Adjudicate as `SKILL.md`'s "Have the spec reviewed" does. A failed invariant
-is not a style note — fix the split and dispatch again. Three re-splits is the cap;
-escalate at it.
+is not a style note — fix the split and dispatch again. Three re-splits is
+the cap; escalate at it.
 
 ## 3. Create the branch and the worktrees
 
@@ -210,8 +210,8 @@ on disk would make a round-2 IC that wrote nothing look finished, and the
 project lead would verify a range whose HEAD never moved. So from the first fix
 round on, the report counts only when it carries a `## Fix round <n>` heading
 for the round now running ("Fix rounds" tells the IC to append one). A
-re-planned IC is the same case: set `plan_approved_at` back to `null` when you send a plan
-back, and its idle reads as the plan gate again.
+re-planned IC is the same case: set `plan_approved_at` back to `null` when
+you send a plan back, and its idle reads as the plan gate again.
 
 An idle notification carries the IC's final message. When that message is
 the report itself — `ic-contract.md` makes it the report when the record
@@ -227,8 +227,8 @@ resumed session a nudge already went out.
 
 Failing the package is what the second empty idle earns. Verify the worktree
 as "Verify before you believe" says, commit any uncommitted work yourself,
-and treat the package as `BLOCKED` with cause `capability`. `band-rubric.md`'s promotion rules take it
-from there.
+and treat the package as `BLOCKED` with cause `capability`.
+`band-rubric.md`'s promotion rules take it from there.
 
 `nudges_used` counts one dispatch, not the package's life. Reset it to 0
 whenever you dispatch that package again — a fix round, a next package, or a
@@ -325,8 +325,9 @@ package". A fix nobody re-reviewed is a claim. Leave this rule only on
 
 On `Verdict: accepted`, if that territory has another package in `split.md`,
 send the IC its next package and return to "The plan gate". An IC works its
-packages in the listed order. Write the new package's `base` as you send it — the
-worktree head as it stands now, which is the accepted package's last commit.
+packages in the listed order. Write the new package's `base` as you send
+it — the worktree head as it stands now, which is the accepted package's
+last commit.
 That is what keeps the next review diff to the next package's own work.
 
 **Respawn instead of sending** when `run.compactions` names the IC in

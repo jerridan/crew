@@ -89,6 +89,14 @@ have to ask you: the budget, the constraints the principal stated, and the
 preferences `decisions.md` already holds. Every line you write there is an
 escalation you do not have to answer later.
 
+**The brief's budget figure is a ceiling, not the charter's `Budget:` line.**
+A goal-sized run spends most of its money on the project lead's own seat, and
+a budget set at the ceiling fires trigger 5 near the end and turns the last
+mile into two interruptions (design §15.50, §15.74k). Set the charter figure
+below the ceiling with room under it, and when the run does hit it, read
+`spend.transcript` for the number — never estimate what a run you are not in
+has left to spend.
+
 ## One project-lead session per goal
 
 `session-launch.md` owns the mechanism — the launch rules, the address, the

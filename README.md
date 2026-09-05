@@ -98,7 +98,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
 | `crew:council-advocate`, and councils | built, convened in a run |
-| `/crew:lead`, a portfolio of several goals | built, no live run yet |
+| `/crew:lead`, a portfolio of goals | built, and driven end to end — one goal, and a lead killed mid-portfolio |
 | Hooks | `SessionEnd` and `PreCompact` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports
@@ -140,7 +140,7 @@ claude --model fable --effort high
 
 The project lead, the ICs and the scouts all take your session's effort, so set it before the run starts. Why Fable: design §8 and §15.50.
 
-A lead session takes the same two flags, and it starts each project-lead session itself. Run it inside tmux: `/crew:lead` opens one tmux window per goal.
+A lead session takes the same two flags, and it starts each project-lead session itself. Run it inside tmux: `/crew:lead` opens one tmux window per goal. Start it from a directory you have opened in Claude Code before, and answer the folder-trust dialog if one appears — a lead cannot restart itself past that dialog (design §15.74j).
 
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's

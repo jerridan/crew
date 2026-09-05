@@ -34,7 +34,7 @@ behalf so you can audit them at review time.
 - **The lead tier**, in this repo and this plugin, as the stage after the
   project lead (§15.70). It holds a portfolio of goals, spawns one
   project-lead session per goal, and answers their escalations. `/crew:lead`
-  builds it (§15.74); no live run has exercised it yet.
+  builds it, and one goal has run through it end to end (§15.74).
 
 ### Out of scope
 
@@ -1461,6 +1461,11 @@ Deliberately different:
     where it means the tier above. `docs/implementation-plan.md`,
     `docs/stage-2-run/` and `docs/pr-body.md` keep the old wording — they are
     the frozen record of a run that happened under it.
+
+    **The reservation is spent.** §15.70 put the tier in this plugin and T37
+    built it as `/crew:lead` (§15.74). The naming rule below it does not
+    change: `lead` means the top tier and nothing else, and the tier under it
+    is written "project lead" in full.
 20. **The agent-teams docs contradict five rows of §12, and settle two probes.**
     Read against `code.claude.com/docs/en/agent-teams` and `.../sub-agents`
     (fetched 2026-08-29, docs current to ~v2.1.234). §12's rows were probed
@@ -4949,8 +4954,77 @@ Deliberately different:
        `skills/lead/SKILL.md`: answer from the charter and the record, and
        batch the rest into one message.
 
-    **Findings from the live run: pending.** The run is a lead session that
-    takes one goal from a brief to a draft PR through a project-lead session
-    with no human turn except the batch, then is killed mid-portfolio and
-    started again. Nothing below this line is written until it has run. T37's
-    "Done when" clauses both wait on it.
+    **The live run, 2026-09-05: both clauses met.** One brief reached a draft
+    PR through the tier, and a lead killed mid-portfolio started again from
+    the record. Portfolio `~/.claude/crew-t37/lead-2026-09-05-2a21/`, one item
+    `truncate-fa17`, record `runs/truncate-fa17/add-truncate-47ad/`,
+    `run_state: complete`, $13.75, fixture draft PR
+    `jerridan/crew-fixture-string-kit#17` with one package at `standard`, zero
+    fix rounds and a package review with no findings. Leads `0b2b18d6` (L1)
+    and `0c4225b2` (L2), project lead `crew-pl-truncate-fa17`.
+
+    **Four human turns**: the brief, the batch answer, a bare `/crew:lead`
+    after the kill, and one word answering a budget escalation. The tier asked
+    for three of them and typed nothing else into either lead. About three
+    hours of the wall clock was the orchestrator answering late; the tier's
+    own turns were 2 min, 35 s, 45 s, 23 s, 13 s and 19 s, and it sat idle and
+    correct in between.
+
+    g. **The first turn is the whole charter step, and it held.** L1 globbed
+       an empty root, created the portfolio, wrote a charter with a
+       three-part criterion and `Budget: 10` from a one-line brief, checked
+       the trust key, launched the session, found it on the **first**
+       `ListAgents` call with no `sleep`, sent the hand-off message with
+       nothing in it about escalating, and ended its turn — two minutes,
+       nothing asked. §15.72a's registration race did not appear here, so the
+       `sleep 15` fallback stays as a fallback and not a rule.
+
+    h. **The ladder carried a question up and an answer down, twice.** The
+       preference sweep sent three questions; L1 wrote all three into
+       `lead.escalations`, blocked the item, and asked the principal one
+       message with three lettered questions, each with a recommendation and
+       a list of what it had already settled from the repo. It answered none
+       of the three itself and said why — the charter covered none of them —
+       which is the correct reading of "answer from the charter and the
+       record" and not a failure of it. The budget escalation later climbed
+       the same ladder from a session that had never seen the sweep.
+
+    i. **The restart asked nothing.** L2's first turn read the portfolio, the
+       portfolio's `decisions.md`, the item's `state.json` and its timestamps
+       against the clock, saw every escalation answered and the record moving
+       two minutes earlier, appended its session id, set `lead.state` back to
+       `active`, rewrote `expect`, and ended — 45 seconds, no question, no
+       re-send. `SessionEnd` had marked the portfolio `interrupted` within
+       four seconds of the kill. Neither lead compacted, so `PreCompact`'s
+       half of the ledger is still unexercised.
+
+    j. **§15.22c's fourth rule applies to the lead's own launch too.** The
+       trust dialog for the lead's own working directory — `~` here — comes
+       back on **every** launch from it, and the first restart attempt typed
+       `/crew:lead` into that dialog and killed the window. The lead's check
+       covers the repo it launches a project lead into, not the directory it
+       is itself started in. That one is the principal's, and it is the
+       cheapest place a no-human-turn restart can still stop. The README now
+       says to start a lead from a directory already opened once.
+
+    k. **A budget under about $15 on a goal-sized run is a question
+       generator.** `Budget: 10` fired twice on a $13.75 run, and the fable
+       seat alone was $12.29 of it — §15.50's finding that the project lead's
+       own session dominates a run, at the tier above. Worse, L2's estimate
+       of the spend still to come was wrong by a factor of ten: it asked for
+       a $3 ceiling and the run finished $3.75 over. A lead cannot price the
+       tail of a run it is not in. Either it sets a charter budget from the
+       record's own history rather than from the brief's figure, or the
+       brief's figure is a ceiling it maps to a charter budget with headroom.
+       `skills/lead/SKILL.md` takes the second: the brief's figure is a
+       ceiling, the charter's `Budget:` sits under it, and the lead reads
+       `spend.transcript` instead of estimating. Unexercised — the next live
+       run is where a headroom figure gets tested.
+
+    l. **Neither lead touched the work.** No `Read`, no `Edit`, no `Write`, no
+       command in the fixture checkout, no pane read and no transcript read,
+       across both sessions — 26 `Bash` calls, 2 `ListAgents` and 3
+       `SendMessage` between them. Every message the project lead sent reached
+       an idle lead as a new turn; none was lost and none needed a nudge, so
+       mid-turn delivery (§15.72i) is **still** untested and the tier has not
+       needed it.

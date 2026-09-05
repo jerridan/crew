@@ -1460,11 +1460,19 @@ README's status, roles and model tables, and design §1 and §15.22 all say the
 tier is built. §15.74 records the six design calls, the trust-dialog fix
 §15.72a left open among them.
 
-Neither "Done when" clause is met yet. Both wait on the live run the
-orchestrator drives: one goal from a brief to a draft PR with no human turn
-except the batch, then a lead killed mid-portfolio and started again from the
-record. §15.74's findings section is a marked placeholder until that run
-reports, and README's status row says "no live run yet".
+Both "Done when" clauses are met. A live run on 2026-09-05 took a one-line
+brief to fixture draft PR #17 through a project-lead session the lead launched
+itself, and a lead killed mid-portfolio started again from the record and asked
+nothing. Four human turns: the brief, the batch answer, a bare `/crew:lead`
+after the kill, and one word answering a budget escalation. Neither lead read
+or edited a file in the target repo. §15.74g to §15.74l record the run.
+
+Two things it left open. The trust dialog for the lead's **own** working
+directory comes back on every launch from it, which the lead's check does not
+cover (§15.74j). And `Budget: 10` fired twice on a $13.75 run whose fable seat
+was $12.29, with the lead's estimate of the remaining spend wrong by a factor
+of ten (§15.74k) — a lead cannot price the tail of a run it is not in.
+`PreCompact`'s half of the ledger is unexercised: neither lead compacted.
 
 ## T38 — Take the bounded edit away from the project lead
 

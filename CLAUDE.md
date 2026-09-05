@@ -48,8 +48,9 @@ report ending; both endings have run against that repo, and it is
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
 goal, launches one project-lead session for each, answers what it can and
 batches the rest for the human. Its record is the portfolio, and a killed lead
-starts again from it. T36 proved every mechanism it stands on (design §15.72);
-see §15.74 for what a live lead run has shown.
+starts again from it. One goal has run through it end to end, and a lead was
+killed mid-portfolio and restarted from the record with no human turn (design
+§15.72, §15.74). Two goals at once is T9 and has not run.
 
 `docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
 Never write about an unbuilt stage as if it runs, or about a built one as if

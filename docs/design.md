@@ -4438,7 +4438,7 @@ Deliberately different:
 
     | | Arm A, numbered | Arm B, goal form |
     |---|---|---|
-    | Draft PR | #11 | #12 |
+    | Draft PR, on the fixture repo | #11 | #12 |
     | Project lead turns | 86 | 73 |
     | Project lead tool calls | 41 | 36 |
     | Project lead spend (the `fable` row) | $5.71 | $4.66 |
@@ -4452,6 +4452,9 @@ Deliberately different:
     | Decisions | 5 | 8 |
     | Independent check | 16 tests pass, both helpers correct | 16 tests pass, both helpers correct |
 
+    Every dollar row comes rounded from `spend.py`, and each arm total is the
+    unrounded sum, so the two seat rows add to a cent away from it.
+
     **The decision: the numbered form stays, and the temporary skill is
     deleted.** Not because the goal form lost. On the measure that decides a
     run — does it reach an accepted draft PR without a fix round — the two
@@ -4461,10 +4464,14 @@ Deliberately different:
     $1.05 less in the `fable` seat and $0.73 more on its subagents, for a
     total 4.5% apart on a run whose two arms differ by 4 minutes of wall
     clock. That is inside one run's noise. Adopting the goal form is not
-    free: `autonomy-contract.md`, `record-format.md`, `writing-standard.md`
-    and `full-path.md` cite these two files by step number in fourteen
-    places, and `full-path.md` would need its own A/B behind it. A 4.5%
-    figure from one goal does not buy that.
+    free: `record-format.md`, `full-path.md`, `investigation-path.md`,
+    `autonomy-contract.md` and `writing-standard.md` cite these two files by
+    step number in more than twenty places, `docs/tickets.md` in fifteen
+    more, and `full-path.md` would need its own A/B behind it.
+    `investigation-path.md` is the one to watch: T12 added it after this A/B
+    was written, it cites `simple-path.md` steps 6, 7, 10, 13 and 14 and
+    `SKILL.md` steps 1, 2, 3 and 5, and it is the path file an investigation
+    run reads at runtime. A 4.5% figure from one goal does not buy that.
 
     **The confound the runs could not remove.** The variant had to say where
     the shared references and scripts live, and had to map every cited step
@@ -4494,4 +4501,5 @@ Deliberately different:
     lead's judgment is the bottleneck — the full path, several packages,
     steering — and it needs the loser deletable, so the winning form carries
     no scaffolding. `full-path.md`'s own A/B is where that fits, and the step
-    numbers should be retired in the same change rather than mapped.
+    numbers should be retired in the same change rather than mapped. T35
+    carries both.

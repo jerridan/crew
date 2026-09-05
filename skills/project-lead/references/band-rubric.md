@@ -60,8 +60,8 @@ Any "yes" past the first two is a signal toward `deep`.
   territory on opus, and the context the IC keeps is what pays for it: one
   run so ordered took zero fix rounds where a fresh-IC run took fifteen
   (design §15.50). Order the territory's packages with that in mind. The
-  IC respawns at the new package's band only when `full-path.md` step 8a
-  says to respawn.
+  IC respawns at the new package's band only when `full-path.md`'s "The
+  territory's next package" says to respawn.
 
 ## Critics and reviewers take their own model
 

@@ -799,7 +799,7 @@ created.
 not. They name a symptom, and the cause is unknown. Most of the work is
 diagnosis, and such a run can end correctly with no code change at all.
 
-**Pick the path at `SKILL.md` step 1, from the charter.** The test is what
+**Pick the path at `SKILL.md`'s "Take the goal", from the charter.** The test is what
 the goal names: a change to make, or a symptom whose cause is unknown. "The
 export drops the last row" is a symptom. "Add a `--json` flag" is a change.
 The project lead reads the charter at that step anyway, so this costs no
@@ -940,10 +940,10 @@ principal asked to have answered rather than fixed.
 **A report ending is §5's one exception to a deliverable holding at least one
 package.** It holds none, and it needs no branch either: nothing is edited, so
 `branch`, `base`, `checkout_branch` and `checkout_restored` are all `null`,
-and `SKILL.md` step 14's checkout restore has nothing to put back.
-`record-format.md` carries each of those `null` cases in the field row that
-owns it. The moment a fix package exists the deliverable is a normal one, and
-step 7 creates its branch as usual.
+and the checkout restore in `simple-path.md`'s "End the run" has nothing to
+put back. `record-format.md` carries each of those `null` cases in the field
+row that owns it. The moment a fix package exists the deliverable is a normal
+one, and `simple-path.md`'s "Create the branch" creates its branch as usual.
 
 **A run does not choose the report ending to avoid the work.** It ends there
 only when the diagnosis says there is no change to make in this repo, and
@@ -1231,7 +1231,8 @@ Deliberately different:
    cost-per-package data. Start deliberately low and raise it.
 
    Decided 2026-08-31 (T4): the default is 2,000,000 tokens, set by
-   `SKILL.md` step 1 when the principal names no ceiling. It is a
+   `SKILL.md` step 1 (now "Take the goal", §15.71) when the principal names
+   no ceiling. It is a
    placeholder chosen low on purpose, not a measurement. Raise it from the
    first runs' `spend.by_agent` totals.
 4. **Whether the shared task list earns its launch flag.** It brings dependency
@@ -3417,13 +3418,16 @@ Deliberately different:
     **The full path has the same defect, and takes the same rule.** T17 read
     the worktrees as the reason the full path was safe. They are not: its ICs
     work in worktrees, but `full-path.md` step 3 switches the project lead's
-    own checkout the same way §9.1's simple path does. No run has exercised
-    the full path's restore.
+    own checkout the same way §9.1's simple path does. No run had exercised
+    the full path's restore when this was written; T35's two full-path runs
+    since have, and both recorded `checkout_restored: true` (§15.71).
 
-    **The rule still lives in one file.** Its text is in `SKILL.md` steps 7
-    and 14. `full-path.md` carries two pointers instead of a copy — one at
-    step 3, to record the branch, and one at step 11, to restore it — which is
-    the shape this repo uses wherever one path borrows another's step.
+    **The rule still lives in one file.** Its text is in `simple-path.md`,
+    under the steps then numbered 7 and 14 — now "Create the branch" and "End
+    the run" (§15.71). `full-path.md` carries two pointers instead of a
+    copy — one at step 3, to record the branch, and one at step 11, to restore
+    it — which is the shape this repo uses wherever one path borrows
+    another's rule.
 
 55. **Instruments are designed, not yet dispatched — 2026-09-04, T14.** §6.4
     gives a target repo's own investigation skills or agents a name and a
@@ -4524,3 +4528,122 @@ Deliberately different:
     is proved first and cheaply. T37 builds the lead skill on what T36
     found. T9 keeps its original proof: two concurrent goals from one lead
     session, every escalation reaching the human through the lead.
+
+71. **The same A/B on a full-path goal: the goal-and-constraints form wins
+    and becomes the project lead — 2026-09-05, T35.** §15.69 ran numbered
+    steps against goal and constraints on a simple-path goal, could not
+    separate them, and named what would decide it: a goal where the project
+    lead's judgment is the bottleneck, and a losing form that is deletable
+    rather than mapped. T35 is that run. The step numbers came out of every
+    citation first, in their own commit — about fifty sites across `SKILL.md`,
+    six references, `CLAUDE.md` and `docs/tickets.md` now name the rule
+    instead of the number — so both forms answered the same pointers and the
+    variant carried no step map. Gross, the variant was 4.6% longer than the
+    control — 6,665 words against 6,369, measured at the commit both arms
+    ran — against §15.69's 22%. What remains of that gap is the goal form's
+    reference table, which the numbered form carried as a bullet list.
+
+    The goal: four helpers across two disjoint areas of
+    `jerridan/crew-fixture-string-kit` — `truncate` and `slugify` in
+    `src/text/`, `parseQuery` and `appendQuery` in `src/url/` — with
+    `Favour: time` in the charter, which forces two territories and the full
+    path (§15.67e). The charter named no semantics: what `truncate` counts,
+    what `slugify` does with a character that has no ASCII form, whether
+    `parseQuery` returns an array for a repeated key, and what the README
+    roadmap and the fixture's `CLAUDE.md` should say afterwards were all left
+    to the project lead. Same charter byte for byte, same fixture, sequential
+    runs from separate clones, `--model fable --effort high`, auto mode,
+    agent teams on, one record root each. Records:
+    `~/.claude/crew-t35-numbered/string-kit-four-helpers-f521/` and
+    `~/.claude/crew-t35-goal/string-kit-roadmap-helpers-bf27/`. Both seats are
+    confirmed `claude-fable-5-1` on all 122 and all 111 project-lead turns.
+
+    | | Numbered | Goal form |
+    |---|---|---|
+    | Arm total, list price | $11.98 | $10.70 |
+    | The project lead's own seat | $9.42, 67 messages | $8.00, 53 messages |
+    | Sonnet and opus | $2.56 | $2.70 |
+    | Project-lead turns | 122 | 111 |
+    | Subagents dispatched | 9 | 9 |
+    | Wall clock | 29m 21s | 29m 36s |
+    | Territories, ICs | 2, 2 named teammates | 2, 2 named teammates |
+    | Packages | 2 | 3 |
+    | Spec critic rounds | 1 | 1 |
+    | Split critic | 1, `dispatchable` | 1, `dispatchable` |
+    | Fix rounds | 0 | 0 |
+    | Escalations | 0 | 0 |
+    | Councils | 0 | 1, one advocate at sonnet |
+    | Tests in the PR | 37 | 30 |
+    | Independent check | all pass, criterion exits 0 | all pass, criterion exits 0 |
+
+    **The decision: the goal form replaces the numbered form, and the
+    numbered form is deleted.** Three things carry it, and none of them is the
+    dollar figure on its own.
+
+    **The artefacts are not equal, and the goal form's is correct.** Both PRs
+    were scored before either record was opened: fetched into throwaway
+    clones, suite run, and the same behavioural probe put through each. The
+    two agree on almost everything. They differ on one input.
+    `parseQuery("__proto__=x&a=1")` returns `{a: "1"}` in the numbered arm —
+    the pair is silently dropped, no error — and
+    `{__proto__: "x", a: "1"}`, as an own property, in the goal arm. Neither
+    pollutes a prototype; one loses data.
+
+    **How each arm reached that is the finding, not the defect itself.** The
+    numbered arm's own spec critic raised `__proto__`. The numbered lead
+    accepted the finding and resolved it by narrowing the requirement: its
+    `spec.md` R3 reads "for any flat object `p` with string values and no
+    `__proto__` key". The gap became legal, the deliverable reviewer had
+    nothing left to catch, and the run shipped. The goal arm's spec stated the
+    round trip without the carve-out, its deliverable reviewer produced the
+    counter-example as a `[Concern]`, and the lead fixed the code — a bounded
+    edit it recorded as a third package, `parsequery-proto-key`, band `light`,
+    no IC, with a test. Same defect available to both. One arm specified
+    around it; the other fixed it.
+
+    **The goal arm spent its judgment where the numbered arm did not.** It
+    convened the only council in either run, on the four signatures, and the
+    entry is `record-format.md`'s full shape with real citations: it adopted
+    the adversary's point that the truncation suffix should be ASCII `...`
+    rather than `…`, because `grep -rnP '[^\x00-\x7F]' src/` prints nothing
+    and a `…` default would be the repo's first non-ASCII literal; it rebutted
+    the adversary on fragments, on diacritics, and recorded a concession on
+    duplicate keys. It also declined `RangeError` for a negative `maxLength`
+    on the grounds that the fixture's `CLAUDE.md` names `TypeError` as its
+    only error rule — the numbered arm threw `RangeError` there, which is the
+    one place its diff departs from a rule the fixture states, with nothing in
+    `decisions.md` about it. The numbered arm routed the same signature
+    question as precedent at medium confidence, reasoning that a suffix
+    parameter is cheap to add later. That is a correct reading of
+    `autonomy-contract.md` and not a fault; it is simply less judgment
+    applied at the point where the charter was silent.
+
+    **Cost now points the same way twice.** §15.69 measured the goal form
+    $1.05 cheaper in the project lead's own seat and called it noise, because
+    the arm totals were 4.5% apart and the subagent spend cancelled it. Here
+    the seat saves $1.42 and the total moves with it: 10.7% cheaper, on a run
+    whose wall clock differs by fifteen seconds. Two runs, both on Fable 5.1,
+    both showing the same seat cheaper, is the strongest signal in either
+    experiment.
+
+    **What the goal form costs, and what to watch.** It skipped the `Explore`
+    dispatch and read the eleven-file repo itself — two `Read` calls — against
+    "Dispatch `Explore` subagents and read their answers. The reading stays
+    out of your own context." On this repo that was right and part of why its
+    seat was cheaper. On a large repo it is exactly the mistake that rule
+    exists to prevent, and the de-prescribed form is what let it decide. That
+    is the risk the Fable guidance's own framing implies: less prescription
+    buys better judgment where the instruction was over-fitted, and buys a
+    deviation where it was load-bearing. The rule stays as written and the
+    next full-path run on a large repo is where to check it.
+
+    **What this does not prove.** One goal per arm, and the defect catch is
+    one reviewer's finding on one input; a rerun could put it in the other
+    arm. What is not luck is the route each arm took to it — narrowing a
+    requirement against fixing the code is a judgment difference visible in
+    `spec.md` and `decisions.md`, not an outcome difference. The step numbers
+    are now gone from the headings as well as the citations: no file in the
+    plugin cites a project-lead step by number, and the numbered form that
+    gave those numbers meaning no longer exists. The `design §9.2 step 3`
+    citations in `record-format.md` name this document's own numbering and are
+    untouched.

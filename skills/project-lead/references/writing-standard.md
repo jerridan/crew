@@ -87,7 +87,7 @@ claim that stage is unbuilt. Run it only when the change lands a stage.
 Read every hit. Fix a hit that this change makes false. Leave a hit that is
 still true.
 
-`simple-path.md` step 12 says who runs this sweep, and when.
+`simple-path.md`'s "Integrate" says who runs this sweep, and when.
 
 ## Write for what the reader already has
 

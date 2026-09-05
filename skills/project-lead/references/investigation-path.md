@@ -63,8 +63,8 @@ split", like any other package.
 **Write the reproduction first.** It is one test or one command that fails
 now and passes after the fix. `SKILL.md`'s "Scout" told you what runs the
 suite, so run the symptom against it yourself and keep the failing output.
-That output is `diagnosis.md`'s `## Reproduction`, and it is this path's evidence for design
-§7's "fails now" clause.
+That output is `diagnosis.md`'s `## Reproduction`, and it is this path's
+evidence for design §7's "fails now" clause.
 
 **No reproduction ends the run.** When this phase finds no way to make the
 symptom happen on demand, the goal has no falsifiable criterion. Escalation
@@ -73,8 +73,8 @@ to leave behind. "Gather more data" is the escalation, not a hypothesis.
 
 **Then ask where the value goes wrong.** `SKILL.md`'s "Scout" asked what the
 repo already does; this phase asks why it does the wrong thing. Dispatch
-`Explore` subagents for a lookup, and `crew:researcher` for a question that needs
-several hops and a synthesis — this path is its only caller (design §3).
+`Explore` subagents for a lookup, and `crew:researcher` for a question that
+needs several hops and a synthesis — this path is its only caller (design §3).
 `band-rubric.md` bands a researcher dispatch.
 
 **Evidence is a file, not a memory.** Every finding lands in
@@ -164,12 +164,12 @@ shape — usually one package on the simple path. Four things carry across:
 - **The checklist above travels with the IC.** Quote it in the spawn prompt.
 
 **Record the shape you picked at "Choose the shape", with its reason.** A
-diagnosed fix often reads as a bounded edit, because you have already read the code — and a
-bounded edit gets no package review at all (`simple-path.md`'s "Review the
-deliverable"), so the
-first agent to read the fix is the deliverable reviewer. That can be the right
-call, and the entry is what makes it a call rather than a drift. Say in the
-deliverable-review dispatch that you made the edit yourself.
+diagnosed fix often reads as a bounded edit, because you have already read the
+code — and a bounded edit gets no package review at all (`simple-path.md`'s
+"Review the deliverable"), so the first agent to read the fix is the
+deliverable reviewer. That can be the right call, and the entry is what makes
+it a call rather than a drift. Say in the deliverable-review dispatch that you
+made the edit yourself.
 
 ## Ending two: `Outcome: no change`
 

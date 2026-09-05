@@ -4534,8 +4534,10 @@ Deliberately different:
     citation first, in their own commit — about fifty sites across `SKILL.md`,
     six references, `CLAUDE.md` and `docs/tickets.md` now name the rule
     instead of the number — so both forms answered the same pointers and the
-    variant carried no step map. Gross, the variant was 3.5% longer than the
-    control, against §15.69's 22%.
+    variant carried no step map. Gross, the variant was 4.6% longer than the
+    control — 6,665 words against 6,369, measured at the commit both arms
+    ran — against §15.69's 22%. What remains of that gap is the goal form's
+    reference table, which the numbered form carried as a bullet list.
 
     The goal: four helpers across two disjoint areas of
     `jerridan/crew-fixture-string-kit` — `truncate` and `slugify` in

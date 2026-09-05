@@ -1309,7 +1309,7 @@ recommendations".
 2026-09-05: done. **The goal-and-constraints form is now the project lead**,
 and the numbered form is deleted. The step numbers came out of every citation
 first, in their own commit, so both arms answered the same pointers and the
-variant carried no step map — 3.5% longer than the control, against T26's 22%.
+variant carried no step map — 4.6% longer than the control, against T26's 22%.
 Both arms then ran one full-path goal on the fixture: four helpers across
 `src/text/` and `src/url/`, `Favour: time`, two territories, two IC teammates,
 zero fix rounds and zero escalations each. The goal form cost $10.70 against

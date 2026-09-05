@@ -11,10 +11,10 @@ One directory per goal, outside the target repo (design §4):
 ├── state.json        deliverables, per-package state, band history, spend, escalations
 ├── decisions.md      every judgment call, with its citation, confidence, and timestamp
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
-├── evidence/         investigation path only: one file per evidence dispatch
 ├── reports/          one report per package, written by its IC
 ├── plans/            one plan per package, written by its IC
 ├── diffs/            one diff per review dispatch, written by the project lead
+├── evidence/         investigation path only: one file per evidence dispatch
 └── reviews/          raw critic and reviewer output
 ```
 

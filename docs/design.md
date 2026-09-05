@@ -4069,12 +4069,20 @@ Deliberately different:
 
     **The count today is zero, not one.** §15.64c and d describe a live
     run, `slugify-helper-d1ad/`, whose one adversary entry changed the prior
-    in part. That record is not under `~/.claude/crew/` on this machine —
-    the script found six council entries across five records, and none
-    carries a `Prior:` line, so none is an adversary entry it can count. The
-    finding in §15.64d stands as what was read from that run at the time;
-    the counter here reports what the current record root holds, which is
-    fewer entries than the design text describes.
+    in part. That record is not under `~/.claude/crew/` on this machine, so
+    the counter reports fewer entries than the design text describes. The
+    finding in §15.64d stands as what was read from that run at the time.
+
+    **Corrected 2026-09-04 by T12.** This entry first gave the reason as "the
+    script found six council entries across five records, and none carries a
+    `Prior:` line". That is not the reason. The root holds nine council
+    entries across seven records and three of them carry `Prior:` — two in
+    `add-truncate-and-slugify-9140`, written before this counter landed.
+    Those two read `Models: none dispatched`, so no advocate ran and there is
+    nothing to count. What the counter needs is a `Models: 1 advocate,
+    <model>` line, and no record on this machine carried one until §15.68l.
+    A run that acts on the original sentence by adding `Prior:` lines still
+    counts zero.
 
     **The decision waits.** Ten adversary entries are the threshold §6.1
     sets, and the record root holds zero it can count today. Nothing in
@@ -4222,3 +4230,194 @@ Deliberately different:
        path, so the project lead saved each review file itself, with a
        Bash script that read the critic's transcript for the block that
        holds `Verdict:`. That is the cost the rule removes.
+
+68. **The investigation path is built — 2026-09-04, T12.** §9.5's four pieces
+    are in the plugin: the path choice at `SKILL.md` step 1, the diagnosis
+    loop in a new `references/investigation-path.md`, `diagnosis.md`, and the
+    two endings. Both live runs landed on the fixture, in item j. Five
+    decisions the ticket left open, one rule §9.5 does not carry, and what
+    the runs showed:
+
+    a. **The loop got a file of its own, not `simple-path.md`.** T12 asked
+       whether the loop's text belongs in `simple-path.md` or in a new
+       reference. It is a new one. `simple-path.md` states its own scope in
+       its first line: one deliverable with one package, steps 6 to 14, with
+       `full-path.md` borrowing three of those steps. The diagnosis loop
+       holds no package, creates no branch and runs before step 3, so every
+       step number in that file would have to be qualified. The two files
+       also have different readers: a run reads `simple-path.md` after the
+       shape table, and it reads `investigation-path.md` before the spec
+       exists. A reference has no line cap (`writing-standard.md`), so
+       nothing was saved by merging them, and the merge would have cost
+       every simple-path run the diagnosis text it never needs.
+
+    b. **A fix rejoins at step 3, not at step 5.** §9.5 says the diagnosed
+       fix "goes back to §9.1's table", which is step 5. Entering there
+       would skip steps 3, 4 and 4a, and three later steps need what those
+       produce: `crew:deliverable-reviewer` takes `spec.md` as an input
+       (`simple-path.md` step 13), the preference sweep is the run's only
+       preference check, and the spec critic never runs. So
+       `investigation-path.md` returns the run to step 3 and steps 3 to 5
+       run as written. Step 5's table still picks the shape, which is what
+       §9.5 meant.
+
+    c. **Evidence needed a directory.** §9.5 says each scout writes what it
+       found to the record and the project lead reads the paths, but
+       `record-format.md` named no place to write it. The four per-run
+       directories all have another writer and another consumer, so a fifth
+       was added: `evidence/<n>-<slug>.md`. Item g below settles who writes
+       one — a `crew:researcher` writes its own, and the project lead writes
+       an `Explore` subagent's, because `Explore` carries no `Write` tool. The counter reads off disk, like the spec
+       critic's, because no `state.json` field holds it. These files are
+       also the named evidence set every advocate in an investigation
+       council is given, which is what makes §9.5's "every advocate reads
+       the same evidence set" checkable rather than a matter of trust.
+
+    d. **`crew-record.py` needed nothing.** Every write the loop makes is an
+       existing command. A seeded record proved it: `init`, then
+       `deliverable add` with `branch`, `base`, `pr_url`, `checkout_branch`
+       and `checkout_restored` all `null`, then `deliverable d1 state
+       in-flight` at the first evidence dispatch, then `close d1
+       work-complete` — which wrote the deliverable's terminal state,
+       `run_state: complete` and `completed_at` in one write, with `pr_url`
+       still `null`. The fix ending reuses the same entry: `deliverable d1
+       set branch` and `set checkout_branch` fill it in at
+       `simple-path.md` step 7, so no second deliverable is created and no
+       new subcommand is needed.
+
+    e. **`crew-stats.py` reads a package-less record correctly.** The same
+       seeded record ran through it. The run counts everywhere, its
+       by-band share is skipped rather than divided by zero, and one skip
+       line says "no packages — the record lists none".
+       `reviews/diagnosis-adversary.md` falls into the `other` review
+       bucket and never enters the catch rate, which is right: an
+       advocate's case carries no `Verdict:` line, and scoring it as a
+       review would deflate the rate with a file no reviewer wrote.
+
+    f. **One new rule, not in §9.5: a diagnosis loop has a breaker.** §9.5
+       sends a failed minimal test back to Phase 1 and sets no limit, and a
+       no-prompt run can circle there. `investigation-path.md` Phase 3 caps
+       it at two returns and escalates on the third, under §6's rule that
+       the trigger list is a floor and the project lead escalates on its own
+       judgment.
+
+    g. **Two of the path's files have no agent that can write them.** The
+       code review on this branch caught both. `agents/council-advocate.md`
+       grants `Read, Glob, Grep, Bash` and says an advocate writes nothing
+       outside its report, so `reviews/diagnosis-adversary.md` cannot come
+       from the advocate: the project lead copies the returned case into it,
+       and it has to read that case to rebut it anyway. `Explore` is
+       read-only for the same reason, so the project lead writes an
+       `Explore` finding into `evidence/` itself — what returns is an answer
+       with citations, not the reading. `crew:researcher` is the one
+       evidence writer that can write its own file, and this change grants
+       it `Write` and a Return path in the shape §15.67 proved for the
+       review agents. `record-format.md` names the writer per file.
+
+    h. **The `evidence/` counter is allocated by the project lead.** Phase 1
+       sends several dispatches in one message, so a writer reading "one
+       more than the highest on disk" for itself would number every file in
+       the batch the same and the last write would win. The project lead
+       assigns each `<n>` before the batch goes out.
+
+    i. **The fix package is exempt from the red-commit check in both path
+       files.** §7 exempts it, but `simple-path.md` step 9 and
+       `full-path.md`'s verification list did not say so, so a run would
+       have sent its own fix package to a fix round for a red commit the
+       diagnosis had already made unnecessary.
+
+    j. **Both runs landed — 2026-09-04, on `jerridan/crew-fixture-string-kit`
+       with a Fable 5.1 project lead at `--effort high`, `auto` permission
+       mode, the record root at its default. Zero prompts in either.**
+
+       - **The bug run.** `buildsearchurl-page-zero-empty-query-bbf2`, 9m
+         06s by the record's own `created_at` and `completed_at`, $5.28 at
+         list price. A seeded `buildSearchUrl` skipped every
+         falsy parameter with `if (!value) continue;`, so page 0 and an
+         empty query never reached `encodeQuery`, while the seeded suite
+         stayed green. The run reproduced it, wrote two evidence files,
+         ruled out four hypotheses including `encodeQuery` itself, and
+         opened draft PR #10 on the fixture. Verified by hand afterwards:
+         `npm test` is 14 pass 0 fail at the branch head, and restoring
+         `src/url/buildSearchUrl.js` from the base commit makes the new test
+         fail. That is T12's Done when, proved rather than claimed.
+       - **The no-change run.** `encodequery-array-join-7d5a`, 5m 46s by
+         the same two stamps, $3.19. It answered why `encodeQuery({tags:["a","b"]})` yields
+         `tags=a%2Cb`, ran the adversary over the same evidence set, rebutted
+         its strongest point in writing, and ended `work-complete` with
+         `pr_url`, `branch`, `base`, `checkout_branch` and
+         `checkout_restored` all `null`, `packages` empty, and
+         `completed_at` equal to the deliverable's `state_changed_at` —
+         which is the one-write rule holding. The fixture kept a clean tree,
+         no branch and no PR. The advocate held its case at low confidence
+         and gave one of the caller's three questions up inside its case —
+         "I do not contest that part of the prior". That is **not**
+         §15.66's concession shape, which replaces the case entirely: the
+         report carried Position, Case, Evidence, Strongest objection and
+         Confidence throughout. `agents/council-advocate.md` offers a whole
+         case or a whole concession and has no form for the partial one this
+         run produced, and the advocate reached for prose instead. T31 owns
+         that agent; the shape it is missing is a concession on one point
+         inside a case that still stands.
+
+    k. **One hypothesis survived in each run, so no three-advocate council
+       convened, and `crew:researcher` still has no dispatch.** Both bugs
+       were one file deep, and one `Explore` answered each. The council
+       branch of Phase 3 and the researcher's first call are unexercised.
+       A deeper seeded bug is what would exercise them.
+
+    l. **The first one-advocate council on this machine drifted from the
+       template, and `crew-stats.py` lost it.** The no-change run's
+       diagnosis adversary wrote `Models: sonnet` and `Spend: 23652`. The
+       script recognises a one-advocate council only by `1 advocate,
+       <model>` and reads a token count only from a figure followed by the
+       word `tokens`, so it counted the council and neither the adversary
+       entry nor its spend. The root holds seventeen records, nine
+       council entries across seven of them, and their `Models:` lines read `2 advocates, sonnet`, `3 advocates, opus`, `3
+       advocates, sonnet`, `none dispatched` twice, and this one — so §6.1's
+       ten-entry probation still stands at zero, and this was its first
+       chance to move. `record-format.md` carries the exact template and the
+       run did not open it, so `investigation-path.md` now names the
+       template at both of its councils, and names all four lines the script
+       reads: it finds an adversary entry by `Models:` and `Spend:`, and
+       reads the outcome from a lettered `Positions:` and an `Answer:` that
+       opens with the winning letter. This run's `Positions:` was numbered,
+       so even a corrected `Models:` line would have left it unparsed. T34
+       owns the counter; this is the first entry it should have counted.
+
+    m. **The bug run recorded no shape choice, and its fix took the bounded
+       edit.** The project lead made the one-line fix itself, so no IC was
+       dispatched and no package review ran; the deliverable reviewer
+       noticed and reviewed every defect at the severity it earned rather
+       than only the critical ones. The call is defensible — the project
+       lead had already read the file to diagnose it — but nothing in
+       `decisions.md` recorded it, and §15.67e shows that entry is the one
+       an audit needs. A diagnosed fix will keep looking bounded for exactly
+       the reason the diagnosis exists, so `investigation-path.md` now asks
+       for the entry and for the reason. The path choice at step 1 went
+       unrecorded in the same run and recorded in the other, so `SKILL.md`
+       now requires that entry too.
+
+    n. **A record path in a PR body opens for nobody.** The bug run's PR
+       body copied the root cause in, which is right, but pointed at
+       `diagnosis.md` and cited `evidence/2-minimal-test.md` by name. The
+       record lives outside the repo, so both read as dead links to a human
+       reviewing the PR. `investigation-path.md` now says the reproduction
+       and the root cause are copied into the body in words, and that the
+       absolute path is for the IC, which can open it. The `evidence/`
+       citations inside the copied text and inside `decisions.md` resolve to
+       their repo `path:line` on the way in, or they go.
+
+    o. **First calibration data for `same_claim`, and it says the threshold
+       is too tight.** `crew-stats.py` decides "prior kept whole" against
+       "changed in part" by whole-word Jaccard overlap at 0.8, and its own
+       comment says the number is a judgment call with no labelled entry to
+       calibrate against. There is one now. The no-change run's `Answer:`
+       against its `Prior:` scores 0.19 — correctly "part", since that
+       answer adopts a refinement from the adversary. But `record-format.md`
+       writes `Answer:` as a full sentence rather than a copy of `Prior:`,
+       so a verbatim restatement plus three words already scores about 0.67
+       and files as "part" too. On that shape "whole" is close to
+       unreachable, which collapses the three states §15.64d says the count
+       needs into two. T34 owns the number; this run is the first entry to
+       measure it against, and one entry is not a calibration.

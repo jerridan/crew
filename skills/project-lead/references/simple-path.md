@@ -74,6 +74,11 @@ against the sha the IC's report gives. Switch the branch back before anything
 else — this is the principal's own checkout, and step 14's
 `checkout_restored` records what it was left on.
 
+**A fix package from the investigation path is exempt.** Its reproduction
+failed before the dispatch and `diagnosis.md` holds that output, so run the
+criterion at the branch head only (design §7,
+`investigation-path.md`'s `Outcome: fix` ending).
+
 ## 10. Review the package
 
 Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:

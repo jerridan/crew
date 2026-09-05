@@ -258,7 +258,10 @@ Check four things, every time:
   first" owns this check: it gives the procedure, the clean-tree
   precondition, and what a criterion that passes there costs. Run it in the
   IC's worktree, against the sha the IC's report gives. An IC may not switch
-  branches, so switch the worktree back before you do anything else.
+  branches, so switch the worktree back before you do anything else. A fix
+  package from the investigation path is exempt: its reproduction failed
+  before the dispatch and `diagnosis.md` holds that output, so the criterion
+  runs at the branch head only.
 
 A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules
 say what each cause earns. Committing on a blocked IC's behalf is a normal

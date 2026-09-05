@@ -19,7 +19,6 @@ code, run against a seeded record (design §15.38, §15.50).
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the spec and the shape, then a route to one path file | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews and the review catch rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
-| `skills/project-lead-goal/**` | **temporary**: the goal-form arm of T35's A/B. Deleted before T35's PR merges | `/crew:project-lead-goal`, typed by name |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |

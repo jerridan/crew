@@ -613,8 +613,9 @@ the worktrees" and "Open the draft PR". Two simple-path runs in one fixture
 checkout proved it: `~/.claude/crew/truncate-helper-bfa8/` and, from the same
 directory, `~/.claude/crew/slugify-stage-3-fa89/`. Both record
 `checkout_branch: "main"` and `checkout_restored: true`, and both left the
-checkout on `main` and clean (design §15.54). No run has exercised the full
-path's restore.
+checkout on `main` and clean (design §15.54). T35's two full-path runs then
+exercised the full path's restore: both record `checkout_branch: "main"` and
+`checkout_restored: true` (design §15.71).
 
 Read first: design §9.1, §15.47; `record-format.md` deliverable fields;
 `simple-path.md`'s "Create the branch" and "End the run".
@@ -1268,7 +1269,7 @@ stays open until a run adds enough entries to count.
 
 ## T35 — A/B the goal-and-constraints form on the full path, and retire the step numbers
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: any (design §15.69)
 
@@ -1296,21 +1297,30 @@ Retire the step numbers in the same change instead of mapping them.
 in fifteen more, and `investigation-path.md` is the one an investigation run
 reads at runtime. Each citation becomes the name of the rule it means.
 
-While this ticket is open, `skills/project-lead-goal/` holds the variant arm:
-`SKILL.md` and its own `simple-path.md` and `full-path.md`, with every other
-reference read from the `project-lead` skill. **That directory is deleted
-before this ticket's PR merges**, whichever arm wins. It is the one deliberate
-exception to `CLAUDE.md`'s rule that a rule has one owner, and the exception
-ends with the ticket.
-
 Done when: design §15 records the full-path comparison and the decision, no
-file cites a project-lead step by number, and `skills/project-lead-goal/` is
-gone again.
+file cites a project-lead step by number, and only one form of the project
+lead is left in `skills/`.
 
 Read first: design §8, §15.50, §15.69; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; `investigation-path.md`; the Fable 5.1
 prompting guidance the `claude-api` skill carries under "Long-running agent
 recommendations".
+
+2026-09-05: done. **The goal-and-constraints form is now the project lead**,
+and the numbered form is deleted. The step numbers came out of every citation
+first, in their own commit, so both arms answered the same pointers and the
+variant carried no step map — 3.5% longer than the control, against T26's 22%.
+Both arms then ran one full-path goal on the fixture: four helpers across
+`src/text/` and `src/url/`, `Favour: time`, two territories, two IC teammates,
+zero fix rounds and zero escalations each. The goal form cost $10.70 against
+$11.98, saved $1.42 in the project lead's own seat, and finished fifteen
+seconds apart on twenty-nine minutes. It also shipped the better artefact: the
+numbered arm's `parseQuery` silently drops a `__proto__` pair, and its own spec
+critic had raised the case — the numbered lead narrowed the requirement to
+exclude the key, while the goal-form lead's deliverable reviewer produced the
+counter-example and the lead fixed the code. Design §15.71 holds the table, the
+one deviation the goal form bought (it read an eleven-file repo itself instead
+of dispatching `Explore`), and what the run does not prove.
 
 ## T36 — Probe: one session drives another
 

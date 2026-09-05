@@ -1428,4 +1428,91 @@ Done when: one goal runs from brief to draft PR through the lead with no
 human turn except the batch it sends, and the portfolio record shows it.
 
 Read first: design §15.70, §15.21, §15.22, §1, §4, §6.2; T36's §15 entry;
-`record-format.md`; `autonomy-contract.md`.
+`record-format.md`; `autonomy-contract.md`. T39 adds the triage step
+that sends a small task to one IC instead of a project-lead session; design
+the portfolio record so a task-shaped run fits it.
+
+## T38 — Take the bounded edit away from the project lead
+
+Status: open
+Depends on: nothing
+Stage: any (design §9.1, §15.60, §15.68m)
+
+Design §9.1's shape table has one row where the project lead does work
+itself: a bounded edit of one or two tool calls. Every other row dispatches.
+The principal's rule for the hierarchy is that a lead of any tier does not
+work — it triages, dispatches, reads the record and answers questions — and
+a lead that is editing code is a lead that is busy, and expensive at its own
+seat. §15.68m shows the row in use: a diagnosed fix on the investigation path
+read as bounded, the project lead made the edit, and no package review ran.
+
+Remove the row. A bounded edit is one package on the simple path, dispatched
+to one unnamed IC at the `light` band, with the package review it now skips.
+The `light` band already exists for exactly this size of work
+(`band-rubric.md`). The three exceptions `simple-path.md` carries for a
+bounded edit — in "Write the split", "Create the branch" and "Review the
+deliverable" — come out with it, and so does the exemption
+`investigation-path.md`'s `Outcome: fix` ending names. Design §9.1 loses the
+row and the sentence "The project lead does work itself only for bounded
+edits"; the paragraph after it, on the cost of the project lead's own
+context, is the reason and stays.
+
+Keep the shared-file pass. Integration edits — the barrel file, a version in
+two places, an instruction file's status line — stay with the project lead
+(§9.3, `record-format.md`). Those are not the bounded edit; they are the seam
+no package owns.
+
+Done when: no file in `skills/` sends the project lead to edit a file in the
+target repo outside integration, a one-line goal reaches a draft PR through
+one `light` IC with a package review, and design §15 records the cost of
+that dispatch against the bounded edit it replaced.
+
+Read first: design §9.1, §9.3, §15.60, §15.68m; `SKILL.md` "Choose the
+shape"; `simple-path.md`; `band-rubric.md`; `investigation-path.md`
+"Ending one".
+
+## T39 — The lead triages by size: a task gets one IC, a goal gets a project lead
+
+Status: open
+Depends on: T37
+Stage: 7 (design §1, §15.70, §15.72)
+
+T37 builds a lead that spawns one project-lead session per goal. Handed a
+small task — rename a flag, fix a typo in a doc, add one test — that shape
+engages the whole crew: a Fable project-lead session, a spec, a critic, an IC
+and two reviews, for work one Sonnet agent finishes in a minute. The
+principal wants to hand any size of work to the lead and trust it is taken
+care of, without paying for a project lead it does not need.
+
+Give the lead a triage step before it dispatches anything. Two outcomes:
+
+- **A goal** — work that needs a spec, or more than one package, or a
+  judgment call the charter leaves open — gets a charter and its own
+  project-lead session, as T37 builds.
+- **A task** — one package, one file set, a criterion the lead can write in
+  one line — gets one unnamed IC, dispatched by the lead itself as a
+  background subagent at `band-rubric.md`'s `light` or `standard` band, in
+  a fresh clone or branch of the target repo, followed by the same verify
+  step and package review the simple path runs. The record is a minimal
+  one under the lead's portfolio: charter, the package entry, the report,
+  the review, the PR.
+
+Two rules hold on both outcomes. The lead never reads code and never edits
+a file in a target repo: triage is done from the task text, the repo's
+instruction files and the record, and a task the lead cannot size from
+those is a goal. And every turn of the lead ends quickly — dispatch, then
+end the turn — because a message reaches a session only when it is idle
+(§15.72i), and a lead that is mid-turn cannot be handed the next task.
+
+Write the sizing test into the lead's skill, with the reasons a task is
+promoted to a goal. `autonomy-contract.md` owns what a task-shaped run may
+escalate; `record-format.md` owns the minimal record.
+
+Done when: a one-line task handed to the lead by message reaches a draft PR
+through one IC and no project-lead session, a goal handed the same way
+reaches one through a project-lead session, the lead's portfolio record
+shows both, and neither run had the lead read or edit a file in the target
+repo.
+
+Read first: design §1, §9.1, §15.70, §15.72; T37 and its §15 entry; T38;
+`band-rubric.md`; `record-format.md`; `autonomy-contract.md`.

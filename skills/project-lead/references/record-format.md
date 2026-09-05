@@ -411,7 +411,8 @@ writes its `plans/<id>.md` or its `reports/<id>.md`, so `plan_path` and
 `report_path` name files that never exist, and `plan_approved_at`,
 `fix_rounds_used` and `nudges_used` keep their creation values. `id`, `band`,
 `file_set`, `interface_contract`, `acceptance_criterion`, `base` and `state`
-all carry real values, because `simple-path.md` reads them from "Integrate" on.
+all carry real values, because `simple-path.md`'s "Integrate", "Review the
+deliverable" and "End the run" read them.
 
 ### Per-run fields (inside `run`)
 
@@ -597,7 +598,7 @@ It marks a worktree only when that worktree's own run is being interrupted —
 the run's `run_state` was `active` or `blocked` and its `session_ids` hold the
 ending session's id — and then only the worktrees carrying that same id. A run
 already `complete` is left alone whatever its worktrees say, because a
-finished run's leftovers are `full-path.md`'s "Clean up", not an orphan. `--resume` clears it once a worktree is reconciled. It is a
+finished run's leftovers are work for `full-path.md`'s "Clean up", not an orphan. `--resume` clears it once a worktree is reconciled. It is a
 hint, not evidence: the hook fails open, so recovery still decides from git
 and from a recorded `integrated`, never from this field alone.
 

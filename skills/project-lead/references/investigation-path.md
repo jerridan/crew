@@ -115,10 +115,8 @@ Name the same evidence paths in every advocate's prompt, and send every
 dispatch in one message.
 
 **Copy the entry from `record-format.md`'s council template**, field for
-field. `Positions:` takes lettered positions and `Answer:` opens with the
-winning letter; `Models:` reads `<n> advocates, <model>` and `Spend:` ends in
-the word `tokens`. `crew-stats.py` parses those four lines, and an entry that
-paraphrases them counts as an unparsed council.
+field, the same four lines Ending two below names. Here `Models:` reads
+`<n> advocates, <model>`.
 
 **Return to Phase 1 twice at most.** A failed minimal test sends you back
 there — that is the third of `autonomy-contract.md`'s three rules. On a third
@@ -150,9 +148,12 @@ simple path. Four things carry across:
 - **`diagnosis.md` goes into the IC's spawn prompt and into the PR body.** The
   IC gets the absolute path; an IC that gets the symptom without the cause
   fixes the symptom. The PR body gets `## Reproduction` and `## Root cause`
-  **copied in, in words** — the record sits outside the repo, so a path there
-  opens for nobody reading the PR, and a citation into `evidence/` reads as a
-  dead link.
+  **copied in, in words**: the record sits outside the repo, so a path there
+  opens for nobody reading the PR. **Resolve every record path out of the
+  body as you copy it** — an `evidence/` citation becomes the repo `path:line`
+  that evidence file rests on, or it goes. That holds for the `Citation:`
+  lines in the `decisions.md` you paste beside it (`simple-path.md` step 14),
+  which cite `evidence/` the same way.
 - **The deliverable you opened above is now a normal one.** `simple-path.md`
   step 7 creates its branch, so fill `branch`, `base` and `checkout_branch` on
   that same entry. Add no second deliverable, and **leave `state` alone**:
@@ -185,10 +186,14 @@ its own evidence (design §7). Write the council entry first, then dispatch one
 your root cause as the position to argue against, and the same evidence paths.
 
 **This is a one-advocate council, and its entry is the default shape**
-`record-format.md` shows. Take that template field for field — `Models: 1
-advocate, <model>` and `Spend: <n> tokens`, in those words. Design §6.1 counts
+`record-format.md` shows. Take that template field for field, and four lines
+must match it exactly: `Positions:` letters each position (`A. … B. …`),
+`Answer:` opens with the winning letter and a dash, `Models:` reads `1
+advocate, <model>`, and `Spend:` ends in the word `tokens`. Design §6.1 counts
 ten adversary entries before it decides whether the adversary earns its
-dispatch, and `crew-stats.py` recognises one only by those two lines.
+dispatch. `crew-stats.py` finds the entry by the last two lines and reads the
+outcome from the first two, so an entry that paraphrases any of the four
+counts as nothing.
 
 **You save its case yourself**, to `reviews/diagnosis-adversary.md`. An
 advocate writes nothing outside its report (`agents/council-advocate.md`), so

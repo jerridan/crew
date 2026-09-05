@@ -10,8 +10,9 @@ principal. No file names the human as the only principal.
 **Reach the principal the way the goal arrived.** A goal typed in this session
 gets its escalation in this session. A goal that arrived as a
 `<cross-session-message>` gets its escalation back by `SendMessage`, addressed
-to the session that message names in its `from` attribute. Never ask in your
-own pane when the goal came by message: nobody is watching that pane. Write
+to the name in that message's `from-name` attribute. `SendMessage`'s `to` takes
+a session name, and `from-name` is the attribute that carries one. Never ask in
+your own pane when the goal came by message: nobody is watching that pane. Write
 the ask into `escalations` first, either way. The record is what the run stands
 on, and a lost message costs latency, never correctness (design §15.21).
 

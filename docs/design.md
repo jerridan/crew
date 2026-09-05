@@ -4423,7 +4423,7 @@ Deliberately different:
        measure it against, and one entry is not a calibration.
 
 69. **An A/B of the project lead's own form, numbered steps against goal and
-    constraints, on Fable 5.1 — 2026-09-05, T26.** Fable's migration guidance
+    constraints, on Fable 5.1 — 2026-09-04, T26.** Fable's migration guidance
     says prompts written for prior models are often too prescriptive and
     reduce output quality, and it asks for the goal and the constraints
     instead of the enumerated steps. `SKILL.md` and `simple-path.md` are a

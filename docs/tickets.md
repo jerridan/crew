@@ -929,7 +929,7 @@ Read first: design §8, §15.50; `writing-standard.md`; `SKILL.md`;
 `simple-path.md`; `full-path.md`; the Fable 5.1 prompting guidance the `claude-api` skill
 carries under "Long-running agent recommendations".
 
-Done 2026-09-05: the numbered form stays, and the temporary skill
+Done 2026-09-04: the numbered form stays, and the temporary skill
 `skills/project-lead-goal/` is deleted, so nothing in `skills/` changed. Both
 arms ran the same goal on the fixture on Fable 5.1 at high effort, in
 parallel from separate clones, and both reached an accepted draft PR with one

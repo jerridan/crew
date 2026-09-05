@@ -286,8 +286,9 @@ the package's record entry (`file_set`, `interface_contract`,
 `acceptance_criterion`), the worktree path, the IC's report, the diff or
 checklist path, and the brief. Inject `review-output.md` whole, and name the
 absolute path it writes to: `reviews/<id>-package-review-r<n>.md`, `<n>`
-being `fix_rounds_used`. Its result is three lines; open the file only when
-the count says there are findings to adjudicate.
+being `fix_rounds_used`. Its result is the short one `review-output.md`
+defines; open the file only when the count says there are findings to
+adjudicate.
 
 ## 8. Fix rounds
 

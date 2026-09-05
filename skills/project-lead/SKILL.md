@@ -73,8 +73,9 @@ revise what it returns. The spec is yours.
 Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md`, the repo
 path, `review-output.md` whole, and the absolute path it writes its findings
 to: `reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest on
-disk. Every review dispatch names its path this way and returns three lines;
-open the file only when the count says there is something to adjudicate.
+disk. Every review dispatch names its path this way and returns the short
+result `review-output.md` defines; open the file only when the count says
+there is something to adjudicate.
 
 On `Verdict: re-spec needed`, adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.

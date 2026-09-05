@@ -3170,7 +3170,7 @@ Deliberately different:
 
     | Inefficiency | Evidence | Change |
     |---|---|---|
-    | The project lead's context is the bill | 232M cache-read tokens, $116 of $215 | Review agents write their report to the record and return three lines (`review-output.md`); diffs already stay out |
+    | The project lead's context is the bill | 232M cache-read tokens, $116 of $215 | Review agents write their report to the record and return four lines (`review-output.md`); diffs already stay out |
     | The most expensive model writes the longest documents | 324-line spec, 273-line split, as project-lead output | A sonnet subagent drafts from the lead's outline (`SKILL.md` step 3) |
     | Fix rounds as the quality mechanism | 15 rounds vs 0, decided by harness order | Verification tool is package one; ICs run it before reporting (`full-path.md` step 1, `ic-contract.md`) |
     | Record bookkeeping by hand | hundreds of heredoc turns; the invented session id | `scripts/crew-record.py` |
@@ -4144,3 +4144,81 @@ Deliberately different:
        hypothesis without naming one. Both reports are honest and neither
        hedged, so the concession reads as the finding §9.5 wants rather than a
        failed dispatch.
+
+67. **A review agent writes its own file into the record root — 2026-09-04,
+    T20.** Item 26b denied every IC write under `~/.claude`, and item 31b
+    traced that denial to the nested headless `claude -p` shape.
+    `review-output.md`'s **Return path**, added on 2026-09-04T02:00Z with
+    §15.50's changes, tells each review agent to write its whole report to
+    the absolute path its dispatch names and to return four lines. T20 asked
+    whether that write is allowed. It is. No run since the rule landed shows
+    a denial.
+
+    a. **Ten runs, 33 review dispatches, zero denials.** Four runs kept
+       their record under `~/.claude/crew/`, so the write went to the same
+       sensitive path item 26b named: `truncate-helper-bfa8`,
+       `slugify-stage-3-fa89`, and T20's own two runs below. Six more ran
+       with `$CREW_RECORD_ROOT` in a scratchpad: `slugify-helper-d1ad`,
+       `add-slugify-helper-41b2`, `add-querykey-helper-5400`,
+       `add-slugify-helper-6304`, `encodequery-skip-nullish-7e8f` and
+       `encode-query-jsdoc-ampersand-9b9f`. Every dispatch returned the
+       four-line result with a real `Wrote:` path, and every named file is
+       on disk. The fallback for a denied write was never taken. Every
+       "denied" string in those transcripts belongs to the injected
+       contract text, not to an agent's answer.
+
+    b. **The dispatch shape that produced it.** An interactive project lead,
+       in `auto` permission mode, spawns each reviewer with the `Agent` tool
+       as an unnamed background subagent, with no spawn-time `model`. The
+       agent frontmatter therefore picks the model: opus for
+       `crew:spec-critic`, `crew:split-critic` and
+       `crew:deliverable-reviewer`, sonnet for `crew:package-reviewer`. The
+       reviewer's cwd is the target repo, and the record root is outside
+       it. No `--add-dir` and no allow rule was
+       added for the write. The full path changes none of this: its ICs are
+       teammates, but its reviewers stay unnamed subagents of the project
+       lead, so both paths share one dispatch shape for a review.
+
+    c. **The saving is real.** The project lead reads the four lines, then
+       reads only the parts of the report file it needs, with `grep` and
+       `sed`. In `truncate-helper-bfa8` it made three review dispatches and
+       never held a whole report in its context.
+
+    d. **Two runs answered T20's own question, one per path.** Both on the
+       `jerridan/crew-fixture-string-kit` fixture, both with a Fable 5.1
+       project lead at `--effort high` in tmux, in `auto` permission mode,
+       with the record root left at `~/.claude/crew/`.
+
+       - Simple path: `add-truncate-and-slugify-9140`, one `helpers`
+         package, three reviewers, draft PR #8, $7.43 at list price.
+       - Full path: `add-titlecase-decodequery-b150`, two packages worked
+         by the teammates `ic-text` and `ic-url` in worktrees, five
+         reviewers, draft PR #9, $8.43 at list price.
+
+       All eight wrote their own file and returned the four lines. The
+       full-path run is the first evidence for `crew:split-critic` under
+       the rule: it wrote `reviews/deliverable-1-split-critic-r1.md` and
+       returned `Verdict: dispatchable`, `Critical count: 0`. Every one of
+       crew's four review agents has now written into the record root
+       itself.
+
+    e. **A two-territory goal with no `Favour:` line takes the simple
+       path.** The first run was meant to be the full-path one. Its goal
+       named two helpers in two directories, and the project lead still
+       chose one package, and `SKILL.md` step 5 sends one package to the
+       simple path. The choice was deliberate and it is in `decisions.md`,
+       under "Which path, and how many packages?", with two citations:
+       `record-format.md`'s "`spend` is the default", and `full-path.md`
+       step 1's rule that a territory splits only where a review boundary
+       earns its cost. The charter carried no `Favour:` line, and neither
+       helper consumed the other. The second run carried `Favour: time` in
+       a charter file and reached the full path. So a goal's territory
+       count does not pick the shape, and a probe that needs the full path
+       writes `Favour: time` in the charter rather than trusting the goal
+       to force it.
+
+    f. **The contrast run, before the rule.** `graduate-pages-v3-85b3`
+       started at 2026-09-03T16:02Z. Its dispatches carried no Return
+       path, so the project lead saved each review file itself, with a
+       Bash script that read the critic's transcript for the block that
+       holds `Verdict:`. That is the cost the rule removes.

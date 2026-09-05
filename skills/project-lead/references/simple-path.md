@@ -20,10 +20,10 @@ package, banded by `band-rubric.md`, mirrored into `state.json`'s `packages[]`.
 No split critic runs — one package has no sibling to overlap.
 `crew:deliverable-reviewer` reads it at "Review the deliverable".
 
-A one-line package writes the same file and the same entry. It consumes and
-produces nothing, and its acceptance criterion is the charter's. Its file set
-is the files the change touches, less any shared file: `record-format.md` keeps
-those out of every file set, and "Integrate" is where you edit them.
+The one package consumes and produces nothing, and its acceptance criterion is
+the charter's. Its file set is the files the change touches, less any shared
+file: `record-format.md` keeps those out of every file set, and "Integrate" is
+where you edit them.
 
 ## Create the branch
 

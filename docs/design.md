@@ -5232,12 +5232,16 @@ Deliberately different:
        conflict check.
 
     d. **The record says which steps ran.** `state.json` gains
-       `run.steps_skipped`, a list of `{step, package, reason, at}`, absent
-       until the first skip — so an absent field means every step ran.
-       `crew-record.py` needs no change: `run set steps_skipped <json>` writes
-       it. Without the field a skipped step is indistinguishable from a failed
-       one, because both leave a missing review file, and a `null`
+       `run.steps_skipped`, a list of `{step, package, deliverable, reason,
+       at}`, absent until the first skip — so an absent field means every step
+       ran. `crew-record.py` needs no change: `run set steps_skipped <json>`
+       writes it. Without the field a skipped step is indistinguishable from a
+       failed one, because both leave a missing review file, and a `null`
        `plan_approved_at` already means "waiting at the gate".
+       `crew-stats.py` reads the field into a "Steps skipped" table, so the
+       catch rate this item measures keeps a denominator that a reader can
+       correct: a skipped review is absent from `reviews/`, and only this
+       field says the absence was by rule.
 
     e. **What the live run must show.** <!-- live run: pending -->
        One `light` package through the simple path on the fixture, against

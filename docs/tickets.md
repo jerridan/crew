@@ -1661,7 +1661,8 @@ Read first: design §15.74; `skills/lead/SKILL.md` "Answer what you can";
 
 ## T42 — Review effort in proportion to the band
 
-Status: done (design §15.77)
+Status: done — the rule and the record field ship; the live `light` run is
+still to come, and design §15.77e holds the placeholder for its figures
 Depends on: nothing
 Stage: any (design §15.73, §15.74)
 

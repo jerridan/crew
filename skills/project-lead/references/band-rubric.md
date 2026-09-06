@@ -87,7 +87,8 @@ on 1 of the 3 that ran over a `light` package (design §15.77).
 **A skipped plan gate keeps the plan.** The IC still writes `plans/<id>.md`, and
 it does not stop for a go-ahead, so you dispatch it once instead of twice. Say
 in the dispatch prompt that the gate is skipped — `ic-contract.md`'s "The plan
-gate" branches on it. Leave `plan_approved_at` at `null`: no gate ran.
+gate" branches on it, and it also says where the plan goes when the record
+write is denied. Leave `plan_approved_at` at `null`: no gate ran.
 
 **The deliverable review skips on three conditions, and all three must hold.**
 The deliverable holds this one package, its package review reads

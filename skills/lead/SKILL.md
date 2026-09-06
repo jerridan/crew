@@ -317,7 +317,8 @@ list` report git's own state, not the code, so you may run them against any
 item's checkout. `fetch`, `remote set-head` and `worktree add` and `remove` are
 the four writing commands a task's setup and cleanup name, in steps 1 and 6;
 they move refs and directories, never a tracked file. Nothing else runs in a
-goal's checkout: no test, no `gh`, and no command that writes. Prefer the record even for these — a goal's
+goal's checkout: no test, no `gh`, and no command that writes. Prefer the
+record even for these — a goal's
 `checkout_restored` already says which branch its run left the tree on
 (`record-format.md`), and a git call that repeats the record buys nothing.
 

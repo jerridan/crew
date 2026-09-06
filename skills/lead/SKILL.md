@@ -15,8 +15,8 @@ Run this session at `fable`, high effort — `claude --model fable --effort high
 
 ## Where the rules live
 
-Your own references are in `references/`, beside this file, and your script in
-`scripts/`. The project lead's references are under
+Your own references are in `references/`, beside this file, and your two
+scripts in `scripts/` — `crew-portfolio.py` and `lead-spend.py`. The project lead's references are under
 `../project-lead/references/`, and they are canonical for what they own — read
 one there rather than re-deriving its rule here. Every path you hand another
 session is absolute: its cwd is not yours.
@@ -85,17 +85,15 @@ because a project lead handed a criterion-less charter escalates immediately
 and you pay for a session to do it.
 
 Put in the charter everything you already know that the run would otherwise
-have to ask you: the budget, the constraints the principal stated, and the
-preferences `decisions.md` already holds. Every line you write there is an
-escalation you do not have to answer later.
+have to ask you: the constraints the principal stated, and the preferences
+`decisions.md` already holds. Every line you write there is an escalation you
+do not have to answer later.
 
-**The brief's budget figure is a ceiling, not the charter's `Budget:` line.**
-A goal-sized run spends most of its money on the project lead's own seat, and
-a budget set at the ceiling fires trigger 5 near the end and turns the last
-mile into two interruptions (design §15.50, §15.74k). Set the charter figure
-below the ceiling with room under it, and when the run does hit it, read
-`spend.transcript` for the number — never estimate what a run you are not in
-has left to spend.
+**A dollar figure in the brief is a preference, not a charter line.** No
+charter carries a budget and nothing stops a run on cost (design §8, §15.76).
+Write the figure into the portfolio's `decisions.md` on the preference route,
+and report each item's spend against it from `spend.transcript` — never
+estimate what a run you are not in has left to spend (design §15.74k).
 
 ## One project-lead session per goal
 
@@ -119,6 +117,25 @@ state against `state.json` before you set an item `done` — a closing report ca
 be lost, and a lost message costs latency and never correctness (design §15.21,
 §15.72g).
 
+## Price your own seat when an item closes
+
+You run from no checkout, so `spend.py` cannot find you and nothing else
+counts what this tier costs — 30% and 47% of the two portfolios measured
+(design §15.76). Each time you set an item `done` or `abandoned`, and again
+before you close the portfolio, run:
+
+```
+python3 <lead-skill-dir>/scripts/lead-spend.py <portfolio-dir> --write
+```
+
+It reads `lead.session_ids`, prices those transcripts at list price, and
+writes `lead.spend` (`record-format.md`). `crew-stats.py` then prints your
+cost beside the runs'.
+
+This is the one exception to the rule above. The script reads your own
+transcripts and no others, and you read only the figure it prints. Never read
+a project lead's transcript, and never open one yourself.
+
 ## Answer what you can, batch what only the principal can decide
 
 `autonomy-contract.md` owns the routing and the triggers, and its ladder covers
@@ -140,6 +157,11 @@ A batch you send is not a turn you wait in. Send it, write the record, end the
 turn.
 
 ## You never touch a target repo
+
+**Start outside every item's checkout, and never move into one.** `spend.py`
+prices every session that ran from a checkout, so a lead sitting inside an
+item repo lands in that item's own spend and gets counted twice —
+`lead-spend.py` prints a `double counted` line when it finds this.
 
 No `Read`, no `Edit`, no `Write`, no test run, no git command in any item's
 checkout. Everything you need is in the portfolio and in the item records. A

@@ -22,8 +22,8 @@ terminal state and `run_state: complete` in one write, which
 `record-format.md` requires for `work-complete`. Any write that sets
 `run_state` to `complete` — `close`, `run state complete`, or
 `run set run_state complete` — also stamps `run.completed_at`.
-`run set` takes a dotted path, so `run set spend.budget 60` changes one key
-and keeps the rest.
+`run set` takes a dotted path, so a nested key changes on its own and the
+rest of the object stays. It creates each missing level on the way down.
 `escalation add` appends one ask and stamps `asked_at`, so a batch is one
 call per question and no earlier ask is lost; it prints the new entry's
 index, which `escalation answer` takes.

@@ -184,7 +184,7 @@ actual state, not the one that sounds best.
 | `DONE` | You finished the package with no reservations. | Verifies your work against git, then sends it to package review. |
 | `DONE_WITH_CONCERNS` | You finished, but you have doubts worth flagging. | Reads your concerns first. Resolves any correctness or scope concern before review continues. Notes a plain observation and proceeds to review. |
 | `NEEDS_CONTEXT` | You are missing information and the work is not complete. | Supplies the missing information and re-dispatches you. This differs from the Questions protocol above, which is for a question you can work around — use `NEEDS_CONTEXT` only when you cannot continue at all. |
-| `BLOCKED` | You cannot complete the package as assigned. Name the cause in your report: `capability` — the work is beyond you — or `environment` — a denied permission, a missing tool, an unreachable path. | For a capability block: promotes the package one band up (`band-rubric.md`), or stops the run at the spend or fix-round breaker. For an environment block: fixes the environment or performs the blocked action itself. It never promotes over one — a bigger model hits the same wall. |
+| `BLOCKED` | You cannot complete the package as assigned. Name the cause in your report: `capability` — the work is beyond you — or `environment` — a denied permission, a missing tool, an unreachable path. | For a capability block: promotes the package one band up (`band-rubric.md`), or stops the run at the fix-round breaker. For an environment block: fixes the environment or performs the blocked action itself. It never promotes over one — a bigger model hits the same wall. |
 
 ## Report contract
 

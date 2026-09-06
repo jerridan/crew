@@ -12,7 +12,7 @@ path is chosen — `autonomy-contract.md` owns when.
 
 This file runs **one** deliverable. Deliverables run sequentially and `split.md`
 carries `Depends on` to order them, but no loop reads it yet, so a goal needing
-two deliverables is escalation trigger 8, not a bigger split.
+two deliverables is escalation trigger 7, not a bigger split.
 
 ## What changes
 

@@ -43,7 +43,6 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> package add '<json objec
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> state in-flight
 python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rounds_used 1
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run state blocked
-python3 <skill-dir>/scripts/crew-record.py <record-dir> run set spend.budget 60
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation add "<trigger>" "<question>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation answer <index> "<answer>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> close <deliverable-id> draft-pr-opened --pr-url <url>
@@ -72,9 +71,6 @@ The goal and its falsifiable acceptance criteria, as the principal wrote
 them or as the project lead expanded a goal string. Two optional lines,
 each on its own, anywhere in the file:
 
-- `Budget: <dollars>` — the most the run may cost at Anthropic list price,
-  as `spend.py` computes it. Copied to `spend.budget`. Without it the run has
-  no budget and `autonomy-contract.md` trigger 5 never fires.
 - `Favour: time` or `Favour: spend` — what the split optimises. `time`
   splits into parallel territories; `spend` keeps one territory and one IC
   that carries its context from package to package. `spend` is the default
@@ -420,7 +416,7 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it. |
 | `completed_at` | ISO-8601 UTC timestamp `crew-record.py` stamps on every write that sets `run_state` to `complete` — the `close` command, `run state complete`, and `run set run_state complete`. `crew-stats.py` prices a run through this bound, or the latest `state_changed_at` when it is absent, so a `complete` run without it prices short of its own tail (design §15.51). An `interrupted` run never gets one, and `--resume` never sets one — only a later natural completion does. |
-| `spend` | `{budget, transcript}`. See Spend below. |
+| `spend` | `{transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
@@ -455,9 +451,11 @@ Spend is measured from the transcripts, not from agent notifications, because
 the transcripts are the only count that includes the project lead's own
 session and the teammates (design §8, §15.50).
 
+No figure gates a run. `spend` is a report the closing summary states and
+`crew-stats.py` totals, and nothing stops on it (design §8, §15.76).
+
 | Field | Meaning |
 |---|---|
-| `budget` | dollars at list price, from the charter's `Budget:` line; absent when the charter has none. Exceeding it is `autonomy-contract.md` trigger 5. |
 | `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over every transcript that ran from the checkout since `created_at`. `autonomy-contract.md` says when to run it. |
 
 ### Escalations
@@ -494,7 +492,6 @@ One run, two packages, in different states:
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "created_at": "2026-08-30T14:02:11Z",
     "spend": {
-      "budget": 60,
       "transcript": {
         "measured_at": "2026-08-30T16:40:03Z",
         "total_tokens": 41200000,
@@ -832,6 +829,39 @@ window; it does not close it, and no lock exists to.
 | `updated_at` | ISO-8601 UTC, stamped on every write. It says when the portfolio last moved; it never chooses between two open portfolios, which is a question for the principal (above). |
 | `escalations` | a list of `{item, question, asked_at, answer}` — what the lead asked the principal, and what came back. `item` names the item the question belongs to, in place of the goal record's `trigger`: a lead's questions come from its items, not from design §6's trigger list. An entry with `answer: null` is open, and a restarted lead re-sends it. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook, in `run.compactions`' shape. Absent until the first compaction. It is how a lead learns its context was cut rather than merely short. |
+| `spend` | what the lead's own sessions cost, in `run.spend.transcript`'s shape: `{measured_at, total_tokens, usd_list_price, by_model}`. Written by `scripts/lead-spend.py --write`, not by `crew-portfolio.py`. See Lead spend below. |
+
+### Lead spend
+
+A lead runs from no checkout and writes no `state.json`, so `spend.py` cannot
+find it and the tier's own cost goes uncounted — 30% and 47% of the two
+portfolios measured (design §15.76). `scripts/lead-spend.py` prices the lead
+instead, from the transcripts of the sessions in `lead.session_ids`:
+
+```
+python3 <lead-skill-dir>/scripts/lead-spend.py <portfolio-dir> [--write]
+```
+
+It prices whole sessions, because every turn of a lead session belongs to the
+portfolio. It imports `spend.py` for the price table, so there is one table.
+
+**Run it with `--write` each time an item reaches `done` or `abandoned`**, and
+again before `lead state closed`. The figure covers the portfolio to that
+moment, so a later item raises it. A lead that never runs it leaves
+`lead.spend` absent, and `crew-stats.py` prints the portfolio's runs with no
+lead cost beside them.
+
+**A task's workers are in this figure.** A task has no project-lead session,
+so the IC and the reviewer the lead dispatched ran under the lead's own
+session and their cost is priced as the lead's. Only a goal gets a run of its
+own to hold its cost.
+
+The last write always reads short by its own turn: the tokens the closing
+turn spends after the measurement land in no figure (design §15.76). Nothing
+fixes that from inside the session being measured.
+
+This is the one figure the lead keeps in `portfolio.json` about spend. A
+run's own cost stays in its `state.json` (Authority rule below).
 
 ### Per-item fields
 
@@ -852,8 +882,9 @@ window; it does not close it, and no lock exists to.
 An item's `state` is the **lead's** view of the item, not the run's. The run's
 own state lives in `record_dir`'s `state.json`, and that file stays
 authoritative for the run (Authority rule below). The lead never copies a
-package, a band or a spend figure into `portfolio.json`; it reads them where
-they live.
+package, a band or a run's spend into `portfolio.json`; it reads them where
+they live. `lead.spend` is not an exception: it is the lead's own cost, and
+no `state.json` holds it.
 
 ### Item state transitions
 
@@ -914,6 +945,12 @@ nothing else in the portfolio holds it.
     "session_ids": ["3355ca2a-1f0e-4c22-9c31-6b0d51a9e004"],
     "created_at": "2026-09-05T13:02:11Z",
     "updated_at": "2026-09-05T13:44:52Z",
+    "spend": {
+      "measured_at": "2026-09-05T17:12:40Z",
+      "total_tokens": 21400000,
+      "usd_list_price": 12.29,
+      "by_model": { "fable": { "messages": 62, "input": 1400, "cache_write_5m": 480000, "cache_write_1h": 0, "cache_read": 20800000, "output": 24000, "usd": 12.29 } }
+    },
     "escalations": [
       {
         "item": "truncate-7f31",
@@ -969,14 +1006,13 @@ Every name this file defines, with what consumes it.
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `evidence/` — writer: a `crew:researcher`, at the path its dispatch names; the project lead itself for an `Explore` subagent's finding, and for a researcher whose write was denied. Consumer: `investigation-path.md` Phases 1 to 3; every advocate in an investigation council (design §9.5); `diagnosis.md`'s `## Evidence`
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
-- `charter.md` `Budget:` and `Favour:` lines — consumer: `SKILL.md`'s "Take the goal" (budget), `full-path.md`'s "Write the split" (split shape)
+- `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py`
 - `run.completed_at` — writer: `crew-record.py`, on `close`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md`'s "Verify before you believe" (re-verify after an IC compacts) and "The territory's next package" (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
-- `run.spend.budget` — writer: `SKILL.md`'s "Take the goal" from the charter. Consumer: `autonomy-contract.md` trigger 5
-- `run.spend.transcript` — writer: `scripts/spend.py`. Consumer: `autonomy-contract.md` trigger 5, design §8
+- `run.spend.transcript` — writer: `scripts/spend.py`. Consumer: `scripts/crew-stats.py`, the closing report, design §8
 
 **`split.md` sections and fields**
 - `Global Constraints` — consumer: stage 4/5 (project lead copies it into every IC spawn prompt, design §5)
@@ -1047,7 +1083,7 @@ Every name this file defines, with what consumes it.
 - `run_state` values `active`, `blocked`, `interrupted`, `complete` — consumer: this file's `run_state` transitions table; crew's `SessionEnd` hook; stage 5, stage 6
 - `run.session_ids` — consumer: stage 5 (resume, matches this run's project lead sessions)
 - `run.principal` — consumer: `autonomy-contract.md` (The principal); stage 5 (resume, which reads it instead of a message it no longer has)
-- `spend` — consumer: design §8, `autonomy-contract.md` trigger 5 (the budget check)
+- `spend` — consumer: design §8, `scripts/crew-stats.py`
 - `escalations` — consumer: stage 6 (design §6 triggers); this file's `run_state` transitions table
 - `escalations[].trigger` — consumer: stage 6
 - `escalations[].question` — consumer: stage 6; the human answering it
@@ -1105,6 +1141,7 @@ Every name this file defines, with what consumes it.
 - `lead.created_at`, `lead.updated_at` — consumer: a person, and `skills/lead/SKILL.md`, reading when the portfolio last moved
 - `lead.escalations` — consumer: `skills/lead/SKILL.md` ("Batch what only the principal can answer"); a restarted lead re-sends every entry with `answer: null`
 - `lead.compactions` — writer: `hooks/pre-compact.py`. Consumer: `skills/lead/SKILL.md`
+- `lead.spend` — writer: `skills/lead/scripts/lead-spend.py`. Consumer: `skills/project-lead/scripts/crew-stats.py`; a person reading what the tier costs (design §8)
 - `items[].id`, `kind`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`
 - `items[].kind` values `goal` and `task` — consumer: T39's triage step
 - `items[].state` values `pending`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions

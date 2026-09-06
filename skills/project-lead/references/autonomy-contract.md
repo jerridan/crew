@@ -128,7 +128,7 @@ about two patterns already in the repo. That form's `usages` and `Age:` lines
 have nothing to say about any other kind of question.
 
 **Run launch check 3 of `full-path.md`'s "Check the launch conditions" here,
-every time, and put its failure in the same batch.** It is trigger 7, does not
+every time, and put its failure in the same batch.** It is trigger 6, does not
 depend on an answer, and cannot be fixed mid-run. Checks 1 and 2 there stay
 where they are — they only ever matter once the goal has already been sent to
 the full path, so that rule runs them, not the sweep. A run that asks the
@@ -137,9 +137,9 @@ interrupted the principal twice.
 
 Check 3's failure is a preference question, not a plain block: offer the
 three ends `simple-path.md`'s "End the run" names. Write it with
-`escalation add` using the trigger text `launch check 3 (trigger 7): no
+`escalation add` using the trigger text `launch check 3 (trigger 6): no
 remote` — a fixed phrase, so "End the run" can find this entry among any
-others trigger 7 wrote. It reads the answer instead of asking again: one
+others trigger 6 wrote. It reads the answer instead of asking again: one
 answer, recorded once, settles both ends of the run.
 
 A lead session answers the batch by message; a human answers it in the
@@ -335,13 +335,12 @@ one interruption; a run built in the wrong direction costs a day.
    question you can neither answer with a citation nor frame into positions.
 4. Any action outside the deliverable branch: the main branch, production,
    or credentials.
-5. The charter's budget is exceeded (Spend, below).
-6. The fix-round breaker fired at the top band.
-7. One of the three launch checks in `full-path.md`'s "Check the launch
+5. The fix-round breaker fired at the top band.
+6. One of the three launch checks in `full-path.md`'s "Check the launch
    conditions" fails: the goal needs the full path and agent teams are off or
    the session is worktree-isolated, or — on any goal — the checkout has no
    remote to push to. None can be fixed mid-run.
-8. The goal needs more than one **deliverable**. `full-path.md` runs one
+7. The goal needs more than one **deliverable**. `full-path.md` runs one
    deliverable's packages; nothing loops over deliverables or reads
    `split.md`'s `Depends on` yet. Say which deliverables you would cut it
    into, and ask whether to run the first alone.
@@ -424,7 +423,12 @@ created — yours and the teammates' included — into `spend.transcript`
 (`record-format.md`). Nothing else counts the project lead's own session or
 a teammate, and those were 90% of two measured runs (design §15.50).
 
-**Trigger 5 is the budget.** When the charter carries a `Budget:` line, it is
-`spend.budget`; when `spend.transcript.usd_list_price` exceeds it after a
-`spend.py` run, stop and escalate with the number. A charter with no
-`Budget:` sets no limit, and the transcript figure is a report, not a gate.
+**Spend is a report, not a gate.** No figure stops a run, and no trigger
+fires on cost (design §8, §15.76). State the run's spend in the closing
+report, and let the principal decide what to do with it. The loops that could
+run away are bounded by the fix-round cap, the nudge cap and one-band
+promotion.
+
+**A dollar figure in the brief is a preference, not a limit.** Record it in
+`decisions.md` on the preference route and report the run's spend against it.
+Escalate on it only when the principal asked to be told.

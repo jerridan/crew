@@ -146,7 +146,7 @@ and `run_state: complete`. A human merges it. Then run
 the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
 When the push or `gh pr create` cannot run, check `escalations` first for the
-entry with trigger text `launch check 3 (trigger 7): no remote` — the
+entry with trigger text `launch check 3 (trigger 6): no remote` — the
 preference sweep writes it only when check 3 of `full-path.md`'s "Check the
 launch conditions" failed, before the split (`autonomy-contract.md`). Found:
 act on the answer, and do not ask again. "Keep the work local" means skip

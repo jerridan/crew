@@ -49,6 +49,10 @@ branches on it.
 send it back, set `plan_approved_at`, then dispatch again to implement, naming
 the plan's path.
 
+**A `light` package skips the gate and takes one dispatch.** `band-rubric.md`'s
+"What a band skips" owns the rule, the record write it needs, and what the
+spawn prompt must say.
+
 **Expect the contents instead of the file.** A dispatch shape that denies the
 IC every record write (§15.26b, §15.31b) puts the plan or report in its final
 message. Transcribe it, and say that you did.
@@ -126,6 +130,10 @@ edits you just made, which the next reviewer's shared-file check exists to
 read.
 
 ## Review the deliverable
+
+**A `light` package can skip this step.** `band-rubric.md`'s "What a band
+skips" states the three conditions and the record write. Skipped, the run goes
+straight to "End the run".
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`, the
 checkout path and base ref, the fresh diff path, the accepted package review,

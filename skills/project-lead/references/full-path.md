@@ -179,11 +179,9 @@ The IC writes `plans/<id>.md` and waits. Read it, then approve it or send it
 back with what to change. `SendMessage` the IC its go-ahead, and set
 `plan_approved_at`.
 
-For a `standard` or `light` package, check two things and approve: every file
-the plan names is in the file set, and the plan changes no `produces`
-signature. Read a `deep` package's plan in full. A plan gate that
-reads every plan in full cost a run a round trip per package for no finding
-(design §15.50).
+How closely you read the plan follows the band: `band-rubric.md`'s "What a band
+skips" owns that. No package skips the gate on this path — a teammate's gate is
+a message, not a second dispatch.
 
 While `plans/<id>.md` exists and `plan_approved_at` is `null`, that IC's idle
 is an expected pause and not a fault (design §15.8).

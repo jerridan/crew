@@ -1,12 +1,12 @@
 # Band rubric
 
-This file decides which model a package or a council gets (design §8, §6.1).
+This file decides what a package or a council gets for its band: the model
+(design §8, §6.1), and, for a package, which review steps run (design §15.77).
 
-**A band sets model only, and a spawn-time `model` overrides an agent's
-frontmatter.** `reasoning_effort` cannot travel that way — a teammate inherits
-the project lead's effort (design §12) — so a band cannot set effort. Do not
-add an effort column to this rubric. This file is the only place a model is
-chosen.
+**A band sets a model, never an effort, and a spawn-time `model` overrides an
+agent's frontmatter.** `reasoning_effort` cannot travel that way — a teammate
+inherits the project lead's effort (design §12). Do not add an effort column to
+this rubric. This file is the only place a model is chosen.
 
 ## Bands
 
@@ -61,6 +61,45 @@ Any "yes" past the first two is a signal toward `deep`.
   (design §15.50). Order the territory's packages with that in mind. The
   IC respawns at the new package's band only when `full-path.md`'s "The
   territory's next package" says to respawn.
+
+## What a band skips
+
+A `light` package can skip two steps: the plan gate and the deliverable review.
+Every other step runs at every band, the package review included — it is the
+check the bounded edit used to skip (design §15.73).
+
+| Step | `light` | `standard` | `deep` |
+|---|---|---|---|
+| spec critic | runs | runs | runs |
+| plan gate | simple path: skipped. Full path: the two checks below. | the two checks below | read the plan in full |
+| package review | runs | runs | runs |
+| deliverable review | skipped on the three conditions below | runs | runs |
+
+**The two checks** are that every file the plan names is in the file set, and
+that the plan changes no `produces` signature. A plan gate that read every plan
+in full cost a run a round trip per package for no finding (design §15.50).
+
+**The spec critic never skips.** The run writes `spec.md` before the split, so
+no package has a band yet when the critic reads it (`SKILL.md`'s order). It also
+earns its cost: it sent a spec back on 9 of 27 reviews across the records, and
+on 1 of the 3 that ran over a `light` package (design §15.77).
+
+**A skipped plan gate keeps the plan.** The IC still writes `plans/<id>.md`, and
+it does not stop for a go-ahead, so you dispatch it once instead of twice. Say
+in the dispatch prompt that the gate is skipped — `ic-contract.md`'s "The plan
+gate" branches on it. Leave `plan_approved_at` at `null`: no gate ran.
+
+**The deliverable review skips on three conditions, and all three must hold.**
+The deliverable holds this one package, its package review reads
+`Verdict: accepted`, and you edited no shared file at "Integrate". One package
+leaves the seam check and the conflict check nothing to read. An accepted
+package review means the diff already had a reader. No shared-file edit rules
+out the one defect class this reviewer caught that the package reviewer could
+not reach (design §15.77). Fail any one condition and the review runs.
+
+**Record every skip** in `state.json`'s `run.steps_skipped`
+(`record-format.md` owns the field). A step with no review file and no entry
+there reads as a step that failed to run.
 
 ## Critics and reviewers take their own model
 

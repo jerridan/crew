@@ -79,8 +79,8 @@ Each reference owns one subject and is canonical for it:
 - `record-format.md` — both records: the goal directory with its `state.json`,
   `worktrees.json` and `decisions.md`, and the lead's portfolio directory with
   its `portfolio.json`. Every field, and every state transition.
-- `band-rubric.md` — which model a package or a council gets, and when to
-  promote.
+- `band-rubric.md` — which model a package or a council gets, when to promote,
+  and which review steps a band skips.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
 - `review-output.md` — the shape every review agent reports its findings in.
 - `writing-standard.md` — how an instruction file is written, and how

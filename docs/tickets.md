@@ -1734,3 +1734,9 @@ closed portfolio item shows the lead's spend beside the run's, and
 Read first: design §8, §15.50, §15.51, §15.74k; `autonomy-contract.md`
 "Spend"; `record-format.md`; `skills/lead/SKILL.md` "One charter per item";
 `spend.py`; `crew-stats.py`.
+
+Done in PR #56, plugin 0.1.50, design §15.76. A live lead ran two items to
+`closed` on 2026-09-06 and wrote `lead.spend` from inside its own turn each
+time an item closed: lead $5.59 against runs $6.38, a 46.7% lead share, no
+`double counted` line, and the goal run closed with no budget escalation and
+no `spend.budget` key.

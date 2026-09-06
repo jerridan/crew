@@ -120,9 +120,9 @@ be lost, and a lost message costs latency and never correctness (design §15.21,
 ## Price your own seat when an item closes
 
 You run from no checkout, so `spend.py` cannot find you and nothing else
-counts what this tier costs — 30% of the one portfolio measured (design
-§15.76). Each time you set an item `done` or `abandoned`, and again before you
-close the portfolio, run:
+counts what this tier costs — 30% and 47% of the two portfolios measured
+(design §15.76). Each time you set an item `done` or `abandoned`, and again
+before you close the portfolio, run:
 
 ```
 python3 <lead-skill-dir>/scripts/lead-spend.py <portfolio-dir> --write

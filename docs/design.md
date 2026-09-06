@@ -677,8 +677,8 @@ it.
 
 A lead's own session runs from no checkout and writes no `state.json`, so
 `skills/lead/scripts/lead-spend.py` prices it from the sessions
-`portfolio.json` names, into `lead.spend`. The lead tier was 30% of the one
-portfolio measured, and nothing else counts it (§15.76).
+`portfolio.json` names, into `lead.spend`. The lead tier was 30% and 47% of
+the two portfolios measured, and nothing else counts it (§15.76).
 
 `skills/project-lead/scripts/crew-stats.py` reads the whole record root and
 prints cost per package by band, fix rounds by band, promotions, councils and
@@ -5076,7 +5076,7 @@ Deliberately different:
     portfolio — a cleaner bound than the checkout window §15.51 had to
     invent. The lead runs it with `--write` each time an item closes.
 
-    **The first number: the lead tier is 30% of what it drives.** §15.74's
+    **The first number: the lead tier is a third of what it drives.** §15.74's
     portfolio, copied to `~/.claude/crew-t43/` and priced read-only, is
     **$6.01** across its two lead sessions — 41 fable messages, 2.98M tokens,
     almost all of it cache reads — against **$13.75** for the one run under
@@ -5091,9 +5091,44 @@ Deliberately different:
     that item's price and the `Leads` row would count it twice. The rule was
     implied before — a lead touches no target repo — and is now written down,
     and `lead-spend.py` prints a `double counted` line per item when it finds
-    a lead transcript under one. A code review found this; no run has hit it.
+    a lead transcript under one. A code review found this, and the live run
+    below cleared it.
 
-    <!-- live run: pending -->
+    **The live run, and the second number — 2026-09-06.** A lead ran two
+    items to `closed` from an empty directory outside every checkout, against
+    an integration checkout, with `CREW_RECORD_ROOT=~/.claude/crew-live`;
+    portfolio `lead-2026-09-06-cf74`. Item 1 was a **task** the lead ran
+    itself with one IC (fixture PR #19); item 2 was a **goal** through a
+    project-lead session (fixture PR #20). The lead ran
+    `lead-spend.py --write` inside its own turn each time an item closed —
+    $3.87 at the task, printed in that turn's closing table — and again at
+    the close. `crew-stats.py` printed the `Leads` row: lead $5.59 over one
+    session and 47 fable messages, runs $6.38, total $11.97, lead share
+    **46.7%**, with `portfolios 1` and `usd, leads and priced runs 11.97` in
+    `Totals`. No `double counted` line appeared, which is the rule above
+    holding. So the lead tier is a third to a half of what it drives, on two
+    portfolios: 30.4% on §15.74's and 46.7% here.
+
+    **A task item's workers sit inside `lead.spend`, not in a run.** A task
+    has no project-lead session and no `state.json`, so the IC and the
+    reviewer the lead dispatched ran under the lead's own session and their
+    cost is priced as the lead's. The `Leads` row reads `items 2` and
+    `runs 1` for exactly that reason, and the run column holds only the goal.
+    Read `lead usd` on a portfolio holding tasks as the lead **and** its own
+    workers, and the share against `runs usd` as higher than the seat alone.
+
+    **The close turn is not in its own figure.** The last `--write` runs
+    inside the turn that writes it, so that turn's remaining tokens land
+    after the measurement: priced again afterwards, the same portfolio reads
+    $5.66 against the stored $5.59. It is the tail §15.51 already named, one
+    tier up, and it is small — 1.3% here. Nothing fixes it from inside the
+    session being measured.
+
+    **The budget's absence held.** The goal run closed with no budget
+    escalation, its `state.json` carries no `spend.budget` key, and it cost
+    $6.38 — fable $5.00, sonnet $0.73, opus $0.66. The lead's closing report
+    gave the principal a spend table per item, which is what "measured and
+    reported, never gated" was meant to produce.
 
     **The budget goes, and with it the last token ceiling.** §15.50 removed
     the token ceiling and left a charter `Budget:` line as the only gate on

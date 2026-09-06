@@ -834,9 +834,9 @@ window; it does not close it, and no lock exists to.
 ### Lead spend
 
 A lead runs from no checkout and writes no `state.json`, so `spend.py` cannot
-find it and the tier's own cost goes uncounted — 30% of the one portfolio
-measured (design §15.76). `scripts/lead-spend.py` prices the lead instead,
-from the transcripts of the sessions in `lead.session_ids`:
+find it and the tier's own cost goes uncounted — 30% and 47% of the two
+portfolios measured (design §15.76). `scripts/lead-spend.py` prices the lead
+instead, from the transcripts of the sessions in `lead.session_ids`:
 
 ```
 python3 <lead-skill-dir>/scripts/lead-spend.py <portfolio-dir> [--write]
@@ -850,6 +850,15 @@ again before `lead state closed`. The figure covers the portfolio to that
 moment, so a later item raises it. A lead that never runs it leaves
 `lead.spend` absent, and `crew-stats.py` prints the portfolio's runs with no
 lead cost beside them.
+
+**A task's workers are in this figure.** A task has no project-lead session,
+so the IC and the reviewer the lead dispatched ran under the lead's own
+session and their cost is priced as the lead's. Only a goal gets a run of its
+own to hold its cost.
+
+The last write always reads short by its own turn: the tokens the closing
+turn spends after the measurement land in no figure (design §15.76). Nothing
+fixes that from inside the session being measured.
 
 This is the one figure the lead keeps in `portfolio.json` about spend. A
 run's own cost stays in its `state.json` (Authority rule below).

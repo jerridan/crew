@@ -171,11 +171,16 @@ write the item's `task` object beside it (`record-format.md`).
 over, and the next one starts on a notification.
 
 1. **Give the IC a checkout of its own, cut from the default branch.** Read
-   that branch first — `git -C <repo> symbolic-ref --short
-   refs/remotes/origin/HEAD`, or the `HEAD branch` line of `git -C <repo>
-   remote show origin` when the first prints nothing — and name it as the
-   start point:
-   `git -C <repo> worktree add -b crew/<item-id> <portfolio-dir>/runs/<item-id>/checkout <default-branch>`.
+   that branch first, as a remote ref. Run `git -C <repo> fetch origin`, then
+   `git -C <repo> symbolic-ref --short refs/remotes/origin/HEAD`. It prints
+   `origin/<default-branch>`. When it prints nothing, run `git -C <repo>
+   remote set-head origin --auto` once and read it again. Use the printed ref
+   and nothing else. A local branch of that name can sit behind the remote,
+   and the IC would then build on stale code. When the repo has no `origin`,
+   or the fetch cannot reach it, stop and escalate: the start point is a
+   question only the principal can settle, and a PR has nowhere to go either.
+   Name the ref as the start point:
+   `git -C <repo> worktree add -b crew/<item-id> <portfolio-dir>/runs/<item-id>/checkout origin/<default-branch>`.
    Whatever branch the principal left the checkout on is not a start point:
    the PR would carry its commits too. The principal's own working tree is
    never the one the work happens in. Record `record_dir`, `task.checkout`,
@@ -309,8 +314,11 @@ size").
 
 **Read-only git is not touching.** `status`, `branch`, `log` and `worktree
 list` report git's own state, not the code, so you may run them against any
-item's checkout. Nothing else runs in a goal's checkout: no test, no `gh`, and
-no command that writes. Prefer the record even for these — a goal's
+item's checkout. `fetch`, `remote set-head` and `worktree add` and `remove` are
+the four writing commands a task's setup and cleanup name, in steps 1 and 6;
+they move refs and directories, never a tracked file. Nothing else runs in a
+goal's checkout: no test, no `gh`, and no command that writes. Prefer the
+record even for these — a goal's
 `checkout_restored` already says which branch its run left the tree on
 (`record-format.md`), and a git call that repeats the record buys nothing.
 

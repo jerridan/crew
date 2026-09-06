@@ -958,7 +958,7 @@ Everything else about the task is the item's `task` object:
 | `branch` | `crew/<item-id>`, in the item's `repo`. It outlives the checkout, because the PR is on it. |
 | `base` | the sha the branch started from. The review's diff is `base..HEAD`. |
 | `plan_approved_at` | ISO-8601 UTC, the lead's go-ahead at the plan gate; `null` until then, and `null` for good on a `light` task, which skips the gate (`band-rubric.md`). |
-| `steps_skipped` | `run.steps_skipped`'s list, for a task: every step the band let the lead skip. A skipped step with no entry here reads as a step that failed to run. |
+| `steps_skipped` | `run.steps_skipped`'s list, for a task: every step the band let the lead skip. Each entry keeps that field's five keys, with the item id where a package id would be. A skipped step with no entry here reads as a step that failed to run. |
 | `ic_status` | the IC's last report status, one of `ic-contract.md`'s four. |
 | `fix_rounds_used` | how many fix rounds have run. It names the `<n>` in the diff and review filenames, and 2 is the cap (`skills/lead/SKILL.md`). |
 | `review_verdict` | the package review's last verdict, in `review-output.md`'s words. |
@@ -1051,7 +1051,10 @@ nothing else in the portfolio holds it.
         "checkout": "/Users/x/.claude/crew/lead-2026-09-05-a1b2/runs/pad-start-9c04/checkout",
         "branch": "crew/pad-start-9c04",
         "base": "9f1c2ad",
-        "plan_approved_at": "2026-09-05T13:39:44Z",
+        "plan_approved_at": null,
+        "steps_skipped": [
+          { "step": "plan-gate", "package": "pad-start-9c04", "deliverable": null, "reason": "light band: one file plus its test, covered by npm test", "at": "2026-09-05T13:39:44Z" }
+        ],
         "ic_status": null,
         "fix_rounds_used": 0,
         "review_verdict": null
@@ -1229,5 +1232,6 @@ Every name this file defines, with what consumes it.
 - `items[].id`, `kind`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`
 - `items[].kind` values `goal` and `task` — consumer: `skills/lead/SKILL.md`'s triage step
 - `items[].task` and its fields `band`, `ic_agent`, `file_set`, `acceptance_criterion`, `checkout`, `branch`, `base`, `plan_approved_at`, `ic_status`, `fix_rounds_used`, `review_verdict` — consumer: `skills/lead/SKILL.md` ("A task runs under you"), which is also the only writer
+- `items[].task.steps_skipped` — writer: the lead, at each skip `band-rubric.md`'s "What a band skips" allows. Consumer: `skills/project-lead/scripts/crew-stats.py` ("Steps skipped by rule"), which counts it beside `run.steps_skipped`
 - `runs/<item-id>/checkout/` — consumer: a task's IC, as its worktree, and the package review's diff
 - `items[].state` values `pending`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions

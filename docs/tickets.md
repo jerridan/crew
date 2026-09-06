@@ -1817,3 +1817,42 @@ wake it. Record what the run showed in design §15.
 
 Read first: design §15.80e, §15.21, §15.38, §13.1; `hooks/session-end.py`;
 `skills/lead/references/session-launch.md` "Resuming a dead one".
+
+## T45 — Integration defects from the 2026-09-05 batch
+
+Status: done
+Depends on: T39, T42, T43
+Stage: any (design §15.81)
+
+Four sessions landed T39, T42 and T43 in parallel on 2026-09-05 and
+2026-09-06. Each PR was correct on its own. A high-effort review of the
+merged tree then found six defects that only appear where two of those
+changes meet. Fix all six.
+
+1. `crew-record.py`'s `set_dotted` still walks with `setdefault`, while
+   `crew-portfolio.py` got null and not-a-dict guards. `run set
+   steps_skipped.0.reason` raises an `AttributeError` and `run set
+   principal.name` over a `null` raises a `TypeError`.
+2. `record-format.md`'s task example sets `band: light` with a
+   `plan_approved_at` timestamp and no `steps_skipped`, against its own rule
+   that a light task skips the gate.
+3. `crew-stats.py`'s `runs/*/*/state.json` glob matches a task's worktree at
+   `runs/<item-id>/checkout/`, so a target repo's own `state.json` reads as a
+   run.
+4. The "Steps skipped by rule" table reads run records only, so a task's
+   `items[].task.steps_skipped` has no consumer.
+5. `record-format.md`'s name inventory for `items[].task` omits
+   `steps_skipped`.
+6. `skills/lead/SKILL.md`'s two ways to read the default branch return
+   different refs, `origin/main` and `main`, so the fallback branches a task
+   off stale local code.
+
+Done when: both tracebacks exit with a message against a seeded record, the
+phantom run is skipped and a task's skips reach the table against a seeded
+portfolio, and one rule states the default branch as one ref.
+
+Read first: design §15.76, §15.77, §15.79; `record-format.md` "The portfolio
+record"; `crew-record.py`; `crew-stats.py`; `skills/lead/SKILL.md` "A task
+runs under you".
+
+Done in PR #58, plugin 0.1.55, design §15.81.

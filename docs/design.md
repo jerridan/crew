@@ -5585,3 +5585,86 @@ Deliberately different:
        46.7 percent on §15.79's task-and-goal portfolio and 30.4 percent on
        §15.74's single goal. The tier's overhead is close to fixed, so it
        thins as the work it arranges grows.
+
+81. **Six integration defects, found by review after the merge — T45.** T43,
+    T42, T41 and T39 landed within a day, each from its own session and each
+    correct against its own ticket. A high-effort review of the merged tree
+    then found six defects, and every one of them sits where two of those
+    changes meet.
+
+    Three are a field with one writer and no reader. T42 gave a run
+    `steps_skipped` (§15.77) and T39 gave a task the same field in the
+    portfolio, and `crew-stats.py`'s "Steps skipped by rule" table counted
+    only the first — so a light task, which is the shape the field was added
+    to measure, reported nothing. `record-format.md`'s name inventory listed
+    the eleven `items[].task` fields T39 wrote and not the one T42 added
+    beside them. And the file's own task example still carried a
+    `plan_approved_at` timestamp under `band: light`, which its rule two
+    hundred lines above says stays `null` for good.
+
+    Two are a shape one script learned and the other did not. T39 hardened
+    `crew-portfolio.py`'s `set_dotted` against a `null` level and a level
+    holding a list, because a lead writes into a half-built `task` object.
+    `crew-record.py` kept `setdefault`, so `run set steps_skipped.0.reason`
+    raised an `AttributeError` and `run set principal.name` over a `null`
+    raised a `TypeError` — two paths this batch's fields made reachable, one
+    into a list and one through a `null`. Neither path is one a caller should
+    write: `run.principal` is a string, so `principal.name` now writes a
+    record `record-format.md` does not define. That is the script's stated
+    position and not a new hole — it checks no field name and no shape, and
+    the reference is the only schema. The guard removes the crash, which is
+    all it is for. The guard is now mirrored, with a comment in both scripts
+    saying so: the two live in two skill directories, and a shared module
+    would be a third file neither skill loads. T39's glob for lead-driven
+    runs, `runs/*/*/state.json`, matched its own task worktree at
+    `runs/<item-id>/checkout/`, so a target repo that keeps a `state.json` at
+    its root would have been priced as a run.
+
+    The last is a rule stated twice in one paragraph. `skills/lead/SKILL.md`
+    read the default branch with `symbolic-ref --short
+    refs/remotes/origin/HEAD`, which prints `origin/main`, or with `remote
+    show origin`'s `HEAD branch` line, which prints `main`. A task taking the
+    second branches off whatever the local ref holds, which can be behind the
+    remote. One rule now stands: fetch, read the symbolic ref, and use the
+    `origin/<branch>` it prints. `remote set-head origin --auto` is the
+    fallback, and it feeds the same read. `fetch` and `set-head` join
+    `worktree add` and `remove` in the lead's writing-git carve-out (§15.79h)
+    — they move refs, never a tracked file.
+
+    **Why the seeded tests missed all six.** Each session seeded a record for
+    its own change and ran the scripts against it. None seeded a record
+    holding another ticket's new field, because none existed yet in that
+    session's tree. A test built from one ticket's fixture cannot fail on a
+    field the ticket did not add. Four of the six are a reader missing a
+    writer, which is exactly what a per-ticket fixture hides. The cheap check
+    that would have caught them is one seeded record carrying every new field
+    of the batch, run after the merge and not before it. This ticket ran that
+    check by hand, from a throwaway record root. Nothing in the repo re-runs
+    it, and no ticket owns it yet.
+
+    **What this ticket did not close.** A task's `review_verdict` still has no
+    consumer: `crew-stats.py`'s catch rate reads run records, and a task has
+    none, so a portfolio of tasks now reports its skipped steps and none of
+    its package reviews. The two tables disagree by design until a task's
+    reviews reach the catch rate, which is the same fold this ticket made for
+    `steps_skipped` and a second ticket's work.
+
+    **The live run, 2026-09-06: the sixth fix holds against a diverged
+    checkout.** The fixture clone was put in the state the defect needs — one
+    local-only commit on `main` (`790b6c4`, adding `STALE.txt`) on top of the
+    remote head `45d0bcd`, so local `main` was one commit ahead of
+    `origin/main`. A Fable lead at high effort, portfolio
+    `~/.claude/crew-t45-live/lead-2026-09-06-9f23`, took the `stripSuffix`
+    task from one typed message. It read the ref, cut the worktree from
+    `origin/main` and recorded `task.base`
+    `45d0bcdf464823cf24de8f79a75232f1e13bcb56` — equal to `git ls-remote
+    origin HEAD`, and not the local head. The pushed branch's tree holds no
+    `STALE.txt`, which is the check that matters: the old fallback would have
+    carried that commit into the PR. The lead said both halves in its own
+    words, "cut from origin/main (45d0bcd)" and "your checkout stays on local
+    main, still one commit ahead of origin". Fixture draft PR #23 on
+    `crew/strip-suffix-08a2`, `band: standard`, `plan_approved_at` set,
+    `task.steps_skipped` empty, review accepted, zero fix rounds, 8 minutes 12
+    seconds, lead spend $3.90 at close, portfolio closed. `crew-stats.py` over
+    that root printed the three-column skip table with zeros, which is what a
+    `standard` task skipping nothing should read.

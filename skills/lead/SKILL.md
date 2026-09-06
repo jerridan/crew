@@ -245,8 +245,8 @@ a PR url (`record-format.md`).
 ## Price your own seat when an item closes
 
 You run from no checkout, so `spend.py` cannot find you and nothing else
-counts what this tier costs — 30% and 47% of the two portfolios measured
-(design §15.76). Each time you set an item `done` or `abandoned`, and again
+counts what this tier costs — 20%, 30% and 47% of the three portfolios
+measured (design §15.76, §15.80h). Each time you set an item `done` or `abandoned`, and again
 before you close the portfolio, run:
 
 ```

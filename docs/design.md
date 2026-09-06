@@ -5553,9 +5553,14 @@ Deliberately different:
        `decisions.md` entry saying the question was open with no instruction to
        ask it again. The rule was already written for a batch of several
        (§15.74h wrote three), and a batch of one read as small enough to skip.
-       `skills/lead/SKILL.md` now says one question is still a batch, and that
-       `decisions.md` holds the answer while `lead.escalations` holds the open
-       ask.
+       The item stayed unblocked and closed `done` with the ask still open,
+       which was the right call — the question asked for a follow-up edit and
+       did not change the deliverable — and it is the second reason the batch
+       rule looked like it did not apply. `skills/lead/SKILL.md` now says one
+       question is still a batch, and that `decisions.md` holds the answer while
+       `lead.escalations` holds the open ask. The `blocked` half of the rule is
+       untouched. Whether an ask that does not stop the item should still block
+       it is a separate question, and one run is not enough to answer it.
 
     g. **A shell quoting slip cost a launch, and left two directories
        behind.** The first launch attempt failed on quoting inside the `tmux

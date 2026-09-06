@@ -18,7 +18,11 @@ own record is the portfolio, not `state.json` (`record-format.md`).
 
 **Reach the principal the way the goal arrived.** Three cases, and only three:
 
-- **The goal was typed in this session.** Ask in this session.
+- **The goal was typed in this session.** Ask in this session, and only there.
+  This pane is the principal's only answer channel: never open a
+  `<cross-session-message>` to the same principal, even when a name for one of
+  their other sessions is at hand. A question that lands inside a session the
+  principal is working in is an interruption they did not ask for.
 - **The goal arrived as a `<cross-session-message>`.** Send by `SendMessage`,
   addressed to that envelope's `from-name`. Never ask in your own pane. Nobody
   is watching that pane.

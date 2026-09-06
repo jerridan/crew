@@ -5284,3 +5284,16 @@ Deliberately different:
        $2.76 is an upper bound on the saving and the message count is the
        better measure of it.
 
+78. **A batch to the human principal now carries a push — T41.** T37's run
+    left a batch of questions in the lead's pane for over an hour, and a
+    budget question for two, because nobody was watching the pane (§15.74h).
+    `autonomy-contract.md`'s "Reach the principal" now says the pane is the
+    only answer channel for a principal reached in its own session, and that
+    the lead never opens a `<cross-session-message>` to that same principal —
+    a question landing inside a session they are working in is an
+    interruption they did not ask for. `skills/lead/SKILL.md`'s "Batch the
+    rest into one message" carries the mechanism: one `PushNotification`
+    alongside the pane message, naming the portfolio, the item and the
+    question count, and saying the answer goes in the pane.
+
+    <!-- live run: pending -->

@@ -276,7 +276,10 @@ you. Two rules are yours:
   item. Name the item each question belongs to, name your recommendation, and
   say what each item is doing meanwhile. Write each ask with
   `crew-portfolio.py escalation add` **before** you send, and set that item
-  `blocked`.
+  `blocked`. One question is still a batch, and it takes the same write. An
+  entry in the portfolio's `decisions.md` does not replace that write:
+  `decisions.md` holds the answer, and `lead.escalations` holds the open ask
+  that a restarted lead re-sends (design §15.80).
 
   Send one `PushNotification` alongside the message, with `status: proactive`
   and a one-line `message` under 200 characters, no markdown: name the

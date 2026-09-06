@@ -34,8 +34,8 @@ behalf so you can audit them at review time.
 - **The lead tier**, in this repo and this plugin, as the stage after the
   project lead (§15.70). It holds a portfolio, sizes each item, spawns one
   project-lead session per goal, dispatches one IC for a task, and answers
-  their escalations. `/crew:lead` builds it, one goal has run through it end
-  to end (§15.74), and the size triage is §15.79.
+  their escalations. `/crew:lead` builds it (§15.74), the size triage is
+  §15.79, and two concurrent goals have run through it end to end (§15.80).
 
 ### Out of scope
 
@@ -1109,7 +1109,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
-| 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per goal, one IC per task (§15.70; T36, T37, T39, T9) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), the size triage **built 2026-09-05** (T39, §15.79), and T9 is the proof |
+| 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per goal, one IC per task (§15.70; T36, T37, T39, T9) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), the size triage **built 2026-09-05** (T39, §15.79), and the two goals **proved 2026-09-06** (T9, §15.80) |
 
 ### 13.1 Hooks
 
@@ -5468,3 +5468,115 @@ Deliberately different:
        goal's charter went out by one `SendMessage` before the lead ended its
        turn. Delivery to a lead sitting inside a long turn is what §15.72i
        still has nobody testing.
+
+80. **Two goals from one lead, and both recoveries — 2026-09-06, T9.** T9 is
+    stage 7's proof, and it kept four clauses after §15.70 split the decision
+    and the build out of it. A Fable lead at high effort, started from an empty
+    directory, took two goals from one typed message and closed both. Plugin at
+    main `41a2f91` (0.1.53). Portfolio
+    `~/.claude/crew-t9/lead-2026-09-06-85a8`, one lead session
+    `0d6ba70d`, two fixture clones of `crew-fixture-string-kit`. Goal A
+    `null-safe-helpers-30f7` made every helper under `src/text/` and `src/url/`
+    return `''` for null, and goal B `word-count-decode-query-7b7c` added
+    `wordCount` and `decodeQuery`. Both records show `run_state: complete`, one
+    package at `standard`, zero fix rounds, no run escalation and a restored
+    checkout: draft PRs #21 and #22. Wall clock was 33 minutes from the hand-off
+    to the close, and about 10 of those minutes were goal B lying dead. Two
+    human turns went in: the brief, and one word answering one question.
+
+    **All four clauses met.**
+
+    a. **Two concurrent goals ran from one lead session.** The first turn did
+       the whole charter step twice — two charters, two trust-flag writes, two
+       size calls, two `tmux new-window` launches, one `ListAgents`, and two
+       `SendMessage` hand-offs at 04:13:59 and 04:14:00 — and ended at 04:14:09,
+       3 minutes 4 seconds after the message. Both goals sized as goals on the
+       shared-file rule (`README.md`, `CLAUDE.md`, `src/index.js`), which is
+       §15.79a's test answered from text. The two runs then ran side by side
+       with no contact between them, because `runs/<item-id>/` keeps their
+       records apart (§15.74b). The lead touched neither: 22 `Bash`, 3
+       `SendMessage`, 2 `ListAgents`, 2 `ToolSearch`, 1 `PushNotification` and 1
+       `Skill` over the portfolio, and no `Read`, `Edit` or `Write` anywhere.
+
+    b. **The one question reached the human through the lead.** Goal A's
+       deliverable reviewer noted that a `CLAUDE.md` test-coverage bullet did
+       not name the null case. The project lead left it alone, because the
+       charter approved one instruction-file edit and not two. The lead carried
+       it up with a recommendation and one `PushNotification`, and said the item
+       was not blocked on it. The human answered in the pane 15 seconds later.
+       The ladder worked. What it wrote down is finding f below.
+
+    c. **A killed project lead was resumed with no human turn.** At about 04:23
+       goal B's tmux window died with its package in flight — plan approved, no
+       report. `SessionEnd` marked that run `interrupted` within seconds. At
+       04:34:32, in one turn and with no human input, the lead called
+       `ListAgents`, found `crew-pl-word-count-decode-query-7b7c` missing,
+       launched it again under the same name and the same `CREW_RECORD_ROOT`,
+       and sent `Run /crew:project-lead --resume word-count-decode-query-5e12
+       now.` That is `session-launch.md`'s "Resuming a dead one", run for the
+       first time. The resumed session reconciled against its branch, finished
+       the package, and reported at 04:43:55. `record_dir` did not change and
+       `run.session_ids` holds both ids, as the reference says. The harness
+       noted that it was "messaging a new session for the first time under a
+       previously used name", and delivery worked.
+
+    d. **The lead was compacted by hand and continued from the record.**
+       `/compact` at 04:14:45, with both runs live. `PreCompact` wrote one
+       `lead.compactions` entry — session id, `trigger: manual`, timestamp — and
+       the pane showed both hooks finishing. The lead's next turn started from
+       the compaction summary and re-read the portfolio before it did anything
+       else, which is §15.74e's claim that a `/clear`, a compaction and a kill
+       are one event. `PreCompact`'s half of the ledger is no longer
+       unexercised.
+
+    **Four findings.**
+
+    e. **Nothing wakes a lead when a project lead dies.** This is the gap the
+       run found, and it cost about 10 minutes of the 33. `SessionEnd` wrote the
+       record correctly and told nobody. The lead was idle and stayed idle. It
+       learned that goal B was dead only at 04:33:23, when goal A's project lead
+       sent its closing report and gave it a turn to be idle in. A portfolio of
+       one long goal and one dead goal has no such turn, so the dead run waits
+       for the human — the thing the tier exists to remove. The cheap fix is to
+       make the hook send: `SessionEnd` knows the record it is marking, the
+       portfolio above it names the item's `session_name`, and one
+       cross-session message to the lead turns a silent write into a wake-up.
+       It is not built. T44 files it, and this run is the evidence.
+
+    f. **A question reached the human and never reached `lead.escalations`.**
+       `lead.escalations` was `[]` for the whole portfolio, and the ask in
+       finding b lived only in the portfolio's `decisions.md`, as an entry with
+       `Route: escalate` and `Answer: Open`. Nothing was lost, because the human
+       answered in the same minute. Had the lead died in that minute, "re-send
+       every `lead.escalations` entry that still has `answer: null`" would have
+       re-sent nothing, and the restarted lead would have read a
+       `decisions.md` entry saying the question was open with no instruction to
+       ask it again. The rule was already written for a batch of several
+       (§15.74h wrote three), and a batch of one read as small enough to skip.
+       `skills/lead/SKILL.md` now says one question is still a batch, and that
+       `decisions.md` holds the answer while `lead.escalations` holds the open
+       ask.
+
+    g. **A shell quoting slip cost a launch, and left two directories
+       behind.** The first launch attempt failed on quoting inside the `tmux
+       new-window` command. It left no windows, so nothing was half-launched,
+       and the relaunch registered both sessions. It did leave two record
+       directories whose names held a space — `runs/<item-id> fixture-a` — which
+       were gone by the end of the run. The launch command is the one place the
+       lead builds a long shell string from paths it did not choose, and both
+       fixture paths here were long and nested. No rule changes on one slip that
+       cost 30 seconds and self-corrected. It is worth watching whether the next
+       lead makes the same one.
+
+    h. **A resume costs a second seat.** Goal B ran two project-lead sessions
+       and cost $8.62 against goal A's $7.18 for comparable work. The Fable seat
+       is the whole difference: $7.59 against $5.87. A resumed session reads the
+       record, the spec, the split and the branch from an empty context, so a
+       kill 10 minutes in buys the goal's investigation twice. That is the price
+       of recovery, and it is cheaper than the human turn it replaces — but it
+       says a lead should not kill and resume a session it could wait for.
+       Portfolio total: $19.84 at list, of which the runs are $15.80 and the
+       lead's own seat $4.04. The lead's share is **20.4 percent**, against
+       46.7 percent on §15.79's task-and-goal portfolio and 30.4 percent on
+       §15.74's single goal. The tier's overhead is close to fixed, so it
+       thins as the work it arranges grows.

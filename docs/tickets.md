@@ -302,7 +302,7 @@ Read first: design §6, §6.1, §6.2, §15.9, §15.41; `record-format.md`;
 
 ## T9 — The lead tier: two goals from one lead session
 
-Status: open
+Status: done
 Depends on: T37
 Stage: 7 (design §1, §15.21-22, §15.70)
 
@@ -330,6 +330,16 @@ run showed in design §15.
 
 Read first: design §15.70, §15.21, §15.22, §1, §4; T36's and T37's §15
 entries.
+
+Landed 2026-09-06 as design §15.80. One Fable lead took two goals from one
+typed message to draft PRs #21 and #22 on the fixture, in 33 minutes and two
+human turns. All four clauses are met: two concurrent project-lead sessions,
+one question carried to the human and answered through the lead, a killed
+project lead relaunched and resumed with no human turn, and a hand `/compact`
+that `PreCompact` logged and the lead read past from the record. The run found
+one gap — nothing wakes a lead when a project lead dies, filed as T44 — and
+one rule fix, in `skills/lead/SKILL.md`: a batch of one still writes
+`lead.escalations` before it sends.
 
 ## T10 — Decide the README container owner
 
@@ -1780,3 +1790,30 @@ Done in PR #56, plugin 0.1.50, design §15.76. A live lead ran two items to
 time an item closed: lead $5.59 against runs $6.38, a 46.7% lead share, no
 `double counted` line, and the goal run closed with no budget escalation and
 no `spend.budget` key.
+
+## T44 — Wake the lead when a project lead dies
+
+Status: open
+Depends on: T9
+Stage: 7 (design §15.80e)
+
+`SessionEnd` marks a dead run `interrupted` in its `state.json` and tells
+nobody. The lead learns of the death on its next turn, and an idle lead has
+no next turn until some other session sends it one. T9's run showed the cost:
+a project lead died at about 04:23 and the lead noticed at 04:33, when an
+unrelated goal reported. A portfolio whose other items are slow, or whose only
+item is the dead one, waits for the human instead.
+
+Make the hook send. `SessionEnd` already reads the run's record; the portfolio
+above it holds the item's `session_name` and the lead's own session id. Decide
+what carries the message — a cross-session message from the hook, or a field
+the lead polls — and where the rule lives. A hook that messages must still
+fail open: this hook runs in every session on the machine, and a send that
+hangs or errors changes nothing (design §13.1).
+
+Done when: a project-lead session killed mid-run gives the lead a turn within
+seconds, the lead resumes it from that turn, and no other session is needed to
+wake it. Record what the run showed in design §15.
+
+Read first: design §15.80e, §15.21, §15.38, §13.1; `hooks/session-end.py`;
+`skills/lead/references/session-launch.md` "Resuming a dead one".

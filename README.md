@@ -98,7 +98,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | The record, band rubric, IC contract, writing standard | built |
 | Question routing and `decisions.md` | built |
 | `crew:council-advocate`, and councils | built, convened in a run |
-| `/crew:lead`, a portfolio of goals | built, and driven end to end — one goal, and a lead killed mid-portfolio |
+| `/crew:lead`, a portfolio of goals | built, and driven end to end — two goals at once, a lead killed mid-portfolio, and a killed project lead resumed |
 | `/crew:lead`, one IC for a task too small for a project lead | built, and driven end to end — one task and one goal from the same lead |
 | Hooks | `SessionEnd` and `PreCompact` built; the rest deferred |
 

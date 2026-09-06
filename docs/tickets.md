@@ -1633,7 +1633,7 @@ the iTerm2 Python API documentation on creating tabs and running commands.
 
 ## T41 — Push a batch to the principal
 
-Status: done
+Status: done, live run pending
 Depends on: T37
 Stage: 7 (design §15.74)
 

@@ -5294,6 +5294,16 @@ Deliberately different:
     interruption they did not ask for. `skills/lead/SKILL.md`'s "Batch the
     rest into one message" carries the mechanism: one `PushNotification`
     alongside the pane message, naming the portfolio, the item and the
-    question count, and saying the answer goes in the pane.
+    question count, and saying the answer goes in the pane. The resume step,
+    "Start from the record", sends the same push when it re-sends an
+    unanswered batch — the case where the principal has walked away the
+    longest.
+
+    `PushNotification`'s name and behaviour (no permission prompt, a desktop
+    alert and a phone push where Remote Control is connected) come from
+    `code.claude.com/docs/en/tools-reference`, fetched 2026-09-05; its input
+    schema is not published there, and no probe in this repo has yet called
+    it from an interactive lead session. Unverified until the live run below
+    fills this in.
 
     <!-- live run: pending -->

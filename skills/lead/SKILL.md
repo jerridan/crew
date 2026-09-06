@@ -46,10 +46,13 @@ the same way, and it costs four reads:
    (`session-launch.md`).
 
 Then re-send every `lead.escalations` entry that still has `answer: null`.
-Those go **up**, to the principal, in one batch — they are your asks, not a
-project lead's, and the session that dropped them is yours. A `blocked` item
-whose project lead is waiting on an answer you already hold is the other half
-of this: send that answer down, from the portfolio's `decisions.md`.
+Those go **up**, to the principal, in one batch, with the same
+`PushNotification` "Batch the rest into one message" sends — a restart is the
+case where the principal walked away, and this batch is a repeat of one they
+may already be waiting on. They are your asks, not a project lead's, and the
+session that dropped them is yours. A `blocked` item whose project lead is
+waiting on an answer you already hold is the other half of this: send that
+answer down, from the portfolio's `decisions.md`.
 
 Append this session's id with `crew-portfolio.py session-id`, and set
 `lead.state` back to `active` if `SessionEnd` marked it `interrupted`.

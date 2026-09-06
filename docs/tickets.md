@@ -1606,7 +1606,7 @@ read-only git anywhere, and `git`, the criterion, the suite and `gh` in a
 task's own worktree.
 `autonomy-contract.md` owns what a task escalates — three things, against
 promotion for every question about what the work is — and `record-format.md`
-owns the minimal record: the `task` object's eleven fields, the four
+owns the minimal record: the `task` object's twelve fields, the four
 subdirectories under `runs/<item-id>/`, a triage entry in the portfolio's
 `decisions.md`, and a `done` proved by an accepted review and a PR url.
 `crew-portfolio.py`'s `item set` takes a dotted field, so one call writes one

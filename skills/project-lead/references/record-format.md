@@ -957,7 +957,8 @@ Everything else about the task is the item's `task` object:
 | `checkout` | the absolute path of the IC's worktree; `null` once the lead removes it. |
 | `branch` | `crew/<item-id>`, in the item's `repo`. It outlives the checkout, because the PR is on it. |
 | `base` | the sha the branch started from. The review's diff is `base..HEAD`. |
-| `plan_approved_at` | ISO-8601 UTC, the lead's go-ahead at the plan gate; `null` until then. |
+| `plan_approved_at` | ISO-8601 UTC, the lead's go-ahead at the plan gate; `null` until then, and `null` for good on a `light` task, which skips the gate (`band-rubric.md`). |
+| `steps_skipped` | `run.steps_skipped`'s list, for a task: every step the band let the lead skip. A skipped step with no entry here reads as a step that failed to run. |
 | `ic_status` | the IC's last report status, one of `ic-contract.md`'s four. |
 | `fix_rounds_used` | how many fix rounds have run. It names the `<n>` in the diff and review filenames, and 2 is the cap (`skills/lead/SKILL.md`). |
 | `review_verdict` | the package review's last verdict, in `review-output.md`'s words. |

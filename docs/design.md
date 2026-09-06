@@ -5383,8 +5383,11 @@ Deliberately different:
        id where a package id would be, so neither `crew:ic` nor
        `crew:package-reviewer` needs a new path rule. Everything else is the
        item's `task` object in `portfolio.json` — band, agent, file set,
-       criterion, checkout, branch, base, plan gate, IC status, fix rounds
-       and verdict (`record-format.md`). A task's `done` is therefore proved
+       criterion, checkout, branch, base, plan gate, IC status, fix rounds,
+       verdict, and the steps the band let it skip (`record-format.md`).
+       `task.steps_skipped` is `run.steps_skipped`'s half of §15.77: a
+       `light` task skips the plan gate for one dispatch, and a task has no
+       `state.json` to record that in. A task's `done` is therefore proved
        by an accepted review on disk and a PR url, not by a `state.json` it
        never writes.
 

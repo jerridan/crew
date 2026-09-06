@@ -184,10 +184,12 @@ over, and the next one starts on a notification.
    `crew:ic-instructions` for an instruction file, at the band the charter
    names. Unnamed, because a named agent is a teammate and returns nothing you
    can read (design §3). `simple-path.md`'s "Dispatch the IC" owns the spawn
-   prompt and the plan gate, and the gate is two dispatches: the plan, then
-   the implementation. Send it that checkout as its worktree and
-   `runs/<item-id>` as its record root. Set the item `running` at this
-   dispatch, and write `task.plan_approved_at` when you clear the gate.
+   prompt. `band-rubric.md`'s "What a band skips" owns the plan gate: a
+   `standard` task runs it, which is two dispatches — the plan, then the
+   implementation — and a `light` task skips it for one. Send the IC that
+   checkout as its worktree and `runs/<item-id>` as its record root. Set the
+   item `running` at this dispatch, write `task.plan_approved_at` when you
+   clear a gate, and name a skipped one in `task.steps_skipped`.
 3. **Verify before you believe**, by `simple-path.md`'s section of that name,
    run against the item's own worktree. The report is a claim; `git log` and
    the criterion are the evidence, and the red-commit check runs here too.

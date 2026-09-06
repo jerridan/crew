@@ -5649,6 +5649,22 @@ Deliberately different:
     reviews reach the catch rate, which is the same fold this ticket made for
     `steps_skipped` and a second ticket's work.
 
-    <!-- live run: pending -->
-    A live task from a lead is what proves the sixth fix: the worktree cut
-    from `origin/<branch>`, and `task.base` equal to the remote head.
+    **The live run, 2026-09-06: the sixth fix holds against a diverged
+    checkout.** The fixture clone was put in the state the defect needs — one
+    local-only commit on `main` (`790b6c4`, adding `STALE.txt`) on top of the
+    remote head `45d0bcd`, so local `main` was one commit ahead of
+    `origin/main`. A Fable lead at high effort, portfolio
+    `~/.claude/crew-t45-live/lead-2026-09-06-9f23`, took the `stripSuffix`
+    task from one typed message. It read the ref, cut the worktree from
+    `origin/main` and recorded `task.base`
+    `45d0bcdf464823cf24de8f79a75232f1e13bcb56` — equal to `git ls-remote
+    origin HEAD`, and not the local head. The pushed branch's tree holds no
+    `STALE.txt`, which is the check that matters: the old fallback would have
+    carried that commit into the PR. The lead said both halves in its own
+    words, "cut from origin/main (45d0bcd)" and "your checkout stays on local
+    main, still one commit ahead of origin". Fixture draft PR #23 on
+    `crew/strip-suffix-08a2`, `band: standard`, `plan_approved_at` set,
+    `task.steps_skipped` empty, review accepted, zero fix rounds, 8 minutes 12
+    seconds, lead spend $3.90 at close, portfolio closed. `crew-stats.py` over
+    that root printed the three-column skip table with zeros, which is what a
+    `standard` task skipping nothing should read.

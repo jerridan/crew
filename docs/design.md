@@ -5284,3 +5284,44 @@ Deliberately different:
        $2.76 is an upper bound on the saving and the message count is the
        better measure of it.
 
+78. **A batch to the human principal now carries a push — T41.** T37's run
+    left a batch of questions in the lead's pane for over an hour, and a
+    budget question for two, because nobody was watching the pane (§15.74h).
+    `autonomy-contract.md`'s "Reach the principal" now says the pane is the
+    only answer channel for a principal reached in its own session, and that
+    the lead never opens a `<cross-session-message>` to that same principal —
+    a question landing inside a session they are working in is an
+    interruption they did not ask for. `skills/lead/SKILL.md`'s "Batch the
+    rest into one message" carries the mechanism: one `PushNotification`
+    alongside the pane message, naming the portfolio, the item and the
+    question count, and saying the answer goes in the pane. The resume step,
+    "Start from the record", sends the same push when it re-sends an
+    unanswered batch — the case where the principal has walked away the
+    longest.
+
+    `PushNotification` takes two required inputs: `message` (one line, no
+    markdown, under 200 characters — mobile OSes truncate) and `status`, fixed
+    to `"proactive"`. It sends a desktop notification and, where Remote
+    Control is connected, a phone push, and returns `"not sent"` when the
+    principal is already at that terminal — expected, not a failure.
+
+    **The live run, 2026-09-06: both clauses met.** A Fable, high-effort lead
+    found two questions before launch — the repo directory was not trusted,
+    and the goal reverses a `CLAUDE.md` rule — wrote both into
+    `lead.escalations` at `2026-09-06T02:29:16Z`, and sent one batch: the pane
+    message plus one `PushNotification` with `message` "Portfolio
+    lead-2026-09-06-cf74, item null-input-3559: 2 questions before launch
+    (repo trust, CLAUDE.md rule). Answer in this pane." (128 characters, one
+    line) and `status: proactive`. The tool returned "Terminal notification
+    sent. Mobile push requested."; the pane echoed "Terminal and mobile
+    notification sent." The batch reached the pane 1 minute 32 seconds after
+    the goal was handed over, before any spend on the goal — the case this
+    ticket was filed for. The principal typed both answers in the pane; the
+    lead recorded them into `lead.escalations` and `decisions.md`, applied
+    them, and launched the project-lead session with one `SendMessage`, to
+    that session (`crew-pl-null-input-3559`) alone. No cross-session message
+    reached any other session, and nothing stayed open.
+
+    **Not exercised:** the resume-path push. No lead was killed this run, so
+    "Start from the record"'s re-send of an unanswered batch on restart still
+    has no live observation behind it.

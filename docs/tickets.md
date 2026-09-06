@@ -1682,11 +1682,11 @@ set.
 Read first: design §15.73, §15.74, §15.23 (catch rate); `band-rubric.md`;
 `simple-path.md`; `crew-stats.py`.
 
-## T43 — Count the lead's own cost, and make the budget a report
+## T43 — Count the lead's own cost, and remove the budget
 
 Status: open
 Depends on: T37
-Stage: 7 (design §15.74k)
+Stage: 7 (design §8, §15.50, §15.74k)
 
 Two things about spend, both from T37's run.
 
@@ -1698,24 +1698,32 @@ overhead is unknown. Give the portfolio a `lead.spend` field in the shape of
 `spend.py` or a sibling, written when an item closes. `record-format.md`
 owns the field; `crew-stats.py` reports it.
 
-**The budget is a report, not a gate.** A `Budget:` line is optional today
-and a charter without one has no limit. In T37's run a $10 line the brief
-carried fired trigger 5 twice for a $3.75 overrun on a run one push from
-done, and the lead's estimate of what was left was wrong by ten times. The
-fix-round breaker and the nudge cap already bound the loops that can run
-away, and the list-price figure is not what the principal pays. So: the lead
-writes a `Budget:` line only when the principal gave a figure, never from
-its own estimate; a budget is reported against spend in the closing report
-and does not stop the run; the principal can say "hard" to keep the stop.
-Remove the headroom rule T37 added to `skills/lead/SKILL.md`
-("The brief's budget figure is a ceiling") and its §15.74k claim, and
-change `autonomy-contract.md`'s trigger 5 and `record-format.md`'s
-`Budget:` text to match.
+**The budget goes.** The charter's `Budget:` line is the last piece of the
+token-ceiling design §15.50 removed. The principal decided on 2026-09-05 to
+remove it: the loops that could run away are already bounded by the
+fix-round cap, the nudge cap and one-band promotion; the list-price figure
+is not what the principal pays, and the subscription limit fires first when
+spend matters (§15.50); the lead has no basis to set a figure, and the one
+time the gate fired (T37) it cost two interruptions for a $3.75 overrun on a
+run one push from done. Spend stays measured and logged, because that is
+what makes the band rubric a measurement, and the closing report states the
+run's spend. Nothing stops a run on cost.
 
-Done when: a closed portfolio item shows the lead's spend beside the run's,
-`crew-stats.py` prints both, and a run over a soft budget reaches its PR
-with no escalation and reports the overrun.
+Remove: `Budget:` from `record-format.md`'s charter shape and `spend.budget`
+from `state.json`; trigger 5 from `autonomy-contract.md`'s escalation list
+and its "Trigger 5 is the budget" paragraph; the headroom rule T37 added to
+`skills/lead/SKILL.md` ("The brief's budget figure is a ceiling") and the
+budget line in its charter rule; the README sentence on an exceeded budget;
+and design §8's "A charter may name a budget in dollars. Exceeding it
+escalates." Mark §15.51's "gives a charter `Budget:` a number to start from"
+and §15.74k as superseded. A brief that names a dollar figure is a
+preference the lead records in `decisions.md` and reports against; it is not
+a charter line.
 
-Read first: design §15.74k, §15.50; `autonomy-contract.md` "Spend";
-`record-format.md`; `skills/lead/SKILL.md` "One charter per item";
+Done when: no file in `skills/`, `agents/` or `README.md` names a budget, a
+closed portfolio item shows the lead's spend beside the run's, and
+`crew-stats.py` prints both.
+
+Read first: design §8, §15.50, §15.51, §15.74k; `autonomy-contract.md`
+"Spend"; `record-format.md`; `skills/lead/SKILL.md` "One charter per item";
 `spend.py`; `crew-stats.py`.

@@ -5243,7 +5243,44 @@ Deliberately different:
        correct: a skipped review is absent from `reviews/`, and only this
        field says the absence was by rule.
 
-    e. **What the live run must show.** <!-- live run: pending -->
-       One `light` package through the simple path on the fixture, against
-       T38's $7.69 for the same shape.
+    e. **The live run: $4.93 against T38's $7.69, and ten minutes against
+       twenty — 2026-09-05.** The same charter as §15.73a's run, on the same
+       fixture, with the project lead on Fable at high effort: make
+       `collapseWhitespace` treat U+200B as whitespace, and add one test.
+       Record `collapse-whitespace-zwsp-56eb`; draft PR
+       `jerridan/crew-fixture-string-kit#18`; `run_state: complete`, no
+       escalation, no fix round.
+
+       | | T38 (§15.73a) | this run |
+       |---|---|---|
+       | list price | $7.69 | $4.93 |
+       | project lead's seat | $6.31 (fable) | $4.49 (fable) |
+       | project lead's messages | 43 | 24 |
+       | tokens | 6,728,240 | 3,482,333 |
+       | wall clock | 20 min | 10 min |
+       | IC dispatches | 2 | 1 |
+       | review files on disk | 4 | 2 |
+
+       The record shows the reduced set exactly as `band-rubric.md` writes it:
+       `band: light` with a matching `band_history` entry,
+       `plans/collapse-zwsp.md` on disk with `plan_approved_at: null`,
+       `reviews/` holding `spec-critic-r1.md` and
+       `collapse-zwsp-package-review-r0.md` and no deliverable review, and
+       `run.steps_skipped` holding one `plan-gate` entry and one
+       `deliverable-review` entry, each with the conditions in its `reason` and
+       an ISO-8601 UTC `at`. `crew-stats.py` reads both into "Steps skipped by
+       rule" and flags nothing. The spec critic returned one nit on Node
+       version wording, which the spec took; the package review accepted with
+       zero findings.
+
+       **Part of the cut is not this change, and the record says which part.**
+       T38 took two spec-critic rounds and this run took one, so one round of
+       adjudication and revision at the project lead's seat came off for a
+       reason T42 did not cause — the spec was better, not cheaper to check.
+       What T42 removed is countable on its own: one IC dispatch, one plan
+       read, one go-ahead, one deliverable-review dispatch and one
+       adjudication. The seat fell from 43 messages to 24, and the two runs
+       shipped the same helper, the same test and the same red commit. So the
+       $2.76 is an upper bound on the saving and the message count is the
+       better measure of it.
 

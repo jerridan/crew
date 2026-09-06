@@ -98,9 +98,11 @@ package review means the diff already had a reader. No shared-file edit rules
 out the one defect class this reviewer caught that the package reviewer could
 not reach (design §15.77). Fail any one condition and the review runs.
 
-**Record every skip** in `state.json`'s `run.steps_skipped`
-(`record-format.md` owns the field). A step with no review file and no entry
-there reads as a step that failed to run.
+**Record every skip.** A run writes it to `state.json`'s `run.steps_skipped`.
+A task under the lead has no `state.json`, so it writes to the portfolio's
+`items[].task.steps_skipped` instead; the entry keeps the same five keys
+(`record-format.md` owns both fields). A step with no review file and no entry
+in the one that applies reads as a step that failed to run.
 
 ## Critics and reviewers take their own model
 

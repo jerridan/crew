@@ -176,8 +176,10 @@ over, and the next one starts on a notification.
    `origin/<default-branch>`. When it prints nothing, run `git -C <repo>
    remote set-head origin --auto` once and read it again. Use the printed ref
    and nothing else. A local branch of that name can sit behind the remote,
-   and the IC would then build on stale code. Name the ref as the start
-   point:
+   and the IC would then build on stale code. When the repo has no `origin`,
+   or the fetch cannot reach it, stop and escalate: the start point is a
+   question only the principal can settle, and a PR has nowhere to go either.
+   Name the ref as the start point:
    `git -C <repo> worktree add -b crew/<item-id> <portfolio-dir>/runs/<item-id>/checkout origin/<default-branch>`.
    Whatever branch the principal left the checkout on is not a start point:
    the PR would carry its commits too. The principal's own working tree is

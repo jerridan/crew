@@ -152,9 +152,12 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
 
 
 SKIPPABLE_STEPS = ["plan-gate", "deliverable-review"]
+# A task is one package with no deliverable, so it has no deliverable review
+# to skip (`record-format.md`, `band-rubric.md`).
+TASK_SKIPPABLE_STEPS = ["plan-gate"]
 
 
-def read_steps_skipped(name: str, holder: dict, skips: list) -> dict:
+def read_steps_skipped(name: str, holder: dict, skips: list, allowed: list | None = None) -> dict:
     """Count the steps a band let this run or task skip, by step name.
 
     `steps_skipped` is the only field that says a missing review file was
@@ -162,14 +165,19 @@ def read_steps_skipped(name: str, holder: dict, skips: list) -> dict:
     reads a skipped review as a review that never ran. `holder` is a run's
     `run` object or a task's `items[].task` object; both carry the field in the
     same shape (`record-format.md`).
+
+    `allowed` is the shorter list a task takes: one package and no deliverable,
+    so `deliverable-review` is not a step a task can skip. An entry outside the
+    list is reported, never counted.
     """
+    allowed = allowed if allowed is not None else SKIPPABLE_STEPS
     counts = {step: 0 for step in SKIPPABLE_STEPS}
     for entry in as_list(holder.get("steps_skipped")):
         step = entry.get("step") if isinstance(entry, dict) else None
-        if step in counts:
+        if step in allowed:
             counts[step] += 1
         else:
-            skips.append(f"{name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(SKIPPABLE_STEPS)}")
+            skips.append(f"{name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(allowed)}")
     return counts
 
 
@@ -690,7 +698,7 @@ def read_portfolios(root: Path, skips: list) -> list[dict]:
             if not isinstance(task, dict):
                 continue
             name = f"{child.name}/{item.get('id')}"
-            for step, count in read_steps_skipped(name, task, skips).items():
+            for step, count in read_steps_skipped(name, task, skips, TASK_SKIPPABLE_STEPS).items():
                 task_skips[step] += count
         found.append({
             "portfolio": child.name,

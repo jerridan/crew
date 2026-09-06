@@ -5608,7 +5608,12 @@ Deliberately different:
     `crew-record.py` kept `setdefault`, so `run set steps_skipped.0.reason`
     raised an `AttributeError` and `run set principal.name` over a `null`
     raised a `TypeError` — two paths this batch's fields made reachable, one
-    into a list and one through a `null`. The guard is now mirrored, with a comment in both scripts
+    into a list and one through a `null`. Neither path is one a caller should
+    write: `run.principal` is a string, so `principal.name` now writes a
+    record `record-format.md` does not define. That is the script's stated
+    position and not a new hole — it checks no field name and no shape, and
+    the reference is the only schema. The guard removes the crash, which is
+    all it is for. The guard is now mirrored, with a comment in both scripts
     saying so: the two live in two skill directories, and a shared module
     would be a third file neither skill loads. T39's glob for lead-driven
     runs, `runs/*/*/state.json`, matched its own task worktree at
@@ -5633,8 +5638,16 @@ Deliberately different:
     field the ticket did not add. Four of the six are a reader missing a
     writer, which is exactly what a per-ticket fixture hides. The cheap check
     that would have caught them is one seeded record carrying every new field
-    of the batch, run after the merge and not before it — which is what this
-    ticket's own fixture now is, under `crew-t45/`.
+    of the batch, run after the merge and not before it. This ticket ran that
+    check by hand, from a throwaway record root. Nothing in the repo re-runs
+    it, and no ticket owns it yet.
+
+    **What this ticket did not close.** A task's `review_verdict` still has no
+    consumer: `crew-stats.py`'s catch rate reads run records, and a task has
+    none, so a portfolio of tasks now reports its skipped steps and none of
+    its package reviews. The two tables disagree by design until a task's
+    reviews reach the catch rate, which is the same fold this ticket made for
+    `steps_skipped` and a second ticket's work.
 
     <!-- live run: pending -->
     A live task from a lead is what proves the sixth fix: the worktree cut

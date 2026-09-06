@@ -352,6 +352,30 @@ one interruption; a run built in the wrong direction costs a day.
 Do everything that does not depend on the answer first, then ask once. Batch
 what you can into one interruption.
 
+### A task the lead runs itself
+
+A lead sizes an item before it dispatches, and a task gets one IC from the
+lead itself — no spec, no split, no preference sweep and no council
+(`skills/lead/SKILL.md`). Most of the triggers above cannot fire in that
+shape. Every question about what the work **is** — no falsifiable criterion, a
+preference no instruction settles, a judgment worth a council, more than one
+deliverable — makes the item a **goal**. The lead promotes it and records why.
+It does not ask.
+
+Three things still reach the principal from a task, each written into
+`lead.escalations` before it is sent (`record-format.md`):
+
+- The IC reports `BLOCKED` with an `environment` cause. A lead edits nothing
+  in a checkout, so it cannot clear one.
+- The two fix rounds are used and the review is still not accepted. The
+  fix-round breaker's "fix it yourself" is the project lead's rule and not
+  the lead's.
+- The push or `gh pr create` fails.
+
+A `capability` block promotes the band once, by `band-rubric.md`. A
+`standard` task that blocks again is a goal, not a promotion: `deep` is a
+band no task carries.
+
 ## How to escalate
 
 Write the ask into `state.json`'s `escalations` with all four of its

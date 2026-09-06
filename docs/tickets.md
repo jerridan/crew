@@ -1551,7 +1551,7 @@ states the prohibition now names it as the exception (§15.73b).
 
 ## T39 — The lead triages by size: a task gets one IC, a goal gets a project lead
 
-Status: open
+Status: done
 Depends on: T37
 Stage: 7 (design §1, §15.70, §15.72)
 
@@ -1594,6 +1594,25 @@ repo.
 
 Read first: design §1, §9.1, §15.70, §15.72; T37 and its §15 entry; T38;
 `band-rubric.md`; `record-format.md`; `autonomy-contract.md`.
+
+Landed 2026-09-05. `skills/lead/SKILL.md` gains two sections: "Triage every
+item by size" — the four-question sizing test, the five promotion reasons, and
+the rule that an answer needing the code read is a "no" — and "A task runs
+under you", six steps of one turn each. The task steps point at
+`simple-path.md` for the dispatch, the verify step, the package review and the
+fix rounds, and copy none of them. "You never touch a target repo" now carries
+the one carve-out: `git`, the criterion, the suite and `gh` in a task's own
+worktree, and no `Read`, `Edit` or `Write` in any checkout.
+`autonomy-contract.md` owns what a task escalates — three things, against
+promotion for every question about what the work is — and `record-format.md`
+owns the minimal record: the `task` object's eleven fields, the four
+subdirectories under `runs/<item-id>/`, a triage entry in the portfolio's
+`decisions.md`, and a `done` proved by an accepted review and a PR url.
+`crew-portfolio.py`'s `item set` takes a dotted field, so one call writes one
+`task` field. §15.79 records the six design calls.
+
+The live run is pending: the "Done when" clauses need one task and one goal
+handed to a live lead, and neither has run yet.
 
 ## T40 — Probe: launch a project-lead session as a native iTerm2 tab
 

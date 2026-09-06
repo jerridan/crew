@@ -1600,9 +1600,10 @@ item by size" — the four-question sizing test, the five promotion reasons, and
 the rule that an answer needing the code read is a "no" — and "A task runs
 under you", six steps of one turn each. The task steps point at
 `simple-path.md` for the dispatch, the verify step, the package review and the
-fix rounds, and copy none of them. "You never touch a target repo" now carries
-the one carve-out: `git`, the criterion, the suite and `gh` in a task's own
-worktree, and no `Read`, `Edit` or `Write` in any checkout.
+fix rounds, and copy none of them. "You never touch a target repo" keeps no
+`Read`, `Edit` or `Write` in any checkout, and carries two carve-outs:
+read-only git anywhere, and `git`, the criterion, the suite and `gh` in a
+task's own worktree.
 `autonomy-contract.md` owns what a task escalates — three things, against
 promotion for every question about what the work is — and `record-format.md`
 owns the minimal record: the `task` object's eleven fields, the four
@@ -1611,8 +1612,28 @@ subdirectories under `runs/<item-id>/`, a triage entry in the portfolio's
 `crew-portfolio.py`'s `item set` takes a dotted field, so one call writes one
 `task` field. §15.79 records the six design calls.
 
-The live run is pending: the "Done when" clauses need one task and one goal
-handed to a live lead, and neither has run yet.
+Every "Done when" clause is met. A live run on 2026-09-06 handed one lead a
+one-line task and a goal as two typed messages. The task reached fixture draft
+PR #19 through one IC and one package review with no project-lead session, in
+9 minutes 26 seconds; the goal reached PR #20 through a session the lead
+launched itself; the portfolio shows both kinds, with a `task` object and no
+`state.json` on one and a full goal record on the other; and the lead made
+zero `Read`, `Edit` or `Write` calls in either checkout. Its own seat was 46.7
+percent of the $11.97 run, against 82 percent for a project lead on a one-line
+change (§15.73a). §15.79g to §15.79j record the run.
+
+It changed one rule. The two items shared a repo path, so the lead's read-only
+`git status` and `branch --show-current` checks landed in "the goal's
+checkout", which the first draft banned. Read-only git reports git's own state
+and not the code, so it is now allowed in any item's checkout, and every
+write, every test run and `gh` stay inside a task's own worktree (§15.79h).
+
+Two things the run leaves open. The task's IC did not re-export the new helper
+from the barrel file, because a barrel is shared: the lead flagged it in the
+PR body as follow-up, so a task that adds a helper to this fixture leaves a
+human that last edit (§15.79i). And "End every turn quickly" is still
+unexercised — the task ran inside one long turn, and no message arrived
+mid-turn to be delayed (§15.72i, §15.79j).
 
 ## T40 — Probe: launch a project-lead session as a native iTerm2 tab
 

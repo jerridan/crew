@@ -5371,7 +5371,8 @@ Deliberately different:
        `Edit` and `Write` stay banned in every checkout, which is what keeps
        a shared-file edit — the one thing `simple-path.md`'s "Integrate"
        needs — a promotion reason instead of an exception. A goal's checkout
-       is still untouched entirely. The worktree is cut from the repo's
+       takes read-only git and nothing else, which item h below settles. The
+       worktree is cut from the repo's
        default branch and not from whatever branch the principal left the
        checkout on, or the draft PR carries that branch's commits as well.
 
@@ -5406,4 +5407,61 @@ Deliberately different:
        a path through a string or a list now exits with a message, where it
        used to raise a `TypeError` at the assignment.
 
-    <!-- live run: pending -->
+    g. **Both kinds ran from one lead — 2026-09-06.** A Fable lead at high
+       effort, launched from an empty directory outside every checkout,
+       against a plugin dir merging T43, T42, T41 and this ticket. Portfolio
+       `~/.claude/crew-live/lead-2026-09-06-cf74`, two items, handed as two
+       typed messages. The **task** `strip-suffix-62a5` added
+       `src/text/stripSuffix.js` and its test through one IC and one package
+       review with no project-lead session: `kind: task`, `session_name:
+       null`, `band: standard`, `ic_status: DONE`, `fix_rounds_used: 0`,
+       `review_verdict: accepted`, `checkout: null` after the PR, and
+       `runs/strip-suffix-62a5/` holding `plans/`, `reports/`, `diffs/`, one
+       review and **no `state.json`** — fixture draft PR #19, 9 minutes 26
+       seconds from the message, $3.87. The **goal** `null-input-3559` got
+       `crew-pl-null-input-3559`, a full goal record under
+       `runs/null-input-3559/null-input-empty-5ccb`, one package at
+       `standard`, zero fix rounds, $6.38, fixture draft PR #20. The lead's
+       own seat was $5.59 of $11.97, 46.7 percent — against §15.73a's 82
+       percent for a project lead on a one-line change, which is the saving
+       the triage exists to make. The band is worth reading: the lead chose
+       `standard` and not `light`, because no test covered the new surface
+       yet, which is `band-rubric.md`'s second condition failing exactly as
+       written.
+
+    h. **The touch audit is clean, and it found one rule to widen.** Zero
+       `Read`, `Edit` or `Write` calls on any path in either checkout, across
+       31 `Bash`, 3 `Agent`, 2 `ToolSearch`, 1 `PushNotification`, 1
+       `ListAgents` and 1 `SendMessage`. Every writing git command was in the
+       task's own worktree, plus the `worktree add` and `remove` the carve-out
+       names. The deviation is read-only: `git status`, `branch
+       --show-current` and `worktree list` against the repo itself, once
+       while scouting before the triage and twice after the goal's PR to
+       confirm the tree was back on main — and the two items shared one repo
+       path, so those calls were in "the goal's checkout", which the rule as
+       written banned outright. The rule was wrong, not the lead. Read-only
+       git reports git's own state and not the code, so `skills/lead/SKILL.md`
+       now allows `status`, `branch`, `log` and `worktree list` in any item's
+       checkout, and keeps every write, every test run and `gh` inside a
+       task's own worktree. It also says to prefer the record: `state.json`'s
+       `checkout_restored` already answers the question the two later calls
+       asked.
+
+    i. **A task leaves the barrel behind, by design.** The IC added the helper
+       and its test and did not re-export it from `src/index.js`, because a
+       barrel file is shared and the lead edits nothing in a target repo. The
+       lead did the right thing with that: it flagged the missing re-export in
+       the PR body as follow-up rather than editing the file or promoting the
+       item. So a task that adds a helper to a repo with a barrel produces a
+       PR a human finishes, and a goal is the shape for a helper that must be
+       exported. `decisions.md` carried one triage entry per item,
+       `Route: precedent`, each citing "Triage every item by size".
+
+    j. **"End every turn quickly" is still unexercised.** The task ran inside
+       one long turn: the lead dispatched the IC as a background subagent and
+       the completion notification re-woke the same turn, so no message
+       arrived mid-turn to be delayed. What the run does prove is the other
+       half — the second item was accepted after the first was done, and the
+       goal's charter went out by one `SendMessage` before the lead ended its
+       turn. Delivery to a lead sitting inside a long turn is what §15.72i
+       still has nobody testing.

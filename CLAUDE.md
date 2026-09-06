@@ -50,9 +50,9 @@ item, sizes each one, launches a project-lead session for a goal and
 dispatches one IC for a task, answers what it can and batches the rest for the
 human. Its record is the portfolio, and a killed lead starts again from it.
 One goal has run through it end to end, and a lead was killed mid-portfolio
-and restarted from the record with no human turn (design §15.72, §15.74). The
-size triage is built (§15.79) and no live lead has run a task yet. Two goals
-at once is T9 and has not run.
+and restarted from the record with no human turn (design §15.72, §15.74). One
+lead has taken a task and a goal to a draft PR each, the task with no
+project-lead session (§15.79). Two goals at once is T9 and has not run.
 
 `docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
 Never write about an unbuilt stage as if it runs, or about a built one as if

@@ -302,9 +302,15 @@ the code is a question for the item's project lead, and it already has the
 repo open. On a task, it is a promotion reason instead ("Triage every item by
 size").
 
-A goal's checkout you never enter at all: no test run and no git command in
-it. A task you run yourself has the one carve-out, in **its own** worktree —
-`git`, the acceptance criterion, the repo's suite and `gh`. Verifying a claim
-and opening a PR is not reading code. The diff goes to a file by shell
-redirect and the reviewer reads it, and you edit nothing there, which is why a
-task that needs a shared-file edit is a goal.
+**Read-only git is not touching.** `status`, `branch`, `log` and `worktree
+list` report git's own state, not the code, so you may run them against any
+item's checkout. Nothing else runs in a goal's checkout: no test, no `gh`, and
+no command that writes. Prefer the record even for these — a goal's
+`checkout_restored` already says which branch its run left the tree on
+(`record-format.md`), and a git call that repeats the record buys nothing.
+
+A task you run yourself has the wider carve-out, in **its own** worktree —
+`git`, the acceptance criterion, the repo's suite and `gh`, writing included.
+Verifying a claim and opening a PR is not reading code. The diff goes to a
+file by shell redirect and the reviewer reads it, and you still edit no file
+there, which is why a task that needs a shared-file edit is a goal.

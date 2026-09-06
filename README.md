@@ -99,7 +99,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | Question routing and `decisions.md` | built |
 | `crew:council-advocate`, and councils | built, convened in a run |
 | `/crew:lead`, a portfolio of goals | built, and driven end to end — one goal, and a lead killed mid-portfolio |
-| `/crew:lead`, one IC for a task too small for a project lead | built; no live lead has run a task yet |
+| `/crew:lead`, one IC for a task too small for a project lead | built, and driven end to end — one task and one goal from the same lead |
 | Hooks | `SessionEnd` and `PreCompact` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports

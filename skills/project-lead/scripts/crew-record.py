@@ -23,7 +23,9 @@ terminal state and `run_state: complete` in one write, which
 `run_state` to `complete` — `close`, `run state complete`, or
 `run set run_state complete` — also stamps `run.completed_at`.
 `run set` takes a dotted path, so a nested key changes on its own and the
-rest of the object stays. It creates each missing level on the way down.
+rest of the object stays. It creates each missing level on the way down, and
+replaces a `null` level with an object. A level that holds a list, a string or
+a number exits with a message, because no path runs through one.
 `escalation add` appends one ask and stamps `asked_at`, so a batch is one
 call per question and no earlier ask is lost; it prints the new entry's
 index, which `escalation answer` takes.
@@ -72,9 +74,19 @@ def flag(rest: list[str], name: str):
 
 
 def set_dotted(target: dict, dotted: str, value) -> None:
+    # Mirrored from `skills/lead/scripts/crew-portfolio.py`. The two scripts
+    # sit in two skill directories, and a shared module would be a third file
+    # the plugin loads for neither skill. Change both together.
     keys = dotted.split(".")
-    for key in keys[:-1]:
-        target = target.setdefault(key, {})
+    for depth, key in enumerate(keys[:-1]):
+        if target.get(key) is None:
+            target[key] = {}
+        target = target[key]
+        # A path through a string, a list or a number cannot be walked, and
+        # assigning into it raises where every other error here exits with a
+        # message.
+        if not isinstance(target, dict):
+            sys.exit(f"{'.'.join(keys[:depth + 1])} is not an object")
     target[keys[-1]] = value
 
 

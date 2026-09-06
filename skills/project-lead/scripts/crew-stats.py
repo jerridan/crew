@@ -8,7 +8,8 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
-counts, the review catch rate, and the steps a band let a run skip. Design §8
+counts, the review catch rate, and the steps a band let a run or a task skip.
+Design §8
 asks for these numbers to turn the band rubric from a guess into a
 measurement. No figure here gates anything.
 
@@ -154,20 +155,22 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
 SKIPPABLE_STEPS = ["plan-gate", "deliverable-review"]
 
 
-def read_steps_skipped(record: Path, run: dict, skips: list) -> dict:
-    """Count the steps this run's band let it skip, by step name.
+def read_steps_skipped(name: str, holder: dict, skips: list) -> dict:
+    """Count the steps a band let this run or task skip, by step name.
 
-    `run.steps_skipped` is the only field that says a missing review file was
+    `steps_skipped` is the only field that says a missing review file was
     missing by rule (`band-rubric.md`, §15.77). Without it the catch rate above
-    reads a skipped review as a review that never ran.
+    reads a skipped review as a review that never ran. `holder` is a run's
+    `run` object or a task's `items[].task` object; both carry the field in the
+    same shape (`record-format.md`).
     """
     counts = {step: 0 for step in SKIPPABLE_STEPS}
-    for entry in as_list(run.get("steps_skipped")):
+    for entry in as_list(holder.get("steps_skipped")):
         step = entry.get("step") if isinstance(entry, dict) else None
         if step in counts:
             counts[step] += 1
         else:
-            skips.append(f"{record.name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(SKIPPABLE_STEPS)}")
+            skips.append(f"{name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(SKIPPABLE_STEPS)}")
     return counts
 
 
@@ -437,7 +440,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "adversary": adversary,
         "escalations": len(as_list(run.get("escalations"))),
         "compactions": len(as_list(run.get("compactions"))),
-        "steps_skipped": read_steps_skipped(record, run, skips),
+        "steps_skipped": read_steps_skipped(record.name, run, skips),
         "reviews": reviews,
         "catch": catch,
         "catch_by_band": catch_by_band,
@@ -566,10 +569,16 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     print(table(["kind", "reviews", "acted", "rate", "unscored"], rows))
 
     # A skipped review leaves no file, so it never reaches the catch rate
-    # above. This table is what says the absence was by rule (§15.77).
+    # above. This table is what says the absence was by rule (§15.77). A task
+    # writes its skips into the portfolio and has no run record, so both
+    # columns are needed to see every skip (§15.81).
     print("\nSteps skipped by rule\n")
-    rows = [[step, sum(r["steps_skipped"][step] for r in records)] for step in SKIPPABLE_STEPS]
-    print(table(["step", "times skipped"], rows))
+    rows = []
+    for step in SKIPPABLE_STEPS:
+        in_runs = sum(r["steps_skipped"][step] for r in records)
+        in_tasks = sum(p["steps_skipped"][step] for p in portfolios)
+        rows.append([step, in_runs, in_tasks, in_runs + in_tasks])
+    print(table(["step", "in runs", "in tasks", "total"], rows))
 
     print("\nPackage reviews by band\n")
     per_band = {}
@@ -629,11 +638,16 @@ def candidates(root: Path) -> list[tuple[Path, Path | None]]:
     `CREW_RECORD_ROOT` (`record-format.md`). Reading one level only would make
     every lead-driven run invisible to this report. The second element is the
     portfolio directory, or `None` for a run nobody led.
+
+    `runs/<item-id>/checkout/` is a task's worktree, not a record
+    (`record-format.md`), so a target repo that keeps a `state.json` of its own
+    at its root would read as a run here. That one name is excluded.
     """
     found = []
     for child in sorted(p for p in root.iterdir() if p.is_dir()):
         if (child / "portfolio.json").is_file():
-            found.extend((p.parent, child) for p in sorted(child.glob("runs/*/*/state.json")))
+            found.extend((p.parent, child) for p in sorted(child.glob("runs/*/*/state.json"))
+                         if p.parent.name != "checkout")
         else:
             found.append((child, None))
     return found
@@ -669,11 +683,22 @@ def read_portfolios(root: Path, skips: list) -> list[dict]:
             skips.append(f"{child.name}: no lead cost — the portfolio has no lead.spend; "
                          "run skills/lead/scripts/lead-spend.py --write")
         items = as_list(data.get("items"))
+        # A task has no `state.json`, so `items[].task.steps_skipped` is the
+        # only place its skips are written (`record-format.md`).
+        task_skips = {step: 0 for step in SKIPPABLE_STEPS}
+        for item in items:
+            task = item.get("task") if isinstance(item, dict) else None
+            if not isinstance(task, dict):
+                continue
+            name = f"{child.name}/{item.get('id')}"
+            for step, count in read_steps_skipped(name, task, skips).items():
+                task_skips[step] += count
         found.append({
             "portfolio": child.name,
             "state": lead.get("state"),
             "items": len(items),
             "done": sum(1 for i in items if isinstance(i, dict) and i.get("state") == "done"),
+            "steps_skipped": task_skips,
             "usd": usd,
         })
     return found

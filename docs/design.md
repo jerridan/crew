@@ -5585,3 +5585,57 @@ Deliberately different:
        46.7 percent on §15.79's task-and-goal portfolio and 30.4 percent on
        §15.74's single goal. The tier's overhead is close to fixed, so it
        thins as the work it arranges grows.
+
+81. **Six integration defects, found by review after the merge — T45.** T43,
+    T42, T41 and T39 landed within a day, each from its own session and each
+    correct against its own ticket. A high-effort review of the merged tree
+    then found six defects, and every one of them sits where two of those
+    changes meet.
+
+    Three are a field with one writer and no reader. T42 gave a run
+    `steps_skipped` (§15.77) and T39 gave a task the same field in the
+    portfolio, and `crew-stats.py`'s "Steps skipped by rule" table counted
+    only the first — so a light task, which is the shape the field was added
+    to measure, reported nothing. `record-format.md`'s name inventory listed
+    the eleven `items[].task` fields T39 wrote and not the one T42 added
+    beside them. And the file's own task example still carried a
+    `plan_approved_at` timestamp under `band: light`, which its rule two
+    hundred lines above says stays `null` for good.
+
+    Two are a shape one script learned and the other did not. T39 hardened
+    `crew-portfolio.py`'s `set_dotted` against a `null` level and a level
+    holding a list, because a lead writes into a half-built `task` object.
+    `crew-record.py` kept `setdefault`, so `run set steps_skipped.0.reason`
+    raised an `AttributeError` and `run set principal.name` over a `null`
+    raised a `TypeError` — the two paths T42's and T41's fields made
+    reachable. The guard is now mirrored, with a comment in both scripts
+    saying so: the two live in two skill directories, and a shared module
+    would be a third file neither skill loads. T39's glob for lead-driven
+    runs, `runs/*/*/state.json`, matched its own task worktree at
+    `runs/<item-id>/checkout/`, so a target repo that keeps a `state.json` at
+    its root would have been priced as a run.
+
+    The last is a rule stated twice in one paragraph. `skills/lead/SKILL.md`
+    read the default branch with `symbolic-ref --short
+    refs/remotes/origin/HEAD`, which prints `origin/main`, or with `remote
+    show origin`'s `HEAD branch` line, which prints `main`. A task taking the
+    second branches off whatever the local ref holds, which can be behind the
+    remote. One rule now stands: fetch, read the symbolic ref, and use the
+    `origin/<branch>` it prints. `remote set-head origin --auto` is the
+    fallback, and it feeds the same read. `fetch` and `set-head` join
+    `worktree add` and `remove` in the lead's writing-git carve-out (§15.79h)
+    — they move refs, never a tracked file.
+
+    **Why the seeded tests missed all six.** Each session seeded a record for
+    its own change and ran the scripts against it. None seeded a record
+    holding another ticket's new field, because none existed yet in that
+    session's tree. A test built from one ticket's fixture cannot fail on a
+    field the ticket did not add. Four of the six are a reader missing a
+    writer, which is exactly what a per-ticket fixture hides. The cheap check
+    that would have caught them is one seeded record carrying every new field
+    of the batch, run after the merge and not before it — which is what this
+    ticket's own fixture now is, under `crew-t45/`.
+
+    <!-- live run: pending -->
+    A live task from a lead is what proves the sixth fix: the worktree cut
+    from `origin/<branch>`, and `task.base` equal to the remote head.

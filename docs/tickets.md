@@ -1854,3 +1854,5 @@ portfolio, and one rule states the default branch as one ref.
 Read first: design §15.76, §15.77, §15.79; `record-format.md` "The portfolio
 record"; `crew-record.py`; `crew-stats.py`; `skills/lead/SKILL.md` "A task
 runs under you".
+
+Done in PR #58, plugin 0.1.55, design §15.81.

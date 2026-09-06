@@ -5299,11 +5299,12 @@ Deliberately different:
     unanswered batch — the case where the principal has walked away the
     longest.
 
-    `PushNotification`'s name and behaviour (no permission prompt, a desktop
-    alert and a phone push where Remote Control is connected) come from
-    `code.claude.com/docs/en/tools-reference`, fetched 2026-09-05; its input
-    schema is not published there, and no probe in this repo has yet called
-    it from an interactive lead session. Unverified until the live run below
-    fills this in.
+    `PushNotification` takes two required inputs: `message` (one line, no
+    markdown, under 200 characters — mobile OSes truncate) and `status`, fixed
+    to `"proactive"`. It sends a desktop notification and, where Remote
+    Control is connected, a phone push, and returns `"not sent"` when the
+    principal is already at that terminal — expected, not a failure. The
+    schema is confirmed; the send from a live lead is not — unverified until
+    the live run below fills this in.
 
     <!-- live run: pending -->

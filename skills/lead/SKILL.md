@@ -156,11 +156,14 @@ you. Two rules are yours:
   `crew-portfolio.py escalation add` **before** you send, and set that item
   `blocked`.
 
-  Send one `PushNotification` alongside the message: name the portfolio, the
-  item and the number of questions, and say the answer goes in this pane. The
-  pane stays the only channel for the answer — `autonomy-contract.md`'s "Reach
-  the principal" says why. A run with nobody watching the pane is what T37
-  left a batch waiting on for over an hour (design §15.78).
+  Send one `PushNotification` alongside the message, with `status: proactive`
+  and a one-line `message` under 200 characters, no markdown: name the
+  portfolio, the item and the number of questions, and say the answer goes in
+  this pane. The pane stays the only channel for the answer —
+  `autonomy-contract.md`'s "Reach the principal" says why. A run with nobody
+  watching the pane is what T37 left a batch waiting on for over an hour
+  (design §15.78). A `"not sent"` result means the principal is already at
+  that terminal — expected, not a failure.
 
 A batch you send is not a turn you wait in. Send it, write the record, end the
 turn.

@@ -318,14 +318,15 @@ are T36 and T37. This ticket is the end-to-end proof only.
 Two more things the run must show, added 2026-09-05 after T37's run
 (§15.74): kill one project-lead session mid-run and let the lead notice and
 resume it, since T37 killed only the lead and `session-launch.md`'s resume
-step has not run; and run long enough for the lead to compact, so that
-`PreCompact` on a portfolio and the lead's re-read after it are proven.
+step has not run; and compact the lead by hand once, with `/compact` in its
+pane mid-portfolio, so that `PreCompact` on a portfolio and the lead's
+re-read after it are proven without a run long enough to compact on its own.
 
 Done when: two concurrent goals run in two project-lead sessions from one
 lead session, every escalation reaches the human through the lead, a killed
 project lead is resumed by the lead with no human turn, and the lead has
-compacted at least once and continued from the record. Record what the run
-showed in design §15.
+been compacted by hand once and continued from the record. Record what the
+run showed in design §15.
 
 Read first: design §15.70, §15.21, §15.22, §1, §4; T36's and T37's §15
 entries.
@@ -692,7 +693,7 @@ about `truncate` — fixed both, and left the still-true `slugify` rows. Design
 
 ## T19 — Probe: `PreCompact` for an in-process teammate
 
-Status: open
+Status: closed, not run
 Depends on: nothing
 Stage: any (design §13.1, §15.50)
 
@@ -712,6 +713,12 @@ shape in design §15.
 Read first: design §13.1, §15.50; `hooks/pre-compact.py`;
 `full-path.md`'s "Verify before you believe" and "The territory's next
 package".
+
+Closed 2026-09-05 without a run. A teammate cannot be told to compact, so
+this probe needs an IC to compact on its own, which is the expensive case,
+and the hook fails open: if it does not fire, the record misses one log
+line and the run is unaffected. Reopen only if a real run shows a
+compaction the record cannot explain.
 
 ## T20 — Probe: a review agent's write to the record root
 

@@ -170,36 +170,49 @@ write the item's `task` object beside it (`record-format.md`).
 **One step per turn.** Each of these ends with the record written and the turn
 over, and the next one starts on a notification.
 
-1. **Give the IC a checkout of its own.**
-   `git -C <repo> worktree add <portfolio-dir>/runs/<item-id>/checkout -b crew/<item-id>`.
-   The principal's own working tree is never the one the work happens in.
-   Record `task.checkout`, `task.branch` and `task.base` — the head sha — and
-   set the item `running`.
+1. **Give the IC a checkout of its own, cut from the default branch.** Read
+   that branch first — `git -C <repo> symbolic-ref --short
+   refs/remotes/origin/HEAD`, or the `HEAD branch` line of `git -C <repo>
+   remote show origin` when the first prints nothing — and name it as the
+   start point:
+   `git -C <repo> worktree add -b crew/<item-id> <portfolio-dir>/runs/<item-id>/checkout <default-branch>`.
+   Whatever branch the principal left the checkout on is not a start point:
+   the PR would carry its commits too. The principal's own working tree is
+   never the one the work happens in. Record `record_dir`, `task.checkout`,
+   `task.branch` and `task.base` — the sha the branch starts from.
 2. **Dispatch one unnamed IC in the background**, `crew:ic` for code or
    `crew:ic-instructions` for an instruction file, at the band the charter
    names. Unnamed, because a named agent is a teammate and returns nothing you
    can read (design §3). `simple-path.md`'s "Dispatch the IC" owns the spawn
    prompt and the plan gate, and the gate is two dispatches: the plan, then
    the implementation. Send it that checkout as its worktree and
-   `runs/<item-id>` as its record root.
+   `runs/<item-id>` as its record root. Set the item `running` at this
+   dispatch, and write `task.plan_approved_at` when you clear the gate.
 3. **Verify before you believe**, by `simple-path.md`'s section of that name,
    run against the item's own worktree. The report is a claim; `git log` and
    the criterion are the evidence, and the red-commit check runs here too.
+   Switch that worktree back to `task.branch` afterwards, whatever the reason
+   that section gives: a detached head there makes step 4's diff the red
+   commit alone, and the review then fails work that is finished.
 4. **Review the package**, by `simple-path.md`'s section of that name. Write
    the diff to `runs/<item-id>/diffs/` with a shell redirect, dispatch
    `crew:package-reviewer` unnamed with its five inputs, and inject
    `review-output.md` and the review's absolute path. The reviewer reads the
-   diff; you do not.
+   diff; you do not. A task is one package that consumes and produces
+   nothing, so its interface contract — the reviewer's first input — is
+   `none`.
 5. **Fix rounds, at most two.** `simple-path.md`'s "Fix rounds" runs each one,
    and every round goes back through steps 3 and 4. Two is the cap here rather
    than five, and the breaker there does not apply, because you never edit the
    work: at the cap, escalate (`autonomy-contract.md`).
 6. **Open the draft PR** on `Verdict: accepted`. Push the branch, fill the
    repo's template if it has one, put the charter in the body one long line
-   per paragraph, and `gh pr create --draft`. Write the url into `outcome`,
-   set the item `done`, then
-   `git -C <repo> worktree remove <portfolio-dir>/runs/<item-id>/checkout`.
-   Keep the branch: the PR is on it.
+   per paragraph, and `gh pr create --draft`. Then remove the worktree —
+   `git -C <repo> worktree remove --force <portfolio-dir>/runs/<item-id>/checkout`,
+   `--force` because a verified tree holds build output git never tracked —
+   and set `task.checkout` to `null`. Keep the branch: the PR is on it.
+   Write the url into `outcome` and set the item `done` last, so a removal
+   that fails leaves an item you can still see.
 
 **A restarted lead re-enters a task from its record.** The IC was a subagent
 of the session that died, so nothing of it survives. The `task` object and the
@@ -221,6 +234,11 @@ A project lead's message is a notification, not evidence. Confirm a terminal
 state against `state.json` before you set an item `done` — a closing report can
 be lost, and a lost message costs latency and never correctness (design §15.21,
 §15.72g).
+
+Both rules are the goal's. A task writes no `state.json` and no `decisions.md`
+of its own: what it is doing is the `task` object plus the files under
+`runs/<item-id>/`, and what proves it `done` is an accepted review on disk and
+a PR url (`record-format.md`).
 
 ## Price your own seat when an item closes
 

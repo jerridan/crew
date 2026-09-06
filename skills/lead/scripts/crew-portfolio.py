@@ -68,8 +68,15 @@ def arg(rest: list[str], i: int) -> str:
 
 def set_dotted(target: dict, dotted: str, value) -> None:
     keys = dotted.split(".")
-    for key in keys[:-1]:
-        target = target.setdefault(key, {})
+    for depth, key in enumerate(keys[:-1]):
+        if target.get(key) is None:
+            target[key] = {}
+        target = target[key]
+        # A path through a string, a list or a number cannot be walked, and
+        # assigning into it raises where every other error here exits with a
+        # message.
+        if not isinstance(target, dict):
+            sys.exit(f"{'.'.join(keys[:depth + 1])} is not an object")
     target[keys[-1]] = value
 
 

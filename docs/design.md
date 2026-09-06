@@ -97,8 +97,8 @@ duties.
 - A **critic** or **reviewer** does not edit code. It reports.
 - A **lead** reads no code and edits nothing in a target repo. It sizes each
   item, dispatches, reads the record and answers questions. On a task it runs
-  itself, it runs git, the acceptance criterion and `gh` in that task's own
-  worktree, and nothing else (§15.79).
+  itself, it enters that task's own worktree to verify and to open the PR, and
+  `skills/lead/SKILL.md` owns the list of what it may run there (§15.79).
 
 ---
 
@@ -5371,7 +5371,9 @@ Deliberately different:
        `Edit` and `Write` stay banned in every checkout, which is what keeps
        a shared-file edit — the one thing `simple-path.md`'s "Integrate"
        needs — a promotion reason instead of an exception. A goal's checkout
-       is still untouched entirely.
+       is still untouched entirely. The worktree is cut from the repo's
+       default branch and not from whatever branch the principal left the
+       checkout on, or the draft PR carries that branch's commits as well.
 
     d. **The task record is the portfolio plus four files.** No `state.json`,
        no `spec.md`, no `split.md`, no `worktrees.json`, no second
@@ -5400,6 +5402,8 @@ Deliberately different:
        reuses the `set_dotted` helper `lead set` already had. One call writes
        one field of the `task` object, which is the same rule that keeps
        `escalations` off `lead set`: a whole-object rewrite drops what the
-       last call put there.
+       last call put there. The helper gained a guard with the second caller:
+       a path through a string or a list now exits with a message, where it
+       used to raise a `TypeError` at the assignment.
 
     <!-- live run: pending -->

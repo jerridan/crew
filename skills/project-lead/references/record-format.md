@@ -809,8 +809,10 @@ The rules are `crew-record.py`'s, for the same reasons: never write
 `escalations` with `lead set`, which replaces the whole list; a `set` value
 is JSON and carries its own quotes; and the script checks no field and no
 transition, because this file owns both. Both `set` verbs take a dotted field
-and create what it needs, so a task's fields are written one call at a time. `expect` is the exception that takes
-plain text, because it is rewritten every turn. `init` also creates
+and create the objects on the way to it, so a task's fields are written one
+call at a time; a path through anything that is not an object exits with a
+message. `expect` is the exception that takes plain text, because it is
+rewritten every turn. `init` also creates
 `charters/` and an empty `decisions.md`, and `item add` refuses an id the
 portfolio already holds. Every call stamps `lead.updated_at`.
 
@@ -875,7 +877,7 @@ run's own cost stays in its `state.json` (Authority rule below).
 | `title` | one line, from the principal's brief. |
 | `repo` | the absolute path to the target-repo checkout this item runs in. |
 | `charter` | `charters/<id>.md`, relative to the portfolio directory. |
-| `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. |
+| `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. On a task it is `runs/<id>/` itself, and the lead writes it at the dispatch, because no session creates it. |
 | `session_name` | the `--name` the item's project-lead session was launched under. It is the address `SendMessage` takes, and it survives a restart, which a socket path does not (design §15.72f). `null` on a task, which has no session of its own. |
 | `state` | one of `pending`, `running`, `blocked`, `done`, `abandoned`. See the transitions below. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this item's last `state` transition. |

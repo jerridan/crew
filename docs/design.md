@@ -2074,7 +2074,8 @@ Deliberately different:
        grants, is configuration the project lead may not write for itself
        (§15.12, §15.20). So `full-path.md` step 0 checks all four and
        escalates, and `autonomy-contract.md`'s trigger 7 changed from "the
-       full path is not built" to a missing launch condition.
+       full path is not built" to a missing launch condition. (§15.76
+       renumbered that trigger to 6.)
 
     **Not yet exercised.** T6's "Done when" is a real multi-package run with
     a forced fix round and a kill-and-resume, and that needs an interactive,
@@ -2539,7 +2540,7 @@ Deliberately different:
        package. The full path is not built", which caught a goal too large for
        one deliverable as a side effect. `full-path.md` runs one deliverable
        and nothing reads `split.md`'s `Depends on`, so such a goal had no path
-       and no escalation. That is now trigger 8.
+       and no escalation. That is now trigger 8. (§15.76 renumbered it to 7.)
 
     h. **Two worked examples in `record-format.md` still taught the branch
        name §15.34 had just fixed**, and a third instance the review did not
@@ -5083,6 +5084,14 @@ Deliberately different:
     bill: it is roughly a third on top of one goal, and a portfolio priced
     without it under-reports the tier by that much. `crew-stats.py` prints a
     `Leads` table with both figures side by side and totals them.
+
+    **The two figures add up only while the lead runs outside every item's
+    checkout.** `spend.py` prices whatever ran from a checkout, with no
+    session filter, so a lead started inside an item repo is already inside
+    that item's price and the `Leads` row would count it twice. The rule was
+    implied before — a lead touches no target repo — and is now written down,
+    and `lead-spend.py` prints a `double counted` line per item when it finds
+    a lead transcript under one. A code review found this; no run has hit it.
 
     <!-- live run: pending -->
 

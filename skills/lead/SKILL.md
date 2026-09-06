@@ -15,8 +15,8 @@ Run this session at `fable`, high effort — `claude --model fable --effort high
 
 ## Where the rules live
 
-Your own references are in `references/`, beside this file, and your script in
-`scripts/`. The project lead's references are under
+Your own references are in `references/`, beside this file, and your two
+scripts in `scripts/` — `crew-portfolio.py` and `lead-spend.py`. The project lead's references are under
 `../project-lead/references/`, and they are canonical for what they own — read
 one there rather than re-deriving its rule here. Every path you hand another
 session is absolute: its cwd is not yours.
@@ -157,6 +157,11 @@ A batch you send is not a turn you wait in. Send it, write the record, end the
 turn.
 
 ## You never touch a target repo
+
+**Start outside every item's checkout, and never move into one.** `spend.py`
+prices every session that ran from a checkout, so a lead sitting inside an
+item repo lands in that item's own spend and gets counted twice —
+`lead-spend.py` prints a `double counted` line when it finds this.
 
 No `Read`, no `Edit`, no `Write`, no test run, no git command in any item's
 checkout. Everything you need is in the portfolio and in the item records. A

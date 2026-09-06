@@ -483,7 +483,10 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     # `lead.spend`; nothing else can price a session that ran from no
     # checkout. `runs usd` is the priced runs under this portfolio only, so a
     # portfolio with an unpriced run reads low and the Skipped block names it.
-    # The lead's share was 30% of the one portfolio measured (§15.76).
+    # The lead's share was 30% of the one portfolio measured (§15.76). The
+    # two columns add up only while the lead ran outside every item's
+    # checkout, which `skills/lead/SKILL.md` requires and `lead-spend.py`
+    # checks; inside one, that item's own price already holds the lead.
     if portfolios:
         print("\nLeads (the lead's own sessions against the runs it drove)\n")
         rows = []
@@ -691,7 +694,10 @@ def main(argv: list[str]) -> None:
         read["portfolio"] = portfolio.name if portfolio else None
         records.append(read)
 
-    if not records:
+    # A portfolio alone is worth reporting: a lead that has priced itself
+    # before its first project-lead session wrote a `state.json` has a cost
+    # and no run, and exiting here would print nothing at all.
+    if not records and not portfolios:
         sys.exit(f"no records under {root}")
 
     if args.json:

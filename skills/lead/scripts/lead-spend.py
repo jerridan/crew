@@ -23,14 +23,22 @@ Prices come from `skills/project-lead/scripts/spend.py`. There is one price
 table, and it is not here.
 """
 
+import glob as globbing
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
 SPEND = Path(__file__).resolve().parent.parent.parent / "project-lead" / "scripts"
 sys.path.insert(0, str(SPEND))
 import spend  # noqa: E402  the price table and the transcript pricing live there
+
+
+# A session id is a UUID. Checked before it reaches a glob, because `*`, `?`
+# or `[` in a hand-edited `portfolio.json` would otherwise match transcripts
+# this lead never wrote, and price someone else's sessions as the lead's.
+SESSION_ID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
 def project_roots() -> list[Path]:
@@ -51,12 +59,12 @@ def transcripts(session_ids: list, roots: list[Path], missing: list) -> list[Pat
     """
     found = []
     for session_id in session_ids:
-        if not isinstance(session_id, str) or not session_id:
+        if not isinstance(session_id, str) or not SESSION_ID.match(session_id):
             missing.append(f"{session_id!r} is not a session id")
             continue
         hits = []
         for root in roots:
-            hits.extend(sorted(root.glob(f"**/{session_id}.jsonl")))
+            hits.extend(sorted(root.glob(f"**/{globbing.escape(session_id)}.jsonl")))
         if not hits:
             missing.append(f"{session_id}: no transcript under {', '.join(str(r) for r in roots)}")
         found.extend(hits)
@@ -67,6 +75,28 @@ def transcripts(session_ids: list, roots: list[Path], missing: list) -> list[Pat
         if resolved not in unique:
             unique.append(resolved)
     return unique
+
+
+def overlaps(files: list[Path], items) -> list[str]:
+    """Each item whose own run already prices these lead transcripts.
+
+    `spend.py` prices every transcript under a checkout's project directory,
+    with no session filter. So a lead started inside an item's checkout lands
+    in that item's `spend.transcript`, and `crew-stats.py` then adds the same
+    dollars twice — once as the run's, once as the lead's. The lead is told to
+    start outside every item repo (`skills/lead/SKILL.md`); this says when it
+    did not.
+    """
+    warnings = []
+    for item in items:
+        if not isinstance(item, dict) or not item.get("repo"):
+            continue
+        dirs = [d.resolve() for d in spend.project_dirs(os.path.expanduser(item["repo"]))]
+        shared = [f for f in files if any(d in f.parents for d in dirs)]
+        if shared:
+            warnings.append(f"{item.get('id')}: {len(shared)} lead transcript(s) sit in this item's "
+                            f"checkout, so its own spend.transcript counts them too")
+    return warnings
 
 
 def main(argv: list[str]) -> None:
@@ -100,6 +130,9 @@ def main(argv: list[str]) -> None:
     grand, total_tokens = spend.report(totals)
     for line in missing:
         print(f"skipped {line}")
+    items = data.get("items")
+    for line in overlaps(files, items if isinstance(items, list) else []):
+        print(f"double counted {line}")
 
     if "--write" in argv[1:]:
         # Read again and write in one process, as `crew-portfolio.py` does:

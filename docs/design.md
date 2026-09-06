@@ -5303,8 +5303,25 @@ Deliberately different:
     markdown, under 200 characters — mobile OSes truncate) and `status`, fixed
     to `"proactive"`. It sends a desktop notification and, where Remote
     Control is connected, a phone push, and returns `"not sent"` when the
-    principal is already at that terminal — expected, not a failure. The
-    schema is confirmed; the send from a live lead is not — unverified until
-    the live run below fills this in.
+    principal is already at that terminal — expected, not a failure.
 
-    <!-- live run: pending -->
+    **The live run, 2026-09-06: both clauses met.** A Fable, high-effort lead
+    found two questions before launch — the repo directory was not trusted,
+    and the goal reverses a `CLAUDE.md` rule — wrote both into
+    `lead.escalations` at `2026-09-06T02:29:16Z`, and sent one batch: the pane
+    message plus one `PushNotification` with `message` "Portfolio
+    lead-2026-09-06-cf74, item null-input-3559: 2 questions before launch
+    (repo trust, CLAUDE.md rule). Answer in this pane." (128 characters, one
+    line) and `status: proactive`. The tool returned "Terminal notification
+    sent. Mobile push requested."; the pane echoed "Terminal and mobile
+    notification sent." The batch reached the pane 1 minute 32 seconds after
+    the goal was handed over, before any spend on the goal — the case this
+    ticket was filed for. The principal typed both answers in the pane; the
+    lead recorded them into `lead.escalations` and `decisions.md`, applied
+    them, and launched the project-lead session with one `SendMessage`, to
+    that session (`crew-pl-null-input-3559`) alone. No cross-session message
+    reached any other session, and nothing stayed open.
+
+    **Not exercised:** the resume-path push. No lead was killed this run, so
+    "Start from the record"'s re-send of an unanswered batch on restart still
+    has no live observation behind it.

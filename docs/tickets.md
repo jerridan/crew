@@ -315,9 +315,17 @@ Split 2026-09-04 (§15.70): the decision the ticket carried is made — the
 lead lives in this repo and this plugin — and the mechanism and the build
 are T36 and T37. This ticket is the end-to-end proof only.
 
+Two more things the run must show, added 2026-09-05 after T37's run
+(§15.74): kill one project-lead session mid-run and let the lead notice and
+resume it, since T37 killed only the lead and `session-launch.md`'s resume
+step has not run; and run long enough for the lead to compact, so that
+`PreCompact` on a portfolio and the lead's re-read after it are proven.
+
 Done when: two concurrent goals run in two project-lead sessions from one
-lead session, and every escalation reaches the human through the lead.
-Record what the run showed in design §15.
+lead session, every escalation reaches the human through the lead, a killed
+project lead is resumed by the lead with no human turn, and the lead has
+compacted at least once and continued from the record. Record what the run
+showed in design §15.
 
 Read first: design §15.70, §15.21, §15.22, §1, §4; T36's and T37's §15
 entries.
@@ -1615,3 +1623,99 @@ iTerm2 tab, or §15 says why it cannot.
 
 Read first: design §15.22c, §15.72, §15.20d, §15.21; `session-launch.md`;
 the iTerm2 Python API documentation on creating tabs and running commands.
+
+## T41 — Push a batch to the principal
+
+Status: open
+Depends on: T37
+Stage: 7 (design §15.74)
+
+T37's run left a batch of questions in the lead's pane for over an hour and
+a budget question for two, because nobody was watching the pane. The
+principal's intent is to hand work to the lead and walk away, so the lead
+must reach them when it has a question, not wait to be looked at.
+
+When the lead sends a batch, it also sends one `PushNotification` naming the
+portfolio, the item and the number of questions, and saying the answer goes
+in the lead's pane. The pane stays the only channel for the answer. The lead
+never sends a cross-session message to a session the principal is working
+in: a question that lands inside someone else's session is an interruption
+the principal did not ask for, and the principal has said so.
+
+The record already holds the ask (`lead.escalations`), so this is the
+delivery step only. `autonomy-contract.md` owns the rule; `skills/lead/`
+carries the mechanism.
+
+Done when: a batch from a live lead arrives as a push notification, the
+answer typed in the pane clears it, and no other session received anything.
+
+Read first: design §15.74; `skills/lead/SKILL.md` "Answer what you can";
+`autonomy-contract.md`.
+
+## T42 — Review effort in proportion to the band
+
+Status: open
+Depends on: nothing
+Stage: any (design §15.73, §15.74)
+
+T38's run took a one-line `light` package through two spec-critic rounds, a
+plan gate and two reviews for $7.69, and T37's took `truncate` at `standard`
+through the same for $13.75. In both, the project lead's own seat was over
+80 percent of the cost, and most of those turns were ceremony around a small
+dispatch, not the dispatch. The IC and its package review were under $0.50.
+
+Decide from the record which steps a `light` package skips. Candidates: the
+spec critic (the charter's criterion is the spec), the plan gate, and the
+deliverable review when the package review already accepted the only
+package. Keep the package review: it is the check the bounded edit used to
+skip (§15.73). Write the rule into `band-rubric.md`, which owns what a band
+gets, and make the path files read it.
+
+Then measure. `crew-stats.py`'s catch rate (T23) is the number that says
+whether a skipped step was catching anything. Compare runs before and after
+over the fixture, and record the figures in §15.
+
+Done when: a `light` package runs with the reduced set, the record shows
+which steps ran, and §15 holds the cost and the catch rate against the full
+set.
+
+Read first: design §15.73, §15.74, §15.23 (catch rate); `band-rubric.md`;
+`simple-path.md`; `crew-stats.py`.
+
+## T43 — Count the lead's own cost, and make the budget a report
+
+Status: open
+Depends on: T37
+Stage: 7 (design §15.74k)
+
+Two things about spend, both from T37's run.
+
+**The lead is not priced.** `spend.py` prices a goal record from the
+transcripts of the sessions that ran from its checkout. The lead runs from
+no checkout and has no `state.json`, so nothing prices it, and the tier's
+overhead is unknown. Give the portfolio a `lead.spend` field in the shape of
+`spend.transcript`, priced from the lead's own session transcripts by
+`spend.py` or a sibling, written when an item closes. `record-format.md`
+owns the field; `crew-stats.py` reports it.
+
+**The budget is a report, not a gate.** A `Budget:` line is optional today
+and a charter without one has no limit. In T37's run a $10 line the brief
+carried fired trigger 5 twice for a $3.75 overrun on a run one push from
+done, and the lead's estimate of what was left was wrong by ten times. The
+fix-round breaker and the nudge cap already bound the loops that can run
+away, and the list-price figure is not what the principal pays. So: the lead
+writes a `Budget:` line only when the principal gave a figure, never from
+its own estimate; a budget is reported against spend in the closing report
+and does not stop the run; the principal can say "hard" to keep the stop.
+Remove the headroom rule T37 added to `skills/lead/SKILL.md`
+("The brief's budget figure is a ceiling") and its §15.74k claim, and
+change `autonomy-contract.md`'s trigger 5 and `record-format.md`'s
+`Budget:` text to match.
+
+Done when: a closed portfolio item shows the lead's spend beside the run's,
+`crew-stats.py` prints both, and a run over a soft budget reaches its PR
+with no escalation and reports the overrun.
+
+Read first: design §15.74k, §15.50; `autonomy-contract.md` "Spend";
+`record-format.md`; `skills/lead/SKILL.md` "One charter per item";
+`spend.py`; `crew-stats.py`.

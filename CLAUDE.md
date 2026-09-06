@@ -18,7 +18,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the spec and the shape, then a route to one path file | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate and each lead's own cost over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and each lead's own cost over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `skills/lead/SKILL.md` | the `/crew:lead` entry point — the portfolio, the charters, the escalations and the ledger | its skill trigger |
 | `skills/lead/references/session-launch.md` | launching, addressing, steering and resuming one project-lead session | the lead |
 | `skills/lead/scripts/*.py` | `crew-portfolio.py` writes one `portfolio.json` field; `lead-spend.py` prices the lead's own sessions into `lead.spend` | the lead, from Bash |

@@ -5607,8 +5607,8 @@ Deliberately different:
     holding a list, because a lead writes into a half-built `task` object.
     `crew-record.py` kept `setdefault`, so `run set steps_skipped.0.reason`
     raised an `AttributeError` and `run set principal.name` over a `null`
-    raised a `TypeError` — the two paths T42's and T41's fields made
-    reachable. The guard is now mirrored, with a comment in both scripts
+    raised a `TypeError` — two paths this batch's fields made reachable, one
+    into a list and one through a `null`. The guard is now mirrored, with a comment in both scripts
     saying so: the two live in two skill directories, and a shared module
     would be a third file neither skill loads. T39's glob for lead-driven
     runs, `runs/*/*/state.json`, matched its own task worktree at

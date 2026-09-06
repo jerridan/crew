@@ -1691,7 +1691,7 @@ Read first: design §15.73, §15.74, §15.23 (catch rate); `band-rubric.md`;
 
 ## T43 — Count the lead's own cost, and remove the budget
 
-Status: open
+Status: done
 Depends on: T37
 Stage: 7 (design §8, §15.50, §15.74k)
 

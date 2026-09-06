@@ -552,8 +552,7 @@ Triggers are batched into one interruption where possible.
 3. A **balanced council** on an architecture-moving question.
 4. Any action outside an isolated workspace: the main branch, production, or
    credentials.
-5. The charter's budget is exceeded (section 8).
-6. A package reached the fix-round breaker at the top band.
+5. A package reached the fix-round breaker at the top band.
 
 Everything else the project lead settles itself and records — unless it judges
 that getting it wrong would take the work off the rails, in which case it asks
@@ -668,7 +667,6 @@ Rules:
   involvement.
 - Every promotion is logged with predicted band, actual band, and cause. That
   turns the rubric from a guess into a measurement.
-- A charter may name a budget in dollars. Exceeding it escalates.
 
 Spend is measured from the transcripts. Every session that runs from the
 checkout — the project lead's own, each teammate, each subagent — writes its
@@ -677,19 +675,23 @@ per-request usage to `~/.claude/projects/<checkout>/`, and
 `spend.transcript`. `autonomy-contract.md` says when the project lead runs
 it.
 
+A lead's own session runs from no checkout and writes no `state.json`, so
+`skills/lead/scripts/lead-spend.py` prices it from the sessions
+`portfolio.json` names, into `lead.spend`. The lead tier was 30% of the one
+portfolio measured, and nothing else counts it (§15.76).
+
 `skills/project-lead/scripts/crew-stats.py` reads the whole record root and
 prints cost per package by band, fix rounds by band, promotions, councils and
-their spend, escalations, compactions and review counts. It imports
-`spend.py` for the prices, so there is one price table. A person runs it; no
-agent does. It turns this section's rubric into a measurement, and it gives a
-charter `Budget:` a number to start from (§15.51).
+their spend, escalations, compactions, review counts and each portfolio's
+lead cost beside its runs'. It imports `spend.py` for the prices, so there is
+one price table. A person runs it; no agent does. It turns this section's
+rubric into a measurement.
 
-The token ceiling this section once required is gone (§15.50). It counted
-subagent completion notifications only, which missed the project lead's own
-session and every teammate — 90% of a measured run — so it never fired in
-seven runs, and the one time spend mattered the user's subscription limit
-fired first. A dollar figure from the transcripts is the whole of what
-remains, and a charter `Budget:` line is the only gate on it.
+**Nothing stops a run on cost.** The token ceiling this section once required
+is gone (§15.50), and the charter budget that replaced it is gone too
+(§15.76). Spend is measured and reported, never gated: the loops that could
+run away are bounded by the fix-round cap, the nudge cap and one-band
+promotion, and the subscription limit fires before the list price matters.
 
 One `crew:ic` definition serves all three bands, because a spawn-time `model`
 overrides the definition's frontmatter (section 12).
@@ -1206,7 +1208,7 @@ Deliberately different:
 | One plan, one branch | Goal → deliverables → packages | A goal too large for one PR |
 | One worker per task | One IC per territory, several packages each | Agent-team guidance; fewer spawns |
 | `systematic-debugging` Phase 3: one debugger forms one hypothesis at a time | More than one surviving hypothesis goes to a three-advocate council over one shared evidence set (section 9.5) | Several agents and one judge; assigned positions beat one agent's prior |
-| `systematic-debugging` Phase 4.5: after 3 failed fixes, "discuss with your human partner" | The fix-round breaker at five rounds, then escalation trigger 6 (sections 9.2, 6) | A later stop, reached by a rule instead of a conversation. Rounds 4 and 5 promote a band, which is crew's answer to "question the architecture" |
+| `systematic-debugging` Phase 4.5: after 3 failed fixes, "discuss with your human partner" | The fix-round breaker at five rounds, then escalation trigger 5 (sections 9.2, 6) | A later stop, reached by a rule instead of a conversation. Rounds 4 and 5 promote a band, which is crew's answer to "question the architecture" |
 | `systematic-debugging` Phase 4 invokes the TDD and verification skills | Section 7 and `ic-contract.md` carry the equivalents | crew never invokes a superpowers skill (section 2) |
 | `systematic-debugging` reads its human partner's wording for signs it is off track | The record: the evidence paths, the ruled-out list, and the council entry (section 9.5) | Nobody is watching a no-prompt run |
 | Every superpowers workflow ends in a change | An investigation run can end at `diagnosis.md` with no change, as `work-complete` | A diagnosis is a deliverable |
@@ -3276,6 +3278,11 @@ Deliberately different:
     Review catch rate is not in the script. T23 defines it; one comment
     marks where it goes.
 
+    **Superseded in part by §15.76.** This entry's reason for the script —
+    that it gives a charter `Budget:` a number to start from — is gone with
+    the budget. The script now measures the band rubric, and nothing else
+    reads its dollars.
+
     **A code review of the script found eight defects, and the two that
     mattered were both about the shape of the data, not the code.** The
     unbounded pricing window above is one. The other is that a council entry
@@ -5021,6 +5028,13 @@ Deliberately different:
        `spend.transcript` instead of estimating. Unexercised — the next live
        run is where a headroom figure gets tested.
 
+       **Superseded by §15.76.** The headroom rule never ran. The budget is
+       removed instead, because this entry's own evidence says a lead cannot
+       price a run it is not in, and nothing else here needs a ceiling. What
+       survives is the measurement: the lead's seat is real
+       cost, so `lead.spend` now counts what this entry could not — 30% of
+       this very portfolio, once it was priced (§15.76).
+
     l. **Neither lead touched the work.** No `Read`, no `Edit`, no `Write`, no
        command in the fixture checkout, no pane read and no transcript read,
        across both sessions — 26 `Bash` calls, 2 `ListAgents` and 3
@@ -5043,3 +5057,54 @@ Deliberately different:
     are targets and not limits, and drops the two invented numbers. This
     repo's `CLAUDE.md`, at 177 lines after T37, sits inside the target and
     needs no cut.
+
+76. **The lead is priced, and the budget is gone — 2026-09-05, T43.** Two
+    changes to spend, both from §15.74's run, and they point opposite ways:
+    measure more, gate less.
+
+    **`lead.spend`, because nothing could price the tier above.** `spend.py`
+    finds a run's sessions through its checkout, and a lead has none: it runs
+    from a directory it never touches and writes no `state.json`. So the seat
+    that writes every charter and answers every escalation cost an unknown
+    amount for as long as the tier existed.
+    `skills/lead/scripts/lead-spend.py` prices it from the session ids the
+    portfolio already carries in `lead.session_ids`, and stores the result as
+    `lead.spend` in `record-format.md`'s `spend.transcript` shape. It imports
+    `spend.py`, so there is still one price table. Whole sessions are priced
+    with no time window, because every turn of a lead session belongs to its
+    portfolio — a cleaner bound than the checkout window §15.51 had to
+    invent. The lead runs it with `--write` each time an item closes.
+
+    **The first number: the lead tier is 30% of what it drives.** §15.74's
+    portfolio, copied to `~/.claude/crew-t43/` and priced read-only, is
+    **$6.01** across its two lead sessions — 41 fable messages, 2.98M tokens,
+    almost all of it cache reads — against **$13.75** for the one run under
+    it. Total $19.76, lead share 30.4%. So a lead is neither free nor the
+    bill: it is roughly a third on top of one goal, and a portfolio priced
+    without it under-reports the tier by that much. `crew-stats.py` prints a
+    `Leads` table with both figures side by side and totals them.
+
+    <!-- live run: pending -->
+
+    **The budget goes, and with it the last token ceiling.** §15.50 removed
+    the token ceiling and left a charter `Budget:` line as the only gate on
+    spend. It fired once, on §15.74's run, and cost two interruptions for a
+    $3.75 overrun on a run one push from done. The principal removed it on
+    2026-09-05. The reasoning, in order: the loops that could run away are
+    already bounded by the fix-round cap, the nudge cap and one-band
+    promotion, so the budget guards nothing those miss; the list price is not
+    what a subscription pays, and the subscription limit fires first when
+    spend really matters (§15.50); and a lead has no basis to pick a figure,
+    which §15.74k proved by getting the tail of a run wrong by a factor of
+    ten. Removed: the charter's `Budget:` line, `run.spend.budget`,
+    escalation trigger 5 and its paragraph, the lead's headroom rule, the
+    README sentence and design §8's gate sentence. Triggers 6, 7 and 8 became
+    5, 6 and 7, and every live reference to them moved with them.
+
+    **Spend stays measured, because that is what makes the band rubric a
+    measurement.** `spend.py` still runs, the closing report still states the
+    run's cost, and `crew-stats.py` still totals it. What changed is that no
+    figure stops anything. A dollar figure in a brief is now a preference:
+    the lead records it in `decisions.md` and reports the run's spend against
+    it, which is the routing the contract already had for every other
+    statement of what the principal wants.

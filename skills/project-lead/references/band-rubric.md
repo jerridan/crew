@@ -45,7 +45,7 @@ Any "yes" past the first two is a signal toward `deep`.
   involvement, when its IC reports `BLOCKED` with a `capability` cause,
   exhausts its fix rounds, or goes idle without meeting its acceptance
   test (design §8). A `deep` package cannot promote further — at the top
-  band, the fix-round breaker escalates instead (design §6 trigger 6).
+  band, the fix-round breaker escalates instead (design §6 trigger 5).
 - **An `environment` block never promotes.** A bigger model hits the same
   denied permission or missing tool. The project lead fixes the
   environment or performs the blocked action itself — `ic-contract.md`'s

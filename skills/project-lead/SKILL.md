@@ -84,9 +84,8 @@ can be written.
 Then the record: `<record-root>/<slug>-<4 hex chars>/`, the suffix generated
 once; `record-format.md` says where the root is. Write `charter.md`, then
 `crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
-it — `run set spend.budget` when the charter carries a `Budget:` line, and
-`run set principal` with the `from-name` you kept above when the goal arrived
-by message.
+it — and `run set principal` with the `from-name` you kept above when the goal
+arrived by message.
 
 **The path you picked is the first entry in `decisions.md`**, once the record
 exists. It is a precedent-route entry in `record-format.md`'s full shape,

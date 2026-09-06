@@ -9,8 +9,13 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
 counts and the review catch rate. Design §8 asks for these numbers to turn the
-band rubric from a guess into a measurement, and to give a principal a
-defensible charter `Budget:`.
+band rubric from a guess into a measurement. No figure here gates anything.
+
+A lead's portfolio gets a row of its own: what the lead's sessions cost, from
+`lead.spend` (`skills/lead/scripts/lead-spend.py` writes it), beside what the
+runs under that portfolio cost. The lead runs from no checkout, so nothing
+else counts it, and it was most of the one measured portfolio (§15.74k,
+§15.76).
 
 It also reads every council entry's `Prior:`, `Positions:`, `Answer:` and
 `Models:` lines and reports the one-advocate ("adversary") entries: how many
@@ -438,7 +443,7 @@ def rate(part: int, whole: int) -> str:
     return "-" if not whole else f"{100 * part / whole:.1f}%"
 
 
-def report(records: list[dict], skips: list[str]) -> None:
+def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> None:
     print("Runs\n")
     rows = [
         [r["run"], r["packages"], r["fix_rounds"], r["promotions"], r["decisions"], r["councils"],
@@ -473,6 +478,28 @@ def report(records: list[dict], skips: list[str]) -> None:
         rows.append([band, t["packages"], t["priced"], f"{t['fix_rounds'] / t['packages']:.2f}",
                      t["promotions"], money(t["usd"] if t["priced"] else None), mean])
     print(table(["band", "pkgs", "priced", "fixes/pkg", "promos", "usd", "usd/pkg"], rows))
+
+    # The lead's own seat against the runs it drove. `lead usd` comes from
+    # `lead.spend`; nothing else can price a session that ran from no
+    # checkout. `runs usd` is the priced runs under this portfolio only, so a
+    # portfolio with an unpriced run reads low and the Skipped block names it.
+    # The lead's share was 30% of the one portfolio measured (§15.76).
+    if portfolios:
+        print("\nLeads (the lead's own sessions against the runs it drove)\n")
+        rows = []
+        for p in portfolios:
+            mine = [r for r in records if r.get("portfolio") == p["portfolio"]]
+            priced = [r["usd"] for r in mine if r["usd"] is not None]
+            runs_usd = sum(priced) if priced else None
+            total = None
+            if p["usd"] is not None or runs_usd is not None:
+                total = (p["usd"] or 0.0) + (runs_usd or 0.0)
+            share = "-" if not total or p["usd"] is None else f"{100 * p['usd'] / total:.1f}%"
+            rows.append([p["portfolio"], p["state"] or "-", p["items"], p["done"],
+                         len(mine), len(priced), money(p["usd"]), money(runs_usd),
+                         money(total), share])
+        print(table(["portfolio", "state", "items", "done", "runs", "priced",
+                     "lead usd", "runs usd", "total usd", "lead share"], rows))
 
     # A one-advocate ("adversary") entry: did the answer keep the project
     # lead's `Prior:` whole, change it in part, or did the advocate overturn
@@ -541,6 +568,15 @@ def report(records: list[dict], skips: list[str]) -> None:
         ["usd, priced runs", money(sum(priced) if priced else None)],
         ["usd per priced run", money(sum(priced) / len(priced) if priced else None)],
     ]
+    lead_usd = [p["usd"] for p in portfolios if p["usd"] is not None]
+    if portfolios:
+        rows.extend([
+            ["portfolios", len(portfolios)],
+            ["portfolios priced", len(lead_usd)],
+            ["usd, leads", money(sum(lead_usd) if lead_usd else None)],
+            ["usd, leads and priced runs",
+             money(sum(lead_usd) + sum(priced) if lead_usd or priced else None)],
+        ])
     print(table(["measure", "value"], rows))
 
     if skips:
@@ -549,21 +585,62 @@ def report(records: list[dict], skips: list[str]) -> None:
             print(f"  {line}")
 
 
-def candidates(root: Path) -> list[Path]:
-    """Every goal record under `root`, the lead-driven ones included.
+def candidates(root: Path) -> list[tuple[Path, Path | None]]:
+    """Every goal record under `root`, each with the portfolio that drove it.
 
     A lead's portfolio directory holds a `portfolio.json` and no `state.json`,
     and the runs it drove sit two levels below it, at
     `runs/<item-id>/<goal-slug>/`, because each item gets its own
     `CREW_RECORD_ROOT` (`record-format.md`). Reading one level only would make
-    every lead-driven run invisible to this report.
+    every lead-driven run invisible to this report. The second element is the
+    portfolio directory, or `None` for a run nobody led.
     """
     found = []
     for child in sorted(p for p in root.iterdir() if p.is_dir()):
         if (child / "portfolio.json").is_file():
-            found.extend(p.parent for p in sorted(child.glob("runs/*/*/state.json")))
+            found.extend((p.parent, child) for p in sorted(child.glob("runs/*/*/state.json")))
         else:
-            found.append(child)
+            found.append((child, None))
+    return found
+
+
+def read_portfolios(root: Path, skips: list) -> list[dict]:
+    """One entry per portfolio: what the lead itself cost, and its item count.
+
+    `lead.spend` is written by `skills/lead/scripts/lead-spend.py` when an
+    item closes. A portfolio with none is still reported, with a skip line
+    naming the script that fills it in.
+    """
+    found = []
+    for child in sorted(p for p in root.iterdir() if p.is_dir()):
+        path = child / "portfolio.json"
+        if not path.is_file():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as err:
+            skips.append(f"{child.name}: unreadable portfolio.json — {err}")
+            continue
+        if not isinstance(data, dict):
+            skips.append(f"{child.name}: unreadable portfolio.json — it holds a {type(data).__name__}, not an object")
+            continue
+        lead = data.get("lead")
+        lead = lead if isinstance(lead, dict) else {}
+        stored = lead.get("spend")
+        usd = None
+        if isinstance(stored, dict) and stored.get("usd_list_price") is not None:
+            usd = float(stored["usd_list_price"])
+        else:
+            skips.append(f"{child.name}: no lead cost — the portfolio has no lead.spend; "
+                         "run skills/lead/scripts/lead-spend.py --write")
+        items = as_list(data.get("items"))
+        found.append({
+            "portfolio": child.name,
+            "state": lead.get("state"),
+            "items": len(items),
+            "done": sum(1 for i in items if isinstance(i, dict) and i.get("state") == "done"),
+            "usd": usd,
+        })
     return found
 
 
@@ -588,7 +665,8 @@ def main(argv: list[str]) -> None:
 
     skips: list[str] = []
     records = []
-    for record in sorted(candidates(root)):
+    portfolios = read_portfolios(root, skips)
+    for record, portfolio in sorted(candidates(root), key=lambda pair: pair[0]):
         if not (record / "state.json").is_file():
             skips.append(f"{record.name}: not a record — no state.json")
             continue
@@ -606,17 +684,21 @@ def main(argv: list[str]) -> None:
         checkout = overrides.get(record.name) or stored_repo
         # One malformed record must not take the other ten down with it.
         try:
-            records.append(read_record(record, state, checkout, forced, skips))
+            read = read_record(record, state, checkout, forced, skips)
         except (AttributeError, KeyError, TypeError, ValueError) as err:
             skips.append(f"{record.name}: unreadable record — {type(err).__name__}: {err}")
+            continue
+        read["portfolio"] = portfolio.name if portfolio else None
+        records.append(read)
 
     if not records:
         sys.exit(f"no records under {root}")
 
     if args.json:
-        print(json.dumps({"record_root": str(root), "records": records, "skipped": skips}, indent=2))
+        print(json.dumps({"record_root": str(root), "records": records,
+                          "portfolios": portfolios, "skipped": skips}, indent=2))
     else:
-        report(records, skips)
+        report(records, portfolios, skips)
 
 
 if __name__ == "__main__":

@@ -67,48 +67,55 @@ def stamp(entry: dict) -> float | None:
         return None
 
 
-def collect(dirs: list[Path], since: float, until: float | None = None) -> dict:
-    """Price every assistant message in the checkout's transcripts.
+def price_files(paths, since: float = 0.0, until: float | None = None) -> dict:
+    """Price every assistant message in the named transcript files.
 
-    `since` filters whole files by modification time. `until`, when given,
-    closes the window at the entry level: an entry stamped after it is
-    dropped, and so is one stamped before `since`. An entry that carries no
-    timestamp stays, because nothing places it. Pass `until` to price one run
-    of several that share a checkout; leave it out to price everything since
-    `since`, which is what this script's own command line does.
+    `since` drops a whole file whose last modification is older than it.
+    `until`, when given, closes the window at the entry level: an entry
+    stamped after it is dropped, and so is one stamped before `since`. An
+    entry that carries no timestamp stays, because nothing places it.
+
+    One message can appear in two files, so each is keyed by its own id and
+    the largest copy wins. Callers: `collect` below, and
+    `skills/lead/scripts/lead-spend.py`, which names a lead's own session
+    files instead of a checkout's directory.
     """
     messages = {}
-    for d in dirs:
-        for f in glob.glob(str(d / "**" / "*.jsonl"), recursive=True):
-            if os.path.getmtime(f) < since:
-                continue
-            with open(f, encoding="utf-8") as handle:
-                for line in handle:
-                    try:
-                        entry = json.loads(line)
-                    except ValueError:
+    for f in paths:
+        f = str(f)
+        if since and os.path.getmtime(f) < since:
+            continue
+        with open(f, encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                msg = entry.get("message") or {}
+                usage = msg.get("usage")
+                if entry.get("type") != "assistant" or not usage:
+                    continue
+                if until is not None:
+                    at = stamp(entry)
+                    if at is not None and not since <= at <= until:
                         continue
-                    msg = entry.get("message") or {}
-                    usage = msg.get("usage")
-                    if entry.get("type") != "assistant" or not usage:
-                        continue
-                    if until is not None:
-                        at = stamp(entry)
-                        if at is not None and not since <= at <= until:
-                            continue
-                    key = msg.get("id") or (f, entry.get("uuid"))
-                    cache = usage.get("cache_creation") or {}
-                    w5 = cache.get("ephemeral_5m_input_tokens", 0) if cache else usage.get("cache_creation_input_tokens", 0)
-                    rec = (
-                        family(msg.get("model")),
-                        usage.get("input_tokens", 0),
-                        w5,
-                        cache.get("ephemeral_1h_input_tokens", 0),
-                        usage.get("cache_read_input_tokens", 0),
-                        usage.get("output_tokens", 0),
-                    )
-                    if key not in messages or sum(rec[1:]) > sum(messages[key][1:]):
-                        messages[key] = rec
+                key = msg.get("id") or (f, entry.get("uuid"))
+                cache = usage.get("cache_creation") or {}
+                w5 = cache.get("ephemeral_5m_input_tokens", 0) if cache else usage.get("cache_creation_input_tokens", 0)
+                rec = (
+                    family(msg.get("model")),
+                    usage.get("input_tokens", 0),
+                    w5,
+                    cache.get("ephemeral_1h_input_tokens", 0),
+                    usage.get("cache_read_input_tokens", 0),
+                    usage.get("output_tokens", 0),
+                )
+                if key not in messages or sum(rec[1:]) > sum(messages[key][1:]):
+                    messages[key] = rec
+    return totals_of(messages)
+
+
+def totals_of(messages: dict) -> dict:
     totals = {}
     for fam, inp, w5, w1, read, out in messages.values():
         t = totals.setdefault(fam, {"messages": 0, "input": 0, "cache_write_5m": 0, "cache_write_1h": 0, "cache_read": 0, "output": 0, "usd": 0.0})
@@ -123,11 +130,50 @@ def collect(dirs: list[Path], since: float, until: float | None = None) -> dict:
     return totals
 
 
+def collect(dirs: list[Path], since: float, until: float | None = None) -> dict:
+    """Price every transcript under the checkout's project directories.
+
+    Pass `until` to price one run of several that share a checkout; leave it
+    out to price everything since `since`, which is what this script's own
+    command line does.
+    """
+    paths = []
+    for d in dirs:
+        paths.extend(glob.glob(str(d / "**" / "*.jsonl"), recursive=True))
+    return price_files(paths, since, until)
+
+
 def start_time(record: Path, state: dict) -> float:
     created = (state.get("run") or {}).get("created_at")
     if created:
         return datetime.datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
     return (record / "charter.md").stat().st_mtime
+
+
+def report(totals: dict) -> tuple[float, int]:
+    """Print one row per model family, and return the dollars and the tokens."""
+    print(f"{'model':7} {'msgs':>5} {'input':>9} {'w5m':>10} {'w1h':>10} {'read':>12} {'output':>8} {'usd':>8}")
+    grand = 0.0
+    total_tokens = 0
+    for fam, t in sorted(totals.items(), key=lambda kv: -kv[1]["usd"]):
+        print(f"{fam:7} {t['messages']:5d} {t['input']:9d} {t['cache_write_5m']:10d} {t['cache_write_1h']:10d} {t['cache_read']:12d} {t['output']:8d} {t['usd']:8.2f}")
+        grand += t["usd"]
+        total_tokens += t["input"] + t["cache_write_5m"] + t["cache_write_1h"] + t["cache_read"] + t["output"]
+    print(f"total ${grand:.2f}  tokens {total_tokens}")
+    return grand, total_tokens
+
+
+def transcript(totals: dict, grand: float, total_tokens: int) -> dict:
+    """The stored shape `record-format.md` calls `spend.transcript`.
+
+    `lead.spend` takes the same shape, so both writers build it here.
+    """
+    return {
+        "measured_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "total_tokens": total_tokens,
+        "usd_list_price": round(grand, 2),
+        "by_model": {fam: {k: (round(v, 2) if k == "usd" else v) for k, v in t.items()} for fam, t in totals.items()},
+    }
 
 
 def main(argv: list[str]) -> None:
@@ -140,22 +186,10 @@ def main(argv: list[str]) -> None:
     if not dirs:
         sys.exit(f"no transcripts for checkout {argv[1]}")
     totals = collect(dirs, start_time(record, state))
-    print(f"{'model':7} {'msgs':>5} {'input':>9} {'w5m':>10} {'w1h':>10} {'read':>12} {'output':>8} {'usd':>8}")
-    grand = 0.0
-    total_tokens = 0
-    for fam, t in sorted(totals.items(), key=lambda kv: -kv[1]["usd"]):
-        print(f"{fam:7} {t['messages']:5d} {t['input']:9d} {t['cache_write_5m']:10d} {t['cache_write_1h']:10d} {t['cache_read']:12d} {t['output']:8d} {t['usd']:8.2f}")
-        grand += t["usd"]
-        total_tokens += t["input"] + t["cache_write_5m"] + t["cache_write_1h"] + t["cache_read"] + t["output"]
-    print(f"total ${grand:.2f}  tokens {total_tokens}")
+    grand, total_tokens = report(totals)
     if "--write" in argv:
         spend = state.setdefault("run", {}).setdefault("spend", {})
-        spend["transcript"] = {
-            "measured_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "total_tokens": total_tokens,
-            "usd_list_price": round(grand, 2),
-            "by_model": {fam: {k: (round(v, 2) if k == "usd" else v) for k, v in t.items()} for fam, t in totals.items()},
-        }
+        spend["transcript"] = transcript(totals, grand, total_tokens)
         tmp = state_path.with_name(f"state.json.{os.getpid()}.tmp")
         tmp.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         os.replace(tmp, state_path)

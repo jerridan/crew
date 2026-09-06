@@ -9,8 +9,7 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
 counts, the review catch rate, and the steps a band let a run or a task skip.
-Design §8
-asks for these numbers to turn the band rubric from a guess into a
+Design §8 asks for these numbers to turn the band rubric from a guess into a
 measurement. No figure here gates anything.
 
 A lead's portfolio gets a row of its own: what the lead's sessions cost, from

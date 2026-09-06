@@ -171,13 +171,13 @@ write the item's `task` object beside it (`record-format.md`).
 over, and the next one starts on a notification.
 
 1. **Give the IC a checkout of its own, cut from the default branch.** Read
-   that branch first, as a remote ref: run `git -C <repo> fetch origin`, then
-   `git -C <repo> symbolic-ref --short refs/remotes/origin/HEAD`, which prints
-   `origin/<branch>`. When it prints nothing, run `git -C <repo> remote
-   set-head origin --auto` once and read it again. Take the printed
-   `origin/<branch>` and nothing else: a local branch of that name can sit
-   behind the remote, and the IC would then build on stale code. Name it as
-   the start point:
+   that branch first, as a remote ref. Run `git -C <repo> fetch origin`, then
+   `git -C <repo> symbolic-ref --short refs/remotes/origin/HEAD`. It prints
+   `origin/<default-branch>`. When it prints nothing, run `git -C <repo>
+   remote set-head origin --auto` once and read it again. Use the printed ref
+   and nothing else. A local branch of that name can sit behind the remote,
+   and the IC would then build on stale code. Name the ref as the start
+   point:
    `git -C <repo> worktree add -b crew/<item-id> <portfolio-dir>/runs/<item-id>/checkout origin/<default-branch>`.
    Whatever branch the principal left the checkout on is not a start point:
    the PR would carry its commits too. The principal's own working tree is

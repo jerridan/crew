@@ -799,6 +799,7 @@ python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> lead set prin
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item add '<json object>'
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> state running
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set record_dir '"/abs/path"'
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set task.band '"light"'
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> expect "<one line>"
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> escalation add <item-id> "<question>"
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> escalation answer <index> "<answer>"
@@ -807,8 +808,11 @@ python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> escalation an
 The rules are `crew-record.py`'s, for the same reasons: never write
 `escalations` with `lead set`, which replaces the whole list; a `set` value
 is JSON and carries its own quotes; and the script checks no field and no
-transition, because this file owns both. `expect` is the exception that takes
-plain text, because it is rewritten every turn. `init` also creates
+transition, because this file owns both. Both `set` verbs take a dotted field
+and create the objects on the way to it, so a task's fields are written one
+call at a time; a path through anything that is not an object exits with a
+message. `expect` is the exception that takes plain text, because it is
+rewritten every turn. `init` also creates
 `charters/` and an empty `decisions.md`, and `item add` refuses an id the
 portfolio already holds. Every call stamps `lead.updated_at`.
 
@@ -873,12 +877,13 @@ run's own cost stays in its `state.json` (Authority rule below).
 | `title` | one line, from the principal's brief. |
 | `repo` | the absolute path to the target-repo checkout this item runs in. |
 | `charter` | `charters/<id>.md`, relative to the portfolio directory. |
-| `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. |
+| `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. On a task it is `runs/<id>/` itself, and the lead writes it at the dispatch, because no session creates it. |
 | `session_name` | the `--name` the item's project-lead session was launched under. It is the address `SendMessage` takes, and it survives a restart, which a socket path does not (design §15.72f). `null` on a task, which has no session of its own. |
 | `state` | one of `pending`, `running`, `blocked`, `done`, `abandoned`. See the transitions below. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this item's last `state` transition. |
 | `expect` | one line: what the lead expects next on this item, and what it will do when that arrives. It is the ledger — a restarted lead reads this line and knows what its own last turn was waiting for. |
 | `outcome` | the PR url, or the terminal state the run reported; `null` until the item is `done` or `abandoned`. |
+| `task` | the one package a `kind: task` item runs as, and what the lead has learned back from it. Absent on a goal. The task record below owns its fields. |
 
 An item's `state` is the **lead's** view of the item, not the run's. The run's
 own state lives in `record_dir`'s `state.json`, and that file stays
@@ -914,7 +919,54 @@ pending ──▶ running ──▶ done        (terminal)
 **A `done` item needs the record, not a message.** A project lead's closing
 report can be lost — the send fails when the lead session has restarted
 (design §15.72g) — so the lead confirms a terminal state by reading
-`record_dir`'s `state.json`, never by waiting for a report.
+`record_dir`'s `state.json`, never by waiting for a report. A task holds no
+`state.json`: what proves it `done` is an accepted review on disk and a PR url
+in `outcome`.
+
+### The task record
+
+A task runs under the lead itself, so it has no project-lead session and no
+run record. It writes no `state.json`, `spec.md`, `split.md`,
+`worktrees.json` or `decisions.md` of its own — the portfolio holds every
+judgment call the item produced. Five files and one checkout are the whole
+record:
+
+```
+charters/<item-id>.md                                      the charter, in the shape above
+runs/<item-id>/checkout/                                   the worktree the IC works in
+runs/<item-id>/plans/<item-id>.md                          the IC's plan
+runs/<item-id>/reports/<item-id>.md                        the IC's report
+runs/<item-id>/diffs/<item-id>-r<n>.patch                  the diff each review reads
+runs/<item-id>/reviews/<item-id>-package-review-r<n>.md    the package review
+```
+
+`runs/<item-id>/` is the record root the IC and the reviewer are given, the
+same value a goal's session gets, and the four subdirectories keep the names
+and the `<n>` rule that `reports/`, `plans/`, `diffs/` and `reviews/` carry
+above — with the item id where a package id would be. Nothing in `crew:ic`,
+`crew:package-reviewer` or `simple-path.md` then needs a second path rule.
+
+Everything else about the task is the item's `task` object:
+
+| Field | Meaning |
+|---|---|
+| `band` | `light` or `standard`, by `band-rubric.md`. A task never runs `deep`: work that bands `deep` is a goal. |
+| `ic_agent` | `crew:ic` or `crew:ic-instructions`. |
+| `file_set` | the files the IC may edit. A shared file in it makes the item a goal. |
+| `acceptance_criterion` | one line, runnable as a command. |
+| `checkout` | the absolute path of the IC's worktree; `null` once the lead removes it. |
+| `branch` | `crew/<item-id>`, in the item's `repo`. It outlives the checkout, because the PR is on it. |
+| `base` | the sha the branch started from. The review's diff is `base..HEAD`. |
+| `plan_approved_at` | ISO-8601 UTC, the lead's go-ahead at the plan gate; `null` until then, and `null` for good on a `light` task, which skips the gate (`band-rubric.md`). |
+| `steps_skipped` | `run.steps_skipped`'s list, for a task: every step the band let the lead skip. A skipped step with no entry here reads as a step that failed to run. |
+| `ic_status` | the IC's last report status, one of `ic-contract.md`'s four. |
+| `fix_rounds_used` | how many fix rounds have run. It names the `<n>` in the diff and review filenames, and 2 is the cap (`skills/lead/SKILL.md`). |
+| `review_verdict` | the package review's last verdict, in `review-output.md`'s words. |
+
+`crew-portfolio.py`'s `item <id> set` takes a dotted field, so one call writes
+one of these: `item <id> set task.ic_status '"DONE"'`. Write the object whole
+at `item add` time, then one field per call — a whole-object rewrite drops
+what the last call put there.
 
 ### `decisions.md`
 
@@ -922,7 +974,7 @@ The portfolio's own decision log, in the goal record's `decisions.md` shape
 and with its rules: one entry per question, `Route`, `Answer`, `Citation`,
 `Confidence`, `Timestamp`, and the clock read rather than remembered.
 
-Two things go in it, and nothing else:
+Three things go in it, and nothing else:
 
 - **Every answer the principal gives.** `Route: preference`, and the
   `Citation:` names the item the question came from. A restarted lead reads
@@ -930,6 +982,10 @@ Two things go in it, and nothing else:
 - **Every call the lead makes for a project lead** — a question it answered
   from a charter or a record instead of passing on. `Route: precedent`, and
   the `Citation:` names the charter line or the record path that settled it.
+- **Every triage call** — one entry per item, saying `goal` or `task` and
+  which of the sizing test's answers decided it (`skills/lead/SKILL.md`).
+  `Route: precedent`. An item promoted from a task to a goal after its
+  dispatch gets a second entry naming the promotion reason.
 
 A preference the principal states in passing — "always squash", "never touch
 the changelog" — is an entry too. It is the answer to the next question, and
@@ -974,6 +1030,32 @@ nothing else in the portfolio holds it.
       "state_changed_at": "2026-09-05T13:44:52Z",
       "expect": "the closing report with a PR url; then read state.json and set done",
       "outcome": null
+    },
+    {
+      "id": "pad-start-9c04",
+      "kind": "task",
+      "title": "Add padStart to string-kit, with one test",
+      "repo": "/tmp/string-kit",
+      "charter": "charters/pad-start-9c04.md",
+      "record_dir": "/Users/x/.claude/crew/lead-2026-09-05-a1b2/runs/pad-start-9c04",
+      "session_name": null,
+      "state": "running",
+      "state_changed_at": "2026-09-05T13:40:03Z",
+      "expect": "the IC's report; then verify against git and dispatch the package review",
+      "outcome": null,
+      "task": {
+        "band": "light",
+        "ic_agent": "crew:ic",
+        "file_set": ["src/padStart.js", "test/padStart.test.js"],
+        "acceptance_criterion": "npm test -- test/padStart.test.js exits 0",
+        "checkout": "/Users/x/.claude/crew/lead-2026-09-05-a1b2/runs/pad-start-9c04/checkout",
+        "branch": "crew/pad-start-9c04",
+        "base": "9f1c2ad",
+        "plan_approved_at": "2026-09-05T13:39:44Z",
+        "ic_status": null,
+        "fix_rounds_used": 0,
+        "review_verdict": null
+      }
     }
   ]
 }
@@ -1145,5 +1227,7 @@ Every name this file defines, with what consumes it.
 - `lead.compactions` — writer: `hooks/pre-compact.py`. Consumer: `skills/lead/SKILL.md`
 - `lead.spend` — writer: `skills/lead/scripts/lead-spend.py`. Consumer: `skills/project-lead/scripts/crew-stats.py`; a person reading what the tier costs (design §8)
 - `items[].id`, `kind`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`
-- `items[].kind` values `goal` and `task` — consumer: T39's triage step
+- `items[].kind` values `goal` and `task` — consumer: `skills/lead/SKILL.md`'s triage step
+- `items[].task` and its fields `band`, `ic_agent`, `file_set`, `acceptance_criterion`, `checkout`, `branch`, `base`, `plan_approved_at`, `ic_status`, `fix_rounds_used`, `review_verdict` — consumer: `skills/lead/SKILL.md` ("A task runs under you"), which is also the only writer
+- `runs/<item-id>/checkout/` — consumer: a task's IC, as its worktree, and the package review's diff
 - `items[].state` values `pending`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions

@@ -32,9 +32,10 @@ behalf so you can audit them at review time.
 - Model chosen per unit of work, after investigation.
 - A durable record you can read, audit, and resume from.
 - **The lead tier**, in this repo and this plugin, as the stage after the
-  project lead (§15.70). It holds a portfolio of goals, spawns one
-  project-lead session per goal, and answers their escalations. `/crew:lead`
-  builds it, and one goal has run through it end to end (§15.74).
+  project lead (§15.70). It holds a portfolio, sizes each item, spawns one
+  project-lead session per goal, dispatches one IC for a task, and answers
+  their escalations. `/crew:lead` builds it, one goal has run through it end
+  to end (§15.74), and the size triage is §15.79.
 
 ### Out of scope
 
@@ -94,6 +95,10 @@ duties.
   its own scope, does not push to a remote, and does not spawn a reviewer or
   another implementer. It may spawn read-only lookup subagents only.
 - A **critic** or **reviewer** does not edit code. It reports.
+- A **lead** reads no code and edits nothing in a target repo. It sizes each
+  item, dispatches, reads the record and answers questions. On a task it runs
+  itself, it enters that task's own worktree to verify and to open the PR, and
+  `skills/lead/SKILL.md` owns the list of what it may run there (§15.79).
 
 ---
 
@@ -1104,7 +1109,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
-| 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per goal (§15.70; T36, T37, T9) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), and T9 is the proof |
+| 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per goal, one IC per task (§15.70; T36, T37, T39, T9) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), the size triage **built 2026-09-05** (T39, §15.79), and T9 is the proof |
 
 ### 13.1 Hooks
 
@@ -5325,3 +5330,141 @@ Deliberately different:
     **Not exercised:** the resume-path push. No lead was killed this run, so
     "Start from the record"'s re-send of an unanswered batch on restart still
     has no live observation behind it.
+
+79. **The lead triages by size — 2026-09-05, T39.** T37's lead had one
+    mechanism for every item: a charter and a project-lead session. A
+    one-line task then bought a fable seat, a spec, a critic, a split, an IC
+    and two reviews — and §15.73a measured what that seat costs, 82 percent
+    of a $7.69 run on a one-line change. The principal wants to hand over any
+    size of work and trust it is taken care of, so the lead now sizes each
+    item first. A **goal** keeps T37's session. A **task** — one package, one
+    file set, one runnable criterion — gets one unnamed IC that the lead
+    dispatches itself, in a worktree of the item's repo, with the same plan
+    gate, verify step and package review `simple-path.md` runs. Nothing about
+    the work changes; only the seat that arranges it.
+
+    a. **The sizing test is four questions, and it is answered from text.**
+       Which files change, what proves it done, does the repo hold the
+       pattern already, and does the change stay inside those files. An
+       answer that needs the code read is a "no", because the lead reads no
+       code — so the inputs are the item's own text, the repo's instruction
+       files and the portfolio record, and an item that cannot be sized from
+       those three is a goal. A goal is the safe answer both ways: it costs a
+       session, and a task that should have been a goal costs the work.
+       `skills/lead/SKILL.md` holds the test and the five promotion reasons —
+       a symptom rather than a change, a second file set, a shared file, an
+       unsettled preference, and a criterion needing interpretation or a
+       `deep` band.
+
+    b. **Promotion after the dispatch is the same decision made later.** The
+       lead stops the task, re-files the item as a goal with its branch named
+       in the new charter, and records why. It does not ask: the triage is
+       its own call, and asking would put a human turn in the middle of the
+       thing the tier exists to remove. The principal learns of it in the
+       next batch, as information.
+
+    c. **"You never touch a target repo" gained one carve-out, and only
+       one.** In a task's **own** worktree the lead runs `git`, the
+       acceptance criterion, the repo's suite and `gh`. Verifying a claim and
+       opening a PR is not reading code, and the diff goes to a file by shell
+       redirect so the reviewer reads it and the lead never does. `Read`,
+       `Edit` and `Write` stay banned in every checkout, which is what keeps
+       a shared-file edit — the one thing `simple-path.md`'s "Integrate"
+       needs — a promotion reason instead of an exception. A goal's checkout
+       takes read-only git and nothing else, which item h below settles. The
+       worktree is cut from the repo's
+       default branch and not from whatever branch the principal left the
+       checkout on, or the draft PR carries that branch's commits as well.
+
+    d. **The task record is the portfolio plus four files.** No `state.json`,
+       no `spec.md`, no `split.md`, no `worktrees.json`, no second
+       `decisions.md`: `runs/<item-id>/` holds the plan, the report, the
+       diffs and the reviews under the goal record's own names, with the item
+       id where a package id would be, so neither `crew:ic` nor
+       `crew:package-reviewer` needs a new path rule. Everything else is the
+       item's `task` object in `portfolio.json` — band, agent, file set,
+       criterion, checkout, branch, base, plan gate, IC status, fix rounds,
+       verdict, and the steps the band let it skip (`record-format.md`).
+       `task.steps_skipped` is `run.steps_skipped`'s half of §15.77: a
+       `light` task skips the plan gate for one dispatch, and a task has no
+       `state.json` to record that in. A task's `done` is therefore proved
+       by an accepted review on disk and a PR url, not by a `state.json` it
+       never writes.
+
+    e. **A task escalates three things, and promotes the rest.** Every
+       question about what the work *is* makes the item a goal, so most of
+       §6's triggers cannot fire in that shape. What reaches the principal is
+       an `environment` block the lead cannot clear without acting inside the
+       checkout, a review still unaccepted after the fix-round cap, and a
+       failed push or `gh pr create` (`autonomy-contract.md`). The cap is
+       **two** rounds rather than five, because the breaker at five says "fix
+       the package yourself" and a lead never edits the work. A `capability`
+       block promotes the band once; a `standard` task that blocks again is a
+       goal, since `deep` is a band no task carries.
+
+    f. **`crew-portfolio.py`'s `item set` now takes a dotted field.** It
+       reuses the `set_dotted` helper `lead set` already had. One call writes
+       one field of the `task` object, which is the same rule that keeps
+       `escalations` off `lead set`: a whole-object rewrite drops what the
+       last call put there. The helper gained a guard with the second caller:
+       a path through a string or a list now exits with a message, where it
+       used to raise a `TypeError` at the assignment.
+
+    g. **Both kinds ran from one lead — 2026-09-06.** A Fable lead at high
+       effort, launched from an empty directory outside every checkout,
+       against a plugin dir merging T43, T42, T41 and this ticket. Portfolio
+       `~/.claude/crew-live/lead-2026-09-06-cf74`, two items, handed as two
+       typed messages. The **task** `strip-suffix-62a5` added
+       `src/text/stripSuffix.js` and its test through one IC and one package
+       review with no project-lead session: `kind: task`, `session_name:
+       null`, `band: standard`, `ic_status: DONE`, `fix_rounds_used: 0`,
+       `review_verdict: accepted`, `checkout: null` after the PR, and
+       `runs/strip-suffix-62a5/` holding `plans/`, `reports/`, `diffs/`, one
+       review and **no `state.json`** — fixture draft PR #19, 9 minutes 26
+       seconds from the message, $3.87. The **goal** `null-input-3559` got
+       `crew-pl-null-input-3559`, a full goal record under
+       `runs/null-input-3559/null-input-empty-5ccb`, one package at
+       `standard`, zero fix rounds, $6.38, fixture draft PR #20. The lead's
+       own seat was $5.59 of $11.97, 46.7 percent — against §15.73a's 82
+       percent for a project lead on a one-line change, which is the saving
+       the triage exists to make. The band is worth reading: the lead chose
+       `standard` and not `light`, because no test covered the new surface
+       yet, which is `band-rubric.md`'s second condition failing exactly as
+       written.
+
+    h. **The touch audit is clean, and it found one rule to widen.** Zero
+       `Read`, `Edit` or `Write` calls on any path in either checkout, across
+       31 `Bash`, 3 `Agent`, 2 `ToolSearch`, 1 `PushNotification`, 1
+       `ListAgents` and 1 `SendMessage`. Every writing git command was in the
+       task's own worktree, plus the `worktree add` and `remove` the carve-out
+       names. The deviation is read-only: `git status`, `branch
+       --show-current` and `worktree list` against the repo itself, once
+       while scouting before the triage and twice after the goal's PR to
+       confirm the tree was back on main — and the two items shared one repo
+       path, so those calls were in "the goal's checkout", which the rule as
+       written banned outright. The rule was wrong, not the lead. Read-only
+       git reports git's own state and not the code, so `skills/lead/SKILL.md`
+       now allows `status`, `branch`, `log` and `worktree list` in any item's
+       checkout, and keeps every write, every test run and `gh` inside a
+       task's own worktree. It also says to prefer the record: `state.json`'s
+       `checkout_restored` already answers the question the two later calls
+       asked.
+
+    i. **A task leaves the barrel behind, by design.** The IC added the helper
+       and its test and did not re-export it from `src/index.js`, because a
+       barrel file is shared and the lead edits nothing in a target repo. The
+       lead did the right thing with that: it flagged the missing re-export in
+       the PR body as follow-up rather than editing the file or promoting the
+       item. So a task that adds a helper to a repo with a barrel produces a
+       PR a human finishes, and a goal is the shape for a helper that must be
+       exported. `decisions.md` carried one triage entry per item,
+       `Route: precedent`, each citing "Triage every item by size".
+
+    j. **"End every turn quickly" is still unexercised.** The task ran inside
+       one long turn: the lead dispatched the IC as a background subagent and
+       the completion notification re-woke the same turn, so no message
+       arrived mid-turn to be delayed. What the run does prove is the other
+       half — the second item was accepted after the first was done, and the
+       goal's charter went out by one `SendMessage` before the lead ended its
+       turn. Delivery to a lead sitting inside a long turn is what §15.72i
+       still has nobody testing.

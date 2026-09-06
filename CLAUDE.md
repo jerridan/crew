@@ -19,7 +19,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the spec and the shape, then a route to one path file | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and each lead's own cost over every record | the project lead, from Bash; a person runs `crew-stats.py` |
-| `skills/lead/SKILL.md` | the `/crew:lead` entry point — the portfolio, the charters, the escalations and the ledger | its skill trigger |
+| `skills/lead/SKILL.md` | the `/crew:lead` entry point — the portfolio, the charters, the size triage, the escalations and the ledger | its skill trigger |
 | `skills/lead/references/session-launch.md` | launching, addressing, steering and resuming one project-lead session | the lead |
 | `skills/lead/scripts/*.py` | `crew-portfolio.py` writes one `portfolio.json` field; `lead-spend.py` prices the lead's own sessions into `lead.spend` | the lead, from Bash |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run or a dead lead interrupted; `PreCompact` logs a compaction into the run and into the portfolio | the plugin loader, in every session |
@@ -46,11 +46,13 @@ report ending; both endings have run against that repo, and it is
 `crew:researcher`'s only caller, which no run has dispatched yet.
 
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
-goal, launches one project-lead session for each, answers what it can and
-batches the rest for the human. Its record is the portfolio, and a killed lead
-starts again from it. One goal has run through it end to end, and a lead was
-killed mid-portfolio and restarted from the record with no human turn (design
-§15.72, §15.74). Two goals at once is T9 and has not run.
+item, sizes each one, launches a project-lead session for a goal and
+dispatches one IC for a task, answers what it can and batches the rest for the
+human. Its record is the portfolio, and a killed lead starts again from it.
+One goal has run through it end to end, and a lead was killed mid-portfolio
+and restarted from the record with no human turn (design §15.72, §15.74). One
+lead has taken a task and a goal to a draft PR each, the task with no
+project-lead session (§15.79). Two goals at once is T9 and has not run.
 
 `docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
 Never write about an unbuilt stage as if it runs, or about a built one as if

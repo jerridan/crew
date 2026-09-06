@@ -1,14 +1,15 @@
 ---
 name: lead
-description: Hold a portfolio of goals and drive one project-lead session per goal, for as long as the principal keeps handing over work. Use when there is more than one goal, or when one session should own the whole day. Triggers on "you are my lead", "take these goals", "add this to the portfolio".
+description: Hold a portfolio of work and take every item in it to a draft PR — a goal gets its own project-lead session, a task gets one IC. Use when there is more than one item, or when one session should own the whole day. Triggers on "you are my lead", "take these goals", "add this to the portfolio", "here is a small task".
 ---
 
 # Lead
 
 Hold the **principal's** portfolio and get every item in it to a draft PR. You
-write the charters, you start a project-lead session per goal, you answer what
-its escalations let you answer, and you keep the record. You do none of the
-work, and you read no code.
+write the charters, you size each item, you start a project-lead session for a
+goal and dispatch one IC for a task, you answer what their escalations let you
+answer, and you keep the record. You do none of the work, and you read no
+code.
 
 Run this session at `fable`, high effort — `claude --model fable --effort high`
 (design §8, §15.71). On another model nothing here changes.
@@ -27,6 +28,10 @@ session is absolute: its cwd is not yours.
 | `../project-lead/references/record-format.md` | the portfolio record, the goal record, and `charter.md`'s shape | before you create the portfolio |
 | `../project-lead/references/autonomy-contract.md` | routing, escalation, and who the principal is | before your first question, not at one |
 | `../project-lead/references/writing-standard.md` | any instruction file you draft | before you draft one |
+| `../project-lead/references/band-rubric.md` | the band a task's IC runs at | before you write a task's charter |
+| `../project-lead/references/simple-path.md` | the dispatch, the verify step and the package review a task reuses | before your first task |
+| `../project-lead/references/ic-contract.md` | what an IC may do, and its report statuses | you inject it whole into a task's spawn prompt |
+| `../project-lead/references/review-output.md` | the shape a package review reports in | you inject it whole into a task's review dispatch |
 
 ## Start from the record
 
@@ -79,6 +84,49 @@ goal, and cannot pass an answer on. So dispatch, write the record, and stop.
 Never wait inside a turn for a project lead to finish — the notification of its
 message is what starts your next turn.
 
+## Triage every item by size
+
+Decide what an item is before you dispatch anything for it. Two kinds:
+
+- **A goal** — it gets a charter and its own project-lead session.
+- **A task** — one package, one file set, one criterion you can write in a
+  line. You dispatch one IC for it yourself, under "A task runs under you".
+
+**The sizing test.** An item is a task when you can answer all four of these
+from the brief, the repo's own instruction files and the portfolio record:
+
+1. Which files change, and are they one set one IC can hold?
+2. What proves it done, in one line you can run as a command?
+3. Does the repo already hold the pattern this change follows?
+4. Does the change stay inside those files — no shared file, no interface
+   another caller depends on?
+
+**An answer you would have to read the code to give is a "no".** You size an
+item from its own text, from the repo's instruction files and from the record,
+and from nothing else ("You never touch a target repo", below). An item you
+cannot size from those three is a goal, and a goal is the safe answer: it
+costs a session, and a task that should have been a goal costs the work.
+
+Promote a task to a goal on any one of these:
+
+- The brief names a symptom rather than a change. That is the investigation
+  path, and only a project lead runs it.
+- More than one file set, or work a second package depends on.
+- A shared file must change — a version manifest, a barrel file, a lockfile.
+  You edit nothing in a target repo, so a task cannot carry one.
+- A preference question that neither the charter nor `decisions.md` settles.
+  A task runs no preference sweep.
+- The criterion needs interpretation rather than reading, or `band-rubric.md`
+  would band the work `deep`. A task runs at `light` or `standard`.
+
+The same list holds after the dispatch. A task that hits one of these mid-run
+stops, and the item is re-filed as a goal with its branch named in the new
+charter. Record why, and tell the principal in your next batch as information,
+not as a question — the triage is yours.
+
+Write `kind` on the item, `goal` or `task` (`record-format.md`), and one
+`decisions.md` entry naming the answer that decided it.
+
 ## One charter per item, before anything is dispatched
 
 Write `charters/<item-id>.md` in `record-format.md`'s `charter.md` shape: the
@@ -109,6 +157,75 @@ hand-off and the resume. Two constraints on when you use it:
   `session_name` go into `portfolio.json` before the launch, or a session you
   cannot name is a session you cannot find again.
 
+## A task runs under you
+
+No project lead, no spec, no split and no critic. You dispatch one IC, verify
+what it did, have it reviewed and open the draft PR. Every step is `git`, `gh`
+or a dispatch; you open no file in the checkout.
+
+Its charter carries three lines a goal's does not: the file set, the one-line
+acceptance criterion, and the band from `band-rubric.md`. Write it first, and
+write the item's `task` object beside it (`record-format.md`).
+
+**One step per turn.** Each of these ends with the record written and the turn
+over, and the next one starts on a notification.
+
+1. **Give the IC a checkout of its own, cut from the default branch.** Read
+   that branch first — `git -C <repo> symbolic-ref --short
+   refs/remotes/origin/HEAD`, or the `HEAD branch` line of `git -C <repo>
+   remote show origin` when the first prints nothing — and name it as the
+   start point:
+   `git -C <repo> worktree add -b crew/<item-id> <portfolio-dir>/runs/<item-id>/checkout <default-branch>`.
+   Whatever branch the principal left the checkout on is not a start point:
+   the PR would carry its commits too. The principal's own working tree is
+   never the one the work happens in. Record `record_dir`, `task.checkout`,
+   `task.branch` and `task.base` — the sha the branch starts from.
+2. **Dispatch one unnamed IC in the background**, `crew:ic` for code or
+   `crew:ic-instructions` for an instruction file, at the band the charter
+   names. Unnamed, because a named agent is a teammate and returns nothing you
+   can read (design §3). `simple-path.md`'s "Dispatch the IC" owns the spawn
+   prompt. `band-rubric.md`'s "What a band skips" owns the plan gate: a
+   `standard` task runs it, which is two dispatches — the plan, then the
+   implementation — and a `light` task skips it for one. Send the IC that
+   checkout as its worktree and `runs/<item-id>` as its record root. Set the
+   item `running` at this dispatch, write `task.plan_approved_at` when you
+   clear a gate, and name a skipped one in `task.steps_skipped`.
+3. **Verify before you believe**, by `simple-path.md`'s section of that name,
+   run against the item's own worktree. The report is a claim; `git log` and
+   the criterion are the evidence, and the red-commit check runs here too.
+   Switch that worktree back to `task.branch` afterwards, whatever the reason
+   that section gives: a detached head there makes step 4's diff the red
+   commit alone, and the review then fails work that is finished.
+4. **Review the package**, by `simple-path.md`'s section of that name. Write
+   the diff to `runs/<item-id>/diffs/` with a shell redirect, dispatch
+   `crew:package-reviewer` unnamed with its five inputs, and inject
+   `review-output.md` and the review's absolute path. The reviewer reads the
+   diff; you do not. A task is one package that consumes and produces
+   nothing, so its interface contract — the reviewer's first input — is
+   `none`.
+5. **Fix rounds, at most two.** `simple-path.md`'s "Fix rounds" runs each one,
+   and every round goes back through steps 3 and 4. Two is the cap here rather
+   than five, and the breaker there does not apply, because you never edit the
+   work: at the cap, escalate (`autonomy-contract.md`).
+6. **Open the draft PR** on `Verdict: accepted`. Push the branch, fill the
+   repo's template if it has one, put the charter in the body one long line
+   per paragraph, and `gh pr create --draft`. Then remove the worktree —
+   `git -C <repo> worktree remove --force <portfolio-dir>/runs/<item-id>/checkout`,
+   `--force` because a verified tree holds build output git never tracked —
+   and set `task.checkout` to `null`. Keep the branch: the PR is on it.
+   Write the url into `outcome` and set the item `done` last, so a removal
+   that fails leaves an item you can still see.
+
+**A restarted lead re-enters a task from its record.** The IC was a subagent
+of the session that died, so nothing of it survives. The `task` object and the
+files under `runs/<item-id>/` say which step finished: a plan with no report
+is step 2, a report with no review is step 3, an accepted review with no
+`outcome` is step 6. Re-dispatch that step and no earlier one, and check the
+branch's commits first — work already on it is done, whatever the record says
+(`record-format.md`'s authority rule).
+
+`autonomy-contract.md` owns what a task escalates and what it settles itself.
+
 ## Steer from the record, never from a transcript
 
 What an item is doing is in its `record_dir`: `state.json` for the run's state
@@ -119,6 +236,11 @@ A project lead's message is a notification, not evidence. Confirm a terminal
 state against `state.json` before you set an item `done` — a closing report can
 be lost, and a lost message costs latency and never correctness (design §15.21,
 §15.72g).
+
+Both rules are the goal's. A task writes no `state.json` and no `decisions.md`
+of its own: what it is doing is the `task` object plus the files under
+`runs/<item-id>/`, and what proves it `done` is an accepted review on disk and
+a PR url (`record-format.md`).
 
 ## Price your own seat when an item closes
 
@@ -175,7 +297,22 @@ prices every session that ran from a checkout, so a lead sitting inside an
 item repo lands in that item's own spend and gets counted twice —
 `lead-spend.py` prints a `double counted` line when it finds this.
 
-No `Read`, no `Edit`, no `Write`, no test run, no git command in any item's
-checkout. Everything you need is in the portfolio and in the item records. A
-question you can only answer by reading the code is a question for the item's
-project lead, and it already has the repo open.
+No `Read`, no `Edit`, no `Write`, in any checkout — an item's, the
+principal's, or a worktree you made yourself. Everything you need is in the
+portfolio and in the item records. A question you can only answer by reading
+the code is a question for the item's project lead, and it already has the
+repo open. On a task, it is a promotion reason instead ("Triage every item by
+size").
+
+**Read-only git is not touching.** `status`, `branch`, `log` and `worktree
+list` report git's own state, not the code, so you may run them against any
+item's checkout. Nothing else runs in a goal's checkout: no test, no `gh`, and
+no command that writes. Prefer the record even for these — a goal's
+`checkout_restored` already says which branch its run left the tree on
+(`record-format.md`), and a git call that repeats the record buys nothing.
+
+A task you run yourself has the wider carve-out, in **its own** worktree —
+`git`, the acceptance criterion, the repo's suite and `gh`, writing included.
+Verifying a claim and opening a PR is not reading code. The diff goes to a
+file by shell redirect and the reviewer reads it, and you still edit no file
+there, which is why a task that needs a shared-file edit is a goal.

@@ -9,7 +9,7 @@ usage:
   crew-portfolio.py <portfolio-dir> lead set <dotted.field> <json>
   crew-portfolio.py <portfolio-dir> item add <json-object>
   crew-portfolio.py <portfolio-dir> item <id> state <state>
-  crew-portfolio.py <portfolio-dir> item <id> set <field> <json>
+  crew-portfolio.py <portfolio-dir> item <id> set <dotted.field> <json>
   crew-portfolio.py <portfolio-dir> item <id> expect <one line of text>
   crew-portfolio.py <portfolio-dir> escalation add <item-id> <question>
   crew-portfolio.py <portfolio-dir> escalation answer <index> <answer>
@@ -25,7 +25,9 @@ entry's index, which `escalation answer` takes. It never replaces the list,
 so no earlier ask is lost.
 `record-format.md`'s "The portfolio record" owns every field name and every
 state value; this script checks none of them. A `set` value is JSON: `3`,
-`"text"`, `null`, `["a"]`.
+`"text"`, `null`, `["a"]`. Both `set` verbs take a dotted field and create the
+objects on the way to it, so one call writes one field of a task's `task`
+object without rewriting the rest of it.
 """
 
 import datetime
@@ -66,8 +68,15 @@ def arg(rest: list[str], i: int) -> str:
 
 def set_dotted(target: dict, dotted: str, value) -> None:
     keys = dotted.split(".")
-    for key in keys[:-1]:
-        target = target.setdefault(key, {})
+    for depth, key in enumerate(keys[:-1]):
+        if target.get(key) is None:
+            target[key] = {}
+        target = target[key]
+        # A path through a string, a list or a number cannot be walked, and
+        # assigning into it raises where every other error here exits with a
+        # message.
+        if not isinstance(target, dict):
+            sys.exit(f"{'.'.join(keys[:depth + 1])} is not an object")
     target[keys[-1]] = value
 
 
@@ -134,7 +143,7 @@ def main(argv: list[str]) -> None:
                 item["state"] = arg(rest, 2)
                 item["state_changed_at"] = now()
             elif verb == "set":
-                item[arg(rest, 2)] = json.loads(arg(rest, 3))
+                set_dotted(item, arg(rest, 2), json.loads(arg(rest, 3)))
             elif verb == "expect":
                 item["expect"] = arg(rest, 2)
             else:

@@ -1856,3 +1856,85 @@ record"; `crew-record.py`; `crew-stats.py`; `skills/lead/SKILL.md` "A task
 runs under you".
 
 Done in PR #58, plugin 0.1.55, design §15.81.
+
+## T46 — Count a task's package review in the stats
+
+Status: open
+Depends on: T45
+Stage: any (design §15.79, §15.81)
+
+A task the lead runs itself ends with one package review, and the verdict
+lands in `items[].task.review_verdict`. `crew-stats.py` reads reviews from
+run records only, so a portfolio of tasks reports its skipped steps (T45) and
+none of its reviews. The catch rate (T23) misses every task.
+
+Make the "Package reviews by band" table and the catch rate read a task's
+review file under `runs/<item-id>/reviews/` and its `review_verdict`, the
+same fold T45 made for `steps_skipped`. `record-format.md` gains the consumer
+in its name inventory.
+
+Done when: a seeded portfolio with one task shows that review in the table
+and in the catch rate, and a live task's review counts.
+
+Read first: design §15.79, §15.81, §15.57 (the catch-rate method);
+`crew-stats.py`; `record-format.md` "The task record".
+
+## T47 — Probe: a message reaches a lead mid-task
+
+Status: open
+Depends on: T39
+Stage: 7 (design §15.72i, §15.79j)
+
+`skills/lead/SKILL.md` says every lead turn ends quickly, so that the next
+item can reach it: a message is delivered only when a session is idle
+(§15.72i). A task the lead runs itself breaks that shape. In both task runs
+so far the lead stayed in one turn for the whole task, about nine minutes,
+because the IC's completion re-woke the same turn. Nothing has sent a lead a
+message during that turn, so nobody knows whether the second item waits,
+lands late, or is lost.
+
+Run the probe. Hand the lead a task, and while its IC is running hand it a
+second item by a typed message and by a cross-session message. Record when
+each arrives and what the lead does with it. If a message is lost or waits
+for the whole task, decide whether a task must run as one turn per step (the
+dispatch, then the verify, then the review), and change the rule in
+`skills/lead/SKILL.md` "A task runs under you".
+
+Done when: design §15 holds what a mid-task message did, and the turn rule in
+`skills/lead/SKILL.md` matches what the probe showed.
+
+Read first: design §15.72i, §15.79j, §15.80; `skills/lead/SKILL.md` "A task
+runs under you"; `session-launch.md` "Steering a live session".
+
+## T48 — A task may edit a registration line in a shared file
+
+Status: open
+Depends on: T39
+Stage: 7 (design §15.79i)
+
+The lead's triage promotes any item that must change a shared file — a
+barrel, a manifest, a lockfile — to a goal. That rule comes from the full
+path, where ICs work in parallel worktrees and a file two of them edit is a
+merge conflict. A task has one IC on one branch and nobody else writing, so
+the conflict cannot occur. The cost showed in both stripSuffix runs: the IC
+shipped a helper the fixture cannot import, because the repo's own
+`CLAUDE.md` says to add every helper to `src/index.js` and the task left it
+out, then asked a human for the line (§15.79i).
+
+Change the rule. A task's file set may include a shared file when the repo's
+instruction file names it as where a new thing is registered and the edit is
+one mechanical line. The lead reads that instruction file at triage already,
+so it puts the file in the set without reading code. What still promotes: a
+rule change in an instruction file, README prose that states a policy, more
+than one independent file set, and anything the lead cannot size from the
+task text and the instruction files. `skills/lead/SKILL.md` "Triage every
+item by size" owns the test; `record-format.md`'s `file_set` field says a
+shared file may appear there.
+
+Done when: a task that adds a helper to the fixture lands its `src/index.js`
+export in the same PR, the record shows the barrel in `file_set`, and no
+follow-up is asked of the human.
+
+Read first: design §15.79i, §15.79; `skills/lead/SKILL.md` "Triage every
+item by size" and "You never touch a target repo"; `record-format.md` "The
+task record"; `ic-contract.md`.

@@ -245,8 +245,8 @@ a PR url (`record-format.md`).
 ## Price your own seat when an item closes
 
 You run from no checkout, so `spend.py` cannot find you and nothing else
-counts what this tier costs — 30% and 47% of the two portfolios measured
-(design §15.76). Each time you set an item `done` or `abandoned`, and again
+counts what this tier costs — 20%, 30% and 47% of the three portfolios
+measured (design §15.76, §15.80h). Each time you set an item `done` or `abandoned`, and again
 before you close the portfolio, run:
 
 ```
@@ -276,7 +276,10 @@ you. Two rules are yours:
   item. Name the item each question belongs to, name your recommendation, and
   say what each item is doing meanwhile. Write each ask with
   `crew-portfolio.py escalation add` **before** you send, and set that item
-  `blocked`.
+  `blocked`. One question is still a batch, and it takes the same write. An
+  entry in the portfolio's `decisions.md` does not replace that write:
+  `decisions.md` holds the answer, and `lead.escalations` holds the open ask
+  that a restarted lead re-sends (design §15.80).
 
   Send one `PushNotification` alongside the message, with `status: proactive`
   and a one-line `message` under 200 characters, no markdown: name the

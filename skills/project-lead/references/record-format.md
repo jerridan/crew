@@ -839,8 +839,8 @@ window; it does not close it, and no lock exists to.
 ### Lead spend
 
 A lead runs from no checkout and writes no `state.json`, so `spend.py` cannot
-find it and the tier's own cost goes uncounted — 30% and 47% of the two
-portfolios measured (design §15.76). `scripts/lead-spend.py` prices the lead
+find it and the tier's own cost goes uncounted — 20%, 30% and 47% of the
+three portfolios measured (design §15.76, §15.80h). `scripts/lead-spend.py` prices the lead
 instead, from the transcripts of the sessions in `lead.session_ids`:
 
 ```

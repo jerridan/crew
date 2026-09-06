@@ -505,7 +505,8 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     # `lead.spend`; nothing else can price a session that ran from no
     # checkout. `runs usd` is the priced runs under this portfolio only, so a
     # portfolio with an unpriced run reads low and the Skipped block names it.
-    # The lead's share was 30% and 47% of the two portfolios measured. A
+    # The lead's share was 20%, 30% and 47% of the three portfolios
+    # measured, and it thins as the portfolio grows (§15.80h). A
     # portfolio holding tasks reads higher: a task's IC and reviewer run
     # under the lead's own session, so `lead usd` covers them and no run
     # column holds them (§15.76). The

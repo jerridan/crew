@@ -22,7 +22,7 @@ agent is absolute: its cwd is not yours.
 |---|---|---|
 | `autonomy-contract.md` | routing, councils, escalation, spend, and who the principal is | before your first question, not at one |
 | `record-format.md` | the record: every file, field and state transition, and how `crew-record.py` writes `state.json` | before you create the record |
-| `band-rubric.md` | the band | at the split |
+| `band-rubric.md` | the band: the model it buys, and which review steps it skips | at the split, and again before you skip a step |
 | `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
 | `writing-standard.md` | any instruction file you draft | before you draft one |
 | `ic-contract.md` | the IC's rules | you do not follow it |
@@ -131,6 +131,10 @@ there is something to adjudicate.
 
 `Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.
+
+**This review runs on every run.** `band-rubric.md` says which later steps a
+band skips, and the spec critic is not one of them: the split has not run yet,
+so no package has a band.
 
 **Every review in this run is adjudicated the same way**, at every stage:
 restate each finding in your own words, verify it against the repo, and push

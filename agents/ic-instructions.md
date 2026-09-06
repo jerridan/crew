@@ -40,8 +40,9 @@ obtained the standard.
 
 1. Read your brief and your interface contract.
 2. Write your implementation plan where the contract's plan gate says, then
-   wait for the project lead's go-ahead.
-3. Once the project lead approves, work in small steps:
+   wait for the project lead's go-ahead. The contract's plan gate says when
+   you wait and when you keep going; follow it over this step.
+3. Once the gate is behind you, work in small steps:
    - Pick the cheapest container that still reaches the intended reader.
    - Draft.
    - Revise down — expect to cut about a third.

@@ -649,8 +649,8 @@ Before "implementing properly", grep for real usage. Unused means remove it.
 ## 8. Model and cost policy
 
 Model is chosen **per package, after scouting**. Effort cannot be set per
-teammate — a teammate inherits the project lead's effort — so bands are model
-only.
+teammate — a teammate inherits the project lead's effort — so a band never sets
+an effort. A band sets a model, and which review steps run.
 
 | Band | Model | The package looks like |
 |---|---|---|
@@ -667,6 +667,10 @@ Rules:
   involvement.
 - Every promotion is logged with predicted band, actual band, and cause. That
   turns the rubric from a guess into a measurement.
+- A `light` package skips the plan gate on the simple path, and skips the
+  deliverable review on three conditions. Every band keeps the spec critic and
+  the package review. `band-rubric.md` holds the rule and `run.steps_skipped`
+  records each skip (§15.77).
 
 Spend is measured from the transcripts. Every session that runs from the
 checkout — the project lead's own, each teammate, each subagent — writes its
@@ -5152,3 +5156,131 @@ Deliberately different:
     the lead records it in `decisions.md` and reports the run's spend against
     it, which is the routing the contract already had for every other
     statement of what the principal wants.
+
+77. **A `light` package skips the plan gate and, on three conditions, the
+    deliverable review — 2026-09-05, T42.** §15.73 measured where a small run
+    spends: T38's one-line `light` run cost $7.69 and the project lead's own
+    fable seat was $6.31 of it (82 percent); T37's `standard` `truncate` run
+    cost $13.75 with $12.29 at that seat (89 percent). Both figures are list
+    price from `spend.py`, over records `collapse-whitespace-zwsp-4115` and
+    `add-truncate-47ad`. The IC and the package review were under $0.50 in
+    each. So the lever is the project lead's own turn count, and the question
+    T42 asks is which of those turns the record shows catching nothing.
+
+    Three steps were candidates. The answer is different for each, and
+    `band-rubric.md`'s new "What a band skips" section holds all three. It is
+    the file that owns what a band gets, so it now owns the model and the
+    review steps together; `simple-path.md`, `full-path.md` and `SKILL.md`
+    point at it and restate nothing.
+
+    a. **The spec critic stays.** It has the second-highest catch rate on the
+       record — 9 of 27 spec-critic reviews across the nineteen records under
+       `~/.claude/crew/`, `~/.claude/crew-t37/` and `~/.claude/crew-t38/`
+       returned `re-spec needed` (33.3 percent, 2 unscored), against 10.8
+       percent for the package review (4 of 37) and 11.1 percent for the
+       deliverable review (2 of 18). Only the split critic scores higher, at 3
+       of 8. The method is §15.57's, recomputed over all three roots. Three of
+       the 27 ran over a run whose only package was `light`,
+       and one of the three acted: T38's `spec-critic-r1.md` found that no
+       spec line bound the charter's assertion to the test file, so an IC
+       could satisfy every acceptance criterion and still not ship the test
+       the charter asked for. A skip would have shipped that.
+
+       There is a second reason, and it is structural. `SKILL.md` writes and
+       reviews `spec.md` before "Choose the shape" and before the split, so no
+       package has a band when the critic runs. A band cannot gate a step that
+       precedes the band.
+
+    b. **The plan gate goes, on the simple path only.** Thirty plans sit on
+       disk across the nineteen records, and all thirty carry a
+       `plan_approved_at`. No record names a plan sent back. The gate has
+       never rejected anything, and it is the one step that leaves no review
+       file, so nothing measured it until now.
+
+       The saving is a whole dispatch. `simple-path.md`'s gate is two
+       dispatches, because a subagent has no channel to wait on: the IC plans
+       and stops, the project lead reads and approves, then dispatches again.
+       A `light` IC now gets one dispatch and keeps going. It still writes
+       `plans/<id>.md`, so the record keeps the plan; `plan_approved_at` stays
+       `null`, and `ic-contract.md`'s "The plan gate" branches on a line in
+       the spawn prompt. The full path keeps its gate at every band: there it
+       is one message, not a second dispatch, and the depth rule
+       `full-path.md` used to state — two checks for `light` and `standard`,
+       the whole plan for `deep` — moved into `band-rubric.md` so the band
+       rule has one owner.
+
+    c. **The deliverable review goes on three conditions.** Twelve of the
+       nineteen records hold a deliverable with exactly one package. Their
+       twelve deliverable reviews returned `accepted` ten times, `fix round
+       needed` once, and one states no parseable verdict. The one catch is
+       T37's, and it
+       is the condition that matters: its `[Critical]` was a line-wrapped rule
+       in the target repo's `CLAUDE.md`, a **shared file** the project lead
+       edited at "Integrate", outside the package's file set and therefore
+       outside anything the package reviewer ever read. §15.57 says the same
+       thing from the other direction — every escape the record holds sat
+       outside one package's diff.
+
+       So the skip keeps that class. All three conditions must hold: the
+       deliverable holds this one package, its package review reads
+       `Verdict: accepted`, and the project lead edited no shared file at
+       "Integrate". Against the record, no recorded catch is lost. Of the two
+       `light` deliverable reviews on file, T38's found nothing at all — it
+       re-ran six acceptance criteria that the project lead had already run
+       and the package reviewer had already accepted, and wrote "Not
+       applicable in the usual sense — one package" for its seam check and its
+       conflict check.
+
+    d. **The record says which steps ran.** `state.json` gains
+       `run.steps_skipped`, a list of `{step, package, deliverable, reason,
+       at}`, absent until the first skip — so an absent field means every step
+       ran. `crew-record.py` needs no change: `run set steps_skipped <json>`
+       writes it. Without the field a skipped step is indistinguishable from a
+       failed one, because both leave a missing review file, and a `null`
+       `plan_approved_at` already means "waiting at the gate".
+       `crew-stats.py` reads the field into a "Steps skipped" table, so the
+       catch rate this item measures keeps a denominator that a reader can
+       correct: a skipped review is absent from `reviews/`, and only this
+       field says the absence was by rule.
+
+    e. **The live run: $4.93 against T38's $7.69, and ten minutes against
+       twenty — 2026-09-05.** The same charter as §15.73a's run, on the same
+       fixture, with the project lead on Fable at high effort: make
+       `collapseWhitespace` treat U+200B as whitespace, and add one test.
+       Record `collapse-whitespace-zwsp-56eb`; draft PR
+       `jerridan/crew-fixture-string-kit#18`; `run_state: complete`, no
+       escalation, no fix round.
+
+       | | T38 (§15.73a) | this run |
+       |---|---|---|
+       | list price | $7.69 | $4.93 |
+       | project lead's seat | $6.31 (fable) | $4.49 (fable) |
+       | project lead's messages | 43 | 24 |
+       | tokens | 6,728,240 | 3,482,333 |
+       | wall clock | 20 min | 10 min |
+       | IC dispatches | 2 | 1 |
+       | review files on disk | 4 | 2 |
+
+       The record shows the reduced set exactly as `band-rubric.md` writes it:
+       `band: light` with a matching `band_history` entry,
+       `plans/collapse-zwsp.md` on disk with `plan_approved_at: null`,
+       `reviews/` holding `spec-critic-r1.md` and
+       `collapse-zwsp-package-review-r0.md` and no deliverable review, and
+       `run.steps_skipped` holding one `plan-gate` entry and one
+       `deliverable-review` entry, each with the conditions in its `reason` and
+       an ISO-8601 UTC `at`. `crew-stats.py` reads both into "Steps skipped by
+       rule" and flags nothing. The spec critic returned one nit on Node
+       version wording, which the spec took; the package review accepted with
+       zero findings.
+
+       **Part of the cut is not this change, and the record says which part.**
+       T38 took two spec-critic rounds and this run took one, so one round of
+       adjudication and revision at the project lead's seat came off for a
+       reason T42 did not cause — the spec was better, not cheaper to check.
+       What T42 removed is countable on its own: one IC dispatch, one plan
+       read, one go-ahead, one deliverable-review dispatch and one
+       adjudication. The seat fell from 43 messages to 24, and the two runs
+       shipped the same helper, the same test and the same red commit. So the
+       $2.76 is an upper bound on the saving and the message count is the
+       better measure of it.
+

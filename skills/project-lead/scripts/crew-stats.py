@@ -8,8 +8,9 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
-counts and the review catch rate. Design §8 asks for these numbers to turn the
-band rubric from a guess into a measurement. No figure here gates anything.
+counts, the review catch rate, and the steps a band let a run skip. Design §8
+asks for these numbers to turn the band rubric from a guess into a
+measurement. No figure here gates anything.
 
 A lead's portfolio gets a row of its own: what the lead's sessions cost, from
 `lead.spend` (`skills/lead/scripts/lead-spend.py` writes it), beside what the
@@ -148,6 +149,26 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
     if until is None:
         skips.append(f"{record.name}: open-ended cost — the run records no end, so the price covers every later session in {checkout}")
     return sum(t["usd"] for t in totals.values())
+
+
+SKIPPABLE_STEPS = ["plan-gate", "deliverable-review"]
+
+
+def read_steps_skipped(record: Path, run: dict, skips: list) -> dict:
+    """Count the steps this run's band let it skip, by step name.
+
+    `run.steps_skipped` is the only field that says a missing review file was
+    missing by rule (`band-rubric.md`, §15.77). Without it the catch rate above
+    reads a skipped review as a review that never ran.
+    """
+    counts = {step: 0 for step in SKIPPABLE_STEPS}
+    for entry in as_list(run.get("steps_skipped")):
+        step = entry.get("step") if isinstance(entry, dict) else None
+        if step in counts:
+            counts[step] += 1
+        else:
+            skips.append(f"{record.name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(SKIPPABLE_STEPS)}")
+    return counts
 
 
 def blank_catch() -> dict:
@@ -416,6 +437,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "adversary": adversary,
         "escalations": len(as_list(run.get("escalations"))),
         "compactions": len(as_list(run.get("compactions"))),
+        "steps_skipped": read_steps_skipped(record, run, skips),
         "reviews": reviews,
         "catch": catch,
         "catch_by_band": catch_by_band,
@@ -541,6 +563,12 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
         blank = sum(r["catch"][kind]["unverdicted"] for r in records)
         rows.append([kind, total, acted, rate(acted, total), blank])
     print(table(["kind", "reviews", "acted", "rate", "unscored"], rows))
+
+    # A skipped review leaves no file, so it never reaches the catch rate
+    # above. This table is what says the absence was by rule (§15.77).
+    print("\nSteps skipped by rule\n")
+    rows = [[step, sum(r["steps_skipped"][step] for r in records)] for step in SKIPPABLE_STEPS]
+    print(table(["step", "times skipped"], rows))
 
     print("\nPackage reviews by band\n")
     per_band = {}

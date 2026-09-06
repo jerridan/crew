@@ -324,7 +324,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: a subagent has no message channel to nudge. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
-| `plan_approved_at` | ISO-8601 UTC timestamp of the project lead's go-ahead on the plan (design §9.2 step 3); `null` until then. While it is `null` and `plans/<id>.md` exists, the IC's post-plan idle is an expected pause — the project lead's idle check (design §13.1) lets it pass (design §15.8). |
+| `plan_approved_at` | ISO-8601 UTC timestamp of the project lead's go-ahead on the plan (design §9.2 step 3); `null` until then. While it is `null` and `plans/<id>.md` exists, the IC's post-plan idle is an expected pause — the project lead's idle check (design §13.1) lets it pass (design §15.8). It stays `null` for good when the package skipped the gate, and `run.steps_skipped` is then the field that says so. The idle reading above is unaffected: only the simple path skips the gate, and a subagent sends no idle notification. |
 | `report_path` | always `reports/<id>.md`. Points into `reports/`. |
 
 ### State transitions
@@ -419,6 +419,7 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | `spend` | `{transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
+| `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step a band let the run skip. `step` is `plan-gate` or `deliverable-review`. A `plan-gate` entry names the package and leaves `deliverable` `null`; a `deliverable-review` entry does the reverse. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the band and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What a band skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
@@ -1012,6 +1013,7 @@ Every name this file defines, with what consumes it.
 - `run.completed_at` — writer: `crew-record.py`, on `close`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md`'s "Verify before you believe" (re-verify after an IC compacts) and "The territory's next package" (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
+- `run.steps_skipped` — writer: the project lead, at each skip `band-rubric.md`'s "What a band skips" allows. Consumer: `scripts/crew-stats.py` ("Steps skipped by rule"); a human, or a later session, asking which steps ran (design §15.77)
 - `run.spend.transcript` — writer: `scripts/spend.py`. Consumer: `scripts/crew-stats.py`, the closing report, design §8
 
 **`split.md` sections and fields**

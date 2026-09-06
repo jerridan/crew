@@ -116,6 +116,9 @@ they exposed in crew itself.
 `standard` is the default and `deep` needs a written justification. An IC that
 reports blocked is re-dispatched one band up with no human involvement. Every
 prediction and promotion is logged, which turns the rubric into a measurement.
+A band also sets the review a package gets: a `light` package can skip the plan
+gate and the deliverable review. Every band keeps the spec critic and the
+package review, and the record names each skipped step (design §15.77).
 
 **What each agent runs on.** A reviewer or critic sets its own model and effort, and the project lead overrides neither. An advocate sets its own effort, and moves to opus only when the whole council does. An IC takes its model from its package's band, and no agent definition can set effort for an IC.
 

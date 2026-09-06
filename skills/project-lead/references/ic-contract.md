@@ -69,6 +69,11 @@ package's id. Then stop and wait for the project lead's go-ahead — this is
 an expected pause, not an idle to fix. Do not start implementing before the
 project lead responds.
 
+**When your dispatch says the gate is skipped**, write the plan to that path
+and keep going. Do not stop for a go-ahead: none is coming. The two rules below
+do not apply to you. If the write is denied, put the plan at the top of your
+report instead — no second dispatch will collect it.
+
 **As a teammate**, you have a message channel. Wait on it. The go-ahead
 arrives as a message, and so does anything the project lead wants changed
 first.

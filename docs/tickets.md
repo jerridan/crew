@@ -1920,6 +1920,8 @@ back: the lead ended its turn at the dispatch, so the typed message reached
 an idle lead at once. The cross-session message did arrive inside a running
 turn, and the lead read it on its next tool round (§15.85).
 
+Done in PR #63, no version bump, design §15.85.
+
 ## T48 — A task may edit a registration line in a shared file
 
 Status: done

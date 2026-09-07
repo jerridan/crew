@@ -200,14 +200,17 @@ over, and the next one starts on a notification.
    the criterion are the evidence, and the red-commit check runs here too.
    Switch that worktree back to `task.branch` afterwards, whatever the reason
    that section gives: a detached head there makes step 4's diff the red
-   commit alone, and the review then fails work that is finished.
+   commit alone, and the review then fails work that is finished. Write the
+   IC's status to `task.ic_status`: `crew-portfolio.py item <id> set
+   task.ic_status '"<status>"'`.
 4. **Review the package**, by `simple-path.md`'s section of that name. Write
    the diff to `runs/<item-id>/diffs/` with a shell redirect, dispatch
    `crew:package-reviewer` unnamed with its five inputs, and inject
    `review-output.md` and the review's absolute path. The reviewer reads the
    diff; you do not. A task is one package that consumes and produces
    nothing, so its interface contract — the reviewer's first input — is
-   `none`.
+   `none`. Write the review's verdict to `task.review_verdict`:
+   `crew-portfolio.py item <id> set task.review_verdict '"<verdict>"'`.
 5. **Fix rounds, at most two.** `simple-path.md`'s "Fix rounds" runs each one,
    and every round goes back through steps 3 and 4. Two is the cap here rather
    than five, and the breaker there does not apply, because you never edit the

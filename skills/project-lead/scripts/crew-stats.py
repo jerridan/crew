@@ -191,6 +191,34 @@ def blank_catch() -> dict:
     return {"reviews": 0, "acted": 0, "unverdicted": 0}
 
 
+def add_catch(total: dict, counts: dict) -> None:
+    """Add one `blank_catch`-shaped dict's counts into another, in place."""
+    for key, value in counts.items():
+        total[key] += value
+
+
+def fold_catch_by_band(sources: list[dict]) -> dict:
+    """Merge several `catch_by_band`-shaped dicts (band -> `blank_catch`) into one."""
+    per_band = {}
+    for by_band in sources:
+        for band, counts in by_band.items():
+            add_catch(per_band.setdefault(band, blank_catch()), counts)
+    return per_band
+
+
+def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
+    """`(acted, known)` for one lowercased, stripped `Verdict:` value.
+
+    `acted` is true when the verdict sent the artifact back for another
+    round; `known` is true when it is one of the eight the review agents
+    name. Shared by `read_reviews`, reading a review file's own line, and
+    `read_task_review`, reading the same words from `task.review_verdict`.
+    """
+    acted = bool(verdict and verdict.startswith(ACTION_VERDICTS))
+    known = bool(verdict and verdict.startswith(ACTION_VERDICTS + CLEAN_VERDICTS))
+    return acted, known
+
+
 def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, dict]:
     """Return the review counts, the catch counts by kind, and the same by band.
 
@@ -228,8 +256,7 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         # its prose must not be read by that quote.
         found_verdicts = VERDICT.findall(text)
         verdict = found_verdicts[-1].strip().lower() if found_verdicts else None
-        acted = bool(verdict and verdict.startswith(ACTION_VERDICTS))
-        known = bool(verdict and verdict.startswith(ACTION_VERDICTS + CLEAN_VERDICTS))
+        acted, known = classify_verdict(verdict)
         if reason is None and verdict is None:
             reason = "the file states no Verdict: line"
         elif reason is None and not known:
@@ -310,11 +337,11 @@ def read_task_review(child: Path, item: dict, skips: list) -> dict:
     if not isinstance(verdict, str) or not verdict.strip():
         return {}
     verdict = verdict.strip().lower()
-    known = verdict.startswith(ACTION_VERDICTS + CLEAN_VERDICTS)
+    acted, known = classify_verdict(verdict)
     counts = blank_catch()
     counts["reviews"] = 1
     if known:
-        counts["acted"] = int(verdict.startswith(ACTION_VERDICTS))
+        counts["acted"] = int(acted)
     else:
         counts["unverdicted"] = 1
         skips.append(f"{name}: no catch — its review_verdict {verdict!r} is none of the eight the agents name")
@@ -607,10 +634,11 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     # A task's package review lives under `runs/<item-id>/reviews/`, or in
     # `task.review_verdict` alone, never in a run record, so it is counted
     # here as "package review" and nowhere else in this table (§15.82).
-    task_review_totals = [counts for p in portfolios for counts in p["catch_by_band"].values()]
-    task_reviews = sum(c["reviews"] for c in task_review_totals)
-    task_acted = sum(c["acted"] for c in task_review_totals)
-    task_unverdicted = sum(c["unverdicted"] for c in task_review_totals)
+    task_catch = blank_catch()
+    for p in portfolios:
+        for counts in p["catch_by_band"].values():
+            add_catch(task_catch, counts)
+    task_reviews, task_acted, task_unverdicted = task_catch["reviews"], task_catch["acted"], task_catch["unverdicted"]
 
     print("\nReviews\n")
     kinds = [name for name, _ in REVIEW_KINDS] + ["other"]
@@ -655,17 +683,7 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     # band lives, since a task has no `state.json` package to read it from
     # (§15.82).
     print("\nPackage reviews by band\n")
-    per_band = {}
-    for r in records:
-        for band, counts in r["catch_by_band"].items():
-            total = per_band.setdefault(band, blank_catch())
-            for key, value in counts.items():
-                total[key] += value
-    for p in portfolios:
-        for band, counts in p["catch_by_band"].items():
-            total = per_band.setdefault(band, blank_catch())
-            for key, value in counts.items():
-                total[key] += value
+    per_band = fold_catch_by_band([r["catch_by_band"] for r in records] + [p["catch_by_band"] for p in portfolios])
     order = [b for b in BANDS if b in per_band] + [b for b in sorted(per_band) if b not in BANDS]
     rows = [[band, per_band[band]["reviews"], per_band[band]["acted"],
              rate(per_band[band]["acted"], per_band[band]["reviews"]),
@@ -708,8 +726,12 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
             print(f"  {line}")
 
 
-def candidates(root: Path) -> list[tuple[Path, Path | None]]:
-    """Every goal record under `root`, each with the portfolio that drove it.
+def candidates(children: list[Path]) -> list[tuple[Path, Path | None]]:
+    """Every goal record under `children`, each with the portfolio that drove it.
+
+    `children` is `root`'s own subdirectories — `main` lists them once and
+    shares the listing with `read_portfolios`, so the two readers of `root`
+    stat `portfolio.json` on one walk, not two.
 
     A lead's portfolio directory holds a `portfolio.json` and no `state.json`,
     and the runs it drove sit two levels below it, at
@@ -723,7 +745,7 @@ def candidates(root: Path) -> list[tuple[Path, Path | None]]:
     at its root would read as a run here. That one name is excluded.
     """
     found = []
-    for child in sorted(p for p in root.iterdir() if p.is_dir()):
+    for child in children:
         if (child / "portfolio.json").is_file():
             found.extend((p.parent, child) for p in sorted(child.glob("runs/*/*/state.json"))
                          if p.parent.name != "checkout")
@@ -732,15 +754,17 @@ def candidates(root: Path) -> list[tuple[Path, Path | None]]:
     return found
 
 
-def read_portfolios(root: Path, skips: list) -> list[dict]:
+def read_portfolios(children: list[Path], skips: list) -> list[dict]:
     """One entry per portfolio: what the lead itself cost, and its item count.
+
+    `children` is the same listing `candidates` reads — see its docstring.
 
     `lead.spend` is written by `skills/lead/scripts/lead-spend.py` when an
     item closes. A portfolio with none is still reported, with a skip line
     naming the script that fills it in.
     """
     found = []
-    for child in sorted(p for p in root.iterdir() if p.is_dir()):
+    for child in children:
         path = child / "portfolio.json"
         if not path.is_file():
             continue
@@ -765,7 +789,6 @@ def read_portfolios(root: Path, skips: list) -> list[dict]:
         # A task has no `state.json`, so `items[].task.steps_skipped` is the
         # only place its skips are written (`record-format.md`).
         task_skips = {step: 0 for step in SKIPPABLE_STEPS}
-        task_catch_by_band = {}
         for item in items:
             task = item.get("task") if isinstance(item, dict) else None
             if not isinstance(task, dict):
@@ -773,10 +796,7 @@ def read_portfolios(root: Path, skips: list) -> list[dict]:
             name = f"{child.name}/{item.get('id')}"
             for step, count in read_steps_skipped(name, task, skips, TASK_SKIPPABLE_STEPS).items():
                 task_skips[step] += count
-            for band, counts in read_task_review(child, item, skips).items():
-                total = task_catch_by_band.setdefault(band, blank_catch())
-                for key, value in counts.items():
-                    total[key] += value
+        task_catch_by_band = fold_catch_by_band(read_task_review(child, item, skips) for item in items)
         found.append({
             "portfolio": child.name,
             "state": lead.get("state"),
@@ -810,8 +830,9 @@ def main(argv: list[str]) -> None:
 
     skips: list[str] = []
     records = []
-    portfolios = read_portfolios(root, skips)
-    for record, portfolio in sorted(candidates(root), key=lambda pair: pair[0]):
+    children = sorted(p for p in root.iterdir() if p.is_dir())
+    portfolios = read_portfolios(children, skips)
+    for record, portfolio in sorted(candidates(children), key=lambda pair: pair[0]):
         if not (record / "state.json").is_file():
             skips.append(f"{record.name}: not a record — no state.json")
             continue

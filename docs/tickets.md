@@ -1915,8 +1915,10 @@ Done when: design §15 holds what a mid-task message did, and the turn rule in
 Read first: design §15.72i, §15.79j, §15.80; `skills/lead/SKILL.md` "A task
 runs under you"; `session-launch.md` "Steering a live session".
 
-The probe found no rule to change: both channels reached the lead, and the
-lead had already ended its turn at the dispatch (§15.85).
+The probe found no turn rule to change. The nine-minute turn did not come
+back: the lead ended its turn at the dispatch, so the typed message reached
+an idle lead at once. The cross-session message did arrive inside a running
+turn, and the lead read it on its next tool round (§15.85).
 
 ## T48 — A task may edit a registration line in a shared file
 
@@ -1998,3 +2000,28 @@ no gate runs unchanged. Record what the run showed in design §15.
 Read first: design §1, §6.4, §15.74, §15.79, §15.80; `skills/lead/SKILL.md`
 "Triage every item by size" and "Batch the rest into one message";
 `record-format.md` "The portfolio record"; `autonomy-contract.md`.
+
+## T50 — Say who may add a portfolio item
+
+Status: open
+Depends on: T47
+Stage: 7 (design §15.85)
+
+A peer session asked a lead to add an item to its portfolio, and the lead
+escalated it to the human instead of running it (§15.85). That answer came
+from judgment. No file says who may add an item, and
+`autonomy-contract.md` defines the principal as whoever handed the work
+over — under which a peer session is a plausible principal. The next lead
+reads nothing and can go either way.
+
+Write the rule where the lead reads it. Say who adds an item to a
+portfolio, and what a lead does with a request from any other session: it
+records the request, escalates it, and answers the sender. Name the file
+that owns the rule and state it once — `skills/lead/SKILL.md` holds the
+lead's own conduct, and `autonomy-contract.md` holds who the principal is.
+
+Done when: one file states who may add a portfolio item, the other points
+at it, and a request from a peer session has a written route.
+
+Read first: design §15.85, §15.72d; `skills/lead/SKILL.md`;
+`autonomy-contract.md`.

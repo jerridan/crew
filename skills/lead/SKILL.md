@@ -97,7 +97,11 @@ not a preference question and not one you triage. Write it as a
 `lead.escalations` entry, batch it to the principal in your next send ("Answer
 what you can, batch what only the principal can decide"), and reply to the
 sender by `SendMessage` that the request is with the principal. Do not
-dispatch it, and do not hold your turn open for the answer.
+dispatch it, and do not hold your turn open for the answer. The requested
+item holds no `lead.items` entry yet, so `escalation add` takes a slug you
+make from its name instead of an existing item id — `trim-lines` for a
+request naming `trimLines` (§15.85). Only that answer, once the principal
+gives it, turns the slug into a real item with `item add`.
 
 §15.85 ran this from judgment before this section existed: a peer session
 asked a lead to add `trimLines` to its portfolio, the lead escalated instead

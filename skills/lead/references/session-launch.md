@@ -137,6 +137,14 @@ empty result means the run has not created its record yet: leave the field
 A `running` item whose `session_name` is absent from `ListAgents` has lost its
 session. The record survived, so the run does.
 
+**A message that starts `crew SessionEnd:` is how you usually hear.** Crew's
+`SessionEnd` hook sends it the moment it marks the dead run `interrupted`, and
+it names the item, its record and the resume command (design §15.84). It is a
+notification from a hook, not an answer from a person: check `ListAgents`
+yourself before you launch anything. The hook fails silently, so no message
+does not mean no death — a `running` item missing from `ListAgents` is the
+same evidence it always was.
+
 Launch again with the same command, the same name and the same
 `CREW_RECORD_ROOT`, then send:
 

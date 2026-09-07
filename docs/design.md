@@ -5808,7 +5808,30 @@ Deliberately different:
     item is the dead one, gets no such turn at all, and the dead run waits for
     the human. The hook now sends.
 
-    <!-- live run: pending -->
+    **Proved 2026-09-06.** A Fable lead at high effort held portfolio
+    `lead-2026-09-06-99a1` under `~/.claude/crew-b3`, session `525a6771`, on an
+    integration checkout of T46, T48 and T44 over `b48523c`. The portfolio held
+    one goal and two tasks. `tmux kill-window` killed the goal's project-lead
+    session `crew-pl-word-count-decode-query-a3e8` at 01:44:07.4 UTC, with the
+    package in flight. The record went `interrupted`, and the lead's next turn
+    started at 01:44:07 — under one second after the kill — on the hook's own
+    line. T9's ten minutes becomes about one second. With no human turn the
+    lead called `ListAgents` at 01:44:10, read the record, relaunched the
+    session under the same name and the same record root, and at 01:45:01 sent
+    the resume command the message named, 54 seconds after the kill. The
+    resumed run reconciled, finished with two session ids and $10.29, opened
+    fixture PR #26, and the lead set the item `done` at 01:58.
+
+    The run settled three details. The pane renders the line as "Another
+    Claude session sent a message:", with the harness's standard peer-message
+    caveat and no `from-name`, because the hook sets no `from` (b above).
+    Nothing else got a turn: the only other live session was the one driving
+    the experiment, and it received nothing. And the hook fired for the goal's
+    session alone — the two tasks ran inside the lead, so they have no session
+    to lose and no run record to mark. The message carries two different names
+    for one item, the item id `word-count-decode-query-a3e8` and the goal slug
+    `word-count-decode-query-bf48`, and the lead sent the slug the message put
+    in the command.
 
     a. **A field the lead polls is not an answer, so the hook sends.** The
        ticket named two candidates. Polling needs a turn to poll in, and the
@@ -5868,8 +5891,8 @@ Deliberately different:
        dead lead each wake nobody; and unreachable sockets, a `socket_paths`
        that raises, and a receiver that never reads all leave the write intact
        in under 10 milliseconds. What no seeded test can prove is that a real
-       session accepts the frame and turns it into a turn. Only a live run
-       shows that.
+       session accepts the frame and turns it into a turn. The live run above
+       is what showed that.
 
     f. **The review caught the two silent drops.** A high-effort review of the
        branch found that the first draft globbed `cc-socks*` directly under

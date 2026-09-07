@@ -1823,7 +1823,9 @@ Landed 2026-09-06 as the send in `hooks/session-end.py`, the wake paragraph in
 cross-session inbox socket, and the lead's session id inside the line is what
 makes the other sessions drop it. A seeded record at `~/.claude/crew-t44/` and
 four fake receivers prove the path selection and the fail-open rules. The live
-kill is still to run, and §15.84 holds the placeholder for it.
+kill ran the same day: the lead's next turn started under one second after the
+kill, and it relaunched and resumed the run 54 seconds later with no human
+turn.
 
 ## T45 — Integration defects from the 2026-09-05 batch
 

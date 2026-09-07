@@ -23,8 +23,8 @@ No split critic runs — one package has no sibling to overlap.
 
 The one package consumes and produces nothing, and its acceptance criterion is
 the charter's. Its file set is the files the change touches, less any shared
-file: `record-format.md` keeps those out of every file set, and "Integrate" is
-where you edit them.
+file: `record-format.md` keeps those out of a package's file set, and
+"Integrate" is where you edit them.
 
 ## Create the branch
 

@@ -53,10 +53,15 @@ flag it as blocking acceptance no matter how the content reads.
 
 ## Check scope first, in both modes
 
-Confirm every file the package changed is in its declared `file_set`. Flag
-any shared file it touched — a version manifest, lockfile, barrel or
-`index` file, or shared config. Check the diff or the worktree yourself;
-do not trust the IC's own claim of scope.
+Confirm every file the package changed is in its declared `file_set`. Then
+name every shared file it changed — a version manifest, lockfile, barrel or
+`index` file, or shared config — one line each, by path, even when the
+content is right and you tag nothing. The dispatcher decides from that line
+whether a later reviewer must read the file, and it has no other way to see
+it. A shared file the `file_set` does not name is also `[Critical]`. A
+shared file the `file_set` names is in scope: review its content like every
+other file in the set, and tag it only when that content is wrong. Check the
+diff or the worktree yourself; do not trust the IC's own claim of scope.
 
 ## Two review modes
 

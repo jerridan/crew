@@ -26,9 +26,12 @@ it against your worktree.
 - Commit only to your own branch, only in your own worktree. Do not merge,
   rebase, switch branches, run a worktree command, push, pull, or open a
   pull request.
-- Do not edit a shared file — a version manifest, lockfile, barrel or
-  `index` file, or shared config — even when your work seems to need it.
-  Report it to the project lead instead.
+- Do not edit a shared file your file set does not name — a version manifest,
+  lockfile, barrel or `index` file, or shared config — even when your work
+  seems to need it. Report it to the project lead instead. A shared file your
+  file set does name is yours to edit, like every other file in the set. Name
+  every shared file you edited in your report, so your dispatcher sees it
+  without reading the diff.
 - Read and write nothing outside your own worktree, except your plan and
   your report in the record.
 

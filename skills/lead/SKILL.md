@@ -98,8 +98,8 @@ from the brief, the repo's own instruction files and the portfolio record:
 1. Which files change, and are they one set one IC can hold?
 2. What proves it done, in one line you can run as a command?
 3. Does the repo already hold the pattern this change follows?
-4. Does the change stay inside those files — no shared file, no interface
-   another caller depends on?
+4. Does the change stay inside those files — no interface another caller
+   depends on, and no shared file beyond the registration line below?
 
 **An answer you would have to read the code to give is a "no".** You size an
 item from its own text, from the repo's instruction files and from the record,
@@ -113,7 +113,12 @@ Promote a task to a goal on any one of these:
   path, and only a project lead runs it.
 - More than one file set, or work a second package depends on.
 - A shared file must change — a version manifest, a barrel file, a lockfile.
-  You edit nothing in a target repo, so a task cannot carry one.
+  One exception stays a task: the repo's instruction file names that file as
+  where a new thing is registered, and the edit is the one mechanical line it
+  describes. Put that file in the file set. You read the instruction file at
+  triage already, so the line costs you no code (design §15.83). A rule change
+  in an instruction file, and README prose that states a policy, are not
+  registration lines. Each of those is a goal.
 - A preference question that neither the charter nor `decisions.md` settles.
   A task runs no preference sweep.
 - The criterion needs interpretation rather than reading, or `band-rubric.md`
@@ -329,4 +334,5 @@ A task you run yourself has the wider carve-out, in **its own** worktree —
 `git`, the acceptance criterion, the repo's suite and `gh`, writing included.
 Verifying a claim and opening a PR is not reading code. The diff goes to a
 file by shell redirect and the reviewer reads it, and you still edit no file
-there, which is why a task that needs a shared-file edit is a goal.
+there. A shared file a task must change goes in the file set for the IC to
+edit ("Triage every item by size"); you never edit one yourself.

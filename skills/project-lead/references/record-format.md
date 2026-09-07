@@ -1231,7 +1231,8 @@ Every name this file defines, with what consumes it.
 - `lead.spend` — writer: `skills/lead/scripts/lead-spend.py`. Consumer: `skills/project-lead/scripts/crew-stats.py`; a person reading what the tier costs (design §8)
 - `items[].id`, `kind`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`
 - `items[].kind` values `goal` and `task` — consumer: `skills/lead/SKILL.md`'s triage step
-- `items[].task` and its fields `band`, `ic_agent`, `file_set`, `acceptance_criterion`, `checkout`, `branch`, `base`, `plan_approved_at`, `ic_status`, `fix_rounds_used`, `review_verdict` — consumer: `skills/lead/SKILL.md` ("A task runs under you"), which is also the only writer
+- `items[].task` and its fields `band`, `ic_agent`, `file_set`, `acceptance_criterion`, `checkout`, `branch`, `base`, `plan_approved_at`, `ic_status`, `fix_rounds_used` — consumer: `skills/lead/SKILL.md` ("A task runs under you"), which is also the only writer
 - `items[].task.steps_skipped` — writer: the lead, at each skip `band-rubric.md`'s "What a band skips" allows. Consumer: `skills/project-lead/scripts/crew-stats.py` ("Steps skipped by rule"), which counts it beside `run.steps_skipped`
+- `items[].task.review_verdict` — writer: `skills/lead/SKILL.md` ("A task runs under you"). Consumer: `skills/project-lead/scripts/crew-stats.py` ("Package reviews by band" and the catch rate), which folds it in beside `runs/<item-id>/reviews/` when that directory is missing, and beside a run's own package reviews the rest of the time (§15.82)
 - `runs/<item-id>/checkout/` — consumer: a task's IC, as its worktree, and the package review's diff
 - `items[].state` values `pending`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions

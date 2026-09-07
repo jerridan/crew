@@ -5668,3 +5668,38 @@ Deliberately different:
     seconds, lead spend $3.90 at close, portfolio closed. `crew-stats.py` over
     that root printed the three-column skip table with zeros, which is what a
     `standard` task skipping nothing should read.
+
+82. **A task's package review reaches the catch rate — T46.** §15.81 named
+    the gap T45 left open: a task's `review_verdict` had no reader, so a
+    portfolio of tasks reported its skipped steps and none of its reviews,
+    and the catch rate (§15.57) missed every task.
+
+    The fold follows T45's own shape. A task's review sits under
+    `runs/<item-id>/reviews/`, in the same file name a run's own package
+    review takes, so `crew-stats.py` reads it with the run-side function
+    unchanged — the band comes from `items[].task.band`, since a task has no
+    `state.json` package to read a band from. `items[].task.review_verdict`
+    is the fallback, read only when that directory is missing, so an older or
+    partial record still counts its one review. `record-format.md`'s name
+    inventory gains `crew-stats.py` as `review_verdict`'s second reader,
+    beside `skills/lead/SKILL.md`, which stays its only writer.
+
+    "Package reviews by band" and the catch rate now both count a task's
+    review beside a run's. A seeded portfolio at `~/.claude/crew-t46/` with
+    one `standard` task and one accepted review, run through `crew-stats.py`,
+    printed `package review: 1` in "Reviews", `standard: 1 review, 0 acted`
+    in "Package reviews by band", and the same pair in the catch rate row —
+    an accepted verdict counts as a review, not a catch, the same rule
+    §15.57 states for a run's review.
+
+    **The two live records read the same way.** `~/.claude/crew-live/lead-2026-09-06-cf74`
+    (T39's run, one task and one goal) now reads `package review: 2` where it
+    read 1 before T46 — the goal's own review plus the task's
+    `strip-suffix-62a5` review, both `standard`, both accepted, `0 acted`.
+    `~/.claude/crew-t45-live/lead-2026-09-06-9f23` (T45's live run, task only,
+    no goal) now reads `package review: 1`, `standard: 1 review, 0 acted`,
+    where it read nothing before T46. Neither record was re-run; both were
+    read a second time, after the fix, from the same files T45 and T39 left
+    on disk.
+
+    <!-- live run: pending -->

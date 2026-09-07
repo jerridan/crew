@@ -36,6 +36,9 @@ behalf so you can audit them at review time.
   project-lead session per goal, dispatches one IC for a task, and answers
   their escalations. `/crew:lead` builds it (§15.74), the size triage is
   §15.79, and two concurrent goals have run through it end to end (§15.80).
+  A goal the principal cuts into stages carries a **gate** between them: one
+  item per stage, and the lead holds the next stage until the principal's go
+  (§15.87).
 
 ### Out of scope
 
@@ -6005,3 +6008,165 @@ Deliberately different:
     `/Users/jerridan/.claude/crew-b3/lead-2026-09-06-99a1/portfolio.json`
     still holds that `lead.escalations` entry and the principal's answer.
     T50 writes down the rule the run already followed.
+
+87. **A goal carries gates between its stages — T49.** A goal can already land
+    as several PRs, and a run cannot wait for the world to move between them.
+    The principal drove one such fix by hand in the week of 2026-09-01: merge,
+    deploy, watch the deploy land, watch the monitors, then start the next PR.
+    A gate now exists, and every judgment in it stays with the principal. The
+    ticket's three rules hold: a gate is opt-in, the lead flags and the
+    principal decides, and a gate is a written instruction applied between
+    stages. The lead splitting a brief into stages is out of scope — the
+    principal names the stages.
+
+    **Proved 2026-09-07.** A Fable lead at high effort, `crew-t49-lead`,
+    session `cbde548e`, held portfolio `lead-2026-09-07-c8e9` under
+    `~/.claude/crew-t49-live`, against the string-kit fixture. The intake
+    message named two stages: a `slugify` helper under `src/text/`, then a
+    `slugifyPath` under `src/url/` that imports it. In one turn at 05:47:48 the
+    lead wrote both items — `slugify-e7f1` and `slugify-path-4635`, both
+    `kind: task` at the `standard` band — gave the second a `depends_on` and a
+    gate, dispatched stage 1's plan IC, and asked one question.
+
+    Every rule the ticket set held. Stage 1 reached draft PR #27 at 05:57 and
+    stage 2 went `held` in the same turn, with an `expect` line naming the gate
+    and an open escalation at index 1. At 06:06:01 the lead recorded the check
+    command, ran it once, reported `{"state":"OPEN"}` exactly as it printed,
+    said it does not hold `MERGED`, and held. The principal merged PR #27 at
+    06:11. At 06:15:52 the lead re-ran the check on request, reported
+    `{"state":"MERGED"}`, and **still held** — "Stage 2 stays held until you say
+    go", with `cleared_at` still `null`. The go was typed at 06:16:19, and at
+    06:16:31 `gate.cleared_at` was stamped, the escalation carried the answer,
+    the item went `running`, and its worktree was cut from `origin/main` at PR
+    #27's merge commit. Stage 2 reached draft PR #28 at 06:22:35, and its diff
+    holds `import { slugify } from "../text/slugify.js"` — which only compiles
+    because stage 1 landed on main first. An ungated third item went through at
+    06:22:51 with no `gate` key and no `held` state, PR #29. Item 1 carried no
+    gate and never entered `held`. The portfolio closed at 06:29 at $10.04 for
+    three task items, the IC and reviewer seats inside that figure.
+
+    The hold ran 19 minutes, from 05:57 to 06:16:31, and about 10 of those were
+    a keystroke nobody sent: the principal typed the gate answer at 05:56:09
+    while the lead was mid-turn, and a message typed into a tmux pane mid-turn
+    sits in the input box until Enter is pressed again after the turn ends. It
+    reached the lead at 06:05:47. That is a property of driving a pane, not of
+    the lead, and it is the same hazard §15.47 names for prompt suggestions.
+
+    a. **One portfolio item per stage, joined by `depends_on`.** The
+       alternative was one item with a list of stages inside it. An item is
+       already the unit that carries a charter, a record root, a session name,
+       a state and a PR url (`record-format.md`), and a stage needs all five
+       of its own. One item with stages would hold a second copy of each,
+       under names nothing else reads, and every rule written for an item —
+       triage, launch, resume, spend — would need a stage-shaped twin. So a
+       staged goal is n items, and the item that runs second names the first
+       in `depends_on`. The gate sits on the **downstream** item, because a
+       gate is a condition on starting, not on finishing: the last stage of a
+       goal then carries no gate, and no item waits on a gate it wrote itself.
+
+    b. **`held` is a state of its own, beside `blocked`.** `blocked` means the
+       run cannot go on until the principal answers a question, and the
+       matching `escalations` entry says which. A gated item is not stuck: its
+       charter is written, its upstream stage is done, and the work waits by
+       design until the world moves. The two also restart differently. A
+       restarted lead re-sends every open ask (`skills/lead/SKILL.md`), and a
+       held item wants its check run again first, so the report the principal
+       reads is current rather than a repeat of one from before the crash.
+       `blocked` with a reason string would need every reader to parse that
+       string to tell those apart, and nothing that reads the record parses
+       prose.
+
+    c. **A gate check is a command the principal wrote, not an instrument.**
+       Deploy state and monitor state sit outside every checkout, so the lead
+       reads them by running one shell command from the portfolio directory.
+       The command is a field on the gate, not an `Instruments:` line in the
+       charter (§6.4). Instruments are repo-local skills and agents that a
+       project lead or a researcher dispatches during scouting, and this is
+       none of that: no dispatch, no repo, and the lead is the one running it.
+       Putting a lead-run command in a charter field the project lead owns
+       would give one name two mechanisms.
+
+       **The lead reports the output and never judges it.** It runs the
+       command verbatim, once, and puts what printed in front of the
+       principal. The only comparison it may make is the mechanical one: did
+       the output hold what the principal said to expect. Everything past that
+       — is this deploy healthy, is this monitor noisy — is the principal's,
+       and a lead that answers it has invented a gate clearance. A monitor
+       with no command is a gate with `check: null`, cleared by the
+       principal's message alone.
+
+    d. **Not green is report and hold, and there is nothing above that floor
+       in this cut.** A check that errors, times out, or prints something
+       other than what the principal named leaves the item `held`. The lead
+       reports what it saw in its next batch and waits. It never re-runs the
+       command to get a better answer, and it never polls: a lead that waits
+       inside a turn cannot be handed anything (§15.72i). A re-check happens
+       when the principal asks for one, which is a turn the lead already has.
+
+    e. **The go is an escalation answer.** The gate's ask goes into
+       `lead.escalations` before the lead sends it, like every other ask
+       (`autonomy-contract.md`), and the principal's go is that entry's
+       `answer`. The gate then records `cleared_at` and the item goes
+       `held → running`. A matching check output is never the go. That keeps
+       one rule for every clearance: a gate opens when the principal says so,
+       and the record holds who said it and when.
+
+    f. **The intake flag is a question, never an action.** At intake the lead
+       says so when a goal reads as staged — more than one PR, a migration, a
+       backfill, a deploy the next stage assumes — and asks whether the
+       principal wants a gate. With no answer naming one, the goal runs as it
+       does today. The lead adds no gate on its own, and skips none it was
+       given.
+
+    g. **No script changed, and the seeded test says why.** T39 gave
+       `crew-portfolio.py` a dotted `item <id> set` that creates the objects on
+       the way to a field, and the script checks no field name and no state
+       value — `record-format.md` owns both. So a `gate` object and a `held`
+       state need no new verb. The seeded record is at `~/.claude/crew-t49/`,
+       one portfolio, four items and three gates. Thirty-one checks pass, on
+       Python 3.13 and on macOS's own 3.9. They walk every transition the item
+       diagram names, gates included: `pending → held` when the upstream item
+       reaches `done`, a red check that leaves the item `held`, a matching
+       check that is still not a go, `held → running` on the principal's answer
+       with `cleared_at` written, `held → abandoned` on a gate with no command,
+       and `pending → abandoned` on a stage whose upstream was abandoned. What
+       a seeded record cannot prove is that a lead reads the rules this way.
+       The live run above is what shows that.
+
+    h. **The review found the turn that nobody starts.** A high-effort review
+       of the branch caught the first draft running the hold, the check and
+       the report as three turns, one per turn, the way a task's steps run.
+       A task's steps each start on a notification — the IC's report, the
+       review. A gate's do not: the upstream run is over, the gated stage was
+       never launched, and nothing on the machine will speak. A portfolio
+       whose only live item is the gated one would then wait for the principal
+       to ask first, which is the interruption the gate report exists to save.
+       The three steps are one turn now. The same review found the gate with
+       no link to its ask: `gate.escalation` had a definition and no writer, so
+       a batch carrying two gates could not tell which answer cleared which,
+       and a restart re-sent an ask for a gate already cleared. It also found
+       that a stage whose upstream ends `abandoned` had no exit, and that a
+       gate with no command still read on disk like a check that never ran.
+
+    i. **The lead read the condition out of the brief, and asked only for the
+       command.** The ticket says the lead asks whether the principal wants a
+       gate. This lead did not. It read the intake's own sentence — stage 2 is
+       "only true once stage 1 is on main" — as the gate, wrote that condition
+       onto the item at 05:47:48, and asked one narrower question: which
+       command should check it, recommending `gh pr view` expecting `MERGED`.
+
+       **The reading was right.** A principal who states the condition has
+       named the gate, and asking "do you want a gate?" back would ask them to
+       repeat a sentence they just typed. Nothing was invented: every word of
+       `gate.condition` came from the brief. Opt-in survives, because the
+       condition is what makes a gate opt-in, not the form of the question.
+
+       **The rule still moves, by one clause.** The lead wrote the gate down
+       before any answer came, and the item reached `held` at 05:57 on a gate
+       the principal had never confirmed. The failure that shape allows is not
+       this run: it is the next brief, where "stage 2 builds on stage 1" means
+       order alone and a lead reads a gate into it. So the ask now confirms the
+       gate as well as the command — quote the condition back in the words the
+       record holds, and ask whether that is the gate. It is the same one ask,
+       and it costs the principal one line. `skills/lead/SKILL.md` carries it.
+

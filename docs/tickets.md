@@ -1957,7 +1957,7 @@ task record"; `ic-contract.md`.
 
 ## T49 — A goal may carry gates between its stages, set by the principal
 
-Status: open
+Status: done
 Depends on: T39, T41
 Stage: 7 (design §1, §15.74, §15.80)
 
@@ -2002,6 +2002,16 @@ no gate runs unchanged. Record what the run showed in design §15.
 Read first: design §1, §6.4, §15.74, §15.79, §15.80; `skills/lead/SKILL.md`
 "Triage every item by size" and "Batch the rest into one message";
 `record-format.md` "The portfolio record"; `autonomy-contract.md`.
+
+Landed 2026-09-07 as one item per stage with `depends_on` and a `gate`, the
+`held` state, "A gate holds the next stage" in `skills/lead/SKILL.md`, "A gate
+a stage waits on" in `autonomy-contract.md`, and design §15.87. No script
+changed. The live run took a two-stage goal to two draft PRs with a 19-minute
+hold between them: the lead reported `OPEN`, held, reported `MERGED` on a
+re-check, held again, and started stage 2 only on the principal's go. An
+ungated third item ran unchanged. The lead read the gate's condition out of the
+brief rather than asking for it, which §15.87i keeps and answers with one
+clause: the ask now quotes the condition back.
 
 ## T50 — Say who may add a portfolio item
 

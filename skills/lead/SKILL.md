@@ -263,6 +263,78 @@ branch's commits first — work already on it is done, whatever the record says
 
 `autonomy-contract.md` owns what a task escalates and what it settles itself.
 
+## A gate holds the next stage
+
+A goal the principal cut into stages runs as one item per stage, in dependency
+order. The item that runs second names the first in `depends_on`, and it
+carries the `gate` — the condition the principal wants true before it starts
+(`record-format.md`, "The gate record"). You never split a brief into stages,
+and you never invent a gate: the principal names both.
+
+**Flag a staged goal at intake, and ask.** Say so in your batch when a brief
+reads as staged — more than one PR, a migration, a backfill, or a stage that
+assumes an earlier one is live. Name the stages you read in the brief, and ask
+whether the principal wants a gate between them and what it is. Ask for the
+condition in their own words and for a command you can run to check it. With
+no answer naming a gate, the goal runs as any other goal does.
+
+**A brief that states the condition has named the gate.** Do not ask the
+principal to type that sentence twice. Ask the narrower question instead —
+which command checks it — and **quote the condition back in the same ask**, in
+the words your record holds, so the principal can correct it in one line
+(design §15.87i). Confirm it that way every time: "stage 2 builds on stage 1"
+may mean order and nothing more, and a gate you read into such a sentence is a
+gate you invented.
+
+**Write the answer down as items.** One item per stage the principal named,
+in their order, each with its own charter. Every item after the first names the
+one before it in `depends_on` and carries the gate the principal stated for it.
+The answer goes in `decisions.md` as well, so a restarted lead does not ask
+again.
+
+**Then run the gate in four steps. Steps 1 to 3 are one turn**, the turn the
+upstream item reaches `done` in. Nothing else will start them: that run is
+over, the gated stage was never launched, and no notification is coming. Step 4
+is the next turn, and the principal's answer starts it.
+
+1. **Hold.** The moment the upstream item reaches `done`, set the waiting item
+   `held` and write its `expect` line. It never goes `pending → running` while
+   a gate stands. An upstream item that ends `abandoned` instead takes the
+   waiting item to `abandoned` with it (`record-format.md`); say so in your
+   next batch as information, not as a question.
+2. **Check.** Run `gate.check` verbatim, once, from the portfolio directory.
+   Write `checked_at` and `check_output`. Never edit the command, never write
+   one the principal did not give, and never run it a second time to get a
+   different answer. A gate with `check: null` skips this step and leaves both
+   fields `null` — the principal named a condition you cannot check, and their
+   message is the whole gate.
+3. **Report and ask.** Put the output in your next batch and ask for the go,
+   in `autonomy-contract.md`'s "A gate a stage waits on" shape. You report
+   what the command printed; you never judge it. The only comparison you may
+   make is whether the output holds what `gate.expect_output` names. Write
+   `gate.escalation` with the index `escalation add` printed, in the same turn:
+   it is the only link from this gate to its ask, and a batch that carries two
+   gates has two of them.
+4. **Clear on the go, and only on the go.** Answer the escalation
+   `gate.escalation` names — `escalation answer <index> "<the reply>"` — then
+   write `gate.cleared_at`, set the item `running`, and launch the stage. A
+   check whose output matched is not a go, and a stage the principal will not
+   clear is `abandoned`.
+
+A check that fails, errors, or prints the wrong thing leaves the item `held`.
+Report it and wait, in the same shape. Never poll: a re-check happens when the
+principal asks for one.
+
+**A gate check is the one command you run against the outside world.** It runs
+from the portfolio directory, never from a checkout, and it reads — `gh pr
+view`, a status endpoint, a monitor query. It is still the principal's command
+and not yours, so "You never touch a target repo" holds everywhere else.
+
+**A restarted lead re-checks before it re-sends.** A `held` item's ask is an
+open escalation, so "Start from the record" re-sends it. Run step 2 again
+first: the world moved while the session was dead, and a repeat of a stale
+report wastes the principal's turn.
+
 ## Steer from the record, never from a transcript
 
 What an item is doing is in its `record_dir`: `state.json` for the run's state
@@ -313,7 +385,8 @@ you. Two rules are yours:
   item. Name the item each question belongs to, name your recommendation, and
   say what each item is doing meanwhile. Write each ask with
   `crew-portfolio.py escalation add` **before** you send, and set that item
-  `blocked`. One question is still a batch, and it takes the same write. An
+  `blocked` — or `held`, when the ask is a gate report ("A gate holds the next
+  stage"). One question is still a batch, and it takes the same write. An
   entry in the portfolio's `decisions.md` does not replace that write:
   `decisions.md` holds the answer, and `lead.escalations` holds the open ask
   that a restarted lead re-sends (design §15.80).
@@ -353,6 +426,10 @@ goal's checkout: no test, no `gh`, and no command that writes. Prefer the
 record even for these — a goal's
 `checkout_restored` already says which branch its run left the tree on
 (`record-format.md`), and a git call that repeats the record buys nothing.
+
+A gate check is the one command you run against the outside world, and it runs
+from the portfolio directory rather than a checkout ("A gate holds the next
+stage").
 
 A task you run yourself has the wider carve-out, in **its own** worktree —
 `git`, the acceptance criterion, the repo's suite and `gh`, writing included.

@@ -2005,9 +2005,10 @@ Read first: design §1, §6.4, §15.74, §15.79, §15.80; `skills/lead/SKILL.md`
 
 ## T50 — Say who may add a portfolio item
 
-Status: open
+Status: done
 Depends on: T47
-Stage: 7 (design §15.85)
+Stage: 7 (design §15.85; the rule is §15.86, and §15.85's run is the proof —
+no new live run backs this ticket)
 
 A peer session asked a lead to add an item to its portfolio, and the lead
 escalated it to the human instead of running it (§15.85). That answer came

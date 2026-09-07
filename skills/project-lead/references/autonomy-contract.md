@@ -373,8 +373,8 @@ Three things still reach the principal from a task, each written into
 - The push or `gh pr create` fails.
 
 A `capability` block promotes the band once, by `band-rubric.md`. A
-`standard` task that blocks again is a goal, not a promotion: `deep` is a
-band no task carries.
+`standard` task that blocks again is a goal, not a promotion — a task's band
+never reaches `deep` (`record-format.md`, "The task record").
 
 ## How to escalate
 

@@ -1859,7 +1859,7 @@ Done in PR #58, plugin 0.1.55, design §15.81.
 
 ## T46 — Count a task's package review in the stats
 
-Status: open
+Status: done
 Depends on: T45
 Stage: any (design §15.79, §15.81)
 

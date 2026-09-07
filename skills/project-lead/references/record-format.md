@@ -880,11 +880,13 @@ run's own cost stays in its `state.json` (Authority rule below).
 | `charter` | `charters/<id>.md`, relative to the portfolio directory. |
 | `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. On a task it is `runs/<id>/` itself, and the lead writes it at the dispatch, because no session creates it. |
 | `session_name` | the `--name` the item's project-lead session was launched under. It is the address `SendMessage` takes, and it survives a restart, which a socket path does not (design §15.72f). `null` on a task, which has no session of its own. |
-| `state` | one of `pending`, `running`, `blocked`, `done`, `abandoned`. See the transitions below. |
+| `state` | one of `pending`, `held`, `running`, `blocked`, `done`, `abandoned`. See the transitions below. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this item's last `state` transition. |
 | `expect` | one line: what the lead expects next on this item, and what it will do when that arrives. It is the ledger — a restarted lead reads this line and knows what its own last turn was waiting for. |
 | `outcome` | the PR url, or the terminal state the run reported; `null` until the item is `done` or `abandoned`. |
 | `task` | the one package a `kind: task` item runs as, and what the lead has learned back from it. Absent on a goal. The task record below owns its fields. |
+| `depends_on` | the id of the item this one waits for, or `null`. It is how one goal becomes several stages in dependency order (design §15.87). |
+| `gate` | the condition that must hold before this item starts. Absent unless the principal named one. The gate record below owns its fields. |
 
 An item's `state` is the **lead's** view of the item, not the run's. The run's
 own state lives in `record_dir`'s `state.json`, and that file stays
@@ -896,26 +898,38 @@ no `state.json` holds it.
 ### Item state transitions
 
 ```
-pending ──▶ running ──▶ done        (terminal)
-   │           │  ▲
-   │           ▼  │
-   │        blocked
-   │           │
-   └────┬──────┘
-        ▼
-    abandoned                       (terminal)
+        ┌──▶ held ──┐
+        │           ▼
+pending ┴──────▶ running ──▶ done       (terminal)
+                   │  ▲
+                   ▼  │
+                blocked
+
+any non-terminal state ──▶ abandoned    (terminal)
 ```
 
 - `pending → running`: the charter is written and the work is dispatched — a
   project-lead session launched and handed the charter, or, for a task, an IC
   dispatched.
+- `pending → held`: this item carries a `gate`, and the item its `depends_on`
+  names reached `done`. The gate now applies. Only a gated item enters `held`.
+- `held → running`: the principal cleared the gate, and `gate.cleared_at` says
+  when. Nothing else opens a gate — a check whose output matched is still not
+  the go (design §15.87e).
 - `running → blocked`: the item is waiting on an answer only the principal can
   give. The matching `escalations` entry is what says which question.
 - `blocked → running`: the lead sent the answer on.
 - `running → done`: the run reported a terminal state, and the record proves
   it. `outcome` holds the PR url or the state.
-- `pending → abandoned` or `running → abandoned`: the principal dropped the
-  item, or the run failed in a way no resume fixes.
+- any non-terminal state `→ abandoned`: the principal dropped the item, or the
+  run failed in a way no resume fixes. A `held` item whose gate the principal
+  will never clear ends here. So does an item whose `depends_on` ended
+  `abandoned`: the stage it was built on is not coming, its gate can never
+  fire, and a `pending` item with a dead upstream would sit in the portfolio
+  for good.
+
+A check's output moves no state. Whatever `gate.check_output` holds, only the
+principal's go takes an item out of `held` (`skills/lead/SKILL.md`).
 
 **A `done` item needs the record, not a message.** A project lead's closing
 report can be lost — the send fails when the lead session has restarted
@@ -968,6 +982,56 @@ Everything else about the task is the item's `task` object:
 one of these: `item <id> set task.ic_status '"DONE"'`. Write the object whole
 at `item add` time, then one field per call — a whole-object rewrite drops
 what the last call put there.
+
+### The gate record
+
+A gate is what the principal wants true before a stage starts (design §15.87).
+An item carries a `gate` object only when the principal named one. The gate
+sits on the item that waits, never on the item that runs first, so the last
+stage of a goal carries none.
+
+| Field | Meaning |
+|---|---|
+| `condition` | one line, in the principal's own words: what must be true before this item starts. |
+| `check` | the shell command the principal named, run verbatim from the portfolio directory; `null` when the principal named no command. The lead never writes one itself and never edits one. |
+| `expect_output` | what the principal said that command's output should hold; `null` when there is no command. It is the only comparison the lead may make. |
+| `checked_at` | ISO-8601 UTC of the last run of `check`; `null` until the first run, and `null` for the life of a gate whose `check` is `null`. |
+| `check_output` | what that run printed, trimmed to 500 characters, or the error it failed with. It is evidence for the principal to read, never a verdict. `null` beside a `null` `check`. |
+| `cleared_at` | ISO-8601 UTC of the principal's go; `null` while the gate holds. |
+| `escalation` | the index in `lead.escalations` of the ask that carries the gate report. That entry's `answer` is the go. |
+
+Write the object whole at `item add` time, then one field per call, the way a
+task's fields are written:
+
+```
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> state held
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set gate.check_output '"state: MERGED"'
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set gate.cleared_at '"2026-09-07T18:04:11Z"'
+```
+
+A gated item, held:
+
+```json
+{
+  "id": "slugify-path-4b7c",
+  "kind": "goal",
+  "title": "Add slugifyPath, built on stage 1's slugify",
+  "depends_on": "slugify-2e19",
+  "state": "held",
+  "state_changed_at": "2026-09-07T17:58:02Z",
+  "expect": "the principal's go on the stage 1 merge; then launch this stage",
+  "outcome": null,
+  "gate": {
+    "condition": "the stage 1 PR is merged into main",
+    "check": "gh pr view 31 --repo jerridan/crew-fixture-string-kit --json state",
+    "expect_output": "MERGED",
+    "checked_at": "2026-09-07T17:58:44Z",
+    "check_output": "{\"state\":\"MERGED\"}",
+    "cleared_at": null,
+    "escalation": 0
+  }
+}
+```
 
 ### `decisions.md`
 
@@ -1236,4 +1300,5 @@ Every name this file defines, with what consumes it.
 - `items[].task.steps_skipped` — writer: the lead, at each skip `band-rubric.md`'s "What a band skips" allows. Consumer: `skills/project-lead/scripts/crew-stats.py` ("Steps skipped by rule"), which counts it beside `run.steps_skipped`
 - `items[].task.review_verdict` — writer: `skills/lead/SKILL.md` ("A task runs under you"). Consumer: `skills/project-lead/scripts/crew-stats.py` ("Package reviews by band" and the catch rate), which folds it in beside `runs/<item-id>/reviews/` when that directory is missing, and beside a run's own package reviews the rest of the time (§15.82)
 - `runs/<item-id>/checkout/` — consumer: a task's IC, as its worktree, and the package review's diff
-- `items[].state` values `pending`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions
+- `items[].state` values `pending`, `held`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions
+- `items[].depends_on` and `items[].gate` with its fields `condition`, `check`, `expect_output`, `checked_at`, `check_output`, `cleared_at`, `escalation` — writer and consumer: `skills/lead/SKILL.md` ("A gate holds the next stage"); `autonomy-contract.md` owns what the gate's ask carries (design §15.87)

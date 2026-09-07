@@ -54,7 +54,10 @@ and restarted from the record with no human turn (design §15.72, §15.74). One
 lead has taken a task and a goal to a draft PR each, the task with no
 project-lead session (§15.79). Two goals at once has run (T9, §15.80): the
 lead resumed a killed project lead with no human turn, and survived a
-compaction mid-portfolio.
+compaction mid-portfolio. A goal the principal cuts into stages can carry a
+**gate** between them — one item per stage, and the lead holds the next stage
+until the principal's go. One two-stage goal has run through a gate end to end
+(§15.87).
 
 `docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
 Never write about an unbuilt stage as if it runs, or about a built one as if

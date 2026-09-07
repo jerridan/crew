@@ -390,6 +390,31 @@ A `capability` block promotes the band once, by `band-rubric.md`. A
 `standard` task that blocks again is a goal, not a promotion — a task's band
 never reaches `deep` (`record-format.md`, "The task record").
 
+### A gate a stage waits on
+
+A goal the principal cut into stages carries a gate between them, and the item
+that waits holds it (`record-format.md`, "The gate record"). The gate's ask
+reaches the principal like every other ask, with two differences.
+
+- **The item goes `held`, not `blocked`.** The work is not stuck on an
+  unanswered question; it waits by design until the principal says the world
+  moved (design §15.87b).
+- **The ask carries a report, not options.** Name the item and the stage that
+  finished, quote the `condition` back, and give the check's output as it
+  printed. Say whether it held what `expect_output` names, and say nothing
+  more about it: the health of a deploy or a monitor is the principal's call,
+  never yours (design §15.87c). Then ask for the go. A gate with `check: null`
+  has no output to give, so the ask is the condition and the question alone.
+
+Everything else is unchanged. Write the ask with `escalation add` before you
+send it, send it in the batch `skills/lead/SKILL.md` describes, and treat the
+principal's reply as the entry's `answer`. A check that errors, or that prints
+something other than what the principal named, takes the same shape and the
+same batch: report it, and ask for the go all the same.
+
+Nothing here fires on an ungated goal, and no gate exists that the principal
+did not name.
+
 ## How to escalate
 
 Write the ask into `state.json`'s `escalations` with all four of its

@@ -5702,4 +5702,16 @@ Deliberately different:
     read a second time, after the fix, from the same files T45 and T39 left
     on disk.
 
-    <!-- live run: pending -->
+    **The live run, 2026-09-06: two tasks and a goal from one lead.** The
+    orchestrator's own batch — a plugin merging this ticket with T48 and
+    T44 — ran a Fable lead against portfolio
+    `~/.claude/crew-b3/lead-2026-09-06-99a1`: two tasks, `strip-prefix-6731`
+    and `title-case-d132`, both `standard`, both `ic_status: DONE` and
+    `review_verdict: accepted`, each with its own
+    `runs/<item-id>/reviews/<item-id>-package-review-r0.md`; and one goal,
+    `word-count-decode-query-a3e8`, one `standard` package, its own run
+    record. `crew-stats.py --record-root ~/.claude/crew-b3` printed
+    `package review: 3` in "Reviews" and `standard: 3 reviews, 0 acted` in
+    "Package reviews by band" — the goal's one review plus both tasks' —
+    and the Leads row read `items 3, done 3, runs 1`, all three items
+    accounted for and the one goal run priced.

@@ -1908,9 +1908,9 @@ runs under you"; `session-launch.md` "Steering a live session".
 
 ## T48 — A task may edit a registration line in a shared file
 
-Status: open
+Status: done
 Depends on: T39
-Stage: 7 (design §15.79i)
+Stage: 7 (design §15.79i; the rule and its run are §15.83)
 
 The lead's triage promotes any item that must change a shared file — a
 barrel, a manifest, a lockfile — to a goal. That rule comes from the full

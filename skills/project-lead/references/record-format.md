@@ -268,9 +268,10 @@ Rules the format carries:
   known-equal pair before any package that uses it starts. Then every later
   brief names the tool, and `ic-contract.md` makes the IC run it before
   reporting (design §15.50).
-- **Shared files never appear in a file set.** Version manifests, lockfiles,
-  barrel and `index` files, and shared config belong to the project lead at
-  integration (design §5).
+- **Shared files never appear in a package's file set.** Version manifests,
+  lockfiles, barrel and `index` files, and shared config belong to the project
+  lead at integration (design §5). A lead's task holds no split and no
+  integration, and its `task.file_set` below is the one exception.
 
 `state.json` stays authoritative for the plan (see Authority rule below). Every
 package here has a `packages[]` entry whose `id`, `territory`, `band`,
@@ -952,7 +953,7 @@ Everything else about the task is the item's `task` object:
 |---|---|
 | `band` | `light` or `standard`, by `band-rubric.md`. A task never runs `deep`: work that bands `deep` is a goal. |
 | `ic_agent` | `crew:ic` or `crew:ic-instructions`. |
-| `file_set` | the files the IC may edit. A shared file in it makes the item a goal. |
+| `file_set` | the files the IC may edit. A shared file may appear here when it holds the one registration line `skills/lead/SKILL.md`'s triage allows, and never for a wider change: a task has one IC on one branch, so the merge conflict the shared-file rule guards cannot occur (design §15.83). |
 | `acceptance_criterion` | one line, runnable as a command. |
 | `checkout` | the absolute path of the IC's worktree; `null` once the lead removes it. |
 | `branch` | `crew/<item-id>`, in the item's `repo`. It outlives the checkout, because the PR is on it. |

@@ -279,6 +279,10 @@ In this repo that means `plugin.json` and `marketplace.json` specifically:
 `CLAUDE.md` requires both to change for any content change, so no two packages
 could ever own them disjointly.
 
+The rule is about disjointness, so it holds where two ICs run at once. A
+lead's task runs one IC on one branch and integrates nothing, and its file set
+may hold one registration line in a shared file (§15.83).
+
 ### The critic
 
 `crew:split-critic` reviews `split.md` before any IC is dispatched. It checks
@@ -5354,7 +5358,9 @@ Deliberately different:
        `skills/lead/SKILL.md` holds the test and the five promotion reasons —
        a symptom rather than a change, a second file set, a shared file, an
        unsettled preference, and a criterion needing interpretation or a
-       `deep` band.
+       `deep` band. **The shared-file reason is narrowed by §15.83:** it keeps
+       every wider change, and a task may now carry one registration line the
+       repo's instruction file names. The other four stand as written.
 
     b. **Promotion after the dispatch is the same decision made later.** The
        lead stops the task, re-files the item as a goal with its branch named
@@ -5370,7 +5376,10 @@ Deliberately different:
        redirect so the reviewer reads it and the lead never does. `Read`,
        `Edit` and `Write` stay banned in every checkout, which is what keeps
        a shared-file edit — the one thing `simple-path.md`'s "Integrate"
-       needs — a promotion reason instead of an exception. A goal's checkout
+       needs — a promotion reason instead of an exception. **§15.83 reverses
+       that last clause and keeps the ban:** the IC makes the edit, because
+       the file set names the file, and the lead still edits nothing. A goal's
+       checkout
        takes read-only git and nothing else, which item h below settles. The
        worktree is cut from the repo's
        default branch and not from whatever branch the principal left the
@@ -5450,15 +5459,18 @@ Deliberately different:
        `checkout_restored` already answers the question the two later calls
        asked.
 
-    i. **A task leaves the barrel behind, by design.** The IC added the helper
-       and its test and did not re-export it from `src/index.js`, because a
+    i. **A task leaves the barrel behind, by design. Superseded by §15.83.**
+       The IC added the helper and its test and did not re-export it from
+       `src/index.js`, because a
        barrel file is shared and the lead edits nothing in a target repo. The
        lead did the right thing with that: it flagged the missing re-export in
        the PR body as follow-up rather than editing the file or promoting the
        item. So a task that adds a helper to a repo with a barrel produces a
        PR a human finishes, and a goal is the shape for a helper that must be
-       exported. `decisions.md` carried one triage entry per item,
-       `Route: precedent`, each citing "Triage every item by size".
+       exported. That last sentence is the one §15.83 reverses: the task keeps
+       the barrel now, and the follow-up turn goes away. `decisions.md`
+       carried one triage entry per item, `Route: precedent`, each citing
+       "Triage every item by size".
 
     j. **"End every turn quickly" is still unexercised.** The task ran inside
        one long turn: the lead dispatched the IC as a background subagent and
@@ -5715,3 +5727,75 @@ Deliberately different:
     "Package reviews by band" — the goal's one review plus both tasks' —
     and the Leads row read `items 3, done 3, runs 1`, all three items
     accounted for and the one goal run priced.
+
+83. **A task may edit a registration line in a shared file — 2026-09-06,
+    T48.** §15.79a gave the lead five promotion reasons, and one of them was a
+    shared file: a version manifest, a barrel, a lockfile. That reason came
+    from the full path, where several ICs work in parallel worktrees and a
+    file two of them edit is a merge conflict at integration (§5, "Shared
+    files belong to the project lead"). A task has one IC, one branch and no
+    integration, so that conflict cannot occur, and the reason did not carry
+    over.
+
+    The cost showed twice. In both `stripSuffix` runs the IC added the helper
+    and its test, and left `src/index.js` alone — so the fixture cannot import
+    what the PR adds, and the lead put the missing export in the PR body as
+    follow-up for a human (§15.79i). The lead did that by the rule and the
+    rule was wrong. Removing a human turn is the point of the tier, and the
+    turn it removed at triage it bought back at the PR.
+
+    The principal settled it in conversation on 2026-09-06: a task's file set
+    may hold a shared file when the repo's instruction file names that file as
+    where a new thing is registered, and the edit is one mechanical line. The
+    lead reads that instruction file at triage already (§15.79a), so the line
+    costs it no code read and the "answer from text" rule holds unchanged. The
+    IC edits the file because the file set names it; the lead still edits
+    nothing in a target repo, which is what §15.79c protects.
+
+    The exception is one line in one named file, and nothing wider. What still
+    promotes: a rule change in an instruction file, README prose that states a
+    policy, more than one independent file set, and anything the lead cannot
+    size from the task text and the repo's instruction files. The other four
+    reasons of §15.79a are untouched.
+
+    `skills/lead/SKILL.md`'s "Triage every item by size" owns the test.
+    `record-format.md`'s `file_set` field says a shared file may appear there
+    and why. `ic-contract.md`'s shared-file ban now reads "a shared file your
+    file set does not name": without that clause the IC held two rules at once
+    — edit the file set, and never edit a barrel — and the live run would have
+    turned on which one it read last. `crew:package-reviewer`'s scope check
+    carried the same contradiction: it flagged every shared file in a diff, so
+    it would have failed the very line the charter asked for. It now names
+    every shared file the package changed, one line by path, and tags one the
+    `file_set` does not name `[Critical]`. The IC names every shared file it
+    edited in its report for the same reason. `record-format.md`'s split rule
+    and `simple-path.md`'s citation of it now say "a package's file set", so
+    the project lead's paths read as before.
+
+    **A severity tag is the wrong channel for "this file is shared".** The
+    first cut told the reviewer to tag a named shared file `[Concern]`. The
+    live reviewer did not: it wrote that `src/index.js` is shared, that the
+    file set names it, that the content is correct, and so tagged nothing.
+    That reading is right and the instruction was wrong — `review-output.md`
+    defines `[Concern]` as "likely to cause a problem", and a correct line is
+    not one. The visibility the rule wanted is a named line, not a tag, so the
+    rule now asks for the line by path whatever the content, and leaves the
+    tag to the content. The reviewer's own words are the wording it got.
+
+    **The live run, 2026-09-06.** A Fable lead at high effort, portfolio
+    `~/.claude/crew-b3/lead-2026-09-06-99a1`, plugin dir an integration
+    checkout of T46, T48 and T44 over `b48523c`. The task text named the
+    helper and added "Follow the repo's CLAUDE.md for everything else" —
+    nothing about the barrel. The lead triaged it a **task**, and
+    `decisions.md`'s entry "Triage: is add stripPrefix helper a goal or a
+    task?" names the registration-line exception as why the barrel does not
+    promote it. `task.file_set` held `src/text/stripPrefix.js`,
+    `src/text/stripPrefix.test.js` and `src/index.js`. The IC made the
+    re-export its own commit and reported it as "added one re-export line, as
+    permitted by the file set". Package review r0 accepted, zero fix rounds,
+    `band: standard`. Fixture draft PR #24 changes those three files and asks
+    for no follow-up, which is §15.79i's failure closed. A second task in the
+    same portfolio, `titleCase`, ran the same way to PR #25. Each task took
+    about three minutes from dispatch to PR. The lead's own seat was $7.69 at
+    close over a three-item portfolio — two tasks and a goal — so the tasks'
+    share of that is not separable.

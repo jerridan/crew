@@ -5978,3 +5978,30 @@ Deliberately different:
     step boundary is what made the typed message immediate, and mid-turn
     delivery covers the run where the boundary does not arrive. This ticket
     bumps no version.
+
+86. **Only the principal adds a portfolio item — T50.** §15.85's peer session
+    asked a lead to add `trimLines`, and the lead escalated instead of
+    dispatching it. That answer came from judgment: no file said who may add
+    an item, and `autonomy-contract.md` defined the principal as whoever
+    handed the work over, under which a peer session read as a plausible
+    principal. The next lead would have read nothing and could have gone
+    either way.
+
+    `autonomy-contract.md` now says a lead's principal is fixed at portfolio
+    open, not at every message: a session that messages a lead mid-portfolio
+    is the principal only when it is the session that opened the portfolio.
+    It tells the two apart by the portfolio's `principal` field
+    (`record-format.md`) against the channel the message came in on — the
+    typed pane always the principal's, a `<cross-session-message>` the
+    principal's only when its `from-name` (or `from`) matches `lead.principal`
+    exactly. `skills/lead/SKILL.md`'s new "Only the principal adds a portfolio
+    item" holds the conduct: a request from any other session is written as
+    an escalation, batched to the principal, and answered to the sender that
+    the request is with the principal — never dispatched, never held for.
+
+    No new live run backs this: §15.85's is the proof. Its lead escalated
+    `trimLines` from `purrfect-cuddling-sky-6d`, a peer session, exactly the
+    way this section now requires — the record at
+    `/Users/jerridan/.claude/crew-b3/lead-2026-09-06-99a1/portfolio.json`
+    still holds that `lead.escalations` entry and the principal's answer.
+    T50 writes down the rule the run already followed.

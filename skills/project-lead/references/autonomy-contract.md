@@ -16,6 +16,20 @@ this file governs that rung too: the routing table, the triggers, the
 `escalations` entry before the send, and the failed-send fallback. The lead's
 own record is the portfolio, not `state.json` (`record-format.md`).
 
+**A lead's principal is fixed at portfolio open, and a message mid-portfolio
+does not move it.** A project lead's goal has one sender, so its principal
+never needs a second check after the hand-off. A lead's portfolio outlives any
+one exchange, and a session that messages it mid-portfolio — a question, or a
+request to add an item — is not the principal unless it is the session that
+opened the portfolio. Tell the two apart by the portfolio's `principal` field
+(`record-format.md`) against the channel the message arrived on: a message
+typed into the lead's own pane is the principal, by "Reach the principal"
+above — that pane answers no one else. A `<cross-session-message>` is the
+principal only when its `from-name` (or `from`, when the envelope carries no
+name) matches `lead.principal` exactly. Anything else is a peer session, and
+`skills/lead/SKILL.md`'s "Only the principal adds a portfolio item" says what
+a lead does with one.
+
 **Reach the principal the way the goal arrived.** Three cases, and only three:
 
 - **The goal was typed in this session.** Ask in this session, and only there.

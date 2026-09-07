@@ -219,7 +219,7 @@ def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
     return acted, known
 
 
-def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, dict]:
+def read_reviews(record: Path, bands: dict, skips: list, label: str | None = None) -> tuple[dict, dict, dict]:
     """Return the review counts, the catch counts by kind, and the same by band.
 
     A review "acted" when its `Verdict:` line is one of `ACTION_VERDICTS` —
@@ -227,14 +227,20 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
     artifact back. A file with no verdict, or with a verdict outside the eight
     the agents name, is counted as a review and as `unverdicted`, never as a
     catch, and it gets a skip line that says which of the two it is.
+
+    `label` names `record` in a skip line, and defaults to `record.name`. A
+    run's own record dir is already unique under the root, but a task's
+    `runs/<item-id>/` is not — two portfolios can dispatch the same item id —
+    so `read_task_review` passes its own portfolio-qualified name.
     """
+    label = label if label is not None else record.name
     counts = {name: 0 for name, _ in REVIEW_KINDS}
     counts["other"] = 0
     by_kind = {name: blank_catch() for name, _ in REVIEW_KINDS}
     by_band = {}
     directory = record / "reviews"
     if not directory.is_dir():
-        skips.append(f"{record.name}: no reviews — the record has no reviews/ directory")
+        skips.append(f"{label}: no reviews — the record has no reviews/ directory")
         return counts, by_kind, by_band
     for name in sorted(os.listdir(directory)):
         for kind, pattern in REVIEW_KINDS:
@@ -266,7 +272,7 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
             by_kind[kind]["acted"] += acted
         else:
             by_kind[kind]["unverdicted"] += 1
-            skips.append(f"{record.name}/{name}: no catch — {reason}")
+            skips.append(f"{label}/{name}: no catch — {reason}")
         if kind != "package review":
             continue
         # A package review's file name opens with its package id, so the band
@@ -331,7 +337,7 @@ def read_task_review(child: Path, item: dict, skips: list) -> dict:
     band = band if band in BANDS else "unknown"
     record = child / "runs" / str(item_id)
     if (record / "reviews").is_dir():
-        _, _, catch_by_band = read_reviews(record, {item_id: band}, skips)
+        _, _, catch_by_band = read_reviews(record, {item_id: band}, skips, label=name)
         return catch_by_band
     verdict = task.get("review_verdict")
     if not isinstance(verdict, str) or not verdict.strip():
@@ -607,7 +613,16 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
             total = None
             if p["usd"] is not None or runs_usd is not None:
                 total = (p["usd"] or 0.0) + (runs_usd or 0.0)
-            share = "-" if not total or p["usd"] is None else f"{100 * p['usd'] / total:.1f}%"
+            # A real $0.00 total still has a share: both halves priced at
+            # zero. Only a missing figure — total or the lead's own — reads
+            # as "-"; a zero total divides to 0.0%, never a ZeroDivisionError,
+            # because it is only reachable when `p["usd"]` is zero too.
+            if total is None or p["usd"] is None:
+                share = "-"
+            elif total == 0:
+                share = "0.0%"
+            else:
+                share = f"{100 * p['usd'] / total:.1f}%"
             rows.append([p["portfolio"], p["state"] or "-", p["items"], p["done"],
                          len(mine), len(priced), money(p["usd"]), money(runs_usd),
                          money(total), share])
@@ -785,12 +800,15 @@ def read_portfolios(children: list[Path], skips: list) -> list[dict]:
         else:
             skips.append(f"{child.name}: no lead cost — the portfolio has no lead.spend; "
                          "run skills/lead/scripts/lead-spend.py --write")
-        items = as_list(data.get("items"))
+        listed = as_list(data.get("items"))
+        items = [i for i in listed if isinstance(i, dict)]
+        if len(items) != len(listed):
+            skips.append(f"{child.name}: {len(listed) - len(items)} item entries dropped — they are not objects")
         # A task has no `state.json`, so `items[].task.steps_skipped` is the
         # only place its skips are written (`record-format.md`).
         task_skips = {step: 0 for step in SKIPPABLE_STEPS}
         for item in items:
-            task = item.get("task") if isinstance(item, dict) else None
+            task = item.get("task")
             if not isinstance(task, dict):
                 continue
             name = f"{child.name}/{item.get('id')}"
@@ -801,7 +819,7 @@ def read_portfolios(children: list[Path], skips: list) -> list[dict]:
             "portfolio": child.name,
             "state": lead.get("state"),
             "items": len(items),
-            "done": sum(1 for i in items if isinstance(i, dict) and i.get("state") == "done"),
+            "done": sum(1 for i in items if i.get("state") == "done"),
             "steps_skipped": task_skips,
             "catch_by_band": task_catch_by_band,
             "usd": usd,

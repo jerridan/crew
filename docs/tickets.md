@@ -1938,3 +1938,51 @@ follow-up is asked of the human.
 Read first: design §15.79i, §15.79; `skills/lead/SKILL.md` "Triage every
 item by size" and "You never touch a target repo"; `record-format.md` "The
 task record"; `ic-contract.md`.
+
+## T49 — A goal may carry gates between its stages, set by the principal
+
+Status: open
+Depends on: T39, T41
+Stage: 7 (design §1, §15.74, §15.80)
+
+A goal can already land as several PRs: one project lead, one spec, several
+deliverables in dependency order. What a run cannot do is wait for the world
+to move between them. A bug fix that needs one PR merged and deployed, a
+backfill run to completion, and then a second PR that assumes the backfill,
+has gates the run cannot see past. The principal drove one such fix by hand
+in the week of 2026-09-01: merge, deploy, watch the deploy land, watch the
+Datadog monitors, then start the next PR.
+
+Let a gate exist, and keep the decision with the principal. Three rules:
+
+- A gate is opt-in. With no gate stated, a goal runs as it does today. The
+  lead never adds one on its own, and never skips one it was given.
+- The lead flags, the principal decides. At intake, when a goal looks like
+  more than one PR, or names a migration or a backfill, the lead says so in
+  its batch and asks whether the principal wants a gate between the stages.
+  The answer, typed in the pane, states each gate: the deploy landing, the
+  monitors to watch, the bake window.
+- A gate is a written instruction applied between stages. After each PR the
+  lead holds, watches what the principal named, reports what it saw as one
+  push, and waits for the principal's go before the next stage starts. A
+  merge to the target repo stays the principal's step.
+
+Design questions the ticket must settle, in `docs/design.md` first: whether
+a gated goal is one portfolio item with stages or one item per stage with a
+dependency between items; what an item waiting on a gate is called in
+`portfolio.json` (a new state beside `blocked`, or `blocked` with a reason);
+how the lead reads deploy and monitor state, which sit outside every
+checkout, and whether each source is an `Instruments:` line in the charter
+(design §6.4) or a new field; and what the lead does when a monitor is not
+green — report and hold is the floor. Keep the first cut small: one gate
+shape, checked by the lead, cleared by the principal's message. The lead
+splitting a brief into stages on its own is out of scope.
+
+Done when: a goal handed with two stages and a gate between them reaches two
+draft PRs, the lead holds after the first until the principal clears the
+gate, the portfolio shows the hold and the clearance, and a goal handed with
+no gate runs unchanged. Record what the run showed in design §15.
+
+Read first: design §1, §6.4, §15.74, §15.79, §15.80; `skills/lead/SKILL.md`
+"Triage every item by size" and "Batch the rest into one message";
+`record-format.md` "The portfolio record"; `autonomy-contract.md`.

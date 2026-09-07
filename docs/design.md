@@ -1128,7 +1128,7 @@ is how often it fires when no crew run is happening.
 | Hook | Fires | Job | Stage |
 |---|---|---|---|
 | `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Was to exit 2 and reject an IC that idles with no report | **cut** — the project lead does this by message (below, §15.29) |
-| `SessionEnd` | once per session; it exits at once on a machine with no `crew/` directory, and on one that has it, reads a few small JSON files and returns | **Writes only.** Marks the run interrupted in `state.json` and lists its worktrees as orphaned, and marks a dead lead's portfolio interrupted (§15.74e). Deletes nothing. | **built** — `hooks/session-end.py` (§15.38) |
+| `SessionEnd` | once per session; it exits at once on a machine with no `crew/` directory, and on one that has it, reads a few small JSON files and returns | Marks the run interrupted in `state.json` and lists its worktrees as orphaned, and marks a dead lead's portfolio interrupted (§15.74e). Deletes nothing. Then, and only when a run under a portfolio went interrupted, it sends the lead one line on the cross-session inbox socket, so an idle lead gets a turn (§15.84). | **built** — `hooks/session-end.py` (§15.38, §15.84) |
 | `PreCompact` | once per compaction, in any session; same guard and cost as `SessionEnd` | **Writes only.** Appends the session id and trigger to `run.compactions` when the session belongs to a live run, so the project lead learns that an IC lost the context it planned in (§15.50), and to `lead.compactions` when it belongs to a live portfolio (§15.74e). | **built** — `hooks/pre-compact.py`; not yet observed firing for an in-process teammate (T19) |
 | `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard — non-git commands only; a `cd` before git is denied (§15 item 23b) | **deferred** |
 | `PreToolUse` on `Agent` | every agent spawn | Provision a worktree at spawn time | **not needed** — the project lead does this itself |
@@ -5799,3 +5799,112 @@ Deliberately different:
     about three minutes from dispatch to PR. The lead's own seat was $7.69 at
     close over a three-item portfolio — two tasks and a goal — so the tasks'
     share of that is not separable.
+
+84. **`SessionEnd` wakes the lead — T44.** §15.80e is the gap this closes. In
+    T9's run the hook marked goal B's run `interrupted` within seconds of the
+    kill and told nobody. The lead was idle, and an idle session has no next
+    turn, so it learned of the death ten minutes later, when goal A reported
+    and gave it one. A portfolio whose other items are slow, or whose only
+    item is the dead one, gets no such turn at all, and the dead run waits for
+    the human. The hook now sends.
+
+    **Proved 2026-09-06.** A Fable lead at high effort held portfolio
+    `lead-2026-09-06-99a1` under `~/.claude/crew-b3`, session `525a6771`, on an
+    integration checkout of T46, T48 and T44 over `b48523c`. The portfolio held
+    one goal and two tasks. `tmux kill-window` killed the goal's project-lead
+    session `crew-pl-word-count-decode-query-a3e8` at 01:44:07.4 UTC, with the
+    package in flight. The record went `interrupted`, and the lead's next turn
+    started at 01:44:07 — under one second after the kill — on the hook's own
+    line. T9's ten minutes becomes about one second. With no human turn the
+    lead called `ListAgents` at 01:44:10, read the record, relaunched the
+    session under the same name and the same record root, and at 01:45:01 sent
+    the resume command the message named, 54 seconds after the kill. The
+    resumed run reconciled, finished with two session ids and $10.29, opened
+    fixture PR #26, and the lead set the item `done` at 01:58.
+
+    The run settled three details. The pane renders the line as "Another
+    Claude session sent a message:", with the harness's standard peer-message
+    caveat and no `from-name`, because the hook sets no `from` (b above).
+    Nothing else got a turn: the only other live session was the one driving
+    the experiment, and it received nothing. And the hook fired for the goal's
+    session alone — the two tasks ran inside the lead, so they have no session
+    to lose and no run record to mark. The message carries two different names
+    for one item, the item id `word-count-decode-query-a3e8` and the goal slug
+    `word-count-decode-query-bf48`, and the lead sent the slug the message put
+    in the command.
+
+    a. **A field the lead polls is not an answer, so the hook sends.** The
+       ticket named two candidates. Polling needs a turn to poll in, and the
+       missing turn is the whole failure — a polled field only moves the
+       question to "what wakes the lead to read it". Nothing else on the
+       machine fires when a project-lead session dies. So `SessionEnd` is the
+       one process that knows, and it has to carry the news itself.
+
+    b. **What a hook can send with.** `SendMessage` is a tool, and a hook has
+       no tools. What it has is the same channel underneath: the per-session
+       inbox socket at `/tmp/cc-socks/<pid>.sock` that §15.72c's envelope
+       names. The socket takes newline-delimited JSON. One frame —
+       `{"type": "user", "session_id": ..., "priority": "next", "message":
+       {"content": ...}}` — reaches the session as a user turn. Read from
+       Claude Code 2.1.263. The `claude` CLI has no send verb, and no
+       documented API covers this, so the frame is a shape crew reads from the
+       harness rather than one the harness promises. That is the risk this
+       carries, and the fail-open rules below are what bound it.
+
+    c. **No record holds an address, and none should.** A socket is named for
+       a process id. §15.72f already decided that a record stores a session
+       *name*, because a socket path dies with its process, and a hook cannot
+       call `ListAgents` to resolve a name. The way out is the receiver's own
+       filter: a frame carrying a `session_id` that does not match the session
+       that reads it is dropped before anything sees it. So the hook writes
+       one line to every socket in the namespace and puts the lead's session
+       id in it, from `lead.session_ids` in the portfolio. Only the lead
+       accepts it. Every other session drops it and gives nobody a turn. A
+       broadcast with an exact address inside it needs no address book.
+
+    d. **Fail open, in four rules.** The hook runs in every session on the
+       machine, so the send may never cost a write and may never hang. It
+       writes the record first and sends second. It opens no socket unless it
+       just moved a run from live to `interrupted`, and unless that run sits
+       under a portfolio whose lead is `active` — so a session with no crew
+       run touches nothing. Each connect and write holds a 0.25 second
+       timeout, the whole send holds a 2 second budget, and at most 256
+       sockets are tried. Every failure is silent, as the rest of the hook
+       already is.
+
+       The namespace is where Claude Code binds: `XDG_RUNTIME_DIR`, then
+       `CLAUDE_CODE_TMPDIR`, then `/tmp`, each with `cc-socks/<pid>.sock`
+       under it. The hook reads both variables from the environment it already
+       runs in, and it also checks the other namespaces Claude Code accepts. A
+       socket named for a process that has exited is skipped, because a
+       crashed session leaves its file behind for good.
+
+    e. **What the seeded test proves, and what it cannot.** The record is at
+       `~/.claude/crew-t44/`, one portfolio with one goal item, and the
+       receivers are fake sockets: one that reads, one that accepts and never
+       reads, one stale file with no listener, and one path that does not
+       exist. Thirty-one checks pass, on Python 3.13 and on macOS's own 3.9.
+       The run's record goes `interrupted` and
+       its worktree `orphaned`; the frame carries the lead's newest session id
+       and names the item, the record and the `--resume` command; a second
+       end, a terminal run, another session's end, a portfolio-less run and a
+       dead lead each wake nobody; and unreachable sockets, a `socket_paths`
+       that raises, and a receiver that never reads all leave the write intact
+       in under 10 milliseconds. What no seeded test can prove is that a real
+       session accepts the frame and turns it into a turn. The live run above
+       is what showed that.
+
+    f. **The review caught the two silent drops.** A high-effort review of the
+       branch found that the first draft globbed `cc-socks*` directly under
+       four fixed parents. Those four are Claude Code's *reply-address*
+       allowlist, not its bind list, so a machine with `XDG_RUNTIME_DIR` or
+       `CLAUDE_CODE_TMPDIR` set — which the CLI itself asks for when the
+       socket path runs long — kept its inbox somewhere the hook never looked.
+       The same review found the 32-socket cap truncating a list sorted by
+       filename, which is the process id as text: `10234.sock` sorts before
+       `9987.sock`, so enough stale files hide the live lead. Both bugs drop
+       the wake and look exactly like a healthy send, which is the shape to
+       watch for here. Every failure in this path is silent by design, so a
+       seeded test that only proves the happy path proves very little. The
+       fixes are the environment variables above, the liveness check, and a
+       cap that no longer decides anything.

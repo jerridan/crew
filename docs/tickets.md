@@ -1793,7 +1793,7 @@ no `spend.budget` key.
 
 ## T44 — Wake the lead when a project lead dies
 
-Status: open
+Status: done
 Depends on: T9
 Stage: 7 (design §15.80e)
 
@@ -1817,6 +1817,15 @@ wake it. Record what the run showed in design §15.
 
 Read first: design §15.80e, §15.21, §15.38, §13.1; `hooks/session-end.py`;
 `skills/lead/references/session-launch.md` "Resuming a dead one".
+
+Landed 2026-09-06 as the send in `hooks/session-end.py`, the wake paragraph in
+`session-launch.md`, and design §15.84. The hook writes one JSON line on every
+cross-session inbox socket, and the lead's session id inside the line is what
+makes the other sessions drop it. A seeded record at `~/.claude/crew-t44/` and
+four fake receivers prove the path selection and the fail-open rules. The live
+kill ran the same day: the lead's next turn started under one second after the
+kill, and it relaunched and resumed the run 54 seconds later with no human
+turn.
 
 ## T45 — Integration defects from the 2026-09-05 batch
 

@@ -22,7 +22,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `skills/lead/SKILL.md` | the `/crew:lead` entry point — the portfolio, the charters, the size triage, the escalations and the ledger | its skill trigger |
 | `skills/lead/references/session-launch.md` | launching, addressing, steering and resuming one project-lead session | the lead |
 | `skills/lead/scripts/*.py` | `crew-portfolio.py` writes one `portfolio.json` field; `lead-spend.py` prices the lead's own sessions into `lead.spend` | the lead, from Bash |
-| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run or a dead lead interrupted; `PreCompact` logs a compaction into the run and into the portfolio | the plugin loader, in every session |
+| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run or a dead lead interrupted, then wakes the lead above a dead run by cross-session message; `PreCompact` logs a compaction into the run and into the portfolio | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |

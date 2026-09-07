@@ -1890,9 +1890,9 @@ Read first: design §15.79, §15.81, §15.57 (the catch-rate method);
 
 ## T47 — Probe: a message reaches a lead mid-task
 
-Status: open
+Status: done
 Depends on: T39
-Stage: 7 (design §15.72i, §15.79j)
+Stage: 7 (design §15.72i, §15.79j, §15.85)
 
 `skills/lead/SKILL.md` says every lead turn ends quickly, so that the next
 item can reach it: a message is delivered only when a session is idle
@@ -1914,6 +1914,9 @@ Done when: design §15 holds what a mid-task message did, and the turn rule in
 
 Read first: design §15.72i, §15.79j, §15.80; `skills/lead/SKILL.md` "A task
 runs under you"; `session-launch.md` "Steering a live session".
+
+The probe found no rule to change: both channels reached the lead, and the
+lead had already ended its turn at the dispatch (§15.85).
 
 ## T48 — A task may edit a registration line in a shared file
 

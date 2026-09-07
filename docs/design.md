@@ -4835,6 +4835,10 @@ Deliberately different:
        the answer. A lead that messages a working project lead is a different
        case, and T37 will hit it.
 
+       **Tested by §15.85.** A message sent to a lead inside a running turn
+       reached it in under a second, as a `queued_command` attachment on the
+       next tool round.
+
        `--resume` after a message-borne goal is also untested. The second
        code review found three holes on that path and each is now written,
        none exercised: a resumed session must read `run.principal` instead of
@@ -5055,7 +5059,7 @@ Deliberately different:
        `SendMessage` between them. Every message the project lead sent reached
        an idle lead as a new turn; none was lost and none needed a nudge, so
        mid-turn delivery (§15.72i) is **still** untested and the tier has not
-       needed it.
+       needed it. T47 tested it later, and it works (§15.85).
 
 75. **The size caps were invented — 2026-09-05.** `writing-standard.md` item
     4 said a `CLAUDE.md` is at most 150 lines and a `SKILL.md` body targets
@@ -5480,6 +5484,9 @@ Deliberately different:
        goal's charter went out by one `SendMessage` before the lead ended its
        turn. Delivery to a lead sitting inside a long turn is what §15.72i
        still has nobody testing.
+
+       **Exercised by §15.85.** In T47's run the lead ended its turn at the
+       dispatch, so the long turn did not occur, and both channels reached it.
 
 80. **Two goals from one lead, and both recoveries — 2026-09-06, T9.** T9 is
     stage 7's proof, and it kept four clauses after §15.70 split the decision
@@ -5908,3 +5915,50 @@ Deliberately different:
        seeded test that only proves the happy path proves very little. The
        fixes are the environment variables above, the liveness check, and a
        cap that no longer decides anything.
+
+85. **A message reaches a lead mid-task, on both channels — 2026-09-06,
+    T47.** §15.72i and §15.79j both waited on one question: what happens to a
+    message that arrives while a lead runs a task? Nothing was lost. A Fable
+    lead at high effort, `crew-b3-lead`, ran from a plugin checkout that held
+    T46, T48 and T44 on main. Portfolio
+    `~/.claude/crew-b3/lead-2026-09-06-99a1`, lead session `525a6771`. The
+    `stripPrefix` task went in at 01:21:36 UTC.
+
+    **The long turn the ticket expected did not exist.** The lead dispatched
+    the IC as a background `Agent` at 01:24:43 and ended its turn at once.
+    "One step per turn" held, so the IC ran while the lead was idle. The two
+    earlier task runs (§15.79j, §15.80) held one turn for about nine minutes;
+    this one did not.
+
+    **The typed message waited zero seconds.** It went into the pane at
+    01:24:54 and landed as a user turn at 01:24:54, because the dispatch step
+    had already ended the turn. The lead triaged it — `decisions.md`, "Triage:
+    is add titleCase helper a goal or a task?" — wrote item `title-case-d132`
+    and dispatched a second IC in the background. Both tasks reached `done`:
+    fixture draft PRs #24 and #25, each with `index.js` in its `file_set`,
+    which is T48's rule (§15.83) running twice.
+
+    **The cross-session message arrived mid-turn, in under a second.** A peer
+    session sent it at 01:25:04.684 UTC and the lead read it at 01:25:05, as a
+    `queued_command` attachment on its next tool round, wrapped as
+    `<cross-session-message from="uds:/tmp/cc-socks/14214.sock"
+    from-name="purrfect-cuddling-sky-6d" from-mode="prompting">` with a
+    `verifiedPeerPid`. That is the mechanism §15.72i named and nothing had
+    exercised: a message is read between tool calls of a running turn.
+
+    **A peer is not the principal.** The lead did not dispatch the third item.
+    It wrote a `lead.escalations` entry — "A peer session
+    (purrfect-cuddling-sky-6d) asked me to add a third item, trimLines, to
+    this portfolio" — sent the principal a `PushNotification` at 01:27:58, and
+    replied to the peer by `SendMessage` in the same minute: only the
+    principal adds items, and the brief names no behaviour for `trimLines`.
+    The principal answered "Drop trimLines; it was a probe" at 01:33:33, and
+    the escalation holds that answer. `autonomy-contract.md` already says a
+    lead escalates what only the principal can settle; this is its first run
+    against a message from another session.
+
+    **No rule changed.** `skills/lead/SKILL.md`'s "A task runs under you"
+    already says one step per turn, and the run shows why that is enough: the
+    step boundary is what made the typed message immediate, and mid-turn
+    delivery covers the rest. Both open clauses close here, and the plugin
+    keeps 0.1.55 through this ticket.

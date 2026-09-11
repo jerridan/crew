@@ -8,15 +8,18 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
-counts, the review catch rate, and the steps a band let a run or a task skip.
-Design §8 asks for these numbers to turn the band rubric from a guess into a
-measurement. No figure here gates anything.
+counts, the review catch rate, and the steps a band or the light path let a run
+skip. Design §8 asks for these numbers to turn the band rubric from a guess
+into a measurement. No figure here gates anything.
 
-A task has no run record, so its own package review sits under
-`runs/<item-id>/reviews/` and its verdict in `items[].task.review_verdict`
-(`record-format.md`, "The task record"). The review counts, the catch rate and
-the "Package reviews by band" table fold a task's review in beside a run's,
-the same fold T45 made for `steps_skipped` (§15.82).
+One record shape is read, and only one: a run record with a `state.json`
+(§15.88). Every portfolio item has one, because the lead hands every item to a
+project-lead session. A portfolio written before that rule can still hold an
+`items[].task` object beside its run records. This script **ignores it** — it
+never errors on one, and it counts none of its reviews or skips. Ignoring is
+what keeps one code path: a second shape is what T45's six defects and this
+script's twin readers came from. One skip line per such portfolio says the
+counts read low for it.
 
 A lead's portfolio gets a row of its own: what the lead's sessions cost, from
 `lead.spend` (`skills/lead/scripts/lead-spend.py` writes it), beside what the
@@ -157,33 +160,26 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
     return sum(t["usd"] for t in totals.values())
 
 
-SKIPPABLE_STEPS = ["plan-gate", "deliverable-review"]
-# A task is one package with no deliverable, so it has no deliverable review
-# to skip (`record-format.md`, `band-rubric.md`).
-TASK_SKIPPABLE_STEPS = ["plan-gate"]
+# `spec-critic` joins the two a band can skip: the light path writes no
+# `spec.md`, so the critic has nothing to read (`band-rubric.md`, §15.88).
+SKIPPABLE_STEPS = ["plan-gate", "deliverable-review", "spec-critic"]
 
 
-def read_steps_skipped(name: str, holder: dict, skips: list, allowed: list | None = None) -> dict:
-    """Count the steps a band let this run or task skip, by step name.
+def read_steps_skipped(name: str, run: dict, skips: list) -> dict:
+    """Count the steps a band or the light path let this run skip, by step name.
 
     `steps_skipped` is the only field that says a missing review file was
     missing by rule (`band-rubric.md`, §15.77). Without it the catch rate above
-    reads a skipped review as a review that never ran. `holder` is a run's
-    `run` object or a task's `items[].task` object; both carry the field in the
-    same shape (`record-format.md`).
-
-    `allowed` is the shorter list a task takes: one package and no deliverable,
-    so `deliverable-review` is not a step a task can skip. An entry outside the
-    list is reported, never counted.
+    reads a skipped review as a review that never ran. An entry naming a step
+    outside the list is reported, never counted.
     """
-    allowed = allowed if allowed is not None else SKIPPABLE_STEPS
     counts = {step: 0 for step in SKIPPABLE_STEPS}
-    for entry in as_list(holder.get("steps_skipped")):
+    for entry in as_list(run.get("steps_skipped")):
         step = entry.get("step") if isinstance(entry, dict) else None
-        if step in allowed:
+        if step in SKIPPABLE_STEPS:
             counts[step] += 1
         else:
-            skips.append(f"{name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(allowed)}")
+            skips.append(f"{name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(SKIPPABLE_STEPS)}")
     return counts
 
 
@@ -211,8 +207,7 @@ def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
 
     `acted` is true when the verdict sent the artifact back for another
     round; `known` is true when it is one of the eight the review agents
-    name. Shared by `read_reviews`, reading a review file's own line, and
-    `read_task_review`, reading the same words from `task.review_verdict`.
+    name.
     """
     acted = bool(verdict and verdict.startswith(ACTION_VERDICTS))
     known = bool(verdict and verdict.startswith(ACTION_VERDICTS + CLEAN_VERDICTS))
@@ -228,10 +223,7 @@ def read_reviews(record: Path, bands: dict, skips: list, label: str | None = Non
     the agents name, is counted as a review and as `unverdicted`, never as a
     catch, and it gets a skip line that says which of the two it is.
 
-    `label` names `record` in a skip line, and defaults to `record.name`. A
-    run's own record dir is already unique under the root, but a task's
-    `runs/<item-id>/` is not — two portfolios can dispatch the same item id —
-    so `read_task_review` passes its own portfolio-qualified name.
+    `label` names `record` in a skip line, and defaults to `record.name`.
     """
     label = label if label is not None else record.name
     counts = {name: 0 for name, _ in REVIEW_KINDS}
@@ -311,47 +303,6 @@ ANSWER_LETTER = re.compile(r"^\s*([A-Z])\s*[-—.]\s*(.*)$", re.S)
 # `Prior:` and `Models:` shapes, from `record-format.md`'s council entry.
 PRIOR_CONFIDENCE = re.compile(r"\s*\((?:high|medium|low)\)\s*$", re.I)
 ONE_ADVOCATE = re.compile(r"^\s*1\s+advocate\b", re.I)
-
-
-def read_task_review(child: Path, item: dict, skips: list) -> dict:
-    """One task's package review, as a `catch_by_band`-shaped dict.
-
-    Empty for a goal item, or for a task with no review yet. `runs/<item-id>/`
-    holds the same `reviews/` shape a run's own record dir does
-    (`record-format.md`, "The task record"), so a directory that exists is
-    read with `read_reviews` unchanged — the band comes from `task.band`,
-    because a task has no `state.json` to read a package's band from.
-
-    `task.review_verdict` is the fallback, for a record where the directory is
-    missing or was never written: an older record, or one trimmed by hand. It
-    holds only the review's last verdict, so a task read this way always
-    counts as one review, never as the several rounds a `reviews/` directory
-    can hold.
-    """
-    task = item.get("task") if isinstance(item, dict) else None
-    if not isinstance(task, dict):
-        return {}
-    item_id = item.get("id")
-    name = f"{child.name}/{item_id}"
-    band = task.get("band")
-    band = band if band in BANDS else "unknown"
-    record = child / "runs" / str(item_id)
-    if (record / "reviews").is_dir():
-        _, _, catch_by_band = read_reviews(record, {item_id: band}, skips, label=name)
-        return catch_by_band
-    verdict = task.get("review_verdict")
-    if not isinstance(verdict, str) or not verdict.strip():
-        return {}
-    verdict = verdict.strip().lower()
-    acted, known = classify_verdict(verdict)
-    counts = blank_catch()
-    counts["reviews"] = 1
-    if known:
-        counts["acted"] = int(acted)
-    else:
-        counts["unverdicted"] = 1
-        skips.append(f"{name}: no catch — its review_verdict {verdict!r} is none of the eight the agents name")
-    return {band: counts}
 
 
 def field_text(entry: str, name: str) -> str | None:
@@ -596,13 +547,13 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     # checkout. `runs usd` is the priced runs under this portfolio only, so a
     # portfolio with an unpriced run reads low and the Skipped block names it.
     # The lead's share was 20%, 30% and 47% of the three portfolios
-    # measured, and it thins as the portfolio grows (§15.80h). A
-    # portfolio holding tasks reads higher: a task's IC and reviewer run
-    # under the lead's own session, so `lead usd` covers them and no run
-    # column holds them (§15.76). The
-    # two columns add up only while the lead ran outside every item's
-    # checkout, which `skills/lead/SKILL.md` requires and `lead-spend.py`
-    # checks; inside one, that item's own price already holds the lead.
+    # measured, and it thins as the portfolio grows (§15.80h). A portfolio
+    # written before §15.88 can read higher: a lead-run task's IC and reviewer
+    # ran under the lead's own session, so `lead usd` covers them and no run
+    # column holds them (§15.76). The two columns add up only while the lead
+    # ran outside every item's checkout, which `skills/lead/SKILL.md` requires
+    # and `lead-spend.py` checks; inside one, that item's own price already
+    # holds the lead.
     if portfolios:
         print("\nLeads (the lead's own sessions against the runs it drove)\n")
         rows = []
@@ -646,24 +597,10 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     ]
     print(table(["outcome", "count"], rows))
 
-    # A task's package review lives under `runs/<item-id>/reviews/`, or in
-    # `task.review_verdict` alone, never in a run record, so it is counted
-    # here as "package review" and nowhere else in this table (§15.82).
-    task_catch = blank_catch()
-    for p in portfolios:
-        for counts in p["catch_by_band"].values():
-            add_catch(task_catch, counts)
-    task_reviews, task_acted, task_unverdicted = task_catch["reviews"], task_catch["acted"], task_catch["unverdicted"]
-
     print("\nReviews\n")
     kinds = [name for name, _ in REVIEW_KINDS] + ["other"]
-    rows = []
-    for kind in kinds:
-        count = sum(r["reviews"][kind] for r in records)
-        if kind == "package review":
-            count += task_reviews
-        rows.append([kind, count])
-    rows.append(["total", sum(sum(r["reviews"].values()) for r in records) + task_reviews])
+    rows = [[kind, sum(r["reviews"][kind] for r in records)] for kind in kinds]
+    rows.append(["total", sum(sum(r["reviews"].values()) for r in records)])
     print(table(["kind", "count"], rows))
 
     # A review "acted" when its verdict sent the artifact back for another
@@ -675,30 +612,17 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
         total = sum(r["catch"][kind]["reviews"] for r in records)
         acted = sum(r["catch"][kind]["acted"] for r in records)
         blank = sum(r["catch"][kind]["unverdicted"] for r in records)
-        if kind == "package review":
-            total += task_reviews
-            acted += task_acted
-            blank += task_unverdicted
         rows.append([kind, total, acted, rate(acted, total), blank])
     print(table(["kind", "reviews", "acted", "rate", "unscored"], rows))
 
     # A skipped review leaves no file, so it never reaches the catch rate
-    # above. This table is what says the absence was by rule (§15.77). A task
-    # writes its skips into the portfolio and has no run record, so both
-    # columns are needed to see every skip (§15.81).
+    # above. This table is what says the absence was by rule (§15.77, §15.88).
     print("\nSteps skipped by rule\n")
-    rows = []
-    for step in SKIPPABLE_STEPS:
-        in_runs = sum(r["steps_skipped"][step] for r in records)
-        in_tasks = sum(p["steps_skipped"][step] for p in portfolios)
-        rows.append([step, in_runs, in_tasks, in_runs + in_tasks])
-    print(table(["step", "in runs", "in tasks", "total"], rows))
+    rows = [[step, sum(r["steps_skipped"][step] for r in records)] for step in SKIPPABLE_STEPS]
+    print(table(["step", "in runs"], rows))
 
-    # A task's review counts here too, by `task.band` — the only place its
-    # band lives, since a task has no `state.json` package to read it from
-    # (§15.82).
     print("\nPackage reviews by band\n")
-    per_band = fold_catch_by_band([r["catch_by_band"] for r in records] + [p["catch_by_band"] for p in portfolios])
+    per_band = fold_catch_by_band([r["catch_by_band"] for r in records])
     order = [b for b in BANDS if b in per_band] + [b for b in sorted(per_band) if b not in BANDS]
     rows = [[band, per_band[band]["reviews"], per_band[band]["acted"],
              rate(per_band[band]["acted"], per_band[band]["reviews"]),
@@ -755,8 +679,8 @@ def candidates(children: list[Path]) -> list[tuple[Path, Path | None]]:
     every lead-driven run invisible to this report. The second element is the
     portfolio directory, or `None` for a run nobody led.
 
-    `runs/<item-id>/checkout/` is a task's worktree, not a record
-    (`record-format.md`), so a target repo that keeps a `state.json` of its own
+    `runs/<item-id>/checkout/` was a lead-run task's worktree before §15.88,
+    and is not a record, so a target repo that keeps a `state.json` of its own
     at its root would read as a run here. That one name is excluded.
     """
     found = []
@@ -773,6 +697,9 @@ def read_portfolios(children: list[Path], skips: list) -> list[dict]:
     """One entry per portfolio: what the lead itself cost, and its item count.
 
     `children` is the same listing `candidates` reads — see its docstring.
+    Every item's own work is a run record under `runs/<item-id>/<slug>/`, which
+    `candidates` finds and `read_record` prices, so nothing about an item's
+    packages, reviews or skipped steps is read here (§15.88).
 
     `lead.spend` is written by `skills/lead/scripts/lead-spend.py` when an
     item closes. A portfolio with none is still reported, with a skip line
@@ -804,24 +731,19 @@ def read_portfolios(children: list[Path], skips: list) -> list[dict]:
         items = [i for i in listed if isinstance(i, dict)]
         if len(items) != len(listed):
             skips.append(f"{child.name}: {len(listed) - len(items)} item entries dropped — they are not objects")
-        # A task has no `state.json`, so `items[].task.steps_skipped` is the
-        # only place its skips are written (`record-format.md`).
-        task_skips = {step: 0 for step in SKIPPABLE_STEPS}
-        for item in items:
-            task = item.get("task")
-            if not isinstance(task, dict):
-                continue
-            name = f"{child.name}/{item.get('id')}"
-            for step, count in read_steps_skipped(name, task, skips, TASK_SKIPPABLE_STEPS).items():
-                task_skips[step] += count
-        task_catch_by_band = fold_catch_by_band(read_task_review(child, item, skips) for item in items)
+        # A portfolio written before §15.88 can hold an `items[].task` object
+        # from the days the lead ran a task itself. Nothing reads it now, so
+        # that item's reviews and skipped steps reach no table here. One line
+        # says so, rather than letting the counts read low in silence.
+        pre_t51 = sum(1 for i in items if isinstance(i.get("task"), dict))
+        if pre_t51:
+            skips.append(f"{child.name}: {pre_t51} item(s) hold a pre-T51 items[].task object — "
+                         "their reviews and skipped steps are not counted (§15.88)")
         found.append({
             "portfolio": child.name,
             "state": lead.get("state"),
             "items": len(items),
             "done": sum(1 for i in items if i.get("state") == "done"),
-            "steps_skipped": task_skips,
-            "catch_by_band": task_catch_by_band,
             "usd": usd,
         })
     return found

@@ -1,6 +1,6 @@
 ---
 name: project-lead
-description: Take one goal to a reviewable draft PR without stopping for approval. Use when handing off a whole goal rather than a single task. Triggers on "run this as a project", "hand this to crew", "take this to a draft PR".
+description: Take one goal to a reviewable draft PR without stopping for approval. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew", "take this to a draft PR".
 ---
 
 # Project lead
@@ -27,7 +27,7 @@ agent is absolute: its cwd is not yours.
 | `writing-standard.md` | any instruction file you draft | before you draft one |
 | `ic-contract.md` | the IC's rules | you do not follow it |
 | `investigation-path.md` | the loop from a symptom to a diagnosis | when the goal names a symptom |
-| `simple-path.md` | the rest of the run for one package | when the shape is one package |
+| `simple-path.md` | the rest of the run for one package, and the light path for a small one | at "Size the work", and again when the shape is one package |
 | `full-path.md` | the rest of the run for more than one | when the shape is more than one |
 
 ## Before anything
@@ -105,6 +105,28 @@ your own context.
 On the investigation path, read `investigation-path.md` now and run its phases.
 It sends you back to "Write the spec", or it ends the run itself.
 
+## Size the work
+
+The scout's answers say how big the change is. This is the one step that sizes
+it, and only you can: the lead above you reads no code (design §15.88). Ask
+four questions, and answer each from the scout's report and `charter.md`:
+
+1. Is the change one package — one file set one IC can hold?
+2. Is the charter's acceptance criterion the whole specification: runnable as
+   a command, with nothing in it left to interpret?
+3. Does `band-rubric.md` band the work `light` or `standard`?
+4. Is every preference question already settled by the charter or by this
+   repo's own instruction files?
+
+**Four yeses take the light path.** Read `simple-path.md`'s "The light path".
+It owns the rest of the run: no `spec.md`, no spec critic, one IC and one
+package review. Write the choice as the second `decisions.md` entry, on the
+precedent route, with the answer that decided it.
+
+**Any no goes on down this file**, to "Write the spec". A no is the safe
+answer: the spec costs a few dispatches, and work that needed one and did not
+get one costs the run.
+
 ## Write the spec
 
 `spec.md` is done when it carries the requirements, an acceptance criterion per
@@ -132,9 +154,10 @@ there is something to adjudicate.
 `Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.
 
-**This review runs on every run.** `band-rubric.md` says which later steps a
+**This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,
-so no package has a band.
+so no package has a band. A light-path run writes no spec, which is a
+different thing and the same file states it.
 
 **Every review in this run is adjudicated the same way**, at every stage:
 restate each finding in your own words, verify it against the repo, and push
@@ -153,7 +176,8 @@ rule.
 | One package, short enough to run unattended | Read `references/simple-path.md`. It owns the rest of the run. |
 | More than one package, or work long enough to need steering | Read `references/full-path.md`. It owns the rest of the run. |
 
-Size adds no third row. A one-line change is one package on the simple path,
-dispatched like any other. You edit a file in the target repo at "Integrate",
-where the shared files live, and at the fix-round breaker your path file names
-(design §9.3, §10). Nowhere else.
+Size adds no third row here. A run that reached this table did not take the
+light path at "Size the work", and a one-line change is one package on the
+simple path, dispatched like any other. You edit a file in the target repo at
+"Integrate", where the shared files live, and at the fix-round breaker your
+path file names (design §9.3, §10). Nowhere else.

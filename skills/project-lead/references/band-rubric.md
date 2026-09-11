@@ -79,10 +79,12 @@ check the bounded edit used to skip (design §15.73).
 that the plan changes no `produces` signature. A plan gate that read every plan
 in full cost a run a round trip per package for no finding (design §15.50).
 
-**The spec critic never skips.** The run writes `spec.md` before the split, so
-no package has a band yet when the critic reads it (`SKILL.md`'s order). It also
-earns its cost: it sent a spec back on 9 of 27 reviews across the records, and
-on 1 of the 3 that ran over a `light` package (design §15.77).
+**The spec critic never skips a spec.** The run writes `spec.md` before the
+split, so no package has a band yet when the critic reads it (`SKILL.md`'s
+order). It also earns its cost: it sent a spec back on 9 of 27 reviews across
+the records, and on 1 of the 3 that ran over a `light` package (design §15.77).
+No band takes this step away. Only the light path does, by writing no spec at
+all — see the section below.
 
 **A skipped plan gate keeps the plan.** The IC still writes `plans/<id>.md`, and
 it does not stop for a go-ahead, so you dispatch it once instead of twice. Say
@@ -98,11 +100,32 @@ package review means the diff already had a reader. No shared-file edit rules
 out the one defect class this reviewer caught that the package reviewer could
 not reach (design §15.77). Fail any one condition and the review runs.
 
-**Record every skip.** A run writes it to `state.json`'s `run.steps_skipped`.
-A task under the lead has no `state.json`, so it writes to the portfolio's
-`items[].task.steps_skipped` instead; the entry keeps the same five keys
-(`record-format.md` owns both fields). A step with no review file and no entry
-in the one that applies reads as a step that failed to run.
+## What the light path skips
+
+The light path is a path, not a band, and it takes two steps away at every
+band it carries (design §15.88). `simple-path.md`'s "The light path" states
+when a run takes it; this file states what it drops.
+
+| Step | On the light path |
+|---|---|
+| spec critic | skipped — the run writes no `spec.md`, so the critic has nothing to read |
+| plan gate | the table above decides it, by band |
+| package review | runs |
+| deliverable review | skipped — one package, no `split.md`, and no shared file you edited yourself |
+
+**The package review is what makes the rest safe to drop.** It is the one
+reader of the diff, and it runs at every band and on every path. Its fix rounds
+are `simple-path.md`'s, unchanged.
+
+**The deliverable review's three conditions all hold here by construction.**
+One package, an accepted package review, and no shared file you edited at
+"Integrate" — the light path's shared file sits in the package's file set and
+the IC edits it. So the skip is the rule and not a judgment, and it still takes
+its record entry below.
+
+**Record every skip.** A run writes it to `state.json`'s `run.steps_skipped`
+(`record-format.md` owns the field). A step with no review file and no entry
+there reads as a step that failed to run.
 
 ## Critics and reviewers take their own model
 

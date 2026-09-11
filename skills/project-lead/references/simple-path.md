@@ -2,6 +2,9 @@
 
 This file owns the run for one deliverable with one package (design §9.1), from
 the point where `SKILL.md` has the charter, the record, the spec and the shape.
+It owns the **light path** as well, in the section below: the same run for a
+small item, entered from `SKILL.md`'s "Size the work" with no spec (design
+§15.88).
 
 The full path is `full-path.md`. Nothing here applies to it, except the three
 rules it borrows: "Create the branch", "Integrate" and "End the run".
@@ -13,6 +16,52 @@ critic runs, no worktree is created and nothing merges.
 package, dispatched to an IC and reviewed like any other. You edit a file in
 the target repo at "Integrate" and nowhere else, with one exception: the
 fix-round breaker in "Fix rounds" below (design §9.1, §9.3, §10).
+
+## The light path
+
+`SKILL.md`'s "Size the work" sends a run here when the change is one package,
+the charter's criterion is the whole specification, the band is `light` or
+`standard`, and no preference question is open. The steps below run in this
+order, and every one of them is a section of this file:
+
+1. "Create the branch".
+2. **Write the one package**, straight into `state.json`: `crew-record.py
+   package add` with `id`, `territory`, `band`, `file_set`,
+   `interface_contract` and `acceptance_criterion`. The criterion is the
+   charter's, word for word. Write no `split.md` — one package has nothing to
+   order, and no reader is left for that file.
+3. "Dispatch the IC".
+4. "Verify before you believe".
+5. "Review the package", then "Fix rounds".
+6. "Integrate", then "End the run".
+
+`band-rubric.md`'s "What the light path skips" owns what this path drops and
+the record write each skip takes. Read it before you skip anything.
+
+**A light-path package may name one shared file.** The repo's own instruction
+file is the test: when it marks a shared file as where a new thing is
+registered — a barrel, an `index`, a manifest — put that file in the package's
+file set, and let the IC write the one mechanical line. This path has one IC on
+one branch and merges nothing, so the conflict the shared-file ban guards
+cannot occur (design §15.83). Anything wider is not a registration line. A rule
+change in an instruction file, and README prose that states a policy, promote
+the run instead.
+
+**The cap counts shared files, never files.** `record-format.md` names what a
+shared file is: a version manifest, a lockfile, a barrel or `index` file, or
+shared config. A file outside that list goes in the file set the way any other
+file does — a README table row the repo's own history adds with every helper
+is part of adding one, and a package that leaves it out ships a PR a human
+finishes (design §15.83, §15.88).
+
+**Promote in place, and never back to the lead.** The four answers can turn out
+wrong once the IC reports, or once you read the diff's file list. Promote on
+any one of these: a second file set, an interface another package must consume,
+a preference nothing settles, or a criterion you find yourself interpreting.
+Go back to `SKILL.md`'s "Write the spec", in this same session and on this same
+branch, and leave every commit where it is. Record the promotion and its reason
+in `decisions.md`. The lead learns of it in your next report, as information
+and never as a question.
 
 ## Write the split
 

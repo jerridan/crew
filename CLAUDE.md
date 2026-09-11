@@ -16,10 +16,10 @@ code, run against a seeded record (design §15.38, §15.50).
 | `.claude-plugin/plugin.json` | plugin manifest | the plugin loader |
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
-| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the spec and the shape, then a route to one path file | its skill trigger |
+| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, then a route to one path file | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and each lead's own cost over every record | the project lead, from Bash; a person runs `crew-stats.py` |
-| `skills/lead/SKILL.md` | the `/crew:lead` entry point — the portfolio, the charters, the size triage, the escalations and the ledger | its skill trigger |
+| `skills/lead/SKILL.md` | the `/crew:lead` entry point — the portfolio, the charters, the sessions, the gates, the escalations and the ledger | its skill trigger |
 | `skills/lead/references/session-launch.md` | launching, addressing, steering and resuming one project-lead session | the lead |
 | `skills/lead/scripts/*.py` | `crew-portfolio.py` writes one `portfolio.json` field; `lead-spend.py` prices the lead's own sessions into `lead.spend` | the lead, from Bash |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run or a dead lead interrupted, then wakes the lead above a dead run by cross-session message; `PreCompact` logs a compaction into the run and into the portfolio | the plugin loader, in every session |
@@ -36,25 +36,29 @@ sits beside it, at `<record-root>/lead-<date>-<hex>/`.
 ## Build state
 
 Stages 0 through 7 are built: eight agents, ten references, both hooks, all
-three of `/crew:project-lead`'s paths, and `/crew:lead`. The
+four of `/crew:project-lead`'s paths, and `/crew:lead`. The
 **simple path** runs one package on one branch under one unnamed subagent;
 the **full path** runs several packages in worktrees under named IC teammates,
 with a split critic, a squash merge per package and `--resume` recovery. Both
 have run end to end against a real repo with a test suite. The
 **investigation path** takes a symptom to a diagnosis, then to a fix or to a
 report ending; both endings have run against that repo, and it is
-`crew:researcher`'s only caller, which no run has dispatched yet.
+`crew:researcher`'s only caller, which no run has dispatched yet. The **light
+path** is the simple path with no spec and no spec critic, chosen by the
+project lead itself after the scout. Two light-path items have run to a draft
+PR each, both at the `standard` band and both with one package review and no
+fix round (§15.88). No run has yet promoted a light-path item in place.
 
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
-item, sizes each one, launches a project-lead session for a goal and
-dispatches one IC for a task, answers what it can and batches the rest for the
-human. Its record is the portfolio, and a killed lead starts again from it.
+item, launches one project-lead session per item, answers what it can and
+batches the rest for the human. It sizes nothing — the project lead does that
+(§15.88). Its record is the portfolio, and a killed lead starts again from it.
 One goal has run through it end to end, and a lead was killed mid-portfolio
-and restarted from the record with no human turn (design §15.72, §15.74). One
-lead has taken a task and a goal to a draft PR each, the task with no
-project-lead session (§15.79). Two goals at once has run (T9, §15.80): the
-lead resumed a killed project lead with no human turn, and survived a
-compaction mid-portfolio. A goal the principal cuts into stages can carry a
+and restarted from the record with no human turn (design §15.72, §15.74). Two
+goals at once has run (T9, §15.80): the lead resumed a killed project lead
+with no human turn, and survived a compaction mid-portfolio. Three items from
+one lead has run, the second handed while the first was still going (§15.88).
+A goal the principal cuts into stages can carry a
 **gate** between them — one item per stage, and the lead holds the next stage
 until the principal's go. One two-stage goal has run through a gate end to end
 (§15.87).
@@ -78,7 +82,8 @@ Each reference owns one subject and is canonical for it:
   every other one on this list is under `skills/project-lead/` and is
   canonical for both tiers.
 - `simple-path.md` — the loop for one package: one unnamed IC subagent, one
-  branch in this checkout, no merge.
+  branch in this checkout, no merge. It also owns the **light path**, the same
+  loop for a small item with no spec.
 - `full-path.md` — the loop for more than one package: worktrees, IC
   teammates, merges, promotion and recovery.
 - `investigation-path.md` — the loop from a symptom to a diagnosis: the

@@ -1520,10 +1520,12 @@ Deliberately different:
 
     d. **An agent definition means different things by display mode.** For an
        in-process teammate the definition's body is *appended* to the default
-       system prompt; for a split-pane teammate it *replaces* it. A
-       split-pane teammate also ignores the definition's `model`, and neither
-       mode applies its `skills`. `crew:ic` is written as a whole system
-       prompt, so it is a different agent in the two modes.
+       system prompt; for a split-pane teammate it *replaces* it. **That
+       split-pane clause, and the last sentence of this item, are superseded by
+       §15.89e:** on 2.1.268 both modes append, so `crew:ic` is the same agent
+       in either one. A split-pane teammate also ignores the definition's
+       `model`, and neither mode applies its `skills`. `crew:ic` is written as
+       a whole system prompt, so it is a different agent in the two modes.
 
     e. **`CLAUDE_CODE_SUBAGENT_MODEL` outranks a spawn-time model.** The
        order is that variable, then the spawn prompt, then (in-process only)
@@ -6372,3 +6374,115 @@ Deliberately different:
        That is the reading a live run cannot replace: a path that reuses
        sections must be read against every one of them, and the run only
        exercises the branches it happens to take.
+
+89. **A project lead runs in a native iTerm2 tab — 2026-09-11, T40.**
+    `session-launch.md` opened every project-lead session with
+    `tmux new-window`, so a principal who lives in iTerm2 had to run a tmux
+    server to watch the crew. T40 asked whether the lead can open the tab itself
+    through iTerm2's Python API. It can. One goal ran end to end in a tab that
+    nobody typed in after the hand-off: record
+    `~/.claude/crew-t40-live/add-titlecase-parsequery-4cd2/`, `complete`, $9.02
+    on the status line and $8.57 by transcript, fixture draft PR
+    `jerridan/crew-fixture-string-kit#30`. The full path, two territories
+    (`src/text`, `src/url`), two `standard` packages under the IC teammates
+    `ic-text` and `ic-url`, five reviews, zero fix rounds and zero escalations.
+    Session `a29ab4bf`, named `crew-t40-pl`, Fable 5.1 at high effort, on Claude
+    Code 2.1.268 with the `iterm2` package 2.23.
+
+    The launch is one `async_create_tab` call with a custom command, and the
+    command is the same `claude` line the tmux launch already used.
+    `session-launch.md` carries it as an alternative behind `CREW_LAUNCH=iterm2`.
+    The tmux launch keeps every rule it had, and gains one line that says to
+    read the variable first. The T40 session stood in for the lead and issued
+    the launch itself; no `/crew:lead` session was in the loop.
+
+    a. **The session registers under `--name`, the same as a tmux one.** A
+       `SendMessage` to the bare name `crew-t40-pl` resolved and delivered, and
+       the project lead read the message and stayed idle as it asked. Nothing in
+       registration depends on tmux. `ListAgents` was not called directly: the
+       T40 session was a subagent, which has no such tool, so name resolution by
+       `SendMessage` is the evidence.
+
+    b. **A custom command runs no interactive shell, and that breaks the run.**
+       The first launch passed the `claude` line straight to
+       `async_create_tab`. The session came up and its first `SessionStart` hook
+       failed with `/bin/sh: node: command not found`: iTerm2 runs a custom
+       command with its own environment, and a version manager that loads from
+       `.zshrc` never runs. `node` is what the fixture's tests need, so every IC
+       would have failed on its acceptance criterion. A login shell alone does
+       not fix it — `zsh -l -c` skips `.zshrc`, because that file is for an
+       interactive shell. Wrapping the command in `/bin/zsh -ilc '...'` fixes
+       it, and a tab made from the default profile and then fed the command by
+       `async_send_text` fixes it too. The wrapper is one call, so the wrapper
+       is the rule. tmux never showed this, because the tmux server inherits its
+       environment from the interactive shell that started it.
+
+    c. **The folder-trust rule holds, and `--plugin-dir` walks past it.** A
+       session launched into an untrusted directory in a native tab stops on
+       §15.72a's dialog, exactly as it does in a tmux window, and
+       `async_send_text` can answer it with Down and Enter. But the same
+       directory, launched a second time with `--plugin-dir` added and nothing
+       else changed, showed no dialog at all: the session came up at its prompt
+       and wrote `hasTrustDialogAccepted: true` into `~/.claude.json` itself.
+       T36 saw the dialog on a launch that carried `--plugin-dir`, so this is a
+       harness change between that version and 2.1.268, not a property of
+       iTerm2. Rule 4 and its check stay as written. A rule that costs one
+       `python3 -c` is cheaper than a lead that stalls when the behaviour moves
+       back.
+
+    d. **Teammates run in-process, and the tab never splits.** The run spawned
+       `ic-text` and `ic-url` in parallel and the tab held exactly one session
+       throughout. Both ICs showed in the agents sidebar. The `it2` CLI ships
+       inside `iTerm.app` and was on the session's `PATH`, so a pane backend was
+       available and in-process still won. This confirms §15.20c from the other
+       side: in-process is the default everywhere, and a terminal that supports
+       panes does not change it.
+
+    e. **A split pane appends the agent definition, so §15.20d's split-pane row
+       is stale.** `--teammate-mode iterm2` is a hidden flag, with `auto`,
+       `tmux`, `iterm2` and `in-process` as its choices. A second tab launched
+       with it spawned one `crew:ic` teammate, and iTerm2 split that tab into
+       two sessions, so the mode works from a natively launched tab. The
+       teammate read back the start of its own system prompt:
+
+       ```
+       You are Claude Code, Anthropic's official CLI for Claude.# IC You implement code packages, test-first,
+       ```
+
+       §15.20d says a split-pane teammate's definition *replaces* the default
+       system prompt and an in-process one's is *appended*. On 2.1.268 both
+       append. `crew:ic` is therefore the same agent in both modes, and the rule
+       that agent bodies must survive either mode now costs nothing. Do not
+       delete that rule: it was right when it was written, and one probe on one
+       version is not a guarantee.
+
+    f. **Kill and resume, one for one.** `tmux kill-window -t <name>` becomes
+       `app.get_session_by_id(<id>)` and `async_close(force=True)`, on the id
+       the launch script printed. `app.get_session_by_id` returning `None` is
+       the same evidence as a name absent from `ListAgents`. A lead that lost
+       the id finds the tab again by a scan of `app.windows` → `tabs` →
+       `sessions`: Claude Code writes `--name` into each session's `autoName`
+       variable behind a status glyph, so a match on the name inside that string
+       finds it. Nothing new is stored in the record, because the name the
+       portfolio already holds is enough. Resume is the same launch command with
+       the same name and the same `CREW_RECORD_ROOT`, then the same resume
+       message.
+
+    g. **The branch was missing, and the review found it.** The first draft
+       said what `CREW_LAUNCH=iterm2` does and never told the lead to read the
+       variable. `## The launch` still gave the tmux command with no condition,
+       so a lead reading top-down would start a tmux server whatever the
+       principal had set. The branch is the first line of `## The launch` now.
+       The same review found the two iTerm2 requirements stated with no check
+       and no fallback, beside a folder-trust check in the same file that has
+       both. The section now carries an import-and-`defaults` check, and a
+       failure goes to the principal in the batch — the lead never quietly falls
+       back to tmux on a variable the principal set.
+
+    h. **What this run did not prove.** A live `/crew:lead` never issued the
+       launch, so `CREW_LAUNCH` has been read by nobody but this ticket. No tab
+       was killed and resumed, so (f) is worked out and written, not exercised.
+       The split-pane mode carried one probe teammate and no packages, so no
+       crew run has been through it. And one machine, one iTerm2 version, one
+       `zsh` login: the wrapper in (b) is right for a `.zshrc` version manager
+       and has met no other shape of environment.

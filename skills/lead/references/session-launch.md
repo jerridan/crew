@@ -50,6 +50,10 @@ question and not one per item.
 
 ## The launch
 
+**Read `CREW_LAUNCH` in your own environment first.** `iterm2` means the next
+section opens the session as a native iTerm2 tab. Any other value, and an unset
+variable, mean the tmux window below. The flags are the same either way.
+
 ```
 tmux new-window -d -n <session-name> -c <repo> 'CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id> CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false claude --name <session-name> --model fable --effort high --permission-mode auto --plugin-dir <plugin dir>'
 ```
@@ -70,6 +74,80 @@ tmux new-window -d -n <session-name> -c <repo> 'CREW_RECORD_ROOT=<portfolio-dir>
 - `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false` keeps a suggestion out of that
   session's input box, where nothing can tell it from typed text (design
   §15.47).
+
+## The launch, as an iTerm2 tab
+
+This opens each project-lead session as a tab in the principal's iTerm2 window
+and starts no tmux server. Everything else in this file holds: the same four
+rules, the same `claude` flags, the same charter message (design §15.89).
+
+**Check the two requirements before the first launch of the portfolio**, with
+the Python you are going to run the script on:
+
+```
+<python> -c 'import iterm2' && defaults read com.googlecode.iterm2 EnableAPIServer
+```
+
+The import must succeed and the read must print `1`. Anything else means do not
+launch as a tab. It is a question for the principal, and it goes in the batch
+the same way an untrusted directory does: ask them to install the `iterm2`
+package, or to turn the Python API on in iTerm2's settings, or to drop
+`CREW_LAUNCH`. Launching with tmux instead is not yours to decide — the
+principal set the variable.
+
+Write this script under your scratch directory and run it by path, on that same
+Python. It prints the new session's id. Keep that id — every step below takes
+it.
+
+```python
+import iterm2
+
+COMMAND = ("/bin/zsh -ilc 'CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id>"
+           " CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"
+           " CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false"
+           " claude --name <session-name> --model fable --effort high"
+           " --permission-mode auto --plugin-dir <plugin dir>'")
+
+
+async def main(connection):
+    app = await iterm2.async_get_app(connection)
+    profile = iterm2.LocalWriteOnlyProfile()
+    profile.set_use_custom_command("Yes")
+    profile.set_command(COMMAND)
+    profile.set_initial_directory_mode(
+        iterm2.InitialWorkingDirectory.INITIAL_WORKING_DIRECTORY_CUSTOM)
+    profile.set_custom_directory("<repo>")
+    window = app.current_terminal_window or (app.windows or [None])[0]
+    if window is None:
+        window = await iterm2.Window.async_create(
+            connection, profile_customizations=profile)
+        tab = window.tabs[0]
+    else:
+        tab = await window.async_create_tab(profile_customizations=profile)
+    await tab.async_set_title("<session-name>")
+    print(tab.sessions[0].session_id)
+
+
+iterm2.run_until_complete(main)
+```
+
+**Keep the `/bin/zsh -ilc` wrapper.** A custom command runs no interactive
+shell, so a Node or Python version manager is missing from `PATH` and the run's
+tests fail (design §15.89b).
+
+Three steps below read differently:
+
+- **Read the tab** with `session.async_get_screen_contents()`, where the step
+  says `tmux capture-pane -p -t <session-name>`.
+- **Close the tab** with `session.async_close(force=True)`, where the step says
+  `tmux kill-window -t <session-name>`.
+- **Find the tab again**, if you lost the session id, by a scan of
+  `app.windows` → `tabs` → `sessions`. Claude Code writes `--name` into each
+  session's `autoName` variable, with a status glyph in front of it, so match on
+  the name inside that string.
+
+Get the session with `app.get_session_by_id("<session id>")`. `None` means the
+tab is gone, which is the same evidence as a name absent from `ListAgents`.
 
 ## Finding it
 

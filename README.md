@@ -99,7 +99,7 @@ The draft PR is the terminus. Autonomous merging is out of scope on purpose.
 | Question routing and `decisions.md` | built |
 | `crew:council-advocate`, and councils | built, convened in a run |
 | `/crew:lead`, a portfolio of goals | built, and driven end to end — two goals at once, a lead killed mid-portfolio, and a killed project lead resumed |
-| `/crew:lead`, one IC for a task too small for a project lead | built, and driven end to end — one task and one goal from the same lead |
+| `/crew:project-lead`, a light path for a small item | built |
 | Hooks | `SessionEnd` and `PreCompact` built; the rest deferred |
 
 Every run is on the record. The first was hand-driven and its plans, reports
@@ -167,8 +167,8 @@ failure belongs to one package with no bisect.
 
 | Role | What it does | Built |
 |---|---|---|
-| Lead | Holds a portfolio: writes a charter for each item, sizes it, starts a project-lead session for a goal and dispatches one IC for a task, answers what its charters and records settle, and brings you the rest in one batch. | yes |
-| Project lead | Runs the whole goal in your session: investigates, writes the spec, splits the work, dispatches workers, integrates, opens the draft PR. | yes |
+| Lead | Holds a portfolio: writes a charter for each item, starts one project-lead session per item, answers what its charters and records settle, and brings you the rest in one batch. | yes |
+| Project lead | Runs the whole goal in your session: investigates, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the draft PR. A small item skips the spec and takes the light path. | yes |
 | IC | Implements one package of code, in its own worktree, test-first. | yes |
 | Instruction IC | Implements one package whose deliverable is prose — a `CLAUDE.md`, a rule file, a `SKILL.md`, an agent definition — where a checklist decides done, not a test. | yes |
 | Spec critic | Reviews the spec before any work starts. | yes |

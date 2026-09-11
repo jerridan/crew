@@ -26,7 +26,7 @@ so no earlier ask is lost.
 `record-format.md`'s "The portfolio record" owns every field name and every
 state value; this script checks none of them. A `set` value is JSON: `3`,
 `"text"`, `null`, `["a"]`. Both `set` verbs take a dotted field and create the
-objects on the way to it, so one call writes one field of a task's `task`
+objects on the way to it, so one call writes one field of an item's `gate`
 object without rewriting the rest of it.
 """
 

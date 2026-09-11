@@ -32,10 +32,11 @@ behalf so you can audit them at review time.
 - Model chosen per unit of work, after investigation.
 - A durable record you can read, audit, and resume from.
 - **The lead tier**, in this repo and this plugin, as the stage after the
-  project lead (§15.70). It holds a portfolio, sizes each item, spawns one
-  project-lead session per goal, dispatches one IC for a task, and answers
-  their escalations. `/crew:lead` builds it (§15.74), the size triage is
-  §15.79, and two concurrent goals have run through it end to end (§15.80).
+  project lead (§15.70). It holds a portfolio, spawns one project-lead session
+  per item whatever the item's size, and answers their escalations.
+  `/crew:lead` builds it (§15.74), the project lead sizes the work and a small
+  item runs on the light path (§15.88), and two concurrent goals have run
+  through it end to end (§15.80).
   A goal the principal cuts into stages carries a **gate** between them: one
   item per stage, and the lead holds the next stage until the principal's go
   (§15.87).
@@ -98,10 +99,11 @@ duties.
   its own scope, does not push to a remote, and does not spawn a reviewer or
   another implementer. It may spawn read-only lookup subagents only.
 - A **critic** or **reviewer** does not edit code. It reports.
-- A **lead** reads no code and edits nothing in a target repo. It sizes each
-  item, dispatches, reads the record and answers questions. On a task it runs
-  itself, it enters that task's own worktree to verify and to open the PR, and
-  `skills/lead/SKILL.md` owns the list of what it may run there (§15.79).
+- A **lead** reads no code and edits nothing in a target repo. It writes a
+  charter, launches one project-lead session per item, reads the record and
+  answers questions. It sizes nothing: sizing needs the code, and the project
+  lead is the tier that reads it (§15.88). Read-only git and one gate check
+  are all it runs (`skills/lead/SKILL.md`).
 
 ---
 
@@ -282,9 +284,9 @@ In this repo that means `plugin.json` and `marketplace.json` specifically:
 `CLAUDE.md` requires both to change for any content change, so no two packages
 could ever own them disjointly.
 
-The rule is about disjointness, so it holds where two ICs run at once. A
-lead's task runs one IC on one branch and integrates nothing, and its file set
-may hold one registration line in a shared file (§15.83).
+The rule is about disjointness, so it holds where two ICs run at once. The
+light path runs one IC on one branch and integrates nothing, and its package's
+file set may hold one registration line in a shared file (§15.83, §15.88).
 
 ### The critic
 
@@ -735,6 +737,7 @@ for a conversation, not the size of the work.**
 
 | Situation | Shape |
 |---|---|
+| One package, the charter's criterion is the whole spec, and no judgment call is open | **Light path:** the simple path with no `spec.md` and no spec critic. One IC, one package review. It promotes in place to the row below when an answer turns out wrong (§15.88). |
 | One simple package | **Simple path:** one unnamed subagent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. Its result returns as a normal tool result. |
 | Several packages, or work long enough to need steering | **Full path:** IC teammates in worktrees |
 
@@ -745,8 +748,13 @@ tree costs nothing.
 The project lead dispatches every package, however small. Its own context is
 the most expensive place to do anything: it runs at your model and effort, and
 everything it reads inflates every later turn. A one-line change is one package
-on the simple path, with the same dispatch and the same package review as any
-other (§15.73).
+with the same dispatch and the same package review as any other (§15.73). The
+light path takes the spec away, never the dispatch or the review.
+
+**The project lead picks the row, and it is the only tier that can.** The row
+follows from what the code holds, and the lead above reads none of it
+(§15.88). So the light path is chosen after the scout and before the spec, and
+a row that turns out wrong is corrected in place rather than sent back up.
 
 This table assumes the goal names a change. A goal that names a symptom takes
 the investigation path first (§9.5), and comes back to this table only when it
@@ -1116,7 +1124,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 4 | `crew:deliverable-reviewer` + `/crew:project-lead`, simple path first | One simple goal reaches a draft PR with zero prompts |
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
-| 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per goal, one IC per task (§15.70; T36, T37, T39, T9) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), the size triage **built 2026-09-05** (T39, §15.79), and the two goals **proved 2026-09-06** (T9, §15.80) |
+| 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per item (§15.70; T36, T37, T9, T51) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), and the two goals **proved 2026-09-06** (T9, §15.80). The lead's size triage **ran 2026-09-05 to 2026-09-07** (T39, §15.79) and moved to the project lead **2026-09-11** (T51, §15.88) |
 
 ### 13.1 Hooks
 
@@ -5344,7 +5352,16 @@ Deliberately different:
     "Start from the record"'s re-send of an unanswered batch on restart still
     has no live observation behind it.
 
-79. **The lead triages by size — 2026-09-05, T39.** T37's lead had one
+79. **The lead triages by size — 2026-09-05, T39. Its lead-side rules are
+    superseded by §15.88.** The triage itself moved to the project lead on
+    2026-09-11, and with it went the sizing test of item a, the task loop, the
+    task record of item d and the task escalations of item e. What survives is
+    the measurement: item g's figures are still the evidence that a project-lead
+    seat on a one-line change is the cost T51 chose to pay, and item h's touch
+    audit is still the rule for what a lead may run in a checkout. Read the
+    rest as history.
+
+    T37's lead had one
     mechanism for every item: a charter and a project-lead session. A
     one-line task then bought a fable seat, a spec, a critic, a split, an IC
     and two reviews — and §15.73a measured what that seat costs, 82 percent
@@ -5743,7 +5760,15 @@ Deliberately different:
     accounted for and the one goal run priced.
 
 83. **A task may edit a registration line in a shared file — 2026-09-06,
-    T48.** §15.79a gave the lead five promotion reasons, and one of them was a
+    T48. The triage exception is superseded by §15.88; the rule itself
+    stands.** The lead no longer sizes anything, so there is no triage for the
+    exception to sit in. The rule moved with the sizing: a **light-path
+    package** may name the one shared file the repo's instruction file marks as
+    a registration point, and `simple-path.md`'s "The light path" owns it. Every
+    word below about what the exception is, and what stays wider than it, holds
+    where it now lives.
+
+    §15.79a gave the lead five promotion reasons, and one of them was a
     shared file: a version manifest, a barrel, a lockfile. That reason came
     from the full path, where several ICs work in parallel worktrees and a
     file two of them edit is a merge conflict at integration (§5, "Shared
@@ -5774,7 +5799,11 @@ Deliberately different:
 
     `skills/lead/SKILL.md`'s "Triage every item by size" owns the test.
     `record-format.md`'s `file_set` field says a shared file may appear there
-    and why. `ic-contract.md`'s shared-file ban now reads "a shared file your
+    and why. **Both pointers moved with §15.88:** the test is
+    `simple-path.md`'s "The light path", and the shared-file statement is
+    `record-format.md`'s "Shared files never appear in a package's file set"
+    bullet, which names the light path as its one exception.
+    `ic-contract.md`'s shared-file ban now reads "a shared file your
     file set does not name": without that clause the IC held two rules at once
     — edit the file set, and never edit a barrel — and the live run would have
     turned on which one it read last. `crew:package-reviewer`'s scope check
@@ -6170,3 +6199,176 @@ Deliberately different:
        record holds, and ask whether that is the gate. It is the same one ask,
        and it costs the principal one line. `skills/lead/SKILL.md` carries it.
 
+88. **The project lead sizes the work, and a small item runs on the light path
+    — 2026-09-11, T51.** T39 put the size call in the lead: a task got one IC
+    the lead ran itself, a goal got a project-lead session. Three runs showed
+    what that cost. The lead was busy eight to ten minutes per task, its context
+    filled with plans, reports and diffs, and its record held a second shape
+    (`items[].task`) beside the run record — which is where T45's six defects
+    and `crew-stats.py`'s twin readers came from. The principal's intent, stated
+    2026-09-11, is the opposite: the lead is the one session the principal talks
+    to, and it stands ready for the next instruction.
+
+    So the size call moved down a tier. The lead hands **every** item to a
+    project-lead session, and the project lead sizes its own work after the
+    scout, where the code is already read. Three parts landed together: the
+    lead lost its triage, its task loop and the task record; `SKILL.md` gained
+    "Size the work" and a **light path**; and the portfolio holds one shape.
+
+    a. **The light path lives in `simple-path.md`, not in a file of its own.**
+       The light path is the simple path with two steps removed. Every step it
+       runs — create the branch, dispatch, verify, review, fix rounds,
+       integrate, end the run — is already a section of that file. A separate
+       reference would either copy those seven sections or be a table of
+       pointers back to them, and `CLAUDE.md` bans the first ("a second copy is
+       worse than no copy") while the second buys nothing. So `simple-path.md`
+       opens with "The light path": the entry condition, the step order, the
+       registration-line rule, and promotion in place. `band-rubric.md` keeps
+       what is skipped, because it already owns that subject for bands.
+
+    b. **The four questions are answered after the scout, and by the project
+       lead alone.** One package; the charter's criterion is the whole
+       specification; `band-rubric.md` bands the work `light` or `standard`;
+       no preference question is open. Four yeses take the light path. The
+       lead above cannot answer any of them, because every one needs the code,
+       and a lead reads none (§3). That is the whole argument for moving the
+       call: T39's sizing test had to be answerable "from text" precisely
+       because the lead could not read, and the questions it could not ask are
+       the ones that decide the answer.
+
+    c. **The registration-line rule moved with the sizing.** §15.83 attached it
+       to the lead's triage, and there is no triage now. It attaches to the
+       light-path package instead, unchanged in substance: one IC on one
+       branch merges nothing, so the shared-file ban's conflict cannot occur.
+       `record-format.md`'s "Shared files never appear in a package's file set"
+       names the light path as its one exception.
+
+    d. **One record shape, and `crew-stats.py` reads it.** `items[].task` is
+       gone, and with it `record-format.md`'s "The task record",
+       `autonomy-contract.md`'s "A task the lead runs itself", `items[].kind`
+       (whose only consumer was the triage step), `TASK_SKIPPABLE_STEPS`,
+       `read_task_review`, `read_portfolios`' task branches and the "in tasks"
+       column. `SKIPPABLE_STEPS` gained `spec-critic`, because the light path
+       writes no spec and a skipped step with no record entry reads as a step
+       that failed to run. `lead-spend.py` is unchanged: its double-count
+       warning was never about tasks.
+
+       **An old portfolio is ignored, never an error.** Seven portfolios under
+       `~/.claude/crew*/` still hold `items[].task`. The script reads none of
+       it, counts none of its reviews or skipped steps, and prints one line per
+       such portfolio saying so. Erroring was the alternative and it is wrong
+       twice over: the script's own contract is that an older record never
+       stops it, and a record root holds years of runs against one script.
+       Counting the old shape was the third option, and it is the one T51
+       exists to remove. Every one of the 21 roots exits 0.
+
+       The seeded record is at
+       `<scratch>/t51/seed-root`: two portfolios, three run records, one of
+       them a light-path run and one of them pre-T51. Sixteen checks pass.
+       They cover the three skip steps, the ignored `items[].task`, the absent
+       "in tasks" column, and an invented step name still reporting.
+       `crew-stats.py` and `spend.py` need Python 3.10 or newer — both annotate
+       `X | None` at module level with no `from __future__ import annotations`,
+       so macOS's own 3.9 cannot load either. That is true on `main` as well,
+       so it is not T51's regression, and `crew-portfolio.py` and
+       `crew-record.py` still load on 3.9.
+
+    e. **The live run, 2026-09-11.** A Fable lead at high effort, session
+       `a499f78d`, tmux `crew-t51`, portfolio
+       `~/.claude/crew-t51-live/lead-2026-09-11-aa57`, plugin dir the T51
+       branch. Three items, handed as three typed messages at 16:08, 16:10 and
+       16:13 UTC. **Every item got a project-lead session**, and the lead sized
+       none of them: `portfolio.json` holds no `kind` and no `task`.
+
+       - `strip-prefix-005f`, one line, took the **light path** under
+         `crew-pl-strip-prefix-005f`. Its record holds **no `spec.md`, no
+         `split.md` and one review file**, `run.steps_skipped` names
+         `spec-critic` and `deliverable-review` with the light path as the
+         reason, `fix_rounds_used: 0`, zero escalations. Draft PR #31, three
+         files, `src/index.js` among them by the registration-line rule.
+       - `strip-suffix-7b46`, handed **while the first still ran**, also took
+         the light path and reached draft PR #32. The lead took it in one turn
+         of 43 seconds and ended that turn with both items `running`.
+       - `truncate-38f9` was handed as a goal and **ran as before**: `spec.md`,
+         a spec critic, a split, a plan gate, a package review and a
+         deliverable review, two escalations batched to the principal and
+         answered in one line, draft PR #33.
+
+       The two light runs' `decisions.md` each carry a "Size the work" entry on
+       the precedent route, and the goal's carries the matching "No. The spec
+       path", failing questions 2 and 4 by name. The routing test discriminated
+       in both directions on its first live run.
+
+    f. **The cost, and one figure that is wrong.** `crew-stats.py` reports
+       $8.85, $9.71 and $7.58 for the three runs and $3.78 for the lead. The
+       first two are too high: both light runs shared one clone, so each one's
+       `spend.py` window swallowed the other's transcripts. Priced once over
+       that clone, **both light runs together cost $9.81**, about $4.90 each —
+       which lands on T42's $4.93 for a light run, and is the dollar or two
+       over a lead-run task the ticket said the principal accepted. The true
+       portfolio total is $21.17, not the $29.92 the table prints. **Two runs
+       in one checkout break the window bound** `price_run` relies on (§15.51),
+       and nothing in the record says they shared one. The lead saw the risk at
+       intake and said so in its batch without changing the plan, which is the
+       right call and not a fix.
+
+       **The lead's own share was 12.6 percent of the portfolio** as the table
+       computes it, and 17.9 percent of the corrected total — against 20, 30
+       and 47 percent for the three portfolios §15.80h measured, and 46.7
+       percent for §15.79g's task-and-goal portfolio. The tier got cheaper by
+       doing less, which is what T51 traded the dollar or two for.
+
+    g. **Two project leads read one rule two ways, and the rule moved.** The
+       fixture's `CLAUDE.md` names `src/index.js` as the registration point and
+       its `README.md` carries a helper table every past helper was added to.
+       `strip-prefix`'s project lead put `src/index.js` in the file set, left
+       the README alone, and noted the missing row in the PR body as follow-up.
+       `strip-suffix`'s put both in, citing `record-format.md`'s shared-file
+       list — a manifest, a lockfile, a barrel, shared config — and reading a
+       README table row as none of those. **The second reading is right, and
+       the first is §15.79i's failure back in a new place**: a PR a human has
+       to finish. The words that allowed it were "may name one shared file",
+       which reads as a cap of one file rather than a cap on shared files, so
+       `simple-path.md` now says the cap counts shared files and that a file
+       outside that list joins the set like any other.
+
+       **`strip-suffix` also cut a worktree**, which the simple path does not
+       do, and left it registered at the close. Its project lead did that to
+       keep off the clone the first run held. The lead had already named that
+       hazard, and nothing in the design says what two items in one repo do.
+       T51 leaves it: it is a rule the live run found and not one it set out to
+       write.
+
+    h. **A high-effort review of the branch found five seams the light path
+       opened.** The path reuses seven of `simple-path.md`'s sections, and the
+       first draft assumed each one held for a run that entered halfway down
+       the file. Four did not.
+
+       The worst was the deliverable review. The draft called all three of its
+       skip conditions true "by construction", and the third is not: "Integrate"
+       still tells the project lead to edit whatever shared files the repo
+       makes change together, and a repo like crew itself — where two manifests
+       move as a pair — leaves the second one for the project lead. The IC
+       carries at most the one registration line. So a light-path run could
+       skip the only reader of the post-integration diff and ship a shared-file
+       edit nobody read. The condition is now a check, not a claim, and
+       `simple-path.md`'s "Review the deliverable" says the same thing where
+       the step lives.
+
+       Three more: the light path named no **deliverable id**, and five later
+       sections read one, so the record would have gone out malformed with
+       `crew-record.py` validating nothing — the id is `deliverable-1` now, set
+       at step 1. "End the run" put `spec.md` in the PR body, which a
+       light-path run never writes — it puts `charter.md` there instead.
+       "Review the deliverable" still gated its skip on the `light` **band**,
+       and both live light-path runs were `standard`, so the file that owns the
+       step said "run it" while `band-rubric.md` said "skip it". The fifth was
+       the lead's own: taking the task loop out left "no worktree command",
+       which banned the read-only `worktree list` the sentence before it
+       allows.
+
+       None of the four reached the live run, because all three items happened
+       to sit in repos with one registration point and one deliverable each.
+       That is the reading a live run cannot replace: a path that reuses
+       sections must be read against every one of them, and the run only
+       exercises the branches it happens to take.

@@ -270,8 +270,10 @@ Rules the format carries:
   reporting (design §15.50).
 - **Shared files never appear in a package's file set.** Version manifests,
   lockfiles, barrel and `index` files, and shared config belong to the project
-  lead at integration (design §5). A lead's task holds no split and no
-  integration, and its `task.file_set` below is the one exception.
+  lead at integration (design §5). The light path is the one exception: it has
+  one IC and merges nothing, so its package may name the one shared file the
+  repo's instruction file marks as a registration point
+  (`simple-path.md`, design §15.83).
 
 `state.json` stays authoritative for the plan (see Authority rule below). Every
 package here has a `packages[]` entry whose `id`, `territory`, `band`,
@@ -420,7 +422,7 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 | `spend` | `{transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
-| `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step a band let the run skip. `step` is `plan-gate` or `deliverable-review`. A `plan-gate` entry names the package and leaves `deliverable` `null`; a `deliverable-review` entry does the reverse. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the band and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What a band skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. |
+| `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step a band or the light path let the run skip. `step` is `plan-gate`, `deliverable-review` or `spec-critic`. A `plan-gate` entry names the package and leaves `deliverable` `null`; a `deliverable-review` entry does the reverse; a `spec-critic` entry leaves both `null`, because the run writes no spec and the skip belongs to the whole run. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the band and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What a band skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
@@ -800,7 +802,7 @@ python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> lead set prin
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item add '<json object>'
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> state running
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set record_dir '"/abs/path"'
-python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set task.band '"light"'
+python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> set gate.cleared_at '"2026-09-11T18:04:11Z"'
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> expect "<one line>"
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> escalation add <item-id> "<question>"
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> escalation answer <index> "<answer>"
@@ -810,7 +812,7 @@ The rules are `crew-record.py`'s, for the same reasons: never write
 `escalations` with `lead set`, which replaces the whole list; a `set` value
 is JSON and carries its own quotes; and the script checks no field and no
 transition, because this file owns both. Both `set` verbs take a dotted field
-and create the objects on the way to it, so a task's fields are written one
+and create the objects on the way to it, so a gate's fields are written one
 call at a time; a path through anything that is not an object exits with a
 message. `expect` is the exception that takes plain text, because it is
 rewritten every turn. `init` also creates
@@ -857,10 +859,9 @@ moment, so a later item raises it. A lead that never runs it leaves
 `lead.spend` absent, and `crew-stats.py` prints the portfolio's runs with no
 lead cost beside them.
 
-**A task's workers are in this figure.** A task has no project-lead session,
-so the IC and the reviewer the lead dispatched ran under the lead's own
-session and their cost is priced as the lead's. Only a goal gets a run of its
-own to hold its cost.
+**Only the lead's own seat is in this figure.** Every item runs under a
+project-lead session of its own, and that session's `state.json` holds what the
+item cost. The two figures add up, and neither holds the other.
 
 The last write always reads short by its own turn: the tokens the closing
 turn spends after the measurement land in no figure (design §15.76). Nothing
@@ -873,18 +874,16 @@ run's own cost stays in its `state.json` (Authority rule below).
 
 | Field | Meaning |
 |---|---|
-| `id` | the item's identity. Names its charter (`charters/<id>.md`), its record root (`runs/<id>/`) and, on a goal, the session that runs it. |
-| `kind` | `goal` or `task`. A goal gets its own project-lead session; a task gets one IC the lead dispatches itself (T39). |
+| `id` | the item's identity. Names its charter (`charters/<id>.md`), its record root (`runs/<id>/`) and the session that runs it. |
 | `title` | one line, from the principal's brief. |
 | `repo` | the absolute path to the target-repo checkout this item runs in. |
 | `charter` | `charters/<id>.md`, relative to the portfolio directory. |
-| `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. On a task it is `runs/<id>/` itself, and the lead writes it at the dispatch, because no session creates it. |
-| `session_name` | the `--name` the item's project-lead session was launched under. It is the address `SendMessage` takes, and it survives a restart, which a socket path does not (design §15.72f). `null` on a task, which has no session of its own. |
+| `record_dir` | the absolute path to this item's own record — the single directory under `runs/<id>/`. `null` until the run creates it. |
+| `session_name` | the `--name` the item's project-lead session was launched under. It is the address `SendMessage` takes, and it survives a restart, which a socket path does not (design §15.72f). |
 | `state` | one of `pending`, `held`, `running`, `blocked`, `done`, `abandoned`. See the transitions below. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this item's last `state` transition. |
 | `expect` | one line: what the lead expects next on this item, and what it will do when that arrives. It is the ledger — a restarted lead reads this line and knows what its own last turn was waiting for. |
 | `outcome` | the PR url, or the terminal state the run reported; `null` until the item is `done` or `abandoned`. |
-| `task` | the one package a `kind: task` item runs as, and what the lead has learned back from it. Absent on a goal. The task record below owns its fields. |
 | `depends_on` | the id of the item this one waits for, or `null`. It is how one goal becomes several stages in dependency order (design §15.87). |
 | `gate` | the condition that must hold before this item starts. Absent unless the principal named one. The gate record below owns its fields. |
 
@@ -894,6 +893,11 @@ authoritative for the run (Authority rule below). The lead never copies a
 package, a band or a run's spend into `portfolio.json`; it reads them where
 they live. `lead.spend` is not an exception: it is the lead's own cost, and
 no `state.json` holds it.
+
+**Every item holds the same fields.** The lead does not size an item, so
+nothing here branches on size and no item carries a second shape beside the
+run record (design §15.88). A portfolio written before that rule can still hold
+an `items[].task` object; nothing reads it now.
 
 ### Item state transitions
 
@@ -908,9 +912,8 @@ pending ┴──────▶ running ──▶ done       (terminal)
 any non-terminal state ──▶ abandoned    (terminal)
 ```
 
-- `pending → running`: the charter is written and the work is dispatched — a
-  project-lead session launched and handed the charter, or, for a task, an IC
-  dispatched.
+- `pending → running`: the charter is written, a project-lead session is
+  launched, and the charter is handed to it.
 - `pending → held`: this item carries a `gate`, and the item its `depends_on`
   names reached `done`. The gate now applies. Only a gated item enters `held`.
 - `held → running`: the principal cleared the gate, and `gate.cleared_at` says
@@ -934,54 +937,7 @@ principal's go takes an item out of `held` (`skills/lead/SKILL.md`).
 **A `done` item needs the record, not a message.** A project lead's closing
 report can be lost — the send fails when the lead session has restarted
 (design §15.72g) — so the lead confirms a terminal state by reading
-`record_dir`'s `state.json`, never by waiting for a report. A task holds no
-`state.json`: what proves it `done` is an accepted review on disk and a PR url
-in `outcome`.
-
-### The task record
-
-A task runs under the lead itself, so it has no project-lead session and no
-run record. It writes no `state.json`, `spec.md`, `split.md`,
-`worktrees.json` or `decisions.md` of its own — the portfolio holds every
-judgment call the item produced. Five files and one checkout are the whole
-record:
-
-```
-charters/<item-id>.md                                      the charter, in the shape above
-runs/<item-id>/checkout/                                   the worktree the IC works in
-runs/<item-id>/plans/<item-id>.md                          the IC's plan
-runs/<item-id>/reports/<item-id>.md                        the IC's report
-runs/<item-id>/diffs/<item-id>-r<n>.patch                  the diff each review reads
-runs/<item-id>/reviews/<item-id>-package-review-r<n>.md    the package review
-```
-
-`runs/<item-id>/` is the record root the IC and the reviewer are given, the
-same value a goal's session gets, and the four subdirectories keep the names
-and the `<n>` rule that `reports/`, `plans/`, `diffs/` and `reviews/` carry
-above — with the item id where a package id would be. Nothing in `crew:ic`,
-`crew:package-reviewer` or `simple-path.md` then needs a second path rule.
-
-Everything else about the task is the item's `task` object:
-
-| Field | Meaning |
-|---|---|
-| `band` | `light` or `standard`, by `band-rubric.md`. A task never runs `deep`: work that bands `deep` is a goal. |
-| `ic_agent` | `crew:ic` or `crew:ic-instructions`. |
-| `file_set` | the files the IC may edit. A shared file may appear here when it holds the one registration line `skills/lead/SKILL.md`'s triage allows, and never for a wider change: a task has one IC on one branch, so the merge conflict the shared-file rule guards cannot occur (design §15.83). |
-| `acceptance_criterion` | one line, runnable as a command. |
-| `checkout` | the absolute path of the IC's worktree; `null` once the lead removes it. |
-| `branch` | `crew/<item-id>`, in the item's `repo`. It outlives the checkout, because the PR is on it. |
-| `base` | the sha the branch started from. The review's diff is `base..HEAD`. |
-| `plan_approved_at` | ISO-8601 UTC, the lead's go-ahead at the plan gate; `null` until then, and `null` for good on a `light` task, which skips the gate (`band-rubric.md`). |
-| `steps_skipped` | `run.steps_skipped`'s list, for a task: every step the band let the lead skip. Each entry keeps that field's five keys, with the item id where a package id would be. A skipped step with no entry here reads as a step that failed to run. |
-| `ic_status` | the IC's last report status, one of `ic-contract.md`'s four. |
-| `fix_rounds_used` | how many fix rounds have run. It names the `<n>` in the diff and review filenames, and 2 is the cap (`skills/lead/SKILL.md`). |
-| `review_verdict` | the package review's last verdict, in `review-output.md`'s words. |
-
-`crew-portfolio.py`'s `item <id> set` takes a dotted field, so one call writes
-one of these: `item <id> set task.ic_status '"DONE"'`. Write the object whole
-at `item add` time, then one field per call — a whole-object rewrite drops
-what the last call put there.
+`record_dir`'s `state.json`, never by waiting for a report.
 
 ### The gate record
 
@@ -1000,8 +956,8 @@ stage of a goal carries none.
 | `cleared_at` | ISO-8601 UTC of the principal's go; `null` while the gate holds. |
 | `escalation` | the index in `lead.escalations` of the ask that carries the gate report. That entry's `answer` is the go. |
 
-Write the object whole at `item add` time, then one field per call, the way a
-task's fields are written:
+Write the object whole at `item add` time, then one field per call. A
+whole-object rewrite drops what the last call put there:
 
 ```
 python3 <lead-skill-dir>/scripts/crew-portfolio.py <portfolio-dir> item <id> state held
@@ -1014,7 +970,6 @@ A gated item, held:
 ```json
 {
   "id": "slugify-path-4b7c",
-  "kind": "goal",
   "title": "Add slugifyPath, built on stage 1's slugify",
   "depends_on": "slugify-2e19",
   "state": "held",
@@ -1039,7 +994,7 @@ The portfolio's own decision log, in the goal record's `decisions.md` shape
 and with its rules: one entry per question, `Route`, `Answer`, `Citation`,
 `Confidence`, `Timestamp`, and the clock read rather than remembered.
 
-Three things go in it, and nothing else:
+Two things go in it, and nothing else:
 
 - **Every answer the principal gives.** `Route: preference`, and the
   `Citation:` names the item the question came from. A restarted lead reads
@@ -1047,10 +1002,9 @@ Three things go in it, and nothing else:
 - **Every call the lead makes for a project lead** — a question it answered
   from a charter or a record instead of passing on. `Route: precedent`, and
   the `Citation:` names the charter line or the record path that settled it.
-- **Every triage call** — one entry per item, saying `goal` or `task` and
-  which of the sizing test's answers decided it (`skills/lead/SKILL.md`).
-  `Route: precedent`. An item promoted from a task to a goal after its
-  dispatch gets a second entry naming the promotion reason.
+
+A size call is not one of them. The project lead sizes its own work and writes
+that entry into its own `decisions.md` (design §15.88).
 
 A preference the principal states in passing — "always squash", "never touch
 the changelog" — is an entry too. It is the answer to the next question, and
@@ -1085,7 +1039,6 @@ nothing else in the portfolio holds it.
   "items": [
     {
       "id": "truncate-7f31",
-      "kind": "goal",
       "title": "Add truncate to the string-kit roadmap",
       "repo": "/tmp/string-kit",
       "charter": "charters/truncate-7f31.md",
@@ -1098,32 +1051,15 @@ nothing else in the portfolio holds it.
     },
     {
       "id": "pad-start-9c04",
-      "kind": "task",
       "title": "Add padStart to string-kit, with one test",
       "repo": "/tmp/string-kit",
       "charter": "charters/pad-start-9c04.md",
-      "record_dir": "/Users/x/.claude/crew/lead-2026-09-05-a1b2/runs/pad-start-9c04",
-      "session_name": null,
+      "record_dir": "/Users/x/.claude/crew/lead-2026-09-05-a1b2/runs/pad-start-9c04/pad-start-5e12",
+      "session_name": "crew-pl-pad-start-9c04",
       "state": "running",
       "state_changed_at": "2026-09-05T13:40:03Z",
-      "expect": "the IC's report; then verify against git and dispatch the package review",
-      "outcome": null,
-      "task": {
-        "band": "light",
-        "ic_agent": "crew:ic",
-        "file_set": ["src/padStart.js", "test/padStart.test.js"],
-        "acceptance_criterion": "npm test -- test/padStart.test.js exits 0",
-        "checkout": "/Users/x/.claude/crew/lead-2026-09-05-a1b2/runs/pad-start-9c04/checkout",
-        "branch": "crew/pad-start-9c04",
-        "base": "9f1c2ad",
-        "plan_approved_at": null,
-        "steps_skipped": [
-          { "step": "plan-gate", "package": "pad-start-9c04", "deliverable": null, "reason": "light band: one file plus its test, covered by npm test", "at": "2026-09-05T13:39:44Z" }
-        ],
-        "ic_status": null,
-        "fix_rounds_used": 0,
-        "review_verdict": null
-      }
+      "expect": "the closing report with a PR url; then read state.json and set done",
+      "outcome": null
     }
   ]
 }
@@ -1294,11 +1230,6 @@ Every name this file defines, with what consumes it.
 - `lead.escalations` — consumer: `skills/lead/SKILL.md` ("Batch what only the principal can answer"); a restarted lead re-sends every entry with `answer: null`
 - `lead.compactions` — writer: `hooks/pre-compact.py`. Consumer: `skills/lead/SKILL.md`
 - `lead.spend` — writer: `skills/lead/scripts/lead-spend.py`. Consumer: `skills/project-lead/scripts/crew-stats.py`; a person reading what the tier costs (design §8)
-- `items[].id`, `kind`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`
-- `items[].kind` values `goal` and `task` — consumer: `skills/lead/SKILL.md`'s triage step
-- `items[].task` and its fields `band`, `ic_agent`, `file_set`, `acceptance_criterion`, `checkout`, `branch`, `base`, `plan_approved_at`, `ic_status`, `fix_rounds_used` — consumer: `skills/lead/SKILL.md` ("A task runs under you"), which is also the only writer
-- `items[].task.steps_skipped` — writer: the lead, at each skip `band-rubric.md`'s "What a band skips" allows. Consumer: `skills/project-lead/scripts/crew-stats.py` ("Steps skipped by rule"), which counts it beside `run.steps_skipped`
-- `items[].task.review_verdict` — writer: `skills/lead/SKILL.md` ("A task runs under you"). Consumer: `skills/project-lead/scripts/crew-stats.py` ("Package reviews by band" and the catch rate), which folds it in beside `runs/<item-id>/reviews/` when that directory is missing, and beside a run's own package reviews the rest of the time (§15.82)
-- `runs/<item-id>/checkout/` — consumer: a task's IC, as its worktree, and the package review's diff
+- `items[].id`, `title`, `repo`, `charter`, `record_dir`, `session_name`, `state`, `state_changed_at`, `expect`, `outcome` — consumer: `skills/lead/SKILL.md`; `skills/lead/references/session-launch.md` reads `session_name` and `repo`
 - `items[].state` values `pending`, `held`, `running`, `blocked`, `done`, `abandoned` — consumer: this file's item transitions
 - `items[].depends_on` and `items[].gate` with its fields `condition`, `check`, `expect_output`, `checked_at`, `check_output`, `cleared_at`, `escalation` — writer and consumer: `skills/lead/SKILL.md` ("A gate holds the next stage"); `autonomy-contract.md` owns what the gate's ask carries (design §15.87)

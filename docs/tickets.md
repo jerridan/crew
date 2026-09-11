@@ -2055,7 +2055,7 @@ Read first: design §15.85, §15.72d; `skills/lead/SKILL.md`;
 
 ## T51 — The project lead sizes the work, and a small item runs on a light path
 
-Status: open
+Status: done
 Depends on: T39, T42, T48, T49
 Stage: 7 (design §15.79, §15.83, §15.87)
 

@@ -289,8 +289,9 @@ repo open.
 
 **Read-only git is not touching.** `status`, `branch`, `log` and `worktree
 list` report git's own state, not the code, so you may run them against any
-item's checkout. Nothing else runs there: no test, no `gh`, no worktree
-command, and no command that writes. Prefer the record even for the four —
+item's checkout. Those four and nothing else: no test, no `gh`, no writing
+git command, and nothing that changes a ref, a file or a directory. Prefer the
+record even for the four —
 `checkout_restored` already says which branch a run left the tree on
 (`record-format.md`), and a git call that repeats the record buys nothing.
 

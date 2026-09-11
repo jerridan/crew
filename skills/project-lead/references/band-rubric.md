@@ -102,26 +102,31 @@ not reach (design §15.77). Fail any one condition and the review runs.
 
 ## What the light path skips
 
-The light path is a path, not a band, and it takes two steps away at every
-band it carries (design §15.88). `simple-path.md`'s "The light path" states
-when a run takes it; this file states what it drops.
+The light path is a path, not a band. It takes the spec critic away at every
+band it carries, and the deliverable review on the same three conditions as
+above (design §15.88). `simple-path.md`'s "The light path" states when a run
+takes it; this file states what it drops.
 
 | Step | On the light path |
 |---|---|
 | spec critic | skipped — the run writes no `spec.md`, so the critic has nothing to read |
 | plan gate | the table above decides it, by band |
 | package review | runs |
-| deliverable review | skipped — one package, no `split.md`, and no shared file you edited yourself |
+| deliverable review | skipped when the three conditions above hold. Two of them always hold here; the third is yours to check |
 
 **The package review is what makes the rest safe to drop.** It is the one
 reader of the diff, and it runs at every band and on every path. Its fix rounds
 are `simple-path.md`'s, unchanged.
 
-**The deliverable review's three conditions all hold here by construction.**
-One package, an accepted package review, and no shared file you edited at
-"Integrate" — the light path's shared file sits in the package's file set and
-the IC edits it. So the skip is the rule and not a judgment, and it still takes
-its record entry below.
+**Two of the deliverable review's three conditions hold here; the third does
+not hold itself.** One package is the path's own entry condition, and the
+package review is accepted or the run does not reach this step. The third —
+that you edited no shared file at "Integrate" — is a question you answer after
+the fact. A light-path package carries at most the one registration line the
+repo names, and a repo whose instructions make two shared files change together
+leaves the second for you. **Edit one, and the review runs.** It is the only
+reader of the post-integration diff, and skipping it there ships a shared-file
+edit nobody read (design §15.77, §15.88).
 
 **Record every skip.** A run writes it to `state.json`'s `run.steps_skipped`
 (`record-format.md` owns the field). A step with no review file and no entry

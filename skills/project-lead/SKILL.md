@@ -118,10 +118,14 @@ four questions, and answer each from the scout's report and `charter.md`:
 4. Is every preference question already settled by the charter or by this
    repo's own instruction files?
 
+**Write the answer down first, whichever way it goes.** One `decisions.md`
+entry, the second in the record, on the precedent route, naming the answer that
+decided it. A run that leaves no entry cannot be told from one that never ran
+this step.
+
 **Four yeses take the light path.** Read `simple-path.md`'s "The light path".
 It owns the rest of the run: no `spec.md`, no spec critic, one IC and one
-package review. Write the choice as the second `decisions.md` entry, on the
-precedent route, with the answer that decided it.
+package review.
 
 **Any no goes on down this file**, to "Write the spec". A no is the safe
 answer: the spec costs a few dispatches, and work that needed one and did not

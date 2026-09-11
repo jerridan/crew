@@ -24,12 +24,18 @@ the charter's criterion is the whole specification, the band is `light` or
 `standard`, and no preference question is open. The steps below run in this
 order, and every one of them is a section of this file:
 
-1. "Create the branch".
+1. **Name the one deliverable `deliverable-1`**, then "Create the branch",
+   which writes its `deliverables[]` entry. No `split.md` names an id here, so
+   this rule is where the id comes from. Five later sections read it: the
+   package's `base`, the review diff's `base`, `diffs/<deliverable-id>-final.patch`,
+   `close <deliverable-id>`, and a `deliverable-review` entry in
+   `run.steps_skipped`.
 2. **Write the one package**, straight into `state.json`: `crew-record.py
-   package add` with `id`, `territory`, `band`, `file_set`,
-   `interface_contract` and `acceptance_criterion`. The criterion is the
-   charter's, word for word. Write no `split.md` — one package has nothing to
-   order, and no reader is left for that file.
+   package add` with `id`, `deliverable`, `territory`, `band`, `file_set`,
+   `interface_contract` and `acceptance_criterion` (`record-format.md`'s
+   per-package fields). The criterion is the charter's, word for word. Write no
+   `split.md` — one package has nothing to order, and no reader is left for
+   that file.
 3. "Dispatch the IC".
 4. "Verify before you believe".
 5. "Review the package", then "Fix rounds".
@@ -180,9 +186,11 @@ read.
 
 ## Review the deliverable
 
-**A `light` package can skip this step.** `band-rubric.md`'s "What a band
-skips" states the three conditions and the record write. Skipped, the run goes
-straight to "End the run".
+**A `light` package can skip this step, and so can a light-path run at either
+band.** `band-rubric.md`'s "What a band skips" and "What the light path skips"
+state the conditions and the record write between them. The third condition —
+that you edited no shared file at "Integrate" — is the one that fails, and it
+fails on the light path too. Skipped, the run goes straight to "End the run".
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`, the
 checkout path and base ref, the fresh diff path, the accepted package review,
@@ -195,7 +203,9 @@ reviewed" says; clear every `[Critical]` first.
 
 Push the branch. Fill the repo's pull request template if it has one, and put
 `spec.md` and `decisions.md` in the body, one long line per paragraph and list
-item. Never hard wrap what you send to GitHub (`writing-standard.md`).
+item. **A light-path run puts `charter.md` where the spec would go**, because
+it wrote none and the PR body is where its reasoning lands. Never hard wrap
+what you send to GitHub (`writing-standard.md`).
 
 `gh pr create --draft`. Record `pr_url`, set the deliverable `draft-pr-opened`
 and `run_state: complete`. A human merges it. Then run

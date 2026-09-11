@@ -5799,7 +5799,11 @@ Deliberately different:
 
     `skills/lead/SKILL.md`'s "Triage every item by size" owns the test.
     `record-format.md`'s `file_set` field says a shared file may appear there
-    and why. `ic-contract.md`'s shared-file ban now reads "a shared file your
+    and why. **Both pointers moved with §15.88:** the test is
+    `simple-path.md`'s "The light path", and the shared-file statement is
+    `record-format.md`'s "Shared files never appear in a package's file set"
+    bullet, which names the light path as its one exception.
+    `ic-contract.md`'s shared-file ban now reads "a shared file your
     file set does not name": without that clause the IC held two rules at once
     — edit the file set, and never edit a barrel — and the live run would have
     turned on which one it read last. `crew:package-reviewer`'s scope check
@@ -6334,3 +6338,36 @@ Deliberately different:
        hazard, and nothing in the design says what two items in one repo do.
        T51 leaves it: it is a rule the live run found and not one it set out to
        write.
+    h. **A high-effort review of the branch found five seams the light path
+       opened.** The path reuses seven of `simple-path.md`'s sections, and the
+       first draft assumed each one held for a run that entered halfway down
+       the file. Four did not.
+
+       The worst was the deliverable review. The draft called all three of its
+       skip conditions true "by construction", and the third is not: "Integrate"
+       still tells the project lead to edit whatever shared files the repo
+       makes change together, and a repo like crew itself — where two manifests
+       move as a pair — leaves the second one for the project lead. The IC
+       carries at most the one registration line. So a light-path run could
+       skip the only reader of the post-integration diff and ship a shared-file
+       edit nobody read. The condition is now a check, not a claim, and
+       `simple-path.md`'s "Review the deliverable" says the same thing where
+       the step lives.
+
+       Three more: the light path named no **deliverable id**, and five later
+       sections read one, so the record would have gone out malformed with
+       `crew-record.py` validating nothing — the id is `deliverable-1` now, set
+       at step 1. "End the run" put `spec.md` in the PR body, which a
+       light-path run never writes — it puts `charter.md` there instead.
+       "Review the deliverable" still gated its skip on the `light` **band**,
+       and both live light-path runs were `standard`, so the file that owns the
+       step said "run it" while `band-rubric.md` said "skip it". The fifth was
+       the lead's own: taking the task loop out left "no worktree command",
+       which banned the read-only `worktree list` the sentence before it
+       allows.
+
+       None of the four reached the live run, because all three items happened
+       to sit in repos with one registration point and one deliverable each.
+       That is the reading a live run cannot replace: a path that reuses
+       sections must be read against every one of them, and the run only
+       exercises the branches it happens to take.

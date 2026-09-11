@@ -1,6 +1,6 @@
 # Launching and steering a project-lead session
 
-One goal is one session, and this file owns every part of that session's life:
+One item is one session, and this file owns every part of that session's life:
 starting it, addressing it, handing it the charter, resuming it, and closing
 it. The mechanism is the one T36 proved end to end (design §15.72).
 

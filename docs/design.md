@@ -1520,10 +1520,12 @@ Deliberately different:
 
     d. **An agent definition means different things by display mode.** For an
        in-process teammate the definition's body is *appended* to the default
-       system prompt; for a split-pane teammate it *replaces* it. A
-       split-pane teammate also ignores the definition's `model`, and neither
-       mode applies its `skills`. `crew:ic` is written as a whole system
-       prompt, so it is a different agent in the two modes.
+       system prompt; for a split-pane teammate it *replaces* it. **That
+       split-pane clause, and the last sentence of this item, are superseded by
+       §15.89e:** on 2.1.268 both modes append, so `crew:ic` is the same agent
+       in either one. A split-pane teammate also ignores the definition's
+       `model`, and neither mode applies its `skills`. `crew:ic` is written as
+       a whole system prompt, so it is a different agent in the two modes.
 
     e. **`CLAUDE_CODE_SUBAGENT_MODEL` outranks a spawn-time model.** The
        order is that variable, then the spawn prompt, then (in-process only)

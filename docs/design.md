@@ -6465,7 +6465,18 @@ Deliberately different:
        the same name and the same `CREW_RECORD_ROOT`, then the same resume
        message.
 
-    g. **What this run did not prove.** A live `/crew:lead` never issued the
+    g. **The branch was missing, and the review found it.** The first draft
+       said what `CREW_LAUNCH=iterm2` does and never told the lead to read the
+       variable. `## The launch` still gave the tmux command with no condition,
+       so a lead reading top-down would start a tmux server whatever the
+       principal had set. The branch is the first line of `## The launch` now.
+       The same review found the two iTerm2 requirements stated with no check
+       and no fallback, beside a folder-trust check in the same file that has
+       both. The section now carries an import-and-`defaults` check, and a
+       failure goes to the principal in the batch — the lead never quietly falls
+       back to tmux on a variable the principal set.
+
+    h. **What this run did not prove.** A live `/crew:lead` never issued the
        launch, so `CREW_LAUNCH` has been read by nobody but this ticket. No tab
        was killed and resumed, so (f) is worked out and written, not exercised.
        The split-pane mode carried one probe teammate and no packages, so no

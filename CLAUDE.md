@@ -140,10 +140,10 @@ container-choice check is limited to the standard's four container types.
 - A teammate cannot spawn a teammate, and an in-process teammate's subagents
   are forced to the foreground. Any tier that must dispatch in parallel cannot
   itself be a teammate (design §15.21).
-- A teammate built from an agent definition reads that definition differently
-  by display mode: in-process **appends** the body to its default system
-  prompt, split-pane **replaces** it, and neither applies `skills:`. Write an
-  agent body that survives both (design §15.20d).
+- A teammate built from an agent definition **appends** the body to its default
+  system prompt, in both display modes, and neither applies `skills:`. The
+  split-pane mode replaced the prompt when §15.20d was written and appends it on
+  2.1.268, so write an agent body that survives both (design §15.20d, §15.89e).
 - A teammate's permission prompts surface in the project lead's session for a
   human to approve. Pre-approve what a run needs, or a no-prompt run stops on
   the first one (design §15.20, §15.12).

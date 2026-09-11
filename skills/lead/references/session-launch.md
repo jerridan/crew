@@ -50,6 +50,10 @@ question and not one per item.
 
 ## The launch
 
+**Read `CREW_LAUNCH` in your own environment first.** `iterm2` means the next
+section opens the session as a native iTerm2 tab. Any other value, and an unset
+variable, mean the tmux window below. The flags are the same either way.
+
 ```
 tmux new-window -d -n <session-name> -c <repo> 'CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id> CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false claude --name <session-name> --model fable --effort high --permission-mode auto --plugin-dir <plugin dir>'
 ```
@@ -73,14 +77,27 @@ tmux new-window -d -n <session-name> -c <repo> 'CREW_RECORD_ROOT=<portfolio-dir>
 
 ## The launch, as an iTerm2 tab
 
-`CREW_LAUNCH=iterm2` in your own environment opens each project-lead session as
-a tab in the principal's iTerm2 window and starts no tmux server. It needs
-iTerm2 with its Python API on, and the `iterm2` package installed for the Python
-you run. Everything else in this file holds: the same four rules, the same
-`claude` flags, the same charter message (design §15.89).
+This opens each project-lead session as a tab in the principal's iTerm2 window
+and starts no tmux server. Everything else in this file holds: the same four
+rules, the same `claude` flags, the same charter message (design §15.89).
 
-Write this script under your scratch directory and run it by path. It prints the
-new session's id. Keep that id — every step below takes it.
+**Check the two requirements before the first launch of the portfolio**, with
+the Python you are going to run the script on:
+
+```
+<python> -c 'import iterm2' && defaults read com.googlecode.iterm2 EnableAPIServer
+```
+
+The import must succeed and the read must print `1`. Anything else means do not
+launch as a tab. It is a question for the principal, and it goes in the batch
+the same way an untrusted directory does: ask them to install the `iterm2`
+package, or to turn the Python API on in iTerm2's settings, or to drop
+`CREW_LAUNCH`. Launching with tmux instead is not yours to decide — the
+principal set the variable.
+
+Write this script under your scratch directory and run it by path, on that same
+Python. It prints the new session's id. Keep that id — every step below takes
+it.
 
 ```python
 import iterm2
@@ -94,14 +111,19 @@ COMMAND = ("/bin/zsh -ilc 'CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id>"
 
 async def main(connection):
     app = await iterm2.async_get_app(connection)
-    window = app.current_terminal_window or app.windows[0]
     profile = iterm2.LocalWriteOnlyProfile()
     profile.set_use_custom_command("Yes")
     profile.set_command(COMMAND)
     profile.set_initial_directory_mode(
         iterm2.InitialWorkingDirectory.INITIAL_WORKING_DIRECTORY_CUSTOM)
     profile.set_custom_directory("<repo>")
-    tab = await window.async_create_tab(profile_customizations=profile)
+    window = app.current_terminal_window or (app.windows or [None])[0]
+    if window is None:
+        window = await iterm2.Window.async_create(
+            connection, profile_customizations=profile)
+        tab = window.tabs[0]
+    else:
+        tab = await window.async_create_tab(profile_customizations=profile)
     await tab.async_set_title("<session-name>")
     print(tab.sessions[0].session_id)
 

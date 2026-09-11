@@ -1652,7 +1652,7 @@ project-lead session. The lead keeps one shape for every item.
 
 ## T40 — Probe: launch a project-lead session as a native iTerm2 tab
 
-Status: open
+Status: done
 Depends on: T37
 Stage: 7 (design §15.22c, §15.72)
 Priority: low
@@ -1685,6 +1685,11 @@ iTerm2 tab, or §15 says why it cannot.
 
 Read first: design §15.22c, §15.72, §15.20d, §15.21; `session-launch.md`;
 the iTerm2 Python API documentation on creating tabs and running commands.
+
+It works. Design §15.89 holds the run and the four answers.
+`session-launch.md` carries the alternative launch behind `CREW_LAUNCH=iterm2`.
+§15.89e supersedes §15.20d's split-pane claim on Claude Code 2.1.268: both
+display modes append the agent definition to the default system prompt.
 
 ## T41 — Push a batch to the principal
 

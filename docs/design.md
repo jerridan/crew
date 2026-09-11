@@ -5358,8 +5358,10 @@ Deliberately different:
     task record of item d and the task escalations of item e. What survives is
     the measurement: item g's figures are still the evidence that a project-lead
     seat on a one-line change is the cost T51 chose to pay, and item h's touch
-    audit is still the rule for what a lead may run in a checkout. Read the rest
-    as history. T37's lead had one
+    audit is still the rule for what a lead may run in a checkout. Read the
+    rest as history.
+
+    T37's lead had one
     mechanism for every item: a charter and a project-lead session. A
     one-line task then bought a fable seat, a spec, a critic, a split, an IC
     and two reviews — and §15.73a measured what that seat costs, 82 percent
@@ -5764,7 +5766,9 @@ Deliberately different:
     package** may name the one shared file the repo's instruction file marks as
     a registration point, and `simple-path.md`'s "The light path" owns it. Every
     word below about what the exception is, and what stays wider than it, holds
-    where it now lives. §15.79a gave the lead five promotion reasons, and one of them was a
+    where it now lives.
+
+    §15.79a gave the lead five promotion reasons, and one of them was a
     shared file: a version manifest, a barrel, a lockfile. That reason came
     from the full path, where several ICs work in parallel worktrees and a
     file two of them edit is a merge conflict at integration (§5, "Shared

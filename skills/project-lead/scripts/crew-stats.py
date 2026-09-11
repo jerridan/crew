@@ -214,7 +214,7 @@ def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
     return acted, known
 
 
-def read_reviews(record: Path, bands: dict, skips: list, label: str | None = None) -> tuple[dict, dict, dict]:
+def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, dict]:
     """Return the review counts, the catch counts by kind, and the same by band.
 
     A review "acted" when its `Verdict:` line is one of `ACTION_VERDICTS` —
@@ -223,9 +223,10 @@ def read_reviews(record: Path, bands: dict, skips: list, label: str | None = Non
     the agents name, is counted as a review and as `unverdicted`, never as a
     catch, and it gets a skip line that says which of the two it is.
 
-    `label` names `record` in a skip line, and defaults to `record.name`.
+    A skip line names the record by its directory name, which is unique under
+    the record root.
     """
-    label = label if label is not None else record.name
+    label = record.name
     counts = {name: 0 for name, _ in REVIEW_KINDS}
     counts["other"] = 0
     by_kind = {name: blank_catch() for name, _ in REVIEW_KINDS}
@@ -619,7 +620,7 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     # above. This table is what says the absence was by rule (§15.77, §15.88).
     print("\nSteps skipped by rule\n")
     rows = [[step, sum(r["steps_skipped"][step] for r in records)] for step in SKIPPABLE_STEPS]
-    print(table(["step", "in runs"], rows))
+    print(table(["step", "count"], rows))
 
     print("\nPackage reviews by band\n")
     per_band = fold_catch_by_band([r["catch_by_band"] for r in records])

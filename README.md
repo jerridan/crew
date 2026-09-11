@@ -144,7 +144,7 @@ claude --model fable --effort high
 
 The project lead, the ICs and the scouts all take your session's effort, so set it before the run starts. Why Fable: design §8 and §15.50.
 
-A lead session takes the same two flags, and it starts each project-lead session itself. Run it inside tmux: `/crew:lead` opens one tmux window per goal. In iTerm2, set `CREW_LAUNCH=iterm2` for a native tab per goal instead of a tmux window, and install the `iterm2` package for your Python (design §15.89). Start it from a directory you have opened in Claude Code before, and answer the folder-trust dialog if one appears — a lead cannot restart itself past that dialog (design §15.74j).
+A lead session takes the same two flags, and it starts each project-lead session itself. Run it inside tmux: `/crew:lead` opens one tmux window per item. In iTerm2, set `CREW_LAUNCH=iterm2` for a native tab per item instead of a tmux window, and install the `iterm2` package for your Python (design §15.89). Start it from a directory you have opened in Claude Code before, and answer the folder-trust dialog if one appears — a lead cannot restart itself past that dialog (design §15.74j).
 
 **An audit trail instead of an approval gate.** One directory per goal, outside
 your repo, holding the spec, the plan, every IC's report, every reviewer's

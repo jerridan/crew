@@ -6391,9 +6391,10 @@ Deliberately different:
 
     The launch is one `async_create_tab` call with a custom command, and the
     command is the same `claude` line the tmux launch already used.
-    `session-launch.md` carries it as an alternative behind `CREW_LAUNCH=iterm2`
-    and nothing else in that file changes. The T40 session stood in for the lead
-    and issued the launch itself; no `/crew:lead` session was in the loop.
+    `session-launch.md` carries it as an alternative behind `CREW_LAUNCH=iterm2`.
+    The tmux launch keeps every rule it had, and gains one line that says to
+    read the variable first. The T40 session stood in for the lead and issued
+    the launch itself; no `/crew:lead` session was in the loop.
 
     a. **The session registers under `--name`, the same as a tmux one.** A
        `SendMessage` to the bare name `crew-t40-pl` resolved and delivered, and

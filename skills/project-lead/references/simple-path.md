@@ -189,8 +189,9 @@ read.
 **A `light` package can skip this step, and so can a light-path run at either
 band.** `band-rubric.md`'s "What a band skips" and "What the light path skips"
 state the conditions and the record write between them. The third condition —
-that you edited no shared file at "Integrate" — is the one that fails, and it
-fails on the light path too. Skipped, the run goes straight to "End the run".
+that you edited no shared file at "Integrate" — is the one that can fail, and
+it can fail on the light path as well. Skipped, the run goes straight to "End
+the run".
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`, the
 checkout path and base ref, the fresh diff path, the accepted package review,

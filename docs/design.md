@@ -6338,6 +6338,7 @@ Deliberately different:
        hazard, and nothing in the design says what two items in one repo do.
        T51 leaves it: it is a rule the live run found and not one it set out to
        write.
+
     h. **A high-effort review of the branch found five seams the light path
        opened.** The path reuses seven of `simple-path.md`'s sections, and the
        first draft assumed each one held for a run that entered halfway down

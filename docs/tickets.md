@@ -1645,6 +1645,11 @@ human that last edit (§15.79i). And "End every turn quickly" is still
 unexercised — the task ran inside one long turn, and no message arrived
 mid-turn to be delayed (§15.72i, §15.79j).
 
+Superseded in part by T51, filed 2026-09-11. The sizing test and the
+task loop move out of the lead: the project lead sizes the work after it
+scouts the repo, and a small item runs on a light path inside its own
+project-lead session. The lead keeps one shape for every item.
+
 ## T40 — Probe: launch a project-lead session as a native iTerm2 tab
 
 Status: open
@@ -1888,6 +1893,10 @@ and in the catch rate, and a live task's review counts.
 Read first: design §15.79, §15.81, §15.57 (the catch-rate method);
 `crew-stats.py`; `record-format.md` "The task record".
 
+Superseded in part by T51, filed 2026-09-11. Once every item is a run
+record, a task's review is a run's review and the twin code path in
+`crew-stats.py` comes out.
+
 ## T47 — Probe: a message reaches a lead mid-task
 
 Status: done
@@ -1954,6 +1963,11 @@ follow-up is asked of the human.
 Read first: design §15.79i, §15.79; `skills/lead/SKILL.md` "Triage every
 item by size" and "You never touch a target repo"; `record-format.md` "The
 task record"; `ic-contract.md`.
+
+Superseded in part by T51, filed 2026-09-11. The registration-line
+exception moves from the lead's triage to the project lead's light path.
+The reviewer rule (every shared file named by path, `[Critical]` only
+when the file set does not name it) stays as it is.
 
 ## T49 — A goal may carry gates between its stages, set by the principal
 
@@ -2038,3 +2052,66 @@ at it, and a request from a peer session has a written route.
 
 Read first: design §15.85, §15.72d; `skills/lead/SKILL.md`;
 `autonomy-contract.md`.
+
+## T51 — The project lead sizes the work, and a small item runs on a light path
+
+Status: open
+Depends on: T39, T42, T48, T49
+Stage: 7 (design §15.79, §15.83, §15.87)
+
+T39 put a sizing step in the lead: a task gets one IC that the lead runs
+itself, a goal gets a project-lead session. Three runs later the cost of
+that split is clear. The lead is busy for eight to ten minutes per task, its
+context fills with plans, reports and diffs, and its record holds a second
+shape (`items[].task`) beside the run record, which is where T45's six
+defects and `crew-stats.py`'s twin code paths came from. The principal's
+intent, stated 2026-09-11, is the opposite: the lead is the one session the
+principal talks to, it hands work to project leads and stands ready for the
+next instruction, and the project leads are the ones that stay busy.
+
+Move the sizing to the project lead, which reads the code and already routes
+between three paths. Three parts:
+
+1. **The lead hands every item to a project-lead session.** Size does not
+   change the lead's shape: charter, session, hand over, end the turn. The
+   lead's "Triage every item by size", "A task runs under you" and the task
+   record come out of `skills/lead/SKILL.md` and `record-format.md`. What
+   stays: the gate loop (T49), the batch (T41), the wake and the resume
+   (T44), and who may add an item (T50).
+2. **The project lead gains a light path.** After the scout, when the change
+   is one package, the charter's criterion is the spec, and the band is
+   `light` or `standard` with no judgment call open, the project lead skips
+   the spec and its critic and goes to one IC and one package review, with
+   `band-rubric.md`'s skips (T42) on top. `SKILL.md` routes to it beside the
+   simple, full and investigation paths; a small path file or a section of
+   `simple-path.md` owns the loop, and `band-rubric.md` owns what the path
+   skips. An item that turns out bigger promotes in place to the simple or
+   the full path, with no return to the lead. T48's registration-line rule
+   moves here: a light-path package may name a shared file the repo's
+   instruction file marks as the registration point.
+3. **One record shape.** Every item is a run record under
+   `runs/<item-id>/<slug>/`, with `state.json`. `items[].task` goes;
+   `record-format.md`'s "The task record" goes; `crew-stats.py` loses
+   `TASK_SKIPPABLE_STEPS`, `read_task_review` and `read_portfolios`' task
+   branches, and the "in tasks" column with them. `lead-spend.py`'s
+   double-count rule stays, and a lead's spend no longer holds workers.
+
+Cost, stated so nobody is surprised: every item now pays a Fable
+project-lead seat. T42's light run cost $4.93 against $3 to $4 for a
+lead-run task, so a trivial item costs a dollar or two more and takes a
+minute or two longer to start. The principal accepted that on 2026-09-11 in
+exchange for a lead that is always free and a design with one session kind.
+
+Done when: a one-line task handed to the lead reaches a draft PR through a
+project-lead session on the light path, with no spec file and one review in
+its run record; the same lead takes a second item while the first runs; a
+goal handed the same way runs as before; `crew-stats.py` reads one record
+shape; and no file under `skills/lead/` names a task the lead runs itself.
+Record what the run showed in design §15, and mark §15.79's lead-side rules
+and §15.83's triage exception superseded.
+
+Read first: design §15.79, §15.83, §15.87, §15.77, §9.1;
+`skills/lead/SKILL.md` whole; `skills/project-lead/SKILL.md` "Scout" and "Choose
+the shape"; `simple-path.md`;
+`band-rubric.md` "What a band skips"; `record-format.md` "The task record"
+and "The portfolio record"; `crew-stats.py`; `lead-spend.py`.

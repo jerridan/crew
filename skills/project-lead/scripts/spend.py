@@ -70,9 +70,7 @@ def project_dirs(checkout: str) -> list[Path]:
     # non-alphanumeric character of the absolute checkout path with "-".
     escaped = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(checkout))
     found = []
-    for root in [Path.home() / ".claude" / "projects"] + (
-            [Path(os.environ["CLAUDE_CONFIG_DIR"]) / "projects"]
-            if os.environ.get("CLAUDE_CONFIG_DIR") else []):
+    for root in project_roots():
         candidate = (root / escaped).resolve()
         if candidate.is_dir() and candidate not in found:
             found.append(candidate)

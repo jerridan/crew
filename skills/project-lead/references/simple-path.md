@@ -92,8 +92,8 @@ This section owns where a run's git work happens. `full-path.md` borrows it
 **Ask first whether another run holds this checkout.** It is held when either
 of these is true:
 
-- **The hand-off says so.** The lead adds one sentence when it launched you
-  into a repo that another of its items is already running in
+- **The hand-off says another run holds it.** The lead adds that sentence when
+  it launched you into a repo one of its other items is already running in
   (`session-launch.md`, "Handing over the charter").
 - **`git -C <repo> branch --show-current` prints a `crew/` branch with a goal
   slug that is not yours.** That branch is another run's, live or finished.
@@ -271,12 +271,6 @@ refused the PR has answered; do not ask twice. Then record `work-complete`,
 `pr_url: null` and `run_state: complete` in one write, and hand over the
 branch.
 
-**Restore the checkout at every end.** With a clean tree and a
-`checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
-why not in `checkout_restored`. Name both branches in your last message, and
-send that message to the principal the way the goal arrived
-(`autonomy-contract.md`). A pane is not a report when nobody is watching it.
-
 **Remove a worktree you cut, after the push.** A run that cut its own checkout
 at "Create the branch" has one entry in `worktrees.json`. Remove the worktree,
 then delete that entry (`record-format.md`):
@@ -287,7 +281,14 @@ git -C <target repo> worktree remove <record-root>/worktrees/<deliverable-id>
 
 This is the one later command that runs against the target repo and not
 `run.checkout`: a worktree cannot remove itself. The branch stays and the PR
-stands on it; only the working tree goes. Never
-force the removal: a refusal means files exist nowhere else, so commit them to
-the branch first. A worktree left registered is work for a human (design
-§15.88g, §15.90).
+stands on it; only the working tree goes. Never force the removal. A refusal
+means files exist nowhere else, so commit them to the branch first. A worktree
+left registered is work for a human (design §15.88g, §15.90).
+
+**Restore the checkout at every end.** With a clean tree and a
+`checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
+why not in `checkout_restored`. A run that cut its own checkout switched
+nothing, so `checkout_branch` is `null` and this step is already done. Name
+both branches in your last message, and send that message to the principal
+the way the goal arrived (`autonomy-contract.md`). A pane is not a report when
+nobody is watching it.

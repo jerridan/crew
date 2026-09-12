@@ -603,9 +603,9 @@ file holding `{}` (design §15.90g).
 **The path convention** is `<record-root>/worktrees/<territory-slug>`, or
 `<record-root>/worktrees/<deliverable-id>` for a deliverable checkout, and
 the IC on a territory is named `ic-<territory-slug>`. The root sits outside
-the target repo: a test runner that globs collects every worktree's tests as well as the
-repo's own, so a repo-local root makes the suite measure the wrong tree
-(design §15.35b, §15.37f).
+the target repo: a test runner that globs collects every worktree's tests as
+well as the repo's own, so a repo-local root makes the suite measure the wrong
+tree (design §15.35b, §15.37f).
 
 An IC writes its plan and its report into the record root, not into its
 worktree, so a worktree holds only the package's own work. That keeps

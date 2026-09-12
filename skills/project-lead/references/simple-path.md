@@ -105,11 +105,23 @@ just read as `checkout_branch`. Write `run.checkout`: this checkout's path.
 
 **Held.** Do not switch it. Two runs on one branch mix their commits, and the
 run that finishes second cannot say which are its own. Cut a checkout of your
-own instead, outside the target repo:
+own instead, in your own record directory:
 
 ```
-git -C <repo> worktree add <record-root>/worktrees/<deliverable-id> -b crew/<goal-slug>/<deliverable-id>
+git -C <repo> worktree add <record-dir>/worktrees/<deliverable-id> -b crew/<goal-slug>/<deliverable-id> <start-point>
 ```
+
+**Name the start-point, and never leave it out.** With none, the branch starts
+at the clone's `HEAD` — which in this case is the other run's branch, so your
+draft PR would carry its unfinished commits (design §15.79c). Use the repo's
+default branch: `git -C <repo> rev-parse --abbrev-ref origin/HEAD` prints it.
+A repo with no remote has no such ref, so use the branch the charter names,
+and record the choice in `decisions.md`.
+
+`<record-dir>` is this run's own record directory, the one holding
+`state.json` (`record-format.md`). Its goal slug carries the run's random
+suffix, which is what keeps two runs' worktree paths apart — a deliverable id
+alone does not, because every run's first is `deliverable-1`.
 
 Then, in the same turn:
 
@@ -276,7 +288,7 @@ at "Create the branch" has one entry in `worktrees.json`. Remove the worktree,
 then delete that entry (`record-format.md`):
 
 ```
-git -C <target repo> worktree remove <record-root>/worktrees/<deliverable-id>
+git -C <target repo> worktree remove <record-dir>/worktrees/<deliverable-id>
 ```
 
 This is the one later command that runs against the target repo and not

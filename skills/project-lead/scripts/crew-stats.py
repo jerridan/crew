@@ -150,14 +150,20 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
         return float(stored["usd_list_price"])
     if not forced:
         # A session subtree holds one run and nothing else, so this prices a
-        # run that shared a checkout with another one (design §15.90).
+        # run that shared a checkout with another one (design §15.90). A
+        # transcript that moves or fails to decode between the glob and the
+        # open costs this run its price, never the other records their rows.
         try:
             files = spend.run_files(state)
-        except OSError as err:
-            files = []
-            skips.append(f"{record.name}: could not read this run's own transcripts — {err}")
-        if files:
-            return sum(t["usd"] for t in spend.price_files(files).values())
+            if files:
+                return sum(t["usd"] for t in spend.price_files(files).values())
+            # Only when the scan will actually run. With no checkout the
+            # "no cost" line below says the same thing and says it better.
+            if reprice and checkout:
+                skips.append(f"{record.name}: --reprice found no transcript for this run's own "
+                             f"sessions, so its figure is the checkout scan the flag asks to avoid")
+        except (OSError, ValueError) as err:
+            skips.append(f"{record.name}: could not price this run's own sessions — {err}")
     if not checkout:
         skips.append(f"{record.name}: no cost — no transcript for this run's own sessions, and the record names no checkout")
         return None

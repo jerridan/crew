@@ -463,7 +463,7 @@ No figure gates a run. `spend` is a report the closing summary states and
 
 | Field | Meaning |
 |---|---|
-| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over the transcripts of this run's own sessions — each id in `run.session_ids`, with the subagents and teammates under it. `autonomy-contract.md` says when to run it. |
+| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over the transcripts of this run's own sessions — each id in `run.session_ids`, with the subagents and in-process teammates under it. `autonomy-contract.md` says when to run it. |
 
 **A run is priced by its sessions, not by its checkout.** Claude Code names a
 transcript directory for the session's working directory, so two runs launched
@@ -601,9 +601,13 @@ the entry is what proves a worktree is this run's to remove, and a removed
 worktree needs no proof. A run that removed every worktree it cut leaves the
 file holding `{}` (design §15.90g).
 
-**The path convention** is `<record-root>/worktrees/<territory-slug>`, or
-`<record-root>/worktrees/<deliverable-id>` for a deliverable checkout, and
-the IC on a territory is named `ic-<territory-slug>`. The root sits outside
+**The path convention** is `<record-dir>/worktrees/<territory-slug>`, or
+`<record-dir>/worktrees/<deliverable-id>` for a deliverable checkout, and
+the IC on a territory is named `ic-<territory-slug>`. `<record-dir>` is the
+goal directory this file opens with — `<record-root>/<goal-slug>/` — and not
+the record root itself, whose goal directories two runs of one charter share.
+The goal slug carries the run's random suffix, so the path is unique per run
+(design §15.34, §15.90). The root sits outside
 the target repo: a test runner that globs collects every worktree's tests as
 well as the repo's own, so a repo-local root makes the suite measure the wrong
 tree (design §15.35b, §15.37f).
@@ -1215,7 +1219,7 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-root>/worktrees/<territory-slug>`
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-dir>/worktrees/<territory-slug>`
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); crew's `SessionEnd` hook (matches a worktree to the ending session)
 - `orphaned` — consumer: crew's `SessionEnd` hook (writer); stage 5 `--resume` (prunes on it, design §10.1)

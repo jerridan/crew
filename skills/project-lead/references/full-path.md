@@ -112,7 +112,8 @@ integration is a merge and never a rebase (design §9.3):
 git -C <run.checkout> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
-Put `<worktree-root>` at `<record-root>/worktrees`, outside the target repo.
+Put `<worktree-root>` at `<record-dir>/worktrees`, inside this run's own
+record directory and outside the target repo (`record-format.md`).
 A repo-local root looks tidy and breaks the suite: a test runner that globs
 collects every worktree's tests as well as the repo's own, so the run measures
 the wrong tree (design §15.35b). Put the root inside the repo only with a
@@ -445,7 +446,10 @@ whole team down at once. What survives is every worktree on disk: its commits
 session's id to `run.session_ids` and to each worktree's `session_ids`; never
 overwrite them.
 
-For every worktree in `worktrees.json`:
+For every **IC** worktree in `worktrees.json` — every entry keyed by an IC
+name. Skip the entry keyed by a deliverable id: that is this run's own
+checkout, not an IC's, and it reconciles with the deliverable branch below
+(`simple-path.md`, "Create the branch").
 
 | State | Meaning | Action |
 |---|---|---|

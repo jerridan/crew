@@ -6631,3 +6631,13 @@ Deliberately different:
        project leads first; the race that second signal exists for has not
        happened yet. And `spend.py`'s checkout fallback priced no live run: it
        was exercised against the older records only.
+
+       **One hole the session window opens, and why it is left open.** A
+       **split-pane** teammate is its own session, so it sits outside the
+       project lead's subtree and the session price misses it. In-process is
+       the default in every terminal crew has run in (§15.20c, §15.89d) and no
+       crew run has used a split pane, so no figure misses a teammate today.
+       Closing it means `run.session_ids` holding each teammate's id, and a
+       project lead is handed no teammate session id at spawn. Both scripts
+       say the limit out loud instead. That is a ticket the day a run needs a
+       split pane.

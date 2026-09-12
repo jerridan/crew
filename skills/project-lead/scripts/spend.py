@@ -11,11 +11,18 @@ includes the project lead's own session and the IC teammates (design §8,
 
 **The run's own sessions are the window.** `run.session_ids` in `state.json`
 names them, and Claude Code writes each one as `<session-id>.jsonl` with its
-subagents and its teammates under `<session-id>/`. So a run is priced by that
-subtree, wherever it sits under `~/.claude/projects/` (and under
-`$CLAUDE_CONFIG_DIR/projects/` when that variable is set). Two runs that share
-one checkout are then priced apart, which the checkout window could not do
-(design §15.90). `lead-spend.py` prices a lead the same way.
+subagents and its in-process teammates under `<session-id>/`. So a run is
+priced by that subtree, wherever it sits under `~/.claude/projects/` (and
+under `$CLAUDE_CONFIG_DIR/projects/` when that variable is set). Two runs that
+share one checkout are then priced apart, which the checkout window could not
+do (design §15.90). `lead-spend.py` prices a lead the same way.
+
+**A split-pane teammate is its own session and falls outside that subtree.**
+In-process is the default in every terminal crew has run in (design §15.20c,
+§15.89d), and no crew run has used a split pane, so no measured figure misses
+a teammate today. A run driven with `--teammate-mode iterm2` or `tmux` would
+report short, with no line to say so, until `run.session_ids` learns to hold
+each teammate's id (design §15.90h).
 
 **The checkout is the fallback**, for a record written before
 `run.session_ids` existed or one whose sessions wrote no transcript. It reads

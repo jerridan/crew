@@ -6549,6 +6549,13 @@ Deliberately different:
        priced a lead. The checkout scan stays as the fallback, for a record
        whose sessions wrote no transcript.
 
+       **One rule weakened with it.** A lead that starts inside an item's
+       checkout was counted twice, because the run swallowed its transcripts.
+       It is not, now: a lead's session id is in no run's `session_ids`. The
+       rule stands, because the fallback still counts a directory whole, but
+       `lead-spend.py`'s warning and `skills/lead/SKILL.md` both say the
+       fallback is the case that costs.
+
        **The measurement, over T51's own records.** The two light runs price
        $4.52 and $5.51 against the $8.85 and $9.71 their `state.json` files
        hold. The two subtrees together come to $10.03, and the whole directory

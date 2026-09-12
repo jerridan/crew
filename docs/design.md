@@ -6509,8 +6509,8 @@ Deliberately different:
        that points here. Nothing states the rule twice.
 
     b. **The project lead cuts the checkout, and the lead never does.** The
-       lead runs read-only git in a checkout and nothing else (§15.74), so
-       `git worktree add` is not available to it. It has one thing the project
+       lead runs read-only git in a checkout and nothing else (§15.79c,
+       §15.88h), so `git worktree add` is not available to it. It has one thing the project
        lead cannot get for itself: it knows a second item is already running in
        that repo before the first has switched a branch. So the lead adds one
        sentence to the hand-off — "Another run holds this checkout" — and the

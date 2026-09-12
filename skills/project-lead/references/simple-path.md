@@ -135,7 +135,7 @@ run nothing (design §9.1).
 Dispatch one **unnamed** subagent at the package's band model: `crew:ic` for
 code, `crew:ic-instructions` for an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text, the
-brief, the file set, this checkout's path, the interface contract, the
+brief, the file set, `run.checkout`, the interface contract, the
 acceptance criterion, the global constraints section, the record root, the
 package id, and **that it is a subagent** — `ic-contract.md`'s plan gate
 branches on it.

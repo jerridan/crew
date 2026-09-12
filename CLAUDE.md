@@ -45,9 +45,10 @@ have run end to end against a real repo with a test suite. The
 report ending; both endings have run against that repo, and it is
 `crew:researcher`'s only caller, which no run has dispatched yet. The **light
 path** is the simple path with no spec and no spec critic, chosen by the
-project lead itself after the scout. Two light-path items have run to a draft
-PR each, both at the `standard` band and both with one package review and no
-fix round (§15.88). No run has yet promoted a light-path item in place.
+project lead itself after the scout. Four light-path items have run to a draft
+PR each, all at the `standard` band and all with one package review and no fix
+round (§15.88, §15.91). No run has promoted a light-path item in place: two
+seeded runs tried and "Size the work" absorbed both seeds (§15.91).
 
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
 item, launches one project-lead session per item, answers what it can and

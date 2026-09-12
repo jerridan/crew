@@ -2169,9 +2169,9 @@ branch" and "End the run"; `full-path.md` on worktrees; `record-format.md`
 
 ## T53 — Promote a light-path item in place
 
-Status: open
+Status: done
 Depends on: T51
-Stage: 7 (design §15.88h)
+Stage: 7 (design §15.88h, §15.91)
 
 T51 gave the light path a promotion rule: the four answers can turn out wrong
 once the IC reports or once the diff's file list is read, and the project

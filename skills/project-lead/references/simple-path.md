@@ -63,14 +63,26 @@ file does — a README table row the repo's own history adds with every helper
 is part of adding one, and a package that leaves it out ships a PR a human
 finishes (design §15.83, §15.88).
 
+**One is a number, so count it.** Write the file set, then count the shared
+files in it. One is the cap. The second one goes to "Integrate", where a shared
+file belongs on every other path, and the deliverable review then runs on the
+post-integration diff (design §15.91).
+
+**Two registration points that must change together promote the run.** A repo
+can register a new thing in a barrel and again in a command line, and hold a
+test that goes red between the two edits. One commit must then carry both, and
+one light-path package may hold one. So ask before you dispatch: does the suite
+stay green with the second edit left for "Integrate"? A no is not one package.
+
 **Promote in place, and never back to the lead.** The four answers can turn out
-wrong once the IC reports, or once you read the diff's file list. Promote on
-any one of these: a second file set, an interface another package must consume,
-a preference nothing settles, or a criterion you find yourself interpreting.
-Go back to `SKILL.md`'s "Write the spec", in this same session and on this same
-branch, and leave every commit where it is. Record the promotion and its reason
-in `decisions.md`. The lead learns of it in your next report, as information
-and never as a question.
+wrong before the dispatch, once the IC reports, or once you read the diff's
+file list. Promote on any one of these: a second shared file the package cannot
+leave for "Integrate", a second file set, an interface another package must
+consume, a preference nothing settles, or a criterion you find yourself
+interpreting. Go back to `SKILL.md`'s "Write the spec", in this same session and
+on this same branch, and leave every commit where it is. Record the promotion
+and its reason in `decisions.md`. The lead learns of it in your next report, as
+information and never as a question.
 
 ## Write the split
 

@@ -6375,7 +6375,8 @@ Deliberately different:
        to sit in repos with one registration point and one deliverable each.
        That is the reading a live run cannot replace: a path that reuses
        sections must be read against every one of them, and the run only
-       exercises the branches it happens to take.
+       exercises the branches it happens to take. **Two seeded runs later tried
+       to reach the promotion branch and neither did** (§15.91).
 
 89. **A project lead runs in a native iTerm2 tab — 2026-09-11, T40.**
     `session-launch.md` opened every project-lead session with
@@ -6654,3 +6655,109 @@ Deliberately different:
        project lead is handed no teammate session id at spawn. Both scripts
        say the limit out loud instead. That is a ticket the day a run needs a
        split pane.
+
+91. **Two seeds tried to force a light-path promotion, and "Size the work"
+    absorbed both — 2026-09-12, T53.** §15.88h left the promotion rule
+    unexercised: all three T51 items sat in repos with one registration point
+    and one deliverable, so nothing reached the branch. T53 seeded the fixture
+    twice to force it. Neither seed promoted, and the reason is the finding.
+
+    Both runs are Fable project leads at high effort, each in its own clone of
+    `jerridan/crew-fixture-string-kit`, each handed a charter path by typed
+    text in tmux `crew-t53`, with `--plugin-dir` on the T53 branch. No lead
+    session was in the loop. Records sit under `~/.claude/crew-t53-live/`.
+
+    | | Seed A, `snake-case-helper-bb6f` | Seed B, `word-wrap-helper-fc24` |
+    |---|---|---|
+    | Session | `cfe7f1b7` | `5085b5af` |
+    | The seed | the fixture's `CLAUDE.md` requires a `bin/kit.js` subcommand for every helper | a repo-wide `test/cli-contract.test.js` requires one, and no instruction file says so |
+    | Path taken | light | light |
+    | Promotions | 0 | 0 |
+    | Files in the one package | 5 | 6 |
+    | Fix rounds, escalations | 0, 0 | 0, 0 |
+    | Draft PR | #34 | #35 |
+    | Cost | $5.18 | $4.73 |
+
+    `crew-stats.py` prices the two at $9.91, $4.96 each. The clones differ, so
+    each run's `spend.py` window held its own transcripts alone — the double
+    count §15.88f measured needs two runs in one checkout, and two runs in two
+    checkouts do not show it.
+
+    a. **Question 1 answers itself, so no seed survives it.** "Is the change
+       one package — one file set one IC can hold?" leaves the file set to the
+       project lead, and a project lead that may choose the set can always make
+       it one. Seed A's project lead put `bin/kit.js` and `README.md` beside
+       the helper and its test. Seed B's added `docs/cli.md` as well, six files
+       over three territories, and wrote in `decisions.md`: "One IC holds all
+       six." Both answers are honest readings of the question as written.
+
+    b. **The seam needs a surprise, and a fixture this small has none.**
+       Promotion waits for an answer that turns out wrong after the dispatch.
+       §15.71 lets a project lead read a small repo directly instead of
+       scouting, and both did — seed A's read five files, seed B's read the
+       contract test and quoted its lines 15 to 31 in `decisions.md` before it
+       dispatched anything. A repo the sizing step reads whole holds nothing
+       for the dispatch to discover. Seed B hid the requirement from every
+       instruction file and put it in a test, which is the last place left to
+       hide it, and the project lead read the test. A seed that reaches the
+       seam therefore needs a repo big enough that the scout misses something,
+       and the fixture is thirteen files.
+
+    c. **Both runs broke the one-shared-file cap, and neither noticed.** The
+       light path allows one shared file, the registration point the repo's
+       instruction file marks. Seed A's package named `src/index.js` and
+       `bin/kit.js`: two registration points. Seed B's named those two plus
+       `docs/cli.md`, and no instruction file marks either of the last two.
+       Seed B's IC then reported four of its files as shared, one per line, as
+       `ic-contract.md` tells it to. Its project lead read that report and
+       still wrote "the project lead edited no shared file at Integrate
+       (`src/index.js` was the IC's one registration line)" as the reason it
+       skipped the deliverable review. The IC said four; the record says one.
+
+    d. **So the cap becomes a count, and it promotes the run in one case.**
+       The four triggers are all post-dispatch discoveries, and (b) says a
+       small repo makes none. The cap in (c) is the bound question 1 needed,
+       and it was written as a permission on the package — "may name one shared
+       file" — never as a check on the set. §15.88g moved the same sentence
+       once already, for the same reason. `simple-path.md` now says to write
+       the file set, count the shared files in it, and give the second one to
+       "Integrate", which is where a shared file goes on every other path and
+       which makes the deliverable review run.
+
+       **One case cannot be split that way, and it promotes.** Seed B's
+       contract test reads `src/index.js` and `bin/kit.js` together, so the
+       suite is red between the two edits. Its IC saw that and said so in its
+       report: it put both edits in one commit, "since registering the export
+       alone would turn the pre-existing `test/cli-contract.test.js` red
+       between those two edits". One commit must carry both files, one
+       light-path package may carry one, and no light-path run can hold the
+       work. So `simple-path.md` asks one question before the dispatch — does
+       the suite stay green with the second edit left for "Integrate"? — and a
+       no promotes. Seed B fails that question, which is the evidence the
+       question is the right one. Seed A passes it: nothing in that fixture
+       goes red between the barrel line and the subcommand, so seed A's second
+       shared file belonged at "Integrate" and its deliverable review should
+       have run.
+
+    e. **`run.steps_skipped` drops its `spec-critic` entry on a promotion.**
+       The ticket left the choice to `record-format.md`, and that file now
+       carries it. A promoted run goes back to "Write the spec", writes one and
+       dispatches the critic, so the step runs. An entry that stays says a step
+       was skipped that a review file on disk proves ran, and `crew-stats.py`
+       would count the same run in "Steps skipped by rule" and in the review
+       table together. `decisions.md`'s promotion entry holds the history of
+       the skip, which is where an audit reads it. The rule names the
+       `spec-critic` entry alone. A light-path run writes its
+       `deliverable-review` entry at "Review the deliverable", which comes
+       after every promotion trigger the path names, so a promotion finds no
+       such entry on disk.
+
+    f. **What is still unproved.** No run has promoted a light-path item in
+       place. Nothing here exercised the record consequences the ticket
+       listed — the promotion entry, the branch and `base` that survive, the
+       IC's commits, the spec critic on the promoted spec, or (e)'s removal.
+       The count and the question in (d) are written and not run, and they
+       fire before a dispatch, so running them proves the check and not the
+       seam. The fixture branch `t53-seed-b` fails the question by
+       construction, which makes it the cheapest test of the check. The seam
+       itself waits for a repo big enough to hide a requirement from the scout.

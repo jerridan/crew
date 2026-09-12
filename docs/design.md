@@ -6521,13 +6521,26 @@ Deliberately different:
        the checkout.
 
     c. **Held, the run cuts one worktree and removes it at the end.** The path
-       is `<record-root>/worktrees/<deliverable-id>`, the entry goes in
+       is `<record-dir>/worktrees/<deliverable-id>`, the entry goes in
        `worktrees.json` keyed by the deliverable id — no IC owns it — and a new
        `run.checkout` names it for every later step. `checkout_branch` stays
        `null`, because nothing switched. "End the run" removes the worktree
        after the push, from the target repo and not from inside the worktree.
        That is `strip-suffix`'s judgment in §15.88g, written down, with the two
        record writes it was missing.
+
+       **Two details the branch review caught, and both were real.** The
+       `git worktree add` had no **start-point**, so the new branch would have
+       started at the clone's `HEAD` — which in the held case is the other
+       run's branch, and the draft PR would have carried its commits. §15.79c
+       had already found that shape once. The rule now names the repo's
+       default branch. And the worktree path said `<record-root>`, which is
+       the root above the goal directory and the same for every run under it,
+       so two runs would have collided on `worktrees/deliverable-1`. Every run
+       since §15.35b has in fact put its worktrees inside the **goal**
+       directory, so the convention was written wrong and read right.
+       `record-format.md` now says `<record-dir>` and says which directory
+       that is.
 
     d. **A worktree does not separate transcripts, and the ticket's second
        constraint assumed it did.** Claude Code names a transcript directory

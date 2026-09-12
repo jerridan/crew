@@ -2120,3 +2120,90 @@ Read first: design §15.79, §15.83, §15.87, §15.77, §9.1;
 the shape"; `simple-path.md`;
 `band-rubric.md` "What a band skips"; `record-format.md` "The task record"
 and "The portfolio record"; `crew-stats.py`; `lead-spend.py`.
+
+## T52 — Two items in one repo run in two checkouts
+
+Status: open
+Depends on: T51
+Stage: 7 (design §15.88f, §15.88g)
+
+T51's live run handed a lead two items in the same repo while the first was
+still running. Both project leads got the same `repo` path, so both ran in
+one checkout. Two things followed. The second project lead saw the first run
+on the checkout, cut a worktree of its own to stay off it, and left the
+worktree registered at the close — nothing in the design said it could, or
+should. And `spend.py` prices a run over every transcript that ran from the
+checkout inside the run's window, so each run was billed for the other's
+work: $8.85 and $9.71 in the table against about $4.90 each in fact
+(§15.88f). The simple path's "Create the branch" also switches the shared
+checkout to the run's branch, so two runs in one checkout fight over the
+branch as well.
+
+Write the rule. The lead knows the case before anyone else: it holds two
+items with one `repo`, and one of them is `running`. Decide where the second
+checkout comes from and who makes it, then make both tiers follow it. Three
+constraints:
+
+- The lead runs read-only git and nothing else in a checkout
+  (`skills/lead/SKILL.md`, "You never touch a target repo"). A rule that has
+  the lead run `git worktree add` or `gh repo clone` reopens what T51 closed.
+  Prefer one where the lead names the checkout and the project lead makes it,
+  or where the project lead detects the case itself.
+- `spend.py` prices by the escaped checkout path, so a run in a worktree of
+  its own is priced alone. A rule that keeps two runs in one path leaves the
+  double count in place; if you choose it, say so and give `spend.py` a way
+  to tell the runs apart.
+- A worktree the run cuts is recorded in its `worktrees.json` and removed at
+  "End the run", the way the full path already does it.
+
+Done when: a lead handed two items in one repo runs both at once, each run's
+record shows a distinct checkout path, `crew-stats.py` prices each run alone,
+and neither run leaves a worktree behind. Record the run in design §15 and
+point at it from §15.88g.
+
+Read first: design §15.88f, §15.88g, §15.51, §9.1; `skills/lead/SKILL.md`
+"One project-lead session per item" and "You never touch a target repo";
+`session-launch.md` "Handing over the charter"; `simple-path.md` "Create the
+branch" and "End the run"; `full-path.md` on worktrees; `record-format.md`
+`worktrees.json` and the item's `repo`; `spend.py`.
+
+## T53 — Promote a light-path item in place
+
+Status: open
+Depends on: T51
+Stage: 7 (design §15.88h)
+
+T51 gave the light path a promotion rule: the four answers can turn out wrong
+once the IC reports or once the diff's file list is read, and the project
+lead then goes back to "Write the spec" in the same session, on the same
+branch, keeping every commit. No run has done it (§15.88h). Both live items
+sat in repos with one registration point and one deliverable, so nothing
+tested the seam.
+
+Force it. Seed the fixture so that an item reads as one package at "Size the
+work" and is not — for example, a helper the charter names in one line, in a
+fixture whose instruction file requires every new helper to ship a second
+thing in another territory that the sizing step would not see, such as a CLI
+subcommand under `bin/`; or an IC that reports `BLOCKED` on a scope it cannot
+hold. Pick a seed that forces the promotion after the dispatch, not at "Size
+the work". §15.71 says a project lead on a small fixture may read it directly
+instead of scouting, so the seed must survive a direct read too. If no seed
+can reach the seam, that is the finding: say why, and say what the promotion
+rule should become.
+
+Then check what the promotion did to the record: `decisions.md` holds the
+promotion entry, the deliverable keeps its branch and `base`, the IC's
+commits survive, the spec critic runs on the spec the promoted run writes,
+and `run.steps_skipped` either drops the light path's `spec-critic` entry or
+keeps it with the reason updated. `record-format.md` decides which; write it
+down.
+
+Done when: one light-path item promotes in place to the simple or the full
+path and reaches a draft PR, its record shows the promotion and the commits
+from before it, and design §15 holds what the run showed — or §15 says why
+the seam cannot be reached, with the rule change that follows.
+
+Read first: design §15.88b, §15.88h, §15.71; `skills/project-lead/SKILL.md`
+"Size the work"; `simple-path.md` "The light path"; `band-rubric.md` "What
+the light path skips"; `record-format.md` `steps_skipped` and `decisions.md`;
+`ic-contract.md` report statuses.

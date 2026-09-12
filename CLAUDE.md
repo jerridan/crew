@@ -58,6 +58,9 @@ and restarted from the record with no human turn (design §15.72, §15.74). Two
 goals at once has run (T9, §15.80): the lead resumed a killed project lead
 with no human turn, and survived a compaction mid-portfolio. Three items from
 one lead has run, the second handed while the first was still going (§15.88).
+Two items in one repo take a checkout each: the project lead cuts its own when
+another run holds the shared one, and `spend.py` prices every run from its own
+sessions rather than from the checkout (§15.90).
 A goal the principal cuts into stages can carry a
 **gate** between them — one item per stage, and the lead holds the next stage
 until the principal's go. One two-stage goal has run through a gate end to end

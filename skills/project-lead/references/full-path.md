@@ -98,30 +98,33 @@ cap; escalate at it.
 
 ## Create the branch and the worktrees
 
-This rule switches the checkout, so read its branch **before** you switch and
-record it as `checkout_branch`, as `simple-path.md`'s "Create the branch"
-says. Then branch from the current head:
-`git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`. The
-`deliverables[]` entry goes in now — `id`, branch, the head sha as `base`,
-`state: pending`, `pr_url: null`, and `checkout_branch`.
+This rule switches the checkout, so run `simple-path.md`'s "Create the branch"
+first, whole. It asks whether another run holds the checkout, records
+`run.checkout`, and writes the `deliverables[]` entry — `id`, branch, the head
+sha as `base`, `state: pending`, `pr_url: null`, and `checkout_branch`. Held,
+it cuts the deliverable's own checkout there and this run's worktrees branch
+from that one. **Every `<repo>` below this line means `run.checkout`.**
 
 Then one worktree per territory, all branching from that same head, so
 integration is a merge and never a rebase (design §9.3):
 
 ```
-git -C <repo> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
+git -C <run.checkout> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
-Put `<worktree-root>` at `<record-root>/worktrees`, outside the target repo.
+Put `<worktree-root>` at `<record-dir>/worktrees`, inside this run's own
+record directory and outside the target repo (`record-format.md`).
 A repo-local root looks tidy and breaks the suite: a test runner that globs
 collects every worktree's tests as well as the repo's own, so the run measures
 the wrong tree (design §15.35b). Put the root inside the repo only with a
 reason, and record it.
 
 Write `worktrees.json` now: the IC's name, the absolute worktree path, its
-branch, this session's id, and `orphaned: false`. Set every package's
-`ic_name` to the name of the IC that owns its territory. Nothing else maps a
-package back to the worktree that must verify it.
+branch, this session's id, and `orphaned: false`. A deliverable checkout cut
+at "Create the branch" already holds an entry there, keyed by its deliverable
+id; leave it. Set every package's `ic_name` to the name of the IC that owns
+its territory. Nothing else maps a package back to the worktree that must
+verify it.
 
 Name an IC `ic-<territory-slug>`.
 
@@ -420,8 +423,9 @@ At either end, restore the checkout to `checkout_branch`, as
 ## Clean up
 
 Remove each IC worktree when the deliverable closes, and prune its
-registration from `worktrees.json`. `simple-path.md`'s "End the run" owns the
-process sweep that comes first.
+registration from `worktrees.json`. A deliverable checkout goes last, because
+the IC worktrees branch from it; `simple-path.md`'s "End the run" owns that
+removal and the process sweep that comes first.
 
 **Never force a removal.** A refusal means files exist nowhere else. Commit
 them to that IC's branch, or surface them. Remove only worktrees this run
@@ -442,7 +446,10 @@ whole team down at once. What survives is every worktree on disk: its commits
 session's id to `run.session_ids` and to each worktree's `session_ids`; never
 overwrite them.
 
-For every worktree in `worktrees.json`:
+For every **IC** worktree in `worktrees.json` — every entry keyed by an IC
+name. Skip the entry keyed by a deliverable id: that is this run's own
+checkout, not an IC's, and it reconciles with the deliverable branch below
+(`simple-path.md`, "Create the branch").
 
 | State | Meaning | Action |
 |---|---|---|

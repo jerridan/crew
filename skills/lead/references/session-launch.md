@@ -174,6 +174,19 @@ the repo path, and the instruction to run the skill:
 Take this goal to a draft PR. The charter is at <portfolio-dir>/charters/<item-id>.md and the repository is <repo>. Run /crew:project-lead on that charter path now.
 ```
 
+**Add one sentence when another item is already running in that same `repo`:**
+
+```
+Another run holds this checkout.
+```
+
+Send it whenever a second item in `portfolio.json` names the same `repo` and
+its state is `running`. It is the one thing you know that the project lead
+cannot read for itself, because the other run may not have switched the branch
+yet. What the project lead does with it is
+`../project-lead/references/simple-path.md`'s "Create the branch", and that
+file owns the rule whole: you make no checkout and run no git for it.
+
 That is the whole message. **Do not tell it to escalate to you** — the plugin's
 own rules already make the sender of the goal its principal, and T36 proved a
 project lead writes `run.principal` from the envelope with nothing in the

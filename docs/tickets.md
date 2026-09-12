@@ -2123,7 +2123,7 @@ and "The portfolio record"; `crew-stats.py`; `lead-spend.py`.
 
 ## T52 — Two items in one repo run in two checkouts
 
-Status: open
+Status: done (design §15.90)
 Depends on: T51
 Stage: 7 (design §15.88f, §15.88g)
 

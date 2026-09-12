@@ -45,13 +45,18 @@ second price table. A run is priced in this order:
 1. `spend.py` over the checkout a `--repo <slug>=<checkout>` flag names. An
    explicit flag always wins, because a stored figure can be stale (§15.51).
 2. `run.spend.transcript.usd_list_price`, when `spend.py --write` stored it.
-3. `spend.py` over the checkout the record names in `repo`.
-4. Not priced. The run still counts everywhere else, and a skip line says so.
+   `--reprice` drops this step, so every run is measured again from its own
+   sessions — which is how a figure stored before §15.90 is corrected.
+3. `spend.py` over the transcripts of the sessions in `run.session_ids`.
+4. `spend.py` over the checkout the record names in `repo`.
+5. Not priced. The run still counts everywhere else, and a skip line says so.
 
-Two runs can share one checkout, so a run priced here closes its window at
-`run.completed_at`, or at its latest `state_changed_at`. Without that bound
-each run absorbs its neighbours' cost and the totals double count. A run with
-no recorded end prices open-ended, and a skip line says so.
+Step 3 prices two runs that shared one checkout apart, because a session
+subtree belongs to one run (design §15.90). Step 4 cannot: it counts every
+session that ran from the directory. So a run priced from a checkout closes
+its window at `run.completed_at`, or at its latest `state_changed_at`, and a
+run with no recorded end prices open-ended with a skip line to say so. That
+bound under-counts by the run's own tail (§15.51), which step 3 keeps.
 
 An older or partial record never stops the script. A missing field is skipped,
 the record is still counted, and one line names what was skipped.
@@ -134,15 +139,33 @@ def run_end(state: dict) -> float | None:
         return None
 
 
-def price_run(record: Path, state: dict, checkout: str | None, forced: bool, skips: list) -> float | None:
+def price_run(record: Path, state: dict, checkout: str | None, forced: bool, skips: list,
+              reprice: bool = False) -> float | None:
     """Return the run's cost in US dollars, or None when nothing can price it."""
     stored = ((state.get("run") or {}).get("spend") or {}).get("transcript") or {}
-    # An explicit --repo wins over a stored figure. §15.51 shows a stored
-    # figure can be stale, and this is the only way to recompute one.
-    if not forced and isinstance(stored, dict) and stored.get("usd_list_price") is not None:
+    # An explicit --repo, and --reprice, both win over a stored figure. §15.51
+    # shows a stored figure can be stale, and a figure stored before §15.90
+    # holds a neighbour run's cost as well as its own.
+    if not forced and not reprice and isinstance(stored, dict) and stored.get("usd_list_price") is not None:
         return float(stored["usd_list_price"])
+    if not forced:
+        # A session subtree holds one run and nothing else, so this prices a
+        # run that shared a checkout with another one (design §15.90). A
+        # transcript that moves or fails to decode between the glob and the
+        # open costs this run its price, never the other records their rows.
+        try:
+            files = spend.run_files(state)
+            if files:
+                return sum(t["usd"] for t in spend.price_files(files).values())
+            # Only when the scan will actually run. With no checkout the
+            # "no cost" line below says the same thing and says it better.
+            if reprice and checkout:
+                skips.append(f"{record.name}: --reprice found no transcript for this run's own "
+                             f"sessions, so its figure is the checkout scan the flag asks to avoid")
+        except (OSError, ValueError) as err:
+            skips.append(f"{record.name}: could not price this run's own sessions — {err}")
     if not checkout:
-        skips.append(f"{record.name}: no cost — the record has no spend.transcript and names no checkout")
+        skips.append(f"{record.name}: no cost — no transcript for this run's own sessions, and the record names no checkout")
         return None
     checkout = os.path.expanduser(checkout)
     dirs = spend.project_dirs(checkout)
@@ -436,7 +459,8 @@ def blank_adversary() -> dict:
     return {"entries": 0, "whole": 0, "part": 0, "overturned": 0, "unparsed": 0}
 
 
-def read_record(record: Path, state: dict, checkout: str | None, forced: bool, skips: list) -> dict:
+def read_record(record: Path, state: dict, checkout: str | None, forced: bool, skips: list,
+                reprice: bool = False) -> dict:
     run = state.get("run")
     run = run if isinstance(run, dict) else {}
     listed = as_list(state.get("packages"))
@@ -465,7 +489,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
     decisions, councils, council_tokens, adversary = read_decisions(record, skips)
     bands = {p.get("id"): (p.get("band") if p.get("band") in BANDS else "unknown") for p in packages}
     reviews, catch, catch_by_band = read_reviews(record, bands, skips)
-    usd = price_run(record, state, checkout, forced, skips)
+    usd = price_run(record, state, checkout, forced, skips, reprice)
     return {
         "run": record.name,
         "run_state": run.get("run_state"),
@@ -755,6 +779,8 @@ def main(argv: list[str]) -> None:
     parser.add_argument("--record-root", help="the record root; default $CREW_RECORD_ROOT or ~/.claude/crew/")
     parser.add_argument("--repo", action="append", default=[], metavar="SLUG=CHECKOUT",
                         help="price this run from this checkout, when the record names none; repeatable")
+    parser.add_argument("--reprice", action="store_true",
+                        help="ignore every stored spend.transcript and price each run from its own sessions")
     parser.add_argument("--json", action="store_true", help="print machine-readable JSON instead of tables")
     args = parser.parse_args(argv)
 
@@ -791,7 +817,7 @@ def main(argv: list[str]) -> None:
         checkout = overrides.get(record.name) or stored_repo
         # One malformed record must not take the other ten down with it.
         try:
-            read = read_record(record, state, checkout, forced, skips)
+            read = read_record(record, state, checkout, forced, skips, args.reprice)
         except (AttributeError, KeyError, TypeError, ValueError) as err:
             skips.append(f"{record.name}: unreadable record — {type(err).__name__}: {err}")
             continue

@@ -138,6 +138,12 @@ constraints on when you use it:
   project lead reads the code and picks the path, and a small item runs on its
   light path (`../project-lead/references/simple-path.md`, design §15.88).
   Size is a judgment you cannot make without the code, and you read none.
+- **You never make a checkout.** Two items in one repo get the same `repo`
+  and run at once. You say so in the hand-off ("Handing over the charter"),
+  and the second project lead cuts its own checkout —
+  `../project-lead/references/simple-path.md`'s "Create the branch" owns that
+  rule whole. Making the checkout yourself is a writing git command, which
+  "You never touch a target repo" forbids (design §15.90).
 
 ## A gate holds the next stage
 
@@ -277,9 +283,10 @@ turn.
 ## You never touch a target repo
 
 **Start outside every item's checkout, and never move into one.** `spend.py`
-prices every session that ran from a checkout, so a lead sitting inside an
-item repo lands in that item's own spend and gets counted twice —
-`lead-spend.py` prints a `double counted` line when it finds this.
+falls back to counting every session that ran from a checkout, so a lead
+sitting inside an item repo can land in that item's own spend and get counted
+twice — `lead-spend.py` prints a `double counted` line when it finds this
+(design §15.90).
 
 No `Read`, no `Edit`, no `Write`, in any checkout — an item's, the
 principal's, or a worktree you made yourself. Everything you need is in the

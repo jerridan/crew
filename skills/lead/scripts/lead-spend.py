@@ -6,9 +6,11 @@ usage: lead-spend.py <portfolio-dir> [--write]
 A lead runs from no checkout and writes no `state.json`, so `spend.py` cannot
 find it and the tier's own cost goes uncounted (design §8, §15.74k, §15.76).
 This script reads `lead.session_ids` from `portfolio.json`, finds each
-session's `<session-id>.jsonl` under `~/.claude/projects/` (and under
-`$CLAUDE_CONFIG_DIR/projects/` when that variable is set), prices every
-assistant message in it, and prints a table.
+session's `<session-id>.jsonl` and the subagent files under `<session-id>/`,
+under `~/.claude/projects/` (and under `$CLAUDE_CONFIG_DIR/projects/` when
+that variable is set), prices every assistant message in them, and prints a
+table. `spend.py`'s `session_files` does that search, and a run is priced the
+same way (design §15.90).
 
 With `--write` it stores the result in `portfolio.json` as `lead.spend`, in
 `record-format.md`'s `spend.transcript` shape. `record-format.md`'s "Lead
@@ -23,7 +25,6 @@ Prices come from `skills/project-lead/scripts/spend.py`. There is one price
 table, and it is not here.
 """
 
-import glob as globbing
 import json
 import os
 import re
@@ -53,18 +54,21 @@ def transcripts(session_ids: list, roots: list[Path], missing: list) -> list[Pat
     """Every transcript file these sessions wrote.
 
     A lead session is named by its id wherever it ran, so the id is searched
-    for across every project directory rather than under one checkout. The
-    file name is the id exactly: a prefix match would take a second session
-    whose id opens with the same characters.
+    for across every project directory rather than under one checkout.
+    `spend.session_files` does the search and owns the rule: the session's own
+    `<id>.jsonl`, plus the subagents and in-process teammates under `<id>/`
+    (design §15.90). The file name is the id exactly — a prefix match would
+    take a second session whose id opens with the same characters.
+
+    This function adds only the per-id `missing` line, which the caller
+    prints.
     """
     found = []
     for session_id in session_ids:
         if not isinstance(session_id, str) or not SESSION_ID.match(session_id):
             missing.append(f"{session_id!r} is not a session id")
             continue
-        hits = []
-        for root in roots:
-            hits.extend(sorted(root.glob(f"**/{globbing.escape(session_id)}.jsonl")))
+        hits = spend.session_files([session_id], roots)
         if not hits:
             missing.append(f"{session_id}: no transcript under {', '.join(str(r) for r in roots)}")
         found.extend(hits)
@@ -78,14 +82,15 @@ def transcripts(session_ids: list, roots: list[Path], missing: list) -> list[Pat
 
 
 def overlaps(files: list[Path], items) -> list[str]:
-    """Each item whose own run already prices these lead transcripts.
+    """Each item whose own run may already price these lead transcripts.
 
-    `spend.py` prices every transcript under a checkout's project directory,
-    with no session filter. So a lead started inside an item's checkout lands
-    in that item's `spend.transcript`, and `crew-stats.py` then adds the same
-    dollars twice — once as the run's, once as the lead's. The lead is told to
-    start outside every item repo (`skills/lead/SKILL.md`); this says when it
-    did not.
+    `spend.py` prices a run from its own sessions, which never hold a lead's,
+    but it falls back to every transcript under the checkout's project
+    directory when a run's sessions wrote none (design §15.90). Under that
+    fallback a lead started inside an item's checkout lands in that item's
+    `spend.transcript`, and `crew-stats.py` then adds the same dollars twice —
+    once as the run's, once as the lead's. The lead is told to start outside
+    every item repo (`skills/lead/SKILL.md`); this says when it did not.
     """
     warnings = []
     for item in items:
@@ -95,7 +100,8 @@ def overlaps(files: list[Path], items) -> list[str]:
         shared = [f for f in files if any(d in f.parents for d in dirs)]
         if shared:
             warnings.append(f"{item.get('id')}: {len(shared)} lead transcript(s) sit in this item's "
-                            f"checkout, so its own spend.transcript counts them too")
+                            f"checkout, so its own spend.transcript counts them too "
+                            f"whenever that run was priced from the checkout")
     return warnings
 
 

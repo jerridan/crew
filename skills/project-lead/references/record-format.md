@@ -406,18 +406,20 @@ protect, wearing the one label that invites a resume to redo it.
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
 `nudges_used: 0`, `ic_name: null`, `base: null` until it is dispatched, and
 `plan_approved_at: null`. `plan_path` and `report_path`
-name files that do not exist yet. On the simple path (design §9.1) the project lead never writes
-`worktrees.json`: there is one package, no territory, and `ic_name` stays
-`null` for the run.
+name files that do not exist yet. On the simple path (design §9.1) there is
+one package and no territory, so `ic_name` stays `null` for the run. The
+project lead writes `worktrees.json` there only when it cut the deliverable a
+checkout of its own (`worktrees.json` below).
 
 ### Per-run fields (inside `run`)
 
 | Field | Meaning |
 |---|---|
 | `run_state` | one of `active`, `blocked`, `interrupted`, `complete`. See `run_state` transitions below. |
-| `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. |
+| `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. It is also what prices the run: `spend.py` reads each id's transcript subtree (Spend below). |
+| `checkout` | the absolute path this run does its git work in, written at `simple-path.md`'s "Create the branch". It is the target repo the charter named, unless another run already held that checkout — then it is the worktree this run cut, registered in `worktrees.json`. Every git command, the test suite and the push run against it. It is not where the run's transcripts live: those follow the session's own working directory, which the launch fixed (design §15.90). Absent on an investigation run that ends in a report, which creates no branch. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
-| `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it. |
+| `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it when it has to price from a checkout. |
 | `completed_at` | ISO-8601 UTC timestamp `crew-record.py` stamps on every write that sets `run_state` to `complete` — the `close` command, `run state complete`, and `run set run_state complete`. `crew-stats.py` prices a run through this bound, or the latest `state_changed_at` when it is absent, so a `complete` run without it prices short of its own tail (design §15.51). An `interrupted` run never gets one, and `--resume` never sets one — only a later natural completion does. |
 | `spend` | `{transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
@@ -429,8 +431,9 @@ name files that do not exist yet. On the simple path (design §9.1) the project 
 prints this session's own id, and it is the same string the `SessionEnd` hook
 matches against. Run it. A plausible-looking id you wrote yourself matches
 nothing, so the hook silently marks no run, and `--resume` cannot prove which
-worktree it owns (design §15.39). This holds on both paths: the simple path
-writes no `worktrees.json`, but it still writes `run.session_ids`.
+worktree it owns (design §15.39). This holds on both paths: a simple-path run
+that cut no worktree still writes `run.session_ids`, and that list is what
+prices it.
 
 ### `run_state` transitions
 
@@ -460,7 +463,19 @@ No figure gates a run. `spend` is a report the closing summary states and
 
 | Field | Meaning |
 |---|---|
-| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over every transcript that ran from the checkout since `created_at`. `autonomy-contract.md` says when to run it. |
+| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over the transcripts of this run's own sessions — each id in `run.session_ids`, with the subagents and in-process teammates under it. `autonomy-contract.md` says when to run it. |
+
+**A run is priced by its sessions, not by its checkout.** Claude Code names a
+transcript directory for the session's working directory, so two runs launched
+into one checkout write into one directory and a directory-wide count bills
+each for the other's work — $8.85 and $9.71 for two runs that cost $4.52 and
+$5.51 (design §15.88f, §15.90). A session subtree holds one run and nothing
+else, so it is the bound that holds however many runs share a tree. A worktree
+does not separate transcripts: the session's directory was fixed at launch.
+
+`spend.py` falls back to the checkout for a record whose sessions wrote no
+transcript, and `crew-stats.py` then closes the window at `completed_at`
+(design §15.51).
 
 ### Escalations
 
@@ -495,6 +510,7 @@ One run, two packages, in different states:
     "run_state": "active",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "created_at": "2026-08-30T14:02:11Z",
+    "checkout": "/Users/dev/src/app",
     "spend": {
       "transcript": {
         "measured_at": "2026-08-30T16:40:03Z",
@@ -571,14 +587,30 @@ describes: the initial prediction, then a promotion with its cause.
 
 ## `worktrees.json`
 
-IC name → worktree path → branch → `session_ids` → `orphaned`. The project
-lead writes it on the full path only; the simple path creates no worktree.
+IC name → worktree path → branch → `session_ids` → `orphaned`.
 
-**The path convention** is `<record-root>/worktrees/<territory-slug>`, and
-the IC on it is named `ic-<territory-slug>`. The root sits outside the target
-repo: a test runner that globs collects every worktree's tests as well as the
-repo's own, so a repo-local root makes the suite measure the wrong tree
-(design §15.35b, §15.37f).
+**One entry per worktree the run cut, on either path.** The full path cuts one
+per territory, keyed by the IC's name. Either path cuts one for the
+deliverable when another run already held the checkout, and that entry is
+keyed by the deliverable id, because no IC owns it (`simple-path.md`, "Create
+the branch"). A run that cut none writes no file.
+
+**An entry lives exactly as long as its worktree.** The step that removes a
+worktree deletes the entry. Never add a field that says the worktree is gone:
+the entry is what proves a worktree is this run's to remove, and a removed
+worktree needs no proof. A run that removed every worktree it cut leaves the
+file holding `{}` (design §15.90g).
+
+**The path convention** is `<record-dir>/worktrees/<territory-slug>`, or
+`<record-dir>/worktrees/<deliverable-id>` for a deliverable checkout, and
+the IC on a territory is named `ic-<territory-slug>`. `<record-dir>` is the
+goal directory this file opens with — `<record-root>/<goal-slug>/` — and not
+the record root itself, whose goal directories two runs of one charter share.
+The goal slug carries the run's random suffix, so the path is unique per run
+(design §15.34, §15.90). The root sits outside
+the target repo: a test runner that globs collects every worktree's tests as
+well as the repo's own, so a repo-local root makes the suite measure the wrong
+tree (design §15.35b, §15.37f).
 
 An IC writes its plan and its report into the record root, not into its
 worktree, so a worktree holds only the package's own work. That keeps
@@ -1088,14 +1120,16 @@ Every name this file defines, with what consumes it.
 - `split.md` — consumer: stage 3 (`crew:split-critic` and the `split.md` format)
 - `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
-- `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery)
+- `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery); `simple-path.md`'s "End the run" (the deliverable checkout it removes, design §15.90)
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report); design §7 (the red commit's sha and its failing output)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
 - `evidence/` — writer: a `crew:researcher`, at the path its dispatch names; the project lead itself for an `Explore` subagent's finding, and for a researcher whose write was denied. Consumer: `investigation-path.md` Phases 1 to 3; every advocate in an investigation council (design §9.5); `diagnosis.md`'s `## Evidence`
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
-- `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py`
+- `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
+- `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
+- `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py` (the checkout fallback only)
 - `run.completed_at` — writer: `crew-record.py`, on `close`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md`'s "Verify before you believe" (re-verify after an IC compacts) and "The territory's next package" (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
@@ -1185,7 +1219,7 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-root>/worktrees/<territory-slug>`
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-dir>/worktrees/<territory-slug>`
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); crew's `SessionEnd` hook (matches a worktree to the ending session)
 - `orphaned` — consumer: crew's `SessionEnd` hook (writer); stage 5 `--resume` (prunes on it, design §10.1)

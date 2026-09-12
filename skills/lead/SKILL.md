@@ -283,9 +283,10 @@ turn.
 ## You never touch a target repo
 
 **Start outside every item's checkout, and never move into one.** `spend.py`
-prices every session that ran from a checkout, so a lead sitting inside an
-item repo lands in that item's own spend and gets counted twice —
-`lead-spend.py` prints a `double counted` line when it finds this.
+falls back to counting every session that ran from a checkout, so a lead
+sitting inside an item repo can land in that item's own spend and get counted
+twice — `lead-spend.py` prints a `double counted` line when it finds this
+(design §15.90).
 
 No `Read`, no `Edit`, no `Write`, in any checkout — an item's, the
 principal's, or a worktree you made yourself. Everything you need is in the

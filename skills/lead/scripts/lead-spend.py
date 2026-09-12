@@ -78,14 +78,15 @@ def transcripts(session_ids: list, roots: list[Path], missing: list) -> list[Pat
 
 
 def overlaps(files: list[Path], items) -> list[str]:
-    """Each item whose own run already prices these lead transcripts.
+    """Each item whose own run may already price these lead transcripts.
 
-    `spend.py` prices every transcript under a checkout's project directory,
-    with no session filter. So a lead started inside an item's checkout lands
-    in that item's `spend.transcript`, and `crew-stats.py` then adds the same
-    dollars twice — once as the run's, once as the lead's. The lead is told to
-    start outside every item repo (`skills/lead/SKILL.md`); this says when it
-    did not.
+    `spend.py` prices a run from its own sessions, which never hold a lead's,
+    but it falls back to every transcript under the checkout's project
+    directory when a run's sessions wrote none (design §15.90). Under that
+    fallback a lead started inside an item's checkout lands in that item's
+    `spend.transcript`, and `crew-stats.py` then adds the same dollars twice —
+    once as the run's, once as the lead's. The lead is told to start outside
+    every item repo (`skills/lead/SKILL.md`); this says when it did not.
     """
     warnings = []
     for item in items:
@@ -95,7 +96,8 @@ def overlaps(files: list[Path], items) -> list[str]:
         shared = [f for f in files if any(d in f.parents for d in dirs)]
         if shared:
             warnings.append(f"{item.get('id')}: {len(shared)} lead transcript(s) sit in this item's "
-                            f"checkout, so its own spend.transcript counts them too")
+                            f"checkout, so its own spend.transcript counts them too "
+                            f"whenever that run was priced from the checkout")
     return warnings
 
 

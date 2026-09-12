@@ -66,7 +66,11 @@ finishes (design §15.83, §15.88).
 **One is a number, so count it.** Write the file set, then count the shared
 files in it. One is the cap. The second one goes to "Integrate", where a shared
 file belongs on every other path, and the deliverable review then runs on the
-post-integration diff (design §15.91).
+post-integration diff. **Read the list above by function, never by name.** A
+file every new thing must be listed in is a barrel, whatever the repo calls it
+and wherever it sits: a command line that maps one subcommand per helper
+counts, and so does an index a test reads. The instruction file marks one of
+them, and a test can mark a second. Both count (design §15.91).
 
 **Two registration points that must change together promote the run.** A repo
 can register a new thing in a barrel and again in a command line, and hold a
@@ -74,15 +78,22 @@ test that goes red between the two edits. One commit must then carry both, and
 one light-path package may hold one. So ask before you dispatch: does the suite
 stay green with the second edit left for "Integrate"? A no is not one package.
 
-**Promote in place, and never back to the lead.** The four answers can turn out
-wrong before the dispatch, once the IC reports, or once you read the diff's
-file list. Promote on any one of these: a second shared file the package cannot
-leave for "Integrate", a second file set, an interface another package must
-consume, a preference nothing settles, or a criterion you find yourself
-interpreting. Go back to `SKILL.md`'s "Write the spec", in this same session and
-on this same branch, and leave every commit where it is. Record the promotion
-and its reason in `decisions.md`. The lead learns of it in your next report, as
-information and never as a question.
+**Promote in place, and never back to the lead.** This path's entry conditions
+can turn out wrong before the dispatch, once the IC reports, or once you read
+the diff's file list. Promote on any one of these: a second shared file the
+package cannot leave for "Integrate", a second file set, an interface another
+package must consume, a preference nothing settles, or a criterion you find
+yourself interpreting. Go back to `SKILL.md`'s "Write the spec", in this same
+session and on this same branch, and leave every commit where it is. Record the
+promotion and its reason in `decisions.md`. The lead learns of it in your next
+report, as information and never as a question.
+
+**A promoted run creates no second branch and no second checkout.** Step 1
+above already ran "Create the branch", which cut
+`crew/<goal-slug>/deliverable-1`, wrote the `deliverables[]` entry and wrote
+`run.checkout`. So keep that id, keep that branch, keep that checkout, and skip
+the section on the way back through. `record-format.md` says what
+`run.steps_skipped` loses at the same moment.
 
 ## Write the split
 
@@ -264,6 +275,12 @@ checkout path and base ref, the fresh diff path, the accepted package review,
 `<record-root>/reviews/<deliverable-id>-deliverable-review.md`. Four of its
 seven checks need the record. Adjudicate as `SKILL.md`'s "Have the spec
 reviewed" says; clear every `[Critical]` first.
+
+**A light-path run sends what it has instead.** It wrote no `spec.md` and no
+`split.md`, so send `charter.md` where the spec goes and the package's
+`state.json` entry where the split goes — the same substitution "End the run"
+makes for the PR body. Say in the dispatch which two you substituted, so the
+reviewer reads a missing file as a rule and not as a gap (design §15.91).
 
 ## End the run
 

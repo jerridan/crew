@@ -6672,8 +6672,10 @@ Deliberately different:
     | Session | `cfe7f1b7` | `5085b5af` |
     | The seed | the fixture's `CLAUDE.md` requires a `bin/kit.js` subcommand for every helper | a repo-wide `test/cli-contract.test.js` requires one, and no instruction file says so |
     | Path taken | light | light |
+    | Band | standard | standard |
     | Promotions | 0 | 0 |
     | Files in the one package | 5 | 6 |
+    | Package reviews, verdict | 1, accepted | 1, accepted |
     | Fix rounds, escalations | 0, 0 | 0, 0 |
     | Draft PR | #34 | #35 |
     | Cost | $5.18 | $4.73 |
@@ -6752,7 +6754,33 @@ Deliberately different:
        after every promotion trigger the path names, so a promotion finds no
        such entry on disk.
 
-    f. **What is still unproved.** No run has promoted a light-path item in
+    f. **A high-effort review of the branch found four seams the new rule
+       opened.** The count said "shared files" and named no test, and two tests
+       sit seven lines apart in the same file: `record-format.md`'s category
+       list, and the repo's own instruction file. Read by the category list
+       alone, the count reaches two on neither seed, which is the defect the
+       rule exists to close. So the file now says to read that list by
+       function: a file every new thing must be listed in is a barrel, whatever
+       the repo calls it.
+
+       The second was worse. Sending the surplus shared file to "Integrate"
+       makes the deliverable review run, and `crew:deliverable-reviewer`
+       requires `spec.md` and `split.md`, which a light-path run never writes.
+       That case was rare before this change, and the change makes it the
+       expected end of every two-registration-point repo. "Review the
+       deliverable" now names the substitution, the same one "End the run"
+       already makes for the PR body.
+
+       Third, a promotion that fires before the dispatch re-enters a route that
+       runs "Create the branch" a second time, on a branch step 1 has already
+       cut. The rule now says to keep the id, keep the branch, and skip that
+       step. Fourth, `band-rubric.md` still told the reader to leave the second
+       shared file for "Integrate", with no promotion case anywhere in it; it
+       now points at `simple-path.md` for the case it does not own. This is
+       §15.88h again, on a smaller change: a rule added to a path that reuses
+       sections must be read against every section it reaches.
+
+    g. **What is still unproved.** No run has promoted a light-path item in
        place. Nothing here exercised the record consequences the ticket
        listed — the promotion entry, the branch and `base` that survive, the
        IC's commits, the spec critic on the promoted spec, or (e)'s removal.

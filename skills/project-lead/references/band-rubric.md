@@ -126,7 +126,9 @@ the fact. A light-path package carries at most the one registration line the
 repo names, and a repo whose instructions make two shared files change together
 leaves the second for you. **Edit one, and the review runs.** It is the only
 reader of the post-integration diff, and skipping it there ships a shared-file
-edit nobody read (design §15.77, §15.88).
+edit nobody read (design §15.77, §15.88). A second shared file that cannot wait
+for "Integrate" is a different case, and `simple-path.md`'s "The light path"
+owns it: there the run promotes instead.
 
 **Record every skip.** A run writes it to `state.json`'s `run.steps_skipped`
 (`record-format.md` owns the field). A step with no review file and no entry

@@ -510,6 +510,7 @@ One run, two packages, in different states:
     "run_state": "active",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "created_at": "2026-08-30T14:02:11Z",
+    "checkout": "/Users/dev/src/app",
     "spend": {
       "transcript": {
         "measured_at": "2026-08-30T16:40:03Z",

@@ -6508,17 +6508,17 @@ Deliberately different:
        sentence the lead adds, and `skills/lead/SKILL.md` gains a constraint
        that points here. Nothing states the rule twice.
 
-    b. **The project lead cuts the checkout, and the lead never does.** The
-       lead runs read-only git in a checkout and nothing else (§15.79c,
-       §15.88h), so `git worktree add` is not available to it. It has one thing the project
+    b. **The project lead cuts the checkout, and the lead never does.** The lead
+       runs read-only git in a checkout and nothing else (§15.79c, §15.88h), so
+       `git worktree add` is not available to it. It has one thing the project
        lead cannot get for itself: it knows a second item is already running in
        that repo before the first has switched a branch. So the lead adds one
        sentence to the hand-off — "Another run holds this checkout" — and the
        project lead acts on it. The project lead also checks `git branch
-       --show-current` for a `crew/` branch that is not its own, which catches
-       a run no lead launched. Two signals, because the git signal alone is
-       racy: two runs that both read `main` before either switches both take
-       the checkout.
+       --show-current` for a `crew/` branch that is not its own, which catches a
+       run no lead launched. Two signals, because the git signal alone is racy:
+       two runs that both read `main` before either switches both take the
+       checkout.
 
     c. **Held, the run cuts one worktree and removes it at the end.** The path
        is `<record-dir>/worktrees/<deliverable-id>`, the entry goes in

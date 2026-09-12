@@ -9,8 +9,11 @@ small item, entered from `SKILL.md`'s "Size the work" with no spec (design
 The full path is `full-path.md`. Nothing here applies to it, except the three
 rules it borrows: "Create the branch", "Integrate" and "End the run".
 
-One unnamed subagent does the work, in this checkout, on one branch. No split
-critic runs, no worktree is created and nothing merges.
+One unnamed subagent does the work, on one branch, in the checkout
+`run.checkout` names. No split critic runs and nothing merges. That checkout
+is the target repo itself, unless another run already held it — "Create the
+branch" owns that case, and it is the only one on this path that makes a
+worktree.
 
 **Every rule below runs, however small the change is.** A one-line edit is one
 package, dispatched to an IC and reviewed like any other. You edit a file in
@@ -83,11 +86,49 @@ file: `record-format.md` keeps those out of a package's file set, and
 
 ## Create the branch
 
-Read the checkout's branch: `git -C <repo> branch --show-current`. Then `git -C
-<repo> switch -c crew/<goal-slug>/<deliverable-id>`; never work on the main
-branch. Write the `deliverables[]` entry now — `id`, branch, the head sha as
-`base`, `state: pending`, `pr_url: null`, and that branch as
-`checkout_branch`.
+This section owns where a run's git work happens. `full-path.md` borrows it
+(design §15.90).
+
+**Ask first whether another run holds this checkout.** It is held when either
+of these is true:
+
+- **The hand-off says so.** The lead adds one sentence when it launched you
+  into a repo that another of its items is already running in
+  (`session-launch.md`, "Handing over the charter").
+- **`git -C <repo> branch --show-current` prints a `crew/` branch with a goal
+  slug that is not yours.** That branch is another run's, live or finished.
+
+**Free.** `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`; never
+work on the main branch. Write the `deliverables[]` entry now — `id`, branch,
+the head sha as `base`, `state: pending`, `pr_url: null`, and the branch you
+just read as `checkout_branch`. Write `run.checkout`: this checkout's path.
+
+**Held.** Do not switch it. Two runs on one branch mix their commits, and the
+run that finishes second cannot say which are its own. Cut a checkout of your
+own instead, outside the target repo:
+
+```
+git -C <repo> worktree add <record-root>/worktrees/<deliverable-id> -b crew/<goal-slug>/<deliverable-id>
+```
+
+Then, in the same turn:
+
+- Write `run.checkout`: the worktree's absolute path. **Every later step reads
+  `run.checkout` where it says `<repo>`** — the dispatch prompt, the
+  verification, the diff, the suite and the push. The shared checkout is read
+  from and never written to.
+- Register the worktree in `worktrees.json`, keyed by the deliverable id.
+  There is no IC name on this path (`record-format.md`). Nothing else proves
+  the worktree is yours to remove.
+- Write the `deliverables[]` entry as above, with `checkout_branch: null`. You
+  switched no checkout, so `checkout_restored` stays `null` as well.
+- "End the run" removes it.
+
+**You cut the worktree, and the lead never does.** The lead runs read-only git
+and nothing else in a checkout (`skills/lead/SKILL.md`, "You never touch a
+target repo"), so it names the case and you resolve it. A free checkout stays
+shared: the project lead is idle while the IC works, so one tree costs the
+run nothing (design §9.1).
 
 ## Dispatch the IC
 
@@ -126,9 +167,9 @@ earns.
 **Run the criterion at the red commit too**, when the package adds the test its
 criterion names (design §7). `ic-contract.md`'s "Write the failing test first"
 owns this check: it gives the procedure, the clean-tree precondition, and what
-a criterion that passes there costs. Run it here, in this checkout, against the
-sha the IC's report gives. Switch the branch back before anything else — this
-is the principal's own checkout, and `checkout_restored` at "End the run"
+a criterion that passes there costs. Run it in `run.checkout`, against the sha
+the IC's report gives. Switch the branch back before anything else — that
+checkout may be the principal's own, and `checkout_restored` at "End the run"
 records what it was left on.
 
 **A fix package from the investigation path is exempt.** Its reproduction
@@ -235,3 +276,18 @@ branch.
 why not in `checkout_restored`. Name both branches in your last message, and
 send that message to the principal the way the goal arrived
 (`autonomy-contract.md`). A pane is not a report when nobody is watching it.
+
+**Remove a worktree you cut, after the push.** A run that cut its own checkout
+at "Create the branch" has one entry in `worktrees.json`. Remove the worktree,
+then delete that entry (`record-format.md`):
+
+```
+git -C <target repo> worktree remove <record-root>/worktrees/<deliverable-id>
+```
+
+This is the one later command that runs against the target repo and not
+`run.checkout`: a worktree cannot remove itself. The branch stays and the PR
+stands on it; only the working tree goes. Never
+force the removal: a refusal means files exist nowhere else, so commit them to
+the branch first. A worktree left registered is work for a human (design
+§15.88g, §15.90).

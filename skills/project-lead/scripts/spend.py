@@ -1,17 +1,28 @@
 #!/usr/bin/env python3
-"""Price a crew run from its transcripts: every session, teammate and
-subagent that ran from the target checkout since the record was created.
+"""Price a crew run from its own transcripts: its project-lead session, and
+every subagent and teammate that session spawned.
 
 usage: spend.py <record-dir> <checkout-path> [--write]
 
-Reads `~/.claude/projects/<escaped checkout path>/**/*.jsonl` (and the same
-under `$CLAUDE_CONFIG_DIR` when set), sums usage per model family, and
-prints a table. With `--write`, stores the result in `state.json` as
-`run.spend.transcript`. This is the only count that includes the project
-lead's own session and the IC teammates (design §8, §15.50).
+Sums usage per model family and prints a table. With `--write`, stores the
+result in `state.json` as `run.spend.transcript`. This is the only count that
+includes the project lead's own session and the IC teammates (design §8,
+§15.50).
 
-The start time is `run.created_at` in `state.json`, which `crew-record.py
-init` writes. Transcript files last modified before it are skipped.
+**The run's own sessions are the window.** `run.session_ids` in `state.json`
+names them, and Claude Code writes each one as `<session-id>.jsonl` with its
+subagents and its teammates under `<session-id>/`. So a run is priced by that
+subtree, wherever it sits under `~/.claude/projects/` (and under
+`$CLAUDE_CONFIG_DIR/projects/` when that variable is set). Two runs that share
+one checkout are then priced apart, which the checkout window could not do
+(design §15.90). `lead-spend.py` prices a lead the same way.
+
+**The checkout is the fallback**, for a record written before
+`run.session_ids` existed or one whose sessions wrote no transcript. It reads
+`~/.claude/projects/<escaped checkout path>/**/*.jsonl` and counts every
+session that ran from that directory, the run's own or not. The start time is
+`run.created_at`, which `crew-record.py init` writes; files last modified
+before it are skipped.
 
 Prices are USD per million tokens at Anthropic list price, by model family.
 Cache writes are priced by TTL. Update the table when prices change.
@@ -40,20 +51,65 @@ def family(model: str) -> str:
     return "opus"
 
 
-def project_dirs(checkout: str) -> list[Path]:
-    # Claude Code names the transcript directory by replacing every
-    # non-alphanumeric character of the absolute checkout path with "-".
-    escaped = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(checkout))
+# A session id is a UUID. Checked before it reaches a glob, because `*`, `?`
+# or `[` in a hand-edited `state.json` would otherwise match transcripts this
+# run never wrote. `lead-spend.py` checks the same thing for the same reason.
+SESSION_ID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+def project_roots() -> list[Path]:
     roots = [Path.home() / ".claude" / "projects"]
     config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
     if config_dir:
         roots.append(Path(config_dir) / "projects")
+    return [r for r in roots if r.is_dir()]
+
+
+def project_dirs(checkout: str) -> list[Path]:
+    # Claude Code names the transcript directory by replacing every
+    # non-alphanumeric character of the absolute checkout path with "-".
+    escaped = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(checkout))
     found = []
-    for root in roots:
+    for root in [Path.home() / ".claude" / "projects"] + (
+            [Path(os.environ["CLAUDE_CONFIG_DIR"]) / "projects"]
+            if os.environ.get("CLAUDE_CONFIG_DIR") else []):
         candidate = (root / escaped).resolve()
         if candidate.is_dir() and candidate not in found:
             found.append(candidate)
     return found
+
+
+def session_files(session_ids, roots: list[Path]) -> list[Path]:
+    """Every transcript the named sessions wrote, wherever they ran.
+
+    A session writes `<session-id>.jsonl`, and its subagents and its in-process
+    teammates write under `<session-id>/`. That subtree is the whole run and
+    nothing else, so it prices a run that shares a checkout with another one
+    (design §15.90). A session id that names no file contributes nothing and
+    stops nothing: the caller falls back to the checkout.
+    """
+    found = []
+    for session_id in session_ids or []:
+        if not isinstance(session_id, str) or not SESSION_ID.match(session_id):
+            continue
+        for root in roots:
+            for path in sorted(root.glob(f"**/{session_id}.jsonl")):
+                found.append(path)
+            for path in sorted(root.glob(f"**/{session_id}/**/*.jsonl")):
+                found.append(path)
+    unique = []
+    for path in found:
+        resolved = path.resolve()
+        if resolved not in unique:
+            unique.append(resolved)
+    return unique
+
+
+def run_files(state: dict) -> list[Path]:
+    """The transcripts of this run's own sessions, or an empty list."""
+    run = state.get("run")
+    run = run if isinstance(run, dict) else {}
+    return session_files(run.get("session_ids") or [], project_roots())
 
 
 def stamp(entry: dict) -> float | None:
@@ -182,10 +238,16 @@ def main(argv: list[str]) -> None:
     record = Path(argv[0])
     state_path = record / "state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
-    dirs = project_dirs(argv[1])
-    if not dirs:
-        sys.exit(f"no transcripts for checkout {argv[1]}")
-    totals = collect(dirs, start_time(record, state))
+    files = run_files(state)
+    if files:
+        print(f"priced from this run's own {len(files)} transcript file(s)")
+        totals = price_files(files)
+    else:
+        dirs = project_dirs(argv[1])
+        if not dirs:
+            sys.exit(f"no transcripts for checkout {argv[1]}")
+        print(f"no transcript for this run's own sessions; priced from {argv[1]}")
+        totals = collect(dirs, start_time(record, state))
     grand, total_tokens = report(totals)
     if "--write" in argv:
         spend = state.setdefault("run", {}).setdefault("spend", {})

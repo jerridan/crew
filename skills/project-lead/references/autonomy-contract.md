@@ -461,10 +461,11 @@ Write nothing when the principal refuses, or answers the question and not the
 A run's cost is measured from its transcripts, in dollars at list price.
 After each package integrates, and again before the PR opens, run
 `python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
-prices every session that ran from the checkout since the record was
-created — yours and the teammates' included — into `spend.transcript`
-(`record-format.md`). Nothing else counts the project lead's own session or
-a teammate, and those were 90% of two measured runs (design §15.50).
+prices this run's own sessions — yours, your subagents' and the teammates' —
+into `spend.transcript` (`record-format.md`). Nothing else counts the project
+lead's own session or a teammate, and those were 90% of two measured runs
+(design §15.50). `<checkout>` is `run.checkout`, and the script reads it only
+when the run's sessions wrote no transcript.
 
 **Spend is a report, not a gate.** No figure stops a run, and no trigger
 fires on cost (design §8, §15.76). State the run's spend in the closing

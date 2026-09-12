@@ -6334,12 +6334,14 @@ Deliberately different:
        `simple-path.md` now says the cap counts shared files and that a file
        outside that list joins the set like any other.
 
-       **`strip-suffix` also cut a worktree**, which the simple path does not
+       **`strip-suffix` also cut a worktree**, which the simple path did not
        do, and left it registered at the close. Its project lead did that to
        keep off the clone the first run held. The lead had already named that
-       hazard, and nothing in the design says what two items in one repo do.
-       T51 leaves it: it is a rule the live run found and not one it set out to
-       write.
+       hazard, and nothing in the design said what two items in one repo do.
+       T51 left it. **§15.90 writes it**, in `simple-path.md`'s "Create the
+       branch": the project lead cuts the checkout, records it, and removes it
+       at the end. §15.90 also fixes (f)'s double count, which a second
+       checkout turns out not to touch.
 
     h. **A high-effort review of the branch found five seams the light path
        opened.** The path reuses seven of `simple-path.md`'s sections, and the
@@ -6486,3 +6488,139 @@ Deliberately different:
        crew run has been through it. And one machine, one iTerm2 version, one
        `zsh` login: the wrapper in (b) is right for a `.zshrc` version manager
        and has met no other shape of environment.
+
+90. **Two items in one repo run in two checkouts, and a run is priced by its
+    own sessions — 2026-09-12, T52.** §15.88g left two things open. The second
+    project lead cut a worktree nobody had told it it could cut, and left it
+    registered at the close. And `spend.py` priced both runs over the one
+    directory their transcripts shared, so each was billed for the other's
+    work. T52 writes the rule for the first and fixes the price for the
+    second. They are two problems, not one, and the fix for one does not touch
+    the other.
+
+    a. **The rule lives in `simple-path.md`'s "Create the branch", and in no
+       other file.** That section already owned where a run's git work
+       happens: it reads the branch, switches it, and records
+       `checkout_branch`. `full-path.md` already borrows it. So the collision
+       belongs there, and the section now opens with the question — is this
+       checkout held? — and answers it in both directions. `record-format.md`
+       owns the two fields it writes, `session-launch.md` carries the one
+       sentence the lead adds, and `skills/lead/SKILL.md` gains a constraint
+       that points here. Nothing states the rule twice.
+
+    b. **The project lead cuts the checkout, and the lead never does.** The
+       lead runs read-only git in a checkout and nothing else (§15.74), so
+       `git worktree add` is not available to it. It has one thing the project
+       lead cannot get for itself: it knows a second item is already running in
+       that repo before the first has switched a branch. So the lead adds one
+       sentence to the hand-off — "Another run holds this checkout" — and the
+       project lead acts on it. The project lead also checks `git branch
+       --show-current` for a `crew/` branch that is not its own, which catches
+       a run no lead launched. Two signals, because the git signal alone is
+       racy: two runs that both read `main` before either switches both take
+       the checkout.
+
+    c. **Held, the run cuts one worktree and removes it at the end.** The path
+       is `<record-root>/worktrees/<deliverable-id>`, the entry goes in
+       `worktrees.json` keyed by the deliverable id — no IC owns it — and a new
+       `run.checkout` names it for every later step. `checkout_branch` stays
+       `null`, because nothing switched. "End the run" removes the worktree
+       after the push, from the target repo and not from inside the worktree.
+       That is `strip-suffix`'s judgment in §15.88g, written down, with the two
+       record writes it was missing.
+
+    d. **A worktree does not separate transcripts, and the ticket's second
+       constraint assumed it did.** Claude Code names a transcript directory
+       for the session's working directory, and the launch fixes that
+       directory. A worktree the project lead cuts after its session started
+       changes where git writes and nothing else. The evidence is T51's own
+       record: `~/.claude/projects/` holds no directory for
+       `.../strip-suffix-6540/worktrees/strip-suffix`, and both light runs'
+       transcripts sit under the one clone. So a second checkout was never
+       going to fix the double count, and the fix had to go somewhere else.
+
+    e. **A run is priced by its own session subtree.** Claude Code writes a
+       session as `<session-id>.jsonl`, with its subagents and its in-process
+       teammates under `<session-id>/` — T40's `ic-text` and `ic-url` are
+       `agent-aic-text-*.jsonl` and `agent-aic-url-*.jsonl` in there. That
+       subtree is one run and nothing else. `run.session_ids` already names
+       every session a run had, for the two hooks, so `spend.py` needs no new
+       field: it prices those subtrees, the way `lead-spend.py` has always
+       priced a lead. The checkout scan stays as the fallback, for a record
+       whose sessions wrote no transcript.
+
+       **The measurement, over T51's own records.** The two light runs price
+       $4.52 and $5.51 against the $8.85 and $9.71 their `state.json` files
+       hold. The two subtrees together come to $10.03, and the whole directory
+       priced open-ended comes to $10.03 as well — the same figure to the
+       cent, which is the check that the subtree drops nothing. §15.88f's hand
+       correction said $9.81 for the pair, and it was reading a bounded window
+       that cuts each run's tail. The goal run, alone in its own clone, moves
+       from $7.58 up to $7.76 for that same reason: the session price keeps
+       the tail the `completed_at` bound cut (§15.51). T51's corrected
+       portfolio is $17.79 of runs and $3.78 of lead, $21.57 in all, against
+       the $29.92 the table printed.
+
+       `crew-stats.py` gains `--reprice`, which ignores every stored
+       `spend.transcript` and measures each run again from its sessions. It is
+       how a figure stored before this entry is corrected, and it is what
+       produced the numbers above. All 24 record roots under `~/.claude/crew*/`
+       still exit 0, with the flag and without it.
+
+    f. **Neither hook reads a working directory, so a worktree changes nothing
+       for them.** `session-end.py` and `pre-compact.py` both find a run by
+       globbing `<record-root>/*/state.json` and matching the ending session's
+       id against `run.session_ids`. `CREW_RECORD_ROOT` comes from the
+       environment the launch set, and no code path in either hook touches the
+       working directory. A run in a worktree is marked `interrupted`, has its
+       worktrees orphaned, and wakes its lead exactly as a run in a clone does.
+
+    g. **The live run, 2026-09-12.** A Fable lead at high effort, session
+       `211ff2e0`, name `crew-t52-lead`, tmux `crew-t52`, portfolio
+       `~/.claude/crew-t52-live/lead-2026-09-12-2e42`, plugin dir the T52
+       branch. Two items, `stripPrefix` and `stripSuffix`, both in the one
+       fixture clone. The second was typed into the lead's pane while the first
+       was running: run one opened its record at 22:12:52 UTC and run two
+       nineteen seconds later at 22:13:11, and the two ran side by side until
+       22:19:04 and 22:22:23. Draft PRs
+       `jerridan/crew-fixture-string-kit#36` and `#37`.
+
+       **Each run worked in a checkout of its own**, at
+       `runs/<item-id>/<goal-slug>/worktrees/deliverable-1`, and `run.checkout`
+       in each `state.json` names it. Both removed the worktree at the close:
+       `git worktree list` on the clone prints one line, the clone itself.
+       The shared clone was never switched at all — it sat on `main`,
+       untouched, for the whole portfolio.
+
+       **The cost, and the double count.** $4.38 and $5.19, against the $8.85
+       and $9.71 T51's two runs recorded for the same two helpers in the same
+       repo. Each run is priced from its own sessions, so neither figure holds
+       the other's work. The lead's seat was $2.53 and the portfolio $12.10,
+       with the lead at 20.9 percent.
+
+       **The lead warned both items, not only the second.** The brief said a
+       second item was coming, so the lead wrote the hazard into the first
+       item's charter as well, and both project leads cut a worktree. The rule
+       reads the case as "another run already holds it", and the lead read it
+       as "another run will". Neither run was harmed, and the shared checkout
+       came out cleaner than the rule asks for. Leave it: a lead that knows a
+       second item is coming has the same reason to say so, and the project
+       lead's answer is the same either way.
+
+       **One divergence worth a line.** `strip-prefix` deleted its
+       `worktrees.json` entry at the close and `strip-suffix` kept the entry
+       with a `removed: true` field it invented. "Prune" allowed both readings.
+       `record-format.md` now says an entry lives exactly as long as its
+       worktree, and that nothing marks a removed one. Neither run wrote a
+       `decisions.md` entry for the checkout, which is right: it was a judgment
+       call in §15.88g and it is a rule now.
+
+    h. **What this run did not prove.** Both items took the light path, so no
+       full-path run has cut a deliverable checkout and had its territory
+       worktrees branch from it — that part of `full-path.md` is written and
+       not exercised. Nothing was killed in a worktree, so (f) is read from the
+       two hooks' code and not run. The `git branch --show-current` signal
+       never fired on its own, because the hand-off sentence reached both
+       project leads first; the race that second signal exists for has not
+       happened yet. And `spend.py`'s checkout fallback priced no live run: it
+       was exercised against the older records only.

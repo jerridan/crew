@@ -116,6 +116,8 @@ before you commit. That checklist defines done.
 Read its `## Writing for a person` section before you touch `README.md`, a PR
 body or an issue. State the action; leave the reasoning in `docs/design.md`.
 Design voice in the README is the drift that keeps coming back.
+`.claude/rules/readme.md` owns the README's shape and says which change
+updates which section, in the same PR.
 
 Those prose rules are ASD-STE100 — Simplified Technical English. Apply them to
 every file here, and to each commit message and PR body. Only the

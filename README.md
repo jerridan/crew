@@ -16,7 +16,8 @@ Two entry points:
 | `/crew:lead` | The main entry point. Hand it every goal. It runs one project-lead session per goal and brings you every question in one batch. |
 | `/crew:project-lead` | One goal, run directly in the session you are in. |
 
-Both have run end to end against a real repo. See [Status](#status).
+Crew is experimental. Both entry points have taken real goals to draft PRs,
+and the plugin changes often.
 
 ## Install
 
@@ -52,18 +53,17 @@ Add a --json flag to the export command in /Users/me/src/kit. Then fix the flaky
 
 The lead opens one tmux window per goal. In iTerm2, set `CREW_LAUNCH=iterm2`
 for a native tab per goal instead: install the `iterm2` package for your
-`python3` and turn on the Python API in iTerm2's settings (design §15.89).
+`python3` and turn on the Python API in iTerm2's settings.
 
 What to expect:
 
 - Each target repo must be one you have opened in Claude Code before. The
-  lead checks, and asks you to open a new one once (design §15.74j).
+  lead checks, and asks you to open a new one once.
 - Questions arrive in the lead's pane, in one batch, with a push
   notification. Answer in that pane and nowhere else.
 - Add a goal at any time by typing it in the pane.
 - A goal in stages takes one item per stage. Name the stages and the command
-  that checks each one. The lead holds the next stage until you say go
-  (design §15.87).
+  that checks each one. The lead holds the next stage until you say go.
 - If the lead session dies, start Claude Code again in the same directory and
   run `/crew:lead`. It finds the open portfolio and continues, and it resumes
   any project lead that died with it.
@@ -109,7 +109,7 @@ PR from it. The run restores your checkout to the branch it started on.
 A question comes to you in the same session. The triggers are fixed: no
 testable acceptance criterion, a preference the repo cannot settle, a council
 that cannot decide, an action outside the deliverable branch, a fix loop that
-ran out (design §6). Answer in the session and the run continues.
+ran out. Answer in the session and the run continues.
 
 ## What a run needs
 
@@ -176,22 +176,22 @@ A package is dispatchable only with four things: its own acceptance
 criterion, a file set disjoint from every sibling, a written interface
 contract with those siblings, and a model band. An IC works in its own
 worktree and cannot see its siblings' work, so that contract is the only
-channel between packages (design §5).
+channel between packages.
 
 Review is independent: the reviewer gets the brief and the diff, and never saw
 the work happen. A question with no precedent goes to a council, where each
 advocate argues an assigned position, so the project lead weighs arguments
 instead of counting votes. A question about what you want is never debated. It
-comes to you (design §6).
+comes to you.
 
-The draft PR is the end. Crew never merges (design §1).
+The draft PR is the end. Crew never merges.
 
 ## Models
 
 A package is `light` (haiku), `standard` (sonnet) or `deep` (opus).
 `standard` is the default. An IC that reports blocked is re-dispatched one
 band up. A `light` package skips the plan gate and, on three conditions, the
-deliverable review (design §8).
+deliverable review.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|
@@ -207,7 +207,7 @@ deliverable review (design §8).
 | Deliverable reviewer | opus | high |
 
 The project lead, the ICs and the scouts take your session's effort, so set
-it before the run starts. Why Fable: design §8 and §15.50.
+it before the run starts.
 
 ## The record
 
@@ -240,27 +240,6 @@ python3 skills/project-lead/scripts/crew-stats.py
 It prints cost per band, fix rounds, promotions, councils, reviews and the
 review catch rate, over every record.
 
-## Status
-
-| Piece | State |
-|---|---|
-| `/crew:lead`, a portfolio | built, and driven end to end: two goals at once, a lead killed mid-portfolio, a killed project lead resumed (§15.80) |
-| `/crew:lead`, a gate between stages | built, and one two-stage goal driven through it (§15.87) |
-| `/crew:lead`, two goals in one repo | built, and driven; the second run cuts its own checkout (§15.90) |
-| `/crew:lead`, iTerm2 tabs | built, and driven (§15.89) |
-| `/crew:project-lead`, one package | built, and driven end to end |
-| `/crew:project-lead`, several packages | built, and driven end to end |
-| `/crew:project-lead`, the light path | built, and driven to a draft PR four times (§15.88, §15.91) |
-| `/crew:project-lead`, a symptom | built, and driven to a fix and to a diagnosis with no change |
-| Councils | built, and convened in a run |
-| `crew:researcher` | built; no run has dispatched it |
-| Hooks | `SessionEnd` and `PreCompact` built; the rest deferred |
-
-Design [§15](docs/design.md) records what each run found, including the
-defects it exposed in crew itself. The first run was hand-driven, and its
-plans, reports and reviews are kept verbatim in
-[`docs/stage-2-run/`](docs/stage-2-run).
-
 ## Roles
 
 | Role | What it does |
@@ -279,11 +258,9 @@ plans, reports and reviews are kept verbatim in
 
 ## Help and contributing
 
-Open an issue on this repo for a bug or a question. Read
-[`docs/design.md`](docs/design.md) before you change behavior: it is the spec,
-and §15 holds the open questions. [`docs/tickets.md`](docs/tickets.md) is the
-backlog, one ticket per hand-off. Run a change against your checkout with
-`claude --plugin-dir <path to this repo>`, never against the installed copy.
+Open an issue on this repo for a bug or a question. To learn how crew works
+and why, read [`docs/design.md`](docs/design.md). It is the spec, and it
+records what every run so far found.
 
 ## Credit
 
@@ -291,15 +268,7 @@ Crew's process is adapted from the `superpowers` plugin: spec, plan, critique,
 test-driven implementation, review, integrate. Several of its checklists are
 copied word for word so they stay easy to re-sync. Crew never invokes a
 superpowers skill: each one stops for a human, and removing that stop is the
-point of crew (design §2).
-
-## Reading the docs
-
-[`docs/design.md`](docs/design.md) is the living spec.
-[`docs/implementation-plan.md`](docs/implementation-plan.md) and
-[`docs/stage-2-run/`](docs/stage-2-run) record how the first stages were
-built. Crew was built inside a larger plugin repo, so their paths suit that
-layout. They are kept unedited because they are evidence.
+point of crew.
 
 ## License
 

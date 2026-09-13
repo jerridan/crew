@@ -1,19 +1,20 @@
 # crew
 
-A Claude Code plugin that takes a goal to a reviewable draft PR, and does not
-stop for approval on the way.
+A Claude Code plugin that takes your goals to reviewable draft PRs, and does
+not stop for approval on the way.
 
-You hand over the goal. A project lead reads the repo, writes the spec, splits
-the work, picks a model for each piece, dispatches implementers, has each piece
-reviewed by an agent that did not write it, and opens the draft PR. You merge
-it. It asks you only when it cannot proceed.
+You hand your goals to a lead. It starts one project lead per goal. Each
+project lead reads its repo, writes the spec, splits the work, picks a model
+for each piece, dispatches implementers, has each piece reviewed by an agent
+that did not write it, and opens the draft PR. You merge it. The lead brings
+you every question the runs cannot answer, in one batch.
 
 Two entry points:
 
 | Command | Use it for |
 |---|---|
-| `/crew:project-lead` | One goal, in the session you are in. |
-| `/crew:lead` | Several goals. A lead runs one project-lead session per goal and brings you every question in one batch. |
+| `/crew:lead` | The main entry point. Hand it every goal. It runs one project-lead session per goal and brings you every question in one batch. |
+| `/crew:project-lead` | One goal, run directly in the session you are in. |
 
 Both have run end to end against a real repo. See [Status](#status).
 
@@ -24,7 +25,53 @@ Both have run end to end against a real repo. See [Status](#status).
 /plugin install crew@crew
 ```
 
-## Run one goal
+## Run your goals through a lead
+
+A lead holds a portfolio and starts one project-lead session per goal. It
+reads no code and sizes nothing: the project lead does that. One goal or ten
+take the same steps.
+
+Start Claude Code inside tmux, in a directory that is not a repo checkout:
+
+```
+claude --model fable --effort high
+```
+
+Then start the lead:
+
+```
+/crew:lead
+```
+
+Type the goals as your next message. Give each one the absolute path of its
+repo:
+
+```
+Add a --json flag to the export command in /Users/me/src/kit. Then fix the flaky retry test in /Users/me/src/client.
+```
+
+The lead opens one tmux window per goal. In iTerm2, set `CREW_LAUNCH=iterm2`
+for a native tab per goal instead: install the `iterm2` package for your
+`python3` and turn on the Python API in iTerm2's settings (design §15.89).
+
+What to expect:
+
+- Each target repo must be one you have opened in Claude Code before. The
+  lead checks, and asks you to open a new one once (design §15.74j).
+- Questions arrive in the lead's pane, in one batch, with a push
+  notification. Answer in that pane and nowhere else.
+- Add a goal at any time by typing it in the pane.
+- A goal in stages takes one item per stage. Name the stages and the command
+  that checks each one. The lead holds the next stage until you say go
+  (design §15.87).
+- If the lead session dies, start Claude Code again in the same directory and
+  run `/crew:lead`. It finds the open portfolio and continues, and it resumes
+  any project lead that died with it.
+
+## Run one goal in your session
+
+This is what the lead does for each goal. Do it yourself when you want to
+watch one run, or when you have no tmux.
 
 Start Claude Code in an ordinary clone of the target repo, not a worktree:
 
@@ -63,48 +110,6 @@ A question comes to you in the same session. The triggers are fixed: no
 testable acceptance criterion, a preference the repo cannot settle, a council
 that cannot decide, an action outside the deliverable branch, a fix loop that
 ran out (design §6). Answer in the session and the run continues.
-
-## Run several goals
-
-A lead holds a portfolio and starts one project-lead session per goal. It
-reads no code and sizes nothing: the project lead does that.
-
-Start Claude Code inside tmux, in a directory that is not a repo checkout:
-
-```
-claude --model fable --effort high
-```
-
-Then start the lead:
-
-```
-/crew:lead
-```
-
-Type the goals as your next message. Give each one the absolute path of its
-repo:
-
-```
-Add a --json flag to the export command in /Users/me/src/kit. Then fix the flaky retry test in /Users/me/src/client.
-```
-
-The lead opens one tmux window per goal. In iTerm2, set `CREW_LAUNCH=iterm2`
-for a native tab per goal instead: install the `iterm2` package for your
-`python3` and turn on the Python API in iTerm2's settings (design §15.89).
-
-What to expect:
-
-- Each target repo must be one you have opened in Claude Code before. The
-  lead checks, and asks you to open a new one once (design §15.74j).
-- Questions arrive in the lead's pane, in one batch, with a push
-  notification. Answer in that pane and nowhere else.
-- Add a goal at any time by typing it in the pane.
-- A goal in stages takes one item per stage. Name the stages and the command
-  that checks each one. The lead holds the next stage until you say go
-  (design §15.87).
-- If the lead session dies, start Claude Code again in the same directory and
-  run `/crew:lead`. It finds the open portfolio and continues, and it resumes
-  any project lead that died with it.
 
 ## What a run needs
 
@@ -239,14 +244,14 @@ review catch rate, over every record.
 
 | Piece | State |
 |---|---|
-| `/crew:project-lead`, one package | built, and driven end to end |
-| `/crew:project-lead`, several packages | built, and driven end to end |
-| `/crew:project-lead`, the light path | built, and driven to a draft PR four times (§15.88, §15.91) |
-| `/crew:project-lead`, a symptom | built, and driven to a fix and to a diagnosis with no change |
 | `/crew:lead`, a portfolio | built, and driven end to end: two goals at once, a lead killed mid-portfolio, a killed project lead resumed (§15.80) |
 | `/crew:lead`, a gate between stages | built, and one two-stage goal driven through it (§15.87) |
 | `/crew:lead`, two goals in one repo | built, and driven; the second run cuts its own checkout (§15.90) |
 | `/crew:lead`, iTerm2 tabs | built, and driven (§15.89) |
+| `/crew:project-lead`, one package | built, and driven end to end |
+| `/crew:project-lead`, several packages | built, and driven end to end |
+| `/crew:project-lead`, the light path | built, and driven to a draft PR four times (§15.88, §15.91) |
+| `/crew:project-lead`, a symptom | built, and driven to a fix and to a diagnosis with no change |
 | Councils | built, and convened in a run |
 | `crew:researcher` | built; no run has dispatched it |
 | Hooks | `SessionEnd` and `PreCompact` built; the rest deferred |

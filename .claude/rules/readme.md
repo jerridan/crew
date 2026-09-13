@@ -14,9 +14,15 @@ its prose rules; this file owns its shape, and when a change must touch it.
 
 ## The section order is fixed
 
-Description, then Install, then Run one goal, then Run several goals, then
-What a run needs. Everything about the design comes after those five. A
-reader who only wants to run crew never scrolls past them.
+Description, then Install, then Run your goals through a lead, then Run one
+goal in your session, then What a run needs. Everything about the design
+comes after those five. A reader who only wants to run crew never scrolls
+past them.
+
+`/crew:lead` is the main entry point, and it comes first everywhere: the
+entry-point table, the usage sections, the Status table and the Roles table.
+`/crew:project-lead` is what the lead runs for each goal, and the README says
+so.
 
 Keep the rest in this order: How it works, Models, The record, Status, Roles,
 Help and contributing, Credit, Reading the docs, License. Add a section only
@@ -26,10 +32,10 @@ when no existing one can hold the content.
 
 | The change | The section it lands in |
 |---|---|
-| A new or renamed command, or a new argument to one | Run one goal, or Run several goals |
+| A new or renamed command, or a new argument to one | Run your goals through a lead, or Run one goal in your session |
 | A new flag, environment variable or launch requirement | What a run needs, and the command it belongs to |
 | A new agent or role | Roles, and Models |
-| A new path, or a change to which path a goal takes | The path table under Run one goal |
+| A new path, or a change to which path a goal takes | The path table under Run one goal in your session |
 | A new file in the record | The record |
 | A stage lands, or a run first exercises a built piece | Status |
 | The reason for any of the above | `docs/design.md`, cited by section. Never the README. |

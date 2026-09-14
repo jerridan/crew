@@ -7,7 +7,9 @@ You hand your goals to a lead. It starts one project lead per goal. Each
 project lead reads its repo, writes the spec, splits the work, picks a model
 for each piece, dispatches implementers, has each piece reviewed by an agent
 that did not write it, and opens the draft PR. You merge it. The lead brings
-you every question the runs cannot answer, in one batch.
+you every question the runs cannot answer, in one batch. Each project lead
+stays until you say its work shipped, so you can ask it about the change
+before you merge, and hand it a follow-up after.
 
 Two entry points:
 
@@ -64,6 +66,10 @@ What to expect:
 - Add a goal at any time by typing it in the pane.
 - A goal in stages takes one item per stage. Name the stages and the command
   that checks each one. The lead holds the next stage until you say go.
+- A project lead stays in its window after its PR opens. Ask the lead to pass
+  it a question or a follow-up, or type in its window yourself. When the PR
+  is merged and deployed, tell the lead the item shipped, and it closes the
+  session.
 - If the lead session dies, start Claude Code again in the same directory and
   run `/crew:lead`. It finds the open portfolio and continues, and it resumes
   any project lead that died with it.
@@ -104,7 +110,10 @@ The run sizes the work itself and picks a path:
 | Investigation | A symptom | Reproduce, gather evidence, diagnose. Then a spec and a fix, or a report with no change. |
 
 The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a draft
-PR from it. The run restores your checkout to the branch it started on.
+PR from it. The run restores your checkout to the branch it started on, and
+the session stays. Ask about the change, or hand it a follow-up on the same
+PR, in that session. When the work is merged and deployed, say so, and the
+run closes.
 
 A question comes to you in the same session. The triggers are fixed: no
 testable acceptance criterion, a preference the repo cannot settle, a council
@@ -184,7 +193,8 @@ advocate argues an assigned position, so the project lead weighs arguments
 instead of counting votes. A question about what you want is never debated. It
 comes to you.
 
-The draft PR is the end. Crew never merges.
+The draft PR is the end of the work. Crew never merges. The project lead
+stays until you say the work shipped.
 
 ## Models
 
@@ -244,8 +254,8 @@ review catch rate, over every record.
 
 | Role | What it does |
 |---|---|
-| Lead | Holds a portfolio. Writes a charter per goal, starts one project-lead session per goal, answers what its record settles, and brings you the rest in one batch. |
-| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the draft PR. |
+| Lead | Holds a portfolio. Writes a charter per goal, starts one project-lead session per goal, answers what its record settles, and brings you the rest in one batch. Passes your questions, follow-ups and the word that an item shipped down to its project lead. |
+| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the draft PR. Then stays for questions and follow-ups until the work ships. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |

@@ -15,13 +15,16 @@ usage:
   crew-record.py <record-dir> run set <dotted.field> <json>
   crew-record.py <record-dir> escalation add <trigger> <question>
   crew-record.py <record-dir> escalation answer <index> <answer>
-  crew-record.py <record-dir> close <deliverable-id> <deliverable-state> [--pr-url <url>]
+  crew-record.py <record-dir> deliver <deliverable-id> <deliverable-state> [--pr-url <url>]
+  crew-record.py <record-dir> ship
 
-`init` creates state.json with `created_at`. `close` sets the deliverable's
-terminal state and `run_state: complete` in one write, which
-`record-format.md` requires for `work-complete`. Any write that sets
-`run_state` to `complete` — `close`, `run state complete`, or
-`run set run_state complete` — also stamps `run.completed_at`.
+`init` creates state.json with `created_at`. `deliver` sets the deliverable's
+terminal state and `run_state: delivered` in one write, which
+`record-format.md` requires for `work-complete`. `ship` sets
+`run_state: complete`. Any write that sets `run_state` to `delivered` stamps
+`run.delivered_at`, and any write that sets it to `complete` — `ship`,
+`run state complete`, or `run set run_state complete` — stamps
+`run.completed_at`.
 `run set` takes a dotted path, so a nested key changes on its own and the
 rest of the object stays. It creates each missing level on the way down, and
 replaces a `null` level with an object. A level that holds a list, a string or
@@ -90,14 +93,20 @@ def set_dotted(target: dict, dotted: str, value) -> None:
     target[keys[-1]] = value
 
 
-def stamp_on_completion(run: dict, was_complete: bool) -> None:
-    """Stamp `completed_at` the moment `run_state` becomes `complete`.
+STAMPS = {"delivered": "delivered_at", "complete": "completed_at"}
 
-    `was_complete` is the state before this write, so a later write that
-    leaves `run_state` at `complete` never moves the stamp.
+
+def stamp_on_transition(run: dict, before: str | None) -> None:
+    """Stamp `delivered_at` or `completed_at` the moment `run_state` becomes
+    `delivered` or `complete`.
+
+    `before` is the state before this write, so a later write that leaves
+    `run_state` where it was never moves a stamp. A run that goes
+    `delivered → complete` keeps its `delivered_at`.
     """
-    if not was_complete and run.get("run_state") == "complete":
-        run["completed_at"] = now()
+    after = run.get("run_state")
+    if after != before and after in STAMPS:
+        run[STAMPS[after]] = now()
 
 
 def main(argv: list[str]) -> None:
@@ -165,13 +174,13 @@ def main(argv: list[str]) -> None:
             else:
                 usage()
     elif kind == "run":
-        was_complete = run.get("run_state") == "complete"
+        before = run.get("run_state")
         if arg(rest, 0) == "state":
             run["run_state"] = arg(rest, 1)
-            stamp_on_completion(run, was_complete)
+            stamp_on_transition(run, before)
         elif rest[0] == "set":
             set_dotted(run, arg(rest, 1), json.loads(arg(rest, 2)))
-            stamp_on_completion(run, was_complete)
+            stamp_on_transition(run, before)
         else:
             usage()
     elif kind == "escalation":
@@ -193,16 +202,20 @@ def main(argv: list[str]) -> None:
             asks[index]["answer"] = arg(rest, 2)
         else:
             usage()
-    elif kind == "close":
+    elif kind == "deliver":
         dl = find(state.get("deliverables", []), arg(rest, 0))
         dl["state"] = arg(rest, 1)
         dl["state_changed_at"] = now()
         url = flag(rest, "--pr-url")
         if url:
             dl["pr_url"] = url
-        was_complete = run.get("run_state") == "complete"
+        before = run.get("run_state")
+        run["run_state"] = "delivered"
+        stamp_on_transition(run, before)
+    elif kind == "ship":
+        before = run.get("run_state")
         run["run_state"] = "complete"
-        stamp_on_completion(run, was_complete)
+        stamp_on_transition(run, before)
     else:
         usage()
 

@@ -2207,3 +2207,44 @@ Read first: design §15.88b, §15.88h, §15.71; `skills/project-lead/SKILL.md`
 "Size the work"; `simple-path.md` "The light path"; `band-rubric.md` "What
 the light path skips"; `record-format.md` `steps_skipped` and `decisions.md`;
 `ic-contract.md` report statuses.
+
+## T54 — A project lead stays until the work ships
+
+Status: open
+Depends on: T52
+Stage: 7 (design §15.92)
+
+A project lead handed a charter by a lead opened its PR, sent its closing
+report and was killed (`session-launch.md`, "Closing it"). The principal's
+questions about the change come after that, before the merge, and a
+follow-up after review comments came as a new item with a new scout of the
+same repo. The rule now says the session stays: the run goes `delivered` at
+the hand-over and `complete` only on the principal's word that the work
+shipped, and the window between takes questions and follow-ups from the lead
+and from the principal's own typing (design §15.92). That rule landed with
+this ticket, and no run has been through it.
+
+Run it. One item through a lead, to a draft PR. Then, through the lead: one
+question about the change, answered; one follow-up that changes the code — a
+review comment to address is the natural one — pushed to the same PR with no
+second PR opened; then the ship word, and the item `done` with
+`run_state: complete` in the record. Then the same three by typing in the
+project lead's pane directly, on a second item, so both channels are shown.
+Kill one delivered session mid-window and confirm the lead resumes it and
+the next question still gets an answer.
+
+Check what the record shows: `delivered_at` and `completed_at` both set, the
+follow-up's package and `decisions.md` entry, `checkout_restored` written
+twice, no worktree left registered, and `spend.transcript` written at `ship`
+covering the window. Check `crew-stats.py` prices the run through
+`completed_at` and not `delivered_at`.
+
+Done when: both channels have run through a question, a follow-up and the
+ship word, the record shows all of the above, and design §15.92 holds what
+the runs showed — including what the rule got wrong.
+
+Read first: design §15.92, §15.72, §15.87e; `skills/lead/SKILL.md` "A
+delivered item keeps its session"; `session-launch.md` "Resuming a dead one"
+and "Closing it"; `simple-path.md` "End the run" and "The delivered window";
+`record-format.md` `run_state` transitions and the item state transitions;
+`crew-record.py`.

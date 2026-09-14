@@ -31,7 +31,7 @@ order, and every one of them is a section of this file:
    which writes its `deliverables[]` entry. No `split.md` names an id here, so
    this rule is where the id comes from. Five later sections read it: the
    package's `base`, the review diff's `base`, `diffs/<deliverable-id>-final.patch`,
-   `close <deliverable-id>`, and a `deliverable-review` entry in
+   `deliver <deliverable-id>`, and a `deliverable-review` entry in
    `run.steps_skipped`.
 2. **Write the one package**, straight into `state.json`: `crew-record.py
    package add` with `id`, `deliverable`, `territory`, `band`, `file_set`,
@@ -290,10 +290,12 @@ item. **A light-path run puts `charter.md` where the spec would go**, because
 it wrote none and the PR body is where its reasoning lands. Never hard wrap
 what you send to GitHub (`writing-standard.md`).
 
-`gh pr create --draft`. Record `pr_url`, set the deliverable `draft-pr-opened`
-and `run_state: complete`. A human merges it. Then run
-`scripts/spend.py --write` (`autonomy-contract.md`), and stop every process
-the run left listening — `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
+`gh pr create --draft`. Then one write: `crew-record.py deliver
+<deliverable-id> draft-pr-opened --pr-url <url>`. It records `pr_url`, sets
+the deliverable `draft-pr-opened` and `run_state: delivered`, and stamps
+`delivered_at`. A human merges it. Then run `scripts/spend.py --write`
+(`autonomy-contract.md`), and stop every process the run left listening —
+`lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
 When the push or `gh pr create` cannot run, check `escalations` first for the
 entry with trigger text `launch check 3 (trigger 6): no remote` — the
@@ -308,8 +310,9 @@ No such entry means check 3 passed at the sweep — this checkout had a remote
 then. A push or `gh pr create` failure here is a different problem: expired
 auth, a rejected push, a repo setting. Ask the principal, plainly, and **wait
 for the answer**: `blocked` until it lands, then `active`. One who already
-refused the PR has answered; do not ask twice. Then record `work-complete`,
-`pr_url: null` and `run_state: complete` in one write, and hand over the
+refused the PR has answered; do not ask twice. Then `crew-record.py deliver
+<deliverable-id> work-complete`: it records `work-complete` and
+`run_state: delivered` in one write, with `pr_url` left `null`. Hand over the
 branch.
 
 **Remove a worktree you cut, after the push.** A run that cut its own checkout
@@ -330,6 +333,79 @@ left registered is work for a human (design §15.88g, §15.90).
 `checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
 why not in `checkout_restored`. A run that cut its own checkout switched
 nothing, so `checkout_branch` is `null` and this step is already done. Name
-both branches in your last message, and send that message to the principal
-the way the goal arrived (`autonomy-contract.md`). A pane is not a report when
-nobody is watching it.
+both branches in your closing report, and send it to the principal the way
+the goal arrived (`autonomy-contract.md`). A pane is not a report when nobody
+is watching it.
+
+**The report ends the work, not the session.** Read "The delivered window"
+below and stay.
+
+## The delivered window
+
+The work is handed over and `run_state` is `delivered`. Stay in this session
+until the principal says the work shipped. You are the one session that has
+read the code, so a question about the change before the merge comes to you,
+and a follow-up on the same PR after review comes to you. An idle session
+spends nothing; a killed one costs a relaunch and a `--resume` for every
+question (design §15.92).
+
+Three kinds of message reach you here. Answer each where it arrived: a
+message typed in your pane is answered in your pane, and a
+`<cross-session-message>` by `SendMessage` to its `from-name`
+(`autonomy-contract.md`, "Reach the principal"). A lead passes the principal's
+words down and yours up; a principal may also type in your pane. Both are
+the principal's channel.
+
+**A question.** Answer it from the record and from the repo. Dispatch
+`Explore` subagents for the code, as at "Scout", and read `decisions.md`,
+the reviews and the reports yourself. Edit nothing. An answer that settles a
+preference goes into `decisions.md` on the preference route, as any other
+does.
+
+**A follow-up.** Review comments to address, a rebase onto a moved main, a
+test the principal wants added. It is one more package on the same
+deliverable, and every rule of this path holds for it, whichever path the
+run took: an IC makes the edit, you verify it, and a reviewer who did not
+write it reviews it (design §9.1). In order:
+
+1. **Check it is inside the charter's goal.** Work outside it is a new goal,
+   and the principal or the lead opens a new item for it. Say so, and take
+   nothing.
+2. **Write the package.** A `packages[]` entry in `state.json`, `pending`,
+   with its own file set and acceptance criterion, and a `decisions.md`
+   entry naming the follow-up and who sent it. A run that wrote `split.md`
+   adds the package there too.
+3. **Get the branch back.** The tree was restored at "End the run", so run
+   "Create the branch" again with one difference: the branch exists. A free
+   checkout switches to it — `git -C <repo> switch
+   crew/<goal-slug>/<deliverable-id>` — and writes `checkout_branch` from
+   what the tree was on, with `checkout_restored` back to `null`. A held one,
+   or a run that cut its own worktree the first time, cuts the worktree
+   again at the same path from the existing branch — no `-b` — and registers
+   it. Set the package's `base` to the branch head.
+4. **Run "Dispatch the IC" through "Review the deliverable"** on that
+   package. The deliverable stays `draft-pr-opened`: that state is terminal,
+   and the PR is what gains the commits (`record-format.md`).
+5. **Push to the same branch.** The PR updates itself; open no second one.
+   Then remove a worktree you cut and restore the checkout, as "End the run"
+   says, run `spend.py --write`, and report the way the message arrived.
+
+`run_state` stays `delivered` throughout. An escalation raised on a follow-up
+goes `delivered → blocked → delivered` (`record-format.md`).
+
+**The word that the work shipped.** It comes from the principal, on either
+channel, and it is the only thing that ends this window. Never decide it
+yourself: shipped means merged and deployed, and deployment happens outside
+this repo where no `gh` command sees it. On the word:
+
+1. `crew-record.py ship`. It sets `run_state: complete` and stamps
+   `completed_at`.
+2. `scripts/spend.py --write`, so the figure covers this window.
+3. Stop every process the run left listening, as "End the run" says.
+4. Say the run is closed and this session can be. A lead kills the window
+   (`session-launch.md`, "Closing it"); a principal who typed the goal
+   closes the pane.
+
+A session that dies in this window is resumed like any other: `SessionEnd`
+marks the run `interrupted`, and `--resume` finds every deliverable terminal
+and re-enters here with `run_state: delivered` (`SKILL.md`, "Take the goal").

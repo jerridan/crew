@@ -17,7 +17,7 @@ import os
 import sys
 from pathlib import Path
 
-LIVE_STATES = ("active", "blocked")
+LIVE_STATES = ("active", "blocked", "delivered")
 
 
 def crew_roots() -> list[Path]:

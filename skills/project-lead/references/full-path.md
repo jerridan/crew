@@ -432,9 +432,11 @@ them to that IC's branch, or surface them. Remove only worktrees this run
 created, proven by `worktrees.json` — a path pattern is not ownership (design
 §13.1).
 
-The run ends here, so your last message ends it. Send that message to the
+The work ends here, and your closing report says so. Send it to the
 principal the way the goal arrived (`autonomy-contract.md`). A pane is not a
-report when nobody is watching it.
+report when nobody is watching it. Then stay: `simple-path.md`'s "The
+delivered window" owns the rest of the session on every path, and a
+follow-up there is one package on the simple path's loop, not a new split.
 
 ## Resume after a kill
 
@@ -477,7 +479,8 @@ revised in place — correcting it takes a new package (design §10).
 Move `run_state` out of `interrupted` **first**, then clear `orphaned` on
 each worktree as you reconcile it. In the other order, a session that dies
 mid-reconciliation leaves cleared worktrees behind a run the hook will not
-touch again, because the hook only acts on an `active` or `blocked` run.
+touch again, because the hook only acts on an `active`, `blocked` or
+`delivered` run.
 
 A project lead killed mid-commit can leave a stale `index.lock` in a worktree.
 Clear one only when no process holds it.

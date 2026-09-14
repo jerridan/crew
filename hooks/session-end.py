@@ -18,7 +18,10 @@ import sys
 import time
 from pathlib import Path
 
-LIVE_STATES = ("active", "blocked")
+# A `delivered` run has handed over its work and its session waits for the
+# principal's word that the work shipped (`record-format.md`). Its session is
+# as live as an `active` one, so its death is marked the same way.
+LIVE_STATES = ("active", "blocked", "delivered")
 
 # The wake's budget. The hook's own timeout is 5 seconds (`hooks/hooks.json`),
 # and the record writes come first, so these caps only bound the send. A local

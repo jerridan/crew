@@ -225,8 +225,8 @@ empty result means the run has not created its record yet: leave the field
 
 ## Resuming a dead one
 
-A `running` item whose `session_name` is absent from `ListAgents` has lost its
-session. The record survived, so the run does.
+A `running` or `delivered` item whose `session_name` is absent from
+`ListAgents` has lost its session. The record survived, so the run does.
 
 **A message that starts `crew SessionEnd:` is how you usually hear.** Crew's
 `SessionEnd` hook sends it the moment it marks the dead run `interrupted`, and
@@ -245,7 +245,8 @@ Run /crew:project-lead --resume <goal-slug> now.
 
 `<goal-slug>` is the basename of the item's `record_dir`. The resumed session
 reopens that record, reconciles against git, re-enters at the first unfinished
-work, and re-sends every escalation still holding `answer: null` — so an answer
+work — or at the delivered window, when the work was already handed over —
+and re-sends every escalation still holding `answer: null` — so an answer
 you already have may be asked for again. Answer it from the portfolio's
 `decisions.md` rather than from the principal.
 
@@ -254,12 +255,20 @@ change.
 
 ## Closing it
 
-When the item's `state.json` shows a terminal state, the session has nothing
-left to do. Kill its window — `tmux kill-window -t <session-name>` — and set
-the item `done` with its `outcome`. An idle session left running clutters every
-later `ListAgents`, and `ListAgents` is how you find the live ones.
+A project lead's session outlives its PR. When `state.json` shows
+`run_state: delivered`, the work is handed over and the session stays for
+questions, follow-ups and the ship word (`skills/lead/SKILL.md`, "A delivered
+item keeps its session"). Set the item `delivered` with its `outcome`, and
+kill nothing.
+
+When `state.json` shows `run_state: complete`, the ship word landed and the
+session has nothing left to do. Kill its window — `tmux kill-window -t
+<session-name>` — and set the item `done`. An idle session left running past
+that point clutters every later `ListAgents`, and `ListAgents` is how you find
+the live ones.
 
 Killing the window is safe at that point and only at that point: T36 killed the
 *lead* mid-run and the project lead still finished, because the record is what
 the run stands on and the channel carries only notifications (design §15.21,
-§15.72g).
+§15.72g). A `delivered` session killed early costs a relaunch and a `--resume`
+at the next question.

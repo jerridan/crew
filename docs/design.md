@@ -6951,19 +6951,17 @@ Deliberately different:
     The project lead was live, mid-spec, with a `crew:spec-critic` subagent
     running. Only `tmux capture-pane` showed it.
 
-    a. **Two causes, one of them a false lead corrected here.** `$TMUX` is not
-       the problem: a probe on 2.1.270 ran `printenv TMUX` from the Bash tool
-       of a headless `claude` inside a tmux window and got the socket path
-       back. The lead's own process, session `b8b3bdef`, in tmux session `2`
-       (the one the principal was attached to), carried `TMUX=...,2`. An
-       earlier draft of this item blamed a missing `$TMUX` and is wrong;
-       withdraw it. The real first cause: `session-launch.md`'s "The launch"
-       names no session for `tmux new-window`, so the choice was the lead's
-       to make, and the lead's live transcript (portfolio
-       `lead-2026-09-13-bac5`, item `pp-02-671e`) shows what it chose. The
-       second cause stands as before: no `--teammate-mode` on the project
-       lead's command, so its IC teammates ran in-process (design §15.20c,
-       §15.89d) and never got a pane.
+    a. **Two causes.** `$TMUX` is not the problem: a probe on 2.1.270 ran
+       `printenv TMUX` from the Bash tool of a headless `claude` inside a
+       tmux window and got the socket path back. The lead's own process,
+       session `b8b3bdef`, in tmux session `2` (the one the principal was
+       attached to), carried `TMUX=...,2`. The real first cause:
+       `session-launch.md`'s "The launch" names no session for
+       `tmux new-window`, so the choice was the lead's to make, and the
+       lead's live transcript (portfolio `lead-2026-09-13-bac5`, item
+       `pp-02-671e`) shows what it chose. The second cause: no
+       `--teammate-mode` on the project lead's command, so its IC teammates
+       ran in-process (design §15.20c, §15.89d) and never got a pane.
 
     b. **What the transcript shows.** The lead ran `tmux ls`, saw
        `crew-t54` (a stale detached session left over from yesterday's T54
@@ -6994,8 +6992,7 @@ Deliberately different:
        lead's. Which window number it lands on is not yet probed; (g) names
        the check. T55 lands this in `session-launch.md`
        (PR #74, branch `t55-lead-tmux-layout`). Its commands, below, are
-       probed against tmux 3.7b, and they supersede the ones this item first
-       drafted.
+       probed against tmux 3.7b.
 
        The launch checks the session first, with `tmux has-session -t "=crew"`.
        It creates the session when the check fails, with
@@ -7017,11 +7014,10 @@ Deliberately different:
        and the window half of the target, because a probe on tmux 3.7b found
        prefix matching applies to window names as well as session names: a
        bare `crew` matches `crew-t54`, and in the same probe a bare `item-1`
-       matched a window named `item-10`. A claim in an earlier draft, that a
-       missing colon after `crew` makes `new-window` fail with "index in
-       use", did not reproduce on tmux 3.7b and is withdrawn; the colon
-       names the session for `new-window` to open the window in, nothing
-       more.
+       matched a window named `item-10`. The colon after `crew` names the
+       session for `new-window` to open the window in, nothing more; a
+       missing colon does not make the command fail with "index in use" on
+       tmux 3.7b.
 
     d. **Why the flag lives in the launch command, not the setting.** A
        project lead could ask for split panes by setting `teammateMode:

@@ -54,11 +54,16 @@ checkout had a remote and there was nothing to ask.
 
 One more condition cannot be checked in advance: nothing in the run may stop
 for a human. A display mode is not a condition — in-process is the default and
-needs no setup (design §15.20c, §15.89d). A teammate's permission prompts
-surface in your session (design §15.12, §15.20), so one un-granted command
-stalls the whole run. A session cannot read its own permission mode, so the
-README names this as a launch requirement and the principal owns it. You may not
-widen it yourself either, because settings are configuration.
+needs no setup (design §15.20c, §15.89d). A lead that launches into tmux passes
+you `--teammate-mode tmux`, so each IC gets its own pane (design §15.93). That
+costs you two things. A split-pane IC is its own session, so `spend.py`'s
+header says what its price leaves out. A pane also needs room: a dispatch that
+fails with `create pane failed: pane too small` is an `environment` block, and
+it escalates the same way a stalled one does, below. A teammate's permission
+prompts surface in your session (design §15.12, §15.20), so one un-granted
+command stalls the whole run. A session cannot read its own permission mode, so
+the README names this as a launch requirement and the principal owns it. You
+may not widen it yourself either, because settings are configuration.
 
 What you do instead is fail fast on it. If your first dispatch stalls waiting
 for an approval, stop there and escalate as an `environment` block. Do not

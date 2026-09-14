@@ -6898,3 +6898,33 @@ Deliberately different:
        as self-modification, whatever the principal said, so the launch waited
        on the principal setting the trust by hand. `session-launch.md` now
        offers only that route, and drops the offer to write it.
+
+    i. **A high-effort review of the branch found ten seams the new state
+       opened.**
+
+       - The gate and `depends_on` fired on the upstream item reaching
+         `done`, which now lands at the ship word. Both now fire on
+         `delivered`, the moment the PR opens — when they fired before.
+       - `--resume` keyed on deliverable state alone, and would have skipped
+         a follow-up killed mid-flight. It now reads package state too.
+       - `--resume` treated every non-`complete` record the same, and would
+         have re-entered a `complete` one. A `complete` record is not resumed.
+       - The escalation procedure still said a cleared item goes "back to
+         active". A `delivered` item can hold an escalation too, so it now
+         says "back to the state it left".
+       - A lead resumed a `delivered` item without reading its `state.json`
+         first, which could regress a `complete` run back to `delivered`. It
+         now reads the record before it resumes anything.
+       - A dropped `delivered` item had no path that killed its window, so a
+         portfolio close turned into a ship word for work nobody shipped. The
+         close now asks, per `delivered` item, before it sends one.
+       - Nothing said a report-ending investigation run takes no code
+         follow-up, since it merged no code to follow up on. It says so now.
+       - `delivered_at` was re-stamped on every entry into `delivered`, so
+         the live record's 03:47:31Z resume overwrote the 03:44:32Z
+         hand-over. It is now stamped once, on the first entry.
+       - An `interrupted` run with terminal deliverables — a principal who
+         closed the pane after merging — priced open-ended, as any live run
+         does. It now prices through its latest stamp instead.
+       - `record-format.md`'s one-write-per-transition rationale contradicted
+         the resume rule above it. The file now says which one governs.

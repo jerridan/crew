@@ -216,10 +216,12 @@ empty result means the run has not created its record yet: leave the field
 - **Send an answer once.** A repeat inside a short window is dropped at the
   sender, and a burst is refused (design §15.72). One send, then wait for the
   reply by ending your turn.
-- **One nudge, then a resume.** An item with no message and no record movement
-  is either working or dead. Compare `state.json`'s `state_changed_at` against
-  the clock before you decide, send at most one "where are you" message, and if
-  nothing moves after it, treat the session as dead and resume it.
+- **One nudge, then a resume.** This applies to a `running` item only. Compare
+  `state.json`'s `state_changed_at` against the clock before you decide, send
+  at most one "where are you" message, and if nothing moves after it, treat
+  the session as dead and resume it. A `delivered` item is idle by design —
+  no message and no record movement is normal — and is dead only when its
+  `session_name` is absent from `ListAgents`.
 - **Never type in its pane.** The pane is not a channel; a message is.
 
 ## Resuming a dead one
@@ -265,6 +267,12 @@ session has nothing left to do. Kill its window — `tmux kill-window -t
 <session-name>` — and set the item `done`. An idle session left running past
 that point clutters every later `ListAgents`, and `ListAgents` is how you find
 the live ones.
+
+An item the principal drops while `delivered` gets its window killed the same
+way, and set `abandoned`. Its run is left `delivered` in `state.json` —
+nothing there marks the drop — and the `SessionEnd` hook, which fires as the
+window dies, marks it `interrupted`, the same evidence a `running` item's
+death leaves.
 
 Killing the window is safe at that point and only at that point: T36 killed the
 *lead* mid-run and the project lead still finished, because the record is what

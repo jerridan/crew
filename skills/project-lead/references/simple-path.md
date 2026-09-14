@@ -370,7 +370,9 @@ write it reviews it (design §9.1). In order:
 
 1. **Check it is inside the charter's goal.** Work outside it is a new goal,
    and the principal or the lead opens a new item for it. Say so, and take
-   nothing.
+   nothing. A deliverable whose `branch` is `null` — an investigation run that
+   ended in a report — takes no follow-up that changes code at all. A fix
+   after a report is a new goal. Say so, and answer questions only.
 2. **Write the package.** A `packages[]` entry in `state.json`, `pending`,
    with its own file set and acceptance criterion, and a `decisions.md`
    entry naming the follow-up and who sent it. A run that wrote `split.md`
@@ -391,6 +393,16 @@ write it reviews it (design §9.1). In order:
 5. **Push to the same branch.** The PR updates itself; open no second one.
    Then remove a worktree you cut and restore the checkout, as "End the run"
    says, run `spend.py --write`, and report the way the message arrived.
+
+**A follow-up killed mid-flight.** On `--resume`, a `pending` or `in-flight`
+package under a terminal deliverable is the follow-up. Reconcile it from git,
+as `full-path.md`'s "Resume after a kill" reconciles a worktree: `git -C
+<run.checkout> status --porcelain` and `git -C <run.checkout> log
+<base>..HEAD` are the evidence, and `state.json` is rewritten to match them.
+Commit dirty work to the deliverable branch first. Then re-enter the steps
+above at "Verify before you believe" when the log holds commits, or at
+"Dispatch the IC" when it holds none. Finish with the push and the checkout
+restore, as step 5 says.
 
 `run_state` stays `delivered` throughout. An escalation raised on a follow-up
 goes `delivered → blocked → delivered` (`record-format.md`).

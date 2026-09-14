@@ -42,8 +42,11 @@ the same way, and it costs four reads:
    principal has given, and reading it is what stops you asking twice.
 3. Read each item's `expect` line. That is what your last turn was waiting for.
 4. Call `ListAgents` and match it against each item's `session_name`. A
-   `running` or `delivered` item with no live session died: resume it
-   (`session-launch.md`).
+   `running` or `delivered` item with no live session died. Before you resume
+   a `delivered` one, read its `record_dir`'s `state.json`. `run_state:
+   complete` means the ship word already landed and the reply was lost: set
+   the item `done`, run `lead-spend.py`, and resume nothing. A run still
+   `delivered` or `interrupted` gets resumed (`session-launch.md`).
 
 Then re-send every `lead.escalations` entry that still has `answer: null`.
 Those go **up**, to the principal, in one batch, with the same
@@ -158,7 +161,10 @@ reads as staged — more than one PR, a migration, a backfill, or a stage that
 assumes an earlier one is live. Name the stages you read in the brief, and ask
 whether the principal wants a gate between them and what it is. Ask for the
 condition in their own words and for a command you can run to check it. With
-no answer naming a gate, the goal runs as any other goal does.
+no answer naming a gate, the item still waits on `depends_on` alone: it
+starts the turn the upstream item reaches `delivered`, the same moment a
+gate would open on. The difference is no hold, no check and no ask — the
+session launches straight away.
 
 **A brief that states the condition has named the gate.** Do not ask the
 principal to type that sentence twice. Ask the narrower question instead —
@@ -175,15 +181,21 @@ The answer goes in `decisions.md` as well, so a restarted lead does not ask
 again.
 
 **Then run the gate in four steps. Steps 1 to 3 are one turn**, the turn the
-upstream item reaches `done` in. Nothing else will start them: that run is
-over, the gated stage was never launched, and no notification is coming. Step 4
-is the next turn, and the principal's answer starts it.
+upstream item reaches `delivered` in — the moment its PR opens. Nothing else
+will start them: that hand-over is over, the gated stage was never launched,
+and no notification is coming. Step 4 is the next turn, and the principal's
+answer starts it.
 
-1. **Hold.** The moment the upstream item reaches `done`, set the waiting item
-   `held` and write its `expect` line. It never goes `pending → running` while
-   a gate stands. An upstream item that ends `abandoned` instead takes the
-   waiting item to `abandoned` with it (`record-format.md`); say so in your
-   next batch as information, not as a question.
+The upstream's ship word and the downstream's go are two separate words from
+the principal. A gate whose condition is the merge is checked before the ship
+word lands, so the ship word may double as the go.
+
+1. **Hold.** The moment the upstream item reaches `delivered`, set the
+   waiting item `held` and write its `expect` line. It never goes
+   `pending → running` while a gate stands. An upstream item that ends
+   `abandoned` instead takes the waiting item to `abandoned` with it
+   (`record-format.md`); say so in your next batch as information, not as a
+   question.
 2. **Check.** Run `gate.check` verbatim, once, from the portfolio directory.
    Write `checked_at` and `check_output`. Never edit the command, never write
    one the principal did not give, and never run it a second time to get a
@@ -266,10 +278,16 @@ write `expect`, and end the turn. Next turn, confirm `run_state: complete` in
 gets resumed first, the way a `running` one does, and the word goes to the
 resumed session.
 
-**A closed portfolio holds no live session.** The principal's word to close
-the portfolio is the ship word for every `delivered` item in it. Name those
-items in your reply, close each one as above, and only then set `lead.state`
-`closed`.
+**A dropped item.** When the principal drops a `delivered` item instead of
+shipping it, set it `abandoned` and kill its window
+(`session-launch.md`, "Closing it"). Send no ship word: `complete` is for
+shipped work only, and this work never shipped.
+
+**A closed portfolio asks first.** Before you close, name every `delivered`
+item in your reply and ask, for each one, whether it shipped or is dropped. A
+shipped item gets the ship word, as above; a dropped item goes `abandoned`
+with its window killed, as above. Set `lead.state` `closed` only once no item
+is left `delivered`.
 
 ## Price your own seat when an item closes
 

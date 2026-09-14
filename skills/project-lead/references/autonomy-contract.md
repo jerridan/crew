@@ -396,8 +396,9 @@ did not name.
 
 Write the ask into `state.json`'s `escalations` with all four of its
 fields — `trigger`, `question`, `asked_at`, and `answer: null` — set
-`run_state: blocked`, and fill `answer` and set `run_state` back to `active`
-when the answer lands.
+`run_state: blocked`, and fill `answer` and set `run_state` back to the state
+it left when the answer lands: `active`, or `delivered` when every deliverable
+holds a terminal state (`record-format.md`'s transitions table).
 
 **Then send it, the way the goal arrived** (The principal, above). This holds
 for every trigger above, not only the sweep. An escalation that reaches the

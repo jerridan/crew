@@ -2222,7 +2222,8 @@ same repo. The rule now says the session stays: the run goes `delivered` at
 the hand-over and `complete` only on the principal's word that the work
 shipped, and the window between takes questions and follow-ups from the lead
 and from the principal's own typing (design §15.92). That rule landed with
-this ticket, and no run has been through it.
+this ticket, and one item ran through the whole window the same day (design
+§15.92g).
 
 Run it. One item through a lead, to a draft PR. Then, through the lead: one
 question about the change, answered; one follow-up that changes the code — a

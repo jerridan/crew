@@ -21,10 +21,10 @@ usage:
 `init` creates state.json with `created_at`. `deliver` sets the deliverable's
 terminal state and `run_state: delivered` in one write, which
 `record-format.md` requires for `work-complete`. `ship` sets
-`run_state: complete`. Any write that sets `run_state` to `delivered` stamps
-`run.delivered_at`, and any write that sets it to `complete` — `ship`,
-`run state complete`, or `run set run_state complete` — stamps
-`run.completed_at`.
+`run_state: complete`. The first write that sets `run_state` to `delivered`
+stamps `run.delivered_at`, and a later one never moves it. A write that sets
+`run_state` to `complete` — `ship`, `run state complete`, or
+`run set run_state complete` — stamps `run.completed_at`.
 `run set` takes a dotted path, so a nested key changes on its own and the
 rest of the object stays. It creates each missing level on the way down, and
 replaces a `null` level with an object. A level that holds a list, a string or
@@ -97,15 +97,24 @@ STAMPS = {"delivered": "delivered_at", "complete": "completed_at"}
 
 
 def stamp_on_transition(run: dict, before: str | None) -> None:
-    """Stamp `delivered_at` or `completed_at` the moment `run_state` becomes
+    """Stamp `delivered_at` or `completed_at` when `run_state` becomes
     `delivered` or `complete`.
 
-    `before` is the state before this write, so a later write that leaves
-    `run_state` where it was never moves a stamp. A run that goes
-    `delivered → complete` keeps its `delivered_at`.
+    `before` is the state before this write, so a write that leaves
+    `run_state` where it was never moves a stamp. `delivered_at` is stamped
+    once, on the first entry into `delivered`: a run that goes
+    `delivered → blocked → delivered`, or through `interrupted` and back,
+    keeps the stamp it already has, so the delivered window is measured from
+    the hand-over. A run that goes `delivered → complete` keeps it too.
     """
     after = run.get("run_state")
-    if after != before and after in STAMPS:
+    if after == before or after not in STAMPS:
+        return
+    if after == "delivered":
+        # A key that is absent or `null` is a run that has not delivered yet.
+        if run.get("delivered_at") is None:
+            run["delivered_at"] = now()
+    else:
         run[STAMPS[after]] = now()
 
 

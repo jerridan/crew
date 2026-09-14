@@ -113,7 +113,8 @@ The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a draft
 PR from it. The run restores your checkout to the branch it started on, and
 the session stays. Ask about the change, or hand it a follow-up on the same
 PR, in that session. When the work is merged and deployed, say so, and the
-run closes.
+run closes. Closing the session instead leaves the run recorded as
+interrupted, which is fine for a run you merged yourself.
 
 A question comes to you in the same session. The triggers are fixed: no
 testable acceptance criterion, a preference the repo cannot settle, a council

@@ -476,6 +476,10 @@ The deliverable branch reconciles the same way: `git -C <repo> log` shows which
 packages already merged. An `integrated` package is terminal and cannot be
 revised in place — correcting it takes a new package (design §10).
 
+An open package under a **terminal** deliverable is a follow-up, not a package
+of the original work. `simple-path.md`'s "A follow-up killed mid-flight" owns
+that case.
+
 Move `run_state` out of `interrupted` **first**, then clear `orphaned` on
 each worktree as you reconcile it. In the other order, a session that dies
 mid-reconciliation leaves cleared worktrees behind a run the hook will not

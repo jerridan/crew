@@ -398,11 +398,12 @@ or, on the investigation path, `diagnosis.md`'s `Outcome: no change`.
 Move it only when the principal says to.
 
 Write the deliverable's `work-complete` and the run's `delivered` in **one**
-write, against the usual rule of one write per transition. Split across two,
-a crash between them leaves `work-complete` under an `active` `run_state`,
-and a resume that finds it re-enters "End the run" — the step this exception
-exists to keep it out of. Under `delivered`, a resume re-enters the delivered
-window instead (`simple-path.md`), whatever git shows.
+write, against the usual rule of one write per transition. The one write keeps
+the record true. Split across two, a crash between them leaves `work-complete`
+under an `active` `run_state` — a record that says the run is still working on
+a deliverable it closed. The resume rule reads the deliverable's state, not
+the run's (`SKILL.md`, "Take the goal"), so it enters the delivered window
+either way. The one write protects the record, not the resume.
 
 ### At creation
 
@@ -423,7 +424,7 @@ checkout of its own (`worktrees.json` below).
 | `checkout` | the absolute path this run does its git work in, written at `simple-path.md`'s "Create the branch". It is the target repo the charter named, unless another run already held that checkout — then it is the worktree this run cut, registered in `worktrees.json`. Every git command, the test suite and the push run against it. It is not where the run's transcripts live: those follow the session's own working directory, which the launch fixed (design §15.90). Absent on an investigation run that ends in a report, which creates no branch. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it when it has to price from a checkout. |
-| `delivered_at` | ISO-8601 UTC timestamp `crew-record.py` stamps on every write that sets `run_state` to `delivered` — the `deliver` command, `run state delivered`, and `run set run_state delivered`. It is when the work was handed over: the PR opened, or the report ended. A run that goes `delivered → complete` keeps it, so the two stamps bound the delivered window. |
+| `delivered_at` | ISO-8601 UTC timestamp `crew-record.py` stamps once, on the first write that sets `run_state` to `delivered` — the `deliver` command, `run state delivered`, or `run set run_state delivered`. It is when the work was handed over: the PR opened, or the report ended. A later `blocked → delivered` or `interrupted → delivered` never moves it, and a run that goes `delivered → complete` keeps it, so the two stamps bound the whole delivered window. |
 | `completed_at` | ISO-8601 UTC timestamp `crew-record.py` stamps on every write that sets `run_state` to `complete` — the `ship` command, `run state complete`, and `run set run_state complete`. `crew-stats.py` prices a run through this bound, or the latest `state_changed_at` when it is absent, so a `complete` run without it prices short of its own tail (design §15.51). An `interrupted` or `delivered` run never gets one, and `--resume` never sets one — only the principal's ship word does. |
 | `spend` | `{transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
@@ -451,6 +452,11 @@ prices it.
 | `interrupted` | `active` | `--resume`, when no answer is missing and a deliverable is still open |
 | `active` | `delivered` | the project lead hands the work over: the draft PR opens, or the run ends in `work-complete` (`simple-path.md`'s "End the run") |
 | `delivered` | `complete` | the principal says the work shipped, and the project lead writes `ship` (`simple-path.md`'s "The delivered window") |
+
+An `interrupted` run whose deliverables all hold a terminal state, and that
+nobody resumes — a principal who typed the goal and closed the pane after the
+merge — stays `interrupted` with its `delivered_at`, and `crew-stats.py`
+prices it through its latest stamp.
 
 A follow-up in the delivered window moves `run_state` nowhere: the run stays
 `delivered` while an IC works, and `decisions.md` holds what the follow-up
@@ -497,7 +503,7 @@ transcript, and `crew-stats.py` then closes the window at `completed_at`
 | `trigger` | which design §6 trigger fired |
 | `question` | what the project lead asked |
 | `asked_at` | ISO-8601 UTC timestamp |
-| `answer` | `null` until the human responds; a non-`null` value flips `run_state` from `blocked` back to `active` |
+| `answer` | `null` until the human responds; a non-`null` value flips `run_state` from `blocked` back to the state it left, `active` or `delivered` |
 
 ### Worked example
 
@@ -960,7 +966,8 @@ any non-terminal state ──▶ abandoned                  (terminal)
 - `pending → running`: the charter is written, a project-lead session is
   launched, and the charter is handed to it.
 - `pending → held`: this item carries a `gate`, and the item its `depends_on`
-  names reached `done`. The gate now applies. Only a gated item enters `held`.
+  names reached `delivered`. The gate fires when the upstream PR opens, not at
+  the ship word. Only a gated item enters `held`.
 - `held → running`: the principal cleared the gate, and `gate.cleared_at` says
   when. Nothing else opens a gate — a check whose output matched is still not
   the go (design §15.87e).
@@ -975,6 +982,10 @@ any non-terminal state ──▶ abandoned                  (terminal)
   delivered item keeps its session").
 - `delivered → done`: the principal said the work shipped, the lead passed the
   word down, and the run's `state.json` shows `run_state: complete`.
+- `delivered → abandoned`: the principal dropped the item after the hand-over.
+  Its run stays `delivered` in its own record until the hook marks it
+  `interrupted`, and the lead kills the delivered window
+  (`session-launch.md`, "Closing it").
 - any non-terminal state `→ abandoned`: the principal dropped the item, or the
   run failed in a way no resume fixes. A `held` item whose gate the principal
   will never clear ends here. So does an item whose `depends_on` ended
@@ -1149,7 +1160,7 @@ Every name this file defines, with what consumes it.
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
 - `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py` (the checkout fallback only)
-- `run.delivered_at` — writer: `crew-record.py`, on `deliver`, `run state delivered`, and `run set run_state delivered`. Consumer: a human, or a later session, asking when the work was handed over and how long the delivered window ran
+- `run.delivered_at` — writer: `crew-record.py`, on the first `deliver`, `run state delivered`, or `run set run_state delivered`. Consumer: `scripts/crew-stats.py` (the end of an `interrupted` run that has delivered); a human, or a later session, asking when the work was handed over and how long the delivered window ran
 - `run.completed_at` — writer: `crew-record.py`, on `ship`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md`'s "Verify before you believe" (re-verify after an IC compacts) and "The territory's next package" (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
@@ -1230,7 +1241,7 @@ Every name this file defines, with what consumes it.
 - `escalations[].trigger` — consumer: stage 6
 - `escalations[].question` — consumer: stage 6; the human answering it
 - `escalations[].asked_at` — consumer: stage 6 (ordering, this file's timestamp rule)
-- `escalations[].answer` — consumer: stage 6 (flips `run_state` back to `active`)
+- `escalations[].answer` — consumer: stage 6 (flips `run_state` back to the state it left, `active` or `delivered`)
 
 **`state.json` `band_history` entry fields**
 - `predicted` — consumer: Task 5 (`band-rubric.md`'s promotion-logging rule); stage 5

@@ -43,7 +43,10 @@ behalf so you can audit them at review time.
 
 ### Out of scope
 
-- **Autonomous merging.** The draft PR is the terminus. A human merges.
+- **Autonomous merging.** The draft PR is the end of the work. A human
+  merges. The project-lead session stays until the human says the work
+  shipped, so the change can be asked about and followed up in the session
+  that made it (§15.92).
 - **Concurrent goals in one project-lead session.** One goal per project
   lead session. The lead tier runs more sessions for more goals.
 - **An org-wide view.** No dashboard, no cross-session sweep, no supervision.
@@ -1139,7 +1142,7 @@ is how often it fires when no crew run is happening.
 | Hook | Fires | Job | Stage |
 |---|---|---|---|
 | `TeammateIdle` | only when a teammate goes idle — never in a session with no teammates | Was to exit 2 and reject an IC that idles with no report | **cut** — the project lead does this by message (below, §15.29) |
-| `SessionEnd` | once per session; it exits at once on a machine with no `crew/` directory, and on one that has it, reads a few small JSON files and returns | Marks the run interrupted in `state.json` and lists its worktrees as orphaned, and marks a dead lead's portfolio interrupted (§15.74e). Deletes nothing. Then, and only when a run under a portfolio went interrupted, it sends the lead one line on the cross-session inbox socket, so an idle lead gets a turn (§15.84). | **built** — `hooks/session-end.py` (§15.38, §15.84) |
+| `SessionEnd` | once per session; it exits at once on a machine with no `crew/` directory, and on one that has it, reads a few small JSON files and returns | Marks the run interrupted in `state.json` — a `delivered` run included (§15.92) — and lists its worktrees as orphaned, and marks a dead lead's portfolio interrupted (§15.74e). Deletes nothing. Then, and only when a run under a portfolio went interrupted, it sends the lead one line on the cross-session inbox socket, so an idle lead gets a turn (§15.84). | **built** — `hooks/session-end.py` (§15.38, §15.84) |
 | `PreCompact` | once per compaction, in any session; same guard and cost as `SessionEnd` | **Writes only.** Appends the session id and trigger to `run.compactions` when the session belongs to a live run, so the project lead learns that an IC lost the context it planned in (§15.50), and to `lead.compactions` when it belongs to a live portfolio (§15.74e). | **built** — `hooks/pre-compact.py`; not yet observed firing for an in-process teammate (T19) |
 | `PreToolUse` on `Bash` | **every Bash call in every session** | Auto-prefix `cd <worktree> &&` to kill the cwd hazard — non-git commands only; a `cd` before git is denied (§15 item 23b) | **deferred** |
 | `PreToolUse` on `Agent` | every agent spawn | Provision a worktree at spawn time | **not needed** — the project lead does this itself |
@@ -6789,3 +6792,139 @@ Deliberately different:
        seam. The fixture branch `t53-seed-b` fails the question by
        construction, which makes it the cheapest test of the check. The seam
        itself waits for a repo big enough to hide a requirement from the scout.
+
+92. **A project lead stays until the work ships — 2026-09-13, T54.** Every
+    path ended the same way: open the PR, set `run_state: complete`, send the
+    closing report, and the lead killed the window (`session-launch.md`,
+    "Closing it"). The one session that had read the code was gone the moment
+    the PR opened, which is when the principal starts to have questions about
+    it — before the merge, and again after a review lands comments on it. A
+    question then went to a lead that reads no code, and a follow-up on the
+    same PR was a new item, a new session and a new scout of the same repo.
+    The principal asked for the session to stay until the work had shipped,
+    so the lead can pass it questions and follow-ups and the principal can
+    ask it directly. One item ran through the whole window the same day,
+    under a lead, in tmux `crew-t54`, against a fresh clone of
+    `jerridan/crew-fixture-string-kit`; the record is
+    `~/.claude/crew-t54-live/lead-2026-09-14-f836`, and (g) holds what it
+    showed.
+
+    a. **The run gets a fifth state, `delivered`, between `active` and
+       `complete`.** The hand-over writes it: `crew-record.py deliver`
+       replaces `close`, sets the deliverable's terminal state and
+       `run_state: delivered` in one write, and stamps `delivered_at`. The
+       session then sits idle. `crew-record.py ship` writes `complete` and
+       stamps `completed_at`, and nothing else does. The `work-complete`
+       exception (`record-format.md`) moves with it: what it protected was a
+       resume re-entering "End the run" and opening a refused PR, and
+       `delivered` keeps a resume out of that step the way `complete` did.
+
+    b. **Only the principal's word ends the window.** Shipped means merged and
+       deployed, and the second half happens outside the repo where no `gh`
+       command sees it. So neither tier decides it: a merged PR is not a go,
+       on the reasoning §15.87e gave for a matched gate check. The word goes
+       down the channel the goal came up — the lead sends `The work shipped.
+       Close the run.`, or the principal types it in the pane. A closed
+       portfolio is the word for every `delivered` item it holds, so a
+       portfolio never closes over a live session.
+
+    c. **Three kinds of message, answered where they arrived.** A question is
+       answered from the record and from `Explore` subagents, with no edit. A
+       follow-up is one more package on the same deliverable, run with the
+       simple path's loop on every path: an IC edits, the project lead
+       verifies, a reviewer reviews, the push lands on the same branch and the
+       PR updates itself. The deliverable stays `draft-pr-opened`, because
+       that state is terminal and the PR is what gains the commits; the
+       package entry and the `decisions.md` entry are the record of the
+       follow-up. Work outside the charter is a new goal, and the project lead
+       says so instead of taking it. The checkout was restored at the
+       hand-over, so a follow-up gets the branch back first — a switch on a
+       free checkout, a second cut of the same worktree on a held one — and
+       restores it again at the end.
+
+    d. **The lead's item gets a matching state.** `running → delivered` when
+       `state.json` shows it, `delivered → done` when it shows `complete`.
+       `outcome` fills at `delivered`, since the PR url is known then. The
+       delivery is information for the batch, not an escalation entry: an
+       entry would set the item `blocked` and re-send on every restart, and
+       nothing is blocked. The `expect` line carries what the lead waits for.
+
+    e. **Both hooks count a `delivered` run as live.** `SessionEnd` marks it
+       `interrupted` and wakes the lead; `PreCompact` logs its compactions. A
+       resumed run whose deliverables are all terminal re-enters the delivered
+       window with `run_state: delivered`. A `delivered` item with no live
+       session is resumed like a `running` one: a relaunch costs one session
+       start, and the alternative is a question with nobody to answer it.
+
+    f. **What it costs.** An idle session spends no tokens, so the window is
+       free until a message arrives. What it holds is a tmux window, or an
+       iTerm2 tab, per delivered item until the ship word, and a lead's
+       `ListAgents` grows with them. `spend.py --write` runs at the hand-over,
+       so the closing report still states a figure, and again at `ship`, so
+       the window's turns land in the figure that stands. `crew-stats.py`
+       prices a `delivered` run open-ended, as it prices any live run.
+
+    g. **The run, 2026-09-14, T54.** One goal, `countWords` in `src/text/`,
+       light path, one `standard` package, draft PR #38, thirty-six minutes
+       from the lead's launch to the portfolio's close.
+
+       | Step | Wall clock | What the record shows |
+       |---|---|---|
+       | Hand-over | 03:44Z, 12 min after launch | `run_state: delivered`, `delivered_at`, `pr_url`, `checkout_restored: true`, spend $5.05 |
+       | Question through the lead | answered 03:46Z, about 30 s round trip | a `decisions.md` entry citing the branch file and a run of the helper; no edit |
+       | Kill and resume | back to `delivered` 03:47Z, no human turn | `SessionEnd` marked `interrupted` and woke the lead; the lead relaunched, sent `--resume`, and the run re-entered the window with a second session id |
+       | Follow-up through the lead | pushed 03:55Z, 6 min | a second package, `light`, plan gate skipped; package review and deliverable review both ran; one commit on the same branch, no second PR |
+       | Question typed in the pane | answered in 3 s | answered in the pane, from the record |
+       | Ship word through the lead | `complete` 04:01Z | `completed_at`, spend $10.06 covering the window, item `done`, window killed, `lead.spend` $4.31 |
+       | Portfolio close | 04:02Z | `lead.state: closed`, no live session |
+
+       Both channels ran on the one item rather than on two: the ticket asked
+       for a second item for the direct channel, and one question typed in the
+       pane showed the same thing at no cost. The follow-up switched the shared
+       checkout back to the branch, dispatched an IC, and restored the checkout
+       to `main` again; no worktree was cut, so the re-cut case in (c) is still
+       unexercised. The deliverable review ran on the follow-up because the
+       deliverable then held two packages, which fails the first skip
+       condition in `band-rubric.md` — so a light-path run that skipped it at
+       the hand-over gets it on its first follow-up, and the reviewer's one
+       concern, that the head was not yet on origin, was the push it precedes.
+
+    h. **Two things the run found wrong.** The `deliverable-review` entry in
+       `run.steps_skipped` stayed after the review ran, the same tension
+       §15.91e closed for `spec-critic`; `record-format.md` and the delivered
+       window now say a follow-up that makes the review run removes it. And
+       the lead could not do what "The trust check" lets the principal
+       approve: the auto-mode classifier refused its write to `~/.claude.json`
+       as self-modification, whatever the principal said, so the launch waited
+       on the principal setting the trust by hand. `session-launch.md` now
+       offers only that route, and drops the offer to write it.
+
+    i. **A high-effort review of the branch found ten seams the new state
+       opened.**
+
+       - The gate and `depends_on` fired on the upstream item reaching
+         `done`, which now lands at the ship word. Both now fire on
+         `delivered`, the moment the PR opens — when they fired before.
+       - `--resume` keyed on deliverable state alone, and would have skipped
+         a follow-up killed mid-flight. It now reads package state too.
+       - `--resume` treated every non-`complete` record the same, and would
+         have re-entered a `complete` one. A `complete` record is not resumed.
+       - The escalation procedure still said a cleared item goes "back to
+         active". A `delivered` item can hold an escalation too, so it now
+         says "back to the state it left".
+       - A lead resumed a `delivered` item without reading its `state.json`
+         first, which could regress a `complete` run back to `delivered`. It
+         now reads the record before it resumes anything.
+       - A dropped `delivered` item had no path that killed its window, so a
+         portfolio close turned into a ship word for work nobody shipped. The
+         close now asks, per `delivered` item, before it sends one.
+       - Nothing said a report-ending investigation run takes no code
+         follow-up, since it merged no code to follow up on. It says so now.
+       - `delivered_at` was re-stamped on every entry into `delivered`, so
+         the live record's 03:47:31Z resume overwrote the 03:44:32Z
+         hand-over. It is now stamped once, on the first entry.
+       - An `interrupted` run with terminal deliverables — a principal who
+         closed the pane after merging — priced open-ended, as any live run
+         does. It now prices through its latest stamp instead.
+       - `record-format.md`'s one-write-per-transition rationale contradicted
+         the resume rule above it. The file now says which one governs.

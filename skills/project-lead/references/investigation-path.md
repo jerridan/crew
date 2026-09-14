@@ -204,9 +204,9 @@ Rebut the case in writing on the entry's `Losing:` line, or change the
 diagnosis. A root cause you cannot defend in writing is an escalation, not a
 finished run.
 
-**Then end the run in one write:** `crew-record.py close <deliverable-id>
-work-complete`. It sets the deliverable's terminal state and
-`run_state: complete` together, which `record-format.md` requires here.
+**Then hand the work over in one write:** `crew-record.py deliver
+<deliverable-id> work-complete`. It sets the deliverable's terminal state and
+`run_state: delivered` together, which `record-format.md` requires here.
 `pr_url` stays `null`, the four branch and checkout fields stay `null`, and
 there is no checkout to restore.
 
@@ -214,4 +214,7 @@ Then run `scripts/spend.py --write` (`autonomy-contract.md`), and stop every
 process the run left listening — `lsof -iTCP -sTCP:LISTEN` names them
 (design §15.50). Name `diagnosis.md`'s absolute path in your last message: the
 record is what the principal is handed. Send that message the way the goal
-arrived (`autonomy-contract.md`).
+arrived (`autonomy-contract.md`). Then stay: `simple-path.md`'s "The
+delivered window" owns the rest of the session. A report has nothing to
+ship, so the word that closes it is the principal's, that the diagnosis is
+read and done with.

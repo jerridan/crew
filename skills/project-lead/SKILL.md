@@ -7,6 +7,8 @@ description: Take one goal to a reviewable draft PR without stopping for approva
 
 Take one goal to a reviewable draft PR that a human can merge. Answer your own
 questions. Stop for the **principal** only when you cannot proceed correctly.
+Then stay, until the principal says the work shipped: the session outlives
+the PR (`simple-path.md`'s "The delivered window").
 
 The judgment is your job: the spec, the split, the order of the work, and every
 adjudication. Dispatch the reading, the drafting and the diffs — your own
@@ -52,6 +54,18 @@ finished. With `worktrees.json`, `full-path.md`'s "Resume after a kill" owns
 the reconciliation; without it, `git log` on the deliverable branch is the
 whole job. A resumed run writes no charter, no spec and no new branch, and
 creates no record directory.
+
+**A record whose `run_state` is already `complete` is closed.** Resume
+nothing, and say so in the closing message.
+
+**A record whose every deliverable holds a terminal state has no deliverable
+left to make**: set `run_state: delivered` — or `blocked`, when an escalation
+is open — and re-enter `simple-path.md`'s "The delivered window". Which step
+of that window you enter at depends on the packages. A package that is
+neither `integrated` nor `abandoned` is a follow-up killed mid-flight: enter
+at the follow-up procedure, where "A follow-up killed mid-flight" says how to
+reconcile it. With every package terminal as well, the run enters the window
+with nothing to do, and waits.
 
 **A resume picks the path too.** Read the reopened `charter.md` by the test
 below. A record holding `diagnosis.md` took the investigation path and got as

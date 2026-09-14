@@ -111,6 +111,15 @@ CLEAN_VERDICTS = ("accepted", "ready to split", "dispatchable")
 # verdict mid-line.
 VERDICT = re.compile(r"Verdict:\s*([^\n.]+)")
 
+# `record-format.md`'s terminal deliverable states.
+TERMINAL_DELIVERABLE = ("draft-pr-opened", "work-complete", "abandoned")
+
+
+def delivered(state: dict) -> bool:
+    """True when the record holds deliverables and every one is terminal."""
+    entries = [d for d in as_list(state.get("deliverables")) if isinstance(d, dict)]
+    return bool(entries) and all(d.get("state") in TERMINAL_DELIVERABLE for d in entries)
+
 
 def run_end(state: dict) -> float | None:
     """The moment the run stopped changing, from the record's own timestamps.
@@ -118,8 +127,11 @@ def run_end(state: dict) -> float | None:
     Two runs can share one checkout, so a run priced from that checkout must
     close its window or it absorbs its neighbours' cost. `run.completed_at` is
     the answer when the record carries it; the latest `state_changed_at`
-    across the deliverables and the packages is the fallback. A run that is
-    still live has no end, and prices open-ended.
+    across the deliverables and the packages is the fallback. An
+    `interrupted` run whose every deliverable holds a terminal state has ended
+    as well — nobody resumed it, and nobody will — so it closes at its latest
+    stamp, `delivered_at` included. A run that is still live has no end, and
+    prices open-ended.
     """
     run = state.get("run")
     run = run if isinstance(run, dict) else {}
@@ -128,7 +140,11 @@ def run_end(state: dict) -> float | None:
         for entry in as_list(state.get(key)):
             if isinstance(entry, dict):
                 stamps.append(entry.get("state_changed_at"))
-    if run.get("run_state") != "complete" and not run.get("completed_at"):
+    ended = run.get("run_state") == "complete" or bool(run.get("completed_at"))
+    if not ended and run.get("run_state") == "interrupted" and delivered(state):
+        ended = True
+        stamps.append(run.get("delivered_at"))
+    if not ended:
         return None
     latest = max((s for s in stamps if isinstance(s, str)), default=None)
     if not latest:

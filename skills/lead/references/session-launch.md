@@ -40,13 +40,12 @@ It prints `True` or `False` and never raises: a missing or unreadable file is
 `False`, because a file that cannot be read cannot prove trust.
 
 `False` means do not launch. It is a question for the principal, and it goes
-in the batch: ask them to open that directory once themselves, or to approve
-you setting `projects["<repo>"]["hasTrustDialogAccepted"] = true` for it. That
-file is the principal's configuration, and changing configuration needs
-explicit approval, the same rule that stops a project lead writing an
-instruction file on its own (`autonomy-contract.md`). Approval recorded in the
-portfolio's `decisions.md` covers every later launch, so this costs one
-question and not one per item.
+in the batch: ask them to open that directory once in Claude Code, or to set
+`projects["<repo>"]["hasTrustDialogAccepted"] = true` in that file themselves,
+and to tell you when it is done. Do not offer to write it: the file is the
+principal's configuration, and the auto-mode classifier refuses the write as
+self-modification whatever the principal approved (design §15.92h). Wait for
+the word, run the check again, then launch.
 
 ## The launch
 
@@ -217,16 +216,18 @@ empty result means the run has not created its record yet: leave the field
 - **Send an answer once.** A repeat inside a short window is dropped at the
   sender, and a burst is refused (design §15.72). One send, then wait for the
   reply by ending your turn.
-- **One nudge, then a resume.** An item with no message and no record movement
-  is either working or dead. Compare `state.json`'s `state_changed_at` against
-  the clock before you decide, send at most one "where are you" message, and if
-  nothing moves after it, treat the session as dead and resume it.
+- **One nudge, then a resume.** This applies to a `running` item only. Compare
+  `state.json`'s `state_changed_at` against the clock before you decide, send
+  at most one "where are you" message, and if nothing moves after it, treat
+  the session as dead and resume it. A `delivered` item is idle by design —
+  no message and no record movement is normal — and is dead only when its
+  `session_name` is absent from `ListAgents`.
 - **Never type in its pane.** The pane is not a channel; a message is.
 
 ## Resuming a dead one
 
-A `running` item whose `session_name` is absent from `ListAgents` has lost its
-session. The record survived, so the run does.
+A `running` or `delivered` item whose `session_name` is absent from
+`ListAgents` has lost its session. The record survived, so the run does.
 
 **A message that starts `crew SessionEnd:` is how you usually hear.** Crew's
 `SessionEnd` hook sends it the moment it marks the dead run `interrupted`, and
@@ -245,7 +246,8 @@ Run /crew:project-lead --resume <goal-slug> now.
 
 `<goal-slug>` is the basename of the item's `record_dir`. The resumed session
 reopens that record, reconciles against git, re-enters at the first unfinished
-work, and re-sends every escalation still holding `answer: null` — so an answer
+work — or at the delivered window, when the work was already handed over —
+and re-sends every escalation still holding `answer: null` — so an answer
 you already have may be asked for again. Answer it from the portfolio's
 `decisions.md` rather than from the principal.
 
@@ -254,12 +256,26 @@ change.
 
 ## Closing it
 
-When the item's `state.json` shows a terminal state, the session has nothing
-left to do. Kill its window — `tmux kill-window -t <session-name>` — and set
-the item `done` with its `outcome`. An idle session left running clutters every
-later `ListAgents`, and `ListAgents` is how you find the live ones.
+A project lead's session outlives its PR. When `state.json` shows
+`run_state: delivered`, the work is handed over and the session stays for
+questions, follow-ups and the ship word (`skills/lead/SKILL.md`, "A delivered
+item keeps its session"). Set the item `delivered` with its `outcome`, and
+kill nothing.
+
+When `state.json` shows `run_state: complete`, the ship word landed and the
+session has nothing left to do. Kill its window — `tmux kill-window -t
+<session-name>` — and set the item `done`. An idle session left running past
+that point clutters every later `ListAgents`, and `ListAgents` is how you find
+the live ones.
+
+An item the principal drops while `delivered` gets its window killed the same
+way, and set `abandoned`. Its run is left `delivered` in `state.json` —
+nothing there marks the drop — and the `SessionEnd` hook, which fires as the
+window dies, marks it `interrupted`, the same evidence a `running` item's
+death leaves.
 
 Killing the window is safe at that point and only at that point: T36 killed the
 *lead* mid-run and the project lead still finished, because the record is what
 the run stands on and the channel carries only notifications (design §15.21,
-§15.72g).
+§15.72g). A `delivered` session killed early costs a relaunch and a `--resume`
+at the next question.

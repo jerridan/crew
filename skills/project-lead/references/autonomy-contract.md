@@ -56,8 +56,9 @@ name) matches `lead.principal` exactly. Anything else is a peer session, and
 a lead does with one.
 
 **Everything you send the principal goes by that route**, not escalations
-alone. The closing report at the end of the run is the other one: a lead that
-never learns the PR opened has to poll the record for it.
+alone. The closing report is another: a lead that never learns the PR opened
+has to poll the record for it. So is every answer in the delivered window
+(`simple-path.md`), where the question arrived by the same route.
 
 **Write the ask into `escalations` before you send it, every time.** The record
 is what the run stands on, and a lost message costs latency, never correctness
@@ -395,8 +396,9 @@ did not name.
 
 Write the ask into `state.json`'s `escalations` with all four of its
 fields — `trigger`, `question`, `asked_at`, and `answer: null` — set
-`run_state: blocked`, and fill `answer` and set `run_state` back to `active`
-when the answer lands.
+`run_state: blocked`, and fill `answer` and set `run_state` back to the state
+it left when the answer lands: `active`, or `delivered` when every deliverable
+holds a terminal state (`record-format.md`'s transitions table).
 
 **Then send it, the way the goal arrived** (The principal, above). This holds
 for every trigger above, not only the sweep. An escalation that reaches the
@@ -459,7 +461,8 @@ Write nothing when the principal refuses, or answers the question and not the
 ## Spend
 
 A run's cost is measured from its transcripts, in dollars at list price.
-After each package integrates, and again before the PR opens, run
+After each package integrates, again before the PR opens, and once more at
+the principal's ship word (`simple-path.md`'s "The delivered window"), run
 `python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
 prices this run's own sessions — yours, your subagents' and the teammates' —
 into `spend.transcript` (`record-format.md`). Nothing else counts the project

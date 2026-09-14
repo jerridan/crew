@@ -385,7 +385,9 @@ write it reviews it (design §9.1). In order:
    it. Set the package's `base` to the branch head.
 4. **Run "Dispatch the IC" through "Review the deliverable"** on that
    package. The deliverable stays `draft-pr-opened`: that state is terminal,
-   and the PR is what gains the commits (`record-format.md`).
+   and the PR is what gains the commits (`record-format.md`). The deliverable
+   now holds two packages, so the review runs; a `deliverable-review` entry
+   in `run.steps_skipped` comes out (`record-format.md`, design §15.92h).
 5. **Push to the same branch.** The PR updates itself; open no second one.
    Then remove a worktree you cut and restore the checkout, as "End the run"
    says, run `spend.py --write`, and report the way the message arrived.

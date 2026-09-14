@@ -2210,7 +2210,7 @@ the light path skips"; `record-format.md` `steps_skipped` and `decisions.md`;
 
 ## T54 — A project lead stays until the work ships
 
-Status: open
+Status: done (design §15.92)
 Depends on: T52
 Stage: 7 (design §15.92)
 

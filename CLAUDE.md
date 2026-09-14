@@ -51,7 +51,9 @@ round (§15.88, §15.91). No run has promoted a light-path item in place: two
 seeded runs tried and "Size the work" absorbed both seeds (§15.91).
 A project lead now stays in its session after the hand-over: the run goes
 `delivered`, and `complete` only on the principal's word that the work
-shipped. The rule is written and no run has been through the window (§15.92).
+shipped. One item has run through the whole window under a lead: a question
+and a follow-up through the lead, a kill and resume, a question typed in the
+pane, and the ship word (§15.92).
 
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
 item, launches one project-lead session per item, answers what it can and

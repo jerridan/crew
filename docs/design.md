@@ -6803,7 +6803,11 @@ Deliberately different:
     same PR was a new item, a new session and a new scout of the same repo.
     The principal asked for the session to stay until the work had shipped,
     so the lead can pass it questions and follow-ups and the principal can
-    ask it directly. This entry is the design; no run has been through it.
+    ask it directly. One item ran through the whole window the same day,
+    under a lead, in tmux `crew-t54`, against a fresh clone of
+    `jerridan/crew-fixture-string-kit`; the record is
+    `~/.claude/crew-t54-live/lead-2026-09-14-f836`, and (g) holds what it
+    showed.
 
     a. **The run gets a fifth state, `delivered`, between `active` and
        `complete`.** The hand-over writes it: `crew-record.py deliver`
@@ -6860,8 +6864,37 @@ Deliberately different:
        the window's turns land in the figure that stands. `crew-stats.py`
        prices a `delivered` run open-ended, as it prices any live run.
 
-    g. **Unproved.** No run has been through the window. T54's run is the
-       proof: one item to a draft PR, a question passed down through the lead
-       and answered, a follow-up that pushes to the same PR, a delivered
-       session killed and resumed, and the ship word closing it with
-       `complete` in the record.
+    g. **The run, 2026-09-14, T54.** One goal, `countWords` in `src/text/`,
+       light path, one `standard` package, draft PR #38, thirty-six minutes
+       from the lead's launch to the portfolio's close.
+
+       | Step | Wall clock | What the record shows |
+       |---|---|---|
+       | Hand-over | 03:44Z, 12 min after launch | `run_state: delivered`, `delivered_at`, `pr_url`, `checkout_restored: true`, spend $5.05 |
+       | Question through the lead | answered 03:46Z, about 30 s round trip | a `decisions.md` entry citing the branch file and a run of the helper; no edit |
+       | Kill and resume | back to `delivered` 03:47Z, no human turn | `SessionEnd` marked `interrupted` and woke the lead; the lead relaunched, sent `--resume`, and the run re-entered the window with a second session id |
+       | Follow-up through the lead | pushed 03:55Z, 6 min | a second package, `light`, plan gate skipped; package review and deliverable review both ran; one commit on the same branch, no second PR |
+       | Question typed in the pane | answered in 3 s | answered in the pane, from the record |
+       | Ship word through the lead | `complete` 04:01Z | `completed_at`, spend $10.06 covering the window, item `done`, window killed, `lead.spend` $4.31 |
+       | Portfolio close | 04:02Z | `lead.state: closed`, no live session |
+
+       Both channels ran on the one item rather than on two: the ticket asked
+       for a second item for the direct channel, and one question typed in the
+       pane showed the same thing at no cost. The follow-up switched the shared
+       checkout back to the branch, dispatched an IC, and restored the checkout
+       to `main` again; no worktree was cut, so the re-cut case in (c) is still
+       unexercised. The deliverable review ran on the follow-up because the
+       deliverable then held two packages, which fails the first skip
+       condition in `band-rubric.md` — so a light-path run that skipped it at
+       the hand-over gets it on its first follow-up, and the reviewer's one
+       concern, that the head was not yet on origin, was the push it precedes.
+
+    h. **Two things the run found wrong.** The `deliverable-review` entry in
+       `run.steps_skipped` stayed after the review ran, the same tension
+       §15.91e closed for `spec-critic`; `record-format.md` and the delivered
+       window now say a follow-up that makes the review run removes it. And
+       the lead could not do what "The trust check" lets the principal
+       approve: the auto-mode classifier refused its write to `~/.claude.json`
+       as self-modification, whatever the principal said, so the launch waited
+       on the principal setting the trust by hand. `session-launch.md` now
+       offers only that route, and drops the offer to write it.

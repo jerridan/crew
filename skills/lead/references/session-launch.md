@@ -40,13 +40,12 @@ It prints `True` or `False` and never raises: a missing or unreadable file is
 `False`, because a file that cannot be read cannot prove trust.
 
 `False` means do not launch. It is a question for the principal, and it goes
-in the batch: ask them to open that directory once themselves, or to approve
-you setting `projects["<repo>"]["hasTrustDialogAccepted"] = true` for it. That
-file is the principal's configuration, and changing configuration needs
-explicit approval, the same rule that stops a project lead writing an
-instruction file on its own (`autonomy-contract.md`). Approval recorded in the
-portfolio's `decisions.md` covers every later launch, so this costs one
-question and not one per item.
+in the batch: ask them to open that directory once in Claude Code, or to set
+`projects["<repo>"]["hasTrustDialogAccepted"] = true` in that file themselves,
+and to tell you when it is done. Do not offer to write it: the file is the
+principal's configuration, and the auto-mode classifier refuses the write as
+self-modification whatever the principal approved (design §15.92h). Wait for
+the word, run the check again, then launch.
 
 ## The launch
 

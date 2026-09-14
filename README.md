@@ -65,10 +65,10 @@ move to the next window. You can start the lead in any terminal instead, then
 watch the goals from another one:
 
 ```
-tmux attach -t crew
+tmux attach -t =crew
 ```
 
-From a terminal that is already in tmux, use `tmux switch-client -t crew`.
+From a terminal that is already in tmux, use `tmux switch-client -t =crew`.
 
 In iTerm2, set `CREW_LAUNCH=iterm2` for a native tab per goal instead: install
 the `iterm2` package for your `python3` and turn on the Python API in iTerm2's
@@ -147,7 +147,7 @@ ran out. Answer in the session and the run continues.
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
 | A trusted directory | Open each target repo in Claude Code once | every run a lead launches |
-| tmux, or iTerm2 with `CREW_LAUNCH=iterm2` | `tmux new -A -s crew` before you start the lead, or `tmux attach -t crew` from another terminal | `/crew:lead` |
+| tmux, or iTerm2 with `CREW_LAUNCH=iterm2` | `tmux new -A -s crew` before you start the lead, or `tmux attach -t =crew` from another terminal | `/crew:lead` |
 
 Crew never widens your permissions itself. Without the teams variable a run
 still works, but a named agent becomes an ordinary subagent: you keep the

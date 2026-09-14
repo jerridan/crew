@@ -65,22 +65,32 @@ tmux has-session -t "=crew" || tmux new-session -d -s crew -x 200 -y 50
 Then open the window:
 
 ```
-tmux new-window -d -t "=crew:" -n <session-name> -c <repo> 'CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id> CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false claude --name <session-name> --model fable --effort high --permission-mode auto --teammate-mode tmux --plugin-dir <plugin dir>'
+tmux new-window -d -t "=crew:" -n <session-name> -c <repo> 'cd <repo> && CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id> CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false claude --name <session-name> --model fable --effort high --permission-mode auto --teammate-mode tmux --plugin-dir <plugin dir>'
 ```
 
-**Name the target every time, and write it `"=crew:"`.** The Bash tool does not
-carry `$TMUX` into a command, so a `new-window` with no `-t` has no current
-session to use and lands somewhere the principal cannot see (design §15.93).
-The trailing colon names a session rather than a window. The `=` forces an
-exact name match: without it `crew` also matches `crew-t54`, tmux opens the
-window there and exits `0`, and nothing says the run is invisible.
+**The `cd <repo> &&` prefix is the part that works.** A tmux server holds the
+working directory it was started in for life, and a server started inside a
+Claude worktree that was later removed ignores `-c` without a word: the pane
+opens in the deleted directory and claude exits with "The current working
+directory was deleted" (design §15.93). Keep `-c <repo>` as well, for the
+panes tmux opens later, but never rely on it alone.
+
+**Name the target every time, and write it `"=crew:"`.** This step named no
+session once, and the lead filled the gap with its own judgment: it ran
+`tmux ls`, picked a stale session from yesterday's run and launched the window
+there, where nobody was watching (design §15.93). A fixed name also lets the
+principal start you outside tmux, because the session is yours to create rather
+than the one you happen to sit in. The trailing colon names a session rather
+than a window. The `=` forces an exact name match: without it `crew` also
+matches `crew-t54`, tmux opens the window there and exits `0`, and nothing says
+the run is invisible.
 
 **A window name prefix-matches the same way**, so every later target in this
 file is `"=crew:=<session-name>"`: `item-1` alone finds `item-10`.
 
 **Tell the principal how to watch, once**, at the first launch of the
-portfolio. You cannot read `$TMUX`, so you cannot tell where they are. Give
-them both commands and let them pick:
+portfolio. You may be in that session already, or in another one, or in no tmux
+at all. Give them both commands and let them pick:
 
 ```
 tmux attach -t "=crew"          # from a terminal outside tmux
@@ -211,6 +221,10 @@ pane tmux focused last, and an IC pane is not the project lead's. `.0` is wrong
 too: the principal's `pane-base-index` may be `1`, and the capture then fails
 with `can't find pane: 0`. That capture is a diagnostic on a session you
 started, and it is the only pane you ever read. Never read a transcript.
+
+`can't find window` is its own answer. tmux closes a window when its command
+exits, so a window already gone means the command never started: a `<repo>`
+that does not exist, or a missing binary.
 
 `ListAgents` prints no model column (design §15.72b), so nothing there tells
 you what the session is running on. Trust the launch command.

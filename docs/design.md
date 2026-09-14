@@ -1519,7 +1519,9 @@ Deliberately different:
        an explicit `teammateMode`. Since v2.1.179 the default is
        `in-process`, which works in any terminal. Split panes are the
        optional upgrade, and are unsupported in VS Code's terminal, Windows
-       Terminal and Ghostty.
+       Terminal and Ghostty. §15.93 decides that the lead's tmux launch sets
+       `--teammate-mode tmux` on every project lead it starts; T55 is the
+       ticket that lands it.
 
     d. **An agent definition means different things by display mode.** For an
        in-process teammate the definition's body is *appended* to the default
@@ -1529,11 +1531,18 @@ Deliberately different:
        in either one. A split-pane teammate also ignores the definition's
        `model`, and neither mode applies its `skills`. `crew:ic` is written as
        a whole system prompt, so it is a different agent in the two modes.
+       **The `model` clause is also stale:** the docs for 2.1.270 now say a
+       definition's `model` applies in both display modes. No crew run has
+       confirmed it lands on a split-pane teammate yet; §15.93g names the
+       check.
 
     e. **`CLAUDE_CODE_SUBAGENT_MODEL` outranks a spawn-time model.** The
        order is that variable, then the spawn prompt, then (in-process only)
        the definition's `model`, then the lead's model. Set to anything but
-       `inherit` it silently flattens every band in §8.
+       `inherit` it silently flattens every band in §8. **The "in-process
+       only" parenthetical is stale too, for the same reason as (d):** the
+       docs for 2.1.270 say the definition's `model` applies at that step in
+       both display modes, and §15.93g names the check that would confirm it.
 
     Two `PROBE PENDING` entries in §12 are now answered. **`TeammateIdle`
     exit 2 works** — the hook "runs when a teammate is about to go idle. Exit
@@ -6442,7 +6451,9 @@ Deliberately different:
        inside `iTerm.app` and was on the session's `PATH`, so a pane backend was
        available and in-process still won. This confirms §15.20c from the other
        side: in-process is the default everywhere, and a terminal that supports
-       panes does not change it.
+       panes does not change it. §15.93 decides that the lead's tmux launch
+       opts every project lead into split panes with `--teammate-mode tmux`;
+       T55 is the ticket that lands it.
 
     e. **A split pane appends the agent definition, so §15.20d's split-pane row
        is stale.** `--teammate-mode iterm2` is a hidden flag, with `auto`,
@@ -6654,10 +6665,13 @@ Deliberately different:
        project lead's subtree and the session price misses it. In-process is
        the default in every terminal crew has run in (§15.20c, §15.89d) and no
        crew run has used a split pane, so no figure misses a teammate today.
-       Closing it means `run.session_ids` holding each teammate's id, and a
-       project lead is handed no teammate session id at spawn. Both scripts
-       say the limit out loud instead. That is a ticket the day a run needs a
-       split pane.
+       Closing it means holding each teammate's id somewhere the two scripts
+       can read, and a project lead is handed no teammate session id at
+       spawn. Both scripts say the limit out loud instead. That is a ticket
+       the day a run needs a split pane. **That day is T55, and the ticket is
+       T56 (§15.93), which also found `run.session_ids` itself the wrong
+       field: `hooks/session-end.py` reads it to mark a run interrupted, so a
+       teammate's id belongs in a field of its own instead.**
 
 91. **Two seeds tried to force a light-path promotion, and "Size the work"
     absorbed both — 2026-09-12, T53.** §15.88h left the promotion rule
@@ -6928,3 +6942,124 @@ Deliberately different:
          does. It now prices through its latest stamp instead.
        - `record-format.md`'s one-write-per-transition rationale contradicted
          the resume rule above it. The file now says which one governs.
+
+93. **One tmux session for the whole portfolio, panes for every teammate
+    (2026-09-14, T55).** The lead launches each project lead with `tmux
+    new-window -d` (`session-launch.md`, "The launch"). The principal attached
+    to their own tmux session, pressed Ctrl-b n to find the project lead, and
+    saw nothing. Every window the principal owned stayed on its own session.
+    The project lead was live, mid-spec, with a `crew:spec-critic` subagent
+    running. Only `tmux capture-pane` showed it.
+
+    a. **Two causes, one of them a false lead corrected here.** `$TMUX` is not
+       the problem: a probe on 2.1.270 ran `printenv TMUX` from the Bash tool
+       of a headless `claude` inside a tmux window and got the socket path
+       back. The lead's own process, session `b8b3bdef`, in tmux session `2`
+       (the one the principal was attached to), carried `TMUX=...,2`. An
+       earlier draft of this item blamed a missing `$TMUX` and is wrong;
+       withdraw it. The real first cause: `session-launch.md`'s "The launch"
+       names no session for `tmux new-window`, so the choice was the lead's
+       to make, and the lead's live transcript (portfolio
+       `lead-2026-09-13-bac5`, item `pp-02-671e`) shows what it chose. The
+       second cause stands as before: no `--teammate-mode` on the project
+       lead's command, so its IC teammates ran in-process (design §15.20c,
+       §15.89d) and never got a pane.
+
+    b. **What the transcript shows.** The lead ran `tmux ls`, saw
+       `crew-t54` (a stale detached session left over from yesterday's T54
+       run), and launched into it with `-t crew-t54` on its own initiative.
+       That window died at once: the tmux server, pid 28070, had auto-started
+       from a Claude worktree, `.claude/worktrees/linear-bouncing-frost`,
+       since deleted, and a tmux server keeps its start cwd for life.
+       `-c <repo>` did not move it there. The pane's path stayed the deleted
+       directory, `pwd` inside it printed `.`, and `claude` exited 1 with
+       "The current working directory was deleted, so that command didn't
+       work. Please cd into a different directory and try again." The lead
+       then tried `tmux has-session -t =crew || tmux new-session -d -s crew
+       -c <repo> -n <session-name> '...'`, hit the same dead-cwd failure
+       once, and only succeeded once it put `cd <repo> &&` at the front of
+       the command string. The project lead, session `cfe40013`, came up in
+       a fresh detached session named `crew`, window 80x24, no client
+       attached. The principal, in session `2`, pressed Ctrl-b n and saw
+       nothing: `crew` was not a window inside session `2` to cycle to.
+
+    c. **The decision.** One tmux session, named `crew`, holds every project
+       lead. Each project lead gets one window in it, named by its
+       `session_name`. Each window splits into the project lead's own pane
+       plus one pane per IC teammate, by passing `--teammate-mode tmux` on the
+       project lead's `claude` command. The principal attaches with
+       `tmux attach -t crew` and cycles windows with Ctrl-b n. The lead itself
+       may run anywhere: `tmux new -A -s crew` then `claude` finds the shared
+       session and lands the lead's own window in it beside every project
+       lead's. Which window number it lands on is not yet probed; (g) names
+       the check. T55 lands this in `session-launch.md`
+       (PR #74, branch `t55-lead-tmux-layout`). Its commands, below, are
+       probed against tmux 3.7b, and they supersede the ones this item first
+       drafted.
+
+       The launch checks the session first, with `tmux has-session -t "=crew"`.
+       It creates the session when the check fails, with
+       `tmux new-session -d -s crew -x 200 -y 50`, then launches each project
+       lead with `tmux new-window -d -t "=crew:" -n <session-name> -c <repo>
+       'cd <repo> && CREW_RECORD_ROOT=... claude ... --teammate-mode tmux
+       ...'`. Every later command that addresses a window targets
+       `"=crew:=<session-name>"`, and capture reads the pane by
+       `{top-left}`, not `.0`, because `.0` fails when `pane-base-index` is 1.
+
+       Five reasons, one per piece. The target is a fixed name, not the
+       lead's own judgment, because judgment picked the stale session in (b).
+       `tmux new -A -s crew` lets the principal start the lead outside tmux
+       and still attach to the same session afterward. One name for the
+       session means a stale one from an earlier run can never be picked
+       again, the way `crew-t54` was. The `cd <repo> &&` prefix inside the
+       command string survives a server whose own start directory is dead,
+       which `-c <repo>` alone does not fix. And `=` goes on both the session
+       and the window half of the target, because a probe on tmux 3.7b found
+       prefix matching applies to window names as well as session names: a
+       bare `crew` matches `crew-t54`, and in the same probe a bare `item-1`
+       matched a window named `item-10`. A claim in an earlier draft, that a
+       missing colon after `crew` makes `new-window` fail with "index in
+       use", did not reproduce on tmux 3.7b and is withdrawn; the colon
+       names the session for `new-window` to open the window in, nothing
+       more.
+
+    d. **Why the flag lives in the launch command, not the setting.** A
+       project lead could ask for split panes by setting `teammateMode:
+       "tmux"` in its own `settings.json` instead of passing
+       `--teammate-mode tmux`. The setting would split panes in every one of
+       the principal's own tmux sessions too, not only the ones crew starts.
+       The flag on the launch command reaches only the project lead's own
+       teammates, and it travels with anyone who installs the plugin, where a
+       setting would not.
+
+    e. **Limits.** Only a named teammate gets a pane, and only the full path
+       names its ICs (design §3, §15.20b: a teammate returns no parseable
+       result, so anything whose output the project lead reads and acts on
+       stays unnamed). A light, simple or investigation-path run still shows
+       one pane, with the agents sidebar carrying its subagents. The scout,
+       the critics and the reviewers are never panes, on any path. The naming
+       rule itself does not change. A pane too small to split
+       (`pane too small`) is not a case the project lead can fix itself, so
+       PR #74 makes it an `environment` escalation in `full-path.md`.
+
+    f. **Two costs accepted, both from teammates running as their own
+       sessions.** First, `spend.py` and `crew-stats.py` still price a
+       full-path run short: a split-pane teammate sits outside the project
+       lead's subtree, and neither script has a field to read its session id
+       from (design §15.90h). Second, `hooks/pre-compact.py`'s
+       `session_in_run()` matches a session id against `run.session_ids` and
+       against each worktree's own `session_ids` in `worktrees.json`, and a
+       split-pane teammate's id is in neither, so it records no compaction
+       for one, the same subtree gap in the other hook. §15.90h called the
+       first gap "a ticket the day a run needs a split pane". That day is
+       this one. **Both gaps are filed as T56.**
+
+    g. **What is still unproved.** No full-path run has launched under this
+       layout yet. The first one that does must check five things: that its
+       ICs split the window into panes, that the spawn-time `model` still
+       lands on each one now that the docs say a definition's `model` applies
+       in both display modes (§15.20d, §15.20e), how short `spend.py` and
+       `crew-stats.py` report the run before T56, whether a split-pane IC's
+       compaction goes unlogged as (f) predicts, and that a lead started
+       inside `tmux new -A -s crew` finds the existing session and opens its
+       own window 1 beside itself rather than a second `crew`.

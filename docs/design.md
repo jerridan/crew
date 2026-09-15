@@ -7058,4 +7058,44 @@ Deliberately different:
        `crew-stats.py` report the run before T56, whether a split-pane IC's
        compaction goes unlogged as (f) predicts, and that a lead started
        inside `tmux new -A -s crew` finds the existing session and opens its
-       own window 1 beside itself rather than a second `crew`.
+       own window 1 beside itself rather than a second `crew`. (h) records
+       the first live run, on the simple path; none of the five is exercised
+       yet.
+
+    h. **The first live run, 2026-09-14 to 15, T55.** 20:38 to 21:55 EDT.
+       Lead `crew-t55-lead`, session `cd7549c6`, started by hand in the
+       existing `crew` session's window 0, cwd `/Users/jerridan/src/websites`,
+       `--plugin-dir` at PR #74's worktree (`c567278`), `--permission-mode
+       auto`, Fable at high effort. Portfolio `lead-2026-09-15-6607`, item
+       `pp-06-books-slug`, run `pp-06-books-slug-582e`.
+
+       The ensure line and the `new-window` command ran exactly as
+       `session-launch.md` now writes them: `tmux has-session -t "=crew" ||
+       tmux new-session -d -s crew -x 200 -y 50`, then `tmux new-window -d
+       -t "=crew:" -n crew-pl-pp-06-books-slug -c <repo> 'cd <repo> && ...
+       --teammate-mode tmux --plugin-dir ...'`. Window 1,
+       `crew-pl-pp-06-books-slug`, opened beside the lead's window 0, sized
+       200x50, no client attached. The `cd <repo> &&` prefix carried the
+       project lead into the repo past the server's own dead-cwd hazard, and
+       it registered and loaded its charter about a minute after the send.
+       The lead reported both watch commands, `attach -t "=crew"` and
+       `switch-client -t "=crew"`, and the Ctrl-b n hint to the principal,
+       unprompted.
+
+       The project lead sized the item simple path, one package at band
+       `deep` (`decisions.md`: 23 files that change together, splitting
+       gains no parallelism). Its IC ran as an unnamed subagent in the
+       sidebar, not a teammate, so the window never split. **The full-path
+       pane check, the spawn-time model check and the spend-gap measurement
+       are still unexercised.** The IC ran on Opus, as the band asked.
+
+       Outcome: delivered 2026-09-15T01:54:44Z, draft PR
+       `jerridan/websites#35`, spec critic run twice, package review zero
+       findings, deliverable review zero critical findings, no fix rounds.
+       Spend $29.03 list (Fable $11.20, Opus $16.85, Sonnet $0.99), priced
+       whole because no split-pane teammate existed. The lead set the item
+       `delivered` within a minute of the run's own state change, then
+       relayed the project lead's five out-of-scope follow-ups and asked the
+       principal for the ship word, a drop, or the follow-ups. The ship
+       word, `kill-window -t "=crew:=<name>"`, and a resume were not
+       exercised in this run.

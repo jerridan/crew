@@ -2268,8 +2268,15 @@ found both causes against that transcript and wrote the fix: one tmux
 session named `crew`, held by name so no run's own judgment picks the
 target, holding one window per project lead, each window split into the
 project lead's pane plus one pane per IC teammate. A first pass at the fix
-is open as PR #74, branch `t55-lead-tmux-layout`; this ticket closes when a
-full-path run has exercised it.
+is open as PR #74, branch `t55-lead-tmux-layout`.
+
+The first run, 2026-09-14 to 15: one item, `pp-06-books-slug`, simple path,
+band `deep`, draft PR `jerridan/websites#35` (design §15.93h). The launch,
+the window placement, the `cd <repo> &&` prefix and the hand-over ran
+exactly as `session-launch.md` now writes them. The item sized simple path
+with one unnamed IC, so the window never split, and the full-path pane
+check, the spawn-time model check and the spend-gap measurement stayed
+unexercised. This ticket closes when a full-path run shows the panes.
 
 Run it. `tmux has-session -t "=crew"` first, exact match, because a bare
 `crew` also matches a stale session like `crew-t54` as a prefix, and a probe

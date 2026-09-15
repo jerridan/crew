@@ -2278,27 +2278,18 @@ with one unnamed IC, so the window never split, and the full-path pane
 check, the spawn-time model check and the spend-gap measurement stayed
 unexercised. This ticket closes when a full-path run shows the panes.
 
-Run it. `tmux has-session -t "=crew"` first, exact match, because a bare
-`crew` also matches a stale session like `crew-t54` as a prefix, and a probe
-found the same prefix-match hazard on window names. Create the session with
-`tmux new-session -d -s crew -x 200 -y 50` when the check fails. Launch each
-project lead with `tmux new-window -d -t "=crew:" -n <session-name>
--c <repo> 'cd <repo> && ... claude ... --teammate-mode tmux ...'`. Keep the
-`cd <repo> &&` prefix inside the command string, not only `-c <repo>`,
-because a tmux server keeps the working directory it started with for life,
-even after that directory is deleted. Address every later command at
-`"=crew:=<session-name>"`, and read a pane with `capture-pane`'s
-`{top-left}` target rather than `.0`, which fails when `pane-base-index` is
-1. Run one full-path goal with at least two packages, so the project lead
-spawns at least two named ICs.
+Run it. Use design §15.93c's commands exactly, in `session-launch.md`. Run
+one full-path goal with at least two packages, so the project lead spawns at
+least two named ICs.
 
 Check that `tmux attach -t crew` shows every project lead as its own window,
 that Ctrl-b n cycles through them, and that each full-path window splits into
 one pane per IC teammate plus the project lead's own. Check that starting
-the lead itself inside `tmux new -A -s crew` finds the existing session and
-opens the lead's own window 1 beside it, rather than a second `crew`. Check
-the spawn-time `model` landed on each IC (design §15.20d, §15.20e), by
-asking one what model it is running as, or by reading its report for a
+the lead itself inside `tmux new -A -s crew` finds the existing session
+rather than making a second `crew`, and record which window number its own
+window lands on, which design §15.93c leaves unprobed. Check the spawn-time
+`model` landed on each IC (design §15.20d, §15.20e), by asking one what
+model it is running as, or by reading its report for a
 model mismatch. Check `crew-stats.py` and `spend.py` against the run, and
 record how far short they price it (design §15.90h). Check that a pane
 split too small to fit escalates as `environment` (`full-path.md`), by

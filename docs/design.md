@@ -7004,18 +7004,18 @@ Deliberately different:
        `{top-left}`, not `.0`, because `.0` fails when `pane-base-index` is 1.
 
        Five reasons, one per piece. The target is a fixed name, not the
-       lead's own judgment, because judgment picked the stale session in (b).
-       `tmux new -A -s crew` lets the principal start the lead outside tmux
-       and still attach to the same session afterward. One name for the
-       session means a stale one from an earlier run can never be picked
-       again, the way `crew-t54` was. The `cd <repo> &&` prefix inside the
-       command string survives a server whose own start directory is dead,
-       which `-c <repo>` alone does not fix. And `=` goes on both the session
-       and the window half of the target, because a probe on tmux 3.7b found
-       prefix matching applies to window names as well as session names: a
-       bare `crew` matches `crew-t54`, and in the same probe a bare `item-1`
-       matched a window named `item-10`. The colon after `crew` names the
-       session for `new-window` to open the window in, nothing more; a
+       lead's own judgment, because judgment picked the stale session in (b),
+       and one name means a stale session from an earlier run can never be
+       picked again, the way `crew-t54` was. `tmux new -A -s crew` lets the
+       principal start the lead outside tmux and still attach to the same
+       session afterward. The `cd <repo> &&` prefix inside the command
+       string survives a server whose own start directory is dead, which
+       `-c <repo>` alone does not fix. `=` goes on both the session and the
+       window half of the target, because a probe on tmux 3.7b found prefix
+       matching applies to window names as well as session names: a bare
+       `crew` matches `crew-t54`, and in the same probe a bare `item-1`
+       matched a window named `item-10`. And the colon after `crew` names
+       the session for `new-window` to open the window in, nothing more; a
        missing colon does not make the command fail with "index in use" on
        tmux 3.7b.
 
@@ -7056,11 +7056,10 @@ Deliberately different:
        lands on each one now that the docs say a definition's `model` applies
        in both display modes (§15.20d, §15.20e), how short `spend.py` and
        `crew-stats.py` report the run before T56, whether a split-pane IC's
-       compaction goes unlogged as (f) predicts, and that a lead started
-       inside `tmux new -A -s crew` finds the existing session and opens its
-       own window 1 beside itself rather than a second `crew`. (h) records
-       the first live run, on the simple path; none of the five is exercised
-       yet.
+       compaction goes unlogged as (f) predicts, and which window number a
+       lead started inside `tmux new -A -s crew` lands on, since (c) leaves
+       that unprobed. (h) records the first live run, on the simple path;
+       none of the five is exercised yet.
 
     h. **The first live run, 2026-09-14 to 15, T55.** 20:38 to 21:55 EDT.
        Lead `crew-t55-lead`, session `cd7549c6`, started by hand in the

@@ -34,7 +34,13 @@ A lead holds a portfolio and starts one project-lead session per goal. It
 reads no code and sizes nothing: the project lead does that. One goal or ten
 take the same steps.
 
-Start Claude Code inside tmux, in a directory that is not a repo checkout:
+Start tmux in a directory that is not a repo checkout:
+
+```
+tmux new -A -s crew
+```
+
+Then start Claude Code inside it:
 
 ```
 claude --model fable --effort high
@@ -53,9 +59,20 @@ repo:
 Add a --json flag to the export command in /Users/me/src/kit. Then fix the flaky retry test in /Users/me/src/client.
 ```
 
-The lead opens one tmux window per goal. In iTerm2, set `CREW_LAUNCH=iterm2`
-for a native tab per goal instead: install the `iterm2` package for your
-`python3` and turn on the Python API in iTerm2's settings.
+In tmux, the lead opens one window per goal in the session named `crew`, and
+one pane per implementer inside that window on the full path. Press Ctrl-b n to
+move to the next window. You can start the lead in any terminal instead, then
+watch the goals from another one:
+
+```
+tmux attach -t =crew
+```
+
+From a terminal that is already in tmux, use `tmux switch-client -t =crew`.
+
+In iTerm2, set `CREW_LAUNCH=iterm2` for a native tab per goal instead: install
+the `iterm2` package for your `python3` and turn on the Python API in iTerm2's
+settings. A tab holds the project lead alone and gets no implementer panes.
 
 What to expect:
 
@@ -130,7 +147,7 @@ ran out. Answer in the session and the run continues.
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
 | A trusted directory | Open each target repo in Claude Code once | every run a lead launches |
-| tmux, or iTerm2 with `CREW_LAUNCH=iterm2` | See above | `/crew:lead` |
+| tmux, or iTerm2 with `CREW_LAUNCH=iterm2` | `tmux new -A -s crew` before you start the lead, or `tmux attach -t =crew` from another terminal | `/crew:lead` |
 
 Crew never widens your permissions itself. Without the teams variable a run
 still works, but a named agent becomes an ordinary subagent: you keep the

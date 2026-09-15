@@ -18,11 +18,13 @@ share one checkout are then priced apart, which the checkout window could not
 do (design §15.90). `lead-spend.py` prices a lead the same way.
 
 **A split-pane teammate is its own session and falls outside that subtree.**
-In-process is the default in every terminal crew has run in (design §15.20c,
-§15.89d), and no crew run has used a split pane, so no measured figure misses
-a teammate today. A run driven with `--teammate-mode iterm2` or `tmux` would
-report short, with no line to say so, until `run.session_ids` learns to hold
-each teammate's id (design §15.90h).
+In-process is the default (design §15.20c, §15.89d), so a run you start
+yourself, and a run a lead launches as an iTerm2 tab, are both priced whole. A
+lead that launches into tmux passes `--teammate-mode tmux` (design §15.93), so
+a full-path run under such a lead reports short today, with no line to say so.
+The fix is a field of its own for the teammate ids, not `run.session_ids`:
+`hooks/session-end.py` marks the whole run `interrupted` when any id in that
+field ends, so an IC finishing would fake a dead run (design §15.90h).
 
 **The checkout is the fallback**, for a record written before
 `run.session_ids` existed or one whose sessions wrote no transcript. It reads

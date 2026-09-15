@@ -51,12 +51,62 @@ the word, run the check again, then launch.
 
 **Read `CREW_LAUNCH` in your own environment first.** `iterm2` means the next
 section opens the session as a native iTerm2 tab. Any other value, and an unset
-variable, mean the tmux window below. The flags are the same either way.
+variable, mean the tmux window below. Only the display mode differs.
+
+**One tmux session named `crew` holds every project lead**, one window each.
+The principal attaches to it once. Run this before **every** launch, the first
+of the portfolio and each relaunch. It costs one command and it is the only
+thing that keeps a relaunch out of the wrong session:
 
 ```
-tmux new-window -d -n <session-name> -c <repo> 'CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id> CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false claude --name <session-name> --model fable --effort high --permission-mode auto --plugin-dir <plugin dir>'
+tmux has-session -t "=crew" || tmux new-session -d -s crew -x 200 -y 50
 ```
 
+Then open the window:
+
+```
+tmux new-window -d -t "=crew:" -n <session-name> -c <repo> 'cd <repo> && CREW_RECORD_ROOT=<portfolio-dir>/runs/<item-id> CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false claude --name <session-name> --model fable --effort high --permission-mode auto --teammate-mode tmux --plugin-dir <plugin dir>'
+```
+
+**The `cd <repo> &&` prefix is the part that works.** A tmux server holds the
+working directory it was started in for life, and a server started inside a
+Claude worktree that was later removed ignores `-c` without a word: the pane
+opens in the deleted directory and claude exits with "The current working
+directory was deleted" (design §15.93). Keep `-c <repo>` as well, for the
+panes tmux opens later, but never rely on it alone.
+
+**Name the target every time, and write it `"=crew:"`.** This step named no
+session once, and the lead filled the gap with its own judgment: it ran
+`tmux ls`, picked a stale session from yesterday's run and launched the window
+there, where nobody was watching (design §15.93). A fixed name also lets the
+principal start you outside tmux, because the session is yours to create rather
+than the one you happen to sit in. The trailing colon names a session rather
+than a window. The `=` forces an exact name match: without it `crew` also
+matches `crew-t54`, tmux opens the window there and exits `0`, and nothing says
+the run is invisible.
+
+**A window name prefix-matches the same way**, so every later target in this
+file is `"=crew:=<session-name>"`: `item-1` alone finds `item-10`.
+
+**Tell the principal how to watch, once**, at the first launch of the
+portfolio. You may be in that session already, or in another one, or in no tmux
+at all. Give them both commands and let them pick:
+
+```
+tmux attach -t "=crew"          # from a terminal outside tmux
+tmux switch-client -t "=crew"   # from a terminal already inside tmux
+```
+
+tmux refuses `attach` from inside any session, its own included. Say that
+Ctrl-b n moves to the next window once they are there.
+
+- **`--teammate-mode tmux` gives each IC teammate a pane.** The full path's
+  named ICs then split the project lead's window, so the principal can watch
+  each one (design §15.93). It has two costs. A split-pane teammate is its own
+  session, and `spend.py` prices a run by its own session subtree, so a
+  full-path run reports short. `spend.py`'s header owns that gap. A pane also
+  needs room: tmux sizes the window down to the smallest attached terminal, and
+  a split it cannot fit fails with `create pane failed: pane too small`.
 - **`--name` is the address.** `SendMessage` takes a name, so a session with no
   `--name` cannot be reached at all (design §15.72b). Use the `session_name`
   you already wrote into `portfolio.json`, and make it unique per item.
@@ -78,7 +128,10 @@ tmux new-window -d -n <session-name> -c <repo> 'CREW_RECORD_ROOT=<portfolio-dir>
 
 This opens each project-lead session as a tab in the principal's iTerm2 window
 and starts no tmux server. Everything else in this file holds: the same four
-rules, the same `claude` flags, the same charter message (design §15.89).
+rules, the same charter message, and the same `claude` flags less
+`--teammate-mode` (design §15.89). This path runs no tmux server, so an IC on
+it stays in-process and the tab never splits (design §15.89d). The pricing gap
+above does not apply either: an iTerm2 run is priced whole.
 
 **Check the two requirements before the first launch of the portfolio**, with
 the Python you are going to run the script on:
@@ -137,9 +190,9 @@ tests fail (design §15.89b).
 Three steps below read differently:
 
 - **Read the tab** with `session.async_get_screen_contents()`, where the step
-  says `tmux capture-pane -p -t <session-name>`.
+  says `tmux capture-pane -p -t "=crew:=<session-name>.{top-left}"`.
 - **Close the tab** with `session.async_close(force=True)`, where the step says
-  `tmux kill-window -t <session-name>`.
+  `tmux kill-window -t "=crew:=<session-name>"`.
 - **Find the tab again**, if you lost the session id, by a scan of
   `app.windows` → `tabs` → `sessions`. Claude Code writes `--name` into each
   session's `autoName` variable, with a status glyph in front of it, so match on
@@ -156,10 +209,22 @@ session as `interactive · idle`. So call once, and on a miss `sleep 15` and
 call again.
 
 Still missing after that second call means the launch failed, not that it is
-slow. Capture the window with `tmux capture-pane -p -t <session-name>` and read
-what stopped it — a trust dialog, a bad `--plugin-dir`, a missing binary. That
-capture is a diagnostic on a session you started, and it is the only pane you
-ever read. Never read a transcript.
+slow. Capture the pane and read what stopped it: a trust dialog, a bad
+`--plugin-dir`, a missing binary.
+
+```
+tmux capture-pane -p -t "=crew:=<session-name>.{top-left}"
+```
+
+**Name the pane, and name it `{top-left}`.** A window target captures whichever
+pane tmux focused last, and an IC pane is not the project lead's. `.0` is wrong
+too: the principal's `pane-base-index` may be `1`, and the capture then fails
+with `can't find pane: 0`. That capture is a diagnostic on a session you
+started, and it is the only pane you ever read. Never read a transcript.
+
+`can't find window` is its own answer. tmux closes a window when its command
+exits, so a window already gone means the command never started: a `<repo>`
+that does not exist, or a missing binary.
 
 `ListAgents` prints no model column (design §15.72b), so nothing there tells
 you what the session is running on. Trust the launch command.
@@ -264,9 +329,9 @@ kill nothing.
 
 When `state.json` shows `run_state: complete`, the ship word landed and the
 session has nothing left to do. Kill its window — `tmux kill-window -t
-<session-name>` — and set the item `done`. An idle session left running past
-that point clutters every later `ListAgents`, and `ListAgents` is how you find
-the live ones.
+"=crew:=<session-name>"` — and set the item `done`. An idle session left
+running past that point clutters every later `ListAgents`, and `ListAgents` is
+how you find the live ones.
 
 An item the principal drops while `delivered` gets its window killed the same
 way, and set `abandoned`. Its run is left `delivered` in `state.json` —

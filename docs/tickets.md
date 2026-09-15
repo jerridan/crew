@@ -2249,3 +2249,110 @@ delivered item keeps its session"; `session-launch.md` "Resuming a dead one"
 and "Closing it"; `simple-path.md` "End the run" and "The delivered window";
 `record-format.md` `run_state` transitions and the item state transitions;
 `crew-record.py`.
+
+## T55 — The lead launches every project lead into one `crew` tmux session, with ICs as panes
+
+Status: open (design §15.93)
+Depends on: nothing
+Stage: 7 (design §15.93)
+
+The lead's tmux launch (`session-launch.md`, "The launch") names no session
+for `tmux new-window`, so which one a window lands in is the lead's own
+judgment call. The live transcript that found this showed the lead pick a
+stale session left over from an earlier run, land a dead window in it (the
+server's start directory had since been deleted), then land its retry in a
+fresh session the principal had no client on. Ctrl-b n in the principal's
+own session never found it. The launch also carries no `--teammate-mode`, so
+a full-path project lead's ICs run in-process and get no pane. Design §15.93
+found both causes against that transcript and wrote the fix: one tmux
+session named `crew`, held by name so no run's own judgment picks the
+target, holding one window per project lead, each window split into the
+project lead's pane plus one pane per IC teammate. A first pass at the fix
+is open as PR #74, branch `t55-lead-tmux-layout`.
+
+The first run, 2026-09-14 to 15: one item, `pp-06-books-slug`, simple path,
+band `deep`, draft PR `jerridan/websites#35` (design §15.93h). The launch,
+the window placement, the `cd <repo> &&` prefix and the hand-over ran
+exactly as `session-launch.md` now writes them. The item sized simple path
+with one unnamed IC, so the window never split, and the full-path pane
+check, the spawn-time model check and the spend-gap measurement stayed
+unexercised. This ticket closes when a full-path run shows the panes.
+
+Run it. Use design §15.93c's commands exactly, in `session-launch.md`. Run
+one full-path goal with at least two packages, so the project lead spawns at
+least two named ICs.
+
+Check that `tmux attach -t crew` shows every project lead as its own window,
+that Ctrl-b n cycles through them, and that each full-path window splits into
+one pane per IC teammate plus the project lead's own. Start the lead itself
+with `tmux new -A -s crew` rather than by hand, since design §15.93h's lead
+was placed in window 0 manually and that command's own window placement is
+still unproved, and check which window number the lead lands on. Check the
+spawn-time `model` landed on each IC (design §15.20d, §15.20e), by asking
+one what model it is running as, or by reading its report for a
+model mismatch. Check `crew-stats.py` and `spend.py` against the run, and
+record how far short they price it (design §15.90h). Check that a pane
+split too small to fit escalates as `environment` (`full-path.md`), by
+shrinking the terminal before launch. Force a compaction in one IC's pane
+with `/compact` and check whether it lands in `run.compactions`, confirming
+or denying design §15.93f's prediction that it does not.
+
+Done when: a full-path run has exercised the layout end to end, design §15.93
+holds what it showed, and PR #74's tmux commands match what the run proved
+rather than what it assumed.
+
+Read first: design §15.93, §15.20c, §15.20d, §15.89d, §15.89e, §15.90h;
+`session-launch.md` "The launch"; `full-path.md` for how ICs are named,
+dispatched, and for the `environment` escalation.
+
+## T56 — Price and log split-pane teammates outside `run.session_ids`
+
+Status: open (design §15.90h, §15.93)
+Depends on: T55
+Stage: 7 (design §15.93)
+
+`spend.py` and `crew-stats.py` price a run from its own sessions
+(design §15.90), and a split-pane teammate is its own session, outside the
+project lead's subtree. `hooks/pre-compact.py`'s `session_in_run()` has the
+same blind spot: it matches a session id against `run.session_ids` and
+against each worktree's own `session_ids` in `worktrees.json`, and a
+split-pane teammate's id lands in neither, so it logs no compaction for one.
+Every run so far ran in-process, where a teammate has no session of its own,
+so neither gap ever showed. T55 turns split panes on by default for every
+full-path project lead, so every full-path run now hits both.
+
+**Do not put a teammate's session id in `run.session_ids`.**
+`hooks/session-end.py` marks a run `interrupted` when a dying session's id
+appears there, so a teammate pane closing at the end of its package would
+mark a live run dead. The id belongs in a separate field, for example
+`run.teammate_session_ids`, that `spend.py` and `crew-stats.py` read and that
+both hooks ignore.
+
+The open question this ticket must answer first: a project lead is handed no
+teammate session id at spawn, so where does the id come from? The team
+config at `~/.claude/teams/session-<id8>/config.json` holds session IDs and
+tmux pane IDs for the life of the session, and is removed at session end, per
+the Claude Code docs. Check whether the project lead can read that file
+while its teammates are still live, and whether the id still resolves after a
+teammate goes idle.
+
+Run it. One full-path run under T55's layout, with at least one IC teammate.
+Read the team config while the run is live and confirm it names the
+teammate's session id. Write that id into the new field at the point the
+project lead learns it, have `spend.py` and `crew-stats.py` include it in the
+run's price, and confirm neither hook treats it as a project-lead id.
+
+Check the priced figure against a hand count of the teammate's own
+transcript tokens. Check that killing a teammate's pane mid-package leaves
+`run_state` untouched. Force a second compaction with `/compact` in the
+teammate's pane and check that it lands in `run.compactions` now, closing
+the gap T55 confirmed.
+
+Done when: a full-path run under a split pane prices whole, its teammate
+compactions are logged, `record-format.md` documents the new field and when
+it is written, and design §15.90h's open gap is marked closed.
+
+Read first: design §15.90h, §15.93; `record-format.md` on `run.session_ids`
+and `run.compactions`; `hooks/session-end.py` and `hooks/pre-compact.py`
+(`session_in_run()`); `skills/project-lead/scripts/spend.py`, `crew-stats.py`;
+the Claude Code agent-teams docs on the team config file.

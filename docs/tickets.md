@@ -2285,9 +2285,10 @@ least two named ICs.
 Check that `tmux attach -t crew` shows every project lead as its own window,
 that Ctrl-b n cycles through them, and that each full-path window splits into
 one pane per IC teammate plus the project lead's own. Check that starting
-the lead itself inside `tmux new -A -s crew` finds the existing session
-rather than making a second `crew`, and record which window number its own
-window lands on, which design §15.93c leaves unprobed. Check the spawn-time
+the lead itself inside `tmux new -A -s crew` again finds the existing
+session rather than making a second `crew`, and confirm the lead still sits
+in window 0 with the project lead's window at index 1, the result design
+§15.93h observed on the simple path. Check the spawn-time
 `model` landed on each IC (design §15.20d, §15.20e), by asking one what
 model it is running as, or by reading its report for a
 model mismatch. Check `crew-stats.py` and `spend.py` against the run, and

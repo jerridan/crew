@@ -6989,10 +6989,12 @@ Deliberately different:
        `tmux attach -t crew` and cycles windows with Ctrl-b n. The lead itself
        may run anywhere: `tmux new -A -s crew` then `claude` finds the shared
        session and lands the lead's own window in it beside every project
-       lead's. Which window number it lands on is not yet probed; (g) names
-       the check. T55 lands this in `session-launch.md`
-       (PR #74, branch `t55-lead-tmux-layout`). Its commands, below, are
-       probed against tmux 3.7b.
+       lead's. (h)'s run observed this directly: the lead sat in window 0,
+       its own `has-session -t "=crew"` found that session and made no
+       second `crew`, and the project lead's window landed at index 1
+       beside it. T55 lands this in `session-launch.md` (PR #74, branch
+       `t55-lead-tmux-layout`). Its commands, below, are probed against
+       tmux 3.7b.
 
        The launch checks the session first, with `tmux has-session -t "=crew"`.
        It creates the session when the check fails, with
@@ -7051,15 +7053,14 @@ Deliberately different:
        this one. **Both gaps are filed as T56.**
 
     g. **What is still unproved.** No full-path run has launched under this
-       layout yet. The first one that does must check five things: that its
+       layout yet. The first one that does must check four things: that its
        ICs split the window into panes, that the spawn-time `model` still
        lands on each one now that the docs say a definition's `model` applies
        in both display modes (§15.20d, §15.20e), how short `spend.py` and
-       `crew-stats.py` report the run before T56, whether a split-pane IC's
-       compaction goes unlogged as (f) predicts, and which window number a
-       lead started inside `tmux new -A -s crew` lands on, since (c) leaves
-       that unprobed. (h) records the first live run, on the simple path;
-       none of the five is exercised yet.
+       `crew-stats.py` report the run before T56, and whether a split-pane
+       IC's compaction goes unlogged as (f) predicts. (h) records the first
+       live run, on the simple path, including the lead's own window
+       placement; none of these four is exercised yet.
 
     h. **The first live run, 2026-09-14 to 15, T55.** 20:38 to 21:55 EDT.
        Lead `crew-t55-lead`, session `cd7549c6`, started by hand in the

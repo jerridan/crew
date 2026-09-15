@@ -6989,12 +6989,15 @@ Deliberately different:
        `tmux attach -t crew` and cycles windows with Ctrl-b n. The lead itself
        may run anywhere: `tmux new -A -s crew` then `claude` finds the shared
        session and lands the lead's own window in it beside every project
-       lead's. (h)'s run observed this directly: the lead sat in window 0,
-       its own `has-session -t "=crew"` found that session and made no
-       second `crew`, and the project lead's window landed at index 1
-       beside it. T55 lands this in `session-launch.md` (PR #74, branch
-       `t55-lead-tmux-layout`). Its commands, below, are probed against
-       tmux 3.7b.
+       lead's. (h)'s lead sat in window 0 of an already-existing `crew`
+       session, started there by hand rather than through
+       `tmux new -A -s crew`, so that command's own window placement for the
+       lead is still unprobed. What (h) does confirm is the project lead's
+       own launch: its `has-session -t "=crew"` found the existing session,
+       made no second `crew`, and its `new-window` landed at index 1 beside
+       the lead's window 0. T55 lands this in `session-launch.md` (PR #74,
+       branch `t55-lead-tmux-layout`). Its commands, below, are probed
+       against tmux 3.7b.
 
        The launch checks the session first, with `tmux has-session -t "=crew"`.
        It creates the session when the check fails, with
@@ -7058,9 +7061,11 @@ Deliberately different:
        lands on each one now that the docs say a definition's `model` applies
        in both display modes (§15.20d, §15.20e), how short `spend.py` and
        `crew-stats.py` report the run before T56, and whether a split-pane
-       IC's compaction goes unlogged as (f) predicts. (h) records the first
-       live run, on the simple path, including the lead's own window
-       placement; none of these four is exercised yet.
+       IC's compaction goes unlogged as (f) predicts. None of these four is
+       exercised yet. A fifth thing stays open across both paths: which
+       window number a lead lands on when it is actually started with
+       `tmux new -A -s crew`, since (h)'s lead was placed in window 0 by
+       hand instead.
 
     h. **The first live run, 2026-09-14 to 15, T55.** 20:38 to 21:55 EDT.
        Lead `crew-t55-lead`, session `cd7549c6`, started by hand in the

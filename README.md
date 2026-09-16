@@ -121,6 +121,17 @@ The argument is one of four:
 | A path to a charter file | That file is the charter, unchanged. |
 | `--resume <goal-slug>` | Reopens a killed run from its record and continues. The slug is the record directory's name. |
 
+You can name your own reviewer for either of the two review steps — the spec
+review, and the review of the finished diff. Say it in plain words with the
+goal:
+
+```
+/crew:project-lead add a --json flag to the export command. use Codex for the spec review
+```
+
+The run calls what you named in that step's place, writes its report into the
+record with the others, and records what ran and what it used.
+
 The run sizes the work itself and picks a path:
 
 | Path | When | What runs |

@@ -7104,3 +7104,127 @@ Deliberately different:
        principal for the ship word, a drop, or the follow-ups. The ship
        word, `kill-window -t "=crew:=<name>"`, and a resume were not
        exercised in this run.
+
+94. **The review layer costs more than it catches, and the delivered window
+    re-runs it — 2026-09-15, T58–T64.** Run
+    `agi-3057-handoff-attempt-record-399d` took one package to a draft PR in
+    about 69 minutes. 42 of those minutes ran before any IC started: the
+    spec, two spec-critic rounds and the plan gate. Six follow-up packages
+    came after the hand-over. Each one ran a package review, and the first
+    five each re-ran the whole deliverable review. The deliverable review ran
+    six times in total — once before the PR opened and once on each of the
+    first five follow-ups — and the package review ran nine times. The
+    sixth follow-up, package 7, had not had its deliverable review when the
+    record was read. All 15 verdicts came back `accepted`. Outside reviewers
+    found 19 defects in the same code, and some of them were design-level.
+    The run cost $175.35. The build record measures the same layer, by a
+    different metric: §15.77a counts the reviews whose verdict sent the
+    artifact back, not the defects each review caught. By that count the
+    package review sent back 4 of 37 and the deliverable review 2 of 18;
+    §15.57 counts 4 of 32 package reviews the same way, and records that 24
+    of 29 packages left package review with no line of their code changed.
+    §15.77 found all thirty plans on disk approved and none sent back. The
+    principal cut the plan gate and the package review, moved the deliverable
+    review to after the PR opens, and gave the delivered window a patch mode.
+    T58 through T64 carry the work. None of it has run.
+
+    a. **Where the time and the money went.** The 42 minutes before the first
+       IC bought one spec and two critic rounds on one package. The IC itself
+       took about 20 minutes. The six follow-ups then paid the review layer
+       again on a deliverable that had already passed it. The follow-ups were
+       a mypy fix for CI, a TTL constant the principal asked for, a small
+       helper, 14 findings from claude[bot], and two Codex review rounds that
+       found 2 and 3 findings. Every one of those findings came from outside
+       crew. The three fix rounds on packages 5 and 6 came from outside the
+       review layer too: no package-review verdict triggered one. An
+       `accepted` verdict does not mean the reviewer found nothing — §15.57
+       records accepted reviews whose findings led to commits — but across
+       these 15 verdicts no review sent an artifact back, while outside
+       reviewers returned 19 defects on the same code.
+
+    b. **Why the reviewers agree with the author.** The observation first.
+       §15.57 records that the package reviewer caught none of the six defects
+       found later, and that every escape was about what a package implied for
+       a file it never touched. The 15 accepted verdicts on AGI-3057 sit
+       beside 19 defects that outside reviewers found in the same code. The
+       proposed explanation: each step reads the documents the project lead
+       itself wrote. The package reviewer reads the package brief and its
+       acceptance criterion. The deliverable reviewer reads the spec's
+       acceptance criteria and the contract. Both critics are told not to
+       argue that the goal is wrong. The deliverable reviewer does check some
+       things the brief never names — the seams between packages, the shared
+       files, a stray file, a credential — so the scoping is not total. What
+       no step does is read the code fresh against the goal.
+
+    c. **Two probes, on a throwaway repo with a 15-line diff and one real
+       bug.** The first probe ran
+       `claude -p --model haiku --output-format json "/code-review medium main"`
+       as its own process. It spawned 8 finder agents, all on Haiku, cost
+       $0.43, took about four minutes, and found the real bug — a missing
+       zero-divisor check. Two mechanics matter. The JSON `result` field holds
+       only the last message, so the findings must be collected with
+       `--output-format stream-json` or by an instruction in the prompt that
+       writes them to a file. And the skill ends by asking to apply fixes;
+       under `-p` the process exits instead. One hazard showed up: a Haiku
+       finder ran `git checkout main` inside the repo under review. **A
+       review runs against a separate worktree, never the run's own
+       checkout.** The second probe put the skill under an agent: a Sonnet
+       parent spawned a Haiku wrapper agent that invoked the code-review
+       skill. The skill ran as a forked execution and spawned zero finders at
+       medium effort. The model pinned and the skill was lost. Crew does not
+       build on nesting. The bundled skill takes no model flag, and its
+       finders follow the normal subagent rule, so the only way to pin their
+       model from inside a session is `CLAUDE_CODE_SUBAGENT_MODEL` — which
+       would flatten the band rubric for every IC as well. A separate process
+       with `--model` is the way.
+
+    d. **Five decisions.** (1) The plan gate goes, on every path and every
+       band. The IC still writes `plans/<id>.md`, and nothing approves it
+       (T58). (2) The package review goes, at every band and on every path.
+       The project lead verifies each package itself: it runs the acceptance
+       test and the suite, and it applies the checklist itself on a prose
+       package. A failure goes back to the IC as a fix round. Fix rounds and
+       promotion keep their caps, and only the trigger changes, from a
+       reviewer's verdict to the project lead's own failed verification
+       (T58). (3) The deliverable review becomes a skeptical review of the
+       whole diff, run after the draft PR opens, as the first round of the
+       delivered window. It reads the diff against the goal and the repo, not
+       against the spec. It assumes the diff is wrong and looks for how. It
+       runs the suite. It reports findings by severity. It says what it looked
+       for and did not find. The default implementation is the headless
+       code-review run from (c), in a fresh worktree of the branch (T59).
+       (4) The delivered window gets a patch mode. A change request stays one
+       package with an IC and the project lead's verification. Findings from a
+       review — CI, a bot, Codex, the principal, or the skeptical review —
+       are grouped, and one IC takes each group in the checkout. The project
+       lead replies per finding with what changed, and with a reason for
+       anything it declined (T60). (5) The goal, the charter or the principal
+       at launch may name a replacement for a review step in plain language.
+       The project lead runs the replacement in that step's slot and records
+       it (T61).
+
+    e. **Deferred, and one open question.** Two items are filed and not
+       scheduled: a layered config file that reads the same replacement
+       section as (d)(5) (T63), and a crew-owned skill that wraps `codex exec`
+       with a pinned model for both the spec review and the diff review (T64).
+       One question stays open and undecided: whether the light path should
+       swallow more work, so that a one-package item never spends 42 minutes
+       on a spec and two critic rounds. The spec critic sends an artifact back
+       more often than any other review step except the split critic, which
+       leads at 3 of 8 (§15.77a), so the trade is real and nothing decides it
+       here.
+
+    f. **Charter provenance, for any future lead.** A lead writes a charter
+       from the principal's goal, and it infers the lines the principal never
+       said. Those inferred lines must never bind the project lead the way the
+       principal's own words do. T57 is open in this checkout, and the rule
+       goes dormant on the day it lands and the lead tier goes. It is recorded
+       here for the day a lead comes back.
+
+    g. **`crew-stats.py` mis-counts promotions.** The script reported 7
+       promotions for the AGI-3057 run, one per package. The record holds
+       none: every package has one `band_history` entry, its prediction, and
+       package 5 was assigned `deep` at prediction, not promoted to it. The
+       script counts every entry that carries a `cause`, and the prediction
+       carries one too. A promotion is a second entry for the same package
+       (T62).

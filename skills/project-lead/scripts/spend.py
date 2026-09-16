@@ -17,13 +17,13 @@ the run started (`skeptical-review.md`). Claude Code writes each session as
 priced by that subtree, wherever it sits under `~/.claude/projects/` (and
 under `$CLAUDE_CONFIG_DIR/projects/` when that variable is set). Two runs that
 share one checkout are then priced apart, which the checkout window could not
-do (design §15.90). `lead-spend.py` prices a lead the same way.
+do (design §15.90).
 
 **A split-pane teammate is its own session and falls outside that subtree.**
 In-process is the default (design §15.20c, §15.89d), so a run you start
-yourself, and a run a lead launches as an iTerm2 tab, are both priced whole. A
-lead that launches into tmux passes `--teammate-mode tmux` (design §15.93), so
-a full-path run under such a lead reports short today, with no line to say so.
+yourself, and a run launched as an iTerm2 tab, are both priced whole. A run
+launched with `--teammate-mode tmux` (design §15.93) reports short today, on
+the full path, with no line to say so.
 The fix is a field of its own for the teammate ids, not `run.session_ids`:
 `hooks/session-end.py` marks the whole run `interrupted` when any id in that
 field ends, so an IC finishing would fake a dead run (design §15.90h).
@@ -64,7 +64,7 @@ def family(model: str) -> str:
 
 # A session id is a UUID. Checked before it reaches a glob, because `*`, `?`
 # or `[` in a hand-edited `state.json` would otherwise match transcripts this
-# run never wrote. `lead-spend.py` checks the same thing for the same reason.
+# run never wrote.
 SESSION_ID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
@@ -153,9 +153,7 @@ def price_files(paths, since: float = 0.0, until: float | None = None) -> dict:
     entry that carries no timestamp stays, because nothing places it.
 
     One message can appear in two files, so each is keyed by its own id and
-    the largest copy wins. Callers: `collect` below, and
-    `skills/lead/scripts/lead-spend.py`, which names a lead's own session
-    files instead of a checkout's directory.
+    the largest copy wins. `collect` below is the only caller.
     """
     messages = {}
     for f in paths:
@@ -241,10 +239,7 @@ def report(totals: dict) -> tuple[float, int]:
 
 
 def transcript(totals: dict, grand: float, total_tokens: int) -> dict:
-    """The stored shape `record-format.md` calls `spend.transcript`.
-
-    `lead.spend` takes the same shape, so both writers build it here.
-    """
+    """The stored shape `record-format.md` calls `spend.transcript`."""
     return {
         "measured_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "total_tokens": total_tokens,

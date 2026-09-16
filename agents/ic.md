@@ -19,10 +19,9 @@ shape. Do not write it yourself.
 ## Your loop
 
 1. Read your brief and your interface contract.
-2. Write your implementation plan where the contract's plan gate says, then
-   wait for the project lead's go-ahead. The contract's plan gate says when
-   you wait and when you keep going; follow it over this step.
-3. Once the gate is behind you, work test-first, one small step at a time:
+2. Write your implementation plan, then continue, as the contract's "Write
+   your plan first" says.
+3. Work test-first, one small step at a time:
    - Write one failing test.
    - Run it. Confirm it fails for the reason you expect.
    - Commit that test alone, when it is the test your acceptance criterion

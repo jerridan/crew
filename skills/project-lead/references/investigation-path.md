@@ -81,8 +81,8 @@ needing several hops and a synthesis — this path is its only caller
 **Evidence is a file, not a memory.** Every finding lands in
 `evidence/<n>-<slug>.md`, and you cite the path from then on. The *reading*
 must not inflate your context, for the same reason a review diff never enters
-it (`simple-path.md`'s "Review the package"). Two writers, because the two
-agents differ:
+it (`simple-path.md`'s "Integrate"). Two writers, because the two agents
+differ:
 
 - **`crew:researcher` writes its own file.** Name the absolute path in the
   dispatch and it returns four lines, the way a review agent does. Read the

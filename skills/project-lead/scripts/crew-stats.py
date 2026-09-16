@@ -98,10 +98,16 @@ REVIEW_KINDS = [
     ("deliverable review", re.compile(r"-deliverable-review\.md$")),
 ]
 
+# The package review is retired (§15.94d). Its pattern stays above so a record
+# written before T58 still parses, and its rows print only when a record holds
+# one. A retired kind with no file left says nothing, and a row of zeroes reads
+# as a step that failed to run.
+RETIRED_KINDS = {"package review"}
+
 # Each review agent names its own two verdict strings. The first of each pair
 # accepts the artifact and the second sends it back for another round
-# (`agents/package-reviewer.md`, `spec-critic.md`, `split-critic.md`,
-# `deliverable-reviewer.md`). A verdict outside all eight gets a skip line: it
+# (`agents/spec-critic.md`, `split-critic.md`, `deliverable-reviewer.md`, and
+# the retired package reviewer). A verdict outside all eight gets a skip line: it
 # is a drifted string, not a clean review, and counting it as clean would
 # deflate the catch rate without saying so.
 ACTION_VERDICTS = ("fix round needed", "re-spec needed", "re-split needed")
@@ -199,9 +205,12 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
     return sum(t["usd"] for t in totals.values())
 
 
-# `spec-critic` joins the two a band can skip: the light path writes no
-# `spec.md`, so the critic has nothing to read (`band-rubric.md`, §15.88).
+# A band can skip the deliverable review, and the light path also skips the
+# spec critic: it writes no `spec.md`, so the critic has nothing to read
+# (`band-rubric.md`, §15.88). `plan-gate` is retired with the gate itself
+# (§15.94d) and stays here so a record written before T58 still parses.
 SKIPPABLE_STEPS = ["plan-gate", "deliverable-review", "spec-critic"]
+RETIRED_STEPS = {"plan-gate"}
 
 
 def read_steps_skipped(name: str, run: dict, skips: list) -> dict:
@@ -641,6 +650,7 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     print("\nReviews\n")
     kinds = [name for name, _ in REVIEW_KINDS] + ["other"]
     rows = [[kind, sum(r["reviews"][kind] for r in records)] for kind in kinds]
+    rows = [row for row in rows if row[1] or row[0] not in RETIRED_KINDS]
     rows.append(["total", sum(sum(r["reviews"].values()) for r in records)])
     print(table(["kind", "count"], rows))
 
@@ -651,6 +661,8 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     rows = []
     for kind, _ in REVIEW_KINDS:
         total = sum(r["catch"][kind]["reviews"] for r in records)
+        if not total and kind in RETIRED_KINDS:
+            continue
         acted = sum(r["catch"][kind]["acted"] for r in records)
         blank = sum(r["catch"][kind]["unverdicted"] for r in records)
         rows.append([kind, total, acted, rate(acted, total), blank])
@@ -660,15 +672,17 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     # above. This table is what says the absence was by rule (§15.77, §15.88).
     print("\nSteps skipped by rule\n")
     rows = [[step, sum(r["steps_skipped"][step] for r in records)] for step in SKIPPABLE_STEPS]
+    rows = [row for row in rows if row[1] or row[0] not in RETIRED_STEPS]
     print(table(["step", "count"], rows))
 
-    print("\nPackage reviews by band\n")
     per_band = fold_catch_by_band([r["catch_by_band"] for r in records])
-    order = [b for b in BANDS if b in per_band] + [b for b in sorted(per_band) if b not in BANDS]
-    rows = [[band, per_band[band]["reviews"], per_band[band]["acted"],
-             rate(per_band[band]["acted"], per_band[band]["reviews"]),
-             per_band[band]["unverdicted"]] for band in order]
-    print(table(["band", "reviews", "acted", "rate", "unscored"], rows))
+    if any(per_band[band]["reviews"] for band in per_band):
+        print("\nPackage reviews by band, from records written before T58\n")
+        order = [b for b in BANDS if b in per_band] + [b for b in sorted(per_band) if b not in BANDS]
+        rows = [[band, per_band[band]["reviews"], per_band[band]["acted"],
+                 rate(per_band[band]["acted"], per_band[band]["reviews"]),
+                 per_band[band]["unverdicted"]] for band in order]
+        print(table(["band", "reviews", "acted", "rate", "unscored"], rows))
 
     print("\nTotals\n")
     priced = [r["usd"] for r in records if r["usd"] is not None]

@@ -35,23 +35,24 @@ sits beside it, at `<record-root>/lead-<date>-<hex>/`.
 
 ## Build state
 
-Stages 0 through 7 are built: eight agents, ten references, both hooks, all
-four of `/crew:project-lead`'s paths, and `/crew:lead`. The
-**simple path** runs one package on one branch under one unnamed subagent;
-the **full path** runs several packages in worktrees under named IC teammates,
-with a split critic, a squash merge per package and `--resume` recovery. Both
-have run end to end against a real repo with a test suite. The
-**investigation path** takes a symptom to a diagnosis, then to a fix or to a
-report ending; both endings have run against that repo, and it is
-`crew:researcher`'s only caller, which no run has dispatched yet. The **light
-path** is the simple path with no spec and no spec critic, chosen by the
-project lead itself after the scout. Four light-path items have run to a draft
-PR each, all at the `standard` band and all with one package review and no fix
-round (§15.88, §15.91). No run has promoted a light-path item in place: two
-seeded runs tried and "Size the work" absorbed both seeds (§15.91).
-A project lead now stays in its session after the hand-over: the run goes
-`delivered`, and `complete` only on the ship word. One item has run through
-the whole window (§15.92).
+Stages 0 through 7 are built: seven agents, ten references, both hooks, all
+four of `/crew:project-lead`'s paths, and `/crew:lead`. The **simple path**
+runs one package on one branch under one unnamed subagent; the **full path**
+runs several packages in worktrees under named IC teammates, with a split
+critic, a squash merge per package and `--resume` recovery. Both have run end
+to end against a real repo with a test suite. The **investigation path** takes
+a symptom to a diagnosis, then to a fix or to a report ending; both endings
+have run against that repo, and it is `crew:researcher`'s only caller, which no
+run has dispatched yet. The **light path** is the simple path with no spec and
+no spec critic, chosen by the project lead itself after the scout. Four
+light-path items have run to a draft PR each, and none promoted in place:
+"Size the work" absorbed both seeds (§15.88, §15.91). A project lead stays in
+its session after the hand-over: the run goes `delivered`, and `complete` only
+on the ship word. One item has run through the whole window (§15.92).
+
+**Every run named above predates T58**, which cut the plan gate and the package
+review. They exercised a longer loop than the files now describe, so each is
+evidence for the step it names and not for the loop.
 
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
 item, launches one project-lead session per item, answers what it can and

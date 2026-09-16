@@ -18,7 +18,7 @@ One directory per goal, outside the target repo (design §4):
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
 ├── reports/          one report per package, written by its IC
 ├── plans/            one plan per package, written by its IC
-├── diffs/            one diff per review dispatch, written by the project lead
+├── diffs/            one diff per deliverable, written by the project lead
 ├── evidence/         investigation path only: one file per evidence dispatch
 └── reviews/          raw critic and reviewer output
 ```
@@ -112,7 +112,7 @@ An `Outcome: no change` needs the adversary review design §9.5 requires:
 `reviews/diagnosis-adversary.md`, the case one `crew:council-advocate` made
 against the root cause. The project lead copies that case into the file — an
 advocate writes no file (`agents/council-advocate.md`). An `Outcome: fix`
-needs none, because the fix package's own review covers it.
+needs none, because the fix package's own acceptance test covers it.
 
 ## `reports/`, `plans/`, `diffs/`, `evidence/`, and `reviews/`
 
@@ -129,22 +129,18 @@ naming convention. Do not mix their contents.
   evidence is `diagnosis.md`'s `## Reproduction` instead, and the fix package
   needs no red commit.
 - **`plans/`** — one file per package, `plans/<id>.md`. It holds the IC's
-  implementation plan, written before the project lead's go-ahead (design
-  §9.2 step 3, §12's plan-approval fallback). `state.json`'s `plan_path`
-  always equals `plans/<id>.md`. This stays separate from `reports/` because
-  the project lead's idle check must find a *report* on disk before it accepts
-  a package, not a plan (design §13.1). The project lead's own decomposition is
-  `split.md` at the record root, named apart from `plans/` so that an IC told
-  to "write its plan into the record" cannot overwrite it.
-- **`diffs/`** — the diff a review dispatch reads, written by the project
-  lead so it never enters its own context. `diffs/<id>-r<n>.patch` for a
-  package review, `<n>` being `fix_rounds_used`. **The counter moves before
-  the round runs**, or round 1 writes over round 0's diff and review, which
-  are a reviewer's only audit trail;
-  `diffs/<deliverable-id>-final.patch` for the deliverable review, rewritten
-  after integration so it carries the shared-file edits. A diff is evidence
-  of what a reviewer actually saw, so a later round never overwrites an
-  earlier one.
+  implementation plan (`ic-contract.md`'s "Write your plan first").
+  `state.json`'s `plan_path` always equals `plans/<id>.md`. This stays separate
+  from `reports/` because the project lead's idle check must find a *report* on
+  disk before it accepts a package, not a plan (design §13.1). The project
+  lead's own decomposition is `split.md` at the record root, named apart from
+  `plans/` so that an IC told to "write its plan into the record" cannot
+  overwrite it.
+- **`diffs/`** — the diff the deliverable review reads, written by the
+  project lead so it never enters its own context:
+  `diffs/<deliverable-id>-final.patch`, written after integration so it
+  carries the shared-file edits. It is evidence of what that reviewer
+  actually saw.
 - **`evidence/`** — what one evidence dispatch found on the investigation
   path, `evidence/<n>-<slug>.md`, absent from every other run. It has two
   writers, and `investigation-path.md` Phase 1 says which writes when: a
@@ -161,8 +157,7 @@ naming convention. Do not mix their contents.
   investigation council is given (`autonomy-contract.md`), and
   `diagnosis.md`'s `## Evidence` points at them.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
-  review, never overwritten by a later one: `reviews/<id>-package-review-r<n>.md`
-  (`<n>` is the fix round, from `fix_rounds_used`),
+  review, never overwritten by a later one:
   `reviews/spec-critic-r<n>.md` (`<n>` counts re-specs of this goal; the spec
   is per goal, so this name carries no deliverable id),
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
@@ -171,13 +166,12 @@ naming convention. Do not mix their contents.
   `reviews/<deliverable-id>-deliverable-review.md`, and
   `reviews/diagnosis-adversary.md` for the one advocate that argues against a
   report ending's root cause (design §9.5; the diagnosis is per goal, so this
-  name carries no deliverable id). Design §9.2 allows up to
-  five review rounds per package, and a goal can hold several deliverables —
-  a shared filename per kind would let a later round, a later deliverable,
-  or a later re-plan silently destroy an earlier review, which is this run's
-  only audit trail. A package review reads its `<n>` from `fix_rounds_used`.
-  The spec and split critics have no counter in `state.json`, so their `<n>`
-  is one more than the highest already on disk under that same name. Reading
+  name carries no deliverable id). A goal can hold several deliverables, and a
+  critic can run twice over one of them — a shared filename per kind would let
+  a later deliverable or a later re-plan silently destroy an earlier review,
+  which is this run's only audit trail. The spec and split critics have no
+  counter in `state.json`, so their `<n>` is one more than the highest already
+  on disk under that same name. Reading
   it from disk is what keeps a resumed run from overwriting a review it wrote
   before the crash. The review agent writes its own file, at the absolute
   path the dispatch names (`review-output.md`); the project lead transcribes
@@ -241,7 +235,7 @@ Consumes:
 - <exact signature, or "nothing">
 Produces:
 - <exact signature>
-Acceptance criterion: <executable test, or the reviewer checklist path>
+Acceptance criterion: <executable test, or the checklist path>
 ```
 
 Rules the format carries:
@@ -314,7 +308,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 
 | Field | Meaning |
 |---|---|
-| `id` | the package's identity. Used to name its files: `reports/<id>.md`, `plans/<id>.md`, `reviews/<id>-package-review-r<n>.md`. |
+| `id` | the package's identity. Used to name its files: `reports/<id>.md` and `plans/<id>.md`. |
 | `deliverable` | the `id` of the deliverable this package belongs to, from the `deliverables` list above |
 | `territory` | the file-tree region this package's IC owns (design §5) |
 | `state` | one of `pending`, `in-flight`, `integrated`, `abandoned`. See State transitions below. |
@@ -323,13 +317,12 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `band_history` | a list of `{predicted, actual, cause, at}` entries: one when the band is first predicted, and one more per promotion after that (design §8). `at` is an ISO-8601 UTC timestamp. |
 | `file_set` | the package's declared, disjoint file list (design §5 invariant 2). `split-critic` checks disjointness against this field. |
 | `interface_contract` | `{consumes, produces}` with exact signatures (design §5 invariant 3). The only channel between isolated ICs. |
-| `acceptance_criterion` | the executable test or reviewer checklist that proves the package is done (design §5 invariant 1). Also what makes a respawn idempotent after a crash (design §10.1). |
+| `acceptance_criterion` | the executable test, or the checklist the project lead applies itself, that proves the package is done (design §5 invariant 1). Also what makes a respawn idempotent after a crash (design §10.1). |
 | `base` | the sha in this package's worktree when the project lead dispatched it. For a territory's first package that equals the deliverable's `base`; for each package after it, the worktree head when the previous package was accepted. `<base>..HEAD` is what makes a review diff cover this package and not its predecessors in the same worktree (design §15.37a). |
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: a subagent has no message channel to nudge. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
-| `plan_approved_at` | ISO-8601 UTC timestamp of the project lead's go-ahead on the plan (design §9.2 step 3); `null` until then. While it is `null` and `plans/<id>.md` exists, the IC's post-plan idle is an expected pause — the project lead's idle check (design §13.1) lets it pass (design §15.8). It stays `null` for good when the package skipped the gate, and `run.steps_skipped` is then the field that says so. The idle reading above is unaffected: only the simple path skips the gate, and a subagent sends no idle notification. |
 | `report_path` | always `reports/<id>.md`. Points into `reports/`. |
 
 ### State transitions
@@ -343,7 +336,7 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
 ```
 
 - `pending → in-flight`: the project lead dispatches an IC for the package. Every package gets one, however small the change is (design §9.1).
-- `in-flight → integrated`: the package passed review, and its work is on the deliverable branch with the suite green there. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone.
+- `in-flight → integrated`: the project lead's verification passed (`simple-path.md`'s "Verify before you believe"), and the package's work is on the deliverable branch with the suite green there, or with the no-suite outcome `simple-path.md`'s "Verify before you believe" defines. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   package, or the fix-round breaker parks it (design §9.2, §10).
 - `integrated` and `abandoned` are both terminal. Neither has an outgoing
@@ -408,12 +401,14 @@ either way. The one write protects the record, not the resume.
 ### At creation
 
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
-`nudges_used: 0`, `ic_name: null`, `base: null` until it is dispatched, and
-`plan_approved_at: null`. `plan_path` and `report_path`
-name files that do not exist yet. On the simple path (design §9.1) there is
-one package and no territory, so `ic_name` stays `null` for the run. The
-project lead writes `worktrees.json` there only when it cut the deliverable a
-checkout of its own (`worktrees.json` below).
+`nudges_used: 0`, `ic_name: null`, and `base: null` until it is dispatched.
+A record written before T58 can also carry `plan_approved_at`, from the plan
+gate that step retired (design §15.94d). Read it as history, and write it on
+no new package.
+`plan_path` and `report_path` name files that do not exist yet. On the simple
+path (design §9.1) there is one package and no territory, so `ic_name` stays
+`null` for the run. The project lead writes `worktrees.json` there only when
+it cut the deliverable a checkout of its own (`worktrees.json` below).
 
 ### Per-run fields (inside `run`)
 
@@ -429,7 +424,7 @@ checkout of its own (`worktrees.json` below).
 | `spend` | `{transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
-| `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step a band or the light path let the run skip. `step` is `plan-gate`, `deliverable-review` or `spec-critic`. A `plan-gate` entry names the package and leaves `deliverable` `null`; a `deliverable-review` entry does the reverse; a `spec-critic` entry leaves both `null`, because the run writes no spec and the skip belongs to the whole run. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the band and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What a band skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). **A follow-up that makes the deliverable review run removes the `deliverable-review` entry**, for the same reason (design §15.92h). |
+| `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step a band or the light path let the run skip. `step` is `deliverable-review` or `spec-critic`. A `deliverable-review` entry names the deliverable and leaves `package` `null`; a `spec-critic` entry leaves both `null`, because the run writes no spec and the skip belongs to the whole run. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the band and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What a band skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). **A follow-up that makes the deliverable review run removes the `deliverable-review` entry**, for the same reason (design §15.92h). |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
@@ -568,7 +563,6 @@ One run, two packages, in different states:
       "fix_rounds_used": 1,
       "nudges_used": 0,
       "ic_name": "ic-middleware",
-      "plan_approved_at": "2026-08-24T14:25:00Z",
       "plan_path": "plans/logging-middleware.md",
       "report_path": "reports/logging-middleware.md"
     },
@@ -593,7 +587,6 @@ One run, two packages, in different states:
       "fix_rounds_used": 2,
       "nudges_used": 1,
       "ic_name": "ic-config",
-      "plan_approved_at": "2026-08-24T16:20:00Z",
       "plan_path": "plans/logging-config.md",
       "report_path": "reports/logging-config.md"
     }
@@ -1151,10 +1144,10 @@ Every name this file defines, with what consumes it.
 - `state.json` — consumer: stage 4 (project lead loop); stage 5 (recovery, design §10.1)
 - `decisions.md` — consumer: stage 6 (council + routing); Task 11 (copied into the PR body)
 - `worktrees.json` — consumer: stage 5 (full path: worktrees, merges, recovery); `simple-path.md`'s "End the run" (the deliverable checkout it removes, design §15.90)
-- `reports/` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads a package's report); design §7 (the red commit's sha and its failing output)
-- `plans/` — consumer: Task 6 (`ic-contract.md`, IC plan-approval step); Task 7 (`crew:ic`, design §9.2 step 3, §12)
+- `reports/` — consumer: Task 6 (`ic-contract.md` report contract); `simple-path.md` and `full-path.md` "Verify before you believe"; design §7 (the red commit's sha and its failing output)
+- `plans/` — consumer: Task 6 (`ic-contract.md`, "Write your plan first"); Task 7 (`crew:ic`)
 - `evidence/` — writer: a `crew:researcher`, at the path its dispatch names; the project lead itself for an `Explore` subagent's finding, and for a researcher whose write was denied. Consumer: `investigation-path.md` Phases 1 to 3; every advocate in an investigation council (design §9.5); `diagnosis.md`'s `## Evidence`
-- `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: Task 9 (`crew:package-reviewer` output); stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
@@ -1197,7 +1190,7 @@ Every name this file defines, with what consumes it.
 - `checkout_restored` — consumer: a human, or a next session, asking why the checkout is on the deliverable branch (design §15.54)
 
 **`state.json` per-package fields**
-- `id` — consumer: this file's `reports/<id>.md`, `plans/<id>.md`, `reviews/<id>-package-review-r<n>.md` naming; stage 3 (`split-critic` identifies packages)
+- `id` — consumer: this file's `reports/<id>.md` and `plans/<id>.md` naming; stage 3 (`split-critic` identifies packages)
 - `deliverable` — consumer: stage 5 (per-deliverable integration, design §9.3); cross-references `deliverables[].id`
 - `territory` — consumer: stage 5 (one IC dispatched per territory, design §5)
 - `state` — consumer: stage 4 (project lead loop); stage 5 (re-planning and recovery, design §10)
@@ -1206,14 +1199,13 @@ Every name this file defines, with what consumes it.
 - `band_history` — consumer: Task 5 (band-rubric.md's promotion-logging rule); stage 5 (promotion on `BLOCKED`/exhausted fix rounds/idle)
 - `file_set` — consumer: Task 7 (`crew:ic` self-review checks its diff against this); stage 3 (`split-critic` disjointness check)
 - `interface_contract` — consumer: stage 3 (`split-critic` type-consistency check); Task 7/Task 8 (IC spawn prompt carries it, design §9.2 step 2)
-- `acceptance_criterion` — consumer: Task 6 (`ic-contract.md`, tells the IC when to stop); Task 9 (`crew:package-reviewer` checks work against it)
+- `acceptance_criterion` — consumer: Task 6 (`ic-contract.md`, tells the IC when to stop); `simple-path.md` and `full-path.md` "Verify before you believe" (the project lead runs it)
 - `base` (package) — consumer: stage 5 (the review diff and the verification range, `<base>..HEAD`)
 - `fix_rounds_used` — consumer: stage 5 (the fix-round breaker, design §9.2 step 6)
 - `nudges_used` — consumer: the project lead's idle nudge (`full-path.md`'s "The idle nudge")
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
-- `plan_path` — consumer: Task 6 (`ic-contract.md`, plan-approval step); Task 7 (`crew:ic` writes it, design §9.2 step 3)
-- `plan_approved_at` — consumer: stage 5 (the project lead's idle check, design §13.1, §15.8); stage 4/5 (project lead writes it at the plan go-ahead)
-- `report_path` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)
+- `plan_path` — consumer: Task 6 (`ic-contract.md`, "Write your plan first"); Task 7 (`crew:ic` writes it)
+- `report_path` — consumer: Task 6 (`ic-contract.md` report contract); the project lead at "Verify before you believe"
 
 **`state.json` state values** (shared by `packages[].state` and
 `deliverables[].state`, except `integrated`, `draft-pr-opened`, and
@@ -1273,9 +1265,8 @@ Every name this file defines, with what consumes it.
 - `<kebab-case-slug>-<4 lowercase hex chars>` — consumer: stage 4 (project lead generates it when creating the record directory)
 
 **Filename conventions**
-- `reports/<id>.md` — consumer: Task 6 (`ic-contract.md` report contract); Task 9 (`crew:package-reviewer` reads it)
-- `plans/<id>.md` — consumer: Task 6 (`ic-contract.md`); Task 7 (`crew:ic`, design §9.2 step 3, §12)
-- `reviews/<id>-package-review-r<n>.md` — consumer: Task 9 (`crew:package-reviewer` output, one file per fix round)
+- `reports/<id>.md` — consumer: Task 6 (`ic-contract.md` report contract); the project lead at "Verify before you believe"
+- `plans/<id>.md` — consumer: Task 6 (`ic-contract.md`); Task 7 (`crew:ic`)
 - `reviews/<deliverable-id>-split-critic-r<n>.md` — consumer: stage 3 (`split-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
 - `reviews/<deliverable-id>-deliverable-review.md` — consumer: stage 4 (`crew:deliverable-reviewer` output)
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts

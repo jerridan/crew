@@ -64,20 +64,13 @@ Any "yes" past the first two is a signal toward `deep`.
 
 ## What a band skips
 
-A `light` package can skip two steps: the plan gate and the deliverable review.
-Every other step runs at every band, the package review included — it is the
-check the bounded edit used to skip (design §15.73).
+A `light` package can skip one step: the deliverable review. Every other step
+runs at every band.
 
 | Step | `light` | `standard` | `deep` |
 |---|---|---|---|
 | spec critic | runs | runs | runs |
-| plan gate | simple path: skipped. Full path: the two checks below. | the two checks below | read the plan in full |
-| package review | runs | runs | runs |
 | deliverable review | skipped on the three conditions below | runs | runs |
-
-**The two checks** are that every file the plan names is in the file set, and
-that the plan changes no `produces` signature. A plan gate that read every plan
-in full cost a run a round trip per package for no finding (design §15.50).
 
 **The spec critic never skips a spec.** The run writes `spec.md` before the
 split, so no package has a band yet when the critic reads it (`SKILL.md`'s
@@ -86,19 +79,15 @@ the records, and on 1 of the 3 that ran over a `light` package (design §15.77).
 No band takes this step away. Only the light path does, by writing no spec at
 all — see the section below.
 
-**A skipped plan gate keeps the plan.** The IC still writes `plans/<id>.md`, and
-it does not stop for a go-ahead, so you dispatch it once instead of twice. Say
-in the dispatch prompt that the gate is skipped — `ic-contract.md`'s "The plan
-gate" branches on it, and it also says where the plan goes when the record
-write is denied. Leave `plan_approved_at` at `null`: no gate ran.
-
 **The deliverable review skips on three conditions, and all three must hold.**
-The deliverable holds this one package, its package review reads
-`Verdict: accepted`, and you edited no shared file at "Integrate". One package
-leaves the seam check and the conflict check nothing to read. An accepted
-package review means the diff already had a reader. No shared-file edit rules
-out the one defect class this reviewer caught that the package reviewer could
-not reach (design §15.77). Fail any one condition and the review runs.
+The deliverable holds this one package, your own verification at "Verify
+before you believe" passed with no fix round outstanding, and you edited no
+shared file at "Integrate". One package leaves the seam check and the conflict
+check nothing to read. A verification that passed means every check
+`simple-path.md`'s section of that name ran green under you. No shared-file
+edit rules out the one defect class this
+reviewer caught that no other step reaches (design §15.77). Fail any one
+condition and the review runs.
 
 ## What the light path skips
 
@@ -110,18 +99,18 @@ takes it; this file states what it drops.
 | Step | On the light path |
 |---|---|
 | spec critic | skipped — the run writes no `spec.md`, so the critic has nothing to read |
-| plan gate | the table above decides it, by band |
-| package review | runs |
 | deliverable review | skipped when the three conditions above hold. Two of them always hold here; the third is yours to check |
 
-**The package review is what makes the rest safe to drop.** It is the one
-reader of the diff, and it runs at every band and on every path. Its fix rounds
-are `simple-path.md`'s, unchanged.
+**Your own verification of the package is what makes the rest safe to drop.**
+You verify every package yourself, at every band and on every path.
+`simple-path.md`'s "Verify before you believe" owns what that runs, for a code
+package and for a prose one, and its "Fix rounds" owns what a failure costs.
 
 **Two of the deliverable review's three conditions hold here; the third does
-not hold itself.** One package is the path's own entry condition, and the
-package review is accepted or the run does not reach this step. The third —
-that you edited no shared file at "Integrate" — is a question you answer after
+not hold itself.** One package is the path's own entry condition, and your
+verification passed with no fix round outstanding or the run does not reach
+this step. The third — that you
+edited no shared file at "Integrate" — is a question you answer after
 the fact. A light-path package carries at most the one registration line the
 repo names, and a repo whose instructions make two shared files change together
 leaves the second for you. **Edit one, and the review runs.** It is the only
@@ -136,9 +125,8 @@ there reads as a step that failed to run.
 
 ## Critics and reviewers take their own model
 
-A band is for a **package**. `crew:spec-critic`, `crew:split-critic`,
-`crew:package-reviewer` and `crew:deliverable-reviewer` are not packages, and
-none of them gets a band.
+A band is for a **package**. `crew:spec-critic`, `crew:split-critic` and
+`crew:deliverable-reviewer` are not packages, and none of them gets a band.
 
 **Pass no spawn-time `model` when you dispatch one.** Each definition already
 carries the model its job needs, and a spawn-time value silently overrides it

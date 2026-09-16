@@ -569,9 +569,10 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         counts = per_band.setdefault(band, {"packages": 0, "fix_rounds": 0, "promotions": 0})
         counts["packages"] += 1
         counts["fix_rounds"] += fixes(package)
-        # A band_history entry with a cause is a promotion; the first entry is
-        # the prediction and carries none (record-format.md, design §8).
-        moved = sum(1 for h in as_list(package.get("band_history")) if isinstance(h, dict) and h.get("cause"))
+        # The first band_history entry is the prediction; every entry after
+        # it is one promotion (record-format.md, design §8).
+        history = [h for h in as_list(package.get("band_history")) if isinstance(h, dict)]
+        moved = max(0, len(history) - 1)
         counts["promotions"] += moved
         promotions += moved
 

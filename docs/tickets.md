@@ -2830,7 +2830,7 @@ agent-definition shape.
 
 ## T66 — Name every dispatch
 
-Status: open
+Status: done
 Depends on: T65
 Stage: 7 (design §15.20b, §15.20 sub-item c)
 

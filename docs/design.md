@@ -1521,6 +1521,7 @@ Deliberately different:
        its final answer in the notification". It is not a parseable tool
        result, so the record is still the durable channel — but the stated
        reason for writing reports is wrong, and §3's naming rule rests on it.
+       **T66 acted on this: every dispatch is named now (§15.97).**
 
     c. **Display mode needs no setup.** §12 requires iTerm2 + `it2`, tmux, or
        an explicit `teammateMode`. Since v2.1.179 the default is
@@ -7312,3 +7313,43 @@ Deliberately different:
        `light` band its saving: a `light` package now runs on `sonnet`, the
        same model as `standard`, because every IC carries `Bash`, `Write`,
        or `Edit`.
+
+97. **Every dispatch is named — 2026-09-16, T66.** The old rule, "only ICs
+    are named", rested on §3's claim that a teammate's output never returns
+    to the project lead. §15.20b recorded that claim as wrong, and §15.20
+    sub-item c confirmed by probe that a teammate's final answer arrives in
+    full as prose in its idle notification. The principal decided every
+    dispatch is named, so every agent gets a pane under a display mode.
+
+    a. **Why it flipped.** §15.20b's correction removed the reason the old
+       rule gave for keeping most agents unnamed — the project lead was
+       never actually blind to a teammate's output, only reading it from a
+       different channel. Session `aad2bfca-66ed-47cd-928f-1da15964bbf9`
+       (2026-09-16, the same run §15.96b cites) is the evidence: the project
+       lead named three scouts, `linear-dupes`, `verify-claims` and
+       `repo-scout`; each got a pane, each answer reached the project lead
+       in its idle notification, and the run proceeded normally. The two
+       `crew:ic` dispatches in that same run were unnamed on the simple
+       path and ran with no pane. Naming every dispatch makes the pane
+       behaviour uniform instead of a special case for ICs.
+
+    b. **What naming still costs.** Read against
+       `code.claude.com/docs/en/agent-teams.md`: the result arrives as the
+       idle notification's final message, never as a tool result, so a
+       record file — where a critic, an IC or a review writes one — stays
+       the durable copy. With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` unset,
+       a named agent launches as a plain subagent and the name changes
+       nothing, so the rule is stated unconditionally rather than gated on
+       the flag. A teammate cannot spawn a teammate, and an in-process
+       teammate's own subagents run in the foreground, so a named
+       researcher's lookups run one at a time. A teammate applies no
+       `skills:` frontmatter, which no crew agent uses. `run_in_background`
+       is unsupported for an in-process teammate, which crew never asks
+       for. A dispatch's permission prompts surface in the project lead's
+       session for the human to approve, whichever role was dispatched —
+       previously stated only for a teammate IC, the rule now holds for
+       every dispatch alike.
+
+    c. **What has not run.** No run has exercised the flipped rule. The
+       probe T66's ticket names — a spec critic verdict and a council batch
+       read from idle notifications, with the teams flag on — is undone.

@@ -1,11 +1,17 @@
 # Review output
 
-Every crew review agent reports in this shape: `crew:spec-critic`,
-`crew:split-critic` and `crew:deliverable-reviewer`. This file owns the shape.
-An agent that reads it keeps no copy of it.
+Every crew review agent reports in this shape: `crew:spec-critic` and
+`crew:split-critic`. So does the skeptical review of the finished diff, which
+is a headless process and not an agent (`skeptical-review.md`).
+This file owns the shape. A reader of this file keeps no copy of it.
 
-The project lead injects this file whole into every review dispatch. A path
-would not resolve: a review agent's cwd is the target repo, not the plugin.
+The project lead injects this file whole into every review dispatch, and into
+the skeptical review's instructions file (`skeptical-review.md`). A path would
+not resolve: a reviewer's cwd is the target repo, not the plugin.
+
+This file owns the format and nothing else. What a reviewer looks for, and
+the stance it takes, belong to its own agent definition or to
+`skeptical-review.md`.
 
 ## Severity tags
 
@@ -59,6 +65,11 @@ When the write is denied, your tool result is the whole report. Say so in
 its first line and name the denied path. Never say you wrote a file you
 could not write.
 
+**This fallback is for a dispatched agent**, whose tool result the project
+lead reads. The skeptical review is a separate process with no caller, so
+nothing it prints is collected, and `skeptical-review.md` owns what a missing
+report costs there.
+
 You carry no `SendMessage`, so a finding you leave out of the report reaches
 nobody.
 
@@ -71,5 +82,6 @@ Verdict: <one of your two verdict strings>
 Critical count: <n>
 ```
 
-Your own agent definition names your two verdict strings. Use one of those two
-words for word. Always include the critical count, even when it is zero.
+Your own agent definition names your two verdict strings, and
+`skeptical-review.md` names the skeptical review's. Use one of those two word
+for word. Always include the critical count, even when it is zero.

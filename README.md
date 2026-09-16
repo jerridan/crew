@@ -5,8 +5,9 @@ not stop for approval on the way.
 
 You hand your goals to a lead. It starts one project lead per goal. Each
 project lead reads its repo, writes the spec, splits the work, picks a model
-for each piece, dispatches implementers, has each piece reviewed by an agent
-that did not write it, and opens the draft PR. You merge it. The lead brings
+for each piece, dispatches implementers, checks each piece itself, has the
+whole deliverable reviewed by an agent that did not write it, and opens the
+draft PR. You merge it. The lead brings
 you every question the runs cannot answer, in one batch. Each project lead
 stays until you say its work shipped, so you can ask it about the change
 before you merge, and hand it a follow-up after.
@@ -121,8 +122,8 @@ The run sizes the work itself and picks a path:
 
 | Path | When | What runs |
 |---|---|---|
-| Light | A small item whose acceptance criterion is the whole spec | One implementer, one review. No spec. |
-| Simple | One package | Spec, spec critic, one implementer on one branch, one review. |
+| Light | A small item whose acceptance criterion is the whole spec | One implementer, checked by the project lead. No spec. |
+| Simple | One package | Spec, spec critic, one implementer on one branch, checked by the project lead. |
 | Full | Several packages | Spec, both critics, one implementer per package in its own worktree, a merge per package. |
 | Investigation | A symptom | Reproduce, gather evidence, diagnose. Then a spec and a fix, or a report with no change. |
 
@@ -183,13 +184,18 @@ agents and the shared task list.
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ REVIEWER       did not write what it reviews  │
+   │ PROJECT LEAD   run the tests, read the diff   │
    └───────────────────────────────────────────────┘
       │                  │
-      │ accepted         └──▶  findings go back to that IC,
+      │ passed           └──▶  a failure goes back to that IC,
       ▼                        up to five fix rounds
    ┌───────────────────────────────────────────────┐
    │ PROJECT LEAD   merge, re-run the suite        │
+   └───────────────────────────────────────────────┘
+      │
+      ▼
+   ┌───────────────────────────────────────────────┐
+   │ REVIEWER       did not write what it reviews  │
    └───────────────────────────────────────────────┘
       │
       ▼
@@ -205,11 +211,13 @@ contract with those siblings, and a model band. An IC works in its own
 worktree and cannot see its siblings' work, so that contract is the only
 channel between packages.
 
-Review is independent: the reviewer gets the brief and the diff, and never saw
-the work happen. A question with no precedent goes to a council, where each
-advocate argues an assigned position, so the project lead weighs arguments
-instead of counting votes. A question about what you want is never debated. It
-comes to you.
+The project lead checks every package itself. It runs the acceptance test and
+the suite, and a failure sends the package back. Review of the whole
+deliverable is independent: the reviewer gets the spec and the merged diff,
+and never saw the work happen. A question with no precedent goes to a council,
+where each advocate argues an assigned position, so the project lead weighs
+arguments instead of counting votes. A question about what you want is never
+debated. It comes to you.
 
 The draft PR is the end of the work. Crew never merges. The project lead
 stays until you say the work shipped.
@@ -218,8 +226,7 @@ stays until you say the work shipped.
 
 A package is `light` (haiku), `standard` (sonnet) or `deep` (opus).
 `standard` is the default. An IC that reports blocked is re-dispatched one
-band up. A `light` package skips the plan gate and, on three conditions, the
-deliverable review.
+band up. A `light` package skips the deliverable review on three conditions.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|
@@ -228,7 +235,6 @@ deliverable review.
 | IC, Instruction IC | the package's band: haiku, sonnet or opus | your session's |
 | Scout | haiku or sonnet | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |
-| Package reviewer | sonnet | high |
 | Researcher | sonnet, or opus for a deep question | high |
 | Spec critic | opus | high |
 | Decomposition critic | opus | high |
@@ -252,7 +258,7 @@ to see every judgment call with its citation.
 ├── reports/        one report per package, from its IC
 ├── plans/          one plan per package
 ├── reviews/        every critic and reviewer output
-└── diffs/          one diff per review
+└── diffs/          one diff per deliverable
 ```
 
 A lead writes `~/.claude/crew/lead-<date>-<hex>/` beside them, with the
@@ -278,7 +284,6 @@ review catch rate, over every record.
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |
 | Decomposition critic | Reviews the work split before any IC starts. |
-| Package reviewer | Reviews one finished package against its brief. |
 | Deliverable reviewer | Reviews the whole deliverable before the draft PR opens. |
 | Researcher | Answers one open question across several hops, with citations. |
 | Scout | Answers one lookup for the project lead, then exits. |

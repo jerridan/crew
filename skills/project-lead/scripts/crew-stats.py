@@ -8,8 +8,10 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
-counts, the review catch rate, and the steps a band or the light path let a run
-skip. Design §8 asks for these numbers to turn the band rubric from a guess
+counts, the review catch rate, the steps a band or the light path let a run
+skip, and the review steps the principal replaced with a runner of their own.
+A replaced step is not a Claude session, so `spend.py` cannot price it: its
+cost prints as `unmeasured` unless the record's `usage` object carries one. Design §8 asks for these numbers to turn the band rubric from a guess
 into a measurement. No figure here gates anything.
 
 One record shape is read, and only one: a run record with a `state.json`
@@ -109,7 +111,10 @@ RETIRED_KINDS = {"package review", "deliverable review"}
 # a review's inputs and its adjudication, and every file of a retried attempt,
 # which a retry renames with an `-attempt<k>` infix. A retired attempt produced
 # no usable report, so counting it would deflate the catch rate.
-COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json")
+# `-result.txt` and `-result.exit` are a replacement runner's stand-ins for
+# `-result.json` (`record-format.md`, T61). Their `-attempt<k>` forms are
+# caught by ATTEMPT below.
+COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json", "-result.txt", "-result.exit")
 ATTEMPT = re.compile(r"-attempt\d+\.[A-Za-z0-9]+$")
 
 # Each review names its own two verdict strings. The first of each pair
@@ -238,6 +243,50 @@ def read_steps_skipped(name: str, run: dict, skips: list) -> dict:
         else:
             skips.append(f"{name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(SKIPPABLE_STEPS)}")
     return counts
+
+
+# The principal may name another runner for a review step, and only for these
+# two (`SKILL.md`'s "A step the principal replaced"). The step ran, so it is
+# not a skipped step and it never reaches the table above.
+SUBSTITUTABLE_STEPS = ["spec-critic", "skeptical-review"]
+
+
+def usage_usd(usage) -> float | None:
+    """The dollars one `usage` object states, and `None` when it states none.
+
+    The runner is not a Claude session, so no price table here fits it. A
+    figure is read only when the record already holds one in dollars. A
+    `tokens` count is not one: no price table here fits the runner that
+    reported it (`record-format.md`).
+    """
+    if not isinstance(usage, dict):
+        return None
+    value = usage.get("usd")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    return None
+
+
+def read_steps_substituted(name: str, run: dict, skips: list) -> list:
+    """The review steps this run replaced, as `{step, replacement, usd}` rows.
+
+    An entry naming a step outside the list is reported, never counted. The
+    report must name every substitution, because the cost of a replaced step
+    lands in no other table (T61).
+    """
+    rows = []
+    for entry in as_list(run.get("steps_substituted")):
+        step = entry.get("step") if isinstance(entry, dict) else None
+        if step not in SUBSTITUTABLE_STEPS:
+            skips.append(f"{name}: unreadable steps_substituted entry — {step!r} is none of {', '.join(SUBSTITUTABLE_STEPS)}")
+            continue
+        replacement = entry.get("replacement")
+        rows.append({
+            "step": step,
+            "replacement": replacement if isinstance(replacement, str) and replacement else "unnamed",
+            "usd": usage_usd(entry.get("usage")),
+        })
+    return rows
 
 
 def blank_catch() -> dict:
@@ -544,6 +593,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "escalations": len(as_list(run.get("escalations"))),
         "compactions": len(as_list(run.get("compactions"))),
         "steps_skipped": read_steps_skipped(record.name, run, skips),
+        "steps_substituted": read_steps_substituted(record.name, run, skips),
         "reviews": reviews,
         "catch": catch,
         "catch_by_band": catch_by_band,
@@ -689,6 +739,31 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
     rows = [[step, sum(r["steps_skipped"][step] for r in records)] for step in SKIPPABLE_STEPS]
     rows = [row for row in rows if row[1] or row[0] not in RETIRED_STEPS]
     print(table(["step", "count"], rows))
+
+    # A replaced step ran, so its report is on disk and the catch rate above
+    # counts it. What no other table holds is what the replacement cost: the
+    # runner is not a Claude session, so `spend.py` prices none of it (T61).
+    substitutions = [row for r in records for row in r["steps_substituted"]]
+    if substitutions:
+        print("\nSteps the principal replaced\n")
+        groups = {}
+        for row in substitutions:
+            group = groups.setdefault((row["step"], row["replacement"]), {"count": 0, "usd": 0.0, "unpriced": 0})
+            group["count"] += 1
+            if row["usd"] is None:
+                group["unpriced"] += 1
+            else:
+                group["usd"] += row["usd"]
+        rows = []
+        for (step, replacement), group in sorted(groups.items()):
+            if group["unpriced"] == group["count"]:
+                cost = "unmeasured"
+            elif group["unpriced"]:
+                cost = f"{money(group['usd'])} + unmeasured"
+            else:
+                cost = money(group["usd"])
+            rows.append([step, replacement, group["count"], cost])
+        print(table(["step", "replacement", "count", "usd"], rows))
 
     per_band = fold_catch_by_band([r["catch_by_band"] for r in records])
     if any(per_band[band]["reviews"] for band in per_band):

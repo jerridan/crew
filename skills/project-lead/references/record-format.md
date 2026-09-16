@@ -46,6 +46,7 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> package <id> set fix_rou
 python3 <skill-dir>/scripts/crew-record.py <record-dir> run state blocked
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation add "<trigger>" "<question>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation answer <index> "<answer>"
+python3 <skill-dir>/scripts/crew-record.py <record-dir> integrate <package-id> --review-head <sha> [--published]
 python3 <skill-dir>/scripts/crew-record.py <record-dir> deliver <deliverable-id> draft-pr-opened --pr-url <url>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> ship
 ```
@@ -55,9 +56,14 @@ so it drops every ask already in the list. `escalation add` appends one ask,
 stamps `asked_at`, and prints the index that `escalation answer` takes. A
 batch of questions is one call per question.
 
-`init` creates the file with `created_at`. `deliver` writes the deliverable's
-terminal state and `run_state: delivered` together, which the
-`work-complete` exception below requires, and stamps `delivered_at`. `ship`
+`init` creates the file with `created_at`. `integrate` writes a package
+`integrated` and, with `--review-head`, `run.review_pending` in the same
+write, which the delivered window requires (`simple-path.md`). Its
+`--published` flag stamps `pushed_at` in that same write, for a branch with
+no remote, where the commit is the publication. `deliver`
+writes the deliverable's terminal state and `run_state: delivered` together,
+which the `work-complete` exception below requires, and stamps
+`delivered_at`. `ship`
 writes `run_state: complete` and stamps `completed_at`. Every write stamps
 `state_changed_at` and replaces the file in one step. The script checks no
 transition; this file owns those. Rewriting the whole file by hand costs a turn of output per
@@ -121,7 +127,8 @@ Five directories hold per-run output. Each has one writer and a fixed
 naming convention. Do not mix their contents.
 
 - **`reports/`** — one file per package, `reports/<id>.md`. It holds that
-  package's own IC's report and nothing else. `state.json`'s `report_path`
+  package's own IC's report and nothing else. A patch round's reply is not
+  here — it sits under `reviews/`, beside the findings it answers. `state.json`'s `report_path`
   for a package always equals `reports/<id>.md`. It is also where the "fails
   before" evidence is kept (design §7): the IC's report names the red commit's
   sha and carries the criterion's failing output at it. No `state.json` field
@@ -180,7 +187,13 @@ naming convention. Do not mix their contents.
   `skeptical-r<n>-attempt<k>.md`, `skeptical-r<n>-instructions-attempt<k>.md`
   and `skeptical-r<n>-result-attempt<k>.json`, `<k>` counting up from the
   highest already there, so the evidence of a failed attempt survives.
-  `crew-stats.py` counts none of the renamed files as a review. Then
+  `crew-stats.py` counts none of the renamed files as a review. **A patch
+  round from any other source writes the same reply file under its own
+  `<round-id>`**: `reviews/<round-id>-reply.md`, where `<round-id>` is
+  `<kind>-r<n>` — `ci-r1`, `pr-comments-r2`, `principal-r1` — with `<n>` one
+  more than the highest already on disk under that name. Only a skeptical
+  round carries the other three files, because only it runs a review
+  (`simple-path.md`'s "Findings from a review"). Then
   `reviews/diagnosis-adversary.md` for the one advocate that argues against a
   report ending's root cause (design §9.5; the diagnosis is per goal, so this
   name carries no deliverable id). A goal can hold several deliverables, and a
@@ -339,6 +352,8 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: a subagent has no message channel to nudge. |
 | `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
+| `round` | the `<round-id>` of the patch round that wrote this package, a key into `run.rounds`. The round holds the source and the reply, so the package holds neither. Absent on every other package, and that absence is what says the package belongs to no round. |
+| `pushed_at` | ISO-8601 UTC timestamp of this package's **publication**, `null` until it happens. A branch with a remote is published by a push that succeeded, and the project lead stamps this right after it — never before, and never after one that failed. A branch with no remote is published when the work commits, so `crew-record.py integrate --published` stamps it in the integration write and no push is ever owed. One push can carry several packages of one round, and it stamps each. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
 | `report_path` | always `reports/<id>.md`. Points into `reports/`. |
 
@@ -353,7 +368,7 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
 ```
 
 - `pending → in-flight`: the project lead dispatches an IC for the package. Every package gets one, however small the change is (design §9.1).
-- `in-flight → integrated`: the project lead's verification passed (`simple-path.md`'s "Verify before you believe"), and the package's work is on the deliverable branch with the suite green there, or with the no-suite outcome `simple-path.md`'s "Verify before you believe" defines. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone.
+- `in-flight → integrated`: the project lead's verification passed (`simple-path.md`'s "Verify before you believe"), and the package's work is on the deliverable branch with the suite green there, or with the no-suite outcome `simple-path.md`'s "Verify before you believe" defines. On the full path that is its own merge and suite run; on the simple path the work is already on the branch, so it is the suite run alone. In the delivered window one write does it: `crew-record.py integrate <package-id> --review-head <sha>` marks the package and writes `run.review_pending` together, and the publication that follows is a timestamp on the package, not a state (`simple-path.md`).
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   package, or the fix-round breaker parks it (design §9.2, §10).
 - `integrated` and `abandoned` are both terminal. Neither has an outgoing
@@ -423,6 +438,8 @@ either way. The one write protects the record, not the resume.
 
 A new package starts `pending`, with `band_history: []`, `fix_rounds_used: 0`,
 `nudges_used: 0`, `ic_name: null`, and `base: null` until it is dispatched.
+A package written in the delivered window starts with `pushed_at: null` as
+well, and carries a `round` only when a patch round wrote it.
 A record written before T58 can also carry `plan_approved_at`, from the plan
 gate that step retired (design §15.94d). Read it as history, and write it on
 no new package.
@@ -431,18 +448,47 @@ path (design §9.1) there is one package and no territory, so `ic_name` stays
 `null` for the run. The project lead writes `worktrees.json` there only when
 it cut the deliverable a checkout of its own (`worktrees.json` below).
 
+### What a delivered-window round still owes
+
+A resume in `delivered` reads two obligations here, and infers no third from
+a `null` field:
+
+- **A package owes a dispatch** when its `base` is `null`. It was written
+  and never sent, so dispatch it (`simple-path.md`'s "Dispatch the IC").
+- **A package owes a publication** when it is `integrated`, its `pushed_at`
+  is `null`, its branch has a remote and its round carries no
+  `push_refused`. `skeptical-review.md`'s resume table sends you here for
+  the same push, from the head's side. Push, then stamp `pushed_at`. A branch with no remote owes
+  nothing, because the integration stamped it, and a round that records
+  `push_refused` owes nothing either — the principal was told the head is
+  unpublished. A package with no `round` came from a change request, so
+  nothing records a refusal for it and a resume simply tries the push again.
+- **A run owes a reply** when an entry in `run.rounds` holds a `null`
+  `replied_at` and every accepted entry in its reply file is complete. The
+  file is already on disk, so `reviews/<round-id>-reply.md` is sent as it
+  stands and `replied_at` follows. A resumed session reaches this through
+  entry 5 of `skeptical-review.md`'s resume list, which owns the order, and
+  entry 4 there fills a ledger line the kill left empty.
+
+Two obligations sit outside this rule. `run.review_pending` is
+`skeptical-review.md`'s alone. A package still `pending` or `in-flight`
+belongs to `simple-path.md`'s "A round killed mid-flight".
+
 ### Per-run fields (inside `run`)
 
 | Field | Meaning |
 |---|---|
-| `run_state` | one of `active`, `blocked`, `delivered`, `interrupted`, `complete`. See `run_state` transitions below. `delivered` means every deliverable holds a terminal state and the session stays up for questions, follow-ups and the principal's word that the work shipped (`simple-path.md`'s "The delivered window"). `complete` means that word came. |
+| `run_state` | one of `active`, `blocked`, `delivered`, `interrupted`, `complete`. See `run_state` transitions below. `delivered` means every deliverable holds a terminal state and the session stays up for questions, changes to the PR, a review's findings and the principal's word that the work shipped (`simple-path.md`'s "The delivered window"). `complete` means that word came. |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. It is also what prices the run: `spend.py` reads each id's transcript subtree (Spend below). |
 | `review_rounds` | an integer: how many skeptical review rounds this run has entered. Starts at 0, and absent means 0. It names the round whose files are `reviews/skeptical-r<n>.*`. `skeptical-review.md` owns when it moves, what caps it, and why a retry leaves it where it is. |
-| `review_pending` | `{head, round}` — the branch head sha a skeptical review is owed on, and the round reserved for it — or `null` when none is owed. One object, not two fields, so the sha and the round it names cannot disagree. Every arming goes through `crew-record.py`'s `arm_review`, reached by `deliver --review-head` at the hand-over and by `arm-review --head` after a follow-up integrates; `run set review_pending null` is for clearing it and nothing else. `skeptical-review.md` owns every transition and what a set value means to a resumed run. |
+| `review_pending` | `{head, round}` — the branch head sha a skeptical review is owed on, and the round reserved for it — or `null` when none is owed. One object, not two fields, so the sha and the round it names cannot disagree. Every arming goes through `crew-record.py`'s `arm_review`, reached by `deliver --review-head` at the hand-over, by `integrate --review-head` when a delivered-window package integrates, and by `arm-review --head` on its own; `run set review_pending null` is for clearing it and nothing else. `skeptical-review.md` owns every transition and what a set value means to a resumed run. |
 | `unreviewed_heads` | a list of `{head, reason, at}`, one per branch head that was handed over or pushed with no review owed for it. `reason` is `cap` today, the only case that produces one. Appended by `arm_review` in the same write that would have armed the head. Absent until the first one. A head here shipped unreviewed, and `skeptical-review.md` says who has to be told. |
 | `review_results` | an object keyed by round number, each value `{exit, denials_ok, report_ok, at}`: the outcome of the four checks the project lead runs over a finished review. A round with no entry has not been checked, whatever sits in `reviews/`. Absent until the first check. `skeptical-review.md` owns the checks and what a passing entry permits. |
 | `review_session_ids` | a list of session ids, one per skeptical review this run started. The project lead generates each id itself and appends it **before** it launches that review, then passes it to the review as `--session-id`, so a review that dies halfway is still priced (`skeptical-review.md` owns the procedure). `spend.py` prices these transcripts into the run and `crew-stats.py` reports them. **Both hooks ignore this field.** An id here is a foreign session, so it never goes in `run.session_ids`, whose ending marks the whole run `interrupted` (`hooks/session-end.py`, design §15.90h). Absent until the first review. |
 | `repo` | the absolute path to the target-repo clone the project lead was launched in, written at `simple-path.md`'s "Create the branch" beside `checkout`. On a free checkout the two are equal; on a held one, `checkout` is the worktree this run cut and `repo` is the clone it was cut from. **It is the path that outlives the run's own worktrees**, so every `worktree add`, `remove` and `prune` runs against it — the removal at "End the run", and every skeptical review (`skeptical-review.md`). Absent on an investigation run that ends in a report. |
+| `rounds` | an object keyed by `<round-id>`, one entry per patch round, written by the project lead when it opens the round and before it writes any package (`simple-path.md`'s "Findings from a review"). Each value holds: `source`, the `{kind, ref}` pair below; `reply_to`, where the reply goes; `opened_at`, an ISO-8601 UTC timestamp; `replied_at`, the timestamp of the send that delivered `reviews/<round-id>-reply.md`, `null` until it happens; and `push_refused`, a `{at, reason}` written only when the remote refused this round's push twice. A round entry with a `null` `replied_at` is the one thing that says a reply is still owed, and a round with no package at all still has one, so an all-declined round knows its own reader. Absent until the first patch round. |
+| `rounds[].source` | `{kind, ref}`. `kind` is one of `ci`, `pr-comments`, `principal` and `skeptical`. `ref` names the one source of that kind: the CI run's URL, the PR review thread's URL, the principal's session name or `"typed"`, or `skeptical-r<n>`. |
+| `rounds[].reply_to` | where this round's reply is sent, decided by `kind` and written when the round opens. `pr-comments` is the review thread its `ref` names. **`ci` is the PR conversation**, because a CI run holds no thread to answer: the reply is a PR comment that links the run URL. `principal` is the channel the message arrived on. `skeptical` is the record alone — the reply file is the reply, and the next status message to the principal names its path. |
 | `checkout` | the absolute path this run does its git work in, written at `simple-path.md`'s "Create the branch". It is the target repo the charter named, unless another run already held that checkout — then it is the worktree this run cut, registered in `worktrees.json`. Every git command, the test suite and the push run against it. It is not where the run's transcripts live: those follow the session's own working directory, which the launch fixed (design §15.90). Absent on an investigation run that ends in a report, which creates no branch. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it when it has to price from a checkout. |
@@ -480,9 +526,10 @@ nobody resumes — a principal who typed the goal and closed the pane after the
 merge — stays `interrupted` with its `delivered_at`, and `crew-stats.py`
 prices it through its latest stamp.
 
-A follow-up in the delivered window moves `run_state` nowhere: the run stays
-`delivered` while an IC works, and `decisions.md` holds what the follow-up
-was. Only an escalation moves it, to `blocked` and back.
+A round of the delivered window moves `run_state` nowhere: the run stays
+`delivered` while an IC works, and `decisions.md` holds what the change
+request or the finding was. Only an escalation moves it, to `blocked` and
+back.
 
 **Write `delivered` before the hand-over's `spend.py --write`, and `complete`
 before the last one.** The `complete` write stamps `completed_at` before the
@@ -1185,7 +1232,8 @@ Every name this file defines, with what consumes it.
 - `run.review_rounds` — writer: the project lead, on first entry into a round (`skeptical-review.md`). Consumer: `skeptical-review.md` (the cap, and the round's file names)
 - `run.unreviewed_heads` — writer: `crew-record.py`'s `arm_review`, through either command, when the cap stops a head being armed. Consumer: the project lead's next report to the principal (`skeptical-review.md`)
 - `run.review_results` — writer: the project lead, after the four checks over a finished review. Consumer: `skeptical-review.md` (whether a report may be adjudicated)
-- `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head` and `arm-review --head`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
+- `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head`, `integrate --review-head` and `arm-review --head`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
+- `run.rounds` — writer: the project lead, when it opens a patch round, again at a push or a refusal, and again at the reply's send (`simple-path.md`'s "Findings from a review"). Consumer: this file's "What a delivered-window round still owes"; `packages[].round` points into it
 - `run.review_session_ids` — writer: the project lead, before it launches each skeptical review (`skeptical-review.md`). Consumer: `scripts/spend.py` and `scripts/crew-stats.py` (the transcripts that price the review into the run). Neither hook reads it
 - `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py` (the checkout fallback only)
 - `run.delivered_at` — writer: `crew-record.py`, on the first `deliver`, `run state delivered`, or `run set run_state delivered`. Consumer: `scripts/crew-stats.py` (the end of an `interrupted` run that has delivered); a human, or a later session, asking when the work was handed over and how long the delivered window ran
@@ -1241,6 +1289,8 @@ Every name this file defines, with what consumes it.
 - `ic_name` — consumer: `worktrees.json` (this file); stage 5 (project lead finds the worktree to verify)
 - `plan_path` — consumer: Task 6 (`ic-contract.md`, "Write your plan first"); Task 7 (`crew:ic` writes it)
 - `report_path` — consumer: Task 6 (`ic-contract.md` report contract); the project lead at "Verify before you believe"
+- `round` — consumer: `simple-path.md`'s "Findings from a review" (which round's reply and source this package belongs to); this file's `run.rounds`
+- `pushed_at` — consumer: this file's "What a delivered-window round still owes" (a package that still owes a publication)
 
 **`state.json` state values** (shared by `packages[].state` and
 `deliverables[].state`, except `integrated`, `draft-pr-opened`, and
@@ -1313,6 +1363,7 @@ Every name this file defines, with what consumes it.
 - `reviews/skeptical-r<n>-instructions.md` — writer: the project lead, before it launches that review. Consumer: `--append-system-prompt-file` on the review's own command; a human asking what the reviewer was told
 - `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the project lead's four checks, live and on a resume
 - `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)
+- `reviews/<round-id>-reply.md` — the same file for a patch round from any other source, with `<round-id>` from `run.rounds`. Writer and consumer as above; the send that closes it is `simple-path.md`'s "Findings from a review"
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts
 - `reviews/diagnosis-adversary.md` — writer: the project lead, copying the case one `crew:council-advocate` returned on the investigation path; an advocate writes no file (`agents/council-advocate.md`). Consumer: design §9.5 (a report ending's only verification evidence, design §7)
 

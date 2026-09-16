@@ -671,7 +671,7 @@ an effort. A band sets a model, and which review steps run.
 
 | Band | Model | The package looks like |
 |---|---|---|
-| light | haiku | Follows an existing repo pattern verbatim; tests already cover the surface |
+| light | sonnet | Follows an existing repo pattern verbatim; tests already cover the surface |
 | **standard** | **sonnet** | **default** |
 | deep | opus | A new interface others depend on; concurrency, security, migration, or a data-shape change; or the project lead had to *interpret* the acceptance criterion rather than read it off the charter |
 
@@ -7275,3 +7275,41 @@ Deliberately different:
        could tell an inferred line from a stated one. A lead that comes back
        marks each charter line with its source, or it writes only what the
        principal said.
+
+96. **Haiku runs only an agent whose tools need no approval — 2026-09-16,
+    T65.** Auto mode's permission classifier approves a tool call on the
+    agent's own model. It supports Opus 4.6+, Sonnet 4.6+ and Fable, and no
+    Haiku on any provider
+    (https://code.claude.com/docs/en/permission-modes.md, "Eliminate prompts
+    with auto mode"). A subagent inherits the parent's auto mode, and a
+    dispatched agent's own `permissionMode` frontmatter is ignored while the
+    parent runs in auto, acceptEdits or bypass mode
+    (https://code.claude.com/docs/en/sub-agents.md). A teammate's prompts
+    surface in the project lead's session, for a human to answer
+    (https://code.claude.com/docs/en/agent-teams.md#permissions). A Haiku
+    agent with a tool that needs approval — `Bash`, `Write`, or `Edit` —
+    therefore has no approver: every call falls back to a prompt, in a
+    session nobody is watching.
+
+    a. **The mechanism.** The three sources above, read together: no
+       approver on Haiku, no override from the dispatched agent's own
+       frontmatter, and a teammate's prompt reaching only the project lead's
+       session.
+
+    b. **The evidence.** In session `aad2bfca-66ed-47cd-928f-1da15964bbf9`
+       (2026-09-16), the project lead dispatched a named Haiku `Explore`
+       scout, `repo-scout`. `Explore` carries `Bash`, and every one of its
+       calls prompted the principal. The same run's two `crew:ic` dispatches
+       ran at `sonnet` and prompted for nothing.
+
+    c. **The rule, and its cost.** Haiku may run only an agent built from
+       tools that never prompt: `Read`, `Glob`, `Grep`, and, for a `Read`
+       target inside the repo, no exception needed. `crew:scout` is the only
+       agent that qualifies today (`band-rubric.md`). This costs the `light`
+       band its saving: a `light` package now runs on `sonnet`, the same
+       model as `standard`, because every IC carries `Bash`, `Write`, or
+       `Edit`. A Haiku IC is not banned by any tool of its own — it is banned
+       by this rule, because the platform gives it no approver. It could
+       return under either of two conditions: auto mode adds Haiku support,
+       or a principal writes allow rules that cover every command an IC in
+       this repo runs, so a prompt never has to fall back to a human.

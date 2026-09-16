@@ -2796,3 +2796,66 @@ reshaping.
 
 Read first: design §15.94e; T61; `review-output.md`; `skills/project-lead/`
 for how a crew skill is laid out.
+
+## T65 — Haiku runs only an agent whose tools need no approval
+
+Status: done
+Depends on: nothing
+Stage: 7 (design §15.96)
+
+Auto mode's permission classifier has no approver for Haiku on any provider,
+and a Haiku agent with `Bash`, `Write`, or `Edit` prompts on every call in a
+session nobody is watching. Session `aad2bfca-66ed-47cd-928f-1da15964bbf9`
+showed it: a named Haiku `Explore` scout prompted on every call, while the
+same run's two `crew:ic` dispatches ran at `sonnet` and prompted for nothing.
+
+Scope. A new agent, `crew:scout`, built from `Read`, `Glob` and `Grep` alone,
+answers the project lead's four scout questions and is the only agent Haiku
+runs. `band-rubric.md` states the rule and moves the `light` band's ICs to
+`sonnet`. `SKILL.md`'s "Scout" step, the README's model table, and design §3's
+role table point at `crew:scout` instead of `Explore`.
+
+Run it. Read `band-rubric.md`, `agents/scout.md`, and `SKILL.md`'s "Scout"
+step.
+
+Check that no instruction file still sends Haiku to an agent carrying `Bash`,
+`Write`, or `Edit`, and that the rule lives in `band-rubric.md` alone.
+
+Done when: `crew:scout` exists, dispatches at `haiku`, and every other agent's
+floor is `sonnet`.
+
+Read first: design §15.96; `band-rubric.md`; `agents/spec-critic.md` for the
+agent-definition shape.
+
+## T66 — Name every dispatch
+
+Status: open
+Depends on: T65
+Stage: 7 (design §15.20b, §15.20 sub-item c)
+
+The rule "only ICs are named" rests on design §3's claim that a teammate's
+output never returns to the project lead. §15.20b recorded the claim as
+wrong, and a later probe confirmed the final answer arrives as prose in the
+idle notification. The principal decided every dispatch is named, so every
+agent gets a pane under a display mode.
+
+Scope. Flip the naming rule in design §3, and every "unnamed" in `SKILL.md`,
+`simple-path.md`, `full-path.md`, `investigation-path.md`, the agent
+descriptions, `CLAUDE.md`, and `README.md`. State that with the teams flag
+off, a name changes nothing. A teammate cannot spawn a teammate, so the
+researcher's own lookups run one at a time. Each dispatch's report is read
+from its idle notification, and the record file stays the durable copy where
+one exists.
+
+Run it. Read design §3, §15.20, §15.21, §15.89, and CLAUDE.md's "Constraints
+that are easy to get wrong".
+
+Check that no instruction file says "unnamed", that the naming rule is
+stated once, and that a probe with the flag on shows the spec critic's
+one-line verdict and a council batch read correctly from idle notifications.
+
+Done when: no instruction file says "unnamed", the naming rule is stated in
+one place, and a flag-on probe reads both cases back correctly.
+
+Read first: design §3, §15.20, §15.21, §15.89; CLAUDE.md "Constraints that
+are easy to get wrong".

@@ -92,9 +92,6 @@ def flag(rest: list[str], name: str):
 
 
 def set_dotted(target: dict, dotted: str, value) -> None:
-    # Mirrored from `skills/lead/scripts/crew-portfolio.py`. The two scripts
-    # sit in two skill directories, and a shared module would be a third file
-    # the plugin loads for neither skill. Change both together.
     keys = dotted.split(".")
     for depth, key in enumerate(keys[:-1]):
         if target.get(key) is None:

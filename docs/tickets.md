@@ -1,8 +1,8 @@
 # Tickets
 
 The build backlog, from the current state (stages 0-6 built: both paths
-run) to the target state: a working three-tier hierarchy —
-lead → project leads → ICs (design §15.21).
+run) to the target state: a project lead that takes one goal to a draft PR
+and dispatches its own ICs (design §15.95).
 
 How to take a ticket:
 
@@ -2318,8 +2318,8 @@ same blind spot: it matches a session id against `run.session_ids` and
 against each worktree's own `session_ids` in `worktrees.json`, and a
 split-pane teammate's id lands in neither, so it logs no compaction for one.
 Every run so far ran in-process, where a teammate has no session of its own,
-so neither gap ever showed. T55 turns split panes on by default for every
-full-path project lead, so every full-path run now hits both.
+so neither gap ever showed. A run launched with `--teammate-mode tmux` hits
+both.
 
 **Do not put a teammate's session id in `run.session_ids`.**
 `hooks/session-end.py` marks a run `interrupted` when a dying session's id
@@ -2336,7 +2336,8 @@ the Claude Code docs. Check whether the project lead can read that file
 while its teammates are still live, and whether the id still resolves after a
 teammate goes idle.
 
-Run it. One full-path run under T55's layout, with at least one IC teammate.
+Run it. One full-path run with `--teammate-mode tmux`, with at least one IC
+teammate.
 Read the team config while the run is live and confirm it names the
 teammate's session id. Write that id into the new field at the point the
 project lead learns it, have `spend.py` and `crew-stats.py` include it in the
@@ -2345,8 +2346,7 @@ run's price, and confirm neither hook treats it as a project-lead id.
 Check the priced figure against a hand count of the teammate's own
 transcript tokens. Check that killing a teammate's pane mid-package leaves
 `run_state` untouched. Force a second compaction with `/compact` in the
-teammate's pane and check that it lands in `run.compactions` now, closing
-the gap T55 confirmed.
+teammate's pane and check that it lands in `run.compactions` now.
 
 Done when: a full-path run under a split pane prices whole, its teammate
 compactions are logged, `record-format.md` documents the new field and when
@@ -2359,7 +2359,7 @@ the Claude Code agent-teams docs on the team config file.
 
 ## T57 — Remove the lead tier
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: 7 (design §15.19, §15.72)
 

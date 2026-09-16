@@ -7228,3 +7228,50 @@ Deliberately different:
        script counts every entry that carries a `cause`, and the prediction
        carries one too. A promotion is a second entry for the same package
        (T62).
+
+95. **The lead tier is removed — 2026-09-16, T57.** The lead was built to hold
+    a portfolio and to launch one project-lead session per item, and §15.74,
+    §15.80, §15.87 and §15.88 record what it did. Its first real use decided
+    against it. On run `agi-3057-handoff-attempt-record-399d` (2026-09-15) the
+    lead wrote a 49-line, 928-word charter that named the module location, the
+    state enum to reuse, the storage pattern, the TTL, the metrics and the
+    flag name. The project lead adopted it unchanged, as `record-format.md`
+    required, and the principal then had to reverse one of those choices
+    through the project lead: `charter.md` item 5 named 90 days, and the
+    principal overrode it. The lead reads no code (§15.88), so when the
+    principal asked why, it answered from reports. §15.94f had already named
+    the mechanism — a lead infers the charter lines the principal never said,
+    and those lines must never bind the project lead the way the principal's
+    own words do. The principal's verdict: the tier makes decisions the
+    project lead should make, and they would rather drive project leads
+    directly until they see the patterns in how they manage them.
+
+    a. **What went.** `skills/lead/` in full, with `session-launch.md`,
+       `crew-portfolio.py` and `lead-spend.py`. The portfolio record, and its
+       entries in `record-format.md`'s name inventory. `interrupt_lead()` and
+       `wake_lead()` in `hooks/session-end.py`, and the portfolio-compaction
+       block in `hooks/pre-compact.py`. The "Leads" report and the
+       `lead.spend` totals in `crew-stats.py`. The gate section of
+       `autonomy-contract.md`, because a gate was held by a portfolio item and
+       nothing else could hold one. `CREW_LAUNCH` and the `crew` tmux session,
+       because the lead was the only thing that read either: a person now runs
+       `/crew:project-lead` in their own session, and `--teammate-mode tmux`
+       is what gives a full-path IC a pane.
+
+    b. **What stays.** The charter as an input a person writes: a person hands
+       `/crew:project-lead` a charter path, and two runs already did with no
+       lead in the loop (§15.22a). The word "principal" stays general — it
+       names whoever handed the goal over, a person or a session — so no file
+       hard-codes the human as the only principal (§15.22b). The project lead
+       still sizes its own work (§15.88), which is the step the lead never
+       took over.
+
+    c. **The rule for any future lead.** It never writes a charter line the
+       principal did not say. A lead that infers a module path, a storage
+       pattern or a constant is making the project lead's decision from
+       outside the code, and the principal has to reverse it through two
+       sessions. §15.94f states the rule and this item is why it was not
+       enough: the lead's own charter was the artifact, so nothing downstream
+       could tell an inferred line from a stated one. A lead that comes back
+       marks each charter line with its source, or it writes only what the
+       principal said.

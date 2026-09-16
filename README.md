@@ -3,27 +3,24 @@
 A Claude Code plugin that takes your goals to reviewable draft PRs, and does
 not stop for approval on the way.
 
-You hand your goals to a lead. It starts one project lead per goal. Each
-project lead reads its repo, writes the spec, splits the work, picks a model
-for each piece, dispatches implementers, checks each piece itself, integrates
-the work and hands it over as a draft PR. Only then is the whole diff
-reviewed. A separate session reads it against your goal and assumes it is
-wrong. What that session finds comes back as patch rounds on the same PR.
-You merge it when you are ready. The lead brings you every question the runs
-cannot answer, in one batch. Each project lead stays until you say its work
-shipped, so you can ask it about the change before you merge, ask for a
-change to the PR after, or send it a review's findings and get a reply on
+You hand a goal to a project lead. It reads its repo, writes the spec, splits
+the work, picks a model for each piece, dispatches implementers, checks each
+piece itself, integrates the work and hands it over as a draft PR. Only then
+is the whole diff reviewed. A separate session reads it against your goal and
+assumes it is wrong. What that session finds comes back as patch rounds on the
+same PR. You merge it when you are ready. The project lead stays until you say
+its work shipped, so you can ask it about the change before you merge, ask for
+a change to the PR after, or send it a review's findings and get a reply on
 each one.
 
-Two entry points:
+One entry point:
 
 | Command | Use it for |
 |---|---|
-| `/crew:lead` | The main entry point. Hand it every goal. It runs one project-lead session per goal and brings you every question in one batch. |
-| `/crew:project-lead` | One goal, run directly in the session you are in. |
+| `/crew:project-lead` | One goal, run in the session you are in. It sizes the work itself and brings you every question it cannot answer. |
 
-Crew is experimental. Both entry points have taken real goals to draft PRs,
-and the plugin changes often.
+Crew is experimental. It has taken real goals to draft PRs, and the plugin
+changes often.
 
 ## Install
 
@@ -32,78 +29,19 @@ and the plugin changes often.
 /plugin install crew@crew
 ```
 
-## Run your goals through a lead
-
-A lead holds a portfolio and starts one project-lead session per goal. It
-reads no code and sizes nothing: the project lead does that. One goal or ten
-take the same steps.
-
-Start tmux in a directory that is not a repo checkout:
-
-```
-tmux new -A -s crew
-```
-
-Then start Claude Code inside it:
-
-```
-claude --model fable --effort high
-```
-
-Then start the lead:
-
-```
-/crew:lead
-```
-
-Type the goals as your next message. Give each one the absolute path of its
-repo:
-
-```
-Add a --json flag to the export command in /Users/me/src/kit. Then fix the flaky retry test in /Users/me/src/client.
-```
-
-In tmux, the lead opens one window per goal in the session named `crew`, and
-one pane per implementer inside that window on the full path. Press Ctrl-b n to
-move to the next window. You can start the lead in any terminal instead, then
-watch the goals from another one:
-
-```
-tmux attach -t =crew
-```
-
-From a terminal that is already in tmux, use `tmux switch-client -t =crew`.
-
-In iTerm2, set `CREW_LAUNCH=iterm2` for a native tab per goal instead: install
-the `iterm2` package for your `python3` and turn on the Python API in iTerm2's
-settings. A tab holds the project lead alone and gets no implementer panes.
-
-What to expect:
-
-- Each target repo must be one you have opened in Claude Code before. The
-  lead checks, and asks you to open a new one once.
-- Questions arrive in the lead's pane, in one batch, with a push
-  notification. Answer in that pane and nowhere else.
-- Add a goal at any time by typing it in the pane.
-- A goal in stages takes one item per stage. Name the stages and the command
-  that checks each one. The lead holds the next stage until you say go.
-- A project lead stays in its window after its PR opens. Ask the lead to pass
-  it a question, a change to the PR, or a review's findings, or type in its
-  window yourself. When the PR is merged and deployed, tell the lead the item
-  shipped, and it closes the session.
-- If the lead session dies, start Claude Code again in the same directory and
-  run `/crew:lead`. It finds the open portfolio and continues, and it resumes
-  any project lead that died with it.
-
 ## Run one goal in your session
-
-This is what the lead does for each goal. Do it yourself when you want to
-watch one run, or when you have no tmux.
 
 Start Claude Code in an ordinary clone of the target repo, not a worktree:
 
 ```
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto
+```
+
+Add `--teammate-mode tmux` from inside tmux to give each implementer its own
+pane on the full path:
+
+```
+CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto --teammate-mode tmux
 ```
 
 Then hand over the goal:
@@ -120,6 +58,15 @@ The argument is one of four:
 | A symptom, such as `the export drops the last row` | The investigation path: reproduce it, find the cause, then fix it or report the diagnosis. |
 | A path to a charter file | That file is the charter, unchanged. |
 | `--resume <goal-slug>` | Reopens a killed run from its record and continues. The slug is the record directory's name. |
+
+For two goals in one clone, tell the second run that the clone is taken:
+
+```
+/crew:project-lead another crew run holds this checkout. add a --json flag to the export command
+```
+
+It then cuts a worktree of its own instead of switching the branch under the
+first run.
 
 You can name your own reviewer for either of the two review steps — the spec
 review, and the review of the finished diff. Say it in plain words with the
@@ -163,8 +110,7 @@ ran out. Answer in the session and the run continues.
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | the full path |
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
-| A trusted directory | Open each target repo in Claude Code once | every run a lead launches |
-| tmux, or iTerm2 with `CREW_LAUNCH=iterm2` | `tmux new -A -s crew` before you start the lead, or `tmux attach -t =crew` from another terminal | `/crew:lead` |
+| tmux, for a pane per implementer | `--teammate-mode tmux` from inside tmux; without it the implementers run in the sidebar | optional, the full path |
 
 Crew never widens your permissions itself. Without the teams variable a run
 still works, but a named agent becomes an ordinary subagent: you keep the
@@ -221,9 +167,6 @@ agents and the shared task list.
    you merge it, and say when it shipped
 ```
 
-`/crew:lead` sits one level above this diagram. It writes a charter per goal
-and starts one project lead per charter.
-
 A package is dispatchable only with four things: its own acceptance
 criterion, a file set disjoint from every sibling, a written interface
 contract with those siblings, and a model band. An IC works in its own
@@ -253,7 +196,6 @@ same steps.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|
-| Lead | your session's: use `fable` | your session's: use `high` |
 | Project lead | your session's: use `fable` | your session's: use `high` |
 | IC, Instruction IC | the package's band: haiku, sonnet or opus | your session's |
 | Scout | haiku or sonnet | your session's |
@@ -284,9 +226,7 @@ to see every judgment call with its citation.
 └── diffs/          one diff per deliverable
 ```
 
-A lead writes `~/.claude/crew/lead-<date>-<hex>/` beside them, with the
-portfolio, its charters, and each goal's record under `runs/`. Set
-`CREW_RECORD_ROOT` to move the root.
+Set `CREW_RECORD_ROOT` to move the root.
 
 To see what runs cost, from a checkout of this repo:
 
@@ -301,7 +241,6 @@ review catch rate, over every record.
 
 | Role | What it does |
 |---|---|
-| Lead | Holds a portfolio. Writes a charter per goal, starts one project-lead session per goal, answers what its record settles, and brings you the rest in one batch. Passes your questions, your changes, a review's findings and the word that an item shipped down to its project lead. |
 | Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the draft PR. Then stays for questions, changes and review findings until the work ships. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |

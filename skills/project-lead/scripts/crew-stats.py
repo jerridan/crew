@@ -15,19 +15,11 @@ cost prints as `unmeasured` unless the record's `usage` object carries one. Desi
 into a measurement. No figure here gates anything.
 
 One record shape is read, and only one: a run record with a `state.json`
-(§15.88). Every portfolio item has one, because the lead hands every item to a
-project-lead session. A portfolio written before that rule can still hold an
-`items[].task` object beside its run records. This script **ignores it** — it
-never errors on one, and it counts none of its reviews or skips. Ignoring is
-what keeps one code path: a second shape is what T45's six defects and this
-script's twin readers came from. One skip line per such portfolio says the
-counts read low for it.
-
-A lead's portfolio gets a row of its own: what the lead's sessions cost, from
-`lead.spend` (`skills/lead/scripts/lead-spend.py` writes it), beside what the
-runs under that portfolio cost. The lead runs from no checkout, so nothing
-else counts it, and it was most of the one measured portfolio (§15.74k,
-§15.76).
+(§15.88). The record root is scanned recursively for one, because a record
+does not always sit one level down: a run launched with its own
+`CREW_RECORD_ROOT` nests under the directory that launched it. Keeping to one
+shape is what keeps one code path: a second shape is what T45's six defects
+and this script's twin readers came from.
 
 It also reads every council entry's `Prior:`, `Positions:`, `Answer:` and
 `Models:` lines and reports the one-advocate ("adversary") entries: how many
@@ -622,7 +614,7 @@ def rate(part: int, whole: int) -> str:
     return "-" if not whole else f"{100 * part / whole:.1f}%"
 
 
-def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> None:
+def report(records: list[dict], skips: list[str]) -> None:
     print("Runs\n")
     rows = [
         [r["run"], r["packages"], r["fix_rounds"], r["promotions"], r["decisions"], r["councils"],
@@ -657,44 +649,6 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
         rows.append([band, t["packages"], t["priced"], f"{t['fix_rounds'] / t['packages']:.2f}",
                      t["promotions"], money(t["usd"] if t["priced"] else None), mean])
     print(table(["band", "pkgs", "priced", "fixes/pkg", "promos", "usd", "usd/pkg"], rows))
-
-    # The lead's own seat against the runs it drove. `lead usd` comes from
-    # `lead.spend`; nothing else can price a session that ran from no
-    # checkout. `runs usd` is the priced runs under this portfolio only, so a
-    # portfolio with an unpriced run reads low and the Skipped block names it.
-    # The lead's share was 20%, 30% and 47% of the three portfolios
-    # measured, and it thins as the portfolio grows (§15.80h). A portfolio
-    # written before §15.88 can read higher: a lead-run task's IC and reviewer
-    # ran under the lead's own session, so `lead usd` covers them and no run
-    # column holds them (§15.76). The two columns add up only while the lead
-    # ran outside every item's checkout, which `skills/lead/SKILL.md` requires
-    # and `lead-spend.py` checks; inside one, that item's own price already
-    # holds the lead.
-    if portfolios:
-        print("\nLeads (the lead's own sessions against the runs it drove)\n")
-        rows = []
-        for p in portfolios:
-            mine = [r for r in records if r.get("portfolio") == p["portfolio"]]
-            priced = [r["usd"] for r in mine if r["usd"] is not None]
-            runs_usd = sum(priced) if priced else None
-            total = None
-            if p["usd"] is not None or runs_usd is not None:
-                total = (p["usd"] or 0.0) + (runs_usd or 0.0)
-            # A real $0.00 total still has a share: both halves priced at
-            # zero. Only a missing figure — total or the lead's own — reads
-            # as "-"; a zero total divides to 0.0%, never a ZeroDivisionError,
-            # because it is only reachable when `p["usd"]` is zero too.
-            if total is None or p["usd"] is None:
-                share = "-"
-            elif total == 0:
-                share = "0.0%"
-            else:
-                share = f"{100 * p['usd'] / total:.1f}%"
-            rows.append([p["portfolio"], p["state"] or "-", p["items"], p["done"],
-                         len(mine), len(priced), money(p["usd"]), money(runs_usd),
-                         money(total), share])
-        print(table(["portfolio", "state", "items", "done", "runs", "priced",
-                     "lead usd", "runs usd", "total usd", "lead share"], rows))
 
     # A one-advocate ("adversary") entry: did the answer keep the project
     # lead's `Prior:` whole, change it in part, or did the advocate overturn
@@ -794,15 +748,6 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
         ["usd, priced runs", money(sum(priced) if priced else None)],
         ["usd per priced run", money(sum(priced) / len(priced) if priced else None)],
     ]
-    lead_usd = [p["usd"] for p in portfolios if p["usd"] is not None]
-    if portfolios:
-        rows.extend([
-            ["portfolios", len(portfolios)],
-            ["portfolios priced", len(lead_usd)],
-            ["usd, leads", money(sum(lead_usd) if lead_usd else None)],
-            ["usd, leads and priced runs",
-             money(sum(lead_usd) + sum(priced) if lead_usd or priced else None)],
-        ])
     print(table(["measure", "value"], rows))
 
     if skips:
@@ -811,88 +756,60 @@ def report(records: list[dict], portfolios: list[dict], skips: list[str]) -> Non
             print(f"  {line}")
 
 
-def candidates(children: list[Path]) -> list[tuple[Path, Path | None]]:
-    """Every goal record under `children`, each with the portfolio that drove it.
+# A directory crew fills with something other than a record. A target repo, an
+# IC's worktree and a review worktree each hold a whole checkout, so a fixture
+# `state.json` anywhere inside one would otherwise read as a run.
+NOT_A_RECORD = ("checkout", "worktrees", "review-worktrees", ".git")
 
-    `children` is `root`'s own subdirectories — `main` lists them once and
-    shares the listing with `read_portfolios`, so the two readers of `root`
-    stat `portfolio.json` on one walk, not two.
 
-    A lead's portfolio directory holds a `portfolio.json` and no `state.json`,
-    and the runs it drove sit two levels below it, at
-    `runs/<item-id>/<goal-slug>/`, because each item gets its own
-    `CREW_RECORD_ROOT` (`record-format.md`). Reading one level only would make
-    every lead-driven run invisible to this report. The second element is the
-    portfolio directory, or `None` for a run nobody led.
+def is_record(state_path: Path) -> bool:
+    """`True` when this `state.json` is a run record, not some other file.
 
-    `runs/<item-id>/checkout/` was a lead-run task's worktree before §15.88,
-    and is not a record, so a target repo that keeps a `state.json` of its own
-    at its root would read as a run here. That one name is excluded.
+    A record is proved by `charter.md` beside it, or by a `run` object with a
+    `run_state` (`record-format.md`). A file that parses as neither is still a
+    record here, so `main` names it in the Skipped block instead of dropping
+    it in silence.
+    """
+    if (state_path.parent / "charter.md").is_file():
+        return True
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return True
+    if not isinstance(state, dict):
+        return True
+    run = state.get("run")
+    return isinstance(run, dict) and run.get("run_state") is not None
+
+
+def candidates(root: Path) -> list[Path]:
+    """Every goal record under the record root.
+
+    The root is scanned recursively for a `state.json`, because a record does
+    not always sit one level down: a run launched with its own
+    `CREW_RECORD_ROOT` nests under the directory that launched it
+    (`record-format.md`). One directory with a `state.json` is one record.
+
+    Two rules keep a file that is not a record out. The walk never descends
+    into a directory `NOT_A_RECORD` names, so nothing inside a checkout or a
+    worktree is read at all. `is_record` then checks the shape of each
+    `state.json` the walk does reach.
     """
     found = []
-    for child in children:
-        if (child / "portfolio.json").is_file():
-            found.extend((p.parent, child) for p in sorted(child.glob("runs/*/*/state.json"))
-                         if p.parent.name != "checkout")
-        else:
-            found.append((child, None))
-    return found
-
-
-def read_portfolios(children: list[Path], skips: list) -> list[dict]:
-    """One entry per portfolio: what the lead itself cost, and its item count.
-
-    `children` is the same listing `candidates` reads — see its docstring.
-    Every item's own work is a run record under `runs/<item-id>/<slug>/`, which
-    `candidates` finds and `read_record` prices, so nothing about an item's
-    packages, reviews or skipped steps is read here (§15.88).
-
-    `lead.spend` is written by `skills/lead/scripts/lead-spend.py` when an
-    item closes. A portfolio with none is still reported, with a skip line
-    naming the script that fills it in.
-    """
-    found = []
-    for child in children:
-        path = child / "portfolio.json"
-        if not path.is_file():
-            continue
+    stack = [root]
+    while stack:
+        directory = stack.pop()
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as err:
-            skips.append(f"{child.name}: unreadable portfolio.json — {err}")
+            children = sorted(directory.iterdir())
+        except OSError:
             continue
-        if not isinstance(data, dict):
-            skips.append(f"{child.name}: unreadable portfolio.json — it holds a {type(data).__name__}, not an object")
-            continue
-        lead = data.get("lead")
-        lead = lead if isinstance(lead, dict) else {}
-        stored = lead.get("spend")
-        usd = None
-        if isinstance(stored, dict) and stored.get("usd_list_price") is not None:
-            usd = float(stored["usd_list_price"])
-        else:
-            skips.append(f"{child.name}: no lead cost — the portfolio has no lead.spend; "
-                         "run skills/lead/scripts/lead-spend.py --write")
-        listed = as_list(data.get("items"))
-        items = [i for i in listed if isinstance(i, dict)]
-        if len(items) != len(listed):
-            skips.append(f"{child.name}: {len(listed) - len(items)} item entries dropped — they are not objects")
-        # A portfolio written before §15.88 can hold an `items[].task` object
-        # from the days the lead ran a task itself. Nothing reads it now, so
-        # that item's reviews and skipped steps reach no table here. One line
-        # says so, rather than letting the counts read low in silence.
-        pre_t51 = sum(1 for i in items if isinstance(i.get("task"), dict))
-        if pre_t51:
-            skips.append(f"{child.name}: {pre_t51} item(s) hold a pre-T51 items[].task object — "
-                         "their reviews and skipped steps are not counted (§15.88)")
-        found.append({
-            "portfolio": child.name,
-            "state": lead.get("state"),
-            "items": len(items),
-            "done": sum(1 for i in items if i.get("state") == "done"),
-            "usd": usd,
-        })
-    return found
+        for child in children:
+            if child.is_dir():
+                if child.name not in NOT_A_RECORD:
+                    stack.append(child)
+            elif child.name == "state.json" and is_record(child):
+                found.append(directory)
+    return sorted(found)
 
 
 def main(argv: list[str]) -> None:
@@ -918,12 +835,7 @@ def main(argv: list[str]) -> None:
 
     skips: list[str] = []
     records = []
-    children = sorted(p for p in root.iterdir() if p.is_dir())
-    portfolios = read_portfolios(children, skips)
-    for record, portfolio in sorted(candidates(children), key=lambda pair: pair[0]):
-        if not (record / "state.json").is_file():
-            skips.append(f"{record.name}: not a record — no state.json")
-            continue
+    for record in candidates(root):
         try:
             state = json.loads((record / "state.json").read_text(encoding="utf-8"))
         except (OSError, ValueError) as err:
@@ -942,20 +854,16 @@ def main(argv: list[str]) -> None:
         except (AttributeError, KeyError, TypeError, ValueError) as err:
             skips.append(f"{record.name}: unreadable record — {type(err).__name__}: {err}")
             continue
-        read["portfolio"] = portfolio.name if portfolio else None
         records.append(read)
 
-    # A portfolio alone is worth reporting: a lead that has priced itself
-    # before its first project-lead session wrote a `state.json` has a cost
-    # and no run, and exiting here would print nothing at all.
-    if not records and not portfolios:
+    if not records:
         sys.exit(f"no records under {root}")
 
     if args.json:
         print(json.dumps({"record_root": str(root), "records": records,
-                          "portfolios": portfolios, "skipped": skips}, indent=2))
+                          "skipped": skips}, indent=2))
     else:
-        report(records, portfolios, skips)
+        report(records, skips)
 
 
 if __name__ == "__main__":

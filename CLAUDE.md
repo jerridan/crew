@@ -18,11 +18,8 @@ code, run against a seeded record (design §15.38, §15.50).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, a review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps, the steps the principal replaced and each lead's own cost over every record | the project lead, from Bash; a person runs `crew-stats.py` |
-| `skills/lead/SKILL.md` | the `/crew:lead` entry point — the portfolio, the charters, the sessions, the gates, the escalations and the ledger | its skill trigger |
-| `skills/lead/references/session-launch.md` | launching, addressing, steering and resuming one project-lead session | the lead |
-| `skills/lead/scripts/*.py` | `crew-portfolio.py` writes one `portfolio.json` field; `lead-spend.py` prices the lead's own sessions into `lead.spend` | the lead, from Bash |
-| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run or a dead lead interrupted, then wakes the lead above a dead run by cross-session message; `PreCompact` logs a compaction into the run and into the portfolio | the plugin loader, in every session |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and the steps the principal replaced over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
@@ -30,16 +27,15 @@ code, run against a seeded record (design §15.38, §15.50).
 
 A run's own output — charter, spec, plan, state, reports, reviews — never
 lands in this repo. It goes to `<record-root>/<goal-slug>/`, where the root
-is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`. A lead's portfolio
-sits beside it, at `<record-root>/lead-<date>-<hex>/`.
+is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 
 ## Build state
 
-Stages 0 through 7 are built: six agents, eleven references, both hooks, all
-four of `/crew:project-lead`'s paths, and `/crew:lead`. The **simple path**
-runs one package on one branch under one unnamed subagent; the **full path**
-runs several packages in worktrees under named IC teammates, with a merge per
-package and `--resume` recovery. Both have run end to end against a real repo.
+Stages 0 through 7 are built: six agents, ten references, both hooks and all
+four of `/crew:project-lead`'s paths. The **simple path** runs one package on
+one branch under one unnamed subagent; the **full path** runs several packages
+in worktrees under named IC teammates, with a merge per package and
+`--resume` recovery. Both have run end to end against a real repo.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
 a report ending; both endings have run, and it is `crew:researcher`'s only
 caller, which no run has dispatched yet. The **light path** is the simple path
@@ -55,22 +51,12 @@ package per group, one push, a reply per finding (§15.94d). Neither has run.
 steps, moved the last to after the hand-over and gave the window a patch mode.
 Each is evidence for one step, not for the loop.
 
-`/crew:lead` is the tier above: it holds a portfolio, writes a charter per
-item, launches one project-lead session per item, answers what it can and
-batches the rest for the human. It sizes nothing — the project lead does that
-(§15.88). Its record is the portfolio, and a killed lead starts again from it.
-One goal has run through it end to end, and a lead was killed mid-portfolio
-and restarted from the record with no human turn (design §15.72, §15.74). Two
-goals at once has run (T9, §15.80): the lead resumed a killed project lead
-with no human turn, and survived a compaction mid-portfolio. Three items from
-one lead has run, the second handed while the first was still going (§15.88).
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
 sessions rather than from the checkout (§15.90).
-A goal the principal cuts into stages can carry a
-**gate** between them — one item per stage, and the lead holds the next stage
-until the principal's go. One two-stage goal has run through a gate end to end
-(§15.87).
+
+T57 removed the tier above the project lead: the principal hands each goal
+over itself (§15.95). Nothing in this checkout has run since.
 
 `docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
 Never write about an unbuilt stage as if it runs, or about a built one as if
@@ -84,12 +70,8 @@ stage-2 run; add a new finding there.
 
 Each reference owns one subject and is canonical for it:
 
-- `autonomy-contract.md` — how a question is routed, when a project lead or a
-  lead escalates and to whom, and how a run's spend is counted.
-- `session-launch.md` — how a lead launches, addresses, steers and resumes one
-  project-lead session. It is the lead's own reference, under `skills/lead/`;
-  every other one on this list is under `skills/project-lead/` and is
-  canonical for both tiers.
+- `autonomy-contract.md` — how a question is routed, when a project lead
+  escalates and to whom, and how a run's spend is counted.
 - `simple-path.md` — the loop for one package: one unnamed IC subagent, one
   branch in this checkout, no merge. It also owns the **light path**, the
   same loop with no spec, and the **delivered window** on every path.
@@ -97,9 +79,8 @@ Each reference owns one subject and is canonical for it:
   teammates, merges, promotion and recovery.
 - `investigation-path.md` — the loop from a symptom to a diagnosis: the
   debugging checklist, the evidence files, and the two endings.
-- `record-format.md` — both records: the goal directory with its `state.json`,
-  `worktrees.json` and `decisions.md`, and the lead's portfolio directory with
-  its `portfolio.json`. Every field, and every state transition.
+- `record-format.md` — the goal record: its `state.json`, `worktrees.json`
+  and `decisions.md`. Every field, and every state transition.
 - `band-rubric.md` — the model a package gets, and when to promote.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
 - `review-output.md` — the shape every review reports its findings in.
@@ -134,11 +115,8 @@ container-choice check is limited to the standard's four container types.
   `.claude-plugin/marketplace.json`. Keep the two values equal. Nothing else
   bumps it: `docs/`, `README.md`, `CLAUDE.md` and `LICENSE` never reach a
   plugin user, so a bump for them says a release happened when none did.
-- The hierarchy is lead → project leads → ICs, and crew now builds all three.
-  `lead` names the top tier, `/crew:lead`, and nothing else: the tier under it
-  is a **project lead**, written in full every time (design §15.19, §15.70).
-  Each tier is its own session, and they talk by cross-session message
-  (design §15.21, §15.72).
+- The hierarchy is project lead → ICs. Write **project lead** in full every
+  time; the bare word `lead` names no tier here (design §15.19, §15.95).
 - Only ICs are named agents. A named agent becomes a teammate, and a teammate
   returns no parseable tool result — just a final answer in its idle
   notification. Anything whose result the dispatcher must read and act on
@@ -192,7 +170,7 @@ Ask when a choice is genuinely the user's. Name the option you recommend.
   `claude --plugin-dir <path to this repo>`.
 - Spawning a teammate needs no display mode: in-process is the default. Split
   panes are the opt-in: `--teammate-mode tmux` or `iterm2` (design §15.20c,
-  §15.89d). A lead passes tmux, so a full-path IC is a pane (design §15.93).
+  §15.89d). Pass tmux to give each full-path IC a pane (design §15.93).
 - Set `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false` for an experiment you drive
   in tmux. A suggestion lands in the input box unsent, and a session reading
   the pane cannot tell it from a person's typing (design §15.47).

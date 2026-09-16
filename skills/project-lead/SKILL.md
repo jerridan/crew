@@ -142,9 +142,9 @@ It sends you back to "Write the spec", or it ends the run itself.
 
 ## Size the work
 
-The scout's answers say how big the change is. This is the one step that sizes
-it, and only you can: the lead above you reads no code (design §15.88). Ask
-four questions, and answer each from the scout's report and `charter.md`:
+The scout's answers say how big the change is. You size the work from the
+scout's report and `charter.md` (design §15.88). Ask four questions, and
+answer each from those two:
 
 1. Is the change one package — one file set one IC can hold?
 2. Is the charter's acceptance criterion the whole specification: runnable as

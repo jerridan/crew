@@ -5,11 +5,11 @@ This file owns the run for one deliverable with more than one package (design
 and the shape.
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this file
-borrows four of its rules: "Create the branch", "Verify before you believe",
-"Integrate" and "End the run", named below. The third check under "Check the
-launch conditions" is the one exception: it runs once for every goal, at the
-preference sweep, before either path is chosen — `autonomy-contract.md` owns
-when.
+borrows five of its rules: "Create the branch", "Verify before you believe",
+"Integrate", "End the run" and "The skeptical review", named below. The third
+check under "Check the launch conditions" is the one exception: it runs once
+for every goal, at the preference sweep, before either path is chosen —
+`autonomy-contract.md` owns when.
 
 This file runs **one** deliverable. Deliverables run sequentially and `split.md`
 carries `Depends on` to order them, but no loop reads it yet, so a goal needing
@@ -369,7 +369,7 @@ Then sweep for stale status claims, as `simple-path.md`'s "Integrate" does: run
 the block in `writing-standard.md`'s "Keep the status true" over the
 deliverable branch.
 
-## Review the deliverable
+## Write the diff
 
 **Write the diff now**, to `diffs/<deliverable-id>-final.patch`, so it never
 enters your context:
@@ -378,18 +378,8 @@ enters your context:
 git -C <repo> diff <deliverable-base>..HEAD > <record-root>/diffs/<deliverable-id>-final.patch
 ```
 
-It holds every fix round and every shared-file edit you just made, and those
-edits are exactly what the next reviewer's shared-file check exists to read
-(design §15.24).
-
-Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`, the
-repo path and base ref, the fresh diff path, every package's `reports/<id>.md`,
-`review-output.md` whole, and the absolute path it writes to:
-`reviews/<deliverable-id>-deliverable-review.md`. Four of its seven checks read
-the record rather than the diff, so a diff-only dispatch cannot run them.
-
-Adjudicate as `SKILL.md`'s "Have the spec reviewed" says, and clear every
-`[Critical]` before the PR opens.
+It holds every fix round and every shared-file edit you just made, and it is
+the record's evidence of what the hand-over shipped (design §15.24).
 
 ## Open the draft PR
 
@@ -401,6 +391,11 @@ that procedure too, and `record-format.md` owns what the state means.
 
 At either end, restore the checkout to `checkout_branch`, as
 `simple-path.md`'s "End the run" says.
+
+## The skeptical review
+
+`simple-path.md`'s section of that name is the call site on every path, and
+`skeptical-review.md` owns the step.
 
 ## Clean up
 

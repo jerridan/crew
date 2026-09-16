@@ -27,6 +27,7 @@ agent is absolute: its cwd is not yours.
 | `record-format.md` | the record: every file, field and state transition, and how `crew-record.py` writes `state.json` | before you create the record |
 | `band-rubric.md` | the band: the model it buys, and which review steps it skips | at the split, and again before you skip a step |
 | `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
+| `skeptical-review.md` | the review of the finished diff, and when it runs | at the hand-over, and on each later branch head |
 | `writing-standard.md` | any instruction file you draft | before you draft one |
 | `ic-contract.md` | the IC's rules | you do not follow it |
 | `investigation-path.md` | the loop from a symptom to a diagnosis | when the goal names a symptom |
@@ -67,6 +68,14 @@ neither `integrated` nor `abandoned` is a follow-up killed mid-flight: enter
 at the follow-up procedure, where "A follow-up killed mid-flight" says how to
 reconcile it. With every package terminal as well, the run enters the window
 with nothing to do, and waits.
+
+**Read `run.review_pending` before you recover a package.** A head there
+means a skeptical review is owed or half adjudicated, and its reply file may
+already name packages that `packages[]` does not hold yet — recover blind and
+you create one twice. Which comes first depends on the state, so take
+`skeptical-review.md`'s resume table from the top and do what the first
+matching row says. `null` or absent, with the branch head already reviewed,
+means nothing is owed.
 
 **A resume picks the path too.** Read the reopened `charter.md` by the test
 below. A record holding `diagnosis.md` took the investigation path and got as

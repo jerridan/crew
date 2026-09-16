@@ -2434,3 +2434,365 @@ Read first: design §15.19, §15.21, §15.22a, §15.70, §15.72;
 `autonomy-contract.md` in full; `record-format.md` "The portfolio record";
 `hooks/session-end.py`, `hooks/pre-compact.py`; `.claude/rules/readme.md`;
 `writing-standard.md` "Before you open the PR".
+
+## T58 — Cut the plan gate and the package review; the project lead verifies each package itself
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.94)
+
+All thirty plans on disk carry a `plan_approved_at`, and no record names a
+plan sent back (design §15.77b). The package review sends a package back
+rarely: 4 of 37 reviews by the count in design §15.77a, 4 of 32 by §15.57's
+earlier count over fewer records, and 24 of 29 packages left it with no line
+of their code changed. Both counts measure verdicts, not defects — §15.57
+records accepted reviews whose findings led to commits — but neither step
+sends work back often enough to pay for a dispatch. On run
+`agi-3057-handoff-attempt-record-399d` the package review ran nine times and
+sent nothing back, while outside reviewers found 19 defects in the same code
+(design §15.94a). Both steps go. The project lead keeps the check that
+actually drove fix rounds: its own run of the acceptance test and the suite
+after each package.
+
+Scope. `band-rubric.md` loses the plan gate and the package review from "What
+a band skips", "What the light path skips" and "Critics and reviewers take
+their own model". Its deliverable-review skip conditions keep their shape,
+but the second condition changes from "its package review reads `Verdict:
+accepted`" to "the project lead's own verification passed". `simple-path.md`
+and `full-path.md` lose the package-review step, and their fix-round trigger
+becomes the project lead's own failed verification. Fix-round and promotion
+caps do not change. `skills/project-lead/SKILL.md` drops both steps.
+`ic-contract.md` loses "The plan gate" branch; the IC still writes
+`plans/<id>.md`. `agents/ic.md` (step 2 of "Your loop", line ~22) and
+`agents/ic-instructions.md` (step 2 of "Your loop", line ~42) both tell the
+IC to write the plan and then wait; both now say the IC starts work straight
+after it writes the plan. `agents/package-reviewer.md` is deleted.
+
+**A prose package is verified against two checklists.** The project lead
+applies the package's own acceptance checklist, and it applies
+`writing-standard.md`'s "Before you open the PR" checklist. A failed item on
+either one is a fix round, exactly as a failed test is.
+
+The deliverable reviewer outlives this ticket and must still run between T58
+and T59. So `agents/deliverable-reviewer.md` (lines ~23 and ~48–50) drops the
+requirement that every package review read as accepted: package reviews no
+longer exist, and the project lead's own verification is the precondition
+now. `investigation-path.md` (line ~84) updates its pointer to "Review the
+package". `review-output.md` (lines ~3–4) and `band-rubric.md`'s "Critics and
+reviewers take their own model" drop the package reviewer from their agent
+lists.
+
+`record-format.md` drops `plan_approved_at` and the package-review file name.
+It drops `plan-gate` from the `steps_skipped` values. `deliverable-review`
+stays there until T59 removes it. `spec-critic` stays there indefinitely,
+because the light path still skips the spec critic. `crew-stats.py` drops the
+package-review and plan-gate rows from its catch-rate section. The README and
+`CLAUDE.md` role tables lose the package reviewer. Bump `version` in both
+manifests.
+
+Run it. Take one light-path item to a draft PR against the fixture repo, and
+one item whose package is prose, so `crew:ic-instructions` runs under the
+two-checklist rule. Seeding a failing test does not force a fix round,
+because the IC fixes it before it reports. Instead, after the IC's first
+report, revert one line in the worktree by hand, so the project lead's own
+run finds a failure the report does not mention.
+
+Check that no reviewer agent was dispatched for either package, that the IC
+started implementing straight after it wrote `plans/<id>.md` with no
+go-ahead, that `plan_approved_at` is absent from `state.json`, that the fix
+round fired from the project lead's own run and not from a verdict, that the
+prose package's fix round came from a checklist item, that the deliverable
+review still ran without a package-review precondition, and that
+`crew-stats.py` reports the run with no package-review or plan-gate row.
+
+Done when: neither step appears in any path, agent, script or record field;
+the fix-round trigger reads as the project lead's own verification everywhere
+it is stated; and one run has taken a package through a fix round on that
+trigger.
+
+Read first: design §15.94a, §15.94d, §15.57, §15.77a, §15.77b;
+`band-rubric.md`; `simple-path.md` and `full-path.md` review and fix-round
+sections; `ic-contract.md`; `agents/ic.md`; `agents/ic-instructions.md`;
+`agents/deliverable-reviewer.md`; `investigation-path.md`;
+`review-output.md`; `record-format.md`; `writing-standard.md` "Before you
+open the PR".
+
+## T59 — Replace the deliverable review with a skeptical review after the PR opens
+
+Status: open
+Depends on: T58
+Stage: 7 (design §15.94)
+
+The deliverable review sent an artifact back 2 times in 18 (design §15.77a).
+On run `agi-3057-handoff-attempt-record-399d` it ran six times — once before
+the PR opened, and once on each of the first five follow-ups — and returned
+`accepted` every time (design §15.94a). It reads the spec and the contract
+that the project lead wrote, so it measures the author against the author
+(design §15.94b). The replacement reads the diff against the goal and the
+repo, assumes the diff is wrong, and runs on real code after the PR exists.
+
+Scope. A new reference, `skills/project-lead/references/skeptical-review.md`,
+owns the step, and it owns the schedule as well. It holds:
+
+- **The stance.** Read the diff against the goal, not the spec. Assume it is
+  wrong and look for how. Run the suite. Report findings by severity. Say
+  what you looked for and did not find.
+- **The inputs the run supplies.** The goal text, the branch, the base ref
+  and the output path.
+- **Its own two verdict strings**, `accepted` and `patch round needed`.
+  `review-output.md` stays format-only, and it says that each producer names
+  its own pair.
+- **The worktree rule.** Never run the review in the run's own checkout. A
+  probe found a finder agent run `git checkout main` inside the repo under
+  review.
+- **The default headless command**, `claude -p --model opus "/code-review
+  high <base>"`.
+- **How the findings are collected.** The JSON `result` field holds only the
+  last message, so use `--output-format stream-json`, or put an instruction
+  in the prompt that writes the findings to a file (design §15.94c).
+- **What the run costs.** The headless run is its own session, so its
+  `session_id` (from `--output-format json`) goes into a new
+  `run.review_session_ids` field that `spend.py` and `crew-stats.py` price
+  and that both hooks ignore. **Never put it in `run.session_ids`**, which
+  `hooks/session-end.py` reads to mark a run interrupted, the same rule T56
+  states for a teammate's id.
+- **The schedule.** The review runs once after the draft PR opens, and again
+  after every push of new commits to the branch in the delivered window, from
+  a patch round or from a change request alike. It is the only reader of new
+  code, so every push earns one.
+- **The cap.** 3 reviews per run, the initial one included. Each start
+  increments `run.review_rounds`, and that write happens before the review
+  starts. At the cap no further review runs, and the project lead hands the
+  principal what remains, including what it declined and why.
+- **The resume rule.** A resume infers nothing from a missing file. The same
+  record write that lands a push sets `run.review_pending` to the new head
+  sha, and writing the review file clears it. On `--resume` in `delivered`, a
+  set `review_pending` means the review is owed, and an unset one means
+  nothing is owed.
+
+The review slot in `simple-path.md` and `full-path.md` moves to after "Open
+the draft PR" and becomes the first round of the delivered window. Both files
+point at the new reference and state no rule of their own.
+`agents/deliverable-reviewer.md` is deleted. `band-rubric.md` loses the
+deliverable-review skip conditions. `record-format.md` takes the new review
+file names, the three new fields and when each is written, and drops
+`deliverable-review` from `steps_skipped`. `spend.py` and `crew-stats.py`
+read `run.review_session_ids`, and `crew-stats.py` takes the new review kind.
+Bump `version` in both manifests.
+
+Run it. Take one simple-path item to a draft PR against the fixture repo, and
+let the skeptical review run as the first round of the delivered window. Kill
+the session after the PR opens and before the review writes its file, then
+resume.
+
+Check that the review ran in a worktree and not in the run's checkout, that
+the run's branch and working tree were untouched afterward, that the findings
+landed in the record in `review-output.md`'s shape with one of the two verdict
+strings, that `run.review_pending` held the head sha across the kill and the
+resume ran the review because of it, that `run.review_rounds` counted the
+start and not the finish, that `run.review_session_ids` holds the headless
+run's id, that neither hook acted on that id, and that `spend.py` prices the
+review into the run.
+
+Done when: no path runs the deliverable review before the PR opens — the spec
+critic still runs before the split — the deliverable reviewer is gone, and one
+run has produced a `reviews/skeptical-r1.md` from a worktree run that prices
+into the record.
+
+Read first: design §15.94b, §15.94c, §15.94d, §15.77a; `review-output.md`;
+`simple-path.md` and `full-path.md` review sections; `band-rubric.md`;
+`record-format.md` on `run.session_ids` and `steps_skipped`; T56 on why a
+foreign session id stays out of `run.session_ids`;
+`skills/project-lead/scripts/spend.py`, `crew-stats.py`.
+
+## T60 — Patch mode in the delivered window
+
+Status: open
+Depends on: T59
+Stage: 7 (design §15.94)
+
+Six follow-ups on run `agi-3057-handoff-attempt-record-399d` each ran a
+package review, and the first five each re-ran the whole deliverable review,
+on a deliverable that had already passed both (design §15.94a). Most of those
+follow-ups were review findings, not new work, and the review layer added
+nothing to them. The delivered window needs to tell the two apart.
+
+Scope. `simple-path.md`'s "The delivered window" gains two message kinds. A
+**change request** is something the PR does not do yet. It stays one package,
+with an IC and the project lead's own verification. It gets no spec, no
+critic and no separate reviewer; the skeptical review re-runs on the push it
+produces, on `skeptical-review.md`'s schedule. **Findings from a review** —
+CI, a bot, Codex, the principal reading the diff, or the skeptical review
+from T59 — go to patch mode. The project lead groups them and dispatches one
+IC per group in the checkout, then runs the suite and pushes.
+
+**Each group is a `packages[]` entry** like any other, with a new `source`
+field naming where its findings came from, so `--resume`'s "all packages
+terminal" logic needs no change. A patch package carries two more fields
+beside its state, `pushed_at` and `replied_at`, and they make the round
+resumable at every step. Integration writes the package `integrated` and sets
+`run.review_pending` to the new head in one write. The push then sets
+`pushed_at`. The reply to the source is written to
+`reports/<pkg-id>-reply.md` before it is sent, and `replied_at` is set after
+it is sent. On a resume, an `integrated` package with a null `pushed_at` is
+pushed first, and a null `replied_at` after that means the reply file is sent.
+`record-format.md` owns the two fields and their transitions.
+
+The project lead replies per finding with what changed. A finding it
+disagrees with gets a written reason, never silent application. **A round
+where every finding is declined produces no patch, no push, no new head and
+no new review.** That round still consumed the one `review_rounds` increment
+that the review producing the findings took, and the reply carries every
+decline with its reason. `skeptical-review.md` owns the cap and the schedule;
+this file states neither. A source other than the skeptical review is quiet
+when it returns nothing above `[Nit]` on the new head — for CI, a green run.
+The principal and a bot are never quiet, and the window simply stays open for
+them. The rule that re-arms the deliverable review when a second package
+appears goes. `full-path.md` points at the simple-path section and states no
+rule of its own.
+
+Run it. Deliver one light-path item, then send it three seeded findings in
+one message, with one of the three wrong. Kill the session twice: once after
+the group integrates and before the push, and once after the push and before
+the reply. Then send a second message whose findings are all wrong, so every
+one is declined.
+
+Check that the project lead dispatched one IC per group and no reviewer, that
+each group landed as a `packages[]` entry with its `source`, that the resume
+after the first kill pushed before it replied, that the resume after the
+second kill sent the reply file without a second push, that the reply
+declines the wrong finding with a reason, that the all-declined round pushed
+nothing and started no review, and that a re-run of the skeptical review
+returning only `[Nit]` findings ends the rounds.
+
+Done when: the delivered window separates the two message kinds, a patch
+group is an ordinary package entry, a killed round resumes at the push and at
+the reply, the re-arm rule is gone, and one run has declined a finding with a
+reason on the record.
+
+Read first: design §15.94a, §15.94d, §15.92c; `simple-path.md` "The delivered
+window"; `record-format.md` on `packages[]` and on `--resume`; `full-path.md`;
+T59 and `skeptical-review.md` for the schedule and the cap.
+
+## T61 — Plain-language substitution of a review step
+
+Status: open
+Depends on: T59
+Stage: 7 (design §15.94)
+
+The principal already knows which reviewer they want for a given goal, and
+today there is no way to say so. Design §15.94d(5) settles the shape: a
+replacement named in plain language runs in the step's slot, and the record
+says what ran.
+
+Scope. One paragraph in `skills/project-lead/SKILL.md` states the rule: when
+the goal, the charter, or the principal at launch names a replacement for a
+review step, the project lead runs the replacement in that step's slot and
+writes its output into the record in `review-output.md`'s shape. A pointer
+line at the spec-critic step and at the skeptical-review step sends the
+reader there. `record-format.md` gains `run.steps_substituted`, holding the
+step, the replacement and the time, beside `steps_skipped`. Each entry also
+carries an optional `usage` object, holding whatever figure the runner
+prints — Codex prints a "tokens used" line, for example. **A substituted step
+costs money that `spend.py` cannot see**, because the runner is not a Claude
+session. So `crew-stats.py` lists every substitution and reports its cost as
+unmeasured unless a price can be derived from `usage`. It never leaves the
+step out of the report. Bump `version` in both manifests.
+
+Run it. Launch a project lead with "use Codex for the spec review" typed at
+launch, on any goal that writes a spec.
+
+Check that `codex exec` ran with the spec critic's seven checks as its
+prompt and the spec and charter paths as its input, that the output landed in
+the record in `review-output.md`'s shape, that the spec critic itself did not
+run, that `run.steps_substituted` names the step, the replacement and the
+`usage` figure Codex printed, and that `crew-stats.py` lists the substitution
+with its cost marked unmeasured.
+
+Done when: a named replacement runs in a review step's slot, the record holds
+the substitution and whatever usage the runner printed, and `crew-stats.py`
+reports the step rather than omitting it.
+
+Read first: design §15.94d, §15.94e; `skills/project-lead/SKILL.md`;
+`review-output.md`; `record-format.md` on `steps_skipped`; `crew-stats.py`.
+
+## T62 — `crew-stats.py` counts promotions from `band_history`, not from package count
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.94)
+
+`crew-stats.py` reports 7 promotions for run
+`agi-3057-handoff-attempt-record-399d`. The record holds none: every package
+has one `band_history` entry, its prediction (design §15.94g). The script
+counts every entry that carries a `cause`, and the prediction carries one.
+
+Scope. The promotion count in `crew-stats.py` reads entries in each package's
+`band_history`. No other output changes.
+
+Run it. Run `crew-stats.py` against the AGI-3057 record.
+
+Check that it reports 0 promotions for that run, and that a seeded record
+with a second `band_history` entry on one package reports 1.
+
+Done when: the promotion count is the number of `band_history` entries past
+the first, per package, and the AGI-3057 record reports 0.
+
+Read first: design §15.94g; `skills/project-lead/scripts/crew-stats.py`;
+`record-format.md` on `band_history`.
+
+## T63 — A layered config file for step substitutions
+
+Status: open
+Depends on: T61
+Stage: 7 (design §15.94)
+
+Filed, not scheduled. T61 lets the goal, the charter or the principal name a
+replacement for a review step, one run at a time. A principal who wants the
+same replacement on every run has to say it every time. A layered config
+would hold it once.
+
+Scope. Three layers, most specific wins per step: a machine file at
+`~/.claude/crew/config.md`, a repo file at `.claude/crew.md`, and the run
+charter. Each holds the same section T61 reads, in the same plain language.
+The project lead resolves the three before the first review step.
+
+Run it. Set a machine-level replacement for the skeptical review, override it
+in a repo file, and run one item in that repo.
+
+Check that the repo file won, and that `run.steps_substituted` names the
+layer the replacement came from.
+
+Done when: the three layers resolve per step and the record says which layer
+supplied each replacement.
+
+Read first: design §15.94e; T61; `skills/project-lead/SKILL.md`;
+`record-format.md`.
+
+## T64 — A crew-owned Codex review skill
+
+Status: open
+Depends on: T61
+Stage: 7 (design §15.94)
+
+Filed, not scheduled. Two review steps can go to Codex — the spec review and
+the diff review — and today each caller would write its own `codex exec`
+command. One skill holds the command, the model and the output shape.
+
+Scope. A crew-owned skill wraps `codex exec` with a pinned model. It takes
+either a diff base or a file list, so the same skill serves the spec review
+and the skeptical diff review. It writes its findings in `review-output.md`'s
+shape. T61's substitution rule names it as a replacement.
+
+Run it. Substitute the skill for the spec review on one item, then for the
+skeptical review on another.
+
+Check that both runs used the pinned model, that the file-list form and the
+diff-base form each produced findings, and that both outputs match
+`review-output.md`'s shape without hand editing.
+
+Done when: one skill serves both review steps and its output needs no
+reshaping.
+
+Read first: design §15.94e; T61; `review-output.md`; `skills/project-lead/`
+for how a crew skill is laid out.

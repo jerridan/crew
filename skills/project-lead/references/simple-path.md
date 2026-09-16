@@ -121,8 +121,8 @@ of these is true:
 **Free.** `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`; never
 work on the main branch. Write the `deliverables[]` entry now — `id`, branch,
 the head sha as `base`, `state: pending`, `pr_url: null`, and the branch you
-just read as `checkout_branch`. Write `run.checkout` and `run.repo`: both are
-this checkout's path.
+just read as `checkout_branch`. Write `run.checkout`: this checkout's path,
+the same path `run.repo` already holds from "Take the goal".
 
 **Held.** Do not switch it. Two runs on one branch mix their commits, and the
 run that finishes second cannot say which are its own. Cut a checkout of your
@@ -146,9 +146,10 @@ alone does not, because every run's first is `deliverable-1`.
 
 Then, in the same turn:
 
-- Write `run.checkout`: the worktree's absolute path. Write `run.repo`: the
-  clone you cut it from, which is the only path that outlives the worktree
-  (`record-format.md`). **Every later step reads
+- Write `run.checkout`: the worktree's absolute path. `run.repo` already
+  holds the clone you cut it from, written at "Take the goal", and it is the
+  only path that outlives the worktree (`record-format.md`). **Every later
+  step reads
   `run.checkout` where it says `<repo>`** — the dispatch prompt, the
   verification, the diff, the suite and the push. The shared checkout is read
   from and never written to.
@@ -392,6 +393,9 @@ The work is handed over and `run_state` is `delivered`. Read
 path and at every band: when a review runs, the stance, the inputs, the
 worktree, the command, the instructions, the session id, the verdicts, and
 when the record clears.
+
+**A replacement named for this step runs in its place.** `SKILL.md`'s "A step
+the principal replaced" owns that case.
 
 **Its findings are findings like any other source's.** "Findings from a
 review" below owns all of them: the adjudication, the grouping, the patch and

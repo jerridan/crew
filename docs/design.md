@@ -72,23 +72,30 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | Role | Mechanism | Model | Lifetime |
 |---|---|---|---|
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
-| **Scout** | unnamed subagent, new `crew:scout` | haiku | one question |
-| **Advocate** | unnamed subagent, new `crew:council-advocate` | sonnet | one position |
-| **Researcher** | unnamed subagent, new `crew:researcher` | per band | one question |
-| **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |
-| **Split critic** | unnamed subagent, new `crew:split-critic` | opus / high | one review |
-| **IC** | **named teammate** `crew:ic`, or unnamed subagent | per band | a territory |
-| **Instruction IC** | **named teammate** `crew:ic-instructions` | per band | a territory |
-| **Package reviewer** | unnamed subagent, new `crew:package-reviewer` | sonnet / high | one review |
-| **Deliverable reviewer** | unnamed subagent, new `crew:deliverable-reviewer` | opus / high | one review |
+| **Scout** | named subagent, new `crew:scout` | haiku | one question |
+| **Advocate** | named subagent, new `crew:council-advocate` | sonnet | one position |
+| **Researcher** | named subagent, new `crew:researcher` | per band | one question |
+| **Spec critic** | named subagent, new `crew:spec-critic` | opus / high | one review |
+| **Split critic** | named subagent, new `crew:split-critic` | opus / high | one review |
+| **IC** | named teammate `crew:ic`, or named subagent | per band | a territory |
+| **Instruction IC** | named teammate `crew:ic-instructions` | per band | a territory |
+| **Package reviewer** | named subagent, new `crew:package-reviewer` | sonnet / high | one review |
+| **Deliverable reviewer** | named subagent, new `crew:deliverable-reviewer` | opus / high | one review |
 
 ### The naming rule
 
-A **named** agent becomes a teammate. A teammate's output never returns to the
-project lead, so everything that must return a parseable result stays **unnamed**.
+Every dispatch is named (T66, §15.20b, §15.97). A **named** agent becomes a
+teammate only when `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set — with it
+unset, the name changes nothing. A teammate's final answer arrives in full in
+its idle notification, not as a parseable tool result, so the project lead
+reads the result there and treats a record file, where the agent writes one,
+as the durable copy.
 
-Only ICs get names, because only ICs need two things names provide: resume with
-context intact for fix rounds, and graceful stand-down on a direction change.
+Every role gets a name: `<role>-<id>`, the id being what makes it unique in
+the run. Naming an IC still buys it the two things a teammate needs: resume
+with context intact for fix rounds, and graceful stand-down on a direction
+change. `skills/project-lead/SKILL.md`'s "Every dispatch is named" is the
+canonical statement; every other file in this plugin points at it.
 
 ### What each role may not do
 

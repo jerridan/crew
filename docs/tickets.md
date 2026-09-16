@@ -2356,3 +2356,81 @@ Read first: design §15.90h, §15.93; `record-format.md` on `run.session_ids`
 and `run.compactions`; `hooks/session-end.py` and `hooks/pre-compact.py`
 (`session_in_run()`); `skills/project-lead/scripts/spend.py`, `crew-stats.py`;
 the Claude Code agent-teams docs on the team config file.
+
+## T57 — Remove the lead tier
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.19, §15.72)
+
+The lead was built to hold a portfolio and to launch one project-lead
+session per item. In its first real use (run
+`agi-3057-handoff-attempt-record-399d`, 2026-09-15) it wrote a 49-line,
+928-word charter that named the module location, the state enum to reuse,
+the storage pattern, the TTL, the metrics and the flag name. The project lead
+adopted that charter unchanged, as `record-format.md` says it must, and the
+principal then had to reverse one of those choices through the project lead
+("charter.md item 5 named 90 days, overridden by the principal"). The lead
+reads no code, so when asked why, it answered from reports. The principal's
+verdict: the tier makes decisions the project lead should make, and they
+would rather drive project leads directly until they see the patterns in how
+they manage them. A lead may come back later, built from those patterns.
+This ticket removes the tier as it stands.
+
+**What goes.** `skills/lead/` in full: `SKILL.md`, `references/
+session-launch.md`, `scripts/crew-portfolio.py`, `scripts/lead-spend.py`.
+The portfolio record: the "The portfolio record" section of
+`record-format.md` and its consumer-list entries. The lead branches in the
+two hooks: `interrupt_lead()` and `wake_lead()` in `hooks/session-end.py`,
+and the portfolio-compaction block in `hooks/pre-compact.py`. The "Leads"
+report and the `lead.spend` totals in `crew-stats.py`. The "Run your goals
+through a lead" section of `README.md`, its `/crew:lead` command row, and
+its "Lead" rows in the model and role tables. The `skills/lead/` rows and
+the three-tier build narrative in `CLAUDE.md`.
+
+**What stays.** Everything the project lead does on its own. The charter as
+an input: a person can hand `/crew:project-lead` a charter path, and two
+runs already did with no lead in the loop (design §15.22a). The word
+"principal" in `autonomy-contract.md`: it names whoever handed over the
+goal, a person or a session, and that stays general. Remove only the
+clauses that describe a lead's portfolio, `lead.principal`, and batching
+answers for a lead. `CREW_LAUNCH` and the `crew` tmux session layout stay
+if the README still tells a person to launch a project lead into tmux;
+otherwise they go with the lead.
+
+**Reword, do not delete.** `skills/project-lead/SKILL.md` line 125 ("the
+lead above you reads no code"), the seven lead mentions in `simple-path.md`
+and the two in `full-path.md`: each describes the project lead's caller
+being a lead. A person is the same caller, so drop the lead-specific clause
+and keep the sentence. `.claude/rules/readme.md` names the lead section as
+the README's main entry point; move that to the project lead.
+
+**Do not touch `docs/design.md`.** Its §15 findings on the lead are the
+record of what was built and observed. Add one finding there that says the
+tier was removed, why, and what a future lead must not do: write charter
+lines the principal did not say. `CLAUDE.md`'s "Never write about an unbuilt
+stage as if it runs" applies in reverse here: the README and `CLAUDE.md`
+must describe what the plugin does after this PR, not what it did.
+
+**Bump `version` in both manifests.** `skills/` and `hooks/` change, so
+`.claude-plugin/plugin.json` and `marketplace.json` move together.
+
+T56 stays open: it prices split-pane teammates, which a project lead a
+person launches into tmux still has. Re-read it after this ticket and drop
+the lead-specific sentences.
+
+Run it. One light-path item and one simple-path item through
+`/crew:project-lead`, launched by hand, one with a goal string and one with a
+charter path. Kill the project lead mid-run and confirm `session-end.py`
+marks the run `interrupted` and does not fail looking for a portfolio.
+Force a compaction and confirm `pre-compact.py` logs it into the run.
+
+Done when: `skills/lead/` is gone, both hooks run clean with no portfolio on
+disk, `crew-stats.py` reports every run with no "Leads" section, the README
+and `CLAUDE.md` describe a two-tier plugin, `grep -ri 'crew:lead' --exclude-dir=docs`
+returns nothing, and design §15 holds the finding.
+
+Read first: design §15.19, §15.21, §15.22a, §15.70, §15.72;
+`autonomy-contract.md` in full; `record-format.md` "The portfolio record";
+`hooks/session-end.py`, `hooks/pre-compact.py`; `.claude/rules/readme.md`;
+`writing-standard.md` "Before you open the PR".

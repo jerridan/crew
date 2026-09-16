@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Answer one scouting question about this repo, from Read, Glob and Grep alone, before the project lead sizes the work or writes a spec. Dispatched by the project lead, one scout per question, at haiku — those three tools are normally approved without a prompt.
+description: Answer one scouting question about this repo, from Read, Glob and Grep alone, before the project lead sizes the work or writes a spec. Dispatched by the project lead, one scout per question.
 model: haiku
 tools: Read, Glob, Grep
 ---

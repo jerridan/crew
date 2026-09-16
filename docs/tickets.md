@@ -2804,10 +2804,11 @@ Depends on: nothing
 Stage: 7 (design §15.96)
 
 Auto mode's permission classifier has no approver for Haiku on any provider,
-and a Haiku agent with `Bash`, `Write`, or `Edit` prompts on every call in a
-session nobody is watching. Session `aad2bfca-66ed-47cd-928f-1da15964bbf9`
-showed it: a named Haiku `Explore` scout prompted on every call, while the
-same run's two `crew:ic` dispatches ran at `sonnet` and prompted for nothing.
+and a Haiku agent with `Bash`, `Write`, or `Edit` prompts on every call that
+needs approval, in a session nobody is watching. Session
+`aad2bfca-66ed-47cd-928f-1da15964bbf9` showed it: a named Haiku `Explore`
+scout prompted on every call, while the same run's two `crew:ic` dispatches
+ran at `sonnet` and prompted for nothing.
 
 Scope. A new agent, `crew:scout`, built from `Read`, `Glob` and `Grep` alone,
 answers the project lead's four scout questions and is the only agent Haiku

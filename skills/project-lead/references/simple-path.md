@@ -6,8 +6,9 @@ It owns the **light path** as well, in the section below: the same run for a
 small item, entered from `SKILL.md`'s "Size the work" with no spec (design
 §15.88).
 
-The full path is `full-path.md`. Nothing here applies to it, except the three
-rules it borrows: "Create the branch", "Integrate" and "End the run".
+The full path is `full-path.md`. Nothing here applies to it, except the four
+rules it borrows: "Create the branch", "Verify before you believe",
+"Integrate" and "End the run".
 
 One unnamed subagent does the work, on one branch, in the checkout
 `run.checkout` names. No split critic runs and nothing merges. That checkout
@@ -16,7 +17,7 @@ branch" owns that case, and it is the only one on this path that makes a
 worktree.
 
 **Every rule below runs, however small the change is.** A one-line edit is one
-package, dispatched to an IC and reviewed like any other. You edit a file in
+package, dispatched to an IC and verified like any other. You edit a file in
 the target repo at "Integrate" and nowhere else, with one exception: the
 fix-round breaker in "Fix rounds" below (design §9.1, §9.3, §10).
 
@@ -29,8 +30,8 @@ order, and every one of them is a section of this file:
 
 1. **Name the one deliverable `deliverable-1`**, then "Create the branch",
    which writes its `deliverables[]` entry. No `split.md` names an id here, so
-   this rule is where the id comes from. Five later sections read it: the
-   package's `base`, the review diff's `base`, `diffs/<deliverable-id>-final.patch`,
+   this rule is where the id comes from. Four later sections read it: the
+   package's `base`, `diffs/<deliverable-id>-final.patch`,
    `deliver <deliverable-id>`, and a `deliverable-review` entry in
    `run.steps_skipped`.
 2. **Write the one package**, straight into `state.json`: `crew-record.py
@@ -40,9 +41,8 @@ order, and every one of them is a section of this file:
    `split.md` — one package has nothing to order, and no reader is left for
    that file.
 3. "Dispatch the IC".
-4. "Verify before you believe".
-5. "Review the package", then "Fix rounds".
-6. "Integrate", then "End the run".
+4. "Verify before you believe", then "Fix rounds".
+5. "Integrate", then "End the run".
 
 `band-rubric.md`'s "What the light path skips" owns what this path drops and
 the record write each skip takes. Read it before you skip anything.
@@ -172,78 +172,126 @@ code, `crew:ic-instructions` for an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text, the
 brief, the file set, `run.checkout`, the interface contract, the
 acceptance criterion, the global constraints section, the record root, the
-package id, and **that it is a subagent** — `ic-contract.md`'s plan gate
-branches on it.
+package id, and **that it is a subagent** — `ic-contract.md`'s record writes
+branch on it.
 
-**The plan gate is two dispatches here.** The first ends at
-`plans/<id>.md` — a subagent has no channel to wait on. Read it, approve it or
-send it back, set `plan_approved_at`, then dispatch again to implement, naming
-the plan's path.
-
-**A `light` package skips the gate and takes one dispatch.** `band-rubric.md`'s
-"What a band skips" owns the rule, the record write it needs, and what the
-spawn prompt must say.
+**One dispatch carries the package.** The IC writes `plans/<id>.md`, then
+continues per `ic-contract.md`'s "Write your plan first".
 
 **Expect the contents instead of the file.** A dispatch shape that denies the
 IC every record write (§15.26b, §15.31b) puts the plan or report in its final
 message. Transcribe it, and say that you did.
 
-Set the package and its deliverable `in-flight` at the first dispatch, and
-write the package's `base`: the deliverable's `base`, since there is one
-package.
+Set the package and its deliverable `in-flight` at the dispatch, and write the
+package's `base`: the deliverable's `base`, since there is one package.
 
 ## Verify before you believe
 
-The IC's report is a claim; `git -C <repo> log` and `diff` are the evidence.
-Check the diff's file list against the declared file set, and run the
-acceptance criterion yourself. `band-rubric.md` says what a `BLOCKED` cause
-earns.
+**You are the only reader of this package.** No review agent runs over it
+(design §15.94d), so this section is the whole check. `full-path.md` borrows
+it, so read `<repo>` below as the checkout the calling path names:
+`run.checkout` on the simple and light paths, the IC's worktree on the full
+path.
+
+**Verify the committed tree, and nothing else.** Run `git -C <repo> status
+--porcelain` first. A clean tree, here and everywhere a crew file says "clean
+tree", means two things and only two: no uncommitted change to any tracked
+file, and no untracked file inside the package's file set. An untracked file
+outside the file set is somebody else's, so leave it alone and never fail the
+check on it. Uncommitted work reaches no diff, no branch and no PR, so a dirty
+tree is a fix round: the IC commits, and you start this section again. An
+uncommitted change to a tracked file the file set never named is the same fix
+round, with one more question in it — the IC reverts that change, or names the
+file as one the package needs, and you decide whether the file set gains it.
+
+**The IC's report is a claim, and git is the evidence.** Three commands, with
+`<base>` the deliverable's `base` on the simple and light paths and the
+package's own `<package-base>` on the full path:
+
+```
+git -C <repo> log --oneline <base>..HEAD
+git -C <repo> diff <base>..HEAD --stat
+git -C <repo> diff <base>..HEAD
+```
+
+Check the file list from the second against the declared file set. Then verify
+the package yourself and read every output you get. `band-rubric.md` says what
+a `BLOCKED` cause earns.
+
+**A code package takes two runs and one reading.** Run the acceptance
+criterion, then the repo's test suite. Then read the diff itself, against the
+brief and against the interface contract. A green suite says the tests that
+exist pass, and nothing more: a defect you can name, or a `produces` signature
+the diff does not honour, is a fix round with every test green.
+
+**A prose package takes two checklists.** A `crew:ic-instructions` package has
+no acceptance test, and `agents/ic-instructions.md` holds the IC to both of
+these, so you apply both yourself:
+
+- **the package's own acceptance checklist**, the one its brief names as the
+  acceptance criterion;
+- **`writing-standard.md`'s "Before you open the PR"**, which is that file's
+  own quality checklist.
+
+Read the diff against each checklist, item by item, and answer every item yes
+or no. Then run the suite, because a prose package can still break a test.
+
+**Run the suite the scout found, or take the no-suite outcome.** `SKILL.md`'s
+"Scout" asks what runs the suite, and that answer is the command. A repo whose
+scout reported none has no suite to run, and **the no-suite outcome** is what
+that repo gets, here and at "Integrate": write "no suite" and the scout's
+answer in the package's `decisions.md` entry, and the check passes on the
+criterion, the checklists and the reading alone. This rule names that outcome
+for every file that needs it. Never invent a command, and never read a missing
+suite as a pass.
+
+**What sends a package back.** This list is the whole trigger, at every band
+and on every path. Every other file points here rather than keep a second copy:
+
+- a dirty tree at the check above;
+- a failed acceptance criterion, or a failed suite run;
+- an item answered no in either checklist of a prose package;
+- a file in the diff the file set never named;
+- a missing verification-tool output, when the brief named a tool
+  (`ic-contract.md`'s "When you are done");
+- a defect you can name in the diff, or an interface contract the diff breaks,
+  whatever the tests say;
+- a criterion that passes at the red commit, when the package adds the test
+  its criterion names;
+- a commit outside the IC's own branch or worktree, which only the full path
+  can produce (`full-path.md`'s "Verify before you believe" runs that check).
 
 **Run the criterion at the red commit too**, when the package adds the test its
 criterion names (design §7). `ic-contract.md`'s "Write the failing test first"
-owns this check: it gives the procedure, the clean-tree precondition, and what
-a criterion that passes there costs. Run it in `run.checkout`, against the sha
-the IC's report gives. Switch the branch back before anything else — that
-checkout may be the principal's own, and `checkout_restored` at "End the run"
-records what it was left on.
+owns the procedure and the clean-tree precondition. Run it in `<repo>`, against
+the sha the IC's report gives. Switch the branch back before anything else: an
+IC may not switch branches, the simple path's checkout may be the principal's
+own, and `checkout_restored` at "End the run" records what it was left on.
 
 **A fix package from the investigation path is exempt.** Its reproduction
 failed before the dispatch and `diagnosis.md` holds that output, so run the
 criterion at the branch head only (design §7, `investigation-path.md`'s
 `Outcome: fix` ending).
 
-## Review the package
-
-Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
-`git -C <repo> diff <base>..HEAD > <path>`, `base` being the deliverable's. An
-instruction package gets its checklist file instead.
-
-`crew:package-reviewer` requires five inputs. Send all five: the package's
-record entry (`file_set`, `interface_contract`, `acceptance_criterion`), the
-checkout path, the IC's report, the diff or checklist path, and the brief.
-Inject `review-output.md` too, at its absolute path:
-`<record-root>/reviews/<id>-package-review-r<n>.md`, `<n>` being
-`fix_rounds_used`.
-
 ## Fix rounds
 
-Run a round only on `Verdict: fix round needed`. Each round is a fresh
-subagent, so its prompt describes what is already committed — `git log
---oneline` plus `git diff --stat` — and which findings to fix. Rounds 4 and 5
-promote a band; `band-rubric.md` says what a `deep` package does instead.
+Run a round only on a failure you saw yourself at "Verify before you believe".
+Each round is a fresh subagent, so its prompt describes what is already
+committed — `git log --oneline` plus `git diff --stat` — and carries the
+failing output word for word. Rounds 4 and 5 promote a band; `band-rubric.md`
+says what a `deep` package does instead.
 
-**Every round goes back through "Verify before you believe" and "Review the
-package"** — a fix nobody re-reviewed is a claim. Leave only on
-`Verdict: accepted`. Increment `fix_rounds_used` **before** the round runs —
-"Review the package" and this rule name their files from it, so a late
-increment overwrites the previous round's files. Five is the cap: at it, fix
-the package yourself or park it as `abandoned` with your reasoning recorded. At
-the top band, escalate instead.
+**Every round goes back through "Verify before you believe"** — a fix you did
+not re-run is a claim. Leave only when every check there passes. Increment
+`fix_rounds_used` **before** the round runs, so a crash mid-round leaves the
+count true. Five is the cap: at it, fix the package yourself or park it as
+`abandoned` with your reasoning recorded. At the top band, escalate instead.
 
 ## Integrate
 
 Nothing merges — the work is already on the deliverable branch. Run the suite
-on the branch head and read the output. Then read the target repo's own
+on the branch head and read the output, or take the no-suite outcome "Verify
+before you believe" defines. Then read the target repo's own
 instructions for which shared files must change together, edit them, and keep
 the values they require equal. Commit them, and mark the package `integrated`.
 
@@ -255,10 +303,11 @@ answer as precedent" owns the rule.
 **Sweep for stale status claims.** You own this check alone. Run the block in
 `writing-standard.md`'s "Keep the status true" over the deliverable branch.
 
-**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. The diff
-written at "Review the package" predates the fix rounds and the shared-file
-edits you just made, which the next reviewer's shared-file check exists to
-read.
+**Write the diff now**, to `diffs/<deliverable-id>-final.patch`:
+`git -C <repo> diff <base>..HEAD > <path>`, `base` being the deliverable's.
+Write it to the file so it never enters your context. It holds the fix rounds
+and the shared-file edits you just made, which the next reviewer's shared-file
+check exists to read.
 
 ## Review the deliverable
 
@@ -270,8 +319,8 @@ it can fail on the light path as well. Skipped, the run goes straight to "End
 the run".
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`, the
-checkout path and base ref, the fresh diff path, the accepted package review,
-`review-output.md` whole, and its absolute path:
+checkout path and base ref, the fresh diff path, every package's
+`reports/<id>.md`, `review-output.md` whole, and its absolute path:
 `<record-root>/reviews/<deliverable-id>-deliverable-review.md`. Four of its
 seven checks need the record. Adjudicate as `SKILL.md`'s "Have the spec
 reviewed" says; clear every `[Critical]` first.
@@ -365,8 +414,8 @@ does.
 **A follow-up.** Review comments to address, a rebase onto a moved main, a
 test the principal wants added. It is one more package on the same
 deliverable, and every rule of this path holds for it, whichever path the
-run took: an IC makes the edit, you verify it, and a reviewer who did not
-write it reviews it (design §9.1). In order:
+run took: an IC makes the edit, and you verify it yourself (design §9.1). In
+order:
 
 1. **Check it is inside the charter's goal.** Work outside it is a new goal,
    and the principal or the lead opens a new item for it. Say so, and take

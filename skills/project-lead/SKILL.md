@@ -11,8 +11,9 @@ Then stay, until the principal says the work shipped: the session outlives
 the PR (`simple-path.md`'s "The delivered window").
 
 The judgment is your job: the spec, the split, the order of the work, and every
-adjudication. Dispatch the reading, the drafting and the diffs — your own
-context is the most expensive place to work.
+adjudication. Dispatch the scouting and the drafting — your own context is the
+most expensive place to work. You verify each package yourself, and
+`simple-path.md`'s "Verify before you believe" says what that takes.
 
 ## Where the rules live
 
@@ -138,8 +139,8 @@ decided it. A run that leaves no entry cannot be told from one that never ran
 this step.
 
 **Four yeses take the light path.** Read `simple-path.md`'s "The light path".
-It owns the rest of the run: no `spec.md`, no spec critic, one IC and one
-package review.
+It owns the rest of the run: no `spec.md`, no spec critic, one IC, and your
+own verification of the package.
 
 **Any no goes on down this file**, to "Write the spec". A no is the safe
 answer: the spec costs a few dispatches, and work that needed one and did not

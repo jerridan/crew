@@ -5,10 +5,11 @@ This file owns the run for one deliverable with more than one package (design
 and the shape.
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this file
-borrows three of its rules: "Create the branch", "Integrate" and "End the run",
-named below. The third check under "Check the launch conditions" is the one
-exception: it runs once for every goal, at the preference sweep, before either
-path is chosen — `autonomy-contract.md` owns when.
+borrows four of its rules: "Create the branch", "Verify before you believe",
+"Integrate" and "End the run", named below. The third check under "Check the
+launch conditions" is the one exception: it runs once for every goal, at the
+preference sweep, before either path is chosen — `autonomy-contract.md` owns
+when.
 
 This file runs **one** deliverable. Deliverables run sequentially and `split.md`
 carries `Depends on` to order them, but no loop reads it yet, so a goal needing
@@ -20,7 +21,6 @@ two deliverables is escalation trigger 7, not a bigger split.
 |---|---|---|
 | The IC | one unnamed subagent | one **named** teammate per territory |
 | Where it works | this checkout | its own worktree and branch |
-| The plan gate | two dispatches | one dispatch, then a message |
 | Its report | a tool result you read | a file in the record, plus an idle notification |
 | Integration | nothing merges | one squashed commit per package |
 | The split critic | skipped | runs before any IC is dispatched |
@@ -86,10 +86,10 @@ Two rules shape the full path's split, on top of the format rules
   parallel. The same goal ran both ways: parallel finished sooner and cost 15
   fix rounds and half again the tokens; sequential cost no fix rounds.
 - **Fewer, larger packages in a territory.** Packages in one territory run in
-  sequence, so a finer split there buys no parallelism and costs a plan, a
-  review, a merge and a suite run per package. Split a territory only where a
-  review boundary earns its cost: a different band, or an interface another
-  package consumes.
+  sequence, so a finer split there buys no parallelism. Each package costs an
+  IC dispatch, a plan, your own verification, a merge and a suite run. Split a
+  territory only where the next package needs something this one cannot give
+  it: a different band, or an interface another package consumes.
 
 ## Have the split reviewed
 
@@ -148,7 +148,7 @@ A teammate inherits no conversation history, so the spawn prompt carries all
 of: `ic-contract.md`'s full text, the brief, the file set, **the absolute
 worktree path**, the interface contract, the acceptance criterion, the global
 constraints section, the package id, and **that it is a teammate** —
-`ic-contract.md`'s plan gate branches on it, and an IC cannot tell on its own.
+`ic-contract.md`'s report rules branch on it, and an IC cannot tell on its own.
 
 It also carries the record root, as an absolute path. An interactive teammate
 can write there (design §15.31b), so a full-path IC writes `plans/<id>.md` and
@@ -161,61 +161,42 @@ Inject the contract as text. A teammate applies no `skills:` key and reads an
 agent body differently in each display mode (design §15.20d), so a link is not
 dependable and the prompt is.
 
-Set the package and its deliverable `in-flight` at the first spawn, and write
-that package's `base`: the worktree's head sha right now. For a territory's
-first package that equals the deliverable's `base`.
+Set the package and its deliverable `in-flight` at the spawn, and write that
+package's `base`: the worktree's head sha right now. For a territory's first
+package that equals the deliverable's `base`.
 
 ## Servicing several territories
 
-The rules from "The plan gate" to "The territory's next package" are written
+The rules from "The idle nudge" to "The territory's next package" are written
 for one IC and you will be running several. You are not stepping them in
 lockstep: service whichever IC reports next, and let the others keep working.
 Each territory walks its own packages at its own pace.
 
 Two rules keep that honest. Every IC's state lives in the record, not in your
-head — `plan_approved_at`, `state` and `fix_rounds_used` per package — so
-read the record, not your memory of who was where. And "Integrate" merges one
-package at a time regardless of which territory produced it, because a suite
-run only attributes a failure when a single package moved.
-
-## The plan gate
-
-A teammate has a message channel, so the gate is one dispatch and a reply —
-not the simple path's two dispatches.
-
-The IC writes `plans/<id>.md` and waits. Read it, then approve it or send it
-back with what to change. `SendMessage` the IC its go-ahead, and set
-`plan_approved_at`.
-
-How closely you read the plan follows the band: `band-rubric.md`'s "What a band
-skips" owns that. No package skips the gate on this path — a teammate's gate is
-a message, not a second dispatch.
-
-While `plans/<id>.md` exists and `plan_approved_at` is `null`, that IC's idle
-is an expected pause and not a fault (design §15.8).
+head — `state` and `fix_rounds_used` per package — so read the record, not
+your memory of who was where. And "Integrate" merges one package at a time
+regardless of which territory produced it, because a suite run only attributes
+a failure when a single package moved.
 
 ## The idle nudge
 
 An IC's idle notification is what tells you it stopped. Read the record before
-you answer one, and sort the idle into one of four kinds. No hook does
+you answer one, and sort the idle into one of three kinds. No hook does
 this — a message does (design §13.1, §15.29).
 
 | What the record holds | The idle means | What you do |
 |---|---|---|
-| `plans/<id>.md` exists, `plan_approved_at` is `null` | the plan gate | Nothing. Go to "The plan gate". |
 | A report **for this dispatch** | the IC finished, or stopped and said why | Go to "Verify before you believe". |
 | No such report, `nudges_used` is 0 | the IC stopped with nothing on disk | Nudge it, once. |
 | No such report, `nudges_used` is 1 | the nudge did not land | Fail the package (below). |
 
 **"For this dispatch" is the whole trick.** `reports/<id>.md` carries no round
-suffix, so it survives every fix round and every re-plan. On a package's first
-dispatch its existence is enough. After that it is not: a round-1 report
-sitting on disk would make a round-2 IC that wrote nothing look finished, and
-the project lead would verify a range whose HEAD never moved. So from the first
-fix round on, the report counts only when it carries a `## Fix round <n>`
-heading for the round now running ("Fix rounds" tells the IC to append one). A
-re-planned IC is the same case: set `plan_approved_at` back to `null` when you
-send a plan back, and its idle reads as the plan gate again.
+suffix, so it survives every fix round. On a package's first dispatch its
+existence is enough. After that it is not: a round-1 report sitting on disk
+would make a round-2 IC that wrote nothing look finished, and the project lead
+would verify a range whose HEAD never moved. So from the first fix round on,
+the report counts only when it carries a `## Fix round <n>` heading for the
+round now running ("Fix rounds" tells the IC to append one).
 
 An idle notification carries the IC's final message. When that message is the
 report itself — `ic-contract.md` makes it the report when the record write was
@@ -253,22 +234,19 @@ Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
 denies any command that changes directory before it runs git, allow rule or not
 (design §15.23b).
 
-Check four things, every time:
+**You are the only reader of this package.** No review agent runs over it
+(design §15.94d), so this section and the suite run at "Integrate" are the
+whole check.
 
-- The diff's file list matches the declared file set. A file outside it is
-  scope drift.
-- The commits are on the IC's own branch, in the IC's own worktree. A commit
-  anywhere else means the IC wandered, and nothing else detects that.
-- The acceptance criterion passes on a fresh run you performed yourself.
-- The criterion fails at the red commit, when the package adds the test the
-  criterion names (design §7). `ic-contract.md`'s "Write the failing test
-  first" owns this check: it gives the procedure, the clean-tree precondition,
-  and what a criterion that passes there costs. Run it in the IC's worktree,
-  against the sha the IC's report gives. An IC may not switch branches, so
-  switch the worktree back before you do anything else. A fix package from the
-  investigation path is exempt: its reproduction failed before the dispatch and
-  `diagnosis.md` holds that output, so the criterion runs at the branch head
-  only.
+**Run `simple-path.md`'s "Verify before you believe" here, with the IC's
+worktree as its `<repo>`.** It owns the clean-tree check, what a verification
+runs for a code package and for a prose one, and the whole list of what sends a
+package back. Do not keep a second copy of any of that.
+
+One check is this path's own, and it runs every time: the commits are on the
+IC's own branch, in the IC's own worktree. A commit anywhere else means the IC
+wandered, and nothing else detects that. The range above is what keeps the rest
+of the check to this package's own work.
 
 A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules say
 what each cause earns. Committing on a blocked IC's behalf is a normal outcome
@@ -276,10 +254,9 @@ here, not a failure (design §15.12).
 
 Read `run.compactions` before you accept. An entry whose `agent` is this IC's
 name, dated since its last accepted package, means it lost the context it
-planned in: send it its plan back with the go-ahead for the fix round, and
-treat its report's claims about earlier packages as unverified. An entry with
-`agent: null` is your own session's compaction; re-read the record before your
-next decision.
+planned in: send it its plan back with the fix round, and treat its report's
+claims about earlier packages as unverified. An entry with `agent: null` is
+your own session's compaction; re-read the record before your next decision.
 
 **An empty list is not proof under a lead that gave you panes.** A split-pane
 IC is its own session, so `PreCompact` matches it against nothing and writes no
@@ -287,27 +264,10 @@ entry (design §15.93). Weigh the IC's own report instead: a fix round it cannot
 explain, or a claim about an earlier package it cannot support, is the same
 evidence the entry would have been.
 
-## Review the package
-
-Write the diff to `diffs/<id>-r<n>.patch` so it never enters your context:
-
-```
-git -C <worktree> diff <package-base>..HEAD > <record-root>/diffs/<id>-r<n>.patch
-```
-
-An instruction package gets its acceptance checklist file instead.
-
-Dispatch `crew:package-reviewer`, unnamed, with all five inputs it requires:
-the package's record entry (`file_set`, `interface_contract`,
-`acceptance_criterion`), the worktree path, the IC's report, the diff or
-checklist path, and the brief. Inject `review-output.md` whole, and name the
-absolute path it writes to: `reviews/<id>-package-review-r<n>.md`, `<n>` being
-`fix_rounds_used`. Its result is the short one `review-output.md` defines; open
-the file only when the count says there are findings to adjudicate.
-
 ## Fix rounds
 
-A round runs only on `Verdict: fix round needed`. Five is the cap.
+A round runs only on a failure you saw yourself: a check that failed at "Verify
+before you believe", or a red suite at "Integrate". Five is the cap.
 
 - **Rounds 1 to 3** message the same IC. It keeps its context, which is the
   point of a teammate. Tell it to append a `## Fix round <n>` section to
@@ -316,27 +276,31 @@ A round runs only on `Verdict: fix round needed`. Five is the cap.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band up**.
   A fresh IC holds no context, so its prompt describes what is already
   committed — `git -C <worktree> log --oneline` plus `git -C <worktree> diff
-  --stat` — and which findings it must fix. A `deep` package cannot promote,
-  so a `deep` package reaching round 4 escalates instead: respawn it at `deep`
-  only if the principal says to (`band-rubric.md`).
+  --stat` — and the failing output word for word. A `deep` package cannot
+  promote, so a `deep` package reaching round 4 escalates instead: respawn it
+  at `deep` only if the principal says to (`band-rubric.md`).
 - **At the cap**, fix the package yourself, or park it as `abandoned` with your
   reasoning recorded. At the top band, escalate instead.
 
 **Increment `fix_rounds_used` and write `state.json` first**, before the round
-runs — `record-format.md` says why the counter moves before the files it
-names.
+runs, so a crash mid-round leaves the count true.
 
-Then the round goes back through "Verify before you believe" and "Review the
-package". A fix nobody re-reviewed is a claim. Leave this rule only on
-`Verdict: accepted`.
+Then the round goes back through "Verify before you believe". A fix you did
+not re-run is a claim. Leave this rule only when every check there passes.
 
 ## The territory's next package
 
-On `Verdict: accepted`, if that territory has another package in `split.md`,
-send the IC its next package and return to "The plan gate". An IC works its
-packages in the listed order. Write the new package's `base` as you send
-it — the worktree head as it stands now, which is the accepted package's last
-commit. That is what keeps the next review diff to the next package's own work.
+**An accepted package integrates before its territory gets another.** When you
+accept one, take it through "Integrate" first: the merge, and the suite green
+on the deliverable branch or the no-suite outcome. Only then, if that territory
+has another package in `split.md`, send the IC its next one. A package
+dispatched over an unmerged predecessor puts its own work on a base you have
+not proved, and a red suite then names two packages instead of one.
+
+An IC works its packages in the listed order. Write the new package's `base` as
+you send it — the worktree head as it stands now, which is the accepted
+package's last commit. That is what keeps the next diff to the next package's
+own work.
 
 **Respawn instead of sending** when `run.compactions` names the IC in `agent`,
 or when the IC has finished four packages. Neither you nor the IC can read its
@@ -346,13 +310,11 @@ IC down, then spawn a fresh one at the new package's band, with the brief rule
 3 of "Resume after a kill" describes: what its worktree already holds, and
 which work is done.
 
-"Integrate" is reached only when every territory has finished every package it
-owns.
-
 ## Integrate
 
 Merge one package at a time, into the deliverable branch, as each package is
-accepted rather than once per territory:
+accepted. Every territory reaches this section once per package it owns, and
+none of them waits for another to finish:
 
 ```
 git -C <repo> cherry-pick -n <package-base>..<package-head>
@@ -369,9 +331,10 @@ branch-level squash collapses them into one commit and one suite run, which
 loses the per-package attribution the next two paragraphs promise (design
 §15.37b).
 
-**Run the suite after each merge, not after all of them.** A failure is then
-attributable to one package with no bisect. Read the output yourself. A green
-run only proves the tree it ran on.
+**Run the suite after each merge, not after all of them**, or take the
+no-suite outcome `simple-path.md`'s "Verify before you believe" defines. A
+failure is then attributable to one package with no bisect. Read the output
+yourself. A green run only proves the tree it ran on.
 
 **On a red suite, revert that commit and open a fix round** on the package that
 caused it. `git -C <repo> reset --hard HEAD~1` on the deliverable branch undoes
@@ -384,7 +347,8 @@ One squashed commit per package gives a reviewer a narrative to read, and the
 IC's per-green-step commits stay on its own branch, which is what makes a
 resume safe.
 
-Mark each package `integrated` as its merge lands and its suite run passes.
+Mark each package `integrated` as its merge lands and its suite run passes, or
+as the no-suite outcome stands in for that run.
 
 Textual conflicts should be impossible — disjoint file sets leave git nothing
 to conflict on, and you own every shared file. What remains is the semantic
@@ -407,13 +371,19 @@ deliverable branch.
 
 ## Review the deliverable
 
-**Write the diff again now**, to `diffs/<deliverable-id>-final.patch`. The
-diffs written at "Review the package" predate the fix rounds and every
-shared-file edit you just made, and those edits are exactly what the next
-reviewer's shared-file check exists to read (design §15.24).
+**Write the diff now**, to `diffs/<deliverable-id>-final.patch`, so it never
+enters your context:
+
+```
+git -C <repo> diff <deliverable-base>..HEAD > <record-root>/diffs/<deliverable-id>-final.patch
+```
+
+It holds every fix round and every shared-file edit you just made, and those
+edits are exactly what the next reviewer's shared-file check exists to read
+(design §15.24).
 
 Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`, the
-repo path and base ref, the fresh diff path, every accepted package review,
+repo path and base ref, the fresh diff path, every package's `reports/<id>.md`,
 `review-output.md` whole, and the absolute path it writes to:
 `reviews/<deliverable-id>-deliverable-review.md`. Four of its seven checks read
 the record rather than the diff, so a diff-only dispatch cannot run them.
@@ -504,5 +474,5 @@ Clear one only when no process holds it.
 ## Standing down an IC
 
 Stand down, never kill. Ask the IC to commit what it has and stop. This holds
-for a re-plan, for a fix round that respawns one band up, and for any direction
-change. Work in progress is retained.
+for a fix round that respawns one band up, and for any direction change. Work
+in progress is retained.

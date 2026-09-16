@@ -72,7 +72,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | Role | Mechanism | Model | Lifetime |
 |---|---|---|---|
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
-| **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
+| **Scout** | unnamed subagent, new `crew:scout` | haiku | one question |
 | **Advocate** | unnamed subagent, new `crew:council-advocate` | sonnet | one position |
 | **Researcher** | unnamed subagent, new `crew:researcher` | per band | one question |
 | **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |

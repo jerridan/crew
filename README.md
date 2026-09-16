@@ -37,8 +37,8 @@ Start Claude Code in an ordinary clone of the target repo, not a worktree:
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto
 ```
 
-Add `--teammate-mode tmux` from inside tmux to give each implementer its own
-pane on the full path:
+Add `--teammate-mode tmux` from inside tmux to give every dispatched agent
+its own pane:
 
 ```
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto --teammate-mode tmux
@@ -110,12 +110,12 @@ ran out. Answer in the session and the run continues.
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | the full path |
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
-| tmux, for a pane per implementer | `--teammate-mode tmux` from inside tmux; without it the implementers run in the sidebar | optional, the full path |
+| tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without it every dispatched agent runs in the sidebar | optional, every path |
 
 Crew never widens your permissions itself. Without the teams variable a run
-still works, but a named agent becomes an ordinary subagent: you keep the
-per-package model and the isolated context, and you lose the messaging between
-agents and the shared task list.
+still works, but every named agent launches as an ordinary subagent: you keep
+the per-package model and the isolated context, and you lose the messaging
+between agents and the shared task list.
 
 ## How it works
 

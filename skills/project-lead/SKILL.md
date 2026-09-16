@@ -128,15 +128,48 @@ every field included, and its `Citation:` quotes the words in the goal you
 read the path off. Nothing else in the record says an investigation run was
 chosen rather than fallen into.
 
+## Every dispatch is named
+
+Every agent you dispatch, on every path, gets a `name`. Under a display
+mode — `--teammate-mode tmux` or `iterm2` — a name puts that agent in its
+own pane. The name is `<role>-<id>`: the role is the agent (`scout`,
+`spec-critic`, `split-critic`, `advocate`, `researcher`, `ic`, `review`),
+and the id is what makes the name unique in this run — the question number
+for a scout, the round for a critic, the position for an advocate, the
+package id for an IC.
+
+**Read the result from the idle notification's final message.** A named
+agent's answer arrives there, not as a tool result. Where an agent also
+writes a record file — a critic, an IC, a review — that file stays the
+durable copy; read the idle notification for the answer and the file for
+the evidence.
+
+**With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` unset, a name changes
+nothing.** The agent launches as a plain subagent, and its result returns
+as an ordinary tool result. Name it the same way regardless — the rule does
+not depend on the flag.
+
+**A teammate cannot spawn a teammate.** An in-process teammate's own
+subagents run in the foreground, so a named researcher's lookups run one at
+a time.
+
+**Permission prompts surface here.** Any dispatch's prompt reaches this
+session, for you to approve. Pre-approve what the run needs, or a
+no-prompt run stalls on the first one.
+
+Every reference and agent description below points at this section rather
+than restate it.
+
 ## Scout
 
 Four questions, answered from this repo before any spec exists. Does an
 analogous implementation exist? Do tests cover this surface? What runs the
 suite? Which instruction files apply?
 
-Dispatch `crew:scout` subagents at `haiku` and read their answers. The reading
-stays out of your own context. `band-rubric.md` says why Haiku runs only this
-agent.
+Dispatch `crew:scout` subagents at `haiku`, named `scout-<n>` for the
+question number, and read their answers from the idle notification. The
+reading stays out of your own context. `band-rubric.md` says why Haiku runs
+only this agent.
 
 On the investigation path, read `investigation-path.md` now and run its phases.
 It sends you back to "Write the spec", or it ends the run itself.
@@ -179,17 +212,18 @@ never enumerates the file's contents, because a closed list is one missed item
 from a critic round (design §15.50).
 
 **Your output is the run's most expensive.** So outline the spec yourself, have
-an unnamed `general-purpose` subagent at `sonnet` write the prose, and revise
-what it returns. The spec is yours.
+a `general-purpose` subagent at `sonnet`, named `spec-writer`, write the
+prose, and revise what it returns. The spec is yours.
 
 ## Have the spec reviewed
 
-Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md`, the repo
-path, `review-output.md` whole, and the absolute path it writes its findings
-to: `reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest on
-disk. Every review dispatch in this run names its path this way and returns the
-short result `review-output.md` defines; open the file only when the count says
-there is something to adjudicate.
+Dispatch `crew:spec-critic`, named `spec-critic-r<n>` for the round, with
+`spec.md`, `charter.md`, the repo path, `review-output.md` whole, and the
+absolute path it writes its findings to: `reviews/spec-critic-r<n>.md`,
+`<n>` being one more than the highest on disk. Every review dispatch in
+this run names its path this way and returns the short result
+`review-output.md` defines, read from its idle notification; open the file
+only when the count says there is something to adjudicate.
 
 `Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.

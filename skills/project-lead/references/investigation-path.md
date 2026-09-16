@@ -73,9 +73,9 @@ to leave behind. "Gather more data" is the escalation, not a hypothesis.
 
 **Then ask where the value goes wrong.** `SKILL.md`'s "Scout" asked what the
 repo already does; this phase asks why it does the wrong thing. Dispatch
-`Explore` subagents for a lookup, and `crew:researcher` for a question
-needing several hops and a synthesis — this path is its only caller
-(design §3).
+`Explore` subagents for a lookup, and `crew:researcher`, named
+`researcher-<n>` for the question, for a question needing several hops and a
+synthesis — this path is its only caller (design §3).
 `band-rubric.md` bands a researcher dispatch.
 
 **Evidence is a file, not a memory.** Every finding lands in
@@ -85,8 +85,8 @@ it (`simple-path.md`'s "Integrate"). Two writers, because the two agents
 differ:
 
 - **`crew:researcher` writes its own file.** Name the absolute path in the
-  dispatch and it returns four lines, the way a review agent does. Read the
-  file only where you need it.
+  dispatch and it returns four lines in its idle notification, the way a
+  review agent does. Read the file only where you need it.
 - **You write an `Explore` subagent's file.** `Explore` is read-only and
   carries no `Write` tool. It has already done the reading, so what returns is
   an answer with citations, not a dump: paste that into the file yourself.
@@ -182,8 +182,9 @@ when the diagnosis says there is no change to make in this repo, and
 **Verify the diagnosis before you end on it.** A report ending produces no
 diff, so no reviewer can run over it, and your own artifact would otherwise be
 its own evidence (design §7). Write the council entry first, then dispatch one
-`crew:council-advocate`, unnamed, at `band-rubric.md`'s council model. Give it
-your root cause as the position to argue against, and the same evidence paths.
+`crew:council-advocate`, named `advocate-1`, at `band-rubric.md`'s council
+model. Give it your root cause as the position to argue against, and the
+same evidence paths.
 
 **This is a one-advocate council, and its entry is the default shape**
 `record-format.md` shows. Take that template field for field, and four lines
@@ -197,8 +198,9 @@ counts as nothing.
 
 **You save its case yourself**, to `reviews/diagnosis-adversary.md`. An
 advocate writes nothing outside its report (`agents/council-advocate.md`), so
-its case comes back as a tool result. Copy it into that file whole. You have
-to read it to judge it, so nothing is saved by asking it to write.
+its case comes back as its idle notification's final message
+(`SKILL.md`'s "Every dispatch is named"). Copy it into that file whole. You
+have to read it to judge it, so nothing is saved by asking it to write.
 
 Rebut the case in writing on the entry's `Losing:` line, or change the
 diagnosis. A root cause you cannot defend in writing is an escalation, not a

@@ -1,6 +1,6 @@
 ---
 name: researcher
-description: Answer one multi-hop research question by fanning out your own read-only lookup subagents in parallel, following what they return across further hops, and returning one brief with citations. Dispatched unnamed, findings return as a tool result. Use this over a scout when the question needs several lines of inquiry and synthesis, not one lookup.
+description: Answer one multi-hop research question by fanning out your own read-only lookup subagents in parallel, following what they return across further hops, and returning one brief with citations. Dispatched named `researcher-<n>`; findings return in its idle notification's final message, and its own lookups run one at a time. Use this over a scout when the question needs several lines of inquiry and synthesis, not one lookup.
 model: sonnet
 reasoning_effort: high
 tools: Read, Glob, Grep, Bash, Agent, Write

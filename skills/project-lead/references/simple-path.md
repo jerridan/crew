@@ -10,7 +10,7 @@ The full path is `full-path.md`. Nothing here applies to it, except the four
 rules it borrows: "Create the branch", "Verify before you believe",
 "Integrate" and "End the run".
 
-One unnamed subagent does the work, on one branch, in the checkout
+One named subagent does the work, on one branch, in the checkout
 `run.checkout` names. No split critic runs and nothing merges. That checkout
 is the target repo itself, unless another run already held it — "Create the
 branch" owns that case, and it is the only one on this path that makes a
@@ -167,20 +167,21 @@ idle while the IC works, so one tree costs the run nothing (design §9.1).
 
 ## Dispatch the IC
 
-Dispatch one **unnamed** subagent at the package's band model: `crew:ic` for
-code, `crew:ic-instructions` for an instruction file. It inherits no
-history, so the spawn prompt carries all of: `ic-contract.md`'s full text, the
-brief, the file set, `run.checkout`, the interface contract, the
-acceptance criterion, the global constraints section, the record root, the
-package id, and **that it is a subagent** — `ic-contract.md`'s record writes
-branch on it.
+Dispatch one subagent, named `ic-<id>`, at the package's band model:
+`crew:ic` for code, `crew:ic-instructions` for an instruction file. It
+inherits no history, so the spawn prompt carries all of: `ic-contract.md`'s
+full text, the brief, the file set, `run.checkout`, the interface contract,
+the acceptance criterion, the global constraints section, the record root,
+the package id, and **that it is a subagent** — `ic-contract.md`'s record
+writes branch on it. `SKILL.md`'s "Every dispatch is named" owns the naming
+rule and the read channel.
 
 **One dispatch carries the package.** The IC writes `plans/<id>.md`, then
 continues per `ic-contract.md`'s "Write your plan first".
 
 **Expect the contents instead of the file.** A dispatch shape that denies the
-IC every record write (§15.26b, §15.31b) puts the plan or report in its final
-message. Transcribe it, and say that you did.
+IC every record write (§15.26b, §15.31b) puts the plan or report in its idle
+notification's final message. Transcribe it, and say that you did.
 
 Set the package `in-flight` at the dispatch, and write its `base`: the head
 of the deliverable branch in `run.checkout` at that moment. For the run's own

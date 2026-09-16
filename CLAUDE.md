@@ -34,7 +34,7 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 Stages 0 through 7 are built: seven agents — the six workers and the
 read-only `crew:scout` — ten references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
-one branch under one unnamed subagent; the **full path** runs several packages
+one branch under one named subagent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
 `--resume` recovery. Both have run end to end against a real repo.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
@@ -73,7 +73,7 @@ Each reference owns one subject and is canonical for it:
 
 - `autonomy-contract.md` — how a question is routed, when a project lead
   escalates and to whom, and how a run's spend is counted.
-- `simple-path.md` — the loop for one package: one unnamed IC subagent, one
+- `simple-path.md` — the loop for one package: one named IC subagent, one
   branch in this checkout, no merge. It also owns the **light path**, the
   same loop with no spec, and the **delivered window** on every path.
 - `full-path.md` — the loop for more than one package: worktrees, IC
@@ -118,14 +118,13 @@ container-choice check is limited to the standard's four container types.
   plugin user, so a bump for them says a release happened when none did.
 - The hierarchy is project lead → ICs. Write **project lead** in full every
   time; the bare word `lead` names no tier here (design §15.19, §15.95).
-- Only ICs are named agents. A named agent becomes a teammate, and a teammate
-  returns no parseable tool result — just a final answer in its idle
-  notification. Anything whose result the dispatcher must read and act on
-  stays unnamed (design §3, §15.20b).
+- Every dispatch is named. `skills/project-lead/SKILL.md`'s "Every dispatch
+  is named" owns the rule: the name shape, where the result is read, and
+  what naming costs (design §3, §15.20b).
 - Teammates are experimental and gated on
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. With the flag off, a named agent
-  launches as a plain subagent, so the naming rule above holds only when it is
-  on (design §15.20a).
+  launches as a plain subagent, and the name changes nothing (design
+  §15.20a).
 - A teammate cannot spawn a teammate, and an in-process teammate's subagents
   are forced to the foreground. Any tier that must dispatch in parallel cannot
   itself be a teammate (design §15.21).
@@ -133,9 +132,10 @@ container-choice check is limited to the standard's four container types.
   system prompt, in both display modes, and neither applies `skills:`. The
   split-pane mode replaced the prompt when §15.20d was written and appends it on
   2.1.268, so write an agent body that survives both (design §15.20d, §15.89e).
-- A teammate's permission prompts surface in the project lead's session for a
-  human to approve. Pre-approve what a run needs, or a no-prompt run stops on
-  the first one (design §15.20, §15.12).
+- A dispatch's permission prompts surface in the project lead's session for a
+  human to approve — `SKILL.md`'s "Every dispatch is named" owns the rule.
+  Pre-approve what a run needs, or a no-prompt run stops on the first one
+  (design §15.20, §15.12).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json` (design §12, §13.1).
 - A spawn-time `model` overrides an agent's frontmatter, and

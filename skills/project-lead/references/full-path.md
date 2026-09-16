@@ -19,14 +19,16 @@ two deliverables is escalation trigger 7, not a bigger split.
 
 | | Simple path | Full path |
 |---|---|---|
-| The IC | one unnamed subagent | one **named** teammate per territory |
+| The IC | one named subagent | one named teammate per territory |
 | Where it works | this checkout | its own worktree and branch |
-| Its report | a tool result you read | a file in the record, plus an idle notification |
+| Its report | a file in the record, plus its idle notification's final message | a file in the record, plus an idle notification |
 | Integration | nothing merges | one squashed commit per package |
 | The split critic | skipped | runs before any IC is dispatched |
 
-An IC is named here because a teammate is a named agent. Every other agent in a
-run stays unnamed, because you must read its result (design §3, §15.20b).
+Only the full path's IC becomes a teammate: "Check the launch conditions"
+below gates that on the teams flag. Every dispatch on either path is named;
+`SKILL.md`'s "Every dispatch is named" owns the rule and where its result is
+read (design §3, §15.20b).
 
 ## Check the launch conditions
 
@@ -93,9 +95,10 @@ Two rules shape the full path's split, on top of the format rules
 
 ## Have the split reviewed
 
-Dispatch `crew:split-critic`, unnamed, with `split.md`, `spec.md`, the repo
-path, `review-output.md` whole, and the absolute path it writes its findings
-to: `reviews/<deliverable-id>-split-critic-r<n>.md`, `<n>` being one more than
+Dispatch `crew:split-critic`, named `split-critic-r<n>` for the round, with
+`split.md`, `spec.md`, the repo path, `review-output.md` whole, and the
+absolute path it writes its findings to:
+`reviews/<deliverable-id>-split-critic-r<n>.md`, `<n>` being one more than
 the highest already on disk under that name.
 
 Adjudicate as `SKILL.md`'s "Have the spec reviewed" says. A failed invariant is

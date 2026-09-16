@@ -12,9 +12,27 @@ this rubric. This file is the only place a model is chosen.
 
 | Band | Model | The package looks like |
 |---|---|---|
-| light | haiku | Follows an existing repo pattern verbatim. Tests already cover the surface. |
+| light | sonnet | Follows an existing repo pattern verbatim. Tests already cover the surface. |
 | **standard** | **sonnet** | **Default.** |
 | deep | opus | A new interface others depend on. A concurrency, security, migration, or data-shape change. Or the project lead had to *interpret* the acceptance criterion rather than read it off the charter. |
+
+`light` and `standard` share a model. Keep them as two bands: `crew-stats.py`
+counts a promotion from a band change, not from a model change, and the
+`light` band still names the package shape that the light path (see below)
+and the simple path both read.
+
+## Haiku runs only an agent whose tools need no approval
+
+Auto mode's permission classifier does not support Haiku on any provider
+(https://code.claude.com/docs/en/permission-modes.md). A Haiku agent with a
+tool that needs approval — `Bash`, `Write`, or `Edit` — has no approver, so
+every one of its calls falls back to a prompt in the project lead's session,
+and a run nobody watches stalls on the first one.
+
+Today `crew:scout` is the only agent built from `Read`, `Glob` and `Grep`
+alone, so it is the only agent Haiku runs. Every IC, instruction IC, critic,
+researcher, and advocate carries `Bash`, `Write`, or `Edit`, and takes
+`sonnet` as its floor.
 
 ## Observable inputs
 

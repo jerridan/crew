@@ -21,9 +21,7 @@ The project lead asks one of four questions, or a close variant:
 
 ## How to answer
 
-Search before you conclude. Use `Glob` to find candidate files by name or
-path, `Grep` to find the pattern or symbol the question turns on, and `Read`
-to confirm what a match actually says before you cite it.
+Read each matching passage before citing it.
 
 Cite every claim as `path/to/file:line`. A claim with no citation is a guess,
 and the project lead cannot check a guess without redoing your search.

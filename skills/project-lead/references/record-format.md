@@ -20,6 +20,7 @@ One directory per goal, outside the target repo (design §4):
 ├── plans/            one plan per package, written by its IC
 ├── diffs/            one diff per deliverable, written by the project lead
 ├── evidence/         investigation path only: one file per evidence dispatch
+├── review-worktrees/ one throwaway checkout per skeptical review, removed after
 └── reviews/          raw critic and reviewer output
 ```
 
@@ -136,11 +137,11 @@ naming convention. Do not mix their contents.
   lead's own decomposition is `split.md` at the record root, named apart from
   `plans/` so that an IC told to "write its plan into the record" cannot
   overwrite it.
-- **`diffs/`** — the diff the deliverable review reads, written by the
-  project lead so it never enters its own context:
+- **`diffs/`** — the record's copy of the deliverable's whole change,
+  written by the project lead so it never enters its own context:
   `diffs/<deliverable-id>-final.patch`, written after integration so it
-  carries the shared-file edits. It is evidence of what that reviewer
-  actually saw.
+  carries the shared-file edits. It is evidence of what the hand-over
+  shipped.
 - **`evidence/`** — what one evidence dispatch found on the investigation
   path, `evidence/<n>-<slug>.md`, absent from every other run. It has two
   writers, and `investigation-path.md` Phase 1 says which writes when: a
@@ -163,7 +164,23 @@ naming convention. Do not mix their contents.
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
   critic on the same deliverable),
-  `reviews/<deliverable-id>-deliverable-review.md`, and
+  four files per skeptical review round, all named by the round `<n>` and none
+  by a deliverable id, because the review is per branch head:
+  `reviews/skeptical-r<n>.md`, the report, whose **first line is
+  `Reviewed: <sha>`** — the head that review read, which a resumed run matches
+  against `run.review_pending.head` rather than trusting the file name, and
+  whose second line is `Source: result field` when the fallback supplied it;
+  `reviews/skeptical-r<n>-instructions.md`, the text the review was launched
+  with; `reviews/skeptical-r<n>-result.json`, the child process's own JSON
+  output, which the checks read; and `reviews/skeptical-r<n>-reply.md`, the
+  project lead's adjudication of that report, one line per finding with its
+  disposition — accepted with the package id it became, declined with its
+  reason, or out of scope with the goal proposed for it. A retry of a round does
+  not overwrite these: it renames the attempt it replaces to
+  `skeptical-r<n>-attempt<k>.md`, `skeptical-r<n>-instructions-attempt<k>.md`
+  and `skeptical-r<n>-result-attempt<k>.json`, `<k>` counting up from the
+  highest already there, so the evidence of a failed attempt survives.
+  `crew-stats.py` counts none of the renamed files as a review. Then
   `reviews/diagnosis-adversary.md` for the one advocate that argues against a
   report ending's root cause (design §9.5; the diagnosis is per goal, so this
   name carries no deliverable id). A goal can hold several deliverables, and a
@@ -361,10 +378,14 @@ pending ──▶ in-flight ──┤
   so the first evidence dispatch moves it (design §9.5).
 - `in-flight → draft-pr-opened`: every package integrates and the project lead
   opens the draft PR (design §9.3).
-- `in-flight → work-complete`: the work is complete and reviewed, and the push
-  or the draft PR was impossible or refused (`simple-path.md`'s "End the run"). Or the run
-  took the investigation path and its `diagnosis.md` `Outcome` is `no change`,
-  so there was never a PR to open (design §9.5).
+- `in-flight → work-complete`: every package passed the project lead's own
+  verification, and the push or the draft PR was impossible or refused
+  (`simple-path.md`'s "End the run"). The skeptical review is not a
+  precondition — it runs after this write, on the local head, like any other
+  hand-over (`skeptical-review.md`). This state is terminal: a review and its
+  patch rounds leave the deliverable `work-complete`. Or the run took the
+  investigation path and its `diagnosis.md` `Outcome` is `no change`, so there
+  was never a PR to open (design §9.5).
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   deliverable (design §10).
 
@@ -416,6 +437,12 @@ it cut the deliverable a checkout of its own (`worktrees.json` below).
 |---|---|
 | `run_state` | one of `active`, `blocked`, `delivered`, `interrupted`, `complete`. See `run_state` transitions below. `delivered` means every deliverable holds a terminal state and the session stays up for questions, follow-ups and the principal's word that the work shipped (`simple-path.md`'s "The delivered window"). `complete` means that word came. |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. It is also what prices the run: `spend.py` reads each id's transcript subtree (Spend below). |
+| `review_rounds` | an integer: how many skeptical review rounds this run has entered. Starts at 0, and absent means 0. It names the round whose files are `reviews/skeptical-r<n>.*`. `skeptical-review.md` owns when it moves, what caps it, and why a retry leaves it where it is. |
+| `review_pending` | `{head, round}` — the branch head sha a skeptical review is owed on, and the round reserved for it — or `null` when none is owed. One object, not two fields, so the sha and the round it names cannot disagree. Every arming goes through `crew-record.py`'s `arm_review`, reached by `deliver --review-head` at the hand-over and by `arm-review --head` after a follow-up integrates; `run set review_pending null` is for clearing it and nothing else. `skeptical-review.md` owns every transition and what a set value means to a resumed run. |
+| `unreviewed_heads` | a list of `{head, reason, at}`, one per branch head that was handed over or pushed with no review owed for it. `reason` is `cap` today, the only case that produces one. Appended by `arm_review` in the same write that would have armed the head. Absent until the first one. A head here shipped unreviewed, and `skeptical-review.md` says who has to be told. |
+| `review_results` | an object keyed by round number, each value `{exit, denials_ok, report_ok, at}`: the outcome of the four checks the project lead runs over a finished review. A round with no entry has not been checked, whatever sits in `reviews/`. Absent until the first check. `skeptical-review.md` owns the checks and what a passing entry permits. |
+| `review_session_ids` | a list of session ids, one per skeptical review this run started. The project lead generates each id itself and appends it **before** it launches that review, then passes it to the review as `--session-id`, so a review that dies halfway is still priced (`skeptical-review.md` owns the procedure). `spend.py` prices these transcripts into the run and `crew-stats.py` reports them. **Both hooks ignore this field.** An id here is a foreign session, so it never goes in `run.session_ids`, whose ending marks the whole run `interrupted` (`hooks/session-end.py`, design §15.90h). Absent until the first review. |
+| `repo` | the absolute path to the target-repo clone the project lead was launched in, written at `simple-path.md`'s "Create the branch" beside `checkout`. On a free checkout the two are equal; on a held one, `checkout` is the worktree this run cut and `repo` is the clone it was cut from. **It is the path that outlives the run's own worktrees**, so every `worktree add`, `remove` and `prune` runs against it — the removal at "End the run", and every skeptical review (`skeptical-review.md`). Absent on an investigation run that ends in a report. |
 | `checkout` | the absolute path this run does its git work in, written at `simple-path.md`'s "Create the branch". It is the target repo the charter named, unless another run already held that checkout — then it is the worktree this run cut, registered in `worktrees.json`. Every git command, the test suite and the push run against it. It is not where the run's transcripts live: those follow the session's own working directory, which the launch fixed (design §15.90). Absent on an investigation run that ends in a report, which creates no branch. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it when it has to price from a checkout. |
@@ -424,7 +451,7 @@ it cut the deliverable a checkout of its own (`worktrees.json` below).
 | `spend` | `{transcript}`. See Spend below. |
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
-| `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step a band or the light path let the run skip. `step` is `deliverable-review` or `spec-critic`. A `deliverable-review` entry names the deliverable and leaves `package` `null`; a `spec-critic` entry leaves both `null`, because the run writes no spec and the skip belongs to the whole run. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the band and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What a band skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). **A follow-up that makes the deliverable review run removes the `deliverable-review` entry**, for the same reason (design §15.92h). |
+| `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step the light path let the run skip. `step` is `spec-critic`, and nothing else: a `spec-critic` entry leaves both `package` and `deliverable` `null`, because the run writes no spec and the skip belongs to the whole run. A record written before T58 or T59 can also carry a `plan-gate` or a `deliverable-review` entry, from the two steps those tickets retired (design §15.94d). Read one as history, and write neither on a new skip. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the path and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What the light path skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
@@ -445,7 +472,7 @@ prices it.
 | `interrupted` | `blocked` | `--resume`, when an `escalations` entry has no `answer` yet |
 | `interrupted` | `delivered` | `--resume`, when no answer is missing and every deliverable holds a terminal state |
 | `interrupted` | `active` | `--resume`, when no answer is missing and a deliverable is still open |
-| `active` | `delivered` | the project lead hands the work over: the draft PR opens, or the run ends in `work-complete` (`simple-path.md`'s "End the run") |
+| `active` | `delivered` | the project lead hands the work over: the draft PR opens, or the run ends in `work-complete` (`simple-path.md`'s "End the run"). `crew-record.py deliver` takes `--review-head <sha>` here and writes `run.review_pending` in the same write, so the hand-over cannot land without the review it owes (`skeptical-review.md`) |
 | `delivered` | `complete` | the principal says the work shipped, and the project lead writes `ship` (`simple-path.md`'s "The delivered window") |
 
 An `interrupted` run whose deliverables all hold a terminal state, and that
@@ -477,7 +504,7 @@ No figure gates a run. `spend` is a report the closing summary states and
 
 | Field | Meaning |
 |---|---|
-| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over the transcripts of this run's own sessions — each id in `run.session_ids`, with the subagents and in-process teammates under it. `autonomy-contract.md` says when to run it. |
+| `transcript` | written by `scripts/spend.py --write`: `{measured_at, total_tokens, usd_list_price, by_model}` over the transcripts of this run's own sessions — each id in `run.session_ids`, with the subagents and in-process teammates under it, plus each id in `run.review_session_ids`. `autonomy-contract.md` says when to run it. |
 
 **A run is priced by its sessions, not by its checkout.** Claude Code names a
 transcript directory for the session's working directory, so two runs launched
@@ -605,7 +632,9 @@ IC name → worktree path → branch → `session_ids` → `orphaned`.
 per territory, keyed by the IC's name. Either path cuts one for the
 deliverable when another run already held the checkout, and that entry is
 keyed by the deliverable id, because no IC owns it (`simple-path.md`, "Create
-the branch"). A run that cut none writes no file.
+the branch"). A run that cut none writes no file. **A review worktree is not one of these.**
+It lives under `<record-dir>/review-worktrees/`, the project lead alone makes
+and removes it, and nothing registers it here (`skeptical-review.md`).
 
 **An entry lives exactly as long as its worktree.** The step that removes a
 worktree deletes the entry. Never add a field that says the worktree is gone:
@@ -1147,17 +1176,23 @@ Every name this file defines, with what consumes it.
 - `reports/` — consumer: Task 6 (`ic-contract.md` report contract); `simple-path.md` and `full-path.md` "Verify before you believe"; design §7 (the red commit's sha and its failing output)
 - `plans/` — consumer: Task 6 (`ic-contract.md`, "Write your plan first"); Task 7 (`crew:ic`)
 - `evidence/` — writer: a `crew:researcher`, at the path its dispatch names; the project lead itself for an `Explore` subagent's finding, and for a researcher whose write was denied. Consumer: `investigation-path.md` Phases 1 to 3; every advocate in an investigation council (design §9.5); `diagnosis.md`'s `## Evidence`
-- `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: stage 3 (`split-critic` output); stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied. Consumer: stage 3 (`split-critic` output); `simple-path.md`'s "The skeptical review" (the skeptical review's report)
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
+- `run.repo` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: `simple-path.md`'s "End the run" (the worktree it removes); `skeptical-review.md` (every review worktree)
+- `run.review_rounds` — writer: the project lead, on first entry into a round (`skeptical-review.md`). Consumer: `skeptical-review.md` (the cap, and the round's file names)
+- `run.unreviewed_heads` — writer: `crew-record.py`'s `arm_review`, through either command, when the cap stops a head being armed. Consumer: the project lead's next report to the principal (`skeptical-review.md`)
+- `run.review_results` — writer: the project lead, after the four checks over a finished review. Consumer: `skeptical-review.md` (whether a report may be adjudicated)
+- `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head` and `arm-review --head`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
+- `run.review_session_ids` — writer: the project lead, before it launches each skeptical review (`skeptical-review.md`). Consumer: `scripts/spend.py` and `scripts/crew-stats.py` (the transcripts that price the review into the run). Neither hook reads it
 - `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py` (the checkout fallback only)
 - `run.delivered_at` — writer: `crew-record.py`, on the first `deliver`, `run state delivered`, or `run set run_state delivered`. Consumer: `scripts/crew-stats.py` (the end of an `interrupted` run that has delivered); a human, or a later session, asking when the work was handed over and how long the delivered window ran
 - `run.completed_at` — writer: `crew-record.py`, on `ship`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md`'s "Verify before you believe" (re-verify after an IC compacts) and "The territory's next package" (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
-- `run.steps_skipped` — writer: the project lead, at each skip `band-rubric.md`'s "What a band skips" allows. Consumer: `scripts/crew-stats.py` ("Steps skipped by rule"); a human, or a later session, asking which steps ran (design §15.77)
+- `run.steps_skipped` — writer: the project lead, at each skip `band-rubric.md`'s "What the light path skips" allows. Consumer: `scripts/crew-stats.py` ("Steps skipped by rule"); a human, or a later session, asking which steps ran (design §15.77)
 - `run.spend.transcript` — writer: `scripts/spend.py`. Consumer: `scripts/crew-stats.py`, the closing report, design §8
 
 **`split.md` sections and fields**
@@ -1227,6 +1262,12 @@ Every name this file defines, with what consumes it.
 - `run_state` — consumer: crew's `SessionEnd` hook (writer, `hooks/session-end.py`); stage 5
 - `run_state` values `active`, `blocked`, `delivered`, `interrupted`, `complete` — consumer: this file's `run_state` transitions table; both crew hooks; `skills/lead/SKILL.md` (`delivered`, which sets the item `delivered`); stage 5, stage 6
 - `run.session_ids` — consumer: stage 5 (resume, matches this run's project lead sessions)
+- `run.repo` — consumer: stage 5 (every worktree command of the run)
+- `run.review_rounds` — consumer: `skeptical-review.md` (the cap)
+- `run.unreviewed_heads` — consumer: the principal, told which heads shipped unreviewed
+- `run.review_results` — consumer: stage 5 (resume, which adjudicates only a checked report)
+- `run.review_pending` — consumer: stage 5 (resume in `delivered`, which owes a review on `head` when it is set)
+- `run.review_session_ids` — consumer: `scripts/spend.py` (pricing); never the hooks
 - `run.principal` — consumer: `autonomy-contract.md` (The principal); stage 5 (resume, which reads it instead of a message it no longer has)
 - `spend` — consumer: design §8, `scripts/crew-stats.py`
 - `escalations` — consumer: stage 6 (design §6 triggers); this file's `run_state` transitions table
@@ -1268,7 +1309,10 @@ Every name this file defines, with what consumes it.
 - `reports/<id>.md` — consumer: Task 6 (`ic-contract.md` report contract); the project lead at "Verify before you believe"
 - `plans/<id>.md` — consumer: Task 6 (`ic-contract.md`); Task 7 (`crew:ic`)
 - `reviews/<deliverable-id>-split-critic-r<n>.md` — consumer: stage 3 (`split-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
-- `reviews/<deliverable-id>-deliverable-review.md` — consumer: stage 4 (`crew:deliverable-reviewer` output)
+- `reviews/skeptical-r<n>.md` — writer: the skeptical review's own headless session, or the project lead when the fallback supplies it (`skeptical-review.md`). Consumer: `simple-path.md`'s "The skeptical review"; `scripts/crew-stats.py` (the review kind and its catch rate)
+- `reviews/skeptical-r<n>-instructions.md` — writer: the project lead, before it launches that review. Consumer: `--append-system-prompt-file` on the review's own command; a human asking what the reviewer was told
+- `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the project lead's four checks, live and on a resume
+- `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts
 - `reviews/diagnosis-adversary.md` — writer: the project lead, copying the case one `crew:council-advocate` returned on the investigation path; an advocate writes no file (`agents/council-advocate.md`). Consumer: design §9.5 (a report ending's only verification evidence, design §7)
 

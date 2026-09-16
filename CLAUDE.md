@@ -38,22 +38,22 @@ sits beside it, at `<record-root>/lead-<date>-<hex>/`.
 Stages 0 through 7 are built: six agents, eleven references, both hooks, all
 four of `/crew:project-lead`'s paths, and `/crew:lead`. The **simple path**
 runs one package on one branch under one unnamed subagent; the **full path**
-runs several packages in worktrees under named IC teammates, with a split
-critic, a squash merge per package and `--resume` recovery. Both have run end
-to end against a real repo with a test suite. The **investigation path** takes
-a symptom to a diagnosis, then to a fix or to a report ending; both endings
-have run against that repo, and it is `crew:researcher`'s only caller, which no
-run has dispatched yet. The **light path** is the simple path with no spec and
-no spec critic, chosen by the project lead itself after the scout. Four
-light-path items have run to a draft PR each, and none promoted in place:
-"Size the work" absorbed both seeds (§15.88, §15.91). A project lead stays in
-its session after the hand-over: the run goes `delivered`, and `complete` only
-on the ship word. One item has run the whole window (§15.92), which an
-unexercised **skeptical review** now opens.
+runs several packages in worktrees under named IC teammates, with a merge per
+package and `--resume` recovery. Both have run end to end against a real repo.
+The **investigation path** takes a symptom to a diagnosis, then to a fix or to
+a report ending; both endings have run, and it is `crew:researcher`'s only
+caller, which no run has dispatched yet. The **light path** is the simple path
+with no spec and no spec critic. Four light-path items have run to a draft PR,
+and none promoted in place (§15.88, §15.91). A project lead stays in its
+session after the hand-over: the run goes `delivered`, and `complete` only on
+the ship word. One item has run the whole window (§15.92), which an
+unexercised **skeptical review** opens. That window separates a **change
+request**, one more package, from **findings**, which go to **patch mode**: a
+package per group, one push, a reply per finding (§15.94d). Neither has run.
 
-**Every run named above predates T58 and T59**, which cut two review steps
-and moved the last one to after the hand-over. Each is evidence for the step
-it names and not for the loop.
+**Every run named above predates T58, T59 and T60**, which cut two review
+steps, moved the last to after the hand-over and gave the window a patch mode.
+Each is evidence for one step, not for the loop.
 
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
 item, launches one project-lead session per item, answers what it can and
@@ -91,8 +91,8 @@ Each reference owns one subject and is canonical for it:
   every other one on this list is under `skills/project-lead/` and is
   canonical for both tiers.
 - `simple-path.md` — the loop for one package: one unnamed IC subagent, one
-  branch in this checkout, no merge. It also owns the **light path**, the same
-  loop for a small item with no spec.
+  branch in this checkout, no merge. It also owns the **light path**, the
+  same loop with no spec, and the **delivered window** on every path.
 - `full-path.md` — the loop for more than one package: worktrees, IC
   teammates, merges, promotion and recovery.
 - `investigation-path.md` — the loop from a symptom to a diagnosis: the

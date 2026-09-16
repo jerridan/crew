@@ -130,28 +130,47 @@ chosen rather than fallen into.
 
 ## Every dispatch is named
 
-Every agent you dispatch, on every path, gets a `name`. Under a display
-mode — `--teammate-mode tmux` or `iterm2` — a name puts that agent in its
-own pane. The name is `<role>-<id>`: the role is the agent (`scout`,
-`spec-critic`, `split-critic`, `advocate`, `researcher`, `ic`, `review`),
-and the id is what makes the name unique in this run — the question number
-for a scout, the round for a critic, the position for an advocate, the
-package id for an IC.
+Every agent you dispatch, on every path, gets a `name`, unique across the
+whole run. Whether that name makes the agent a teammate follows from
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` alone, never from the path or the
+role: set, a named agent launches as a teammate, in its own pane under a
+display mode (`--teammate-mode tmux` or `iterm2`); unset, it launches as a
+plain subagent and the name changes nothing.
 
-**Read the result from the idle notification's final message.** A named
-agent's answer arrives there, not as a tool result. Where an agent also
-writes a record file — a critic, an IC, a review — that file stays the
-durable copy; read the idle notification for the answer and the file for
-the evidence.
+**The name shape**, `<role>-<id>`:
 
-**With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` unset, a name changes
-nothing.** The agent launches as a plain subagent, and its result returns
-as an ordinary tool result. Name it the same way regardless — the rule does
-not depend on the flag.
+| Role | Name |
+|---|---|
+| Scout | `scout-<n>` |
+| Spec critic | `spec-critic-r<n>` |
+| Split critic | `split-critic-r<n>` |
+| Advocate | `advocate-c<council n>-<position>` |
+| Researcher | `researcher-<n>` |
+| IC | `ic-<package id>-r<n>` |
+| Review | `review-r<n>` |
+
+`<n>` always counts from 1 and is what keeps two dispatches of the same role
+from sharing a name: the question for a scout, the round for a critic or a
+review, and the dispatch for an IC — a fresh IC per fix round is still one
+package, so its round counts from that package's first dispatch, giving
+`r1`, `r2`, and on. An advocate's id pairs its council number with its
+position, so a second council in the same run — the investigation path can
+run more than one — never collides with the first.
+
+**Read the result from the idle notification's final message, when the name
+made a teammate.** A named agent's answer arrives there, not as a tool
+result. With the flag unset, the same agent is a plain subagent and its
+result returns as an ordinary tool result instead — read it from there.
+Where an agent also writes a record file — a critic, an IC, a review — that
+file stays the durable copy either way; read the idle notification or the
+tool result for the answer, and the file for the evidence.
 
 **A teammate cannot spawn a teammate.** An in-process teammate's own
 subagents run in the foreground, so a named researcher's lookups run one at
 a time.
+
+**Never request `run_in_background` for a dispatch.** It is unsupported for
+a teammate.
 
 **Permission prompts surface here.** Any dispatch's prompt reaches this
 session, for you to approve. Pre-approve what the run needs, or a

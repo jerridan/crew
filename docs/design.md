@@ -84,18 +84,12 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 
 ### The naming rule
 
-Every dispatch is named (T66, §15.20b, §15.97). A **named** agent becomes a
-teammate only when `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set — with it
-unset, the name changes nothing. A teammate's final answer arrives in full in
-its idle notification, not as a parseable tool result, so the project lead
-reads the result there and treats a record file, where the agent writes one,
-as the durable copy.
-
-Every role gets a name: `<role>-<id>`, the id being what makes it unique in
-the run. Naming an IC still buys it the two things a teammate needs: resume
-with context intact for fix rounds, and graceful stand-down on a direction
-change. `skills/project-lead/SKILL.md`'s "Every dispatch is named" is the
-canonical statement; every other file in this plugin points at it.
+Every dispatch is named, on every path, and `skills/project-lead/SKILL.md`'s
+"Every dispatch is named" is the canonical statement of what that means —
+the name shape, whether a name makes an agent a teammate, where its result
+is read, and what naming costs — so every other file in this plugin,
+including the roles table above, points at that section instead of
+repeating it (T66, §15.20b, §15.97).
 
 ### What each role may not do
 
@@ -375,10 +369,11 @@ principal wants routes to §6.3's sweep or to an escalation.
 
 1. The project lead writes its own answer and its confidence into the entry as
    `Prior:`, before it dispatches.
-2. It dispatches one `crew:council-advocate`, unnamed, to argue the opposite,
-   with citations. The definition carries the rules: argue **for** your
-   assigned position, gather cited evidence from code and docs, make the
-   strongest case, and name the strongest objection to your own side.
+2. It dispatches one `crew:council-advocate`, named as §3's "The naming rule"
+   says, to argue the opposite, with citations. The definition carries the
+   rules: argue **for** your assigned position, gather cited evidence from
+   code and docs, make the strongest case, and name the strongest objection
+   to your own side.
 3. The project lead adjudicates. Keeping the prior costs a written rebuttal of
    the adversary's strongest point. A prior it cannot rebut in writing does
    not stand: it adopts the adversary's position, or escalates.
@@ -748,7 +743,7 @@ for a conversation, not the size of the work.**
 | Situation | Shape |
 |---|---|
 | One package, the charter's criterion is the whole spec, and no judgment call is open | **Light path:** the simple path with no `spec.md` and no spec critic. One IC, one package review. It promotes in place to the row below when an answer turns out wrong (§15.88). |
-| One simple package | **Simple path:** one unnamed subagent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. Its result returns as a normal tool result. |
+| One simple package | **Simple path:** one named agent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. §3's "The naming rule" says where its result is read. |
 | Several packages, or work long enough to need steering | **Full path:** IC teammates in worktrees |
 
 The simple path is much cheaper and is expected to be the common case for

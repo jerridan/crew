@@ -1,6 +1,6 @@
 ---
 name: spec-critic
-description: Review the project lead's own spec.md against the charter, before the goal is split into packages. Checks the spec only — not the split in split.md, not the code. Catches an unfalsifiable acceptance criterion, a contradiction, and a charter requirement the spec dropped. Dispatched named `spec-critic-r<n>`; writes its findings to the record path the dispatch names and returns the short result `review-output.md` defines, read from its idle notification.
+description: Review the project lead's own spec.md against the charter, before the goal is split into packages. Checks the spec only — not the split in split.md, not the code. Catches an unfalsifiable acceptance criterion, a contradiction, and a charter requirement the spec dropped. Named as SKILL.md "Every dispatch is named" says; writes its findings to the record path the dispatch names and returns the short result `review-output.md` defines, read from its final message.
 model: opus
 reasoning_effort: high
 tools: Read, Write, Glob, Grep

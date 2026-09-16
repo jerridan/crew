@@ -182,9 +182,10 @@ when the diagnosis says there is no change to make in this repo, and
 **Verify the diagnosis before you end on it.** A report ending produces no
 diff, so no reviewer can run over it, and your own artifact would otherwise be
 its own evidence (design §7). Write the council entry first, then dispatch one
-`crew:council-advocate`, named `advocate-1`, at `band-rubric.md`'s council
-model. Give it your root cause as the position to argue against, and the
-same evidence paths.
+`crew:council-advocate`, named for this council's number as `SKILL.md`'s
+"Every dispatch is named" says, at `band-rubric.md`'s council model. Give it
+your root cause as the position to argue against, and the same evidence
+paths.
 
 **This is a one-advocate council, and its entry is the default shape**
 `record-format.md` shows. Take that template field for field, and four lines

@@ -119,23 +119,16 @@ container-choice check is limited to the standard's four container types.
 - The hierarchy is project lead → ICs. Write **project lead** in full every
   time; the bare word `lead` names no tier here (design §15.19, §15.95).
 - Every dispatch is named. `skills/project-lead/SKILL.md`'s "Every dispatch
-  is named" owns the rule: the name shape, where the result is read, and
-  what naming costs (design §3, §15.20b).
-- Teammates are experimental and gated on
-  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. With the flag off, a named agent
-  launches as a plain subagent, and the name changes nothing (design
-  §15.20a).
-- A teammate cannot spawn a teammate, and an in-process teammate's subagents
-  are forced to the foreground. Any tier that must dispatch in parallel cannot
+  is named" owns the rule whole: the name shape, the teams-flag gate, the
+  read channel, the permission-prompt surface, and what naming costs
+  (design §3, §15.20a, §15.20b, §15.12, §15.20).
+- A teammate cannot spawn a teammate (`SKILL.md`'s "Every dispatch is
+  named" owns the fact). Any tier that must dispatch in parallel cannot
   itself be a teammate (design §15.21).
 - A teammate built from an agent definition **appends** the body to its default
   system prompt, in both display modes, and neither applies `skills:`. The
   split-pane mode replaced the prompt when §15.20d was written and appends it on
   2.1.268, so write an agent body that survives both (design §15.20d, §15.89e).
-- A dispatch's permission prompts surface in the project lead's session for a
-  human to approve — `SKILL.md`'s "Every dispatch is named" owns the rule.
-  Pre-approve what a run needs, or a no-prompt run stops on the first one
-  (design §15.20, §15.12).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json` (design §12, §13.1).
 - A spawn-time `model` overrides an agent's frontmatter, and

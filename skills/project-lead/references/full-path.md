@@ -19,16 +19,16 @@ two deliverables is escalation trigger 7, not a bigger split.
 
 | | Simple path | Full path |
 |---|---|---|
-| The IC | one named subagent | one named teammate per territory |
+| The IC | one dispatch, for the one package | one IC per territory, sent its next package by message rather than a fresh dispatch |
 | Where it works | this checkout | its own worktree and branch |
-| Its report | a file in the record, plus its idle notification's final message | a file in the record, plus an idle notification |
+| Its report | a file in the record, plus its final message | a file in the record, plus its final message |
 | Integration | nothing merges | one squashed commit per package |
 | The split critic | skipped | runs before any IC is dispatched |
 
-Only the full path's IC becomes a teammate: "Check the launch conditions"
-below gates that on the teams flag. Every dispatch on either path is named;
-`SKILL.md`'s "Every dispatch is named" owns the rule and where its result is
-read (design §3, §15.20b).
+Every dispatch on either path is named the same way, and whether a name
+makes an IC a teammate follows the teams flag alone, never the path —
+`SKILL.md`'s "Every dispatch is named" owns the rule, where its result is
+read, and the flag (design §3, §15.20b).
 
 ## Check the launch conditions
 
@@ -135,14 +135,16 @@ id; leave it. Set every package's `ic_name` to the name of the IC that owns
 its territory. Nothing else maps a package back to the worktree that must
 verify it.
 
-Name an IC `ic-<territory-slug>`.
-
 ## Spawn the ICs
 
-One **named** teammate per territory, at the band of the package it starts on:
-`crew:ic` for code, `crew:ic-instructions` for a `CLAUDE.md`, a
-`.claude/rules/` file, a `SKILL.md`, an agent definition, or reader-facing
-prose such as a README (design §3.1).
+One teammate per territory, named as `SKILL.md`'s "Every dispatch is named"
+says for the package it starts on, at the band of that package: `crew:ic`
+for code, `crew:ic-instructions` for a `CLAUDE.md`, a `.claude/rules/`
+file, a `SKILL.md`, an agent definition, or reader-facing prose such as a
+README (design §3.1). One IC works every package in its territory in
+sequence, under that same name — "The territory's next package" below sends
+it its next package by message, not by a fresh dispatch, so the name does
+not change until the IC itself is respawned.
 
 Pass the band's model at spawn time, as `band-rubric.md` says. Pass it for an
 IC and never for a critic or a reviewer.
@@ -276,12 +278,14 @@ before you believe", or a red suite at "Integrate". Five is the cap.
   point of a teammate. Tell it to append a `## Fix round <n>` section to
   `reports/<id>.md` rather than write a new file — "The idle nudge" reads that
   heading to tell this round's report from the last one's.
-- **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band up**.
-  A fresh IC holds no context, so its prompt describes what is already
-  committed — `git -C <worktree> log --oneline` plus `git -C <worktree> diff
-  --stat` — and the failing output word for word. A `deep` package cannot
-  promote, so a `deep` package reaching round 4 escalates instead: respawn it
-  at `deep` only if the principal says to (`band-rubric.md`).
+- **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
+  up**, named `ic-<package id>-r<n>` for this dispatch's own round, as
+  `SKILL.md`'s "Every dispatch is named" says. A fresh IC holds no context,
+  so its prompt describes what is already committed — `git -C <worktree>
+  log --oneline` plus `git -C <worktree> diff --stat` — and the failing
+  output word for word. A `deep` package cannot promote, so a `deep` package
+  reaching round 4 escalates instead: respawn it at `deep` only if the
+  principal says to (`band-rubric.md`).
 - **At the cap**, fix the package yourself, or park it as `abandoned` with your
   reasoning recorded. At the top band, escalate instead.
 
@@ -309,7 +313,8 @@ own work.
 or when the IC has finished four packages. Neither you nor the IC can read its
 context, so the count is the proxy: one IC carried five packages to 66% of its
 window without compacting, and the next one may not (design §15.50). Stand the
-IC down, then spawn a fresh one at the new package's band, with the brief rule
+IC down, then spawn a fresh one at the new package's band, named for that
+package as `SKILL.md`'s "Every dispatch is named" says, with the brief rule
 3 of "Resume after a kill" describes: what its worktree already holds, and
 which work is done.
 

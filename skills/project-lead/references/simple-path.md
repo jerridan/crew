@@ -167,14 +167,15 @@ idle while the IC works, so one tree costs the run nothing (design §9.1).
 
 ## Dispatch the IC
 
-Dispatch one subagent, named `ic-<id>`, at the package's band model:
-`crew:ic` for code, `crew:ic-instructions` for an instruction file. It
-inherits no history, so the spawn prompt carries all of: `ic-contract.md`'s
-full text, the brief, the file set, `run.checkout`, the interface contract,
-the acceptance criterion, the global constraints section, the record root,
-the package id, and **that it is a subagent** — `ic-contract.md`'s record
-writes branch on it. `SKILL.md`'s "Every dispatch is named" owns the naming
-rule and the read channel.
+Dispatch one IC, named as `SKILL.md`'s "Every dispatch is named" says for
+this package's first dispatch, at the package's band model: `crew:ic` for
+code, `crew:ic-instructions` for an instruction file. It inherits no
+history, so the spawn prompt carries all of: `ic-contract.md`'s full text,
+the brief, the file set, `run.checkout`, the interface contract, the
+acceptance criterion, the global constraints section, the record root, the
+package id, and **whether it is a subagent or a teammate** — the canonical
+section's flag check answers that, and `ic-contract.md`'s record writes
+branch on it.
 
 **One dispatch carries the package.** The IC writes `plans/<id>.md`, then
 continues per `ic-contract.md`'s "Write your plan first".
@@ -290,10 +291,11 @@ criterion at the branch head only (design §7, `investigation-path.md`'s
 ## Fix rounds
 
 Run a round only on a failure you saw yourself at "Verify before you believe".
-Each round is a fresh subagent, so its prompt describes what is already
-committed — `git log --oneline` plus `git diff --stat` — and carries the
-failing output word for word. Rounds 4 and 5 promote a band; `band-rubric.md`
-says what a `deep` package does instead.
+Each round is a fresh dispatch, named for this package's next round as
+`SKILL.md`'s "Every dispatch is named" says, so its prompt describes what is
+already committed — `git log --oneline` plus `git diff --stat` — and
+carries the failing output word for word. Rounds 4 and 5 promote a band;
+`band-rubric.md` says what a `deep` package does instead.
 
 **Every round goes back through "Verify before you believe"** — a fix you did
 not re-run is a claim. Leave only when every check there passes. Increment

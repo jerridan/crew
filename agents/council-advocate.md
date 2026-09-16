@@ -121,9 +121,10 @@ for reading only — `grep -n` and `sed -n` to confirm a line, `git log` and
 
 ## Return path
 
-Your case returns only as this agent's tool result. You carry no
-`SendMessage`, so anything you leave out of the report reaches nobody. Address
-the judge, and no other advocate.
+Your case returns only as this agent's final message — `SKILL.md`'s "Every
+dispatch is named" says where the project lead reads it from. You carry no
+`SendMessage`, so anything you leave out of the report reaches nobody.
+Address the judge, and no other advocate.
 
 ## Report in one of these shapes
 

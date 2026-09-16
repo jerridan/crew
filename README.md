@@ -107,7 +107,7 @@ ran out. Answer in the session and the run continues.
 | Requirement | How | Which runs |
 |---|---|---|
 | Permissions that never stop for a human | `--permission-mode auto`, or your own allow rules | every run |
-| Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | the full path |
+| Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for the full path; required for a pane per dispatched agent on any path; optional otherwise |
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without it every dispatched agent runs in the sidebar | optional, every path |

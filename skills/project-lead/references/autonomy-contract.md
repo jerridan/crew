@@ -232,7 +232,9 @@ costs (design §15.47).
 Frame two or three positions. Each must be a position an advocate can argue
 from this repo's own evidence, not a preference. Write the question, the
 positions and your prior into `decisions.md` before you dispatch, then send
-every dispatch in one message, or the advocates run one after another.
+every dispatch in one message, or the advocates run one after another. Read
+each advocate's case from its final message, as `SKILL.md`'s "Every
+dispatch is named" says.
 
 ### An investigation council
 

@@ -32,24 +32,22 @@ read, and the flag (design §3, §15.20b).
 
 ## Check the launch conditions
 
-Three checks bear on launch. Escalate on any that fails — none can be fixed
-mid-run.
+Two checks bear on launch, on top of the teams-flag check `SKILL.md`'s
+"Every dispatch is named" owns — run that one first here. Escalate on any
+that fails — none can be fixed mid-run.
 
-1. **Agent teams are on.** `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` prints
-   `1`. With the flag off, a named agent launches as a plain subagent and every
-   rule here is wrong.
-2. **This session is not worktree-isolated.** `git -C <repo> status` from a
+1. **This session is not worktree-isolated.** `git -C <repo> status` from a
    worktree other than your own: an isolated session is refused outright, and
    the refusal names the reason. That command is the whole verification
    (design §15.10, §15.23f).
-3. **This run can push and open a draft PR.** `git -C <repo> remote` prints at
+2. **This run can push and open a draft PR.** `git -C <repo> remote` prints at
    least one line. A checkout with no remote cannot push or open a PR (design
    §15.53).
 
-Run checks 1 and 2 here, before you write the split, and state which one
-failed. Do not start the run and discover it later.
+Run check 1 here, before you write the split, and state which one failed.
+Do not start the run and discover it later.
 
-**Check 3 already ran, at the preference sweep, before you reached this rule —
+**Check 2 already ran, at the preference sweep, before you reached this rule —
 `autonomy-contract.md` says why. Do not run it again here.** Its outcome is
 settled: either the sweep escalated it and the principal answered, or the
 checkout had a remote and there was nothing to ask.

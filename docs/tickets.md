@@ -2830,15 +2830,15 @@ agent-definition shape.
 
 ## T66 — Name every dispatch
 
-Status: done
+Status: open
 Depends on: T65
-Stage: 7 (design §15.20b, §15.20 sub-item c)
+Stage: 7 (design §15.20b, §15.31c)
 
 The rule "only ICs are named" rests on design §3's claim that a teammate's
 output never returns to the project lead. §15.20b recorded the claim as
-wrong, and a later probe confirmed the final answer arrives as prose in the
-idle notification. The principal decided every dispatch is named, so every
-agent gets a pane under a display mode.
+wrong, and a later probe (§15.31c) confirmed the final answer arrives as
+prose in the idle notification. The principal decided every dispatch is
+named, so every agent gets a pane under a display mode.
 
 Scope. Flip the naming rule in design §3, and every "unnamed" in `SKILL.md`,
 `simple-path.md`, `full-path.md`, `investigation-path.md`, the agent

@@ -48,8 +48,9 @@ finished. Quote the exact line, file or name it sits on.
 ## Return path
 
 Your dispatch names an absolute path under the record's `reviews/`. Write
-your whole report there. Then make your tool result exactly four lines, in
-this order, and nothing else:
+your whole report there. Then make your final message exactly four lines, in
+this order, and nothing else — `SKILL.md`'s "Every dispatch is named" says
+where the project lead reads it from:
 
 ```
 Wrote: <the absolute path>
@@ -61,11 +62,11 @@ Critical count: <n>
 The project lead's context is the most expensive place in the run, and a
 full report there is read on every later turn (design §15.50).
 
-When the write is denied, your tool result is the whole report. Say so in
+When the write is denied, your final message is the whole report. Say so in
 its first line and name the denied path. Never say you wrote a file you
 could not write.
 
-**This fallback is for a dispatched agent**, whose tool result the project
+**This fallback is for a dispatched agent**, whose final message the project
 lead reads. The skeptical review is a separate process with no caller, so
 nothing it prints is collected, and `skeptical-review.md` owns what a missing
 report costs there.
@@ -75,7 +76,7 @@ nobody.
 
 ## The two verdict lines
 
-End your report file with the same two lines that end your tool result:
+End your report file with the same two lines that end your final message:
 
 ```
 Verdict: <one of your two verdict strings>

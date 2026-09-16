@@ -7311,10 +7311,10 @@ Deliberately different:
 
 97. **Every dispatch is named — 2026-09-16, T66.** The old rule, "only ICs
     are named", rested on §3's claim that a teammate's output never returns
-    to the project lead. §15.20b recorded that claim as wrong, and §15.20
-    sub-item c confirmed by probe that a teammate's final answer arrives in
-    full as prose in its idle notification. The principal decided every
-    dispatch is named, so every agent gets a pane under a display mode.
+    to the project lead. §15.20b recorded that claim as wrong, and §15.31c
+    confirmed by probe that a teammate's final answer arrives in full as
+    prose in its idle notification. The principal decided every dispatch is
+    named, so every agent gets a pane under a display mode.
 
     a. **Why it flipped.** §15.20b's correction removed the reason the old
        rule gave for keeping most agents unnamed — the project lead was
@@ -7338,13 +7338,17 @@ Deliberately different:
        the flag. A teammate cannot spawn a teammate, and an in-process
        teammate's own subagents run in the foreground, so a named
        researcher's lookups run one at a time. A teammate applies no
-       `skills:` frontmatter, which no crew agent uses. `run_in_background`
-       is unsupported for an in-process teammate, which crew never asks
-       for. A dispatch's permission prompts surface in the project lead's
-       session for the human to approve, whichever role was dispatched —
-       previously stated only for a teammate IC, the rule now holds for
-       every dispatch alike.
+       `skills:` frontmatter, which no crew agent uses. A dispatch's
+       permission prompts surface in the project lead's session for the
+       human to approve, whichever role was dispatched — previously stated
+       only for a teammate IC, the rule now holds for every dispatch alike.
+       `SKILL.md`'s "Every dispatch is named" also bans `run_in_background`
+       on any dispatch, since it is unsupported for a teammate.
 
-    c. **What has not run.** No run has exercised the flipped rule. The
-       probe T66's ticket names — a spec critic verdict and a council batch
-       read from idle notifications, with the teams flag on — is undone.
+    c. **The ticket stays open.** No run has exercised the flipped rule.
+       T66's own ticket names its probe — a spec critic verdict and a
+       council batch, both read correctly from idle notifications with the
+       teams flag on — and that probe has not run. T66 closes only once it
+       has, the same rule T58 through T62 stand under: a ticket whose ticket
+       text names a probe stays open until that probe runs, whatever the
+       instruction files it changed already say.

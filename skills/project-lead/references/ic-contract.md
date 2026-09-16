@@ -64,28 +64,14 @@ A command that follows neither form runs against the wrong checkout and
 reports no error.
 ```
 
-## The plan gate
+## Write your plan first
 
 Before you write any code, write your implementation plan to
 `<record-root>/plans/<id>.md` — this is your `plan_path`, and `<id>` is your
-package's id. Then stop and wait for the project lead's go-ahead — this is
-an expected pause, not an idle to fix. Do not start implementing before the
-project lead responds.
+package's id. Then keep going. Nothing approves the plan, so wait for nothing
+and start the work.
 
-**When your dispatch says the gate is skipped**, write the plan to that path
-and keep going. Do not stop for a go-ahead: none is coming. The two rules below
-do not apply to you. If the write is denied, put the plan at the top of your
-report instead — no second dispatch will collect it.
-
-**As a teammate**, you have a message channel. Wait on it. The go-ahead
-arrives as a message, and so does anything the project lead wants changed
-first.
-
-**As a subagent**, you have no channel, so ending your turn is how you wait.
-Write the plan, say in your final message that you are waiting on the gate,
-and stop. The project lead dispatches you again to implement, and names your
-plan's path. Read the plan first — you hold none of the first dispatch's
-context.
+If the write is denied, put the plan at the top of your report instead.
 
 ## Write the failing test first
 
@@ -95,16 +81,17 @@ and commit the test on its own — a red commit. Then write the code.
 
 The project lead runs the criterion again at that commit. A criterion that
 passes there means the test proves nothing, and the package comes back to you
-as a fix round. So commit the test alone: a commit that carries the code as
-well passes the check and fails you.
+(`simple-path.md`'s "Verify before you believe" holds every such trigger). So
+commit the test alone: a commit that carries the code as well passes the check
+and fails you.
 
 This holds for a new test only. A criterion that names a test which already
-exists and already fails needs no red commit, and neither does a reviewer
+exists and already fails needs no red commit, and neither does an acceptance
 checklist for an instruction package.
 
 **The project lead's half of this check.** It runs once per package, in the
-checkout the package was worked in, with a clean tree — `git -C <repo> status
---porcelain` empty:
+checkout the package was worked in, on the clean tree `simple-path.md`'s
+"Verify before you believe" defines:
 
 ```
 git -C <repo> switch --detach <sha> -q
@@ -135,8 +122,11 @@ not stop, before it passes.
 
 When your brief names a verification tool — a fidelity harness, an audit
 script, a comparison — run it on your finished work and put its output in
-your report. A package that reaches review without that output costs a fix
-round the tool would have saved (design §15.50).
+your report. A package that reaches the project lead without that output comes
+back as a fix round the tool would have saved (design §15.50). The project
+lead's
+whole list of what sends a package back is `simple-path.md`'s "Verify before
+you believe".
 
 Stop every process you started — a dev server, a watcher, a browser — before
 you report. One left listening on a port serves a stale build to the next
@@ -165,7 +155,7 @@ answer. When you do:
 
 ## When a mechanism blocks you
 
-A reviewer's finding is work. A mechanism is not: a denied permission, a
+A finding you must fix is work. A mechanism is not: a denied permission, a
 sandbox that refuses a path, a missing tool, or a hook that rejects what you
 just did. Three rules hold for all of them.
 
@@ -189,8 +179,8 @@ actual state, not the one that sounds best.
 
 | Status | Meaning | What the project lead does |
 |---|---|---|
-| `DONE` | You finished the package with no reservations. | Verifies your work against git, then sends it to package review. |
-| `DONE_WITH_CONCERNS` | You finished, but you have doubts worth flagging. | Reads your concerns first. Resolves any correctness or scope concern before review continues. Notes a plain observation and proceeds to review. |
+| `DONE` | You finished the package with no reservations. | Verifies your work against git, then runs your acceptance criterion and the suite itself. |
+| `DONE_WITH_CONCERNS` | You finished, but you have doubts worth flagging. | Reads your concerns first. Resolves any correctness or scope concern before it verifies. Notes a plain observation and verifies. |
 | `NEEDS_CONTEXT` | You are missing information and the work is not complete. | Supplies the missing information and re-dispatches you. This differs from the Questions protocol above, which is for a question you can work around — use `NEEDS_CONTEXT` only when you cannot continue at all. |
 | `BLOCKED` | You cannot complete the package as assigned. Name the cause in your report: `capability` — the work is beyond you — or `environment` — a denied permission, a missing tool, an unreachable path. | For a capability block: promotes the package one band up (`band-rubric.md`), or stops the run at the fix-round breaker. For an environment block: fixes the environment or performs the blocked action itself. It never promotes over one — a bigger model hits the same wall. |
 

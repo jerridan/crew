@@ -273,6 +273,17 @@ Add one section, titled "Checked and found nothing", listing what you looked
 for and did not find. A check you never ran does not go in it.
 ```
 
+**A replacement for this step receives this same file, plus one sentence that
+overrides the block's file rule** (`SKILL.md`'s "A step the principal
+replaced"). That sentence is the only addition:
+
+```
+For a replacement runner, this invocation replaces the file rule above: do
+not write the report file; return the complete report as your output,
+`Reviewed: <sha>` first and the two verdict lines last, and the project lead
+writes the file.
+```
+
 ## Check the review before you read it
 
 Four checks, on the JSON the process printed and on the record directory.

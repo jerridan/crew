@@ -35,7 +35,7 @@ sits beside it, at `<record-root>/lead-<date>-<hex>/`.
 
 ## Build state
 
-Stages 0 through 7 are built: seven agents, ten references, both hooks, all
+Stages 0 through 7 are built: six agents, eleven references, both hooks, all
 four of `/crew:project-lead`'s paths, and `/crew:lead`. The **simple path**
 runs one package on one branch under one unnamed subagent; the **full path**
 runs several packages in worktrees under named IC teammates, with a split
@@ -48,11 +48,12 @@ no spec critic, chosen by the project lead itself after the scout. Four
 light-path items have run to a draft PR each, and none promoted in place:
 "Size the work" absorbed both seeds (§15.88, §15.91). A project lead stays in
 its session after the hand-over: the run goes `delivered`, and `complete` only
-on the ship word. One item has run through the whole window (§15.92).
+on the ship word. One item has run the whole window (§15.92), which an
+unexercised **skeptical review** now opens.
 
-**Every run named above predates T58**, which cut the plan gate and the package
-review. They exercised a longer loop than the files now describe, so each is
-evidence for the step it names and not for the loop.
+**Every run named above predates T58 and T59**, which cut two review steps
+and moved the last one to after the hand-over. Each is evidence for the step
+it names and not for the loop.
 
 `/crew:lead` is the tier above: it holds a portfolio, writes a charter per
 item, launches one project-lead session per item, answers what it can and
@@ -99,12 +100,11 @@ Each reference owns one subject and is canonical for it:
 - `record-format.md` — both records: the goal directory with its `state.json`,
   `worktrees.json` and `decisions.md`, and the lead's portfolio directory with
   its `portfolio.json`. Every field, and every state transition.
-- `band-rubric.md` — which model a package or a council gets, when to promote,
-  and which review steps a band skips.
+- `band-rubric.md` — the model a package gets, and when to promote.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
-- `review-output.md` — the shape every review agent reports its findings in.
-- `writing-standard.md` — how an instruction file is written, and how
-  reader-facing prose is written.
+- `review-output.md` — the shape every review reports its findings in.
+- `skeptical-review.md` — the review of the finished diff, and when it runs.
+- `writing-standard.md` — how an instruction file and a README are written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A
 second copy is worse than no copy, because nothing decides which copy wins.

@@ -10,8 +10,10 @@ includes the project lead's own session and the IC teammates (design §8,
 §15.50).
 
 **The run's own sessions are the window.** `run.session_ids` in `state.json`
-names them, and Claude Code writes each one as `<session-id>.jsonl` with its
-subagents and its in-process teammates under `<session-id>/`. So a run is
+names them, and `run.review_session_ids` names each headless skeptical review
+the run started (`skeptical-review.md`). Claude Code writes each session as
+`<session-id>.jsonl` with its subagents and its in-process teammates under
+`<session-id>/`. So a run is
 priced by that subtree, wherever it sits under `~/.claude/projects/` (and
 under `$CLAUDE_CONFIG_DIR/projects/` when that variable is set). Two runs that
 share one checkout are then priced apart, which the checkout window could not
@@ -113,10 +115,22 @@ def session_files(session_ids, roots: list[Path]) -> list[Path]:
 
 
 def run_files(state: dict) -> list[Path]:
-    """The transcripts of this run's own sessions, or an empty list."""
+    """The transcripts of this run's own sessions, or an empty list.
+
+    A skeptical review is a separate headless session, so its id sits in
+    `run.review_session_ids` and never in `run.session_ids`: the `SessionEnd`
+    hook reads the latter and would mark the whole run interrupted when the
+    review ended (design §15.90h, §15.94c). It is still this run's cost, so it
+    is priced here.
+    """
     run = state.get("run")
     run = run if isinstance(run, dict) else {}
-    return session_files(run.get("session_ids") or [], project_roots())
+    ids = []
+    for key in ("session_ids", "review_session_ids"):
+        value = run.get(key)
+        if isinstance(value, list):
+            ids.extend(value)
+    return session_files(ids, project_roots())
 
 
 def stamp(entry: dict) -> float | None:

@@ -30,10 +30,9 @@ order, and every one of them is a section of this file:
 
 1. **Name the one deliverable `deliverable-1`**, then "Create the branch",
    which writes its `deliverables[]` entry. No `split.md` names an id here, so
-   this rule is where the id comes from. Four later sections read it: the
-   package's `base`, `diffs/<deliverable-id>-final.patch`,
-   `deliver <deliverable-id>`, and a `deliverable-review` entry in
-   `run.steps_skipped`.
+   this rule is where the id comes from. Three later sections read it: the
+   package's `base`, `diffs/<deliverable-id>-final.patch`, and
+   `deliver <deliverable-id>`.
 2. **Write the one package**, straight into `state.json`: `crew-record.py
    package add` with `id`, `deliverable`, `territory`, `band`, `file_set`,
    `interface_contract` and `acceptance_criterion` (`record-format.md`'s
@@ -65,12 +64,11 @@ finishes (design §15.83, §15.88).
 
 **One is a number, so count it.** Write the file set, then count the shared
 files in it. One is the cap. The second one goes to "Integrate", where a shared
-file belongs on every other path, and the deliverable review then runs on the
-post-integration diff. **Read the list above by function, never by name.** A
-file every new thing must be listed in is a barrel, whatever the repo calls it
-and wherever it sits: a command line that maps one subcommand per helper
-counts, and so does an index a test reads. The instruction file marks one of
-them, and a test can mark a second. Both count (design §15.91).
+file belongs on every other path. **Read the list above by function, never by
+name.** A file every new thing must be listed in is a barrel, whatever the
+repo calls it and wherever it sits: a command line that maps one subcommand
+per helper counts, and so does an index a test reads. The instruction file
+marks one of them, and a test can mark a second. Both count (design §15.91).
 
 **Two registration points that must change together promote the run.** A repo
 can register a new thing in a barrel and again in a command line, and hold a
@@ -100,7 +98,6 @@ the section on the way back through. `record-format.md` says what
 Write `split.md` in `record-format.md`'s format, one deliverable and one
 package, banded by `band-rubric.md`, mirrored into `state.json`'s `packages[]`.
 No split critic runs — one package has no sibling to overlap.
-`crew:deliverable-reviewer` reads it at "Review the deliverable".
 
 The one package consumes and produces nothing, and its acceptance criterion is
 the charter's. Its file set is the files the change touches, less any shared
@@ -124,7 +121,8 @@ of these is true:
 **Free.** `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`; never
 work on the main branch. Write the `deliverables[]` entry now — `id`, branch,
 the head sha as `base`, `state: pending`, `pr_url: null`, and the branch you
-just read as `checkout_branch`. Write `run.checkout`: this checkout's path.
+just read as `checkout_branch`. Write `run.checkout` and `run.repo`: both are
+this checkout's path.
 
 **Held.** Do not switch it. Two runs on one branch mix their commits, and the
 run that finishes second cannot say which are its own. Cut a checkout of your
@@ -148,7 +146,9 @@ alone does not, because every run's first is `deliverable-1`.
 
 Then, in the same turn:
 
-- Write `run.checkout`: the worktree's absolute path. **Every later step reads
+- Write `run.checkout`: the worktree's absolute path. Write `run.repo`: the
+  clone you cut it from, which is the only path that outlives the worktree
+  (`record-format.md`). **Every later step reads
   `run.checkout` where it says `<repo>`** — the dispatch prompt, the
   verification, the diff, the suite and the push. The shared checkout is read
   from and never written to.
@@ -306,30 +306,8 @@ answer as precedent" owns the rule.
 **Write the diff now**, to `diffs/<deliverable-id>-final.patch`:
 `git -C <repo> diff <base>..HEAD > <path>`, `base` being the deliverable's.
 Write it to the file so it never enters your context. It holds the fix rounds
-and the shared-file edits you just made, which the next reviewer's shared-file
-check exists to read.
-
-## Review the deliverable
-
-**A `light` package can skip this step, and so can a light-path run at either
-band.** `band-rubric.md`'s "What a band skips" and "What the light path skips"
-state the conditions and the record write between them. The third condition —
-that you edited no shared file at "Integrate" — is the one that can fail, and
-it can fail on the light path as well. Skipped, the run goes straight to "End
-the run".
-
-Dispatch `crew:deliverable-reviewer`, unnamed, with `spec.md`, `split.md`, the
-checkout path and base ref, the fresh diff path, every package's
-`reports/<id>.md`, `review-output.md` whole, and its absolute path:
-`<record-root>/reviews/<deliverable-id>-deliverable-review.md`. Four of its
-seven checks need the record. Adjudicate as `SKILL.md`'s "Have the spec
-reviewed" says; clear every `[Critical]` first.
-
-**A light-path run sends what it has instead.** It wrote no `spec.md` and no
-`split.md`, so send `charter.md` where the spec goes and the package's
-`state.json` entry where the split goes — the same substitution "End the run"
-makes for the PR body. Say in the dispatch which two you substituted, so the
-reviewer reads a missing file as a rule and not as a gap (design §15.91).
+and the shared-file edits you just made, and it is the record's evidence of
+what the hand-over shipped.
 
 ## End the run
 
@@ -340,9 +318,12 @@ it wrote none and the PR body is where its reasoning lands. Never hard wrap
 what you send to GitHub (`writing-standard.md`).
 
 `gh pr create --draft`. Then one write: `crew-record.py deliver
-<deliverable-id> draft-pr-opened --pr-url <url>`. It records `pr_url`, sets
-the deliverable `draft-pr-opened` and `run_state: delivered`, and stamps
-`delivered_at`. A human merges it. Then run `scripts/spend.py --write`
+<deliverable-id> draft-pr-opened --pr-url <url> --review-head <sha>`. It records
+`pr_url`, sets the deliverable `draft-pr-opened` and `run_state: delivered`,
+stamps `delivered_at`, and writes `run.review_pending` with the head the
+skeptical review is owed on — one write, so a session that dies here still
+owes the review (`skeptical-review.md`). A human merges it. Then run
+`scripts/spend.py --write`
 (`autonomy-contract.md`), and stop every process the run left listening —
 `lsof -iTCP -sTCP:LISTEN` names them (§15.50).
 
@@ -360,20 +341,22 @@ then. A push or `gh pr create` failure here is a different problem: expired
 auth, a rejected push, a repo setting. Ask the principal, plainly, and **wait
 for the answer**: `blocked` until it lands, then `active`. One who already
 refused the PR has answered; do not ask twice. Then `crew-record.py deliver
-<deliverable-id> work-complete`: it records `work-complete` and
-`run_state: delivered` in one write, with `pr_url` left `null`. Hand over the
-branch.
+<deliverable-id> work-complete --review-head <sha>`: it records `work-complete`,
+`run_state: delivered` and `review_pending` in one write, with `pr_url` left
+`null`. Hand over the branch. **This ending takes the skeptical review too.**
+The review reads the branch, and a PR is only how a human reaches it
+(`skeptical-review.md`).
 
 **Remove a worktree you cut, after the push.** A run that cut its own checkout
 at "Create the branch" has one entry in `worktrees.json`. Remove the worktree,
 then delete that entry (`record-format.md`):
 
 ```
-git -C <target repo> worktree remove <record-dir>/worktrees/<deliverable-id>
+git -C <run.repo> worktree remove <record-dir>/worktrees/<deliverable-id>
 ```
 
-This is the one later command that runs against the target repo and not
-`run.checkout`: a worktree cannot remove itself. The branch stays and the PR
+This runs against `run.repo` and not `run.checkout`: a worktree cannot remove
+itself. The branch stays and the PR
 stands on it; only the working tree goes. Never force the removal. A refusal
 means files exist nowhere else, so commit them to the branch first. A worktree
 left registered is work for a human (design §15.88g, §15.90).
@@ -386,12 +369,29 @@ both branches in your closing report, and send it to the principal the way
 the goal arrived (`autonomy-contract.md`). A pane is not a report when nobody
 is watching it.
 
-**The report ends the work, not the session.** Read "The delivered window"
+**The report ends the work, not the session.** Read "The skeptical review"
 below and stay.
+
+## The skeptical review
+
+The work is handed over and `run_state` is `delivered`. Read
+`skeptical-review.md` and do what it says. It owns the step whole, on every
+path and at every band: when a review runs, the stance, the inputs, the
+worktree, the command, the instructions, the session id, the verdicts, and
+when the record clears.
+
+**Adjudicate the report as `SKILL.md`'s "Have the spec reviewed" says.** A
+finding is a claim, not a verdict.
+
+**Each finding you accept is a follow-up.** "A follow-up" below owns what one
+costs: a package, an IC, your own verification, and a push to the same
+branch. A finding you decline gets its reason in `decisions.md`, never
+silence.
 
 ## The delivered window
 
-The work is handed over and `run_state` is `delivered`. Stay in this session
+The work is handed over and `run_state` is `delivered`. "The skeptical
+review" above is this window's first round. Stay in this session
 until the principal says the work shipped. You are the one session that has
 read the code, so a question about the change before the merge comes to you,
 and a follow-up on the same PR after review comes to you. An idle session
@@ -434,14 +434,20 @@ order:
    or a run that cut its own worktree the first time, cuts the worktree
    again at the same path from the existing branch — no `-b` — and registers
    it. Set the package's `base` to the branch head.
-4. **Run "Dispatch the IC" through "Review the deliverable"** on that
-   package. The deliverable stays `draft-pr-opened`: that state is terminal,
-   and the PR is what gains the commits (`record-format.md`). The deliverable
-   now holds two packages, so the review runs; a `deliverable-review` entry
-   in `run.steps_skipped` comes out (`record-format.md`, design §15.92h).
-5. **Push to the same branch.** The PR updates itself; open no second one.
-   Then remove a worktree you cut and restore the checkout, as "End the run"
-   says, run `spend.py --write`, and report the way the message arrived.
+4. **Run "Dispatch the IC" through "Integrate"** on that package. The
+   deliverable stays `draft-pr-opened`: that state is terminal, and the PR is
+   what gains the commits (`record-format.md`).
+5. **Mark the package `integrated`, arm the review, then push** — that
+   order, and no other. `crew-record.py arm-review --head <sha>` is the
+   arming, and `skeptical-review.md` owns what it does. A head that is
+   integrated but unarmed is the one gap a resume has to detect, and an
+   unpushed armed head is the other; both cost a recovery step, and this
+   order avoids them. A deliverable with a PR updates it; open no second one.
+   **A `work-complete` deliverable stays `work-complete`**, and a branch with
+   no remote, or a push the remote refuses again, skips the push and keeps
+   the local head. Then remove a worktree you cut and restore the checkout,
+   as "End the run" says, run `spend.py --write`, and report the way the
+   message arrived.
 
 **A follow-up killed mid-flight.** On `--resume`, a `pending` or `in-flight`
 package under a terminal deliverable is the follow-up. Reconcile it from git,

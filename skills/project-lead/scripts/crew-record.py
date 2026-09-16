@@ -15,12 +15,21 @@ usage:
   crew-record.py <record-dir> run set <dotted.field> <json>
   crew-record.py <record-dir> escalation add <trigger> <question>
   crew-record.py <record-dir> escalation answer <index> <answer>
-  crew-record.py <record-dir> deliver <deliverable-id> <deliverable-state> [--pr-url <url>]
+  crew-record.py <record-dir> deliver <deliverable-id> <deliverable-state> [--pr-url <url>] [--review-head <sha>]
+  crew-record.py <record-dir> arm-review --head <sha>
   crew-record.py <record-dir> ship
 
 `init` creates state.json with `created_at`. `deliver` sets the deliverable's
 terminal state and `run_state: delivered` in one write, which
-`record-format.md` requires for `work-complete`. `ship` sets
+`record-format.md` requires for `work-complete`. `--review-head <sha>` writes
+`run.review_pending` in that same write, so the hand-over and the review it
+owes cannot come apart (`skeptical-review.md`). Every command that moves the
+branch head takes that flag under that name, and writes the head key beside
+the state key it already writes. `arm_review` is that shared step. The value
+is `{head, round}`, and `round` is one more than `run.review_rounds`: the
+round the owed review will run at, so the sha and the report name it expects
+are written together. At the round cap it writes no pending head at all and
+appends the head to `run.unreviewed_heads` instead. `ship` sets
 `run_state: complete`. The first write that sets `run_state` to `delivered`
 stamps `run.delivered_at`, and a later one never moves it. A write that sets
 `run_state` to `complete` — `ship`, `run state complete`, or
@@ -91,6 +100,35 @@ def set_dotted(target: dict, dotted: str, value) -> None:
         if not isinstance(target, dict):
             sys.exit(f"{'.'.join(keys[:depth + 1])} is not an object")
     target[keys[-1]] = value
+
+
+# `skeptical-review.md` owns the review-round cap and states the same number.
+# This constant is where the record enforces it, so the two move together.
+REVIEW_ROUND_CAP = 3
+
+
+def arm_review(run: dict, head: str | None) -> None:
+    """Record the head a skeptical review is owed on, or record that none is.
+
+    Every arming in the run comes through here: `deliver --review-head` folds
+    it into the hand-over write, and `arm-review --head` does it on its own
+    after a follow-up integrates (`skeptical-review.md`). At the cap no
+    further review runs, so the head is logged as unreviewed instead of
+    armed, and the next report to the principal names it.
+    """
+    if not head:
+        return
+    rounds = run.get("review_rounds")
+    rounds = rounds if isinstance(rounds, int) and not isinstance(rounds, bool) else 0
+    if rounds >= REVIEW_ROUND_CAP:
+        run["review_pending"] = None
+        unreviewed = run.get("unreviewed_heads")
+        if not isinstance(unreviewed, list):
+            unreviewed = []
+        unreviewed.append({"head": head, "reason": "cap", "at": now()})
+        run["unreviewed_heads"] = unreviewed
+        return
+    run["review_pending"] = {"head": head, "round": rounds + 1}
 
 
 STAMPS = {"delivered": "delivered_at", "complete": "completed_at"}
@@ -218,9 +256,15 @@ def main(argv: list[str]) -> None:
         url = flag(rest, "--pr-url")
         if url:
             dl["pr_url"] = url
+        arm_review(run, flag(rest, "--review-head"))
         before = run.get("run_state")
         run["run_state"] = "delivered"
         stamp_on_transition(run, before)
+    elif kind == "arm-review":
+        head = flag(rest, "--head")
+        if not head:
+            usage()
+        arm_review(run, head)
     elif kind == "ship":
         before = run.get("run_state")
         run["run_state"] = "complete"

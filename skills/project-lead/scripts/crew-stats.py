@@ -96,21 +96,29 @@ REVIEW_KINDS = [
     ("spec critic", re.compile(r"^spec-critic-r\d+\.md$")),
     ("split critic", re.compile(r"-split-critic-r\d+\.md$")),
     ("deliverable review", re.compile(r"-deliverable-review\.md$")),
+    ("skeptical review", re.compile(r"^skeptical-r\d+\.md$")),
 ]
 
-# The package review is retired (§15.94d). Its pattern stays above so a record
-# written before T58 still parses, and its rows print only when a record holds
-# one. A retired kind with no file left says nothing, and a row of zeroes reads
-# as a step that failed to run.
-RETIRED_KINDS = {"package review"}
+# The package review and the deliverable review are retired (§15.94d). Their
+# patterns stay above so a record written before T58 or T59 still parses, and
+# their rows print only when a record holds one. A retired kind with no file
+# left says nothing, and a row of zeroes reads as a step that failed to run.
+RETIRED_KINDS = {"package review", "deliverable review"}
 
-# Each review agent names its own two verdict strings. The first of each pair
+# Files under `reviews/` that are not themselves a review (`record-format.md`):
+# a review's inputs and its adjudication, and every file of a retried attempt,
+# which a retry renames with an `-attempt<k>` infix. A retired attempt produced
+# no usable report, so counting it would deflate the catch rate.
+COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json")
+ATTEMPT = re.compile(r"-attempt\d+\.[A-Za-z0-9]+$")
+
+# Each review names its own two verdict strings. The first of each pair
 # accepts the artifact and the second sends it back for another round
-# (`agents/spec-critic.md`, `split-critic.md`, `deliverable-reviewer.md`, and
-# the retired package reviewer). A verdict outside all eight gets a skip line: it
+# (`agents/spec-critic.md`, `split-critic.md`, `references/skeptical-review.md`,
+# and the two retired reviewers). A verdict outside these gets a skip line: it
 # is a drifted string, not a clean review, and counting it as clean would
 # deflate the catch rate without saying so.
-ACTION_VERDICTS = ("fix round needed", "re-spec needed", "re-split needed")
+ACTION_VERDICTS = ("fix round needed", "patch round needed", "re-spec needed", "re-split needed")
 CLEAN_VERDICTS = ("accepted", "ready to split", "dispatchable")
 # `Verdict:` is not anchored to column 0. `record-format.md` lets the project
 # lead transcribe a report whose write was denied, and a transcript can put the
@@ -205,12 +213,13 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
     return sum(t["usd"] for t in totals.values())
 
 
-# A band can skip the deliverable review, and the light path also skips the
-# spec critic: it writes no `spec.md`, so the critic has nothing to read
-# (`band-rubric.md`, §15.88). `plan-gate` is retired with the gate itself
-# (§15.94d) and stays here so a record written before T58 still parses.
+# The light path skips the spec critic: it writes no `spec.md`, so the critic
+# has nothing to read (`band-rubric.md`, §15.88). No band skips a step any
+# more. `plan-gate` and `deliverable-review` are retired with the two steps
+# themselves (§15.94d) and stay here so a record written before T58 or T59
+# still parses.
 SKIPPABLE_STEPS = ["plan-gate", "deliverable-review", "spec-critic"]
-RETIRED_STEPS = {"plan-gate"}
+RETIRED_STEPS = {"plan-gate", "deliverable-review"}
 
 
 def read_steps_skipped(name: str, run: dict, skips: list) -> dict:
@@ -254,8 +263,7 @@ def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
     """`(acted, known)` for one lowercased, stripped `Verdict:` value.
 
     `acted` is true when the verdict sent the artifact back for another
-    round; `known` is true when it is one of the eight the review agents
-    name.
+    round; `known` is true when it is one of the strings the reviews name.
     """
     acted = bool(verdict and verdict.startswith(ACTION_VERDICTS))
     known = bool(verdict and verdict.startswith(ACTION_VERDICTS + CLEAN_VERDICTS))
@@ -267,8 +275,8 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
 
     A review "acted" when its `Verdict:` line is one of `ACTION_VERDICTS` —
     the record's only machine-readable statement that the review sent the
-    artifact back. A file with no verdict, or with a verdict outside the eight
-    the agents name, is counted as a review and as `unverdicted`, never as a
+    artifact back. A file with no verdict, or with a verdict outside the ones
+    the reviews name, is counted as a review and as `unverdicted`, never as a
     catch, and it gets a skip line that says which of the two it is.
 
     A skip line names the record by its directory name, which is unique under
@@ -284,6 +292,13 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         skips.append(f"{label}: no reviews — the record has no reviews/ directory")
         return counts, by_kind, by_band
     for name in sorted(os.listdir(directory)):
+        # A skeptical review round leaves companions beside its report: the
+        # instructions it was launched with, the child process's own JSON, and
+        # the project lead's adjudication (`record-format.md`). Each is an
+        # input to or an output of the review, not a review, and counting them
+        # would inflate the "other" row several times per round.
+        if name.endswith(COMPANION_SUFFIXES) or ATTEMPT.search(name):
+            continue
         for kind, pattern in REVIEW_KINDS:
             found = pattern.search(name)
             if found:
@@ -307,7 +322,7 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         if reason is None and verdict is None:
             reason = "the file states no Verdict: line"
         elif reason is None and not known:
-            reason = f"its verdict {verdict!r} is none of the eight the agents name"
+            reason = f"its verdict {verdict!r} is none of the strings the reviews name"
         by_kind[kind]["reviews"] += 1
         if known:
             by_kind[kind]["acted"] += acted

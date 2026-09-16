@@ -358,8 +358,10 @@ could fail**:
 - At the hand-over, `crew-record.py deliver <deliverable-id> <state>
   --review-head <sha>` writes the deliverable's state, `run_state: delivered`
   and `review_pending` in one write.
-- After a follow-up integrates, `crew-record.py arm-review --head <sha>`
-  **before** the push. A push that lands while the record still says nothing
+- After a delivered-window package integrates, the head is armed **before**
+  the push: `crew-record.py integrate <package-id> --review-head <sha>` folds
+  the arming into the integration write, and `arm-review --head <sha>` does
+  it on its own. A push that lands while the record still says nothing
   is owed is a head no review would ever read. A branch with no remote, and
   a push the remote refused, both record the head the same way and review the
   local head: the review reads a sha, and a sha does not need a remote.
@@ -425,31 +427,49 @@ next one. Leave that arithmetic alone.
 
 **Read this list from the top and do what the first matching entry says.**
 Most entries end "re-enter": they changed what a later entry would read, so
-the list is read again from the top rather than fallen through. `<round>` is
-`review_pending.round` throughout.
+the list is read again from the top rather than fallen through. **Entries 1
+to 5 read every unfinished ledger** — every `run.rounds` entry whose
+`replied_at` is `null` — whatever round produced it, so a patch round from
+CI, a bot or the principal is carried by the same entries. `<round>` is
+`review_pending.round`, and only the entries below 5 use it. **Every entry
+that runs git or dispatches an IC assumes the branch is back** — do
+`simple-path.md`'s "Get the branch back" once, before you read the list.
 
-1. **The round's reply file names a package id that `packages[]` does not
+1. **An unfinished ledger names a package id that `packages[]` does not
    hold.** Create that package from the ledger. Re-enter. **This is first
    because a kill during package creation must not look like anything else.**
    Entry 2 would recover the packages that do exist, and their integration
    would arm a newer head, stranding the findings the ledger had not yet
    turned into packages.
 2. **A follow-up or patch package is `pending` or `in-flight`.** Recover it,
-   as `simple-path.md`'s "A follow-up killed mid-flight" says. Re-enter. An
+   as `simple-path.md`'s "A round killed mid-flight" says. Re-enter. An
    unentered round waits behind it — that is the supersession rule, and this
    entry is where it happens.
 3. **The branch head is not on the remote branch**, the branch has a remote,
    and no push was refused for it. Push. Re-enter. **This is judged on the
    branch, not on the review**, so a head the cap left unreviewed still
    reaches the remote.
-4. **`review_pending` is set, `review_rounds < review_pending.round`, and the
+4. **An unfinished ledger has an accepted entry whose package is terminal —
+   `integrated` or `abandoned` — and whose ledger entry lacks its outcome.**
+   Complete that entry from the record: `git log <package.base>..` on the
+   branch gives the commits it landed, and your own verification note gives
+   the result. An `abandoned` package is recorded as abandoned, with the
+   breaker's reason. Re-enter. **A ledger line is never written from
+   memory**, so a session that died between an integration and its line
+   finds the line missing and fills it from what landed.
+5. **An unfinished ledger has every accepted entry complete.** Send the file
+   to the round's `reply_to`, then write `replied_at`. Re-enter. An entry
+   still missing its outcome is entry 4's work, and a package still open is
+   entry 2's; both come first (`record-format.md`, `simple-path.md`'s
+   "Findings from a review").
+6. **`review_pending` is set, `review_rounds < review_pending.round`, and the
    branch head is an integrated commit that is not `pending.head`.** The
    round is unentered, so its reserved head is superseded:
    `crew-record.py arm-review --head <branch head>` re-points the same round
    at the newer head. Re-enter. With the round **entered**, do nothing here:
    the running review owns its head, and the newer one gets its own round
    once this one is adjudicated.
-5. **`review_pending` is `null`.** Compare the branch head with the last
+7. **`review_pending` is `null`.** Compare the branch head with the last
    reviewed head:
    - **The same** — owe nothing. Stop.
    - **Different, and the branch head is in `run.unreviewed_heads`** — owe
@@ -457,18 +477,18 @@ the list is read again from the top rather than fallen through. `<round>` is
      the principal still names it. Stop.
    - **Different, and not listed there** — an integrated head was never
      armed. `crew-record.py arm-review --head <branch head>`. Re-enter.
-6. **`review_pending` is set and `run.review_results[<round>]` is present and
+8. **`review_pending` is set and `run.review_results[<round>]` is present and
    passing.** Adjudicate the report. Read the round's reply file first when
    one exists: it says which findings already have packages, and the
    adjudication continues from there rather than starting over.
-7. **`review_pending` is set, `-result.json` is there, and no passing entry
+9. **`review_pending` is set, `-result.json` is there, and no passing entry
    exists.** Run the four checks over that JSON. Passing, write the entry and
-   take entry 6 — applying the result-field fallback first when the report
+   take entry 8 — applying the result-field fallback first when the report
    file never landed. Failing, retire the attempt and retry at launch step 2.
-8. **`review_pending` is set, the instructions file or the round's worktree
+10. **`review_pending` is set, the instructions file or the round's worktree
    is there, and `-result.json` is not.** The attempt died before its process
    finished. Retire it and retry at launch step 2.
-9. **`review_pending` is set and nothing for the round is on disk.** Retry at
+11. **`review_pending` is set and nothing for the round is on disk.** Retry at
    launch step 2 — setting `review_rounds` to the reserved round first when
    it is behind. **Never launch step 1.** The reservation already exists, and
    arming again would advance the round or spend the cap on a head that is
@@ -506,12 +526,12 @@ in this order, and a kill between any two of them is recoverable:
    with the package id it will get; **declined**, with the reason you would
    give the principal; or **out of scope**, written as the new goal you
    propose for it. A finding outside the charter's goal is not yours to take
-   (`simple-path.md`'s "A follow-up"), and naming the goal is how it reaches
-   the principal instead of being dropped.
+   (`simple-path.md`'s "Findings from a review"), and naming the goal is how
+   it reaches the principal instead of being dropped.
 2. **Create those packages** in `packages[]`, with the ids the reply named.
 3. **Clear `review_pending`.** The adjudication is complete by the rule
    below the moment step 2 lands, so the field goes before any work does.
-4. **Dispatch**, as `simple-path.md`'s "A follow-up" says.
+4. **Dispatch**, as `simple-path.md`'s "Findings from a review" says.
 
 **The ids in the reply are what stop a finding being answered twice.** A
 resumed session reads the reply, sees which of its ids `packages[]` already
@@ -556,22 +576,24 @@ somewhere else.
 
 | Killed after | Caught by | What happens |
 |---|---|---|
-| **Launch 1**, the arming | 9, nothing on disk | `review_rounds` is set to the reserved round, then the review runs at launch step 2 |
-| **Launch 2**, `review_rounds` set | 9, nothing on disk | the review runs at launch step 2, in the same round |
-| **Launch 3**, the worktree cut and setup run | 8, a worktree and no JSON | nothing exists to retire; cleanup removes the worktree and the review runs at launch step 2 |
-| **Launch 4**, the instructions written | 8, instructions and no JSON | the attempt is retired, then the review runs at launch step 2 |
-| **Launch 5**, the process launched and dead | 8, instructions and no JSON | the same |
-| **Launch 5**, the process exited | 7, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 6, failing the attempt is retired |
-| the four checks, before adjudicating | 6, a passing entry | the report is adjudicated |
-| **Follow-up 1**, the package `integrated` | 3, the head is not on the remote | the push happens; on re-entry 5 arms the head |
+| **Launch 1**, the arming | 11, nothing on disk | `review_rounds` is set to the reserved round, then the review runs at launch step 2 |
+| **Launch 2**, `review_rounds` set | 11, nothing on disk | the review runs at launch step 2, in the same round |
+| **Launch 3**, the worktree cut and setup run | 10, a worktree and no JSON | nothing exists to retire; cleanup removes the worktree and the review runs at launch step 2 |
+| **Launch 4**, the instructions written | 10, instructions and no JSON | the attempt is retired, then the review runs at launch step 2 |
+| **Launch 5**, the process launched and dead | 10, instructions and no JSON | the same |
+| **Launch 5**, the process exited | 9, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 8, failing the attempt is retired |
+| the four checks, before adjudicating | 8, a passing entry | the report is adjudicated |
+| **Follow-up 1**, the package `integrated` | 3, the head is not on the remote | the push happens; on re-entry 7 arms the head |
 | **Follow-up 2**, the arming | 3, the head is not on the remote | the push happens; on re-entry the round's own entry runs the review |
-| **Follow-up 2**, the arming at the cap | 3, the head is not on the remote | the push happens first; only then does 5 find the head in `unreviewed_heads` and owe nothing |
-| **Follow-up 3**, the push | 6 to 9 for that round | the review runs, or its report is adjudicated |
+| **Follow-up 2**, the arming at the cap | 3, the head is not on the remote | the push happens first; only then does 7 find the head in `unreviewed_heads` and owe nothing |
+| **Follow-up 3**, the push | 8 to 11 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written | 1, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
 | **Ledger 2**, some of the packages created | 1, the ids still missing | creation is finished from the ledger, then 2 recovers them |
-| **Ledger 2**, all the packages created | 2, an open package | the packages are recovered; on re-entry 6 adjudicates the round to its end |
+| **Ledger 2**, all the packages created | 2, an open package | the packages are recovered; on re-entry 8 adjudicates the round to its end |
 | **Ledger 3**, `review_pending` cleared | 2, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
 | **Ledger 4**, the packages dispatched | 2, an open package | the packages are recovered |
+| **Patch 1**, a group integrated, its ledger entry not completed | 4, a terminal package with no outcome on its line | the line is filled from the package's commits and your verification note |
+| **Patch 2**, every accepted entry complete, the reply not sent | 5, a `null` `replied_at` | the reply file is sent as it stands |
 
 ## The two verdict lines
 
@@ -582,4 +604,4 @@ lines, and it leaves the strings to each producer.
 
 `patch round needed` opens a round of the delivered window, never a fix round
 on a package: the packages are integrated and the work is handed over.
-`simple-path.md`'s "A follow-up" owns what a finding becomes.
+`simple-path.md`'s "Findings from a review" owns what a finding becomes.

@@ -182,8 +182,22 @@ continues per `ic-contract.md`'s "Write your plan first".
 IC every record write (§15.26b, §15.31b) puts the plan or report in its final
 message. Transcribe it, and say that you did.
 
-Set the package and its deliverable `in-flight` at the dispatch, and write the
-package's `base`: the deliverable's `base`, since there is one package.
+Set the package `in-flight` at the dispatch, and write its `base`: the head
+of the deliverable branch in `run.checkout` at that moment. For the run's own
+package that is the deliverable's `base`. For a package the delivered window
+adds it is the head that group starts from, which is later.
+
+**The two bases answer two questions.** The package's `base` is what
+verification and recovery read, so each package is judged on its own commits.
+The deliverable's `base` is what the cumulative diff and the skeptical review
+read, because both want the whole change.
+
+**`base` stays `null` until the dispatch.** A `null` there is what says the
+package was never dispatched, and a resume dispatches it (`SKILL.md`).
+
+**Move the deliverable `in-flight` only when it is not terminal.** A package
+the delivered window adds leaves the deliverable where it is
+(`record-format.md`).
 
 ## Verify before you believe
 
@@ -205,8 +219,7 @@ round, with one more question in it — the IC reverts that change, or names the
 file as one the package needs, and you decide whether the file set gains it.
 
 **The IC's report is a claim, and git is the evidence.** Three commands, with
-`<base>` the deliverable's `base` on the simple and light paths and the
-package's own `<package-base>` on the full path:
+`<base>` the package's own `base`, which "Dispatch the IC" wrote:
 
 ```
 git -C <repo> log --oneline <base>..HEAD
@@ -380,30 +393,36 @@ path and at every band: when a review runs, the stance, the inputs, the
 worktree, the command, the instructions, the session id, the verdicts, and
 when the record clears.
 
-**Adjudicate the report as `SKILL.md`'s "Have the spec reviewed" says.** A
-finding is a claim, not a verdict.
-
-**Each finding you accept is a follow-up.** "A follow-up" below owns what one
-costs: a package, an IC, your own verification, and a push to the same
-branch. A finding you decline gets its reason in `decisions.md`, never
-silence.
+**Its findings are findings like any other source's.** "Findings from a
+review" below owns all of them: the adjudication, the grouping, the patch and
+the reply.
 
 ## The delivered window
 
 The work is handed over and `run_state` is `delivered`. "The skeptical
-review" above is this window's first round. Stay in this session
-until the principal says the work shipped. You are the one session that has
-read the code, so a question about the change before the merge comes to you,
-and a follow-up on the same PR after review comes to you. An idle session
-spends nothing; a killed one costs a relaunch and a `--resume` for every
-question (design §15.92).
+review" above is this window's first round. Stay in this session until the
+principal says the work shipped. You are the one session that has read the
+code, so a question about the change before the merge comes to you, and so
+does every change to the same PR after it. An idle session spends nothing; a
+killed one costs a relaunch and a `--resume` for every question (design
+§15.92).
 
-Three kinds of message reach you here. Answer each where it arrived: a
+Four kinds of message reach you here. Answer each where it arrived: a
 message typed in your pane is answered in your pane, and a
 `<cross-session-message>` by `SendMessage` to its `from-name`
 (`autonomy-contract.md`, "Reach the principal"). A lead passes the principal's
 words down and yours up; a principal may also type in your pane. Both are
 the principal's channel.
+
+**Sort the message before you act on it.** Two sections below take work, and
+one line divides them. A **finding** says the code the PR already holds is
+wrong. A report that the diff misses a behaviour **inside** the goal's
+acceptance criterion is a finding too. A **change request** asks for
+behaviour **outside** that criterion and still inside the charter's goal.
+Sort by that line and never by who sent the message. A message that holds
+both is split along it, and each half runs its own section. **One defect is
+processed once**: a finding that became a package is not also a change
+request.
 
 **A question.** Answer it from the record and from the repo. Dispatch
 `Explore` subagents for the code, as at "Scout", and read `decisions.md`,
@@ -411,20 +430,21 @@ the reviews and the reports yourself. Edit nothing. An answer that settles a
 preference goes into `decisions.md` on the preference route, as any other
 does.
 
-**A follow-up.** Review comments to address, a rebase onto a moved main, a
-test the principal wants added. It is one more package on the same
-deliverable, and every rule of this path holds for it, whichever path the
-run took: an IC makes the edit, and you verify it yourself (design §9.1). In
-order:
+**A change request.** A test the principal wants added, a rebase onto a moved
+main, behaviour the goal covers and the criterion never asked for. It is one
+more package on the same deliverable, and every rule of this path holds for
+it, whichever path the run took: an IC makes the edit, and you verify it
+yourself (design §9.1). It gets no spec, no critic and no reviewer of its
+own. In order:
 
-1. **Check it is inside the charter's goal.** Work outside it is a new goal,
-   and the principal or the lead opens a new item for it. Say so, and take
-   nothing. A deliverable whose `branch` is `null` — an investigation run that
-   ended in a report — takes no follow-up that changes code at all. A fix
-   after a report is a new goal. Say so, and answer questions only.
+1. **Check it is inside the charter's goal.** Work outside the goal is a new
+   goal, and the principal opens a new item for it. Say so, and take nothing.
+   A deliverable whose `branch` is `null` — an investigation run that ended
+   in a report — takes no change to code at all. A fix after a report is a
+   new goal. Say so, and answer questions only.
 2. **Write the package.** A `packages[]` entry in `state.json`, `pending`,
    with its own file set and acceptance criterion, and a `decisions.md`
-   entry naming the follow-up and who sent it. A run that wrote `split.md`
+   entry naming the request and who sent it. A run that wrote `split.md`
    adds the package there too.
 3. **Get the branch back.** The tree was restored at "End the run", so run
    "Create the branch" again with one difference: the branch exists. A free
@@ -433,33 +453,136 @@ order:
    what the tree was on, with `checkout_restored` back to `null`. A held one,
    or a run that cut its own worktree the first time, cuts the worktree
    again at the same path from the existing branch — no `-b` — and registers
-   it. Set the package's `base` to the branch head.
-4. **Run "Dispatch the IC" through "Integrate"** on that package. The
-   deliverable stays `draft-pr-opened`: that state is terminal, and the PR is
-   what gains the commits (`record-format.md`).
-5. **Mark the package `integrated`, arm the review, then push** — that
-   order, and no other. `crew-record.py arm-review --head <sha>` is the
-   arming, and `skeptical-review.md` owns what it does. A head that is
-   integrated but unarmed is the one gap a resume has to detect, and an
-   unpushed armed head is the other; both cost a recovery step, and this
-   order avoids them. A deliverable with a PR updates it; open no second one.
-   **A `work-complete` deliverable stays `work-complete`**, and a branch with
-   no remote, or a push the remote refuses again, skips the push and keeps
-   the local head. Then remove a worktree you cut and restore the checkout,
-   as "End the run" says, run `spend.py --write`, and report the way the
-   message arrived.
+   it.
+4. **Run "Dispatch the IC" through "Integrate"** on that package. Every rule
+   of those sections holds, including the package's own `base` and the
+   deliverable's terminal state: one with a PR stays `draft-pr-opened`, and a
+   `work-complete` one stays `work-complete`. "Integrate" runs in full, with
+   one substitution. **Its last act is `crew-record.py integrate
+   <package-id> --review-head <head sha>`**, run after every integration
+   edit, after the preference write-back commit, after the status sweep,
+   after the final verification and after the diff write. Read the head at
+   that point. It marks the package `integrated` and arms the review for that
+   head in one write, so the record never holds a head that is integrated and
+   unarmed (`skeptical-review.md`).
+5. **Push, and never before that write.** A push that lands while the record
+   says nothing is owed is a head no review reads, and an armed head nobody
+   pushed is the one gap left here for a resume to find
+   (`record-format.md`). A deliverable with a PR updates it; open no second
+   one. A branch with no remote, or a push the remote refuses again, skips
+   the push and keeps the local head: the review reads a sha and needs no
+   remote (`skeptical-review.md`). **Set `pushed_at` only after a push that
+   succeeded.** A refusal here leaves the field `null`, and you say so to the
+   principal, whose request this answers. Then finish the cleanup "End the
+   run" lists: remove a worktree you cut, restore the checkout, and run
+   `spend.py --write`. Report the way the message arrived.
 
-**A follow-up killed mid-flight.** On `--resume`, a `pending` or `in-flight`
-package under a terminal deliverable is the follow-up. Reconcile it from git,
-as `full-path.md`'s "Resume after a kill" reconciles a worktree: `git -C
-<run.checkout> status --porcelain` and `git -C <run.checkout> log
-<base>..HEAD` are the evidence, and `state.json` is rewritten to match them.
-Commit dirty work to the deliverable branch first. Then re-enter the steps
-above at "Verify before you believe" when the log holds commits, or at
-"Dispatch the IC" when it holds none. Finish with the push and the checkout
-restore, as step 5 says.
+**Findings from a review.** CI, a bot, Codex, the principal reading the diff,
+or `reviews/skeptical-r<n>.md` itself. This is **patch mode**. A finding is
+not new work, so it takes no spec, no critic and no reviewer of its own, and
+one round carries every finding the source sent. In order:
 
-`run_state` stays `delivered` throughout. An escalation raised on a follow-up
+1. **Adjudicate every finding yourself, before you dispatch anything.**
+   Restate it in your own words. Verify it against the repo. Then decide. A
+   finding is a claim and never a verdict, whoever sent it: you read this
+   code, and a reviewer who has not can be wrong about it. **Apply nothing
+   you disagree with, and drop nothing in silence.**
+   `skeptical-review.md`'s "Adjudication is a ledger" owns the three
+   dispositions, the order the ledger and the packages are written in, and
+   when the adjudication is complete. It is written for the skeptical
+   review's own report, and every other source's findings take the same
+   ledger. Write each decision in `decisions.md` as well, the way you write
+   every other decision.
+2. **An out-of-scope finding is a proposed new goal.** It falls outside the
+   charter's goal, so it takes no package in this run. It goes in the reply,
+   and your next message to the principal names it. **Never call it a change
+   request**: a change request is work the principal asked for, and this is
+   work you are proposing.
+3. **Open the round.** Write `run.rounds[<round-id>]` with its `source`, its
+   `reply_to`, its `opened_at` and `replied_at: null`. `record-format.md`
+   owns the id, the fields, and where `reply_to` points for each kind. The
+   round is what an all-declined patch still uses to find its reader.
+4. **Group what you accepted**, and name each group's package id now. One
+   group per region of the tree, with file sets that do not overlap, so each
+   group is a package like any other. Two findings that must change one file
+   together belong in one group.
+5. **Write the round's reply file**, at `reviews/<round-id>-reply.md`, before
+   any package exists and before anything is dispatched. Each accepted
+   finding carries the package id you just named, which is what stops a
+   finding being answered twice.
+6. **Create those packages** in `packages[]`, `pending`, under the ids the
+   reply named, each with its file set, its acceptance criterion and
+   `round: <round-id>`. The criterion is what proves the group's findings are
+   answered.
+7. **Get the branch back**, as the change request's step 3 says.
+8. **Take one group all the way through before you start the next.**
+   Dispatch its IC, run "Verify before you believe", run "Fix rounds" where a
+   check fails, then run "Integrate" in full, with the substitution the
+   change request's step 4 names. One checkout holds one writer, and a group
+   that finishes before the next one starts is a group a resume can tell
+   apart. **Then complete that group's entry in the reply file**: the commit
+   sha, one line on what changed, and what your verification found. A group
+   the fix-round breaker parks is recorded there as `abandoned`, with the
+   breaker's reason.
+9. **Push once, when every group is in.** The PR updates itself; open no
+   second one. Set `pushed_at` on every package the push carried, and only
+   after the push succeeded. A push the remote refuses twice is a
+   `push_refused` entry on the round instead, and the head stays unpublished
+   (`record-format.md`). Then finish the cleanup "End the run" lists. Then
+   run `spend.py --write`.
+10. **Send the reply file**, once every accepted entry in it is complete. It
+    goes to the round's `reply_to`. Then write the round's `replied_at`.
+    Your next message to the principal names the reply's path, every
+    proposed new goal, and an unpublished head if the push was refused.
+
+**A round where every finding is declined.** It has no group, no package, no
+patch, no push and no new head, so it earns no new review. It still opens a
+round, because `run.rounds` is what says where its reply goes. The round is
+the reply file and its send.
+
+**Adjudicating findings from outside clears no reservation.** Only
+adjudicating the skeptical review's own report clears the `review_pending` it
+reserved (`skeptical-review.md`). So a reservation that stood when an
+external round arrived still stands when it ends. A round that patches
+something re-points that same reservation at the new head, which the
+integration does for you. A round that declines everything moves no head, so
+the reserved review runs on the head it already named.
+
+**When a source stops.** The skeptical review is quiet when its report holds
+nothing above `[Nit]`, and CI is quiet on a green run. A quiet source ends
+its rounds. **A source a person drives is never quiet.** Nothing the
+principal or a bot sends says it is finished, so the window simply stays open
+for them.
+
+**At the review cap.** `skeptical-review.md` owns the cap, what it clears and
+what you tell the principal. Reaching it ends the reviews and never the
+window.
+
+**A round killed mid-flight.** On `--resume`, a `pending` or `in-flight`
+package under a terminal deliverable is a round that did not finish. This is
+where `skeptical-review.md`'s resume list sends you for it.
+
+**Get the branch back first**, as the change request's step 3 says: switch
+`run.checkout` to the deliverable branch, or cut the worktree again. Every
+command below reads that tree, and a `git log` against the tree the principal
+left behind describes another branch.
+
+Then read the package's `base`:
+
+- **`base` is `null`.** The package was written and never dispatched. Run
+  "Dispatch the IC" now, which writes `base` from the branch head as it goes.
+- **`base` is set.** The package was dispatched, so reconcile it from git the
+  way `full-path.md`'s "Resume after a kill" reconciles a worktree: `git -C
+  <run.checkout> status --porcelain` and `git -C <run.checkout> log
+  <base>..HEAD` are the evidence, and `state.json` is rewritten to match
+  them. Commit dirty work to the deliverable branch first. Then go to "Verify
+  before you believe" when the log holds commits, or dispatch a fresh IC when
+  it holds none.
+
+What a finished package still owes is `record-format.md`'s rule, not this
+one.
+
+`run_state` stays `delivered` throughout. An escalation raised in this window
 goes `delivered → blocked → delivered` (`record-format.md`).
 
 **The word that the work shipped.** It comes from the principal, on either

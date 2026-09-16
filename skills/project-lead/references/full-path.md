@@ -412,8 +412,9 @@ created, proven by `worktrees.json` — a path pattern is not ownership (design
 The work ends here, and your closing report says so. Send it to the
 principal the way the goal arrived (`autonomy-contract.md`). A pane is not a
 report when nobody is watching it. Then stay: `simple-path.md`'s "The
-delivered window" owns the rest of the session on every path, and a
-follow-up there is one package on the simple path's loop, not a new split.
+delivered window" owns the rest of the session on every path. A change
+request there is one package on the simple path's loop, and a review's
+findings are a patch round on it. Neither is a new split.
 
 ## Resume after a kill
 
@@ -453,9 +454,11 @@ The deliverable branch reconciles the same way: `git -C <repo> log` shows which
 packages already merged. An `integrated` package is terminal and cannot be
 revised in place — correcting it takes a new package (design §10).
 
-An open package under a **terminal** deliverable is a follow-up, not a package
-of the original work. `simple-path.md`'s "A follow-up killed mid-flight" owns
-that case.
+An open package under a **terminal** deliverable belongs to a round of the
+delivered window, not to the original work. `simple-path.md`'s "A round
+killed mid-flight" owns that case. An `integrated` one that never published
+or never replied belongs to `record-format.md`'s "What a delivered-window
+round still owes".
 
 Move `run_state` out of `interrupted` **first**, then clear `orphaned` on
 each worktree as you reconcile it. In the other order, a session that dies

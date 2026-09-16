@@ -428,10 +428,10 @@ processed once**: a finding that became a package is not also a change
 request.
 
 **A question.** Answer it from the record and from the repo. Dispatch
-`Explore` subagents for the code, as at "Scout", and read `decisions.md`,
-the reviews and the reports yourself. Edit nothing. An answer that settles a
-preference goes into `decisions.md` on the preference route, as any other
-does.
+`crew:scout` subagents at `haiku` for the code, as the Scout step does, and
+read `decisions.md`, the reviews and the reports yourself. Edit nothing. An
+answer that settles a preference goes into `decisions.md` on the preference
+route, as any other does.
 
 **A change request.** A test the principal wants added, a rebase onto a moved
 main, behaviour the goal covers and the criterion never asked for. It is one

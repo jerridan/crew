@@ -132,7 +132,7 @@ agents and the shared task list.
    │ CRITICS        reject a bad spec or split     │
    └───────────────────────────────────────────────┘
       │
-      │   each package gets a band:  sonnet / opus
+      │   each package gets a band:  light / standard / deep
       │
       ├────────────────┬────────────────┐
       ▼                ▼                ▼

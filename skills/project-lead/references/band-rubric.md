@@ -23,11 +23,12 @@ and the simple path both read.
 
 ## Haiku runs only an agent whose tools need no approval
 
-Auto mode's permission classifier does not support Haiku on any provider
-(https://code.claude.com/docs/en/permission-modes.md). A Haiku agent with a
-tool that needs approval — `Bash`, `Write`, or `Edit` — has no approver, so
-every one of its calls falls back to a prompt in the project lead's session,
-and a run nobody watches stalls on the first one.
+Auto mode is not supported for Haiku
+(https://code.claude.com/docs/en/permission-modes). A Haiku agent's calls
+that need approval — `Bash`, `Write`, or `Edit` — fall back to a prompt in
+the project lead's session, and a run nobody watches stalls on the first one.
+`Read`, `Glob` and `Grep` inside the repo are approved without a prompt in
+the normal case.
 
 Today `crew:scout` is the only agent built from `Read`, `Glob` and `Grep`
 alone, so it is the only agent Haiku runs. Every IC, instruction IC, critic,

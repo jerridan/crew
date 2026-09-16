@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Answer one scouting question about this repo, from Read, Glob and Grep alone, before the project lead sizes the work or writes a spec. Dispatched by the project lead, one scout per question. Runs at haiku, and is the only agent Haiku runs, because none of its tools ever prompt for approval (`band-rubric.md`).
+description: Answer one scouting question about this repo, from Read, Glob and Grep alone, before the project lead sizes the work or writes a spec. Dispatched by the project lead, one scout per question, at haiku — those three tools are normally approved without a prompt.
 model: haiku
 tools: Read, Glob, Grep
 ---

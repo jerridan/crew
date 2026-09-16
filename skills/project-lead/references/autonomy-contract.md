@@ -4,17 +4,8 @@ This file decides how the project lead answers a question, when it stops to
 ask, and how it counts what a run spends (design §6, §8).
 
 The **principal** is whoever handed the project lead its goal — the human in
-the session, or a lead session (`skills/lead/SKILL.md`). Every escalation goes
-to the principal. No file names the human as the only principal.
-
-**The ladder has a rung above the project lead.** A lead holds a portfolio and
-drives one project-lead session per goal, so an escalation that reaches a lead
-is a question a project lead could not settle. The lead answers it from the
-charter it wrote and from the item's own record when either settles it, and
-sends the rest to its own principal — the human — as one batch. Every rule in
-this file governs that rung too: the routing table, the triggers, the
-`escalations` entry before the send, and the failed-send fallback. The lead's
-own record is the portfolio, not `state.json` (`record-format.md`).
+the session, or another session. Every escalation goes to the principal. No
+file names the human as the only principal.
 
 **Reach the principal the way the goal arrived.** Three cases, and only three:
 
@@ -41,24 +32,10 @@ the record both.
 (`record-format.md`), from that same `from-name` — `from` only when the
 envelope carries no name.
 
-**A lead's principal is fixed at portfolio open, and a message mid-portfolio
-does not move it.** A project lead's goal has one sender, so its principal
-never needs a second check after the hand-off. A lead's portfolio outlives any
-one exchange, and a session that messages it mid-portfolio — a question, or a
-request to add an item — is not the principal unless it is the session that
-opened the portfolio. Tell the two apart by the portfolio's `principal` field
-(`record-format.md`) against the channel the message arrived on: a message
-typed into the lead's own pane is the principal, by "Reach the principal"
-above — that pane answers no one else. A `<cross-session-message>` is the
-principal only when its `from-name` (or `from`, when the envelope carries no
-name) matches `lead.principal` exactly. Anything else is a peer session, and
-`skills/lead/SKILL.md`'s "Only the principal adds a portfolio item" says what
-a lead does with one.
-
 **Everything you send the principal goes by that route**, not escalations
-alone. The closing report is another: a lead that never learns the PR opened
-has to poll the record for it. So is every answer in the delivered window
-(`simple-path.md`), where the question arrived by the same route.
+alone. The closing report is another: a principal that never learns the PR
+opened has to poll the record for it. So is every answer in the delivered
+window (`simple-path.md`), where the question arrived by the same route.
 
 **Write the ask into `escalations` before you send it, every time.** The record
 is what the run stands on, and a lost message costs latency, never correctness
@@ -161,9 +138,9 @@ remote` — a fixed phrase, so "End the run" can find this entry among any
 others trigger 6 wrote. It reads the answer instead of asking again: one
 answer, recorded once, settles both ends of the run.
 
-A lead session answers the batch by message; a human answers it in the
-session. Send the batch the way the goal arrived (Reach the principal,
-above). Write each question with `crew-record.py escalation add`
+Send the batch the way the goal arrived (Reach the principal, above). A
+principal that sent the goal by message answers by message; one that typed it
+answers in the session. Write each question with `crew-record.py escalation add`
 (`record-format.md`) — never `run set`, which replaces the whole list — and
 set `run_state: blocked`. Then wait — and when the batch went by message, wait
 by **ending your turn**. A message reaches an idle session as a new turn; a
@@ -366,31 +343,6 @@ one interruption; a run built in the wrong direction costs a day.
 
 Do everything that does not depend on the answer first, then ask once. Batch
 what you can into one interruption.
-
-### A gate a stage waits on
-
-A goal the principal cut into stages carries a gate between them, and the item
-that waits holds it (`record-format.md`, "The gate record"). The gate's ask
-reaches the principal like every other ask, with two differences.
-
-- **The item goes `held`, not `blocked`.** The work is not stuck on an
-  unanswered question; it waits by design until the principal says the world
-  moved (design §15.87b).
-- **The ask carries a report, not options.** Name the item and the stage that
-  finished, quote the `condition` back, and give the check's output as it
-  printed. Say whether it held what `expect_output` names, and say nothing
-  more about it: the health of a deploy or a monitor is the principal's call,
-  never yours (design §15.87c). Then ask for the go. A gate with `check: null`
-  has no output to give, so the ask is the condition and the question alone.
-
-Everything else is unchanged. Write the ask with `escalation add` before you
-send it, send it in the batch `skills/lead/SKILL.md` describes, and treat the
-principal's reply as the entry's `answer`. A check that errors, or that prints
-something other than what the principal named, takes the same shape and the
-same batch: report it, and ask for the go all the same.
-
-Nothing here fires on an ungated goal, and no gate exists that the principal
-did not name.
 
 ## How to escalate
 

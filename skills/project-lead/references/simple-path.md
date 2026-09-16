@@ -76,15 +76,15 @@ test that goes red between the two edits. One commit must then carry both, and
 one light-path package may hold one. So ask before you dispatch: does the suite
 stay green with the second edit left for "Integrate"? A no is not one package.
 
-**Promote in place, and never back to the lead.** This path's entry conditions
+**Promote in place, and never back to the principal.** This path's entry conditions
 can turn out wrong before the dispatch, once the IC reports, or once you read
 the diff's file list. Promote on any one of these: a second shared file the
 package cannot leave for "Integrate", a second file set, an interface another
 package must consume, a preference nothing settles, or a criterion you find
 yourself interpreting. Go back to `SKILL.md`'s "Write the spec", in this same
 session and on this same branch, and leave every commit where it is. Record the
-promotion and its reason in `decisions.md`. The lead learns of it in your next
-report, as information and never as a question.
+promotion and its reason in `decisions.md`. The principal learns of it in your
+next report, as information and never as a question.
 
 **A promoted run creates no second branch and no second checkout.** Step 1
 above already ran "Create the branch", which cut
@@ -112,9 +112,10 @@ This section owns where a run's git work happens. `full-path.md` borrows it
 **Ask first whether another run holds this checkout.** It is held when either
 of these is true:
 
-- **The hand-off says another run holds it.** The lead adds that sentence when
-  it launched you into a repo one of its other items is already running in
-  (`session-launch.md`, "Handing over the charter").
+- **The launch message says another run holds it.** The principal says so
+  when they start you in a clone another run is already working in. Read the
+  sentence; never infer it. A launch that says nothing is not proof, so run
+  the branch check below either way.
 - **`git -C <repo> branch --show-current` prints a `crew/` branch with a goal
   slug that is not yours.** That branch is another run's, live or finished.
 
@@ -160,9 +161,8 @@ Then, in the same turn:
   switched no checkout, so `checkout_restored` stays `null` as well.
 - "End the run" removes it.
 
-**You cut the worktree, and the lead never does.** The lead runs read-only git
-and nothing else in a checkout (`skills/lead/SKILL.md`, "You never touch a
-target repo"), so it names the case and you resolve it. A free checkout stays
+**You cut the worktree, and nobody cuts it for you.** The hand-off names the
+case and you resolve it. A free checkout stays
 shared: the project lead is idle while the IC works, so one tree costs the
 run nothing (design §9.1).
 
@@ -414,9 +414,9 @@ killed one costs a relaunch and a `--resume` for every question (design
 Four kinds of message reach you here. Answer each where it arrived: a
 message typed in your pane is answered in your pane, and a
 `<cross-session-message>` by `SendMessage` to its `from-name`
-(`autonomy-contract.md`, "Reach the principal"). A lead passes the principal's
-words down and yours up; a principal may also type in your pane. Both are
-the principal's channel.
+(`autonomy-contract.md`, "Reach the principal"). A principal that sent the
+goal by message answers by message; one that typed it answers in your pane.
+Both are the principal's channel.
 
 **Sort the message before you act on it.** Two sections below take work, and
 one line divides them. A **finding** says the code the PR already holds is
@@ -598,9 +598,8 @@ this repo where no `gh` command sees it. On the word:
    `completed_at`.
 2. `scripts/spend.py --write`, so the figure covers this window.
 3. Stop every process the run left listening, as "End the run" says.
-4. Say the run is closed and this session can be. A lead kills the window
-   (`session-launch.md`, "Closing it"); a principal who typed the goal
-   closes the pane.
+4. Say the run is closed and this session can be. The principal closes the
+   pane or the window.
 
 A session that dies in this window is resumed like any other: `SessionEnd`
 marks the run `interrupted`, and `--resume` finds every deliverable terminal

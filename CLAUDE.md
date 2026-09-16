@@ -31,11 +31,11 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 
 ## Build state
 
-Stages 0 through 7 are built: six agents, eleven references, both hooks and all
+Stages 0 through 7 are built: six agents, ten references, both hooks and all
 four of `/crew:project-lead`'s paths. The **simple path** runs one package on
-one branch under one unnamed subagent; the **full path**
-runs several packages in worktrees under named IC teammates, with a merge per
-package and `--resume` recovery. Both have run end to end against a real repo.
+one branch under one unnamed subagent; the **full path** runs several packages
+in worktrees under named IC teammates, with a merge per package and
+`--resume` recovery. Both have run end to end against a real repo.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
 a report ending; both endings have run, and it is `crew:researcher`'s only
 caller, which no run has dispatched yet. The **light path** is the simple path

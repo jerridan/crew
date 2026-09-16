@@ -162,9 +162,8 @@ Then, in the same turn:
 - "End the run" removes it.
 
 **You cut the worktree, and nobody cuts it for you.** The hand-off names the
-case and you resolve it. A free checkout stays
-shared: the project lead is idle while the IC works, so one tree costs the
-run nothing (design §9.1).
+case and you resolve it. A free checkout stays shared: the project lead is
+idle while the IC works, so one tree costs the run nothing (design §9.1).
 
 ## Dispatch the IC
 

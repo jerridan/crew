@@ -5,12 +5,14 @@ not stop for approval on the way.
 
 You hand your goals to a lead. It starts one project lead per goal. Each
 project lead reads its repo, writes the spec, splits the work, picks a model
-for each piece, dispatches implementers, checks each piece itself, has the
-whole deliverable reviewed by an agent that did not write it, and opens the
-draft PR. You merge it. The lead brings
-you every question the runs cannot answer, in one batch. Each project lead
-stays until you say its work shipped, so you can ask it about the change
-before you merge, and hand it a follow-up after.
+for each piece, dispatches implementers, checks each piece itself, integrates
+the work and hands it over as a draft PR. Only then is the whole diff
+reviewed. A separate session reads it against your goal and assumes it is
+wrong. What that session finds comes back as patch rounds on the same PR.
+You merge it when you are ready. The lead brings you every question the runs
+cannot answer, in one batch. Each project lead stays until you say its work
+shipped, so you can ask it about the change before you merge, and hand it a
+follow-up after.
 
 Two entry points:
 
@@ -190,16 +192,19 @@ agents and the shared task list.
       │ passed           └──▶  a failure goes back to that IC,
       ▼                        up to five fix rounds
    ┌───────────────────────────────────────────────┐
-   │ PROJECT LEAD   merge, re-run the suite        │
+   │ PROJECT LEAD   integrate, hand over as a      │
+   │                draft PR                       │
    └───────────────────────────────────────────────┘
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ REVIEWER       did not write what it reviews  │
+   │ SKEPTICAL      reads the whole diff against   │
+   │ REVIEW         your goal, in its own checkout │
    └───────────────────────────────────────────────┘
-      │
-      ▼
-   draft PR   ──▶   you merge it
+      │                  │
+      │ accepted         └──▶  patch rounds on the same PR,
+      ▼                        up to three reviews in all
+   you merge it, and say when it shipped
 ```
 
 `/crew:lead` sits one level above this diagram. It writes a charter per goal
@@ -212,9 +217,11 @@ worktree and cannot see its siblings' work, so that contract is the only
 channel between packages.
 
 The project lead checks every package itself. It runs the acceptance test and
-the suite, and a failure sends the package back. Review of the whole
-deliverable is independent: the reviewer gets the spec and the merged diff,
-and never saw the work happen. A question with no precedent goes to a council,
+the suite, and a failure sends the package back, up to five times. Review
+comes after the work is handed over: a separate session reads the whole diff
+against your goal, assumes it is wrong, and runs the tests in a checkout of
+its own. What it finds goes on the same PR as a patch round, and a run takes
+three reviews at most. A question with no precedent goes to a council,
 where each advocate argues an assigned position, so the project lead weighs
 arguments instead of counting votes. A question about what you want is never
 debated. It comes to you.
@@ -226,7 +233,8 @@ stays until you say the work shipped.
 
 A package is `light` (haiku), `standard` (sonnet) or `deep` (opus).
 `standard` is the default. An IC that reports blocked is re-dispatched one
-band up. A `light` package skips the deliverable review on three conditions.
+band up. The band picks the model and nothing else: every package takes the
+same steps.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|
@@ -238,7 +246,7 @@ band up. A `light` package skips the deliverable review on three conditions.
 | Researcher | sonnet, or opus for a deep question | high |
 | Spec critic | opus | high |
 | Decomposition critic | opus | high |
-| Deliverable reviewer | opus | high |
+| Skeptical review | opus | not set |
 
 The project lead, the ICs and the scouts take your session's effort, so set
 it before the run starts.
@@ -284,7 +292,7 @@ review catch rate, over every record.
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |
 | Decomposition critic | Reviews the work split before any IC starts. |
-| Deliverable reviewer | Reviews the whole deliverable before the draft PR opens. |
+| Skeptical review | Reads the whole diff against your goal once the work is handed over, in a checkout of its own. |
 | Researcher | Answers one open question across several hops, with citations. |
 | Scout | Answers one lookup for the project lead, then exits. |
 | Advocate | Argues one assigned position in a council. |

@@ -63,19 +63,17 @@ nothing, and say so in the closing message.
 **A record whose every deliverable holds a terminal state has no deliverable
 left to make**: set `run_state: delivered` — or `blocked`, when an escalation
 is open — and re-enter `simple-path.md`'s "The delivered window". Which step
-of that window you enter at depends on the packages. A package that is
-neither `integrated` nor `abandoned` is a follow-up killed mid-flight: enter
-at the follow-up procedure, where "A follow-up killed mid-flight" says how to
-reconcile it. With every package terminal as well, the run enters the window
-with nothing to do, and waits.
+of that window you enter at is decided by one list, and only by it:
+`skeptical-review.md`'s "Resume in the delivered window". It covers every
+state this window can die in, and each entry names the file that owns the
+work it sends you to.
 
 **Read `run.review_pending` before you recover a package.** A head there
 means a skeptical review is owed or half adjudicated, and its reply file may
 already name packages that `packages[]` does not hold yet — recover blind and
 you create one twice. Which comes first depends on the state, so take
-`skeptical-review.md`'s resume table from the top and do what the first
-matching row says. `null` or absent, with the branch head already reviewed,
-means nothing is owed.
+`skeptical-review.md`'s resume list from the top and do what the first
+matching entry says.
 
 **A resume picks the path too.** Read the reopened `charter.md` by the test
 below. A record holding `diagnosis.md` took the investigation path and got as

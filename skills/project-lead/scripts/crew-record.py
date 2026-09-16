@@ -15,17 +15,23 @@ usage:
   crew-record.py <record-dir> run set <dotted.field> <json>
   crew-record.py <record-dir> escalation add <trigger> <question>
   crew-record.py <record-dir> escalation answer <index> <answer>
+  crew-record.py <record-dir> integrate <package-id> [--review-head <sha>] [--published]
   crew-record.py <record-dir> deliver <deliverable-id> <deliverable-state> [--pr-url <url>] [--review-head <sha>]
   crew-record.py <record-dir> arm-review --head <sha>
   crew-record.py <record-dir> ship
 
-`init` creates state.json with `created_at`. `deliver` sets the deliverable's
-terminal state and `run_state: delivered` in one write, which
-`record-format.md` requires for `work-complete`. `--review-head <sha>` writes
-`run.review_pending` in that same write, so the hand-over and the review it
-owes cannot come apart (`skeptical-review.md`). Every command that moves the
-branch head takes that flag under that name, and writes the head key beside
-the state key it already writes. `arm_review` is that shared step. The value
+`init` creates state.json with `created_at`. `integrate` sets a package
+`integrated`, which is the delivered window's own state write. Its
+`--published` flag stamps `pushed_at` in the same write, for a branch with no
+remote, where the commit is the publication and no push is ever owed.
+`deliver` sets the deliverable's terminal state and `run_state: delivered` in
+one write, which `record-format.md` requires for `work-complete`.
+`--review-head <sha>` on either one writes `run.review_pending` in that same
+write, so a state change and the review it owes cannot come apart
+(`skeptical-review.md`). `arm-review --head` does the same arming on its own.
+Every command that moves the branch head takes that flag under that name, and
+writes the head key beside the state key it already writes. `arm_review` is
+that shared step. The value
 is `{head, round}`, and `round` is one more than `run.review_rounds`: the
 round the owed review will run at, so the sha and the report name it expects
 are written together. At the round cap it writes no pending head at all and
@@ -249,6 +255,15 @@ def main(argv: list[str]) -> None:
             asks[index]["answer"] = arg(rest, 2)
         else:
             usage()
+    elif kind == "integrate":
+        pkg = find(state.get("packages", []), arg(rest, 0))
+        pkg["state"] = "integrated"
+        pkg["state_changed_at"] = now()
+        # A branch with no remote is published by the commit itself, so the
+        # integration stamps it and no push is ever owed (`record-format.md`).
+        if "--published" in rest:
+            pkg["pushed_at"] = now()
+        arm_review(run, flag(rest, "--review-head"))
     elif kind == "deliver":
         dl = find(state.get("deliverables", []), arg(rest, 0))
         dl["state"] = arg(rest, 1)

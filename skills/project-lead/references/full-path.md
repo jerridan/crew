@@ -283,7 +283,11 @@ before you believe", or a red suite at "Integrate". Five is the cap.
   log --oneline` plus `git -C <worktree> diff --stat` — and the failing
   output word for word. A `deep` package cannot promote, so a `deep` package
   reaching round 4 escalates instead: respawn it at `deep` only if the
-  principal says to (`band-rubric.md`).
+  principal says to (`band-rubric.md`). **Write the new name to
+  `worktrees.json`'s entry for this worktree, and to `ic_name` on every
+  package this IC owns**, the same way "Create the branch and the
+  worktrees" wrote them the first time — a stale name there points a later
+  verification or resume at an IC that no longer exists.
 - **At the cap**, fix the package yourself, or park it as `abandoned` with your
   reasoning recorded. At the top band, escalate instead.
 
@@ -314,7 +318,9 @@ window without compacting, and the next one may not (design §15.50). Stand the
 IC down, then spawn a fresh one at the new package's band, named for that
 package as `SKILL.md`'s "Every dispatch is named" says, with the brief rule
 3 of "Resume after a kill" describes: what its worktree already holds, and
-which work is done.
+which work is done. Write the new name to `worktrees.json`'s entry for this
+worktree, and to `ic_name` on every package this IC owns, the same way
+"Create the branch and the worktrees" wrote them the first time.
 
 ## Integrate
 
@@ -454,7 +460,10 @@ Three rules make this work:
    `state.json` is rewritten to match them, never the other way round.
 3. **A respawned IC is a new IC.** Its brief must describe what is already in
    its worktree and say which work is done. Its acceptance criterion is what
-   makes the respawn idempotent.
+   makes the respawn idempotent. Give it a fresh name, as `SKILL.md`'s "Every
+   dispatch is named" says, and write that name to `worktrees.json`'s entry
+   for this worktree and to `ic_name` on every package it owns — the same
+   write "Create the branch and the worktrees" made the first time.
 
 The deliverable branch reconciles the same way: `git -C <repo> log` shows which
 packages already merged. An `integrated` package is terminal and cannot be

@@ -254,15 +254,16 @@ Assume the change is wrong, and look for how. A clean pass is a finding you
 failed to make, not a result.
 
 Run the suite yourself, and report what you saw. A passing run somebody else
-reported is a claim about another tree: <suite command, and the directory to
-run it in — or, under the no-suite outcome, a sentence saying there is no
-suite and dropping this instruction entirely>.
+reported is a claim about another tree. <the suite paragraph, one of the two
+literal blocks below>
 
-Write your whole report to <absolute output path> before you finish. That
-file is the only thing collected: this process has no caller reading its
-output, so anything you print to the terminal and nothing else is lost with
-it. The rules above about returning a report some other way do not apply to
-you.
+Write your whole report to <absolute output path> before you finish. This
+process has no caller reading its output, so anything you print to the
+terminal and do not also write to that path is lost with it — except your
+very last message, which is captured whole. So: write the report to that
+path. If, and only if, that write is denied, return the complete report as
+your final message instead, in the same shape, so the one thing that is
+captured is the report itself.
 
 Open the report with this line, and nothing before it:
 
@@ -280,6 +281,19 @@ be wrong.
 
 Add one section, titled "Checked and found nothing", listing what you looked
 for and did not find. A check you never ran does not go in it.
+```
+
+**Fill the suite paragraph with one of these two literal blocks, verbatim
+except their own brackets.** With a suite:
+
+```
+Run it with: <suite command>, in <the directory it runs in>.
+```
+
+Under the no-suite outcome:
+
+```
+This repository has no suite. Read the diff without running one.
 ```
 
 **A replacement for this step receives this same file, plus one sentence that
@@ -378,9 +392,11 @@ could fail**:
   --review-head <sha>` writes the deliverable's state, `run_state: delivered`
   and `review_pending` in one write.
 - After a delivered-window package integrates, the head is armed **before**
-  the push: `crew-record.py integrate <package-id> --review-head <sha>` folds
-  the arming into the integration write, and `arm-review --head <sha>` does
-  it on its own. A push that lands while the record still says nothing
+  the push, and `crew-record.py integrate <package-id> --review-head <sha>`
+  is the one write that does it: the arming folds into the integration write,
+  atomically. `arm-review --head <sha>` on its own is for recovery and
+  supersession instead — resume entries 6 and 7 below — never a follow-up's
+  ordinary path. A push that lands while the record still says nothing
   is owed is a head no review would ever read. A branch with no remote, and
   a push the remote refused, both record the head the same way and review the
   local head: the review reads a sha, and a sha does not need a remote.
@@ -402,7 +418,9 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
 **Launch in this order, every time:**
 
 1. **Arm the head** — `deliver --review-head` at the hand-over,
-   `arm-review --head` after a follow-up integrates.
+   `integrate --review-head` as part of a follow-up package's own
+   integration write. Standalone `arm-review --head` is for recovery and
+   supersession alone: entries 6 and 7 below, never a follow-up's own launch.
 2. **Set `review_rounds` to `review_pending.round`**, by the table below.
 3. **Cut `review-worktrees/r<n>`** and run the setup command in it.
 4. **Write the instructions file.**
@@ -524,7 +542,7 @@ ties a report to a tree.
 
 **Retiring an attempt before you retry it.** A retry reuses the round's
 names, so move the old attempt aside first rather than overwriting it — it is
-the only evidence of what went wrong. Rename whichever of the three exist,
+the only evidence of what went wrong. Rename whichever of the five exist,
 with `<k>` one more than the highest `-attempt` already on disk for this
 round:
 
@@ -604,7 +622,7 @@ somewhere else.
 | **Launch 5**, the process launched and dead | 10, instructions and no JSON | the same |
 | **Launch 5**, the process exited | 9, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 8, failing the attempt is retired |
 | the four checks, before adjudicating | 8, a passing entry | the report is adjudicated |
-| **Follow-up 1**, the package `integrated` and the head armed (one write, `simple-path.md`'s "Findings from a review" step 4) | 3, the head is not on the remote | the push happens; the round already runs on re-entry, since the integration write armed it |
+| **Follow-up 1**, the package `integrated` and the head armed (one write, `simple-path.md`'s "Findings from a review" step 8) | 3, the head is not on the remote | the push happens; the round already runs on re-entry, since the integration write armed it |
 | **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 3, the head is not on the remote | the push happens first; re-entry 7 finds the head already listed and owes nothing |
 | **Follow-up 2**, the push | 8 to 11 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written | 1, ids the reply names and `packages[]` lacks | the packages are created from the ledger |

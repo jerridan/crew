@@ -221,9 +221,9 @@ to see every judgment call with its citation.
 ├── split.md        packages, interfaces and bands
 ├── state.json      package states, band history, spend, escalations
 ├── decisions.md    every judgment call, with its citation
-├── reports/        one report per package, and the reply to each reviewer
+├── reports/        one report per package
 ├── plans/          one plan per package
-├── reviews/        every critic and reviewer output
+├── reviews/        every critic and reviewer output, and the reply to each
 └── diffs/          one diff per deliverable
 ```
 

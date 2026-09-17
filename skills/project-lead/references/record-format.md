@@ -177,8 +177,9 @@ naming convention. Do not mix their contents.
   reservation file together to find the highest `<n>` on disk — a report
   alone is not enough, because a critic whose write was denied leaves no
   report at all, only its reservation file.
-  Six files per skeptical review round, all named by the round `<n>` and none
-  by a deliverable id, because the review is per branch head:
+  Five files per skeptical review round, always, plus a conditional sixth,
+  all named by the round `<n>` and none by a deliverable id, because the
+  review is per branch head:
   `reviews/skeptical-r<n>.md`, the report, whose **first line is
   `Reviewed: <sha>`** — the head that review read, which a resumed run matches
   against `run.review_pending.head` rather than trusting the file name, and
@@ -188,10 +189,16 @@ naming convention. Do not mix their contents.
   output, which the checks read; `reviews/skeptical-r<n>-result.stderr`, the
   runner's own stderr, redirected there by the same command;
   `reviews/skeptical-r<n>-result.exit`, the same command's own exit status,
-  the shell's `$?` redirected the same way; and `reviews/skeptical-r<n>-reply.md`,
-  the project lead's adjudication of that report, one line per finding with
-  its disposition — accepted with the package id it became, declined with its
-  reason, or out of scope with the goal proposed for it. A retry of a round does
+  the shell's `$?` redirected the same way; and, when the report holds at
+  least one finding to dispose of, `reviews/skeptical-r<n>-reply.md`, the
+  project lead's adjudication of that report, one line per item it
+  adjudicated — a finding, here, since the skeptical review reports only
+  findings — with its disposition — accepted with the package id it became,
+  declined with its reason, or out of scope with the goal proposed for it.
+  **The reply is the conditional sixth file**: a report whose verdict is
+  `accepted` and which states no findings needs no disposing of, so
+  `skeptical-review.md`'s "Adjudication is a ledger" writes none. A retry of
+  a round does
   not overwrite these: it renames the attempt it replaces to
   `skeptical-r<n>-attempt<k>.md`, `skeptical-r<n>-instructions-attempt<k>.md`,
   `skeptical-r<n>-result-attempt<k>.json`, `skeptical-r<n>-result-attempt<k>.stderr`
@@ -372,7 +379,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: "The idle nudge" is a full-path step. |
 | `ic_name` | the name of the agent assigned to this package. On the full path it cross-references `worktrees.json`, which maps this name to a worktree path; without it, nothing maps a package back to the worktree that must verify it. `simple-path.md`'s "Dispatch the IC" and `full-path.md`'s "Create the branch and the worktrees" write it; `SKILL.md`'s "Every dispatch is named" owns the naming rule itself. |
-| `round` | the `<round-id>` of the round that wrote this package, a key into `run.rounds`. The round holds the source and the reply, so the package holds neither. A change-request package carries this field too, when the message that raised it also raised an accepted finding — `simple-path.md`'s "A message with a finding in it opens one round" — and not otherwise. Absent on every other package, and that absence is what says the package belongs to no round. |
+| `round` | the `<round-id>` of the round that wrote this package, a key into `run.rounds`. The round holds the source and the reply, so the package holds neither. A change-request package carries this field too, when the message that raised it also raised an accepted finding — `simple-path.md`'s "A message that holds a finding, whatever else it holds, runs one procedure" — and not otherwise. Absent on every other package, and that absence is what says the package belongs to no round. |
 | `pushed_at` | ISO-8601 UTC timestamp of this package's **publication**, `null` until it happens. A branch with a remote is published by a push that succeeded, and the project lead stamps this right after it — never before, and never after one that failed. A branch with no remote is published when the work commits, so `crew-record.py integrate --published` stamps it in the integration write and no push is ever owed. One push can carry several packages of one round, and it stamps each. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
 | `report_path` | always `reports/<id>.md`. Points into `reports/`. |

@@ -68,8 +68,10 @@ could not write.
 
 **This fallback is for a dispatched agent**, whose final message the project
 lead reads. The skeptical review is a separate process with no caller, so
-nothing it prints is collected, and `skeptical-review.md` owns what a missing
-report costs there.
+nothing it prints to the terminal is collected — except its last message,
+which `--output-format json` saves into the result JSON's own `result` field,
+and which is what a denied report write falls back to there
+(`skeptical-review.md`).
 
 You carry no `SendMessage`, so a finding you leave out of the report reaches
 nobody.

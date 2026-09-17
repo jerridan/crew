@@ -437,21 +437,35 @@ both is split along it, and each half runs its own section. **One defect is
 processed once**: a finding that became a package is not also a change
 request.
 
-**Items from one message that share a file set may share one package.** A
-finding and a change request the same message raised, once sorted, can still
-land on the same files — the package is what a territory is on every other
-path, and two edits to one file are one dispatch, not two. A package never
-spans two messages, whatever their file sets.
+**A message that holds a finding, whatever else it holds, runs one
+procedure, in this order:**
 
-**A message with a finding in it opens one round.** "Findings from a
-review" below opens a round for CI, a bot or the skeptical review; a finding
-the principal raises here is the same kind of source, and its message opens a
-round the same way. When a message holds at least one accepted finding, every
-package written for that message — the findings' packages and the change
-requests' packages alike, whichever section of this file wrote them — carries
-that round's id and is named in its reply ledger, so one ledger answers the
-whole message. A message with only change requests opens no round, and its
-packages carry no `round` (`record-format.md`).
+a. **Sort every item**, by the line above.
+b. **Adjudicate every finding**, per "Findings from a review" step 1 below.
+   A change request needs no adjudication — the principal already asked for
+   it — but still passes its own check 1, "inside the charter's goal."
+c. **Open the round**, per "Findings from a review" step 3. The message's
+   finding is what opens it, on whichever channel the message arrived.
+d. **Group every accepted item, finding and change request alike, into
+   packages.** One package per region of the tree, as "Findings from a
+   review" step 4 says. A package may hold a finding and a change request
+   together when they share a file set — the package is what a territory is
+   on every other path, and two edits to one file are one dispatch, not two.
+e. **Write the round's reply file with one line per item** — a finding or a
+   change request — naming the package it became or its decline, per
+   "Findings from a review" step 5. Every package this message wrote appears
+   in the ledger, whichever half of the message raised it.
+f. **Run each package through "Dispatch the IC" to "Integrate"**, one at a
+   time, per "Findings from a review" step 8.
+g. **Push once, then send the reply**, per "Findings from a review" steps 9
+   and 10.
+
+A package built this way carries the round's id and appears in its reply the
+same as any other package the round writes (`record-format.md`).
+
+**A message with only change requests opens no round.** Run "A change
+request" below as it stands, one package with its own push, and its package
+carries no `round`.
 
 **A question.** Answer it from the record and from the repo. Dispatch
 `Explore` subagents at `sonnet` for the code, named as a lookup per
@@ -535,12 +549,14 @@ one round carries every finding the source sent. In order:
    round is what an all-declined patch still uses to find its reader.
 4. **Group what you accepted**, and name each group's package id now. One
    group per region of the tree, with file sets that do not overlap, so each
-   group is a package like any other. Two findings that must change one file
-   together belong in one group.
+   group is a package like any other. Two items that must change one file
+   together belong in one group, whether both are findings or one is a
+   change request from the same message (**"A message that holds a
+   finding"** above).
 5. **Write the round's reply file**, at `reviews/<round-id>-reply.md`, before
-   any package exists and before anything is dispatched. Each accepted
-   finding carries the package id you just named, which is what stops a
-   finding being answered twice.
+   any package exists and before anything is dispatched. Each accepted item —
+   finding or change request — carries the package id you just named, which
+   is what stops an item being answered twice.
 6. **Create those packages** in `packages[]`, `pending`, under the ids the
    reply named, each with its file set, its acceptance criterion and
    `round: <round-id>`. The criterion is what proves the group's findings are

@@ -28,8 +28,10 @@ remote, where the commit is the publication and no push is ever owed.
 one write, which `record-format.md` requires for `work-complete`.
 `--review-head <sha>` on either one writes `run.review_pending` in that same
 write, so a state change and the review it owes cannot come apart
-(`skeptical-review.md`). `arm-review --head` does the same arming on its own.
-Every command that moves the branch head takes that flag under that name, and
+(`skeptical-review.md`). `arm-review --head` does the same arming on its own,
+for recovery and supersession — never a follow-up's own integration, which
+takes the flag on `integrate` instead. Every command that moves the branch
+head takes that flag under that name, and
 writes the head key beside the state key it already writes. `arm_review` is
 that shared step. The value
 is `{head, round}`, and `round` is one more than `run.review_rounds`: the
@@ -114,10 +116,12 @@ def arm_review(run: dict, head: str | None) -> None:
     """Record the head a skeptical review is owed on, or record that none is.
 
     Every arming in the run comes through here: `deliver --review-head` folds
-    it into the hand-over write, and `arm-review --head` does it on its own
-    after a follow-up integrates (`skeptical-review.md`). At the cap no
-    further review runs, so the head is logged as unreviewed instead of
-    armed, and the next report to the principal names it.
+    it into the hand-over write, and `integrate --review-head` folds it into
+    a follow-up package's own integration write, atomically. `arm-review
+    --head` on its own is for recovery and supersession, never a follow-up's
+    ordinary path (`skeptical-review.md`). At the cap no further review runs,
+    so the head is logged as unreviewed instead of armed, and the next report
+    to the principal names it.
     """
     if not head:
         return

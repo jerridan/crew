@@ -2529,6 +2529,10 @@ Stage: 7 (design §15.94)
 Probe: a killed skeptical review resumed and its second round caught a
 real defect, add-padcenter-helper-5b0b, §15.98b.
 
+Superseded by the landed schema: see `record-format.md`
+(`packages[].round`, `run.rounds`, `reviews/<round-id>-reply.md`) and
+`skeptical-review.md` for when `review_pending` clears.
+
 The deliverable review sent an artifact back 2 times in 18 (design §15.77a).
 On run `agi-3057-handoff-attempt-record-399d` it ran six times — once before
 the PR opened, and once on each of the first five follow-ups — and returned
@@ -2620,6 +2624,10 @@ Depends on: T59
 Stage: 7 (design §15.94)
 Probe: four typed items sorted and patched correctly through two kills,
 add-padcenter-helper-5b0b, §15.98c.
+
+Superseded by the landed schema: see `record-format.md`
+(`packages[].round`, `run.rounds`, `reviews/<round-id>-reply.md`) and
+`skeptical-review.md` for when `review_pending` clears.
 
 Six follow-ups on run `agi-3057-handoff-attempt-record-399d` each ran a
 package review, and the first five each re-ran the whole deliverable review,
@@ -2919,16 +2927,17 @@ script removes the retyping and the chance of another broken shape.
 
 Scope. A `crew-review.py` (or an equivalent shell script) under
 `skills/project-lead/scripts/` takes the record directory, the round number,
-the review worktree and the suite command, and writes `-result.json` and
-`-result.stderr`, and records the session id, the way `skeptical-review.md`'s
-"The default command" and "Record the review's session id" say to. Depends
-on T59's fixed command, which this ticket wraps rather than replaces.
+the review worktree and the suite command, and writes `-result.json`,
+`-result.stderr` and `-result.exit`, and records the session id, the way
+`skeptical-review.md`'s "The default command" and "Record the review's
+session id" say to. Depends on T59's fixed command, which this ticket wraps
+rather than replaces.
 
 Run it. Substitute the script for a hand-typed launch on one skeptical review
 round.
 
-Check that the script produces the same files, in the same shape, that a
-hand-typed launch does.
+Check that the script produces the same files, `-result.exit` included, in
+the same shape, that a hand-typed launch does.
 
 Done when: `skeptical-review.md` points at the script instead of stating the
 command inline.

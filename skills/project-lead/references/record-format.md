@@ -177,7 +177,7 @@ naming convention. Do not mix their contents.
   reservation file together to find the highest `<n>` on disk — a report
   alone is not enough, because a critic whose write was denied leaves no
   report at all, only its reservation file.
-  Five files per skeptical review round, all named by the round `<n>` and none
+  Six files per skeptical review round, all named by the round `<n>` and none
   by a deliverable id, because the review is per branch head:
   `reviews/skeptical-r<n>.md`, the report, whose **first line is
   `Reviewed: <sha>`** — the head that review read, which a resumed run matches
@@ -186,14 +186,16 @@ naming convention. Do not mix their contents.
   `reviews/skeptical-r<n>-instructions.md`, the text the review was launched
   with; `reviews/skeptical-r<n>-result.json`, the child process's own JSON
   output, which the checks read; `reviews/skeptical-r<n>-result.stderr`, the
-  runner's own stderr, redirected there by the same command; and
-  `reviews/skeptical-r<n>-reply.md`, the project lead's adjudication of that
-  report, one line per finding with its disposition — accepted with the
-  package id it became, declined with its reason, or out of scope with the
-  goal proposed for it. A retry of a round does
+  runner's own stderr, redirected there by the same command;
+  `reviews/skeptical-r<n>-result.exit`, the same command's own exit status,
+  the shell's `$?` redirected the same way; and `reviews/skeptical-r<n>-reply.md`,
+  the project lead's adjudication of that report, one line per finding with
+  its disposition — accepted with the package id it became, declined with its
+  reason, or out of scope with the goal proposed for it. A retry of a round does
   not overwrite these: it renames the attempt it replaces to
-  `skeptical-r<n>-attempt<k>.md`, `skeptical-r<n>-instructions-attempt<k>.md`
-  and `skeptical-r<n>-result-attempt<k>.json`, `<k>` counting up from the
+  `skeptical-r<n>-attempt<k>.md`, `skeptical-r<n>-instructions-attempt<k>.md`,
+  `skeptical-r<n>-result-attempt<k>.json`, `skeptical-r<n>-result-attempt<k>.stderr`
+  and `skeptical-r<n>-result-attempt<k>.exit`, `<k>` counting up from the
   highest already there, so the evidence of a failed attempt survives. **A
   review a replacement ran saves `skeptical-r<n>-result.txt` and
   `skeptical-r<n>-result.exit` in place of the `.json`**, holding the runner's
@@ -207,7 +209,7 @@ naming convention. Do not mix their contents.
   `<round-id>`**: `reviews/<round-id>-reply.md`, where `<round-id>` is
   `<kind>-r<n>` — `ci-r1`, `pr-comments-r2`, `principal-r1` — with `<n>` one
   more than the highest already on disk under that name. Only a skeptical
-  round carries the other four files, because only it runs a review
+  round carries the other five files, because only it runs a review
   (`simple-path.md`'s "Findings from a review"). Then
   `reviews/diagnosis-adversary.md` for the one advocate that argues against a
   report ending's root cause (design §9.5; the diagnosis is per goal, so this
@@ -370,7 +372,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: "The idle nudge" is a full-path step. |
 | `ic_name` | the name of the agent assigned to this package. On the full path it cross-references `worktrees.json`, which maps this name to a worktree path; without it, nothing maps a package back to the worktree that must verify it. `simple-path.md`'s "Dispatch the IC" and `full-path.md`'s "Create the branch and the worktrees" write it; `SKILL.md`'s "Every dispatch is named" owns the naming rule itself. |
-| `round` | the `<round-id>` of the patch round that wrote this package, a key into `run.rounds`. The round holds the source and the reply, so the package holds neither. Absent on every other package, and that absence is what says the package belongs to no round. |
+| `round` | the `<round-id>` of the round that wrote this package, a key into `run.rounds`. The round holds the source and the reply, so the package holds neither. A change-request package carries this field too, when the message that raised it also raised an accepted finding — `simple-path.md`'s "A message with a finding in it opens one round" — and not otherwise. Absent on every other package, and that absence is what says the package belongs to no round. |
 | `pushed_at` | ISO-8601 UTC timestamp of this package's **publication**, `null` until it happens. A branch with a remote is published by a push that succeeded, and the project lead stamps this right after it — never before, and never after one that failed. A branch with no remote is published when the work commits, so `crew-record.py integrate --published` stamps it in the integration write and no push is ever owed. One push can carry several packages of one round, and it stamps each. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
 | `report_path` | always `reports/<id>.md`. Points into `reports/`. |
@@ -481,8 +483,9 @@ a `null` field:
   the same push, from the head's side. Push, then stamp `pushed_at`. A branch with no remote owes
   nothing, because the integration stamped it, and a round that records
   `push_refused` owes nothing either — the principal was told the head is
-  unpublished. A package with no `round` came from a change request, so
-  nothing records a refusal for it and a resume simply tries the push again.
+  unpublished. A package with no `round` came from a change request whose
+  message raised no finding, so nothing records a refusal for it and a resume
+  simply tries the push again.
 - **A run owes a reply** when an entry in `run.rounds` holds a `null`
   `replied_at` and every accepted entry in its reply file is complete. The
   file is already on disk, so `reviews/<round-id>-reply.md` is sent as it
@@ -1075,8 +1078,9 @@ Every name this file defines, with what consumes it.
 - `reviews/skeptical-r<n>.md` — writer: the skeptical review's own headless session, or the project lead when the fallback supplies it (`skeptical-review.md`). Consumer: `simple-path.md`'s "The skeptical review"; `scripts/crew-stats.py` (the review kind and its catch rate)
 - `reviews/skeptical-r<n>-instructions.md` — writer: the project lead, before it launches that review. Consumer: `--append-system-prompt-file` on the review's own command; a human asking what the reviewer was told
 - `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the project lead's four checks, live and on a resume
+- `reviews/skeptical-r<n>-result.stderr` — writer: the same shell line's `2>` redirect, on the default runner's own command (`skeptical-review.md`). Consumer: a human or the project lead reading why a check failed
 - `reviews/skeptical-r<n>-result.txt` — writer: the shell redirect on a replacement's own command, in place of the `.json` (`SKILL.md`). Consumer: the project lead, which reads the report out of it and runs the checks the runner supports
-- `reviews/skeptical-r<n>-result.exit` — writer: the same shell line, one line holding the runner's exit status. Consumer: the project lead's exit check, live and on a resume; its absence marks an attempt that never finished (`SKILL.md`)
+- `reviews/skeptical-r<n>-result.exit` — writer: the same shell line's trailing `echo $? >`, on the default runner's own command and on a replacement's alike. Consumer: the project lead's exit check, live and on a resume; its absence marks an attempt that never finished (`SKILL.md`)
 - `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)
 - `reviews/<round-id>-reply.md` — the same file for a patch round from any other source, with `<round-id>` from `run.rounds`. Writer and consumer as above; the send that closes it is `simple-path.md`'s "Findings from a review"
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts

@@ -113,7 +113,7 @@ the path is already gone, then prune.
 Write the instructions file first, then launch, from the review worktree:
 
 ```
-cd <record-dir>/review-worktrees/r<n> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<suite command> *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr
+cd <record-dir>/review-worktrees/r<n> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<suite command> *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
 ```
 
 **The prompt rides on stdin, never as a positional argument.**
@@ -128,11 +128,15 @@ the goal, and even retargeted at the right commit it wrote no report file and
 no verdict pair (design §15.98b). The stance this file states is what the
 printed line and the appended system prompt carry instead.
 
-**Redirect both streams to the record, and read them from there.** The checks
-below run against `-result.json`, so a session that dies between the exit and
-the checks finds the same evidence a live one had. It also holds the report
-itself when the fallback applies. `-result.stderr` is the runner's own error
-output, kept beside it for the same reason.
+**Redirect every piece of evidence to the record, and read it from there.**
+The checks below run against `-result.json`, so a session that dies between
+the exit and the checks finds the same evidence a live one had. It also holds
+the report itself when the fallback applies. `-result.stderr` is the runner's
+own error output, kept beside it for the same reason. `-result.exit` is the
+process's own exit status, the same protocol the substituted runner already
+uses (`SKILL.md`'s "A step the principal replaced") — check 1 below reads it
+rather than trusting the JSON's own shape when the process died before
+writing one.
 
 ## The permissions the review needs
 
@@ -207,9 +211,9 @@ one shell layer away from breaking the command. The file also lands in the
 record, where a reader can see exactly what the reviewer was told
 (`record-format.md`).
 
-**Pass `--model opus --effort high`, and nothing else.** A separate process
-with its own model and effort flag is what keeps the review's cost apart from
-`band-rubric.md`'s pick for the run's own ICs (design §15.94c).
+**For the model, pass exactly `--model opus --effort high`.** A separate
+process with its own model and effort flag is what keeps the review's cost
+apart from `band-rubric.md`'s pick for the run's own ICs (design §15.94c).
 
 **The review edits nothing but its own report.** The only `Edit` rule it
 carries is scoped to `reviews/`, so whatever it decides, it can make no code
@@ -224,8 +228,10 @@ shape.** It has two parts, in this order:
    `Cannot verify` rule, the report-never-fix rule and the two closing lines,
    and it is the same text every review dispatch injects. The child process
    reads no file of this plugin, so a reference by name would not resolve.
-2. **The block below**, with its two bracketed values filled in. It holds
-   what is this review's own and nothing that part 1 already states.
+2. **The block below**, with its bracketed values filled in. It holds what is
+   this review's own and nothing that part 1 already states: the goal text,
+   the diff range, the suite (or the no-suite sentence), the output path, and
+   the pending head.
 
 Write the two into
 `<record-dir>/reviews/skeptical-r<n>-instructions.md` and pass that path to
@@ -237,15 +243,20 @@ You are reviewing one finished change, and you are the only reader it gets.
 The goal, in the principal's own words, with every constraint the principal
 stated: <goal text>
 
-Read the diff against that goal and against this repository. Do not look for
-a specification document, and do not treat any file in the repository as the
-statement of what this change owed.
+You are already on the change: this working directory is a detached checkout
+at <pending head sha>. Read `git diff <base>..HEAD` against that goal and
+against this repository. The charter's acceptance criteria go in as
+supplementary evidence, never on their own. Do not look for a specification
+document, and do not treat any file in the repository as the statement of
+what this change owed.
 
 Assume the change is wrong, and look for how. A clean pass is a finding you
 failed to make, not a result.
 
-Run the repository's own test suite yourself, and report what you saw. A
-passing run somebody else reported is a claim about another tree.
+Run the suite yourself, and report what you saw. A passing run somebody else
+reported is a claim about another tree: <suite command, and the directory to
+run it in — or, under the no-suite outcome, a sentence saying there is no
+suite and dropping this instruction entirely>.
 
 Write your whole report to <absolute output path> before you finish. That
 file is the only thing collected: this process has no caller reading its
@@ -255,10 +266,10 @@ you.
 
 Open the report with this line, and nothing before it:
 
-Reviewed: <the sha you were asked about>
+Reviewed: <pending head sha>
 
-Read that sha from `git rev-parse HEAD` in this working directory. It is how
-the reader knows which tree your findings describe.
+That is `git rev-parse HEAD` in this working directory, and it is how the
+reader knows which tree your findings describe.
 
 Then the findings, in the shape those rules give, ending with their two
 closing lines. Your two verdict strings are `accepted` and
@@ -287,15 +298,14 @@ writes the file.
 Four checks, on the JSON the process printed and on the record directory.
 All four pass, or this is the failure path below:
 
-1. **The process exited 0**, with `is_error` false.
-2. **`permission_denials` is empty**, or every entry in it falls outside the
-   allow list above. One denial is tolerated and no more: a write to the
-   report path, when the fallback below then supplied the report. A denial of
-   anything else in the list means the review could not do what you asked — a
-   suite component above all — and the findings are worth less than they
-   look. Read the entries by their `tool_name` and `tool_input` and no more:
-   the shape of an entry is not documented, so anything else about it can
-   change.
+1. **`-result.exit` reads `0`**, and the JSON's own `is_error` is false.
+2. **The predicate**: `permission_denials` is empty, except for exactly one
+   denied write to the named report path when the fallback below then
+   supplied a conforming report. Any other denial fails this check — a suite
+   component above all — because the review could not do what you asked, and
+   the findings are worth less than they look. Read the entries by their
+   `tool_name` and `tool_input` and no more: the shape of an entry is not
+   documented, so anything else about it can change.
 3. **The report file exists** at the output path, or the fallback below
    supplied it.
 4. **Its last two lines are the verdict pair**, and its first line is
@@ -523,6 +533,7 @@ skeptical-r<n>.md               →  skeptical-r<n>-attempt<k>.md
 skeptical-r<n>-instructions.md  →  skeptical-r<n>-instructions-attempt<k>.md
 skeptical-r<n>-result.json      →  skeptical-r<n>-result-attempt<k>.json
 skeptical-r<n>-result.stderr    →  skeptical-r<n>-result-attempt<k>.stderr
+skeptical-r<n>-result.exit      →  skeptical-r<n>-result-attempt<k>.exit
 ```
 
 Then delete `run.review_results[<n>]`, so nothing points at a file that has
@@ -593,10 +604,9 @@ somewhere else.
 | **Launch 5**, the process launched and dead | 10, instructions and no JSON | the same |
 | **Launch 5**, the process exited | 9, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 8, failing the attempt is retired |
 | the four checks, before adjudicating | 8, a passing entry | the report is adjudicated |
-| **Follow-up 1**, the package `integrated` | 3, the head is not on the remote | the push happens; on re-entry 7 arms the head |
-| **Follow-up 2**, the arming | 3, the head is not on the remote | the push happens; on re-entry the round's own entry runs the review |
-| **Follow-up 2**, the arming at the cap | 3, the head is not on the remote | the push happens first; only then does 7 find the head in `unreviewed_heads` and owe nothing |
-| **Follow-up 3**, the push | 8 to 11 for that round | the review runs, or its report is adjudicated |
+| **Follow-up 1**, the package `integrated` and the head armed (one write, `simple-path.md`'s "Findings from a review" step 4) | 3, the head is not on the remote | the push happens; the round already runs on re-entry, since the integration write armed it |
+| **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 3, the head is not on the remote | the push happens first; re-entry 7 finds the head already listed and owes nothing |
+| **Follow-up 2**, the push | 8 to 11 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written | 1, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
 | **Ledger 2**, some of the packages created | 1, the ids still missing | creation is finished from the ledger, then 2 recovers them |
 | **Ledger 2**, all the packages created | 2, an open package | the packages are recovered; on re-entry 8 adjudicates the round to its end |

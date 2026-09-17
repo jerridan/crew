@@ -449,10 +449,13 @@ Write the report to `reviews/spec-critic-r1.md`, and append the entry:
 
 **Two harness limits.** The `Skill` tool is auto-rejected under `claude -p`
 (design §12), so a replacement cannot invoke a slash command from inside a
-headless session. A slash command passed as the positional prompt does run,
-which is what the default skeptical review does. And a replacement you run
-inside this session spends your own context. A separate process keeps its
-working turns out of it, and the report you read back still costs you.
+headless session. A slash command passed as the positional prompt does still
+run under `-p` — the skeptical review's old default did exactly that, until
+§15.98 found it read the wrong ref and wrote no report, and retired it for a
+prompt piped on stdin (`skeptical-review.md`'s "The default command"). And a
+replacement you run inside this session spends your own context. A separate
+process keeps its working turns out of it, and the report you read back still
+costs you.
 
 ## Sweep for preference questions
 

@@ -440,10 +440,18 @@ request.
 **Items from one message that share a file set may share one package.** A
 finding and a change request the same message raised, once sorted, can still
 land on the same files — the package is what a territory is on every other
-path, and two edits to one file are one dispatch, not two. The round's or the
-message's own reply ledger names which items the package answers, so an
-accepted finding and an accepted change request both trace back to it. A
-package never spans two messages, whatever their file sets.
+path, and two edits to one file are one dispatch, not two. A package never
+spans two messages, whatever their file sets.
+
+**A message with a finding in it opens one round.** "Findings from a
+review" below opens a round for CI, a bot or the skeptical review; a finding
+the principal raises here is the same kind of source, and its message opens a
+round the same way. When a message holds at least one accepted finding, every
+package written for that message — the findings' packages and the change
+requests' packages alike, whichever section of this file wrote them — carries
+that round's id and is named in its reply ledger, so one ledger answers the
+whole message. A message with only change requests opens no round, and its
+packages carry no `round` (`record-format.md`).
 
 **A question.** Answer it from the record and from the repo. Dispatch
 `Explore` subagents at `sonnet` for the code, named as a lookup per

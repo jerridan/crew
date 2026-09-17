@@ -378,9 +378,9 @@ replacement saves the runner's output as text and its status beside it, under
 the round's name, and a retry retires all of them the same way
 (`record-format.md`). A resumed session reads the same list in
 `skeptical-review.md`'s "Resume in the delivered window", with those two files
-standing in for `-result.json` wherever entries 10 and 11 name it. **A
+standing in for `-result.json` wherever entries 11 and 12 name it. **A
 `-result.txt` with no `-result.exit` is an incomplete attempt**: the shell
-never reached the status write, so entry 11's rule holds — retire the attempt
+never reached the status write, so entry 12's rule holds — retire the attempt
 and retry the round.
 
 ### The lifecycle holds; three checks change

@@ -526,8 +526,8 @@ a `null` field:
   `replied_at` and every accepted entry in its reply file is complete. The
   file is already on disk, so `reviews/<round-id>-reply.md` is sent as it
   stands and `replied_at` follows. A resumed session reaches this through
-  entry 6 of `skeptical-review.md`'s resume list, which owns the order, and
-  entry 5 there fills a ledger line the kill left empty.
+  entry 7 of `skeptical-review.md`'s resume list, which owns the order, and
+  entry 6 there fills a ledger line the kill left empty.
 
 Two obligations sit outside this rule. `run.review_pending` is
 `skeptical-review.md`'s alone. A package still `pending` or `in-flight`

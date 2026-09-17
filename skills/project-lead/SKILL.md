@@ -155,7 +155,7 @@ plain subagent and the name changes nothing.
 | Scout | `scout-<n>` |
 | Spec writer | `spec-writer-r<n>` |
 | Spec critic | `spec-critic-r<n>` |
-| Split critic | `split-critic-r<n>` |
+| Split critic | `split-critic-<deliverable id>-r<n>` |
 | Advocate | `advocate-c<council n>-<position>` |
 | Researcher | `researcher-<n>` |
 | Lookup | `lookup-<n>` |

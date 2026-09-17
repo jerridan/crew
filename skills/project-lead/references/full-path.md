@@ -92,15 +92,18 @@ Two rules shape the full path's split, on top of the format rules
 ## Have the split reviewed
 
 Reserve the round first, as `SKILL.md`'s "Have the spec reviewed" says:
-write `reviews/<deliverable-id>-split-critic-r<n>-instructions.md`, `<n>`
+write `reviews/split-critic-<deliverable-id>-r<n>-instructions.md`, `<n>`
 one more than the highest `<n>` among every
-`reviews/<deliverable-id>-split-critic-r<n>-*` file on disk, instructions
-files included.
+`reviews/split-critic-<deliverable-id>-r<n>-*` file on disk, instructions
+files included. Its name matches the dispatch name below, so two
+deliverables' rounds never collide.
 
-Then dispatch `crew:split-critic`, named `split-critic-r<n>` for the same
-round, with `split.md`, `spec.md`, the repo path, `review-output.md` whole,
-and the absolute path it writes its findings to:
-`reviews/<deliverable-id>-split-critic-r<n>.md`.
+Then dispatch `crew:split-critic`, named `split-critic-<deliverable-id>-r<n>`
+for the same round — `record-format.md`'s `reviews/` section scopes `<n>` to
+one deliverable, so the deliverable id in the name is what keeps two
+deliverables' first rounds from sharing `split-critic-r1` — with `split.md`,
+`spec.md`, the repo path, `review-output.md` whole, and the absolute path it
+writes its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
 
 Adjudicate as `SKILL.md`'s "Have the spec reviewed" says. A failed invariant is
 not a style note — fix the split and dispatch again. Three re-splits is the

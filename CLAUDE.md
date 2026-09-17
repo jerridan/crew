@@ -36,7 +36,7 @@ read-only `crew:scout` — ten references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
 one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
-`--resume` recovery. Both have run end to end against a real repo.
+`--resume` recovery. Both ran end to end in their earlier, unnamed form.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
 a report ending; both endings have run, and it is `crew:researcher`'s only
 caller, which no run has dispatched yet. The **light path** is the simple path

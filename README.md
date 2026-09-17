@@ -110,7 +110,7 @@ ran out. Answer in the session and the run continues.
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for the full path; required for a pane per dispatched agent on any path; optional otherwise |
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
-| tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without it every dispatched agent runs in the sidebar | optional, every path |
+| tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 
 Crew never widens your permissions itself. Without the teams variable, the
 light, simple and investigation paths still work: every named agent launches

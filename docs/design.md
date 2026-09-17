@@ -7348,3 +7348,67 @@ Deliberately different:
        has, the same rule T58 through T62 stand under: a ticket whose ticket
        text names a probe stays open until that probe runs, whatever the
        instruction files it changed already say.
+
+98. **The first live runs after T57–T62 — 2026-09-16/17.** T58 through T62
+    ran only against `docs/implementation-plan.md`'s evidence and a
+    hand-driven run until now. These sessions ran them for the first time
+    against a real repo, `crew-fixture-string-kit`, in the records
+    `add-padcenter-helper-5b0b` (run 1, one helper, skeptical review) and
+    `add-truncate-helper-cfd5` (run 3, one helper, spec review substituted).
+
+    a. **T58.** The project lead's own verification caught a dirty tree after
+       the IC's report — an injected probe it traced to a local
+       post-commit hook and classified as an environment condition, per
+       `ic-contract.md`'s "When a mechanism blocks you" — and, separately, a
+       green 23/23 diff whose wrong-type tests had lost their `TypeError`
+       assertion. Neither catch needed a package reviewer.
+    b. **T59.** A kill mid-review resumed correctly: the resume retired the
+       attempt's files to `-attempt1`, wrote new instructions and a new
+       session id, and reran the same round. The default runner command
+       failed three ways: `--allowedTools` swallowed a positional prompt as
+       one more tool name, the bundled pull-request reviewer read the base
+       sha as its target commit, and even retargeted at the right diff it
+       wrote no report file and no verdict pair. The fixed shape is the one
+       now in `skeptical-review.md`. The review, once it ran, caught a
+       defect the project lead's own verification had accepted: an
+       `assert.throws` object validator checks the `name` string, not the
+       class, and a commit message claimed a class assertion its diff did
+       not add. Skeptical review rounds in run 1: r1 no conforming report,
+       r2 patch round needed (3 of 4 findings accepted), r3 accepted (2 of 4
+       nits accepted); the cap was reached, and the last head was recorded
+       in `unreviewed_heads`.
+    c. **T60.** Four items typed in the pane sorted correctly — two findings,
+       two change requests, by the criterion line — and the wrong finding was
+       declined with evidence: Python's `str.center` puts the extra fill on
+       the right and follows a parity rule. One kill landed between the push
+       and the reply, on an API error; the resume completed the ledger and
+       then sent the reply, in the correct order. A refused first push was
+       retried at once, and the record kept no trace of the refusal.
+       Accepted items from one message shared one package, which is the
+       deviation the new rule in `simple-path.md` now states.
+    d. **T61.** "Use Codex for the spec review" at launch wrote
+       `substitutions_requested` before any step ran. The runner was `codex
+       exec --sandbox read-only -C <repo> - < instructions > result.txt;
+       echo $? > result.exit`. Three rounds ran: re-spec needed twice, on
+       real criticals, then ready to split, with `steps_substituted` usage
+       of 19357, 19211 and 15796 tokens. Codex's final message appears twice
+       in `result.txt`, once before the `tokens used` line and once after.
+    e. **T62.** A seeded second `band_history` entry made `crew-stats.py`
+       report one promotion; the real record reports zero.
+    f. **T57.** Two hand-launched project-lead sessions, with kills and a
+       forced `/compact`: `SessionEnd` marked the run interrupted, and
+       `PreCompact` logged the compaction. The ship word, typed during the
+       compaction restore, lost its Enter keystroke — the same class of
+       drop as §15.47.
+    g. **Cost.** Run 1 (one helper, four packages, three review rounds) cost
+       $32.87, of which the Opus project lead session was $31.74 (277
+       messages, 35.8M cache-read tokens); the ICs and reviews together cost
+       under $1.20. Run 3 (one helper, spec review substituted with Codex, no
+       skeptical review) cost $10.91, of which Opus was $10.33. The project
+       lead session, not its ICs or reviews, is 95–97% of a one-helper run's
+       cost. T67 opens on this finding.
+    h. **Stats.** `crew-stats.py` counted `-result.stderr` as a review — 7
+       shown for `add-padcenter-helper-5b0b`, 4 real — until this run's fix
+       to `COMPANION_SUFFIXES`. A substitution row showed `unmeasured` even
+       when its entry carried `usage.tokens`, until this run's fix printed
+       the token total instead.

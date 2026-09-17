@@ -2551,8 +2551,10 @@ owns the step, and it owns the schedule as well. It holds:
 - **The worktree rule.** Never run the review in the run's own checkout. A
   probe found a finder agent run `git checkout main` inside the repo under
   review.
-- **The default headless command**, `claude -p --model opus "/code-review
-  high <base>"`.
+- **The default headless command.** The initial implementation was `claude -p
+  --model opus "/code-review high <base>"`; §15.98b's probe found it broken
+  three ways and replaced it. `skeptical-review.md`'s "The default command"
+  now owns the runner, and this ticket does not restate it.
 - **How the findings are collected.** The JSON `result` field holds only the
   last message, so use `--output-format stream-json`, or put an instruction
   in the prompt that writes the findings to a file (design §15.94c).
@@ -2883,10 +2885,12 @@ Status: open
 Depends on: nothing
 Stage: 7 (design §15.98g)
 
-Filed, not scheduled. On run 1 of `add-padcenter-helper-5b0b`, the Opus
-project lead session cost $31.74 of the run's $32.87 — 277 messages, 35.8M
-cache-read tokens. The ICs and the reviews together cost under $1.20. The
-project lead session, not its dispatches, is where a run's money goes.
+Filed, not scheduled. On run 1 of `add-padcenter-helper-5b0b`, the Opus total
+was $31.74 of the run's $32.87 — 277 messages, 35.8M cache-read tokens — but
+$3.86 of that is the four headless skeptical-review sessions, so the project
+lead session on its own is about $27.9, roughly 85% of the run; the ICs added
+$1.13 more. The project lead session, not its dispatches, is where a run's
+money goes.
 
 Scope. Measure where the Opus tokens go: reference reads per step, repeated
 file reads, or spinner-time thinking between tool calls. Propose the cut —

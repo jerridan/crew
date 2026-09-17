@@ -7124,7 +7124,8 @@ Deliberately different:
     §15.77 found all thirty plans on disk approved and none sent back. The
     principal cut the plan gate and the package review, moved the deliverable
     review to after the PR opens, and gave the delivered window a patch mode.
-    T58 through T64 carry the work. None of it has run.
+    T58 through T64 carried the work. At that point none of it had run;
+    §15.98 is the first run of T58 through T62, once each.
 
     a. **Where the time and the money went.** The 42 minutes before the first
        IC bought one spec and two critic rounds on one package. The IC itself
@@ -7189,8 +7190,10 @@ Deliberately different:
        delivered window. It reads the diff against the goal and the repo, not
        against the spec. It assumes the diff is wrong and looks for how. It
        runs the suite. It reports findings by severity. It says what it looked
-       for and did not find. The default implementation is the headless
-       code-review run from (c), in a fresh worktree of the branch (T59).
+       for and did not find. The initial implementation was the headless
+       run from (c), in a fresh worktree of the branch; §15.98b found it
+       broken three ways and replaced it with the stdin-piped runner
+       `skeptical-review.md`'s "The default command" now states (T59).
        (4) The delivered window gets a patch mode. A change request stays one
        package with an IC and the project lead's verification. Findings from a
        review — CI, a bot, Codex, the principal, or the skeptical review —
@@ -7401,12 +7404,16 @@ Deliberately different:
        compaction restore, lost its Enter keystroke — the same class of
        drop as §15.47.
     g. **Cost.** Run 1 (one helper, four packages, three review rounds) cost
-       $32.87, of which the Opus project lead session was $31.74 (277
-       messages, 35.8M cache-read tokens); the ICs and reviews together cost
-       under $1.20. Run 3 (one helper, spec review substituted with Codex, no
-       skeptical review) cost $10.91, of which Opus was $10.33. The project
-       lead session, not its ICs or reviews, is 95–97% of a one-helper run's
-       cost. T67 opens on this finding.
+       $32.87. Opus totals $31.74 (277 messages, 35.8M cache-read tokens),
+       but that figure folds in the four headless skeptical-review sessions —
+       $0.45, $0.48, $1.24 and $1.69, $3.86 together — so the project lead
+       session on its own is about $27.9, roughly 85% of the run. The ICs
+       (Haiku $0.72, Sonnet $0.41) cost $1.13 more. Run 3 (one helper, spec
+       review substituted with Codex, no skeptical review) cost $10.91, of
+       which Opus was $10.33 and one headless review session was $0.51, so
+       the project lead session on its own is about $9.8, roughly 90% of the
+       run. The project lead session, not its ICs or reviews, is where a
+       one-helper run's money goes. T67 opens on this finding.
     h. **Stats.** `crew-stats.py` counted `-result.stderr` as a review — 7
        shown for `add-padcenter-helper-5b0b`, 4 real — until this run's fix
        to `COMPANION_SUFFIXES`. A substitution row showed `unmeasured` even

@@ -51,11 +51,12 @@ to **patch mode**: a package per group, one push, a reply per finding
 plain-language **substitution** of a review step have each run once, against
 the fixture repo `crew-fixture-string-kit` (§15.98).
 
-**Every run named above predates T58 through T62 and T66**, which cut two
-review steps, moved the last to after the hand-over, gave the window a patch
-mode, added the substitution rule, and named every dispatch. §15.98 is the
-first run of each of those changes, once each — evidence for one step, not
-for the loop.
+**Every other run named above predates T58 through T62 and T66**, which cut
+two review steps, moved the last to after the hand-over, gave the window a
+patch mode, added the substitution rule, and named every dispatch. §15.98 is
+the first run of T58 through T62's changes, once each — evidence for one
+step, not for the loop. T66's naming rule is not part of that probe: both
+§15.98 records show `ic_name: null`, so T66 stays unexercised.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

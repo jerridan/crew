@@ -7316,7 +7316,8 @@ Deliberately different:
     to the project lead. §15.20b recorded that claim as wrong, and §15.31c
     confirmed by probe that a teammate's final answer arrives in full as
     prose in its idle notification. The principal decided every dispatch is
-    named, so every agent gets a pane under a display mode.
+    named, so every agent the project lead dispatches gets a pane under a
+    display mode.
 
     a. **Why it flipped.** §15.20b's correction removed the reason the old
        rule gave for keeping most agents unnamed — the project lead was

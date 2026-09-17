@@ -162,15 +162,18 @@ plain subagent and the name changes nothing.
 | IC | `ic-<package id>-r<n>` |
 | Review | `review-r<n>` |
 
-`<n>` always counts from 1 and is what keeps two dispatches of the same role
-from sharing a name: the question for a scout, the round for a critic, a
-review or the spec writer, and the dispatch for an IC — a fresh IC per fix
-round is still one package, so its round counts from that package's first
-dispatch, giving `r1`, `r2`, and on. A lookup's `<n>` counts every lookup
-dispatch in the run, `Explore` or otherwise. An advocate's id pairs its
-council number with its
-position, so a second council in the same run — the investigation path can
-run more than one — never collides with the first.
+Every `<n>` counts from 1 in this session, and is what keeps two dispatches
+of the same role from sharing a name: the question for a scout or a
+researcher, the round for a critic, a review or the spec writer, and the
+dispatch for an IC — a fresh IC per fix round is still one package, so its
+round counts from that package's first dispatch, giving `r1`, `r2`, and on.
+A lookup's `<n>` counts every lookup dispatch in this session, `Explore` or
+otherwise. An advocate's id pairs its council number with its position, so a
+second council in the same run — the investigation path can run more than
+one — never collides with the first. The critics' and the ICs' round
+numbers are the one exception: reading them from the record, not counting
+in-session, is what lets them keep advancing across the resume described
+above.
 
 **Read the result from the idle notification's final message, when the name
 made a teammate.** A named agent's answer arrives there, not as a tool

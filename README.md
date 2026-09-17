@@ -37,8 +37,8 @@ Start Claude Code in an ordinary clone of the target repo, not a worktree:
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto
 ```
 
-Add `--teammate-mode tmux` from inside tmux to give every dispatched agent
-its own pane:
+Add `--teammate-mode tmux` from inside tmux to give every agent the project
+lead dispatches its own pane:
 
 ```
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto --teammate-mode tmux

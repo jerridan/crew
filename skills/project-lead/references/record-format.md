@@ -671,7 +671,7 @@ One run, two packages, in different states:
       "base": "e4f5a6b",
       "fix_rounds_used": 2,
       "nudges_used": 1,
-      "ic_name": "ic-logging-config-r1",
+      "ic_name": "ic-logging-config-r2",
       "plan_path": "plans/logging-config.md",
       "report_path": "reports/logging-config.md"
     }
@@ -744,7 +744,7 @@ and from a recorded `integrated`, never from this field alone.
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "orphaned": false
   },
-  "ic-logging-config-r1": {
+  "ic-logging-config-r2": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/config",
     "branch": "crew/add-request-logging-a1b2/config",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2", "43227fc9-c61f-488e-afbd-20737f7a3650"],
@@ -753,10 +753,10 @@ and from a recorded `integrated`, never from this field alone.
 }
 ```
 
-`ic-logging-config-r1` shows a resumed IC: two session ids because the
-worktree survived a crash and was resumed once. Its two fix rounds (the
-`state.json` example above) stayed within rounds 1 to 3, so the same IC
-kept its name; only a round-4 or round-5 respawn would give it `-r2`.
+`ic-logging-config-r2` shows a respawned IC: two session ids because the
+worktree survived a crash and was resumed once, with a fresh name for the
+respawn (`full-path.md`'s "A respawned IC is a new IC"). The respawn read
+the package's `ic_name` to find `-r1` already taken and named itself `-r2`.
 
 ## `decisions.md`
 

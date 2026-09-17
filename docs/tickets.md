@@ -2851,12 +2851,16 @@ one exists.
 Run it. Read design §3, §15.20, §15.21, §15.89, and CLAUDE.md's "Constraints
 that are easy to get wrong".
 
-Check that no instruction file says "unnamed", that the naming rule is
-stated once, and that a probe with the flag on shows the spec critic's
-one-line verdict and a council batch read correctly from idle notifications.
+Check that no instruction file leaves an agent the project lead dispatches
+unnamed, that the naming rule is stated once, and that a probe with the flag
+on shows the spec critic's one-line verdict and a council batch read
+correctly from idle notifications. An agent's own subagents — a researcher's
+lookups, an IC's — stay unnamed; `SKILL.md`'s "Every dispatch is named" says
+why.
 
-Done when: no instruction file says "unnamed", the naming rule is stated in
-one place, and a flag-on probe reads both cases back correctly.
+Done when: no instruction file leaves an agent the project lead dispatches
+unnamed, the naming rule is stated in one place, and a flag-on probe reads
+both cases back correctly.
 
 Read first: design §3, §15.20, §15.21, §15.89; CLAUDE.md "Constraints that
 are easy to get wrong".

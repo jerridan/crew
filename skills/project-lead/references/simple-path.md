@@ -552,9 +552,11 @@ one round carries every finding the source sent. In order:
    must change one file together belong in one group, whether both are
    findings or one is a change request from the same message (**"A message
    that holds a finding"** above).
-4. **Write the round's reply file first, at `reviews/<round-id>-reply.md`.**
-   This is the round's one durable artifact, and it is written before the
-   round exists anywhere else. It holds every item — finding or change
+4. **Write the round's reply file first, at `reviews/<round-id>-reply.md`,
+   opening with `record-format.md`'s header.** This is the round's one
+   durable artifact, and it is written before the round exists anywhere
+   else. The header is what a resumed session rebuilds `run.rounds` from if
+   the write after this one never lands. Then every item — finding or change
    request — with its disposition and, for an accepted one, the package id
    you just named, though that package exists nowhere in `packages[]` yet.
    Naming the id here, before the package does, is what stops an item being

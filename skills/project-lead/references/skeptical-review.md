@@ -469,24 +469,28 @@ the list is read again from the top rather than fallen through. **Entries 2
 to 6 read every unfinished ledger** — every `run.rounds` entry whose
 `replied_at` is `null` — whatever round produced it, so a patch round from
 CI, a bot or the principal is carried by the same entries. `<round>` is
-`review_pending.round`, and only the entries below 6 use it. **Every entry
+`review_pending.round`, and only entries 7–12 use `<round>`. **Every entry
 that runs git or dispatches an IC assumes the branch is back** — do
 `simple-path.md`'s "Get the branch back" once, before you read the list.
 
 1. **A `run.rounds` entry and its ledger file disagree on whether the
    round's open finished.** `simple-path.md`'s "Findings from a review"
-   writes the reply file first, then the round entry, so a kill between them
-   leaves one or the other, never both missing:
+   writes the reply file first, then the round entry, so a kill of this
+   run's own open leaves at most the ledger, never the round entry alone:
    - **`run.rounds[<round-id>]` exists and `reviews/<round-id>-reply.md`
-     does not.** The open died before its one durable write landed, so
-     nothing on disk says what the round would have answered. Tell the
-     principal the message needs sending again, then remove the orphan
-     entry — `crew-record.py <record-dir> run set rounds <the object with
-     that key dropped>`. Do not re-enter: there is nothing left to recover.
+     does not.** Not a kill this run's own write order can produce — that
+     order writes the ledger first — so this is a pre-existing orphan: a
+     record from before this order, or a hand edit. Nothing on disk says
+     what the round would have answered. Tell the principal the message
+     needs sending again, then remove the orphan entry — `crew-record.py
+     <record-dir> run set rounds <the object with that key dropped>`. Do not
+     re-enter: there is nothing left to recover.
    - **`reviews/<round-id>-reply.md` exists and `run.rounds[<round-id>]`
      does not.** The reply file survived past the write that was meant to
-     follow it. Write the entry from the file's own header — its `source`
-     and its `opened_at` — with `replied_at: null`. Re-enter.
+     follow it — the ordinary kill point under this run's own order. Write
+     the entry from `record-format.md`'s reply-ledger header: `source` from
+     its `Source:` line, `reply_to` from its `Reply to:` line, `opened_at`
+     from its `Opened at:` line, and `replied_at: null`. Re-enter.
    **This is first**, before entry 2, because a kill here must not look like
    an ordinary unfinished ledger: entry 2 assumes the round is open and the
    ledger names real work, and an orphaned round entry with no ledger names
@@ -576,20 +580,25 @@ skeptical-r<n>-result.exit      →  skeptical-r<n>-result-attempt<k>.exit
 Then delete `run.review_results[<n>]`, so nothing points at a file that has
 moved, and retry per the round-and-attempt table above.
 
-**Adjudication is a ledger, and the ledger is written first.** Four steps,
-in this order, and a kill between any two of them is recoverable:
+**Adjudication is a ledger, and the ledger is written first.** `simple-path.md`'s
+"Findings from a review" owns this write order for every round, whatever its
+source; this list cites it. Five steps, in this order, and a kill between any
+two of them is recoverable:
 
-1. **Write the reply file**, `reviews/skeptical-r<round>-reply.md`. It holds
-   every finding in the report with one of three dispositions: **accepted**,
-   with the package id it will get; **declined**, with the reason you would
-   give the principal; or **out of scope**, written as the new goal you
-   propose for it. A finding outside the charter's goal is not yours to take
-   (`simple-path.md`'s "Findings from a review"), and naming the goal is how
-   it reaches the principal instead of being dropped.
-2. **Create those packages** in `packages[]`, with the ids the reply named.
-3. **Clear `review_pending`.** The adjudication is complete by the rule
-   below the moment step 2 lands, so the field goes before any work does.
-4. **Dispatch**, as `simple-path.md`'s "Findings from a review" says.
+1. **Write the reply file**, `reviews/skeptical-r<round>-reply.md`, opening
+   with `record-format.md`'s header. It holds every finding in the report
+   with one of three dispositions: **accepted**, with the package id it will
+   get; **declined**, with the reason you would give the principal; or **out
+   of scope**, written as the new goal you propose for it. A finding outside
+   the charter's goal is not yours to take (`simple-path.md`'s "Findings from
+   a review"), and naming the goal is how it reaches the principal instead of
+   being dropped.
+2. **Open the round.** Write `run.rounds[<round-id>]` from the header you
+   just wrote, right after it, as "Findings from a review" step 5 says.
+3. **Create those packages** in `packages[]`, with the ids the reply named.
+4. **Clear `review_pending`.** The adjudication is complete by the rule
+   below the moment step 3 lands, so the field goes before any work does.
+5. **Dispatch**, as `simple-path.md`'s "Findings from a review" says.
 
 **The ids in the reply are what stop a finding being answered twice.** A
 resumed session reads the reply, sees which of its ids `packages[]` already
@@ -609,7 +618,7 @@ earlier point:
 A round that declines every finding is complete by the second rule, and so is
 one that sends every finding out of scope. Both reached the same end.
 
-**That is step 3 of the ledger above, and never the write of the report.**
+**That is step 4 of the ledger above, and never the write of the report.**
 `crew-record.py run set review_pending null` is the clear, and it is the only
 `run set` this step takes: every arming goes through `deliver --review-head`
 at the hand-over, `integrate --review-head` as a follow-up's ordinary path, or
@@ -636,8 +645,8 @@ somewhere else.
 
 | Killed after | Caught by | What happens |
 |---|---|---|
-| **Round 0a**, `run.rounds[<round-id>]` written before its reply file | 1, first bullet | the message is sent again; the orphan round entry is removed |
-| **Round 0b**, the reply file written before `run.rounds[<round-id>]` | 1, second bullet | the round entry is recovered from the reply file's own header |
+| **Round pre-existing**, `run.rounds[<round-id>]` on disk with no reply file — never this run's own write order, only an older record or a hand edit | 1, first bullet | the message is sent again; the orphan round entry is removed |
+| **Round 0**, the reply file written before `run.rounds[<round-id>]` — the ordinary kill point under this run's own order | 1, second bullet | the round entry is recovered from the reply file's own header |
 | **Launch 1**, the arming | 12, nothing on disk | `review_rounds` is set to the reserved round, then the review runs at launch step 2 |
 | **Launch 2**, `review_rounds` set | 12, nothing on disk | the review runs at launch step 2, in the same round |
 | **Launch 3**, the worktree cut and setup run | 11, a worktree and no JSON | nothing exists to retire; cleanup removes the worktree and the review runs at launch step 2 |
@@ -648,7 +657,8 @@ somewhere else.
 | **Follow-up 1**, the package `integrated` and the head armed (one write, `simple-path.md`'s "Findings from a review" step 8) | 4, the head is not on the remote | the push happens; the round already runs on re-entry, since the integration write armed it |
 | **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 4, the head is not on the remote | the push happens first; re-entry 8 finds the head already listed and owes nothing |
 | **Follow-up 2**, the push | 9 to 12 for that round | the review runs, or its report is adjudicated |
-| **Ledger 1**, the reply written | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
+| **Ledger 1**, the reply written, before the round is opened | 1, second bullet | the round entry is rebuilt from the reply's header, then re-entry takes entry 2 |
+| **Ledger 2**, the round opened, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
 | **Ledger 2**, some of the packages created | 2, the ids still missing | creation is finished from the ledger, then 3 recovers them |
 | **Ledger 2**, all the packages created | 3, an open package | the packages are recovered; on re-entry 9 adjudicates the round to its end |
 | **Ledger 3**, `review_pending` cleared | 3, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |

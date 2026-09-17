@@ -228,7 +228,25 @@ naming convention. Do not mix their contents.
   `<kind>-r<n>` — `ci-r1`, `pr-comments-r2`, `principal-r1` — with `<n>` one
   more than the highest already on disk under that name. Only a skeptical
   round carries the other four or five files, because only it runs a review
-  (`simple-path.md`'s "Findings from a review"). Then
+  (`simple-path.md`'s "Findings from a review").
+
+  **Every `<round-id>-reply.md`, of either kind, opens with the same header**,
+  five lines and then a blank line, before the items:
+
+  ```
+  Round: <round-id>
+  Source: <kind> <ref>
+  Reply to: <where the reply goes>
+  Opened at: <ISO-8601 UTC>
+  Head: <the sha this round covers>
+  ```
+
+  `simple-path.md`'s "Findings from a review" step 4 writes it, the same turn
+  it writes the file. It is what lets a resumed session rebuild
+  `run.rounds[<round-id>]` — `source`, `reply_to` and `opened_at`, with
+  `replied_at: null` — from the file alone, when the kill landed between that
+  write and the one meant to follow it (`skeptical-review.md`'s resume
+  entry 1). Then
   `reviews/diagnosis-adversary.md` for the one advocate that argues against a
   report ending's root cause (design §9.5; the diagnosis is per goal, so this
   name carries no deliverable id). A goal can hold several deliverables, and a

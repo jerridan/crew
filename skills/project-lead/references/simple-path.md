@@ -154,9 +154,10 @@ Then, in the same turn:
   `run.checkout` where it says `<repo>`** — the dispatch prompt, the
   verification, the diff, the suite and the push. The shared checkout is read
   from and never written to.
-- Register the worktree in `worktrees.json`, keyed by the deliverable id.
-  There is no IC name on this path (`record-format.md`). Nothing else proves
-  the worktree is yours to remove.
+- Register the worktree in `worktrees.json`, keyed by the deliverable id,
+  since no IC owns a territory on this path (`record-format.md`, "the
+  deliverable id, because no IC owns it"). Nothing else proves the worktree
+  is yours to remove.
 - Write the `deliverables[]` entry as above, with `checkout_branch: null`. You
   switched no checkout, so `checkout_restored` stays `null` as well.
 - "End the run" removes it.
@@ -167,9 +168,13 @@ idle while the IC works, so one tree costs the run nothing (design §9.1).
 
 ## Dispatch the IC
 
-Dispatch one IC, named as `SKILL.md`'s "Every dispatch is named" says for
-this package's first dispatch, at the package's band model: `crew:ic` for
-code, `crew:ic-instructions` for an instruction file. It inherits no
+Name the IC as `SKILL.md`'s "Every dispatch is named" says for this
+package's first dispatch, then write it with `crew-record.py <record-dir>
+package <id> set ic_name "<name>"` **before** you dispatch — the same write
+`full-path.md` makes for its own ICs. An unrecorded name lets a crash
+respawn reuse it; "Fix rounds" below reads this field back. Dispatch one IC
+at the package's band model: `crew:ic` for code, `crew:ic-instructions` for
+an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text,
 the brief, the file set, `run.checkout`, the interface contract, the
 acceptance criterion, the global constraints section, the record root, the
@@ -293,10 +298,13 @@ criterion at the branch head only (design §7, `investigation-path.md`'s
 
 Run a round only on a failure you saw yourself at "Verify before you believe".
 Each round is a fresh dispatch, named for this package's next round as
-`SKILL.md`'s "Every dispatch is named" says, so its prompt describes what is
-already committed — `git log --oneline` plus `git diff --stat` — and
-carries the failing output word for word. Rounds 4 and 5 promote a band;
-`band-rubric.md` says what a `deep` package does instead.
+`SKILL.md`'s "Every dispatch is named" says — read the package's `ic_name`
+for the round already used, so a crash respawn never reuses it — so its
+prompt describes what is already committed — `git log --oneline` plus
+`git diff --stat` — and carries the failing output word for word. Write the
+new name to `ic_name` the same way "Dispatch the IC" does, before you
+dispatch. Rounds 4 and 5 promote a band; `band-rubric.md` says what a `deep`
+package does instead.
 
 **Every round goes back through "Verify before you believe"** — a fix you did
 not re-run is a claim. Leave only when every check there passes. Increment

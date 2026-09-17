@@ -204,7 +204,7 @@ else: every package takes the same steps.
 | Researcher | sonnet, or opus for a deep question | high |
 | Spec critic | opus | high |
 | Decomposition critic | opus | high |
-| Skeptical review | opus | not set |
+| Skeptical review | opus | high |
 
 The project lead, the ICs and the scouts take your session's effort, so set
 it before the run starts.

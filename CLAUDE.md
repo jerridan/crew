@@ -44,22 +44,26 @@ caller, which no run has dispatched yet. The **light path** is the simple path
 with no spec and no spec critic. Four light-path items have run to a draft PR,
 and none promoted in place (§15.88, §15.91). A project lead stays in its
 session after the hand-over: the run goes `delivered`, and `complete` only on
-the ship word. One item has run the whole window (§15.92), which an
-unexercised **skeptical review** opens. That window separates a **change
-request**, one more package, from **findings**, which go to **patch mode**: a
-package per group, one push, a reply per finding (§15.94d). Neither has run.
+the ship word. One item has run the whole window (§15.92). That window
+separates a **change request**, one more package, from **findings**, which go
+to **patch mode**: a package per group, one push, a reply per finding
+(§15.94d). The **skeptical review** that opens the window, patch mode, and a
+plain-language **substitution** of a review step have each run once, against
+the fixture repo `crew-fixture-string-kit` (§15.98).
 
-**Every run named above predates T58, T59, T60 and T66**, which cut two
+**Every run named above predates T58 through T62 and T66**, which cut two
 review steps, moved the last to after the hand-over, gave the window a patch
-mode, and named every dispatch. Each is evidence for one step, not for the
-loop.
+mode, added the substitution rule, and named every dispatch. §15.98 is the
+first run of each of those changes, once each — evidence for one step, not
+for the loop.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
 sessions rather than from the checkout (§15.90).
 
 T57 removed the tier above the project lead: the principal hands each goal
-over itself (§15.95). Nothing in this checkout has run since.
+over itself (§15.95). Its own kill and forced-compaction probes have run
+(§15.98f).
 
 `docs/design.md` §13 holds the build order and `docs/tickets.md` the backlog.
 Never write about an unbuilt stage as if it runs, or about a built one as if

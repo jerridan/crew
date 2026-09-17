@@ -72,15 +72,15 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | Role | Mechanism | Model | Lifetime |
 |---|---|---|---|
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
-| **Scout** | named subagent, new `crew:scout` | haiku | one question |
-| **Advocate** | named subagent, new `crew:council-advocate` | sonnet | one position |
-| **Researcher** | named subagent, new `crew:researcher` | per band | one question |
-| **Spec critic** | named subagent, new `crew:spec-critic` | opus / high | one review |
-| **Split critic** | named subagent, new `crew:split-critic` | opus / high | one review |
-| **IC** | named teammate `crew:ic`, or named subagent | per band | a territory |
-| **Instruction IC** | named teammate `crew:ic-instructions` | per band | a territory |
-| **Package reviewer** | named subagent, new `crew:package-reviewer` | sonnet / high | one review |
-| **Deliverable reviewer** | named subagent, new `crew:deliverable-reviewer` | opus / high | one review |
+| **Scout** | named agent, new `crew:scout` | haiku | one question |
+| **Advocate** | named agent, new `crew:council-advocate` | sonnet | one position |
+| **Researcher** | named agent, new `crew:researcher` | per band | one question |
+| **Spec critic** | named agent, new `crew:spec-critic` | opus / high | one review |
+| **Split critic** | named agent, new `crew:split-critic` | opus / high | one review |
+| **IC** | named agent, `crew:ic` | per band | a territory |
+| **Instruction IC** | named agent, `crew:ic-instructions` | per band | a territory |
+| **Package reviewer** | named agent, new `crew:package-reviewer` | sonnet / high | one review |
+| **Deliverable reviewer** | named agent, new `crew:deliverable-reviewer` | opus / high | one review |
 
 ### The naming rule
 

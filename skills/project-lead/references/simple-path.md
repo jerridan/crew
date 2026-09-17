@@ -181,8 +181,9 @@ branch on it.
 continues per `ic-contract.md`'s "Write your plan first".
 
 **Expect the contents instead of the file.** A dispatch shape that denies the
-IC every record write (§15.26b, §15.31b) puts the plan or report in its idle
-notification's final message. Transcribe it, and say that you did.
+IC every record write (§15.26b, §15.31b) puts the plan or report in its
+final message instead, read as `SKILL.md`'s "Every dispatch is named" says.
+Transcribe it, and say that you did.
 
 Set the package `in-flight` at the dispatch, and write its `base`: the head
 of the deliverable branch in `run.checkout` at that moment. For the run's own

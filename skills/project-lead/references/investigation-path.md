@@ -85,8 +85,9 @@ it (`simple-path.md`'s "Integrate"). Two writers, because the two agents
 differ:
 
 - **`crew:researcher` writes its own file.** Name the absolute path in the
-  dispatch and it returns four lines in its idle notification, the way a
-  review agent does. Read the file only where you need it.
+  dispatch and it returns four lines, read as `SKILL.md`'s "Every dispatch
+  is named" says, the way a review agent does. Read the file only where you
+  need it.
 - **You write an `Explore` subagent's file.** `Explore` is read-only and
   carries no `Write` tool. It has already done the reading, so what returns is
   an answer with citations, not a dump: paste that into the file yourself.

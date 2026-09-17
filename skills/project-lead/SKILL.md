@@ -196,9 +196,9 @@ analogous implementation exist? Do tests cover this surface? What runs the
 suite? Which instruction files apply?
 
 Dispatch `crew:scout` subagents at `haiku`, named `scout-<n>` for the
-question number, and read their answers from the idle notification. The
-reading stays out of your own context. `band-rubric.md` says why Haiku runs
-only this agent.
+question number, and read each answer as "Every dispatch is named" above
+says. The reading stays out of your own context. `band-rubric.md` says why
+Haiku runs only this agent.
 
 On the investigation path, read `investigation-path.md` now and run its phases.
 It sends you back to "Write the spec", or it ends the run itself.
@@ -259,8 +259,8 @@ round, with `spec.md`, `charter.md`, the repo path, `review-output.md`
 whole, and the absolute path it writes its findings to:
 `reviews/spec-critic-r<n>.md`. Every review dispatch in this run reserves
 and names its round the same way, and returns the short result
-`review-output.md` defines, read from its idle notification; open the file
-only when the count says there is something to adjudicate.
+`review-output.md` defines, read as "Every dispatch is named" above says;
+open the file only when the count says there is something to adjudicate.
 
 `Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
 again. Three re-specs is the cap; escalate at it.

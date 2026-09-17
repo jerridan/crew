@@ -614,8 +614,10 @@ The project lead's hardest rule, copied from
 
 > **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
 
-This matters more here than in a normal session, because a teammate's output
-never reaches the project lead at all. So:
+This matters more here than in a normal session, because a teammate's final
+message arrives only in its idle notification, not as a parseable tool
+result; the record stays the durable copy where one exists
+(`SKILL.md`'s "Every dispatch is named", §15.97). So:
 
 | Claim | Requires | Not sufficient |
 |---|---|---|
@@ -1084,7 +1086,7 @@ Everything above the `Skill`-tool rows was probed on 2026-08-24. The three
 | **The shell cwd resets after every Bash call.** `cd` holds only within one invocation. | Every IC command must carry its own `cd <worktree> &&`. An IC that forgets works on the wrong checkout with **no error**. Detection is the project lead's verification step. |
 | Spawn-time `model` overrides frontmatter `model:`; frontmatter applies when no override is passed | One `crew:ic` definition serves all bands |
 | `reasoning_effort` is frontmatter only, and teammates inherit the project lead's effort | Bands are model only |
-| A teammate's output never returns to the dispatcher | ICs write reports into the record |
+| A teammate's final message arrives in its idle notification, not as a tool result (`SKILL.md`'s "Every dispatch is named", §15.97) | Where an agent also writes a record file, that file stays the durable copy |
 | A teammate does not know its own model | Band assignment cannot be verified by asking |
 | Task tools are off by default on Opus 5 and Sonnet 5 | The project lead session must be launched with `--allowedTools TaskCreate TaskGet TaskList TaskUpdate` to get the shared task list and dependency blocking |
 | `hooks` in agent frontmatter is **ignored for teammates**, and plugin agents cannot use `hooks` at all | IC behavior cannot be hook-enforced without a global hook. See section 13. |

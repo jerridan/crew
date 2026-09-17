@@ -119,12 +119,8 @@ container-choice check is limited to the standard's four container types.
 - The hierarchy is project lead → ICs. Write **project lead** in full every
   time; the bare word `lead` names no tier here (design §15.19, §15.95).
 - Every dispatch is named. `skills/project-lead/SKILL.md`'s "Every dispatch
-  is named" owns the rule whole: the name shape, the teams-flag gate, the
-  read channel, the permission-prompt surface, and what naming costs
-  (design §3, §15.20a, §15.20b, §15.12, §15.20).
-- A teammate cannot spawn a teammate (`SKILL.md`'s "Every dispatch is
-  named" owns the fact). Any tier that must dispatch in parallel cannot
-  itself be a teammate (design §15.21).
+  is named" owns the rule whole (design §3, §15.20a, §15.20b, §15.21,
+  §15.12, §15.20).
 - A teammate built from an agent definition **appends** the body to its default
   system prompt, in both display modes, and neither applies `skills:`. The
   split-pane mode replaced the prompt when §15.20d was written and appends it on

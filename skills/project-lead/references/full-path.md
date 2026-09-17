@@ -25,10 +25,8 @@ two deliverables is escalation trigger 7, not a bigger split.
 | Integration | nothing merges | one squashed commit per package |
 | The split critic | skipped | runs before any IC is dispatched |
 
-Every dispatch on either path is named the same way, and whether a name
-makes an IC a teammate follows the teams flag alone, never the path —
-`SKILL.md`'s "Every dispatch is named" owns the rule, where its result is
-read, and the flag (design §3, §15.20b).
+`SKILL.md`'s "Every dispatch is named" owns naming, the teams flag, and
+where a result is read, on both paths (design §3, §15.20b).
 
 ## Check the launch conditions
 

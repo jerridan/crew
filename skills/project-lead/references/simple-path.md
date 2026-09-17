@@ -177,10 +177,8 @@ at the package's band model: `crew:ic` for code, `crew:ic-instructions` for
 an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text,
 the brief, the file set, `run.checkout`, the interface contract, the
-acceptance criterion, the global constraints section, the record root, the
-package id, and **whether it is a subagent or a teammate** — the canonical
-section's flag check answers that, and `ic-contract.md`'s record writes
-branch on it.
+acceptance criterion, the global constraints section, the record root, and
+the package id.
 
 **One dispatch carries the package.** The IC writes `plans/<id>.md`, then
 continues per `ic-contract.md`'s "Write your plan first".

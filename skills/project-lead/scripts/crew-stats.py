@@ -11,8 +11,10 @@ Prints cost per package by band, fix rounds by band, promotions from
 counts, the review catch rate, the steps a band or the light path let a run
 skip, and the review steps the principal replaced with a runner of their own.
 A replaced step is not a Claude session, so `spend.py` cannot price it: its
-cost prints as `unmeasured` unless the record's `usage` object carries one. Design §8 asks for these numbers to turn the band rubric from a guess
-into a measurement. No figure here gates anything.
+cost prints as `unmeasured` unless the record's `usage` object carries a
+dollar figure, and a `usage.tokens` count with no dollar figure prints in its
+own `tokens` column instead. Design §8 asks for these numbers to turn the
+band rubric from a guess into a measurement. No figure here gates anything.
 
 One record shape is read, and only one: a run record with a `state.json`
 (§15.88). The record root is scanned recursively for one, because a record
@@ -104,9 +106,11 @@ RETIRED_KINDS = {"package review", "deliverable review"}
 # which a retry renames with an `-attempt<k>` infix. A retired attempt produced
 # no usable report, so counting it would deflate the catch rate.
 # `-result.txt` and `-result.exit` are a replacement runner's stand-ins for
-# `-result.json` (`record-format.md`, T61). Their `-attempt<k>` forms are
-# caught by ATTEMPT below.
-COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json", "-result.txt", "-result.exit")
+# `-result.json` (`record-format.md`, T61). `-result.stderr` is the default
+# runner's own stderr, redirected there beside its `-result.json`
+# (`skeptical-review.md`). Their `-attempt<k>` forms are caught by ATTEMPT
+# below.
+COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json", "-result.txt", "-result.exit", "-result.stderr")
 ATTEMPT = re.compile(r"-attempt\d+\.[A-Za-z0-9]+$")
 
 # Each review names its own two verdict strings. The first of each pair
@@ -259,12 +263,27 @@ def usage_usd(usage) -> float | None:
     return None
 
 
+def usage_tokens(usage) -> int | None:
+    """The token count one `usage` object states, and `None` when it states none.
+
+    Read only to print beside an entry that carries no `usd` — a dollar
+    figure, once the record holds one, is what `usd` reports (`record-format.md`).
+    """
+    if not isinstance(usage, dict):
+        return None
+    value = usage.get("tokens")
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return None
+
+
 def read_steps_substituted(name: str, run: dict, skips: list) -> list:
-    """The review steps this run replaced, as `{step, replacement, usd}` rows.
+    """The review steps this run replaced, as `{step, replacement, usd, tokens}` rows.
 
     An entry naming a step outside the list is reported, never counted. The
     report must name every substitution, because the cost of a replaced step
-    lands in no other table (T61).
+    lands in no other table (T61). `tokens` is read only when `usd` is absent,
+    so a runner that reports both is not double-counted.
     """
     rows = []
     for entry in as_list(run.get("steps_substituted")):
@@ -273,10 +292,13 @@ def read_steps_substituted(name: str, run: dict, skips: list) -> list:
             skips.append(f"{name}: unreadable steps_substituted entry — {step!r} is none of {', '.join(SUBSTITUTABLE_STEPS)}")
             continue
         replacement = entry.get("replacement")
+        usage = entry.get("usage")
+        usd = usage_usd(usage)
         rows.append({
             "step": step,
             "replacement": replacement if isinstance(replacement, str) and replacement else "unnamed",
-            "usd": usage_usd(entry.get("usage")),
+            "usd": usd,
+            "tokens": usage_tokens(usage) if usd is None else None,
         })
     return rows
 
@@ -703,10 +725,13 @@ def report(records: list[dict], skips: list[str]) -> None:
         print("\nSteps the principal replaced\n")
         groups = {}
         for row in substitutions:
-            group = groups.setdefault((row["step"], row["replacement"]), {"count": 0, "usd": 0.0, "unpriced": 0})
+            group = groups.setdefault((row["step"], row["replacement"]),
+                                       {"count": 0, "usd": 0.0, "unpriced": 0, "tokens": 0})
             group["count"] += 1
             if row["usd"] is None:
                 group["unpriced"] += 1
+                if row["tokens"] is not None:
+                    group["tokens"] += row["tokens"]
             else:
                 group["usd"] += row["usd"]
         rows = []
@@ -717,8 +742,9 @@ def report(records: list[dict], skips: list[str]) -> None:
                 cost = f"{money(group['usd'])} + unmeasured"
             else:
                 cost = money(group["usd"])
-            rows.append([step, replacement, group["count"], cost])
-        print(table(["step", "replacement", "count", "usd"], rows))
+            tokens = group["tokens"] or "-"
+            rows.append([step, replacement, group["count"], cost, tokens])
+        print(table(["step", "replacement", "count", "usd", "tokens"], rows))
 
     per_band = fold_catch_by_band([r["catch_by_band"] for r in records])
     if any(per_band[band]["reviews"] for band in per_band):

@@ -2362,6 +2362,8 @@ the Claude Code agent-teams docs on the team config file.
 Status: done
 Depends on: nothing
 Stage: 7 (design §15.19, §15.72)
+Probe: two hand-launched project-lead sessions, with kills and a forced
+compaction, no record slug (target-repo run), §15.98f.
 
 The lead was built to hold a portfolio and to launch one project-lead
 session per item. In its first real use (run
@@ -2437,9 +2439,11 @@ Read first: design §15.19, §15.21, §15.22a, §15.70, §15.72;
 
 ## T58 — Cut the plan gate and the package review; the project lead verifies each package itself
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: 7 (design §15.94)
+Probe: the project lead caught a dirty tree and a dropped test assertion on
+its own verification, add-padcenter-helper-5b0b, §15.98a.
 
 All thirty plans on disk carry a `plan_approved_at`, and no record names a
 plan sent back (design §15.77b). The package review sends a package back
@@ -2519,9 +2523,15 @@ open the PR".
 
 ## T59 — Replace the deliverable review with a skeptical review after the PR opens
 
-Status: open
+Status: done
 Depends on: T58
 Stage: 7 (design §15.94)
+Probe: a killed skeptical review resumed and its second round caught a
+real defect, add-padcenter-helper-5b0b, §15.98b.
+
+Superseded by the landed schema: see `record-format.md`
+(`packages[].round`, `run.rounds`, `reviews/<round-id>-reply.md`) and
+`skeptical-review.md` for when `review_pending` clears.
 
 The deliverable review sent an artifact back 2 times in 18 (design §15.77a).
 On run `agi-3057-handoff-attempt-record-399d` it ran six times — once before
@@ -2545,8 +2555,10 @@ owns the step, and it owns the schedule as well. It holds:
 - **The worktree rule.** Never run the review in the run's own checkout. A
   probe found a finder agent run `git checkout main` inside the repo under
   review.
-- **The default headless command**, `claude -p --model opus "/code-review
-  high <base>"`.
+- **The default headless command.** The initial implementation was `claude -p
+  --model opus "/code-review high <base>"`; §15.98b's probe found it broken
+  three ways and replaced it. `skeptical-review.md`'s "The default command"
+  now owns the runner, and this ticket does not restate it.
 - **How the findings are collected.** The JSON `result` field holds only the
   last message, so use `--output-format stream-json`, or put an instruction
   in the prompt that writes the findings to a file (design §15.94c).
@@ -2607,9 +2619,15 @@ foreign session id stays out of `run.session_ids`;
 
 ## T60 — Patch mode in the delivered window
 
-Status: open
+Status: done
 Depends on: T59
 Stage: 7 (design §15.94)
+Probe: four typed items sorted and patched correctly through two kills,
+add-padcenter-helper-5b0b, §15.98c.
+
+Superseded by the landed schema: see `record-format.md`
+(`packages[].round`, `run.rounds`, `reviews/<round-id>-reply.md`) and
+`skeptical-review.md` for when `review_pending` clears.
 
 Six follow-ups on run `agi-3057-handoff-attempt-record-399d` each ran a
 package review, and the first five each re-ran the whole deliverable review,
@@ -2676,9 +2694,11 @@ T59 and `skeptical-review.md` for the schedule and the cap.
 
 ## T61 — Plain-language substitution of a review step
 
-Status: open
+Status: done
 Depends on: T59
 Stage: 7 (design §15.94)
+Probe: "use Codex for the spec review" ran three rounds and wrote
+steps_substituted with its token usage, add-truncate-helper-cfd5, §15.98d.
 
 The principal already knows which reviewer they want for a given goal, and
 today there is no way to say so. Design §15.94d(5) settles the shape: a
@@ -2718,9 +2738,11 @@ Read first: design §15.94d, §15.94e; `skills/project-lead/SKILL.md`;
 
 ## T62 — `crew-stats.py` counts promotions from `band_history`, not from package count
 
-Status: open
+Status: done
 Depends on: nothing
 Stage: 7 (design §15.94)
+Probe: a seeded second band_history entry reported 1 promotion against the
+real root's 0, add-padcenter-helper-5b0b, §15.98e.
 
 `crew-stats.py` reports 7 promotions for run
 `agi-3057-handoff-attempt-record-399d`. The record holds none: every package
@@ -2864,3 +2886,60 @@ both cases back correctly.
 
 Read first: design §3, §15.20, §15.21, §15.89; CLAUDE.md "Constraints that
 are easy to get wrong".
+
+## T67 — The project lead session dominates run cost
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.98g)
+
+Filed, not scheduled. On run 1 of `add-padcenter-helper-5b0b`, the Opus total
+was $31.74 of the run's $32.87 — 277 messages, 35.8M cache-read tokens — but
+$3.86 of that is the four headless skeptical-review sessions, so the project
+lead session on its own is about $27.9, roughly 85% of the run; the ICs added
+$1.13 more. The project lead session, not its dispatches, is where a run's
+money goes.
+
+Scope. Measure where the Opus tokens go: reference reads per step, repeated
+file reads, or spinner-time thinking between tool calls. Propose the cut —
+fewer or cached reference reads, or a lower band for a light- or simple-path
+project lead.
+
+Run it. Read a project lead's own transcript against `spend.py`'s per-message
+breakdown for one delivered run.
+
+Check that the measurement names which step or pattern the cache-read tokens
+concentrate in.
+
+Done when: the measurement exists and names a specific cut to try.
+
+Read first: design §15.98g; `skills/project-lead/scripts/spend.py`.
+
+## T68 — Move the skeptical review launch into scripts/
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.98b)
+
+Filed, not scheduled. Five different launch shapes were typed across two
+probe runs before the working one in `skeptical-review.md` was found. A
+script removes the retyping and the chance of another broken shape.
+
+Scope. A `crew-review.py` (or an equivalent shell script) under
+`skills/project-lead/scripts/` takes the record directory, the round number,
+the review worktree and the suite command, and writes `-result.json`,
+`-result.stderr` and `-result.exit`, and records the session id, the way
+`skeptical-review.md`'s "The default command" and "Record the review's
+session id" say to. Depends on T59's fixed command, which this ticket wraps
+rather than replaces.
+
+Run it. Substitute the script for a hand-typed launch on one skeptical review
+round.
+
+Check that the script produces the same files, `-result.exit` included, in
+the same shape, that a hand-typed launch does.
+
+Done when: `skeptical-review.md` points at the script instead of stating the
+command inline.
+
+Read first: design §15.98b; `skeptical-review.md`.

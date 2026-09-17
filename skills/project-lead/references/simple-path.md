@@ -433,9 +433,42 @@ wrong. A report that the diff misses a behaviour **inside** the goal's
 acceptance criterion is a finding too. A **change request** asks for
 behaviour **outside** that criterion and still inside the charter's goal.
 Sort by that line and never by who sent the message. A message that holds
-both is split along it, and each half runs its own section. **One defect is
-processed once**: a finding that became a package is not also a change
-request.
+both is sorted, then run through the one procedure below — **"A message that
+holds a finding"** — never split into two sections run on their own.
+**One defect is processed once**: a finding that became a package is not
+also a change request.
+
+**A message that holds a finding, whatever else it holds, runs one
+procedure, in this order:**
+
+a. **Sort every item**, by the line above.
+b. **Adjudicate every finding**, per "Findings from a review" step 1 below.
+   A change request needs no adjudication — the principal already asked for
+   it — but still passes its own check 1, "inside the charter's goal."
+c. **Group every accepted item, finding and change request alike, into
+   packages, and name each package's id now**, per "Findings from a review"
+   step 3. A package may hold a finding and a change request together when
+   they share a file set — the package is what a territory is on every other
+   path, and two edits to one file are one dispatch, not two.
+d. **Write the round's reply file first, with one line per item** — a
+   finding or a change request — naming the package it became or its
+   decline, per "Findings from a review" step 4. Every package this message
+   wrote appears in the ledger, whichever half of the message raised it, and
+   the ledger exists before any of them do.
+e. **Open the round**, per "Findings from a review" step 5, right after the
+   reply file lands. The message's finding is what opens it, on whichever
+   channel the message arrived.
+f. **Create the packages, then run each through "Dispatch the IC" to
+   "Integrate"**, one at a time, per "Findings from a review" steps 6 and 8.
+g. **Push once, then send the reply**, per "Findings from a review" steps 9
+   and 10.
+
+A package built this way carries the round's id and appears in its reply the
+same as any other package the round writes (`record-format.md`).
+
+**A message with only change requests opens no round.** Run "A change
+request" below as it stands, one package with its own push, and its package
+carries no `round`.
 
 **A question.** Answer it from the record and from the repo. Dispatch
 `Explore` subagents at `sonnet` for the code, named as a lookup per
@@ -513,18 +546,26 @@ one round carries every finding the source sent. In order:
    and your next message to the principal names it. **Never call it a change
    request**: a change request is work the principal asked for, and this is
    work you are proposing.
-3. **Open the round.** Write `run.rounds[<round-id>]` with its `source`, its
-   `reply_to`, its `opened_at` and `replied_at: null`. `record-format.md`
-   owns the id, the fields, and where `reply_to` points for each kind. The
-   round is what an all-declined patch still uses to find its reader.
-4. **Group what you accepted**, and name each group's package id now. One
-   group per region of the tree, with file sets that do not overlap, so each
-   group is a package like any other. Two findings that must change one file
-   together belong in one group.
-5. **Write the round's reply file**, at `reviews/<round-id>-reply.md`, before
-   any package exists and before anything is dispatched. Each accepted
-   finding carries the package id you just named, which is what stops a
-   finding being answered twice.
+3. **Group what you accepted**, and name each group's package id now, before
+   you write anything. One group per region of the tree, with file sets that
+   do not overlap, so each group is a package like any other. Two items that
+   must change one file together belong in one group, whether both are
+   findings or one is a change request from the same message (**"A message
+   that holds a finding"** above).
+4. **Write the round's reply file first, at `reviews/<round-id>-reply.md`,
+   opening with `record-format.md`'s header.** This is the round's one
+   durable artifact, and it is written before the round exists anywhere
+   else. The header is what a resumed session rebuilds `run.rounds` from if
+   the write after this one never lands. Then every item — finding or change
+   request — with its disposition and, for an accepted one, the package id
+   you just named, though that package exists nowhere in `packages[]` yet.
+   Naming the id here, before the package does, is what stops an item being
+   answered twice.
+5. **Open the round.** Write `run.rounds[<round-id>]` with its `source`, its
+   `reply_to`, its `opened_at` and `replied_at: null`, right after the reply
+   file lands. `record-format.md` owns the id, the fields, and where
+   `reply_to` points for each kind. The round is what an all-declined patch
+   still uses to find its reader.
 6. **Create those packages** in `packages[]`, `pending`, under the ids the
    reply named, each with its file set, its acceptance criterion and
    `round: <round-id>`. The criterion is what proves the group's findings are
@@ -535,10 +576,10 @@ one round carries every finding the source sent. In order:
    check fails, then run "Integrate" in full, with the substitution the
    change request's step 4 names. One checkout holds one writer, and a group
    that finishes before the next one starts is a group a resume can tell
-   apart. **Then complete that group's entry in the reply file**: the commit
-   sha, one line on what changed, and what your verification found. A group
-   the fix-round breaker parks is recorded there as `abandoned`, with the
-   breaker's reason.
+   apart. **Then complete every accepted item line that names this group's
+   package**, in the reply file: the commit sha, one line on what changed,
+   and what your verification found. A group the fix-round breaker parks is
+   recorded there as `abandoned`, with the breaker's reason.
 9. **Push once, when every group is in.** The PR updates itself; open no
    second one. Set `pushed_at` on every package the push carried, and only
    after the push succeeded. A push the remote refuses twice is a

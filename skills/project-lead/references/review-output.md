@@ -66,10 +66,19 @@ When the write is denied, your final message is the whole report. Say so in
 its first line and name the denied path. Never say you wrote a file you
 could not write.
 
+**This first-line rule is for a dispatched agent, and the skeptical review is
+exempt from it.** Its own instructions give it a different first line —
+`Reviewed: <sha>`, the same line an unimpeded report opens with — and
+`skeptical-review.md`'s check 4 reads that line whichever way the report
+reached it. Follow whichever first-line rule the dispatch you are reading
+actually states.
+
 **This fallback is for a dispatched agent**, whose final message the project
 lead reads. The skeptical review is a separate process with no caller, so
-nothing it prints is collected, and `skeptical-review.md` owns what a missing
-report costs there.
+nothing it prints to the terminal is collected — except its last message,
+which `--output-format json` saves into the result JSON's own `result` field,
+and which is what a denied report write falls back to there
+(`skeptical-review.md`).
 
 You carry no `SendMessage`, so a finding you leave out of the report reaches
 nobody.

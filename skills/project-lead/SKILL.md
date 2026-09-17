@@ -378,9 +378,9 @@ replacement saves the runner's output as text and its status beside it, under
 the round's name, and a retry retires all of them the same way
 (`record-format.md`). A resumed session reads the same list in
 `skeptical-review.md`'s "Resume in the delivered window", with those two files
-standing in for `-result.json` wherever entries 9 and 10 name it. **A
+standing in for `-result.json` wherever entries 11 and 12 name it. **A
 `-result.txt` with no `-result.exit` is an incomplete attempt**: the shell
-never reached the status write, so entry 10's rule holds — retire the attempt
+never reached the status write, so entry 11's rule holds — retire the attempt
 and retry the round.
 
 ### The lifecycle holds; three checks change
@@ -449,10 +449,13 @@ Write the report to `reviews/spec-critic-r1.md`, and append the entry:
 
 **Two harness limits.** The `Skill` tool is auto-rejected under `claude -p`
 (design §12), so a replacement cannot invoke a slash command from inside a
-headless session. A slash command passed as the positional prompt does run,
-which is what the default skeptical review does. And a replacement you run
-inside this session spends your own context. A separate process keeps its
-working turns out of it, and the report you read back still costs you.
+headless session. A slash command passed as the positional prompt does still
+run under `-p` — the skeptical review's old default did exactly that, until
+§15.98 found it read the wrong ref and wrote no report, and retired it for a
+prompt piped on stdin (`skeptical-review.md`'s "The default command"). And a
+replacement you run inside this session spends your own context. A separate
+process keeps its working turns out of it, and the report you read back still
+costs you.
 
 ## Sweep for preference questions
 

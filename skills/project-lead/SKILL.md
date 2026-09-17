@@ -246,11 +246,19 @@ prose, and revise what it returns. The spec is yours.
 
 ## Have the spec reviewed
 
-Dispatch `crew:spec-critic`, named `spec-critic-r<n>` for the round, with
-`spec.md`, `charter.md`, the repo path, `review-output.md` whole, and the
-absolute path it writes its findings to: `reviews/spec-critic-r<n>.md`,
-`<n>` being one more than the highest on disk. Every review dispatch in
-this run names its path this way and returns the short result
+**Reserve the round before you dispatch.** A critic whose write is denied
+returns its report only in its final message, so no file with its number
+ever lands — reading `reviews/` for the highest round after the fact can
+then repeat a number a live dispatch already holds. Write
+`reviews/spec-critic-r<n>-instructions.md` first, `<n>` one more than the
+highest `<n>` among every `reviews/spec-critic-r<n>-*` file on disk,
+instructions files included. That write is what reserves the round.
+
+Then dispatch `crew:spec-critic`, named `spec-critic-r<n>` for the same
+round, with `spec.md`, `charter.md`, the repo path, `review-output.md`
+whole, and the absolute path it writes its findings to:
+`reviews/spec-critic-r<n>.md`. Every review dispatch in this run reserves
+and names its round the same way, and returns the short result
 `review-output.md` defines, read from its idle notification; open the file
 only when the count says there is something to adjudicate.
 

@@ -148,6 +148,17 @@ role: set, a named agent launches as a teammate, in its own pane under a
 display mode (`--teammate-mode tmux` or `iterm2`); unset, it launches as a
 plain subagent and the name changes nothing.
 
+**A compaction resets your own count, not the record's.** A scout, a spec
+writer, a lookup, a researcher or an advocate keeps its counter only in your
+own context, and a compaction of your session loses it, so a name chosen
+after one can repeat a name chosen before it. Read `record-format.md`'s
+`run.compactions` before your first dispatch after a compaction — `k` is its
+length — and restart that role's counter at 1, with the suffix `-c<k>`
+appended to the name (`k = 0` takes no suffix). A session about to name its
+next lookup `lookup-2` names it `lookup-1-c1` instead if a compaction lands
+first. The critics' and ICs' round numbers need no such fix: they are
+already read from the record, which a compaction does not touch.
+
 **The name shape**, `<role>-<id>`:
 
 | Role | Name |

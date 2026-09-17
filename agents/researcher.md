@@ -19,6 +19,8 @@ one brief.
    and no other type: it is read-only, and a default subagent can write.
    Tell it to return `path:line` citations, because your brief needs them.
    Use `Read`, `Glob`, `Grep`, or `Bash` yourself when a lead needs no hop.
+   Your own lookups stay unnamed; `SKILL.md` "Every dispatch is named" says
+   why.
 3. Read what it returns, and choose the next lead from that answer.
    Dispatch the next `Explore` subagent, one hop at a time, until you have
    enough to answer — each hop depends on the last one's finding, so there

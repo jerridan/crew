@@ -130,8 +130,19 @@ chosen rather than fallen into.
 
 ## Every dispatch is named
 
-Every agent you dispatch, on every path, gets a `name`, unique across the
-whole run. Whether that name makes the agent a teammate follows from
+**This rule covers what you, the project lead, dispatch.** An agent's own
+lookup subagents — a researcher's `Explore` hops, an IC's `Explore` check —
+stay unnamed: a teammate cannot spawn a teammate, so a name gives one of
+them nothing, and its result returns to its parent as an ordinary tool
+result regardless of the flag.
+
+Every agent you dispatch, on every path, gets a `name`, unique among the
+agents of the current session. A resumed run is a new session — the
+previous session's agents ended with it, so a counter that restarts from 1
+here collides with nothing. The critics' and ICs' round numbers keep
+advancing across a resume because they are read from the record, which
+survives; a scout, a spec writer or a lookup keeps no such counter, and
+needs none. Whether a name makes the agent a teammate follows from
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` alone, never from the path or the
 role: set, a named agent launches as a teammate, in its own pane under a
 display mode (`--teammate-mode tmux` or `iterm2`); unset, it launches as a
@@ -170,8 +181,8 @@ file stays the durable copy either way; read the idle notification or the
 tool result for the answer, and the file for the evidence.
 
 **A teammate cannot spawn a teammate.** An in-process teammate's own
-subagents run in the foreground, so a named researcher's lookups run one at
-a time.
+subagents run in the foreground, so a researcher's own lookups run one at a
+time.
 
 **Never request `run_in_background` for a dispatch.** It is unsupported for
 a teammate.

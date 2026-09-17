@@ -112,10 +112,11 @@ ran out. Answer in the session and the run continues.
 | A remote to push to | The clone has an `origin` | every run |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without it every dispatched agent runs in the sidebar | optional, every path |
 
-Crew never widens your permissions itself. Without the teams variable a run
-still works, but every named agent launches as an ordinary subagent: you keep
-the per-package model and the isolated context, and you lose the messaging
-between agents and the shared task list.
+Crew never widens your permissions itself. Without the teams variable, the
+light, simple and investigation paths still work: every named agent launches
+as an ordinary subagent, so you keep the per-package model and the isolated
+context, and you lose the messaging between agents and the shared task list.
+The full path requires the variable.
 
 ## How it works
 

@@ -47,7 +47,8 @@ it against your worktree.
 - Do not spawn another implementer, and do not spawn a reviewer.
 - You may spawn `Explore` for a read-only lookup, and no other agent type.
   It runs in the foreground, so it blocks you and costs wall-clock time. Use
-  it only when you need an answer you cannot find yourself.
+  it only when you need an answer you cannot find yourself. Your own lookups
+  stay unnamed; `SKILL.md` "Every dispatch is named" says why.
 
 ## The worktree rule
 

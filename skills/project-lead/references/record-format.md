@@ -358,7 +358,7 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `base` | the sha in this package's worktree when the project lead dispatched it. For a territory's first package that equals the deliverable's `base`; for each package after it, the worktree head when the previous package was accepted. `<base>..HEAD` is what makes a review diff cover this package and not its predecessors in the same worktree (design §15.37a). |
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
 | `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: a subagent has no message channel to nudge. |
-| `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
+| `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. A respawn — a fix round, the next package, or recovery from a crash — gives the IC a new name, and `full-path.md` writes that name here and into `worktrees.json`'s entry for the same worktree in the same turn, so the two never name different ICs for one worktree. |
 | `round` | the `<round-id>` of the patch round that wrote this package, a key into `run.rounds`. The round holds the source and the reply, so the package holds neither. Absent on every other package, and that absence is what says the package belongs to no round. |
 | `pushed_at` | ISO-8601 UTC timestamp of this package's **publication**, `null` until it happens. A branch with a remote is published by a push that succeeded, and the project lead stamps this right after it — never before, and never after one that failed. A branch with no remote is published when the work commits, so `crew-record.py integrate --published` stamps it in the integration write and no push is ever owed. One push can carry several packages of one round, and it stamps each. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
@@ -645,7 +645,7 @@ One run, two packages, in different states:
       "base": "a1b2c3d",
       "fix_rounds_used": 1,
       "nudges_used": 0,
-      "ic_name": "ic-middleware",
+      "ic_name": "ic-logging-middleware-r1",
       "plan_path": "plans/logging-middleware.md",
       "report_path": "reports/logging-middleware.md"
     },
@@ -669,7 +669,7 @@ One run, two packages, in different states:
       "base": "e4f5a6b",
       "fix_rounds_used": 2,
       "nudges_used": 1,
-      "ic_name": "ic-config",
+      "ic_name": "ic-logging-config-r1",
       "plan_path": "plans/logging-config.md",
       "report_path": "reports/logging-config.md"
     }
@@ -699,8 +699,9 @@ worktree needs no proof. A run that removed every worktree it cut leaves the
 file holding `{}` (design §15.90g).
 
 **The path convention** is `<record-dir>/worktrees/<territory-slug>`, or
-`<record-dir>/worktrees/<deliverable-id>` for a deliverable checkout, and
-the IC on a territory is named `ic-<territory-slug>`. `<record-dir>` is the
+`<record-dir>/worktrees/<deliverable-id>` for a deliverable checkout. The IC
+that works the worktree is named as `SKILL.md`'s "Every dispatch is named"
+says, not from the territory slug. `<record-dir>` is the
 goal directory this file opens with — `<record-root>/<goal-slug>/` — and not
 the record root itself, whose goal directories two runs of one charter share.
 The goal slug carries the run's random suffix, so the path is unique per run
@@ -735,13 +736,13 @@ and from a recorded `integrated`, never from this field alone.
 
 ```json
 {
-  "ic-middleware": {
+  "ic-logging-middleware-r1": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/middleware",
     "branch": "crew/add-request-logging-a1b2/middleware",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "orphaned": false
   },
-  "ic-config": {
+  "ic-logging-config-r1": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/config",
     "branch": "crew/add-request-logging-a1b2/config",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2", "43227fc9-c61f-488e-afbd-20737f7a3650"],
@@ -750,8 +751,10 @@ and from a recorded `integrated`, never from this field alone.
 }
 ```
 
-`ic-config` shows a resumed IC: two session ids because the worktree
-survived a crash and was resumed once.
+`ic-logging-config-r1` shows a resumed IC: two session ids because the
+worktree survived a crash and was resumed once. Its two fix rounds (the
+`state.json` example above) stayed within rounds 1 to 3, so the same IC
+kept its name; only a round-4 or round-5 respawn would give it `-r2`.
 
 ## `decisions.md`
 

@@ -177,7 +177,7 @@ naming convention. Do not mix their contents.
   reservation file together to find the highest `<n>` on disk — a report
   alone is not enough, because a critic whose write was denied leaves no
   report at all, only its reservation file.
-  Four files per skeptical review round, all named by the round `<n>` and none
+  Five files per skeptical review round, all named by the round `<n>` and none
   by a deliverable id, because the review is per branch head:
   `reviews/skeptical-r<n>.md`, the report, whose **first line is
   `Reviewed: <sha>`** — the head that review read, which a resumed run matches
@@ -185,10 +185,12 @@ naming convention. Do not mix their contents.
   whose second line is `Source: result field` when the fallback supplied it;
   `reviews/skeptical-r<n>-instructions.md`, the text the review was launched
   with; `reviews/skeptical-r<n>-result.json`, the child process's own JSON
-  output, which the checks read; and `reviews/skeptical-r<n>-reply.md`, the
-  project lead's adjudication of that report, one line per finding with its
-  disposition — accepted with the package id it became, declined with its
-  reason, or out of scope with the goal proposed for it. A retry of a round does
+  output, which the checks read; `reviews/skeptical-r<n>-result.stderr`, the
+  runner's own stderr, redirected there by the same command; and
+  `reviews/skeptical-r<n>-reply.md`, the project lead's adjudication of that
+  report, one line per finding with its disposition — accepted with the
+  package id it became, declined with its reason, or out of scope with the
+  goal proposed for it. A retry of a round does
   not overwrite these: it renames the attempt it replaces to
   `skeptical-r<n>-attempt<k>.md`, `skeptical-r<n>-instructions-attempt<k>.md`
   and `skeptical-r<n>-result-attempt<k>.json`, `<k>` counting up from the

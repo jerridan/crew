@@ -437,6 +437,14 @@ both is split along it, and each half runs its own section. **One defect is
 processed once**: a finding that became a package is not also a change
 request.
 
+**Items from one message that share a file set may share one package.** A
+finding and a change request the same message raised, once sorted, can still
+land on the same files — the package is what a territory is on every other
+path, and two edits to one file are one dispatch, not two. The round's or the
+message's own reply ledger names which items the package answers, so an
+accepted finding and an accepted change request both trace back to it. A
+package never spans two messages, whatever their file sets.
+
 **A question.** Answer it from the record and from the repo. Dispatch
 `Explore` subagents at `sonnet` for the code, named as a lookup per
 `SKILL.md`'s "Every dispatch is named" — `Explore` carries `Bash`, so

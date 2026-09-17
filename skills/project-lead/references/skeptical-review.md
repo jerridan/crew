@@ -110,30 +110,29 @@ the path is already gone, then prune.
 
 ## The default command
 
-Write the instructions file first, then launch:
+Write the instructions file first, then launch, from the review worktree:
 
 ```
-claude -p --model opus --output-format json --session-id <uuid> \
-  --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md \
-  --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(<suite command> *),Edit(//<record-dir>/reviews/**)" \
-  "/code-review high <base>" > <record-dir>/reviews/skeptical-r<n>-result.json
+cd <record-dir>/review-worktrees/r<n> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<suite command> *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr
 ```
 
-Run it with the review worktree as the working directory.
+**The prompt rides on stdin, never as a positional argument.**
+`--allowedTools` takes a variadic list, so a prompt placed after it is read as
+one more tool name, and the process exits 1 with "Input must be provided
+either through stdin or as a prompt argument" (design §15.98b). Piping the
+prompt on stdin keeps the tool list closed.
 
-**Redirect the JSON to the record, and read it from there.** The checks below
-run against that file, so a session that dies between the exit and the checks
-finds the same evidence a live one had. It also holds the report itself when
-the fallback applies.
+**No slash command runs.** The bundled pull-request reviewer this step used to
+invoke reads a base ref as the commit to review, not the whole diff against
+the goal, and even retargeted at the right commit it wrote no report file and
+no verdict pair (design §15.98b). The stance this file states is what the
+printed line and the appended system prompt carry instead.
 
-**The positional prompt stays the bare slash command.** Everything the
-reviewer needs rides in the appended system prompt. Text added after
-`/code-review high <base>` is read as the command's own arguments, and the
-skill then parses an effort level and a base ref out of your instructions.
-Appending to the system prompt leaves that parsing alone. One probe on
-2026-09-16, against the bundled code-review skill, confirmed this: the skill
-spawned its finders, and the report followed the instructed shape, read
-against the stated goal, and ended with the two verdict lines.
+**Redirect both streams to the record, and read them from there.** The checks
+below run against `-result.json`, so a session that dies between the exit and
+the checks finds the same evidence a live one had. It also holds the report
+itself when the fallback applies. `-result.stderr` is the runner's own error
+output, kept beside it for the same reason.
 
 ## The permissions the review needs
 
@@ -148,6 +147,7 @@ Each rule buys one thing the review cannot work without:
 |---|---|
 | `Read`, `Glob`, `Grep` | reading the tree the review is about |
 | `Bash(git diff *)`, `Bash(git log *)`, `Bash(git show *)` | the history and the diff |
+| `Bash(git rev-parse *)` | the sha the reviewer opens its report with (`git rev-parse HEAD`) |
 | `Bash(<suite command> *)` | the suite run the stance requires. `<suite command>` is the one the scout recorded; under the no-suite outcome there is no such command, so leave this rule out |
 | `Edit(//<record-dir>/reviews/**)` | the report file, which sits in the record and not in the worktree |
 
@@ -207,15 +207,13 @@ one shell layer away from breaking the command. The file also lands in the
 record, where a reader can see exactly what the reviewer was told
 (`record-format.md`).
 
-**Pass no model but `opus`.** The skill takes no model flag of its own, and
-the only way to pin its finder agents from inside a session is
-`CLAUDE_CODE_SUBAGENT_MODEL`, which would flatten `band-rubric.md` for every
-IC in the run. A separate process with `--model` is what keeps the two apart
-(design §15.94c).
+**Pass `--model opus --effort high`, and nothing else.** A separate process
+with its own model and effort flag is what keeps the review's cost apart from
+`band-rubric.md`'s pick for the run's own ICs (design §15.94c).
 
-The code-review skill ends by asking to apply its fixes, and under `-p` the
-process exits instead (design §15.94c). Expect no edit, and let the review
-make none: the findings come back to you and you decide what each one earns.
+**The review edits nothing but its own report.** The only `Edit` rule it
+carries is scoped to `reviews/`, so whatever it decides, it can make no code
+edit. The findings come back to you, and you decide what each one earns.
 
 ## Reviewer instructions
 
@@ -524,6 +522,7 @@ round:
 skeptical-r<n>.md               →  skeptical-r<n>-attempt<k>.md
 skeptical-r<n>-instructions.md  →  skeptical-r<n>-instructions-attempt<k>.md
 skeptical-r<n>-result.json      →  skeptical-r<n>-result-attempt<k>.json
+skeptical-r<n>-result.stderr    →  skeptical-r<n>-result-attempt<k>.stderr
 ```
 
 Then delete `run.review_results[<n>]`, so nothing points at a file that has

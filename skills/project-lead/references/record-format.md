@@ -45,7 +45,7 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> run state blocked
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation add "<trigger>" "<question>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation answer <index> "<answer>"
 python3 <skill-dir>/scripts/crew-record.py <record-dir> integrate <package-id> --review-head <sha> [--published]
-python3 <skill-dir>/scripts/crew-record.py <record-dir> deliver <deliverable-id> draft-pr-opened --pr-url <url>
+python3 <skill-dir>/scripts/crew-record.py <record-dir> deliver <deliverable-id> draft-pr-opened --pr-url <url> --review-head <sha>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> ship
 ```
 
@@ -177,46 +177,57 @@ naming convention. Do not mix their contents.
   reservation file together to find the highest `<n>` on disk — a report
   alone is not enough, because a critic whose write was denied leaves no
   report at all, only its reservation file.
-  Five files per skeptical review round, always, plus a conditional sixth,
-  all named by the round `<n>` and none by a deliverable id, because the
-  review is per branch head:
-  `reviews/skeptical-r<n>.md`, the report, whose **first line is
-  `Reviewed: <sha>`** — the head that review read, which a resumed run matches
-  against `run.review_pending.head` rather than trusting the file name, and
-  whose second line is `Source: result field` when the fallback supplied it;
-  `reviews/skeptical-r<n>-instructions.md`, the text the review was launched
-  with; `reviews/skeptical-r<n>-result.json`, the child process's own JSON
-  output, which the checks read; `reviews/skeptical-r<n>-result.stderr`, the
-  runner's own stderr, redirected there by the same command;
-  `reviews/skeptical-r<n>-result.exit`, the same command's own exit status,
-  the shell's `$?` redirected the same way; and, when the report holds at
-  least one finding to dispose of, `reviews/skeptical-r<n>-reply.md`, the
-  project lead's adjudication of that report, one line per item it
-  adjudicated — a finding, here, since the skeptical review reports only
-  findings — with its disposition — accepted with the package id it became,
-  declined with its reason, or out of scope with the goal proposed for it.
-  **The reply is the conditional sixth file**: a report whose verdict is
-  `accepted` and which states no findings needs no disposing of, so
-  `skeptical-review.md`'s "Adjudication is a ledger" writes none. A retry of
-  a round does
-  not overwrite these: it renames the attempt it replaces to
-  `skeptical-r<n>-attempt<k>.md`, `skeptical-r<n>-instructions-attempt<k>.md`,
-  `skeptical-r<n>-result-attempt<k>.json`, `skeptical-r<n>-result-attempt<k>.stderr`
-  and `skeptical-r<n>-result-attempt<k>.exit`, `<k>` counting up from the
-  highest already there, so the evidence of a failed attempt survives. **A
-  review a replacement ran saves `skeptical-r<n>-result.txt` and
-  `skeptical-r<n>-result.exit` in place of the `.json`**, holding the runner's
-  own output and its exit status, and the two retire under the same rule as
+  Five files per skeptical review round under the default runner, always,
+  plus a conditional sixth; four under a replacement runner, always, plus the
+  same conditional sixth. All are named by the round `<n>` and none by a
+  deliverable id, because the review is per branch head.
+
+  **The default runner writes five:** `reviews/skeptical-r<n>.md`, the
+  report, whose **first line is `Reviewed: <sha>`** — the head that review
+  read, which a resumed run matches against `run.review_pending.head` rather
+  than trusting the file name, and whose second line is `Source: result
+  field` when the fallback supplied it; `reviews/skeptical-r<n>-instructions.md`,
+  the text the review was launched with; `reviews/skeptical-r<n>-result.json`,
+  the child process's own JSON output, which the checks read;
+  `reviews/skeptical-r<n>-result.stderr`, the runner's own stderr, redirected
+  there by the same command; and `reviews/skeptical-r<n>-result.exit`, the
+  same command's own exit status, the shell's `$?` redirected the same way. A
+  retry of a round does not overwrite these: it renames the attempt it
+  replaces to `skeptical-r<n>-attempt<k>.md`,
+  `skeptical-r<n>-instructions-attempt<k>.md`,
+  `skeptical-r<n>-result-attempt<k>.json`,
+  `skeptical-r<n>-result-attempt<k>.stderr` and
+  `skeptical-r<n>-result-attempt<k>.exit`, `<k>` counting up from the highest
+  already there, so the evidence of a failed attempt survives.
+
+  **A review a replacement ran writes four, with no `.stderr`:**
+  `reviews/skeptical-r<n>.md`, the same report; `reviews/skeptical-r<n>-instructions.md`,
+  the text it read on stdin; `reviews/skeptical-r<n>-result.txt` in place of
+  the `.json`, holding the runner's own output; and
+  `reviews/skeptical-r<n>-result.exit`, the same command's own exit status.
+  These four retire under the same rule, to `skeptical-r<n>-attempt<k>.md`,
+  `skeptical-r<n>-instructions-attempt<k>.md`,
   `skeptical-r<n>-result-attempt<k>.txt` and
   `skeptical-r<n>-result-attempt<k>.exit`. A `.txt` with no `.exit` beside it
   is an attempt whose shell never finished (`SKILL.md`'s "A step the principal
   replaced").
+
+  **Either runner's round carries the same conditional sixth file**, when the
+  report holds at least one finding to dispose of: `reviews/skeptical-r<n>-reply.md`,
+  the project lead's adjudication of that report, one line per item it
+  adjudicated — a finding, here, since the skeptical review reports only
+  findings — with its disposition — accepted with the package id it became,
+  declined with its reason, or out of scope with the goal proposed for it. A
+  report whose verdict is `accepted` and which states no findings needs no
+  disposing of, so `skeptical-review.md`'s "Adjudication is a ledger" writes
+  none.
+
   `crew-stats.py` counts none of the renamed files as a review. **A patch
   round from any other source writes the same reply file under its own
   `<round-id>`**: `reviews/<round-id>-reply.md`, where `<round-id>` is
   `<kind>-r<n>` — `ci-r1`, `pr-comments-r2`, `principal-r1` — with `<n>` one
   more than the highest already on disk under that name. Only a skeptical
-  round carries the other five files, because only it runs a review
+  round carries the other four or five files, because only it runs a review
   (`simple-path.md`'s "Findings from a review"). Then
   `reviews/diagnosis-adversary.md` for the one advocate that argues against a
   report ending's root cause (design §9.5; the diagnosis is per goal, so this
@@ -497,8 +508,8 @@ a `null` field:
   `replied_at` and every accepted entry in its reply file is complete. The
   file is already on disk, so `reviews/<round-id>-reply.md` is sent as it
   stands and `replied_at` follows. A resumed session reaches this through
-  entry 5 of `skeptical-review.md`'s resume list, which owns the order, and
-  entry 4 there fills a ledger line the kill left empty.
+  entry 6 of `skeptical-review.md`'s resume list, which owns the order, and
+  entry 5 there fills a ledger line the kill left empty.
 
 Two obligations sit outside this rule. `run.review_pending` is
 `skeptical-review.md`'s alone. A package still `pending` or `in-flight`
@@ -528,7 +539,7 @@ belongs to `simple-path.md`'s "A round killed mid-flight".
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`; `null` means the project lead's own session compacted. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
 | `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step the light path let the run skip. `step` is `spec-critic`, and nothing else: a `spec-critic` entry leaves both `package` and `deliverable` `null`, because the run writes no spec and the skip belongs to the whole run. A record written before T58 or T59 can also carry a `plan-gate` or a `deliverable-review` entry, from the two steps those tickets retired (design §15.94d). Read one as history, and write neither on a new skip. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the path and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What the light path skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). |
-| `steps_substituted` | a list of `{step, round, replacement, at, usage}`, **one entry per invocation of a replacement**, a retry included (`SKILL.md`'s "A step the principal replaced"). `step` is `spec-critic` or `skeptical-review`, and nothing else: no other step takes a replacement. `round` is the review round this invocation ran at, the same `<n>` as its report file. `replacement` is the principal's own words for what ran, such as `"use Codex for the spec review"` — crew holds no list of runners to name it from. `at` is an ISO-8601 UTC timestamp you write yourself, because `run set` stamps nothing. `usage` is an object with two optional keys, `tokens` (an integer) and `usd` (a number), holding whatever the runner reported; `null` when it reported neither. `crew-stats.py` prices `usd` and nothing else, so an entry carrying only `tokens` prints as unmeasured. **A substituted step is not a skipped step.** The step ran, and its report sits at the step's own path under `reviews/`, so `steps_skipped` gets no entry for it. Absent until the first invocation. Write it with `run set steps_substituted <json>`, the whole list each time. |
+| `steps_substituted` | a list of `{step, round, replacement, at, usage}`, **one entry per invocation of a replacement**, a retry included (`SKILL.md`'s "A step the principal replaced"). `step` is `spec-critic` or `skeptical-review`, and nothing else: no other step takes a replacement. `round` is the review round this invocation ran at, the same `<n>` as its report file. `replacement` is the principal's own words for what ran, such as `"use Codex for the spec review"` — crew holds no list of runners to name it from. `at` is an ISO-8601 UTC timestamp you write yourself, because `run set` stamps nothing. `usage` is an object with two optional keys, `tokens` (an integer) and `usd` (a number), holding whatever the runner reported; `null` when it reported neither. `crew-stats.py` prices `usd` and nothing else, so an entry carrying only `tokens` prints that count in its own `tokens` column, with `usd` reported as `unmeasured`. **A substituted step is not a skipped step.** The step ran, and its report sits at the step's own path under `reviews/`, so `steps_skipped` gets no entry for it. Absent until the first invocation. Write it with `run set steps_substituted <json>`, the whole list each time. |
 | `substitutions_requested` | a list of `{step, replacement, source}`, one entry per review step the principal named a replacement for, written at `SKILL.md`'s "Take the goal" before any step runs. `step` is `spec-critic` or `skeptical-review`. `replacement` is the principal's words. `source` is `goal`, `charter` or `launch`, naming where those words arrived. **This field is the request, and `steps_substituted` is what ran.** A resumed session reads this one, because the words that named the replacement are in no later session's context. Absent when the principal named none. Write it with `run set substitutions_requested <json>`, the whole list each time. |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 

@@ -66,6 +66,13 @@ When the write is denied, your final message is the whole report. Say so in
 its first line and name the denied path. Never say you wrote a file you
 could not write.
 
+**This first-line rule is for a dispatched agent, and the skeptical review is
+exempt from it.** Its own instructions give it a different first line —
+`Reviewed: <sha>`, the same line an unimpeded report opens with — and
+`skeptical-review.md`'s check 4 reads that line whichever way the report
+reached it. Follow whichever first-line rule the dispatch you are reading
+actually states.
+
 **This fallback is for a dispatched agent**, whose final message the project
 lead reads. The skeptical review is a separate process with no caller, so
 nothing it prints to the terminal is collected — except its last message,

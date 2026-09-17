@@ -34,7 +34,7 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 Stages 0 through 7 are built: seven agents — the six workers and the
 read-only `crew:scout` — ten references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
-one branch under one named subagent; the **full path** runs several packages
+one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
 `--resume` recovery. Both have run end to end against a real repo.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
@@ -48,9 +48,10 @@ unexercised **skeptical review** opens. That window separates a **change
 request**, one more package, from **findings**, which go to **patch mode**: a
 package per group, one push, a reply per finding (§15.94d). Neither has run.
 
-**Every run named above predates T58, T59 and T60**, which cut two review
-steps, moved the last to after the hand-over and gave the window a patch mode.
-Each is evidence for one step, not for the loop.
+**Every run named above predates T58, T59, T60 and T66**, which cut two
+review steps, moved the last to after the hand-over, gave the window a patch
+mode, and named every dispatch. The simple-path runs above used the earlier
+unnamed form. Each is evidence for one step, not for the loop.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

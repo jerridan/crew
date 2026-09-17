@@ -10,7 +10,7 @@ The full path is `full-path.md`. Nothing here applies to it, except the four
 rules it borrows: "Create the branch", "Verify before you believe",
 "Integrate" and "End the run".
 
-One named subagent does the work, on one branch, in the checkout
+One named agent does the work, on one branch, in the checkout
 `run.checkout` names. No split critic runs and nothing merges. That checkout
 is the target repo itself, unless another run already held it — "Create the
 branch" owns that case, and it is the only one on this path that makes a

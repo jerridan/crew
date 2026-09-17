@@ -7035,15 +7035,17 @@ Deliberately different:
        teammates, and it travels with anyone who installs the plugin, where a
        setting would not.
 
-    e. **Limits.** Only a named teammate gets a pane, and only the full path
-       names its ICs (design §3, §15.20b: a teammate returns no parseable
-       result, so anything whose output the project lead reads and acts on
-       stays unnamed). A light, simple or investigation-path run still shows
-       one pane, with the agents sidebar carrying its subagents. The scout,
-       the critics and the reviewers are never panes, on any path. The naming
-       rule itself does not change. A pane too small to split
-       (`pane too small`) is not a case the project lead can fix itself, so
-       PR #74 makes it an `environment` escalation in `full-path.md`.
+    e. **Limits.** Superseded by §15.97: every agent the project lead
+       dispatches is named. Only a named teammate gets a pane, and only the
+       full path names its ICs (design §3, §15.20b: a teammate returns no
+       parseable result, so anything whose output the project lead reads and
+       acts on stays unnamed). A light, simple or investigation-path run
+       still shows one pane, with the agents sidebar carrying its subagents.
+       The scout, the critics and the reviewers are never panes, on any
+       path. The naming rule itself does not change. A pane too small to
+       split (`pane too small`) is not a case the project lead can fix
+       itself, so PR #74 makes it an `environment` escalation in
+       `full-path.md`.
 
     f. **Two costs accepted, both from teammates running as their own
        sessions.** First, `spend.py` and `crew-stats.py` still price a

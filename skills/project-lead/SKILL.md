@@ -160,7 +160,6 @@ plain subagent and the name changes nothing.
 | Researcher | `researcher-<n>` |
 | Lookup | `lookup-<n>` |
 | IC | `ic-<package id>-r<n>` |
-| Review | `review-r<n>` |
 
 Every `<n>` counts from 1 in this session, and is what keeps two dispatches
 of the same role from sharing a name: the question for a scout or a

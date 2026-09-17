@@ -79,8 +79,6 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | **Split critic** | named agent, new `crew:split-critic` | opus / high | one review |
 | **IC** | named agent, `crew:ic` | per band | a territory |
 | **Instruction IC** | named agent, `crew:ic-instructions` | per band | a territory |
-| **Package reviewer** | named agent, new `crew:package-reviewer` | sonnet / high | one review |
-| **Deliverable reviewer** | named agent, new `crew:deliverable-reviewer` | opus / high | one review |
 
 ### The naming rule
 
@@ -143,9 +141,10 @@ nothing decides which copy wins.
 It covers all five container types this IC owns directly, with no hand-off to
 another skill for two of the five.
 
-`crew:package-reviewer` reviews its work as usual, with the checklist as the
-rubric instead of a diff-and-tests review. The project lead passes it the
-checklist's path, so there is still one copy.
+The project lead verifies its work as usual, at "Verify before you believe"
+(`simple-path.md`, `full-path.md`), with the checklist as the rubric instead
+of a diff-and-tests review; the skeptical review after the hand-over reads
+the same checklist (`skeptical-review.md`). One copy either way.
 
 **The IC is judged on its output, not on how it obtained the standard.** That
 keeps the contract intact when an IC forgets to read the file, or reads a stale
@@ -781,9 +780,9 @@ has a diagnosis to build from.
    probe confirms it works. Autonomous either way.
 4. The IC implements test-first, **commits after every green step**, self-reviews,
    and writes its report into the record.
-5. The project lead verifies the worktree (section 7), then writes the diff to
-   a file (`git diff > <path>`) and dispatches `crew:package-reviewer` with
-   the **path**. The diff never enters the project lead's context.
+5. The project lead verifies the worktree itself — no review agent runs over
+   a package (section 7, "Verify before you believe" in `simple-path.md` and
+   `full-path.md`, design §15.94d).
 6. Fix rounds, five maximum. Rounds 1-3 message the same IC, so it keeps its
    context. Rounds 4-5 respawn a fresh IC one band up. Then the breaker: fix,
    park with recorded reasoning, or defer.
@@ -806,12 +805,10 @@ IC's per-green-step commits stay on its own branch for resume safety.
 to one package for free, with no bisect.
 
 Then the project lead edits the shared files itself, bumps both version
-fields, and dispatches `crew:deliverable-reviewer` over the whole diff. That
-dispatch carries `spec.md` and this deliverable's `split.md` with the diff.
-Four of the reviewer's seven checks read the record, not the diff, so a
-diff-only dispatch cannot run them (§15.24). The project lead then adjudicates
-the findings, pushes, and opens a **draft** PR with `spec.md` and
-`decisions.md` in the body.
+fields, pushes, and opens a **draft** PR with `spec.md` and `decisions.md` in
+the body. The hand-over does not wait on a review: the skeptical review of
+the whole diff runs after it, as the delivered window's first round
+(`skeptical-review.md`, §15.94d(3)).
 
 Textual conflicts should be impossible: disjoint file sets leave git nothing
 to conflict on, and the project lead owns every shared file. What remains is

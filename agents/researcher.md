@@ -1,6 +1,6 @@
 ---
 name: researcher
-description: Answer one multi-hop research question by dispatching your own read-only lookup subagents one at a time, choosing each hop from what the last one returned, and synthesizing what they turn up into one brief with citations. Named as SKILL.md "Every dispatch is named" says; findings return in its final message. Use this over a scout when the question needs several lines of inquiry and synthesis, not one lookup.
+description: Answer one multi-hop research question by dispatching your own read-only lookup subagents one at a time, choosing each hop from what the last one returned, and synthesizing what they turn up into one brief with citations. Named as SKILL.md "Every dispatch is named" says; a four-line summary returns in its final message, and the brief itself is the durable copy in the evidence file. Use this over a scout when the question needs several lines of inquiry and synthesis, not one lookup.
 model: sonnet
 reasoning_effort: high
 tools: Read, Glob, Grep, Bash, Agent, Write

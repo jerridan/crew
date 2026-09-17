@@ -36,7 +36,8 @@ read-only `crew:scout` — ten references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
 one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
-`--resume` recovery. Both ran end to end in their earlier, unnamed form.
+`--resume` recovery. Both paths ran end to end before T66: the simple
+path's IC was unnamed, and the full path named only its ICs.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
 a report ending; both endings have run, and it is `crew:researcher`'s only
 caller, which no run has dispatched yet. The **light path** is the simple path
@@ -50,8 +51,8 @@ package per group, one push, a reply per finding (§15.94d). Neither has run.
 
 **Every run named above predates T58, T59, T60 and T66**, which cut two
 review steps, moved the last to after the hand-over, gave the window a patch
-mode, and named every dispatch. The simple-path runs above used the earlier
-unnamed form. Each is evidence for one step, not for the loop.
+mode, and named every dispatch. Each is evidence for one step, not for the
+loop.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

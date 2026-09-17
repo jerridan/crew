@@ -213,11 +213,12 @@ naming convention. Do not mix their contents.
   critic can run twice over one of them — a shared filename per kind would let
   a later deliverable or a later re-plan silently destroy an earlier review,
   which is this run's only audit trail. The spec and split critics have no
-  counter in `state.json`, so their `<n>` is one more than the highest already
-  on disk under that same name. Reading
-  it from disk is what keeps a resumed run from overwriting a review it wrote
-  before the crash. The review agent writes its own file, at the absolute
-  path the dispatch names (`review-output.md`); the project lead transcribes
+  counter in `state.json`, so their `<n>` is one more than the highest round
+  already on disk across both filename shapes above: the report and its
+  companion reservation file. Reading it from disk is what keeps a resumed
+  run from overwriting a review it wrote before the crash. The review agent
+  writes its own file, at the absolute path the dispatch names
+  (`review-output.md`); the project lead transcribes
   it when the write was denied, and whenever a replacement runs the step,
   because a replacement returns its report instead of writing one
   (`SKILL.md`'s "A step the principal replaced").

@@ -1,6 +1,6 @@
 ---
 name: council-advocate
-description: Argue one assigned position in a council, with cited evidence, and name the strongest objection to your own side. On a judgment question the evidence is the repo and its instruction files; on a root cause it is the evidence set the dispatch names, and the advocate concedes a hypothesis that set contradicts. Dispatched unnamed and alone against the project lead's own stated prior, or one per position in a single batch, so every case returns as a tool result. Use this when the project lead cannot settle a judgment question on a data model, a public interface, a service boundary, or a cross-cutting pattern — or when it must argue one root-cause hypothesis on the investigation path.
+description: Argue one assigned position in a council, with cited evidence, and name the strongest objection to your own side. On a judgment question the evidence is the repo and its instruction files; on a root cause it is the evidence set the dispatch names, and the advocate concedes a hypothesis that set contradicts. Named as SKILL.md "Every dispatch is named" says, alone against the project lead's own stated prior, or one per position in a single batch, so every case returns in its final message. Use this when the project lead cannot settle a judgment question on a data model, a public interface, a service boundary, or a cross-cutting pattern — or when it must argue one root-cause hypothesis on the investigation path.
 model: sonnet
 reasoning_effort: high
 tools: Read, Glob, Grep, Bash
@@ -121,9 +121,10 @@ for reading only — `grep -n` and `sed -n` to confirm a line, `git log` and
 
 ## Return path
 
-Your case returns only as this agent's tool result. You carry no
-`SendMessage`, so anything you leave out of the report reaches nobody. Address
-the judge, and no other advocate.
+Your case returns only as this agent's final message — `SKILL.md`'s "Every
+dispatch is named" says where the project lead reads it from. You carry no
+`SendMessage`, so anything you leave out of the report reaches nobody.
+Address the judge, and no other advocate.
 
 ## Report in one of these shapes
 

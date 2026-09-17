@@ -2832,13 +2832,13 @@ agent-definition shape.
 
 Status: open
 Depends on: T65
-Stage: 7 (design §15.20b, §15.20 sub-item c)
+Stage: 7 (design §15.20b, §15.31c)
 
 The rule "only ICs are named" rests on design §3's claim that a teammate's
 output never returns to the project lead. §15.20b recorded the claim as
-wrong, and a later probe confirmed the final answer arrives as prose in the
-idle notification. The principal decided every dispatch is named, so every
-agent gets a pane under a display mode.
+wrong, and a later probe (§15.31c) confirmed the final answer arrives as
+prose in the idle notification. The principal decided every dispatch is
+named, so every agent gets a pane under a display mode.
 
 Scope. Flip the naming rule in design §3, and every "unnamed" in `SKILL.md`,
 `simple-path.md`, `full-path.md`, `investigation-path.md`, the agent
@@ -2851,12 +2851,16 @@ one exists.
 Run it. Read design §3, §15.20, §15.21, §15.89, and CLAUDE.md's "Constraints
 that are easy to get wrong".
 
-Check that no instruction file says "unnamed", that the naming rule is
-stated once, and that a probe with the flag on shows the spec critic's
-one-line verdict and a council batch read correctly from idle notifications.
+Check that no instruction file leaves an agent the project lead dispatches
+unnamed, that the naming rule is stated once, and that a probe with the flag
+on shows the spec critic's one-line verdict and a council batch read
+correctly from idle notifications. An agent's own subagents — a researcher's
+lookups, an IC's — stay unnamed; `SKILL.md`'s "Every dispatch is named" says
+why.
 
-Done when: no instruction file says "unnamed", the naming rule is stated in
-one place, and a flag-on probe reads both cases back correctly.
+Done when: no instruction file leaves an agent the project lead dispatches
+unnamed, the naming rule is stated in one place, and a flag-on probe reads
+both cases back correctly.
 
 Read first: design §3, §15.20, §15.21, §15.89; CLAUDE.md "Constraints that
 are easy to get wrong".

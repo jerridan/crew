@@ -1,6 +1,6 @@
 ---
 name: split-critic
-description: Review the project lead's own split.md — the split of a deliverable into packages — against the four dispatchability invariants, before any IC is dispatched. Not for an IC's implementation plan in plans/<id>.md. Checks the split only, not the spec and not the code. Dispatched unnamed; writes its findings to the record path the dispatch names and returns the short result `review-output.md` defines.
+description: Review the project lead's own split.md — the split of a deliverable into packages — against the four dispatchability invariants, before any IC is dispatched. Not for an IC's implementation plan in plans/<id>.md. Checks the split only, not the spec and not the code. Named as SKILL.md "Every dispatch is named" says; writes its findings to the record path the dispatch names and returns the short result `review-output.md` defines, read from its final message.
 model: opus
 reasoning_effort: high
 tools: Read, Write, Glob, Grep

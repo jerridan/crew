@@ -37,8 +37,8 @@ Start Claude Code in an ordinary clone of the target repo, not a worktree:
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto
 ```
 
-Add `--teammate-mode tmux` from inside tmux to give each implementer its own
-pane on the full path:
+Add `--teammate-mode tmux` from inside tmux to give every agent the project
+lead dispatches its own pane:
 
 ```
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto --teammate-mode tmux
@@ -107,15 +107,16 @@ ran out. Answer in the session and the run continues.
 | Requirement | How | Which runs |
 |---|---|---|
 | Permissions that never stop for a human | `--permission-mode auto`, or your own allow rules | every run |
-| Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | the full path |
+| Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for the full path; required for a pane per dispatched agent on any path; optional otherwise |
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
-| tmux, for a pane per implementer | `--teammate-mode tmux` from inside tmux; without it the implementers run in the sidebar | optional, the full path |
+| tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 
-Crew never widens your permissions itself. Without the teams variable a run
-still works, but a named agent becomes an ordinary subagent: you keep the
-per-package model and the isolated context, and you lose the messaging between
-agents and the shared task list.
+Crew never widens your permissions itself. Without the teams variable, the
+light, simple and investigation paths still work: every named agent launches
+as an ordinary subagent, so you keep the per-package model and the isolated
+context, and you lose the messaging between agents and the shared task list.
+The full path requires the variable.
 
 ## How it works
 

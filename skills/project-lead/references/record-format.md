@@ -168,8 +168,16 @@ naming convention. Do not mix their contents.
   is per goal, so this name carries no deliverable id),
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
-  critic on the same deliverable),
-  four files per skeptical review round, all named by the round `<n>` and none
+  critic on the same deliverable). Each of these two has a companion
+  reservation file, written by the project lead before the dispatch to
+  reserve the round: `reviews/spec-critic-r<n>-instructions.md` and
+  `reviews/split-critic-<deliverable-id>-r<n>-instructions.md`, each holding
+  the critic's dispatch instructions. `SKILL.md`'s "Have the spec reviewed"
+  and `full-path.md`'s "Have the split reviewed" scan the report and the
+  reservation file together to find the highest `<n>` on disk — a report
+  alone is not enough, because a critic whose write was denied leaves no
+  report at all, only its reservation file.
+  Four files per skeptical review round, all named by the round `<n>` and none
   by a deliverable id, because the review is per branch head:
   `reviews/skeptical-r<n>.md`, the report, whose **first line is
   `Reviewed: <sha>`** — the head that review read, which a resumed run matches
@@ -205,11 +213,12 @@ naming convention. Do not mix their contents.
   critic can run twice over one of them — a shared filename per kind would let
   a later deliverable or a later re-plan silently destroy an earlier review,
   which is this run's only audit trail. The spec and split critics have no
-  counter in `state.json`, so their `<n>` is one more than the highest already
-  on disk under that same name. Reading
-  it from disk is what keeps a resumed run from overwriting a review it wrote
-  before the crash. The review agent writes its own file, at the absolute
-  path the dispatch names (`review-output.md`); the project lead transcribes
+  counter in `state.json`, so their `<n>` is one more than the highest round
+  already on disk across both filename shapes above: the report and its
+  companion reservation file. Reading it from disk is what keeps a resumed
+  run from overwriting a review it wrote before the crash. The review agent
+  writes its own file, at the absolute path the dispatch names
+  (`review-output.md`); the project lead transcribes
   it when the write was denied, and whenever a replacement runs the step,
   because a replacement returns its report instead of writing one
   (`SKILL.md`'s "A step the principal replaced").
@@ -357,8 +366,8 @@ Deliverables run sequentially (design §5), so at most one is ever
 | `acceptance_criterion` | the executable test, or the checklist the project lead applies itself, that proves the package is done (design §5 invariant 1). Also what makes a respawn idempotent after a crash (design §10.1). |
 | `base` | the sha in this package's worktree when the project lead dispatched it. For a territory's first package that equals the deliverable's `base`; for each package after it, the worktree head when the previous package was accepted. `<base>..HEAD` is what makes a review diff cover this package and not its predecessors in the same worktree (design §15.37a). |
 | `fix_rounds_used` | integer, capped at five (design §9.2). After a crash, design §10.1 respawns an IC from its worktree. Without this persisted, the round count resets and the breaker never fires. |
-| `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: a subagent has no message channel to nudge. |
-| `ic_name` | the name of the teammate assigned to this package. Cross-references `worktrees.json`, which maps this name to a worktree path. Without it, nothing maps a package back to the worktree that must verify it. |
+| `nudges_used` | integer, capped at one per dispatch (`full-path.md`'s "The idle nudge"). Counts the current dispatch only, so every re-dispatch of the package resets it to 0. Persisted because a resumed session holds no memory of a nudge it already sent. The simple path leaves it 0: "The idle nudge" is a full-path step. |
+| `ic_name` | the name of the agent assigned to this package. On the full path it cross-references `worktrees.json`, which maps this name to a worktree path; without it, nothing maps a package back to the worktree that must verify it. `simple-path.md`'s "Dispatch the IC" and `full-path.md`'s "Create the branch and the worktrees" write it; `SKILL.md`'s "Every dispatch is named" owns the naming rule itself. |
 | `round` | the `<round-id>` of the patch round that wrote this package, a key into `run.rounds`. The round holds the source and the reply, so the package holds neither. Absent on every other package, and that absence is what says the package belongs to no round. |
 | `pushed_at` | ISO-8601 UTC timestamp of this package's **publication**, `null` until it happens. A branch with a remote is published by a push that succeeded, and the project lead stamps this right after it — never before, and never after one that failed. A branch with no remote is published when the work commits, so `crew-record.py integrate --published` stamps it in the integration write and no push is ever owed. One push can carry several packages of one round, and it stamps each. |
 | `plan_path` | always `plans/<id>.md`. The IC's plan, written before its report (design §9.2 step 3, §12). |
@@ -451,9 +460,11 @@ A record written before T58 can also carry `plan_approved_at`, from the plan
 gate that step retired (design §15.94d). Read it as history, and write it on
 no new package.
 `plan_path` and `report_path` name files that do not exist yet. On the simple
-path (design §9.1) there is one package and no territory, so `ic_name` stays
-`null` for the run. The project lead writes `worktrees.json` there only when
-it cut the deliverable a checkout of its own (`worktrees.json` below).
+path (design §9.1) there is one package and no territory, so `worktrees.json`
+gets no per-IC entry; `ic_name` is still written there, at "Dispatch the IC"
+(`simple-path.md`), before every dispatch. The project lead writes
+`worktrees.json` there only when it cut the deliverable a checkout of its
+own (`worktrees.json` below).
 
 ### What a delivered-window round still owes
 
@@ -645,7 +656,7 @@ One run, two packages, in different states:
       "base": "a1b2c3d",
       "fix_rounds_used": 1,
       "nudges_used": 0,
-      "ic_name": "ic-middleware",
+      "ic_name": "ic-logging-middleware-r1",
       "plan_path": "plans/logging-middleware.md",
       "report_path": "reports/logging-middleware.md"
     },
@@ -669,7 +680,7 @@ One run, two packages, in different states:
       "base": "e4f5a6b",
       "fix_rounds_used": 2,
       "nudges_used": 1,
-      "ic_name": "ic-config",
+      "ic_name": "ic-logging-config-r2",
       "plan_path": "plans/logging-config.md",
       "report_path": "reports/logging-config.md"
     }
@@ -699,8 +710,9 @@ worktree needs no proof. A run that removed every worktree it cut leaves the
 file holding `{}` (design §15.90g).
 
 **The path convention** is `<record-dir>/worktrees/<territory-slug>`, or
-`<record-dir>/worktrees/<deliverable-id>` for a deliverable checkout, and
-the IC on a territory is named `ic-<territory-slug>`. `<record-dir>` is the
+`<record-dir>/worktrees/<deliverable-id>` for a deliverable checkout. The IC
+that works the worktree is named as `SKILL.md`'s "Every dispatch is named"
+says, not from the territory slug. `<record-dir>` is the
 goal directory this file opens with — `<record-root>/<goal-slug>/` — and not
 the record root itself, whose goal directories two runs of one charter share.
 The goal slug carries the run's random suffix, so the path is unique per run
@@ -735,13 +747,13 @@ and from a recorded `integrated`, never from this field alone.
 
 ```json
 {
-  "ic-middleware": {
+  "ic-logging-middleware-r1": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/middleware",
     "branch": "crew/add-request-logging-a1b2/middleware",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2"],
     "orphaned": false
   },
-  "ic-config": {
+  "ic-logging-config-r2": {
     "worktree": "/Users/x/.claude/crew/add-request-logging-a1b2/worktrees/config",
     "branch": "crew/add-request-logging-a1b2/config",
     "session_ids": ["8154734d-d163-4d22-8946-83c3b12cb6f2", "43227fc9-c61f-488e-afbd-20737f7a3650"],
@@ -750,8 +762,10 @@ and from a recorded `integrated`, never from this field alone.
 }
 ```
 
-`ic-config` shows a resumed IC: two session ids because the worktree
-survived a crash and was resumed once.
+`ic-logging-config-r2` shows a respawned IC: two session ids because the
+worktree survived a crash and was resumed once, with a fresh name for the
+respawn (`full-path.md`'s "A respawned IC is a new IC"). The respawn read
+the package's `ic_name` to find `-r1` already taken and named itself `-r2`.
 
 ## `decisions.md`
 

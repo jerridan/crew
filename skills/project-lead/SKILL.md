@@ -128,15 +128,105 @@ every field included, and its `Citation:` quotes the words in the goal you
 read the path off. Nothing else in the record says an investigation run was
 chosen rather than fallen into.
 
+## Every dispatch is named
+
+**This rule covers what you, the project lead, dispatch.** An agent's own
+lookup subagents — a researcher's `Explore` hops, an IC's `Explore` check —
+stay unnamed: a teammate cannot spawn a teammate, so a name gives one of
+them nothing, and its result returns to its parent as an ordinary tool
+result regardless of the flag.
+
+Every agent you dispatch, on every path, gets a `name`, unique among the
+agents of the current session. A resumed run is a new session — the
+previous session's agents ended with it, so a counter that restarts from 1
+here collides with nothing. The critics' and ICs' round numbers keep
+advancing across a resume because they are read from the record, which
+survives; a scout, a spec writer or a lookup keeps no such counter, and
+needs none. Whether a name makes the agent a teammate follows from
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` alone, never from the path or the
+role: set, a named agent launches as a teammate, in its own pane under a
+display mode (`--teammate-mode tmux` or `iterm2`); unset, it launches as a
+plain subagent and the name changes nothing.
+
+**A compaction resets your own count, not the record's.** A scout, a spec
+writer, a lookup, a researcher or an advocate keeps its counter only in your
+own context, and a compaction of your session loses it, so a name chosen
+after one can repeat a name chosen before it. Read `record-format.md`'s
+`run.compactions` before your first dispatch after a compaction — `k` is its
+length — and restart that role's counter at 1, with the suffix `-c<k>`
+appended to the name (`k = 0` takes no suffix). A session about to name its
+next lookup `lookup-2` names it `lookup-1-c1` instead if a compaction lands
+first. The critics' and ICs' round numbers need no such fix: they are
+already read from the record, which a compaction does not touch.
+
+**The name shape**, `<role>-<id>`:
+
+| Role | Name |
+|---|---|
+| Scout | `scout-<n>` |
+| Spec writer | `spec-writer-r<n>` |
+| Spec critic | `spec-critic-r<n>` |
+| Split critic | `split-critic-<deliverable id>-r<n>` |
+| Advocate | `advocate-c<council n>-<position>` |
+| Researcher | `researcher-<n>` |
+| Lookup | `lookup-<n>` |
+| IC | `ic-<package id>-r<n>` |
+
+Every `<n>` counts from 1 in this session, and is what keeps two dispatches
+of the same role from sharing a name: the question for a scout or a
+researcher, the round for a critic, a review or the spec writer, and the
+dispatch for an IC — a fresh IC per fix round is still one package, so its
+round counts from that package's first dispatch, giving `r1`, `r2`, and on.
+A lookup's `<n>` counts every lookup dispatch in this session, `Explore` or
+otherwise. An advocate's id pairs its council number with its position, so a
+second council in the same run — the investigation path can run more than
+one — never collides with the first. The critics' and the ICs' round
+numbers are the one exception: reading them from the record, not counting
+in-session, is what lets them keep advancing across the resume described
+above.
+
+**Read the result from the idle notification's final message, when the name
+made a teammate.** A named agent's answer arrives there, not as a tool
+result. With the flag unset, the same agent is a plain subagent and its
+result returns as an ordinary tool result instead — read it from there.
+Where an agent also writes a record file — a critic, an IC, a review — that
+file stays the durable copy either way; read the idle notification or the
+tool result for the answer, and the file for the evidence.
+
+**A teammate cannot spawn a teammate.** An in-process teammate's own
+subagents run in the foreground, so a researcher's own lookups run one at a
+time.
+
+**Never request `run_in_background` for a dispatch.** It is unsupported for
+a teammate.
+
+**Permission prompts surface here.** Any dispatch's prompt reaches this
+session, for you to approve. Pre-approve what the run needs, or a
+no-prompt run stalls on the first one.
+
+**Check the flag before your first dispatch.** `echo
+$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` must print `1` on the full path,
+always — `full-path.md` sends an IC its next package, a fix round and a
+nudge by `SendMessage`, which only a teammate can receive. On every other
+path the check is needed only when the launch is meant to run under a
+display mode; with the flag unset there, every dispatch still runs — as a
+plain subagent, with no pane and no messaging between agents.
+`full-path.md`'s "Check the launch conditions" points here for this check;
+its other conditions are its own.
+
+Every reference and agent description below points at this section rather
+than restate it.
+
 ## Scout
 
 Four questions, answered from this repo before any spec exists. Does an
 analogous implementation exist? Do tests cover this surface? What runs the
 suite? Which instruction files apply?
 
-Dispatch `crew:scout` subagents at `haiku` and read their answers. The reading
-stays out of your own context. `band-rubric.md` says why Haiku runs only this
-agent.
+Dispatch `crew:scout` subagents at `haiku`, named `scout-<n>` for the
+question number, and read each answer as "Every dispatch is named" above
+says. The reading stays out of your own context. `band-rubric.md` says why
+Haiku runs only this agent.
 
 On the investigation path, read `investigation-path.md` now and run its phases.
 It sends you back to "Write the spec", or it ends the run itself.
@@ -179,20 +269,32 @@ never enumerates the file's contents, because a closed list is one missed item
 from a critic round (design §15.50).
 
 **Your output is the run's most expensive.** So outline the spec yourself, have
-an unnamed `general-purpose` subagent at `sonnet` write the prose, and revise
-what it returns. The spec is yours.
+a `general-purpose` subagent at `sonnet`, named `spec-writer-r<n>` for the
+draft's round, write the prose, and revise what it returns. The spec is
+yours.
 
 ## Have the spec reviewed
 
-Dispatch `crew:spec-critic`, unnamed, with `spec.md`, `charter.md`, the repo
-path, `review-output.md` whole, and the absolute path it writes its findings
-to: `reviews/spec-critic-r<n>.md`, `<n>` being one more than the highest on
-disk. Every review dispatch in this run names its path this way and returns the
-short result `review-output.md` defines; open the file only when the count says
-there is something to adjudicate.
+**Reserve the round before you dispatch.** A critic whose write is denied
+returns its report only in its final message, so no file with its number
+ever lands — reading `reviews/` for the highest round after the fact can
+then repeat a number a live dispatch already holds. Write
+`reviews/spec-critic-r<n>-instructions.md` first, `<n>` one more than the
+highest `<n>` across both filename shapes `record-format.md`'s `reviews/`
+listing names for this role: the report and the reservation file itself.
+That write is what reserves the round.
+
+Then dispatch `crew:spec-critic`, named `spec-critic-r<n>` for the same
+round, with `spec.md`, `charter.md`, the repo path, `review-output.md`
+whole, and the absolute path it writes its findings to:
+`reviews/spec-critic-r<n>.md`. Every review dispatch in this run reserves
+and names its round the same way, and returns the short result
+`review-output.md` defines, read as "Every dispatch is named" above says;
+open the file only when the count says there is something to adjudicate.
 
 `Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
-again. Three re-specs is the cap; escalate at it.
+`spec-writer-r<n>` again for the next round. Three re-specs is the cap;
+escalate at it.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,

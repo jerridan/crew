@@ -10,7 +10,7 @@ The full path is `full-path.md`. Nothing here applies to it, except the four
 rules it borrows: "Create the branch", "Verify before you believe",
 "Integrate" and "End the run".
 
-One unnamed subagent does the work, on one branch, in the checkout
+One named agent does the work, on one branch, in the checkout
 `run.checkout` names. No split critic runs and nothing merges. That checkout
 is the target repo itself, unless another run already held it — "Create the
 branch" owns that case, and it is the only one on this path that makes a
@@ -154,9 +154,10 @@ Then, in the same turn:
   `run.checkout` where it says `<repo>`** — the dispatch prompt, the
   verification, the diff, the suite and the push. The shared checkout is read
   from and never written to.
-- Register the worktree in `worktrees.json`, keyed by the deliverable id.
-  There is no IC name on this path (`record-format.md`). Nothing else proves
-  the worktree is yours to remove.
+- Register the worktree in `worktrees.json`, keyed by the deliverable id,
+  since no IC owns a territory on this path (`record-format.md`, "the
+  deliverable id, because no IC owns it"). Nothing else proves the worktree
+  is yours to remove.
 - Write the `deliverables[]` entry as above, with `checkout_branch: null`. You
   switched no checkout, so `checkout_restored` stays `null` as well.
 - "End the run" removes it.
@@ -167,20 +168,25 @@ idle while the IC works, so one tree costs the run nothing (design §9.1).
 
 ## Dispatch the IC
 
-Dispatch one **unnamed** subagent at the package's band model: `crew:ic` for
-code, `crew:ic-instructions` for an instruction file. It inherits no
-history, so the spawn prompt carries all of: `ic-contract.md`'s full text, the
-brief, the file set, `run.checkout`, the interface contract, the
-acceptance criterion, the global constraints section, the record root, the
-package id, and **that it is a subagent** — `ic-contract.md`'s record writes
-branch on it.
+Name the IC as `SKILL.md`'s "Every dispatch is named" says for this
+package's first dispatch, then write it with `crew-record.py <record-dir>
+package <id> set ic_name "<name>"` **before** you dispatch — the same write
+`full-path.md` makes for its own ICs. An unrecorded name lets a crash
+respawn reuse it; "Fix rounds" below reads this field back. Dispatch one IC
+at the package's band model: `crew:ic` for code, `crew:ic-instructions` for
+an instruction file. It inherits no
+history, so the spawn prompt carries all of: `ic-contract.md`'s full text,
+the brief, the file set, `run.checkout`, the interface contract, the
+acceptance criterion, the global constraints section, the record root, and
+the package id.
 
 **One dispatch carries the package.** The IC writes `plans/<id>.md`, then
 continues per `ic-contract.md`'s "Write your plan first".
 
 **Expect the contents instead of the file.** A dispatch shape that denies the
-IC every record write (§15.26b, §15.31b) puts the plan or report in its final
-message. Transcribe it, and say that you did.
+IC every record write (§15.26b, §15.31b) puts the plan or report in its
+final message instead, read as `SKILL.md`'s "Every dispatch is named" says.
+Transcribe it, and say that you did.
 
 Set the package `in-flight` at the dispatch, and write its `base`: the head
 of the deliverable branch in `run.checkout` at that moment. For the run's own
@@ -289,10 +295,14 @@ criterion at the branch head only (design §7, `investigation-path.md`'s
 ## Fix rounds
 
 Run a round only on a failure you saw yourself at "Verify before you believe".
-Each round is a fresh subagent, so its prompt describes what is already
-committed — `git log --oneline` plus `git diff --stat` — and carries the
-failing output word for word. Rounds 4 and 5 promote a band; `band-rubric.md`
-says what a `deep` package does instead.
+Each round is a fresh dispatch, named for this package's next round as
+`SKILL.md`'s "Every dispatch is named" says — read the package's `ic_name`
+for the round already used, so a crash respawn never reuses it — so its
+prompt describes what is already committed — `git log --oneline` plus
+`git diff --stat` — and carries the failing output word for word. Write the
+new name to `ic_name` the same way "Dispatch the IC" does, before you
+dispatch. Rounds 4 and 5 promote a band; `band-rubric.md` says what a `deep`
+package does instead.
 
 **Every round goes back through "Verify before you believe"** — a fix you did
 not re-run is a claim. Leave only when every check there passes. Increment
@@ -428,7 +438,8 @@ processed once**: a finding that became a package is not also a change
 request.
 
 **A question.** Answer it from the record and from the repo. Dispatch
-`Explore` subagents at `sonnet` for the code — `Explore` carries `Bash`, so
+`Explore` subagents at `sonnet` for the code, named as a lookup per
+`SKILL.md`'s "Every dispatch is named" — `Explore` carries `Bash`, so
 `band-rubric.md`'s rule gives it the sonnet floor — and read `decisions.md`,
 the reviews and the reports yourself. Edit nothing. An answer that settles a
 preference goes into `decisions.md` on the preference route, as any other

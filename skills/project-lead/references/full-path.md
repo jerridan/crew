@@ -19,35 +19,33 @@ two deliverables is escalation trigger 7, not a bigger split.
 
 | | Simple path | Full path |
 |---|---|---|
-| The IC | one unnamed subagent | one **named** teammate per territory |
+| The IC | one dispatch, for the one package | one IC per territory, sent its next package by message rather than a fresh dispatch |
 | Where it works | this checkout | its own worktree and branch |
-| Its report | a tool result you read | a file in the record, plus an idle notification |
+| Its report | a file in the record, plus its final message | a file in the record, plus its final message |
 | Integration | nothing merges | one squashed commit per package |
 | The split critic | skipped | runs before any IC is dispatched |
 
-An IC is named here because a teammate is a named agent. Every other agent in a
-run stays unnamed, because you must read its result (design §3, §15.20b).
+`SKILL.md`'s "Every dispatch is named" owns naming, the teams flag, and
+where a result is read, on both paths (design §3, §15.20b).
 
 ## Check the launch conditions
 
-Three checks bear on launch. Escalate on any that fails — none can be fixed
-mid-run.
+Two checks bear on launch, on top of the teams-flag check `SKILL.md`'s
+"Every dispatch is named" owns — run that one first here. Escalate on any
+that fails — none can be fixed mid-run.
 
-1. **Agent teams are on.** `echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` prints
-   `1`. With the flag off, a named agent launches as a plain subagent and every
-   rule here is wrong.
-2. **This session is not worktree-isolated.** `git -C <repo> status` from a
+1. **This session is not worktree-isolated.** `git -C <repo> status` from a
    worktree other than your own: an isolated session is refused outright, and
    the refusal names the reason. That command is the whole verification
    (design §15.10, §15.23f).
-3. **This run can push and open a draft PR.** `git -C <repo> remote` prints at
+2. **This run can push and open a draft PR.** `git -C <repo> remote` prints at
    least one line. A checkout with no remote cannot push or open a PR (design
    §15.53).
 
-Run checks 1 and 2 here, before you write the split, and state which one
-failed. Do not start the run and discover it later.
+Run check 1 here, before you write the split, and state which one failed.
+Do not start the run and discover it later.
 
-**Check 3 already ran, at the preference sweep, before you reached this rule —
+**Check 2 already ran, at the preference sweep, before you reached this rule —
 `autonomy-contract.md` says why. Do not run it again here.** Its outcome is
 settled: either the sweep escalated it and the principal answered, or the
 checkout had a remote and there was nothing to ask.
@@ -93,10 +91,19 @@ Two rules shape the full path's split, on top of the format rules
 
 ## Have the split reviewed
 
-Dispatch `crew:split-critic`, unnamed, with `split.md`, `spec.md`, the repo
-path, `review-output.md` whole, and the absolute path it writes its findings
-to: `reviews/<deliverable-id>-split-critic-r<n>.md`, `<n>` being one more than
-the highest already on disk under that name.
+Reserve the round first, as `SKILL.md`'s "Have the spec reviewed" says:
+write `reviews/split-critic-<deliverable-id>-r<n>-instructions.md`, `<n>`
+one more than the highest `<n>` across both filename shapes
+`record-format.md`'s `reviews/` listing names for this role: the report and
+the reservation file itself. The reservation file's name matches the
+dispatch name below, so two deliverables' rounds never collide.
+
+Then dispatch `crew:split-critic`, named `split-critic-<deliverable-id>-r<n>`
+for the same round — `record-format.md`'s `reviews/` section scopes `<n>` to
+one deliverable, so the deliverable id in the name is what keeps two
+deliverables' first rounds from sharing `split-critic-r1` — with `split.md`,
+`spec.md`, the repo path, `review-output.md` whole, and the absolute path it
+writes its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
 
 Adjudicate as `SKILL.md`'s "Have the spec reviewed" says. A failed invariant is
 not a style note — fix the split and dispatch again. Three re-splits is the
@@ -132,14 +139,16 @@ id; leave it. Set every package's `ic_name` to the name of the IC that owns
 its territory. Nothing else maps a package back to the worktree that must
 verify it.
 
-Name an IC `ic-<territory-slug>`.
-
 ## Spawn the ICs
 
-One **named** teammate per territory, at the band of the package it starts on:
-`crew:ic` for code, `crew:ic-instructions` for a `CLAUDE.md`, a
-`.claude/rules/` file, a `SKILL.md`, an agent definition, or reader-facing
-prose such as a README (design §3.1).
+One teammate per territory, named as `SKILL.md`'s "Every dispatch is named"
+says for the package it starts on, at the band of that package: `crew:ic`
+for code, `crew:ic-instructions` for a `CLAUDE.md`, a `.claude/rules/`
+file, a `SKILL.md`, an agent definition, or reader-facing prose such as a
+README (design §3.1). One IC works every package in its territory in
+sequence, under that same name — "The territory's next package" below sends
+it its next package by message, not by a fresh dispatch, so the name does
+not change until the IC itself is respawned.
 
 Pass the band's model at spawn time, as `band-rubric.md` says. Pass it for an
 IC and never for a critic or a reviewer.
@@ -273,12 +282,18 @@ before you believe", or a red suite at "Integrate". Five is the cap.
   point of a teammate. Tell it to append a `## Fix round <n>` section to
   `reports/<id>.md` rather than write a new file — "The idle nudge" reads that
   heading to tell this round's report from the last one's.
-- **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band up**.
-  A fresh IC holds no context, so its prompt describes what is already
-  committed — `git -C <worktree> log --oneline` plus `git -C <worktree> diff
-  --stat` — and the failing output word for word. A `deep` package cannot
-  promote, so a `deep` package reaching round 4 escalates instead: respawn it
-  at `deep` only if the principal says to (`band-rubric.md`).
+- **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
+  up**, named as `SKILL.md`'s "Every dispatch is named" says for this
+  dispatch's own round. A fresh IC holds no context,
+  so its prompt describes what is already committed — `git -C <worktree>
+  log --oneline` plus `git -C <worktree> diff --stat` — and the failing
+  output word for word. A `deep` package cannot promote, so a `deep` package
+  reaching round 4 escalates instead: respawn it at `deep` only if the
+  principal says to (`band-rubric.md`). **Write the new name to
+  `worktrees.json`'s entry for this worktree, and to `ic_name` on every
+  package this IC owns**, the same way "Create the branch and the
+  worktrees" wrote them the first time — a stale name there points a later
+  verification or resume at an IC that no longer exists.
 - **At the cap**, fix the package yourself, or park it as `abandoned` with your
   reasoning recorded. At the top band, escalate instead.
 
@@ -306,9 +321,12 @@ own work.
 or when the IC has finished four packages. Neither you nor the IC can read its
 context, so the count is the proxy: one IC carried five packages to 66% of its
 window without compacting, and the next one may not (design §15.50). Stand the
-IC down, then spawn a fresh one at the new package's band, with the brief rule
+IC down, then spawn a fresh one at the new package's band, named for that
+package as `SKILL.md`'s "Every dispatch is named" says, with the brief rule
 3 of "Resume after a kill" describes: what its worktree already holds, and
-which work is done.
+which work is done. Write the new name to `worktrees.json`'s entry for this
+worktree, and to `ic_name` on every package this IC owns, the same way
+"Create the branch and the worktrees" wrote them the first time.
 
 ## Integrate
 
@@ -448,7 +466,10 @@ Three rules make this work:
    `state.json` is rewritten to match them, never the other way round.
 3. **A respawned IC is a new IC.** Its brief must describe what is already in
    its worktree and say which work is done. Its acceptance criterion is what
-   makes the respawn idempotent.
+   makes the respawn idempotent. Give it a fresh name, as `SKILL.md`'s "Every
+   dispatch is named" says, and write that name to `worktrees.json`'s entry
+   for this worktree and to `ic_name` on every package it owns — the same
+   write "Create the branch and the worktrees" made the first time.
 
 The deliverable branch reconciles the same way: `git -C <repo> log` shows which
 packages already merged. An `integrated` package is terminal and cannot be

@@ -72,23 +72,22 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | Role | Mechanism | Model | Lifetime |
 |---|---|---|---|
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
-| **Scout** | unnamed subagent, new `crew:scout` | haiku | one question |
-| **Advocate** | unnamed subagent, new `crew:council-advocate` | sonnet | one position |
-| **Researcher** | unnamed subagent, new `crew:researcher` | per band | one question |
-| **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |
-| **Split critic** | unnamed subagent, new `crew:split-critic` | opus / high | one review |
-| **IC** | **named teammate** `crew:ic`, or unnamed subagent | per band | a territory |
-| **Instruction IC** | **named teammate** `crew:ic-instructions` | per band | a territory |
-| **Package reviewer** | unnamed subagent, new `crew:package-reviewer` | sonnet / high | one review |
-| **Deliverable reviewer** | unnamed subagent, new `crew:deliverable-reviewer` | opus / high | one review |
+| **Scout** | named agent, new `crew:scout` | haiku | one question |
+| **Advocate** | named agent, new `crew:council-advocate` | sonnet | one position |
+| **Researcher** | named agent, new `crew:researcher` | per band | one question |
+| **Spec critic** | named agent, new `crew:spec-critic` | opus / high | one review |
+| **Split critic** | named agent, new `crew:split-critic` | opus / high | one review |
+| **IC** | named agent, `crew:ic` | per band | a territory |
+| **Instruction IC** | named agent, `crew:ic-instructions` | per band | a territory |
 
 ### The naming rule
 
-A **named** agent becomes a teammate. A teammate's output never returns to the
-project lead, so everything that must return a parseable result stays **unnamed**.
-
-Only ICs get names, because only ICs need two things names provide: resume with
-context intact for fix rounds, and graceful stand-down on a direction change.
+Every dispatch is named, on every path, and `skills/project-lead/SKILL.md`'s
+"Every dispatch is named" is the canonical statement of what that means —
+the name shape, whether a name makes an agent a teammate, where its result
+is read, and what naming costs — so every other file in this plugin,
+including the roles table above, points at that section instead of
+repeating it (T66, §15.20b, §15.97).
 
 ### What each role may not do
 
@@ -142,9 +141,10 @@ nothing decides which copy wins.
 It covers all five container types this IC owns directly, with no hand-off to
 another skill for two of the five.
 
-`crew:package-reviewer` reviews its work as usual, with the checklist as the
-rubric instead of a diff-and-tests review. The project lead passes it the
-checklist's path, so there is still one copy.
+The project lead verifies its work as usual, at "Verify before you believe"
+(`simple-path.md`, `full-path.md`), with the checklist as the rubric instead
+of a diff-and-tests review; the skeptical review after the hand-over reads
+the same checklist (`skeptical-review.md`). One copy either way.
 
 **The IC is judged on its output, not on how it obtained the standard.** That
 keeps the contract intact when an IC forgets to read the file, or reads a stale
@@ -368,10 +368,11 @@ principal wants routes to §6.3's sweep or to an escalation.
 
 1. The project lead writes its own answer and its confidence into the entry as
    `Prior:`, before it dispatches.
-2. It dispatches one `crew:council-advocate`, unnamed, to argue the opposite,
-   with citations. The definition carries the rules: argue **for** your
-   assigned position, gather cited evidence from code and docs, make the
-   strongest case, and name the strongest objection to your own side.
+2. It dispatches one `crew:council-advocate`, named as §3's "The naming rule"
+   says, to argue the opposite, with citations. The definition carries the
+   rules: argue **for** your assigned position, gather cited evidence from
+   code and docs, make the strongest case, and name the strongest objection
+   to your own side.
 3. The project lead adjudicates. Keeping the prior costs a written rebuttal of
    the adversary's strongest point. A prior it cannot rebut in writing does
    not stand: it adopts the adversary's position, or escalates.
@@ -612,8 +613,10 @@ The project lead's hardest rule, copied from
 
 > **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
 
-This matters more here than in a normal session, because a teammate's output
-never reaches the project lead at all. So:
+This matters more here than in a normal session, because a teammate's final
+message arrives only in its idle notification, not as a parseable tool
+result; the record stays the durable copy where one exists
+(`SKILL.md`'s "Every dispatch is named", §15.97). So:
 
 | Claim | Requires | Not sufficient |
 |---|---|---|
@@ -741,7 +744,7 @@ for a conversation, not the size of the work.**
 | Situation | Shape |
 |---|---|
 | One package, the charter's criterion is the whole spec, and no judgment call is open | **Light path:** the simple path with no `spec.md` and no spec critic. One IC, one package review. It promotes in place to the row below when an answer turns out wrong (§15.88). |
-| One simple package | **Simple path:** one unnamed subagent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. Its result returns as a normal tool result. |
+| One simple package | **Simple path:** one named agent, no worktree, working directly on the deliverable branch. No critic, no merge, no cleanup. §3's "The naming rule" says where its result is read. |
 | Several packages, or work long enough to need steering | **Full path:** IC teammates in worktrees |
 
 The simple path is much cheaper and is expected to be the common case for
@@ -777,9 +780,9 @@ has a diagnosis to build from.
    probe confirms it works. Autonomous either way.
 4. The IC implements test-first, **commits after every green step**, self-reviews,
    and writes its report into the record.
-5. The project lead verifies the worktree (section 7), then writes the diff to
-   a file (`git diff > <path>`) and dispatches `crew:package-reviewer` with
-   the **path**. The diff never enters the project lead's context.
+5. The project lead verifies the worktree itself — no review agent runs over
+   a package (section 7, "Verify before you believe" in `simple-path.md` and
+   `full-path.md`, design §15.94d).
 6. Fix rounds, five maximum. Rounds 1-3 message the same IC, so it keeps its
    context. Rounds 4-5 respawn a fresh IC one band up. Then the breaker: fix,
    park with recorded reasoning, or defer.
@@ -802,12 +805,10 @@ IC's per-green-step commits stay on its own branch for resume safety.
 to one package for free, with no bisect.
 
 Then the project lead edits the shared files itself, bumps both version
-fields, and dispatches `crew:deliverable-reviewer` over the whole diff. That
-dispatch carries `spec.md` and this deliverable's `split.md` with the diff.
-Four of the reviewer's seven checks read the record, not the diff, so a
-diff-only dispatch cannot run them (§15.24). The project lead then adjudicates
-the findings, pushes, and opens a **draft** PR with `spec.md` and
-`decisions.md` in the body.
+fields, pushes, and opens a **draft** PR with `spec.md` and `decisions.md` in
+the body. The hand-over does not wait on a review: the skeptical review of
+the whole diff runs after it, as the delivered window's first round
+(`skeptical-review.md`, §15.94d(3)).
 
 Textual conflicts should be impossible: disjoint file sets leave git nothing
 to conflict on, and the project lead owns every shared file. What remains is
@@ -1082,7 +1083,7 @@ Everything above the `Skill`-tool rows was probed on 2026-08-24. The three
 | **The shell cwd resets after every Bash call.** `cd` holds only within one invocation. | Every IC command must carry its own `cd <worktree> &&`. An IC that forgets works on the wrong checkout with **no error**. Detection is the project lead's verification step. |
 | Spawn-time `model` overrides frontmatter `model:`; frontmatter applies when no override is passed | One `crew:ic` definition serves all bands |
 | `reasoning_effort` is frontmatter only, and teammates inherit the project lead's effort | Bands are model only |
-| A teammate's output never returns to the dispatcher | ICs write reports into the record |
+| A teammate's final message arrives in its idle notification, not as a tool result (`SKILL.md`'s "Every dispatch is named", §15.97) | Where an agent also writes a record file, that file stays the durable copy |
 | A teammate does not know its own model | Band assignment cannot be verified by asking |
 | Task tools are off by default on Opus 5 and Sonnet 5 | The project lead session must be launched with `--allowedTools TaskCreate TaskGet TaskList TaskUpdate` to get the shared task list and dependency blocking |
 | `hooks` in agent frontmatter is **ignored for teammates**, and plugin agents cannot use `hooks` at all | IC behavior cannot be hook-enforced without a global hook. See section 13. |
@@ -1514,6 +1515,7 @@ Deliberately different:
        its final answer in the notification". It is not a parseable tool
        result, so the record is still the durable channel — but the stated
        reason for writing reports is wrong, and §3's naming rule rests on it.
+       **T66 acted on this: every dispatch is named now (§15.97).**
 
     c. **Display mode needs no setup.** §12 requires iTerm2 + `it2`, tmux, or
        an explicit `teammateMode`. Since v2.1.179 the default is
@@ -7033,15 +7035,11 @@ Deliberately different:
        teammates, and it travels with anyone who installs the plugin, where a
        setting would not.
 
-    e. **Limits.** Only a named teammate gets a pane, and only the full path
-       names its ICs (design §3, §15.20b: a teammate returns no parseable
-       result, so anything whose output the project lead reads and acts on
-       stays unnamed). A light, simple or investigation-path run still shows
-       one pane, with the agents sidebar carrying its subagents. The scout,
-       the critics and the reviewers are never panes, on any path. The naming
-       rule itself does not change. A pane too small to split
-       (`pane too small`) is not a case the project lead can fix itself, so
-       PR #74 makes it an `environment` escalation in `full-path.md`.
+    e. **Limits.** Superseded by §15.97: every agent the project lead
+       dispatches is named. Until T66 only full-path ICs were named and only
+       they had panes. A pane too small to split (`pane too small`) is not a
+       case the project lead can fix itself, so PR #74 makes it an
+       `environment` escalation in `full-path.md`.
 
     f. **Two costs accepted, both from teammates running as their own
        sessions.** First, `spend.py` and `crew-stats.py` still price a
@@ -7305,3 +7303,48 @@ Deliberately different:
        `light` band its saving: a `light` package now runs on `sonnet`, the
        same model as `standard`, because every IC carries `Bash`, `Write`,
        or `Edit`.
+
+97. **Every dispatch is named — 2026-09-16, T66.** The old rule, "only ICs
+    are named", rested on §3's claim that a teammate's output never returns
+    to the project lead. §15.20b recorded that claim as wrong, and §15.31c
+    confirmed by probe that a teammate's final answer arrives in full as
+    prose in its idle notification. The principal decided every dispatch is
+    named, so every agent the project lead dispatches gets a pane under a
+    display mode.
+
+    a. **Why it flipped.** §15.20b's correction removed the reason the old
+       rule gave for keeping most agents unnamed — the project lead was
+       never actually blind to a teammate's output, only reading it from a
+       different channel. Session `aad2bfca-66ed-47cd-928f-1da15964bbf9`
+       (2026-09-16, the same run §15.96b cites) is the evidence: the project
+       lead named three scouts, `linear-dupes`, `verify-claims` and
+       `repo-scout`; each got a pane, each answer reached the project lead
+       in its idle notification, and the run proceeded normally. The two
+       `crew:ic` dispatches in that same run were unnamed on the simple
+       path and ran with no pane. Naming every dispatch makes the pane
+       behaviour uniform instead of a special case for ICs.
+
+    b. **What naming still costs.** Read against
+       `code.claude.com/docs/en/agent-teams.md`: the result arrives as the
+       idle notification's final message, never as a tool result, so a
+       record file — where a critic, an IC or a review writes one — stays
+       the durable copy. With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` unset,
+       a named agent launches as a plain subagent and the name changes
+       nothing, so the rule is stated unconditionally rather than gated on
+       the flag. A teammate cannot spawn a teammate, and an in-process
+       teammate's own subagents run in the foreground, so a named
+       researcher's lookups run one at a time. A teammate applies no
+       `skills:` frontmatter, which no crew agent uses. A dispatch's
+       permission prompts surface in the project lead's session for the
+       human to approve, whichever role was dispatched — previously stated
+       only for a teammate IC, the rule now holds for every dispatch alike.
+       `SKILL.md`'s "Every dispatch is named" also bans `run_in_background`
+       on any dispatch, since it is unsupported for a teammate.
+
+    c. **The ticket stays open.** No run has exercised the flipped rule.
+       T66's own ticket names its probe — a spec critic verdict and a
+       council batch, both read correctly from idle notifications with the
+       teams flag on — and that probe has not run. T66 closes only once it
+       has, the same rule T58 through T62 stand under: a ticket whose ticket
+       text names a probe stays open until that probe runs, whatever the
+       instruction files it changed already say.

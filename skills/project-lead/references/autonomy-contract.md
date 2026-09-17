@@ -191,9 +191,10 @@ with no citation is not confidence, and it routes to a council.
    it cannot be compared with the adjudication later.
 2. **Dispatch one `crew:council-advocate` to argue the opposite.** Give it the
    question, its own assigned position, the repo path, and whatever context
-   you already hold. Give it your prior as the position to argue against, and
-   with it the reasoning and the citations that produced the prior — an
-   advocate handed a bare answer has nothing to aim at. Take the model from
+   you already hold. Name it as an advocate, per `SKILL.md`'s "Every dispatch
+   is named". Give it your prior as the position to argue against, and with
+   it the reasoning and the citations that produced the prior — an advocate
+   handed a bare answer has nothing to aim at. Take the model from
    `band-rubric.md`; pass no `reasoning_effort`.
 3. **Adjudicate at your own model**, by the rules below.
 4. **Rebut the case in writing, or change your answer.** Keeping your prior
@@ -232,7 +233,9 @@ costs (design §15.47).
 Frame two or three positions. Each must be a position an advocate can argue
 from this repo's own evidence, not a preference. Write the question, the
 positions and your prior into `decisions.md` before you dispatch, then send
-every dispatch in one message, or the advocates run one after another.
+every dispatch in one message, or the advocates run one after another. Read
+each advocate's case from its final message, as `SKILL.md`'s "Every
+dispatch is named" says.
 
 ### An investigation council
 

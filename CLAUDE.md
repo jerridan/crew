@@ -34,9 +34,10 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 Stages 0 through 7 are built: seven agents — the six workers and the
 read-only `crew:scout` — ten references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
-one branch under one unnamed subagent; the **full path** runs several packages
+one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
-`--resume` recovery. Both have run end to end against a real repo.
+`--resume` recovery. Both paths ran end to end before T66: the simple
+path's IC was unnamed, and the full path named only its ICs.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
 a report ending; both endings have run, and it is `crew:researcher`'s only
 caller, which no run has dispatched yet. The **light path** is the simple path
@@ -48,9 +49,10 @@ unexercised **skeptical review** opens. That window separates a **change
 request**, one more package, from **findings**, which go to **patch mode**: a
 package per group, one push, a reply per finding (§15.94d). Neither has run.
 
-**Every run named above predates T58, T59 and T60**, which cut two review
-steps, moved the last to after the hand-over and gave the window a patch mode.
-Each is evidence for one step, not for the loop.
+**Every run named above predates T58, T59, T60 and T66**, which cut two
+review steps, moved the last to after the hand-over, gave the window a patch
+mode, and named every dispatch. Each is evidence for one step, not for the
+loop.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
@@ -73,7 +75,7 @@ Each reference owns one subject and is canonical for it:
 
 - `autonomy-contract.md` — how a question is routed, when a project lead
   escalates and to whom, and how a run's spend is counted.
-- `simple-path.md` — the loop for one package: one unnamed IC subagent, one
+- `simple-path.md` — the loop for one package: one named IC subagent, one
   branch in this checkout, no merge. It also owns the **light path**, the
   same loop with no spec, and the **delivered window** on every path.
 - `full-path.md` — the loop for more than one package: worktrees, IC
@@ -118,24 +120,13 @@ container-choice check is limited to the standard's four container types.
   plugin user, so a bump for them says a release happened when none did.
 - The hierarchy is project lead → ICs. Write **project lead** in full every
   time; the bare word `lead` names no tier here (design §15.19, §15.95).
-- Only ICs are named agents. A named agent becomes a teammate, and a teammate
-  returns no parseable tool result — just a final answer in its idle
-  notification. Anything whose result the dispatcher must read and act on
-  stays unnamed (design §3, §15.20b).
-- Teammates are experimental and gated on
-  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. With the flag off, a named agent
-  launches as a plain subagent, so the naming rule above holds only when it is
-  on (design §15.20a).
-- A teammate cannot spawn a teammate, and an in-process teammate's subagents
-  are forced to the foreground. Any tier that must dispatch in parallel cannot
-  itself be a teammate (design §15.21).
+- Every dispatch is named. `skills/project-lead/SKILL.md`'s "Every dispatch
+  is named" owns the rule whole (design §3, §15.20a, §15.20b, §15.21,
+  §15.12, §15.20).
 - A teammate built from an agent definition **appends** the body to its default
   system prompt, in both display modes, and neither applies `skills:`. The
   split-pane mode replaced the prompt when §15.20d was written and appends it on
   2.1.268, so write an agent body that survives both (design §15.20d, §15.89e).
-- A teammate's permission prompts surface in the project lead's session for a
-  human to approve. Pre-approve what a run needs, or a no-prompt run stops on
-  the first one (design §15.20, §15.12).
 - Frontmatter `hooks` is ignored for teammates and banned for plugin agents.
   Crew's hooks ship in `hooks/hooks.json` (design §12, §13.1).
 - A spawn-time `model` overrides an agent's frontmatter, and

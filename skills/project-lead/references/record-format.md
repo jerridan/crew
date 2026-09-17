@@ -207,7 +207,7 @@ naming convention. Do not mix their contents.
   `<round-id>`**: `reviews/<round-id>-reply.md`, where `<round-id>` is
   `<kind>-r<n>` — `ci-r1`, `pr-comments-r2`, `principal-r1` — with `<n>` one
   more than the highest already on disk under that name. Only a skeptical
-  round carries the other three files, because only it runs a review
+  round carries the other four files, because only it runs a review
   (`simple-path.md`'s "Findings from a review"). Then
   `reviews/diagnosis-adversary.md` for the one advocate that argues against a
   report ending's root cause (design §9.5; the diagnosis is per goal, so this

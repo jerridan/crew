@@ -176,12 +176,15 @@ a teammate.
 session, for you to approve. Pre-approve what the run needs, or a
 no-prompt run stalls on the first one.
 
-**Check the flag once, when you want panes.** Before your first dispatch,
-if the launch is meant to run under a display mode, `echo
-$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` must print `1`. With it unset, every
-dispatch above still runs — as a plain subagent, with no pane and no
-messaging between agents. `full-path.md`'s "Check the launch conditions"
-points here for this check; its other conditions are its own.
+**Check the flag before your first dispatch.** `echo
+$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` must print `1` on the full path,
+always — `full-path.md` sends an IC its next package, a fix round and a
+nudge by `SendMessage`, which only a teammate can receive. On every other
+path the check is needed only when the launch is meant to run under a
+display mode; with the flag unset there, every dispatch still runs — as a
+plain subagent, with no pane and no messaging between agents.
+`full-path.md`'s "Check the launch conditions" points here for this check;
+its other conditions are its own.
 
 Every reference and agent description below points at this section rather
 than restate it.

@@ -142,18 +142,22 @@ plain subagent and the name changes nothing.
 | Role | Name |
 |---|---|
 | Scout | `scout-<n>` |
+| Spec writer | `spec-writer-r<n>` |
 | Spec critic | `spec-critic-r<n>` |
 | Split critic | `split-critic-r<n>` |
 | Advocate | `advocate-c<council n>-<position>` |
 | Researcher | `researcher-<n>` |
+| Lookup | `lookup-<n>` |
 | IC | `ic-<package id>-r<n>` |
 | Review | `review-r<n>` |
 
 `<n>` always counts from 1 and is what keeps two dispatches of the same role
-from sharing a name: the question for a scout, the round for a critic or a
-review, and the dispatch for an IC — a fresh IC per fix round is still one
-package, so its round counts from that package's first dispatch, giving
-`r1`, `r2`, and on. An advocate's id pairs its council number with its
+from sharing a name: the question for a scout, the round for a critic, a
+review or the spec writer, and the dispatch for an IC — a fresh IC per fix
+round is still one package, so its round counts from that package's first
+dispatch, giving `r1`, `r2`, and on. A lookup's `<n>` counts every lookup
+dispatch in the run, `Explore` or otherwise. An advocate's id pairs its
+council number with its
 position, so a second council in the same run — the investigation path can
 run more than one — never collides with the first.
 
@@ -241,8 +245,9 @@ never enumerates the file's contents, because a closed list is one missed item
 from a critic round (design §15.50).
 
 **Your output is the run's most expensive.** So outline the spec yourself, have
-a `general-purpose` subagent at `sonnet`, named `spec-writer`, write the
-prose, and revise what it returns. The spec is yours.
+a `general-purpose` subagent at `sonnet`, named `spec-writer-r<n>` for the
+draft's round, write the prose, and revise what it returns. The spec is
+yours.
 
 ## Have the spec reviewed
 
@@ -263,7 +268,8 @@ and names its round the same way, and returns the short result
 open the file only when the count says there is something to adjudicate.
 
 `Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
-again. Three re-specs is the cap; escalate at it.
+`spec-writer-r<n>` again for the next round. Three re-specs is the cap;
+escalate at it.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,

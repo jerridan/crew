@@ -191,10 +191,11 @@ with no citation is not confidence, and it routes to a council.
    it cannot be compared with the adjudication later.
 2. **Dispatch one `crew:council-advocate` to argue the opposite.** Give it the
    question, its own assigned position, the repo path, and whatever context
-   you already hold. Give it your prior as the position to argue against, and
-   with it the reasoning and the citations that produced the prior — an
-   advocate handed a bare answer has nothing to aim at. Take the model from
-   `band-rubric.md`; pass no `reasoning_effort`.
+   you already hold. Name it `advocate-c<council n>-<position>` as `SKILL.md`'s
+   "Every dispatch is named" says. Give it your prior as the position to argue
+   against, and with it the reasoning and the citations that produced the
+   prior — an advocate handed a bare answer has nothing to aim at. Take the
+   model from `band-rubric.md`; pass no `reasoning_effort`.
 3. **Adjudicate at your own model**, by the rules below.
 4. **Rebut the case in writing, or change your answer.** Keeping your prior
    costs one written rebuttal on the entry's `Losing:` line, against the

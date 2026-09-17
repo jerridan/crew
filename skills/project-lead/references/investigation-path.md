@@ -72,11 +72,11 @@ trigger 1 fires here, and `autonomy-contract.md` says what that costs and what
 to leave behind. "Gather more data" is the escalation, not a hypothesis.
 
 **Then ask where the value goes wrong.** `SKILL.md`'s "Scout" asked what the
-repo already does; this phase asks why it does the wrong thing. Dispatch
-`Explore` subagents for a lookup, and `crew:researcher`, named
-`researcher-<n>` for the question, for a question needing several hops and a
-synthesis — this path is its only caller (design §3).
-`band-rubric.md` bands a researcher dispatch.
+repo already does; this phase asks why it does the wrong thing. Dispatch an
+`Explore` subagent for a lookup, named `lookup-<n>` for the count of lookups
+in this run, and `crew:researcher`, named `researcher-<n>` for the question,
+for a question needing several hops and a synthesis — this path is its only
+caller (design §3). `band-rubric.md` bands a researcher dispatch.
 
 **Evidence is a file, not a memory.** Every finding lands in
 `evidence/<n>-<slug>.md`, and you cite the path from then on. The *reading*
@@ -109,7 +109,8 @@ it does not reach Phase 3.
 ## Phase 3. Hypothesis
 
 **One surviving hypothesis is not a council.** Test it minimally yourself, or
-with one read-only dispatch, and go on to the diagnosis.
+with one read-only dispatch, named `lookup-<n>` the same way, and go on to
+the diagnosis.
 
 **More than one goes to a three-advocate council.** This is one of the two
 cases that earn a full council; `autonomy-contract.md` owns the council, its

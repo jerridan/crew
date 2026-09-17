@@ -201,9 +201,9 @@ counts as nothing.
 
 **You save its case yourself**, to `reviews/diagnosis-adversary.md`. An
 advocate writes nothing outside its report (`agents/council-advocate.md`), so
-its case comes back as its idle notification's final message
-(`SKILL.md`'s "Every dispatch is named"). Copy it into that file whole. You
-have to read it to judge it, so nothing is saved by asking it to write.
+read its case as `SKILL.md`'s "Every dispatch is named" says. Copy it into
+that file whole. You have to read it to judge it, so nothing is saved by
+asking it to write.
 
 Rebut the case in writing on the entry's `Losing:` line, or change the
 diagnosis. A root cause you cannot defend in writing is an escalation, not a

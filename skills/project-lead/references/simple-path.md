@@ -440,8 +440,8 @@ processed once**: a finding that became a package is not also a change
 request.
 
 **A question.** Answer it from the record and from the repo. Dispatch
-`Explore` subagents at `sonnet`, named `lookup-<n>` as `SKILL.md`'s "Every
-dispatch is named" says, for the code — `Explore` carries `Bash`, so
+`Explore` subagents at `sonnet` for the code, named as a lookup per
+`SKILL.md`'s "Every dispatch is named" — `Explore` carries `Bash`, so
 `band-rubric.md`'s rule gives it the sonnet floor — and read `decisions.md`,
 the reviews and the reports yourself. Edit nothing. An answer that settles a
 preference goes into `decisions.md` on the preference route, as any other

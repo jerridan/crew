@@ -93,10 +93,10 @@ Two rules shape the full path's split, on top of the format rules
 
 Reserve the round first, as `SKILL.md`'s "Have the spec reviewed" says:
 write `reviews/split-critic-<deliverable-id>-r<n>-instructions.md`, `<n>`
-one more than the highest `<n>` among every
-`reviews/split-critic-<deliverable-id>-r<n>-*` file on disk, instructions
-files included. Its name matches the dispatch name below, so two
-deliverables' rounds never collide.
+one more than the highest `<n>` across both filename shapes
+`record-format.md`'s `reviews/` listing names for this role: the report and
+the reservation file itself. The reservation file's name matches the
+dispatch name below, so two deliverables' rounds never collide.
 
 Then dispatch `crew:split-critic`, named `split-critic-<deliverable-id>-r<n>`
 for the same round — `record-format.md`'s `reviews/` section scopes `<n>` to
@@ -283,8 +283,8 @@ before you believe", or a red suite at "Integrate". Five is the cap.
   `reports/<id>.md` rather than write a new file — "The idle nudge" reads that
   heading to tell this round's report from the last one's.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
-  up**, named `ic-<package id>-r<n>` for this dispatch's own round, as
-  `SKILL.md`'s "Every dispatch is named" says. A fresh IC holds no context,
+  up**, named as `SKILL.md`'s "Every dispatch is named" says for this
+  dispatch's own round. A fresh IC holds no context,
   so its prompt describes what is already committed — `git -C <worktree>
   log --oneline` plus `git -C <worktree> diff --stat` — and the failing
   output word for word. A `deep` package cannot promote, so a `deep` package

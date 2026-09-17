@@ -168,8 +168,16 @@ naming convention. Do not mix their contents.
   is per goal, so this name carries no deliverable id),
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
-  critic on the same deliverable),
-  four files per skeptical review round, all named by the round `<n>` and none
+  critic on the same deliverable). Each of these two has a companion
+  reservation file, written by the project lead before the dispatch to
+  reserve the round: `reviews/spec-critic-r<n>-instructions.md` and
+  `reviews/split-critic-<deliverable-id>-r<n>-instructions.md`, each holding
+  the critic's dispatch instructions. `SKILL.md`'s "Have the spec reviewed"
+  and `full-path.md`'s "Have the split reviewed" scan the report and the
+  reservation file together to find the highest `<n>` on disk — a report
+  alone is not enough, because a critic whose write was denied leaves no
+  report at all, only its reservation file.
+  Four files per skeptical review round, all named by the round `<n>` and none
   by a deliverable id, because the review is per branch head:
   `reviews/skeptical-r<n>.md`, the report, whose **first line is
   `Reviewed: <sha>`** — the head that review read, which a resumed run matches

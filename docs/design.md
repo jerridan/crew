@@ -72,7 +72,7 @@ those stops is the whole point. Section 14 lists every deliberate deviation.
 | Role | Mechanism | Model | Lifetime |
 |---|---|---|---|
 | **Project lead** | `/crew:project-lead <goal>` in your session | your session's | the run |
-| **Scout** | unnamed subagent (`Explore`), briefed inline | haiku or sonnet | one question |
+| **Scout** | unnamed subagent, new `crew:scout` | haiku | one question |
 | **Advocate** | unnamed subagent, new `crew:council-advocate` | sonnet | one position |
 | **Researcher** | unnamed subagent, new `crew:researcher` | per band | one question |
 | **Spec critic** | unnamed subagent, new `crew:spec-critic` | opus / high | one review |
@@ -671,7 +671,7 @@ an effort. A band sets a model, and which review steps run.
 
 | Band | Model | The package looks like |
 |---|---|---|
-| light | haiku | Follows an existing repo pattern verbatim; tests already cover the surface |
+| light | sonnet | Follows an existing repo pattern verbatim; tests already cover the surface |
 | **standard** | **sonnet** | **default** |
 | deep | opus | A new interface others depend on; concurrency, security, migration, or a data-shape change; or the project lead had to *interpret* the acceptance criterion rather than read it off the charter |
 
@@ -7275,3 +7275,33 @@ Deliberately different:
        could tell an inferred line from a stated one. A lead that comes back
        marks each charter line with its source, or it writes only what the
        principal said.
+
+96. **Haiku runs only an agent whose tools need no approval — 2026-09-16,
+    T65.** Auto mode is not supported for Haiku on any provider
+    (https://code.claude.com/docs/en/permission-modes.md, "Eliminate prompts
+    with auto mode"). A subagent inherits the parent's auto mode, and a
+    dispatched agent's own `permissionMode` frontmatter is ignored while the
+    parent runs in auto, acceptEdits or bypass mode
+    (https://code.claude.com/docs/en/sub-agents.md). A teammate's prompts
+    surface in the project lead's session, for a human to answer
+    (https://code.claude.com/docs/en/agent-teams.md#permissions). A Haiku
+    agent's calls that need approval — `Bash`, `Write`, or `Edit` —
+    therefore fall back to a prompt; `Read`, `Glob` and `Grep` inside the
+    repo are approved without one in the normal case.
+
+    a. **The mechanism.** The three sources above, read together: no
+       approver on Haiku, no override from the dispatched agent's own
+       frontmatter, and a teammate's prompt reaching only the project lead's
+       session.
+
+    b. **The evidence.** In session `aad2bfca-66ed-47cd-928f-1da15964bbf9`
+       (2026-09-16), the project lead dispatched a named Haiku `Explore`
+       scout, `repo-scout`. `Explore` carries `Bash`, and every one of its
+       calls prompted the principal. The same run's two `crew:ic` dispatches
+       ran at `sonnet` and prompted for nothing.
+
+    c. **The cost.** `band-rubric.md`'s "Haiku runs only an agent whose
+       tools need no approval" holds the rule. Applying it costs the
+       `light` band its saving: a `light` package now runs on `sonnet`, the
+       same model as `standard`, because every IC carries `Bash`, `Write`,
+       or `Edit`.

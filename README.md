@@ -132,7 +132,7 @@ agents and the shared task list.
    │ CRITICS        reject a bad spec or split     │
    └───────────────────────────────────────────────┘
       │
-      │   each package gets a band:  haiku / sonnet / opus
+      │   each package gets a band:  light / standard / deep
       │
       ├────────────────┬────────────────┐
       ▼                ▼                ▼
@@ -189,16 +189,16 @@ stays until you say the work shipped.
 
 ## Models
 
-A package is `light` (haiku), `standard` (sonnet) or `deep` (opus).
-`standard` is the default. An IC that reports blocked is re-dispatched one
-band up. The band picks the model and nothing else: every package takes the
-same steps.
+A package is `light`, `standard` or `deep`. Both `light` and `standard` run on
+`sonnet`; `deep` runs on `opus`. `standard` is the default. An IC that reports
+blocked is re-dispatched one band up. The band picks the model and nothing
+else: every package takes the same steps.
 
 | Agent | Model | Reasoning effort |
 |---|---|---|
 | Project lead | your session's: use `fable` | your session's: use `high` |
-| IC, Instruction IC | the package's band: haiku, sonnet or opus | your session's |
-| Scout | haiku or sonnet | your session's |
+| IC, Instruction IC | the package's band: sonnet or opus | your session's |
+| Scout | haiku | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |
 | Researcher | sonnet, or opus for a deep question | high |
 | Spec critic | opus | high |

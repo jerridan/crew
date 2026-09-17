@@ -134,8 +134,9 @@ Four questions, answered from this repo before any spec exists. Does an
 analogous implementation exist? Do tests cover this surface? What runs the
 suite? Which instruction files apply?
 
-Dispatch `Explore` subagents and read their answers. The reading stays out of
-your own context.
+Dispatch `crew:scout` subagents at `haiku` and read their answers. The reading
+stays out of your own context. `band-rubric.md` says why Haiku runs only this
+agent.
 
 On the investigation path, read `investigation-path.md` now and run its phases.
 It sends you back to "Write the spec", or it ends the run itself.

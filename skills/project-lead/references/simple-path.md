@@ -428,7 +428,8 @@ processed once**: a finding that became a package is not also a change
 request.
 
 **A question.** Answer it from the record and from the repo. Dispatch
-`Explore` subagents for the code, as at "Scout", and read `decisions.md`,
+`Explore` subagents at `sonnet` for the code — `Explore` carries `Bash`, so
+`band-rubric.md`'s rule gives it the sonnet floor — and read `decisions.md`,
 the reviews and the reports yourself. Edit nothing. An answer that settles a
 preference goes into `decisions.md` on the preference route, as any other
 does.

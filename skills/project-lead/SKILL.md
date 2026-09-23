@@ -1,6 +1,6 @@
 ---
 name: project-lead
-description: Take one goal to a PR ready for review without stopping for approval. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew", "take this to a PR".
+description: Take one goal to a PR ready for review without stopping for approval. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew".
 ---
 
 # Project lead
@@ -82,7 +82,8 @@ none re-enters at `investigation-path.md`'s first unfinished phase.
 
 **A path that exists on disk** becomes `charter.md` unchanged. **Any other
 string** you expand into `charter.md`: the goal, and one falsifiable acceptance
-criterion.
+criterion. When the principal asks for a draft PR, in the goal or at launch,
+add the line `PR: draft` to `charter.md`. Add it to a charter from disk too.
 
 **Pick the path before you judge the criterion** (design §9.5), because the
 two paths need different things of it. The test is what the goal names. A

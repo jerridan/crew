@@ -38,7 +38,7 @@ that fails — none can be fixed mid-run.
    worktree other than your own: an isolated session is refused outright, and
    the refusal names the reason. That command is the whole verification
    (design §15.10, §15.23f).
-2. **This run can push and open a draft PR.** `git -C <repo> remote` prints at
+2. **This run can push and open a PR.** `git -C <repo> remote` prints at
    least one line. A checkout with no remote cannot push or open a PR (design
    §15.53).
 
@@ -399,10 +399,10 @@ git -C <repo> diff <deliverable-base>..HEAD > <record-root>/diffs/<deliverable-i
 It holds every fix round and every shared-file edit you just made, and it is
 the record's evidence of what the hand-over shipped (design §15.24).
 
-## Open the draft PR
+## Open the PR
 
 `simple-path.md`'s "End the run" owns this, unchanged. One deliverable is one
-branch and one draft PR however many packages it took.
+branch and one PR however many packages it took.
 
 A deliverable that cannot open a PR ends in `work-complete`. "End the run" owns
 that procedure too, and `record-format.md` owns what the state means.

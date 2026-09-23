@@ -1,14 +1,14 @@
 ---
 name: project-lead
-description: Take one goal to a reviewable draft PR without stopping for approval. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew", "take this to a draft PR".
+description: Take one goal to a PR ready for review without stopping for approval. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew", "take this to a PR".
 ---
 
 # Project lead
 
-Take one goal to a reviewable draft PR that a human can merge. Answer your own
-questions. Stop for the **principal** only when you cannot proceed correctly.
-Then stay, until the principal says the work shipped: the session outlives
-the PR (`simple-path.md`'s "The delivered window").
+Take one goal to a PR ready for review that a human can merge. Answer your
+own questions. Stop for the **principal** only when you cannot proceed
+correctly. Then stay, until the principal says the work shipped: the session
+outlives the PR (`simple-path.md`'s "The delivered window").
 
 The judgment is your job: the spec, the split, the order of the work, and every
 adjudication. Dispatch the scouting and the drafting — your own context is the

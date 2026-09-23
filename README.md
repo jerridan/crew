@@ -8,7 +8,8 @@ the work, picks a model for each piece, dispatches implementers, checks each
 piece itself, integrates the work and hands it over as a PR. Only then
 is the whole diff reviewed. A separate session reads it against your goal and
 assumes it is wrong. What that session finds comes back as patch rounds on the
-same PR. You merge it when you are ready. The project lead stays until you say
+same PR. When that review is done, the PR goes ready for review. You merge
+it when you are ready. The project lead stays until you say
 its work shipped, so you can ask it about the change before you merge, ask for
 a change to the PR after, or send it a review's findings and get a reply on
 each one.
@@ -88,9 +89,10 @@ The run sizes the work itself and picks a path:
 | Full | Several packages | Spec, both critics, one implementer per package in its own worktree, a merge per package. |
 | Investigation | A symptom | Reproduce, gather evidence, diagnose. Then a spec and a fix, or a report with no change. |
 
-The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a PR
-from it, ready for review. To get a draft PR instead, say so in the goal. The
-run restores your checkout to the branch it started on, and the session
+The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a
+draft PR from it. The PR goes ready for review when crew's own review of it
+is done, so your automated reviewers start after that. To keep it a draft,
+say so in the goal. The run restores your checkout to the branch it started on, and the session
 stays. In that session you can ask about the change, ask for a change to the
 same PR, or paste what a reviewer found — CI, a bot, or your
 own reading of the diff. The run patches the findings on the same branch and
@@ -154,8 +156,8 @@ The full path requires the variable.
       │ passed           └──▶  a failure goes back to that IC,
       ▼                        up to five fix rounds
    ┌───────────────────────────────────────────────┐
-   │ PROJECT LEAD   integrate, hand over as a PR   │
-   │                ready for review               │
+   │ PROJECT LEAD   integrate, hand over as a      │
+   │                draft PR                       │
    └───────────────────────────────────────────────┘
       │
       ▼

@@ -56,7 +56,8 @@ two review steps, moved the last to after the hand-over, gave the window a
 patch mode, added the substitution rule, and named every dispatch. §15.98 is
 the first run of T58 through T62's changes, once each — evidence for one
 step, not for the loop. T66's naming rule is not part of that probe: both
-§15.98 records show `ic_name: null`, so T66 stays unexercised.
+§15.98 records show `ic_name: null`, so T66 stays unexercised. T69 opens a
+run's PR ready for review, and no run has done that yet (§15.99).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

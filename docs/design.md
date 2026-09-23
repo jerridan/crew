@@ -191,7 +191,7 @@ The project lead writes `state.json` after **every** state transition, not
 batched at package boundaries. A crash then loses at most one transition.
 
 At the end, the project lead copies `spec.md` and `decisions.md` into the
-draft PR body. That is where you review them.
+PR body. That is where you review them.
 
 ### `decisions.md`
 
@@ -216,7 +216,7 @@ An entry with high confidence and no citation is a defect.
 ### Two levels
 
 - A **goal** splits into 1..N **deliverables**. One deliverable is one branch and
-  one draft PR. Deliverables run **sequentially**, because a later one may build
+  one PR. Deliverables run **sequentially**, because a later one may build
   on an earlier one.
 - A deliverable splits into 1..M **packages**. Packages run **in parallel**.
   The one exception is §9.5's report ending: a deliverable whose product is a
@@ -806,8 +806,8 @@ to one package for free, with no bisect.
 
 Then the project lead edits the shared files itself, bumps both version
 fields, pushes, and opens a PR ready for review with `spec.md` and
-`decisions.md` in the body. It opens a draft only when the goal asks for one
-(§15.99). The hand-over does not wait on a review: the skeptical review of
+`decisions.md` in the body. It opens a draft only when the principal asks for
+one (§15.99). The hand-over does not wait on a review: the skeptical review of
 the whole diff runs after it, as the delivered window's first round
 (`skeptical-review.md`, §15.94d(3)).
 
@@ -1230,7 +1230,7 @@ Deliberately different:
 | Every stage stops for human approval; brainstorming has a hard gate | No gates. The project lead self-approves and records the decision. | The gates are the problem being removed |
 | The spec review gate is the human's | The crew-owned spec critic plus the council are the review | Independence without a stop |
 | `writing-plans` offers an execution choice | The project lead picks the shape itself (section 9.1) | No prompt |
-| `finishing-a-development-branch` presents a 3-option integration menu | Hardcoded to push and open a PR ready for review, or a draft when the goal asks for one | Not autonomous merging; not a menu either |
+| `finishing-a-development-branch` presents a 3-option integration menu | Hardcoded to push and open a PR ready for review, or a draft when the principal asks for one | Not autonomous merging; not a menu either |
 | No cost policy beyond "promote on fix rounds 4-5" | Per-package bands, a rubric, promotion logging, a spend ceiling | Section 8 is a primary motive |
 | SDD keeps a progress ledger | A record with an assumption trail, per-package state, and resume | Autonomy is only acceptable if auditable |
 | Subagents throughout | Teammates for ICs, subagents for everything one-shot | Steering and attach |
@@ -7429,8 +7429,10 @@ Deliberately different:
     it.
 
     a. **The rule.** `simple-path.md`'s "End the run" runs `gh pr create`
-       with no `--draft`. It passes `--draft` only when the charter or the
-       principal asks for a draft. Every path reaches that one step, so the
+       with no `--draft`. It passes `--draft` only when `charter.md` holds the
+       line `PR: draft`. `SKILL.md`'s "Take the goal" writes that line when
+       the principal asks for a draft, in the goal or at launch. The record
+       then keeps the request across a resume or a compaction. Every path reaches that one step, so the
        full path and the investigation path's fix ending change with it.
     b. **The state keeps its name.** A deliverable with a PR is still
        `draft-pr-opened`. `crew-record.py`, `crew-stats.py` and every past
@@ -7442,4 +7444,6 @@ Deliberately different:
        that opens ready can get a human review, or a review bot's, before
        that round's patch lands. A reviewer who wants the skeptical review
        first can ask for a draft in the goal.
-    d. **Unexercised.** No run has opened a PR ready for review yet.
+    d. **The record does not say which kind opened.** `pr_url` is the only
+       trace. `gh pr view <url> --json isDraft` answers the question.
+    e. **Unexercised.** No run has opened a PR ready for review yet.

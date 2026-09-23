@@ -2954,7 +2954,8 @@ A run opens a draft PR, and the principal marks it ready by hand. The
 principal asked for a PR ready for review by default.
 
 Scope. `simple-path.md`'s "End the run" drops `--draft` from `gh pr create`,
-and passes it only when the charter or the principal asks for a draft. Every
+and passes it only when `charter.md` holds the line `PR: draft`. `SKILL.md`'s
+"Take the goal" writes that line when the principal asks for a draft. Every
 "draft PR" that describes crew's output — the skill description, the
 manifests, `CLAUDE.md`, `README.md`, the design — says a PR ready for review.
 The deliverable state keeps the name `draft-pr-opened`.
@@ -2962,8 +2963,9 @@ The deliverable state keeps the name `draft-pr-opened`.
 Run it. Hand one goal to a project lead on the fixture repo, and one goal
 that asks for a draft.
 
-Check that the first PR opens ready for review and the second opens as a
-draft, and that both deliverables record `draft-pr-opened`.
+Check with `gh pr view <url> --json isDraft` that the first PR opens ready
+for review and the second opens as a draft. Check that the second charter
+holds `PR: draft`, and that both deliverables record `draft-pr-opened`.
 
 Done when: a run opens its PR ready for review unless the goal asks for a
 draft.

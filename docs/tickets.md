@@ -2943,3 +2943,29 @@ Done when: `skeptical-review.md` points at the script instead of stating the
 command inline.
 
 Read first: design §15.98b; `skeptical-review.md`.
+
+## T69 — Open the PR ready for review
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.99)
+
+A run opens a draft PR, and the principal marks it ready by hand. The
+principal asked for a PR ready for review by default.
+
+Scope. `simple-path.md`'s "End the run" drops `--draft` from `gh pr create`,
+and passes it only when the charter or the principal asks for a draft. Every
+"draft PR" that describes crew's output — the skill description, the
+manifests, `CLAUDE.md`, `README.md`, the design — says a PR ready for review.
+The deliverable state keeps the name `draft-pr-opened`.
+
+Run it. Hand one goal to a project lead on the fixture repo, and one goal
+that asks for a draft.
+
+Check that the first PR opens ready for review and the second opens as a
+draft, and that both deliverables record `draft-pr-opened`.
+
+Done when: a run opens its PR ready for review unless the goal asks for a
+draft.
+
+Read first: design §15.99; `simple-path.md` "End the run".

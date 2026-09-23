@@ -539,10 +539,10 @@ that runs git or dispatches an IC assumes the branch is back** — do
    once this one is adjudicated.
 9. **`review_pending` is `null`.** Compare the branch head with the last
    reviewed head:
-   - **The same** — owe nothing. Stop.
+   - **The same** — owe nothing. Take "Mark the PR ready", then stop.
    - **Different, and the branch head is in `run.unreviewed_heads`** — owe
      nothing. The cap stopped this head on purpose, and your next message to
-     the principal still names it. Stop.
+     the principal still names it. Take "Mark the PR ready", then stop.
    - **Different, and not listed there** — an integrated head was never
      armed. `crew-record.py arm-review --head <branch head>`. Re-enter.
 10. **`review_pending` is set and `run.review_results[<round>]` is present and
@@ -645,6 +645,42 @@ says: the work is done and the findings are free. At the cap, clear
 findings are still open, which heads went unreviewed, and that the cap
 stopped the next round (`autonomy-contract.md`).
 
+## Mark the PR ready
+
+The PR opens as a draft at the hand-over (`simple-path.md`'s "End the run").
+It leaves draft when the skeptical review stops. The repo's own automated
+reviewers then start on a diff that crew has finished with. This file is the
+only place that decides when.
+
+Mark the PR ready when all of these hold:
+
+- The deliverable has a `pr_url`.
+- `charter.md` has no `PR: draft` line. With that line, the PR stays a
+  draft, and the principal marks it ready.
+- `review_pending` is `null`.
+- No follow-up or patch package is `pending` or `in-flight`.
+- Every `run.rounds` entry has a `replied_at`.
+
+These hold when the reviewer returns `accepted` and no package is left open,
+when you decline every finding, and when the cap stops the next round. A
+review that fails twice leaves `review_pending` set, so the PR stays a draft.
+Say so in that escalation.
+
+Run the check after every adjudication and after every reply you send. On a
+resume, entry 9 above runs it. Read the PR's state from GitHub:
+
+```
+gh pr view <pr_url> --json isDraft -q .isDraft
+```
+
+`true` means run `gh pr ready <pr_url>`, and tell the principal in your next
+message that the PR is ready for review. `false` means do nothing. The check
+reads GitHub, not the record, so a session killed between the two commands
+can run it again safely.
+
+**Mark the PR ready once.** A later change request or patch round pushes to a
+PR that is already ready. Never turn it back into a draft.
+
 ## Where a kill lands
 
 One row per point the session can die, and the entry above that catches it.
@@ -673,6 +709,7 @@ somewhere else.
 | **Ledger 5**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
 | **Patch 1**, a group integrated, its ledger entry not completed | 6, a terminal package with no outcome on its line | the line is filled from the package's commits and your verification note |
 | **Patch 2**, every accepted entry complete, the reply not sent | 7, a `null` `replied_at` | the reply file is sent as it stands |
+| **Ready 1**, the loop idle, the PR still a draft | 9, owe nothing | "Mark the PR ready" runs, and the PR leaves draft |
 
 ## The two verdict lines
 

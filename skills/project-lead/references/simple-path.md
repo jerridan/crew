@@ -135,7 +135,7 @@ git -C <repo> worktree add <record-dir>/worktrees/<deliverable-id> -b crew/<goal
 
 **Name the start-point, and never leave it out.** With none, the branch starts
 at the clone's `HEAD` — which in this case is the other run's branch, so your
-PR would carry its unfinished commits (design §15.79c). Use the repo's
+draft PR would carry its unfinished commits (design §15.79c). Use the repo's
 default branch: `git -C <repo> rev-parse --abbrev-ref origin/HEAD` prints it.
 A repo with no remote has no such ref, so use the branch the charter names,
 and record the choice in `decisions.md`.
@@ -340,12 +340,12 @@ item. **A light-path run puts `charter.md` where the spec would go**, because
 it wrote none and the PR body is where its reasoning lands. Never hard wrap
 what you send to GitHub (`writing-standard.md`).
 
-`gh pr create`, with no `--draft`: the PR opens ready for review. Pass
-`--draft` only when `charter.md` holds the line `PR: draft`. Then one write:
-`crew-record.py deliver <deliverable-id> draft-pr-opened --pr-url <url>
---review-head <sha>`. It records `pr_url`, sets the deliverable
-`draft-pr-opened` and `run_state: delivered`, stamps `delivered_at`, and writes `run.review_pending` with the head the
-skeptical review is owed on — one write, so a session that dies here still
+`gh pr create --draft`. The PR stays a draft until the skeptical review
+stops. `skeptical-review.md`'s "Mark the PR ready" owns that step. Then one
+write: `crew-record.py deliver <deliverable-id> draft-pr-opened --pr-url
+<url> --review-head <sha>`. It records `pr_url`, sets the deliverable
+`draft-pr-opened` and `run_state: delivered`, stamps `delivered_at`, and
+writes `run.review_pending` with the head the skeptical review is owed on — one write, so a session that dies here still
 owes the review (`skeptical-review.md`). A human merges it. Then run
 `scripts/spend.py --write`
 (`autonomy-contract.md`), and stop every process the run left listening —

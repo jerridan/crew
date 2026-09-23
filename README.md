@@ -1,14 +1,15 @@
 # crew
 
-A Claude Code plugin that takes your goals to reviewable draft PRs, and does
+A Claude Code plugin that takes your goals to PRs ready for review, and does
 not stop for approval on the way.
 
 You hand a goal to a project lead. It reads its repo, writes the spec, splits
 the work, picks a model for each piece, dispatches implementers, checks each
-piece itself, integrates the work and hands it over as a draft PR. Only then
+piece itself, integrates the work and hands it over as a PR. Only then
 is the whole diff reviewed. A separate session reads it against your goal and
 assumes it is wrong. What that session finds comes back as patch rounds on the
-same PR. You merge it when you are ready. The project lead stays until you say
+same PR. When that review is done, the PR goes ready for review. You merge
+it when you are ready. The project lead stays until you say
 its work shipped, so you can ask it about the change before you merge, ask for
 a change to the PR after, or send it a review's findings and get a reply on
 each one.
@@ -88,10 +89,12 @@ The run sizes the work itself and picks a path:
 | Full | Several packages | Spec, both critics, one implementer per package in its own worktree, a merge per package. |
 | Investigation | A symptom | Reproduce, gather evidence, diagnose. Then a spec and a fix, or a report with no change. |
 
-The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a draft
-PR from it. The run restores your checkout to the branch it started on, and
-the session stays. In that session you can ask about the change, ask for a
-change to the same PR, or paste what a reviewer found — CI, a bot, or your
+The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a
+draft PR from it. The PR goes ready for review when crew's own review of it
+is done, so your automated reviewers start after that. To keep it a draft,
+say so in the goal. The run restores your checkout to the branch it started on, and the session
+stays. In that session you can ask about the change, ask for a change to the
+same PR, or paste what a reviewer found — CI, a bot, or your
 own reading of the diff. The run patches the findings on the same branch and
 answers each one. When the work is merged and deployed, say so, and the run
 closes. Closing the session instead leaves the run recorded as
@@ -185,7 +188,7 @@ precedent goes to a council, where each advocate argues an assigned position,
 so the project lead weighs arguments instead of counting votes. A question
 about what you want is never debated. It comes to you.
 
-The draft PR is the end of the work. Crew never merges. The project lead
+The PR is the end of the work. Crew never merges. The project lead
 stays until you say the work shipped.
 
 ## Models
@@ -242,7 +245,7 @@ review catch rate, over every record.
 
 | Role | What it does |
 |---|---|
-| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the draft PR. Then stays for questions, changes and review findings until the work ships. |
+| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays for questions, changes and review findings until the work ships. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |

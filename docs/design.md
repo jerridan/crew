@@ -1,7 +1,7 @@
 # crew — design
 
-**A project lead that takes one goal to reviewable draft PRs without the human in
-the loop, and picks the cheapest model that can do each piece.**
+**A project lead that takes one goal to PRs ready for review without the human
+in the loop, and picks the cheapest model that can do each piece.**
 
 Status: design. Date: 2026-08-24, amended 2026-08-27 and 2026-08-29.
 
@@ -22,13 +22,14 @@ need it.
 `crew` removes both problems for one goal at a time. You hand a goal to the
 project lead. The project lead investigates, writes a spec, has it critiqued,
 splits the work, assigns a model per piece, dispatches workers, integrates the
-result, and opens draft PRs. It records every judgment call it made on your
+result, and opens PRs that go ready for review when its own review stops
+(§15.99). It records every judgment call it made on your
 behalf so you can audit them at review time.
 
 ### In scope
 
 - One goal per run. One project lead, in your session.
-- Autonomous progress from hand-off to draft PR.
+- Autonomous progress from hand-off to a PR ready for review.
 - Model chosen per unit of work, after investigation.
 - A durable record you can read, audit, and resume from.
 - **The lead tier**, in this repo and this plugin, as the stage after the
@@ -43,7 +44,7 @@ behalf so you can audit them at review time.
 
 ### Out of scope
 
-- **Autonomous merging.** The draft PR is the end of the work. A human
+- **Autonomous merging.** The PR is the end of the work. A human
   merges. The project-lead session stays until the human says the work
   shipped, so the change can be asked about and followed up in the session
   that made it (§15.92).
@@ -191,7 +192,7 @@ The project lead writes `state.json` after **every** state transition, not
 batched at package boundaries. A crash then loses at most one transition.
 
 At the end, the project lead copies `spec.md` and `decisions.md` into the
-draft PR body. That is where you review them.
+PR body. That is where you review them.
 
 ### `decisions.md`
 
@@ -216,7 +217,7 @@ An entry with high confidence and no citation is a defect.
 ### Two levels
 
 - A **goal** splits into 1..N **deliverables**. One deliverable is one branch and
-  one draft PR. Deliverables run **sequentially**, because a later one may build
+  one PR. Deliverables run **sequentially**, because a later one may build
   on an earlier one.
 - A deliverable splits into 1..M **packages**. Packages run **in parallel**.
   The one exception is §9.5's report ending: a deliverable whose product is a
@@ -805,8 +806,9 @@ IC's per-green-step commits stay on its own branch for resume safety.
 to one package for free, with no bisect.
 
 Then the project lead edits the shared files itself, bumps both version
-fields, pushes, and opens a **draft** PR with `spec.md` and `decisions.md` in
-the body. The hand-over does not wait on a review: the skeptical review of
+fields, pushes, and opens a PR ready for review with `spec.md` and
+`decisions.md` in the body. The PR opens as a draft, and goes ready for
+review when the skeptical review stops (§15.99). The hand-over does not wait on a review: the skeptical review of
 the whole diff runs after it, as the delivered window's first round
 (`skeptical-review.md`, §15.94d(3)).
 
@@ -1229,7 +1231,7 @@ Deliberately different:
 | Every stage stops for human approval; brainstorming has a hard gate | No gates. The project lead self-approves and records the decision. | The gates are the problem being removed |
 | The spec review gate is the human's | The crew-owned spec critic plus the council are the review | Independence without a stop |
 | `writing-plans` offers an execution choice | The project lead picks the shape itself (section 9.1) | No prompt |
-| `finishing-a-development-branch` presents a 3-option integration menu | Hardcoded to push and open a **draft** PR | Not autonomous merging; not a menu either |
+| `finishing-a-development-branch` presents a 3-option integration menu | Hardcoded to push, open a draft PR, and mark it ready when the skeptical review stops | Not autonomous merging; not a menu either |
 | No cost policy beyond "promote on fix rounds 4-5" | Per-package bands, a rubric, promotion logging, a spend ceiling | Section 8 is a primary motive |
 | SDD keeps a progress ledger | A record with an assumption trail, per-package state, and resume | Autonomy is only acceptable if auditable |
 | Subagents throughout | Teammates for ICs, subagents for everything one-shot | Steering and attach |
@@ -7419,3 +7421,33 @@ Deliberately different:
        to `COMPANION_SUFFIXES`. A substitution row showed `unmeasured` even
        when its entry carried `usage.tokens`, until this run's fix printed
        the token total instead.
+
+99. **A run marks its PR ready when the skeptical review stops —
+    2026-09-23, T69.** Until now every run opened a draft PR, and the
+    principal marked it ready by hand. The principal asked for crew to mark
+    it ready itself. A PR that is ready starts the repo's automated
+    reviewers. The principal wants those reviewers to start after the
+    skeptical review is done, not at the hand-over.
+
+    a. **The rule.** `simple-path.md`'s "End the run" still opens a draft.
+       `skeptical-review.md`'s "Mark the PR ready" runs `gh pr ready` when
+       the review loop is idle: no review owed, no follow-up package open,
+       and every round replied to. That happens when the reviewer returns
+       `accepted`, when the cap stops the next round, or when the project
+       lead declines every finding. A PR that is ready stays ready.
+    b. **Why not ready at the hand-over.** The first version of T69 opened
+       the PR ready. A review of that change found that nothing then stopped
+       a merge before the skeptical review's patch round landed. A patch on
+       a merged branch never reaches `main`. A draft blocks the merge until
+       crew is done with the diff.
+    c. **Keep it a draft.** When the principal asks for that, in the goal or
+       at launch, `SKILL.md`'s "Take the goal" writes the line `PR: draft`
+       to `charter.md`. The record then keeps the request across a resume or
+       a compaction, and "Mark the PR ready" never runs.
+    d. **The state keeps its name.** A deliverable with a PR stays
+       `draft-pr-opened` after the PR leaves draft. `crew-record.py`,
+       `crew-stats.py` and every past record use that value, and a rename
+       breaks the stats over those records. The record does not say whether
+       the PR is still a draft. `gh pr view <url> --json isDraft` answers
+       that, and "Mark the PR ready" reads it the same way.
+    e. **Unexercised.** No run has marked a PR ready yet.

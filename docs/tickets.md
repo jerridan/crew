@@ -2943,3 +2943,32 @@ Done when: `skeptical-review.md` points at the script instead of stating the
 command inline.
 
 Read first: design §15.98b; `skeptical-review.md`.
+
+## T69 — Mark the PR ready when the review stops
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.99)
+
+A run opens a draft PR, and the principal marks it ready by hand. The
+principal asked for crew to mark it ready itself, once the skeptical review
+is done, so the repo's automated reviewers start then.
+
+Scope. `skeptical-review.md` gets "Mark the PR ready": `gh pr ready` when the
+review loop is idle, checked from GitHub so a resume can repeat it. Entry 9
+of its resume list runs the step. `SKILL.md`'s "Take the goal" writes
+`PR: draft` to `charter.md` when the principal asks to keep the PR a draft,
+and the step then never runs. The deliverable state keeps the name
+`draft-pr-opened`.
+
+Run it. Hand one goal to a project lead on the fixture repo, and one goal
+that asks to keep the PR a draft.
+
+Check with `gh pr view <url> --json isDraft` that the first PR is a draft
+until the skeptical review stops, and ready after it. Check that the second
+PR stays a draft and its charter holds `PR: draft`.
+
+Done when: a run marks its PR ready when the skeptical review stops, unless
+the goal asks to keep it a draft.
+
+Read first: design §15.99; `skeptical-review.md` "Mark the PR ready".

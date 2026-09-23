@@ -381,9 +381,9 @@ One entry per deliverable (design §5):
 | `id` | referenced by each package's `deliverable` field |
 | `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). `null` on an investigation run that ends in a report: nothing is edited, so no branch is created (design §9.5). |
 | `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1). `null` when `branch` is `null`. |
-| `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a draft PR, so no crew state ever means a deliverable reached `main`. `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
+| `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a PR, so no crew state ever means a deliverable reached `main`. The state stays `draft-pr-opened` after the PR leaves draft (`skeptical-review.md`'s "Mark the PR ready", design §15.99). `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
-| `pr_url` | the draft PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for an investigation run that ends in a report and not a change, `diagnosis.md` (design §9.5). |
+| `pr_url` | the PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for an investigation run that ends in a report and not a change, `diagnosis.md` (design §9.5). |
 | `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `simple-path.md`'s "Create the branch" on the simple path, `full-path.md`'s "Create the branch and the worktrees" on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head, and `null` on an investigation run that ends in a report, which never switches the checkout (design §15.54, §9.5). |
 | `checkout_restored` | `null` until the run ends. `true` when the run switched the checkout back to `checkout_branch`, as `simple-path.md`'s "End the run" says. Otherwise one sentence naming why it did not — a dirty tree, or a principal who keeps the deliverable branch. Stays `null` when `checkout_branch` is `null`: there was nothing to restore. |
 
@@ -448,9 +448,9 @@ pending ──▶ in-flight ──┤
   package. On the investigation path a diagnosis deliverable has no package,
   so the first evidence dispatch moves it (design §9.5).
 - `in-flight → draft-pr-opened`: every package integrates and the project lead
-  opens the draft PR (design §9.3).
+  opens the PR (design §9.3).
 - `in-flight → work-complete`: every package passed the project lead's own
-  verification, and the push or the draft PR was impossible or refused
+  verification, and the push or the PR was impossible or refused
   (`simple-path.md`'s "End the run"). The skeptical review is not a
   precondition — it runs after this write, on the local head, like any other
   hand-over (`skeptical-review.md`). This state is terminal: a review and its
@@ -579,7 +579,7 @@ prices it.
 | `interrupted` | `blocked` | `--resume`, when an `escalations` entry has no `answer` yet |
 | `interrupted` | `delivered` | `--resume`, when no answer is missing and every deliverable holds a terminal state |
 | `interrupted` | `active` | `--resume`, when no answer is missing and a deliverable is still open |
-| `active` | `delivered` | the project lead hands the work over: the draft PR opens, or the run ends in `work-complete` (`simple-path.md`'s "End the run"). `crew-record.py deliver` takes `--review-head <sha>` here and writes `run.review_pending` in the same write, so the hand-over cannot land without the review it owes (`skeptical-review.md`) |
+| `active` | `delivered` | the project lead hands the work over: the PR opens, or the run ends in `work-complete` (`simple-path.md`'s "End the run"). `crew-record.py deliver` takes `--review-head <sha>` here and writes `run.review_pending` in the same write, so the hand-over cannot land without the review it owes (`skeptical-review.md`) |
 | `delivered` | `complete` | the principal says the work shipped, and the project lead writes `ship` (`simple-path.md`'s "The delivered window") |
 
 An `interrupted` run whose deliverables all hold a terminal state, and that
@@ -1020,7 +1020,7 @@ Every name this file defines, with what consumes it.
 - `base` — consumer: stage 5 (recovery, `git log <base>..HEAD`, design §10.1)
 - `state` (deliverable) — consumer: stage 5 (integration and re-plan, design §9.3, §10); shares `pending`/`in-flight`/`abandoned` with a package's `state`. `integrated` is a package's alone; `draft-pr-opened` and `work-complete` are a deliverable's alone
 - `state_changed_at` (deliverable) — consumer: a human auditing the record's timeline; stage 6
-- `pr_url` — consumer: stage 4 (draft PR opened in `draft-pr-opened`, design §9.3); Task 11
+- `pr_url` — consumer: stage 4 (PR opened in `draft-pr-opened`, design §9.3); Task 11
 - `checkout_branch` — consumer: stage 4 (`simple-path.md`'s "End the run" switches the checkout back to it, design §15.54)
 - `checkout_restored` — consumer: a human, or a next session, asking why the checkout is on the deliverable branch (design §15.54)
 
@@ -1050,8 +1050,8 @@ Every name this file defines, with what consumes it.
 - `pending` — consumer: stage 4/5 (project lead loop dispatches from this state)
 - `in-flight` — consumer: stage 5 (project lead loop, idle check)
 - `integrated` (package only) — consumer: stage 5 (integration step, design §9.3); design §10 (re-plan rule)
-- `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the draft PR, design §9.3); Task 11 (PR body)
-- `work-complete` (deliverable only) — consumer: stage 4 (`simple-path.md`'s "End the run"); stage 5 (`full-path.md`'s "Open the draft PR"); the investigation path's report ending (design §9.5)
+- `draft-pr-opened` (deliverable only) — consumer: stage 4 (project lead opens the PR, design §9.3); Task 11 (PR body)
+- `work-complete` (deliverable only) — consumer: stage 4 (`simple-path.md`'s "End the run"); stage 5 (`full-path.md`'s "Open the PR"); the investigation path's report ending (design §9.5)
 - `abandoned` — consumer: design §10 (re-plan and breaker outcome); stage 5
 
 **`state.json` band values** (canonical definitions live in Task 5's

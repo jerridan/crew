@@ -340,11 +340,12 @@ item. **A light-path run puts `charter.md` where the spec would go**, because
 it wrote none and the PR body is where its reasoning lands. Never hard wrap
 what you send to GitHub (`writing-standard.md`).
 
-`gh pr create --draft`. Then one write: `crew-record.py deliver
-<deliverable-id> draft-pr-opened --pr-url <url> --review-head <sha>`. It records
-`pr_url`, sets the deliverable `draft-pr-opened` and `run_state: delivered`,
-stamps `delivered_at`, and writes `run.review_pending` with the head the
-skeptical review is owed on — one write, so a session that dies here still
+`gh pr create --draft`. The PR stays a draft until the skeptical review
+stops. `skeptical-review.md`'s "Mark the PR ready" owns that step. Then one
+write: `crew-record.py deliver <deliverable-id> draft-pr-opened --pr-url
+<url> --review-head <sha>`. It records `pr_url`, sets the deliverable
+`draft-pr-opened` and `run_state: delivered`, stamps `delivered_at`, and
+writes `run.review_pending` with the head the skeptical review is owed on — one write, so a session that dies here still
 owes the review (`skeptical-review.md`). A human merges it. Then run
 `scripts/spend.py --write`
 (`autonomy-contract.md`), and stop every process the run left listening —

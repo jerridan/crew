@@ -1,7 +1,7 @@
 # crew
 
 `crew` is a Claude Code plugin: an autonomous project lead that takes one goal
-to a reviewable draft PR and picks the cheapest model for each piece of work.
+to a PR ready for review and picks the cheapest model for each piece of work.
 The repo root is the plugin root.
 
 Almost every file here is markdown. Verifying a change is reading, not

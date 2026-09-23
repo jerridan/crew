@@ -7423,9 +7423,10 @@ Deliberately different:
 
 99. **A run opens its PR ready for review — 2026-09-23, T69.** Until now
     every run opened a draft PR. The principal asked for a PR ready for
-    review by default. A draft says the work is not finished, but a run
-    opens its PR only when the work is finished and trusted. The principal
-    then had to mark each PR ready by hand before a reviewer saw it.
+    review by default. A draft says that the work is not finished. A run
+    opens its PR only when the work is finished and trusted. With a draft,
+    the principal had to mark each PR ready by hand before a reviewer saw
+    it.
 
     a. **The rule.** `simple-path.md`'s "End the run" runs `gh pr create`
        with no `--draft`. It passes `--draft` only when the charter or the

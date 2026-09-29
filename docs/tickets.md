@@ -2250,60 +2250,43 @@ and "Closing it"; `simple-path.md` "End the run" and "The delivered window";
 `record-format.md` `run_state` transitions and the item state transitions;
 `crew-record.py`.
 
-## T55 — The lead launches every project lead into one `crew` tmux session, with ICs as panes
+## T55 — Probe a full-path run under `--teammate-mode tmux`
 
 Status: open (design §15.93)
 Depends on: nothing
 Stage: 7 (design §15.93)
 
-The lead's tmux launch (`session-launch.md`, "The launch") names no session
-for `tmux new-window`, so which one a window lands in is the lead's own
-judgment call. The live transcript that found this showed the lead pick a
-stale session left over from an earlier run, land a dead window in it (the
-server's start directory had since been deleted), then land its retry in a
-fresh session the principal had no client on. Ctrl-b n in the principal's
-own session never found it. The launch also carries no `--teammate-mode`, so
-a full-path project lead's ICs run in-process and get no pane. Design §15.93
-found both causes against that transcript and wrote the fix: one tmux
-session named `crew`, held by name so no run's own judgment picks the
-target, holding one window per project lead, each window split into the
-project lead's pane plus one pane per IC teammate. A first pass at the fix
-is open as PR #74, branch `t55-lead-tmux-layout`.
+`--teammate-mode tmux` gives each named agent its own pane
+(`full-path.md`, "Check the launch conditions"), and no full-path run has
+shown that yet. The one tmux run so far, `pp-06-books-slug` (design §15.93h),
+was simple path with one unnamed IC, so its window never split.
 
-The first run, 2026-09-14 to 15: one item, `pp-06-books-slug`, simple path,
-band `deep`, draft PR `jerridan/websites#35` (design §15.93h). The launch,
-the window placement, the `cd <repo> &&` prefix and the hand-over ran
-exactly as `session-launch.md` now writes them. The item sized simple path
-with one unnamed IC, so the window never split, and the full-path pane
-check, the spawn-time model check and the spend-gap measurement stayed
-unexercised. This ticket closes when a full-path run shows the panes.
+T66 names every dispatch, so under tmux a scout and a critic get a pane as
+well as an IC. No run has exercised T66 yet: both §15.98 records show
+`ic_name: null`.
 
-Run it. Use design §15.93c's commands exactly, in `session-launch.md`. Run
-one full-path goal with at least two packages, so the project lead spawns at
-least two named ICs.
+Run it. Launch the project lead inside tmux with the README's tmux command,
+on `crew-fixture-string-kit`. Run one full-path goal with at least two
+packages, so the project lead spawns at least two named ICs.
 
-Check that `tmux attach -t crew` shows every project lead as its own window,
-that Ctrl-b n cycles through them, and that each full-path window splits into
-one pane per IC teammate plus the project lead's own. Start the lead itself
-with `tmux new -A -s crew` rather than by hand, since design §15.93h's lead
-was placed in window 0 manually and that command's own window placement is
-still unproved, and check which window number the lead lands on. Check the
-spawn-time `model` landed on each IC (design §15.20d, §15.20e), by asking
-one what model it is running as, or by reading its report for a
-model mismatch. Check `crew-stats.py` and `spend.py` against the run, and
-record how far short they price it (design §15.90h). Check that a pane
-split too small to fit escalates as `environment` (`full-path.md`), by
-shrinking the terminal before launch. Force a compaction in one IC's pane
-with `/compact` and check whether it lands in `run.compactions`, confirming
-or denying design §15.93f's prediction that it does not.
+Check that each named dispatch opens its own pane with the name from
+`SKILL.md`'s "Every dispatch is named", and that each IC's record entry holds
+its `ic_name`. Check that the spawn-time `model` landed on each IC (design
+§15.20d, §15.20e): ask one IC what model it runs as, or read its report for a
+model mismatch. Shrink the terminal before one dispatch, and check that
+`create pane failed: pane too small` escalates as `environment`. Force a
+compaction with `/compact` in one IC's pane, and check whether it lands in
+`run.compactions` — design §15.93f predicts it does not. Run `spend.py` and
+`crew-stats.py` against the run, and record how far short they price it
+(design §15.90h). T56 closes those two gaps, and this measurement is its
+baseline.
 
-Done when: a full-path run has exercised the layout end to end, design §15.93
-holds what it showed, and PR #74's tmux commands match what the run proved
-rather than what it assumed.
+Done when: a full-path run under `--teammate-mode tmux` has shown one pane per
+named dispatch, and design §15 holds what it showed, T66's naming included.
 
 Read first: design §15.93, §15.20c, §15.20d, §15.89d, §15.89e, §15.90h;
-`session-launch.md` "The launch"; `full-path.md` for how ICs are named,
-dispatched, and for the `environment` escalation.
+`full-path.md` "Check the launch conditions"; `SKILL.md` "Every dispatch is
+named".
 
 ## T56 — Price and log split-pane teammates outside `run.session_ids`
 

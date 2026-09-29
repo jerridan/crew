@@ -2912,13 +2912,12 @@ Read first: design §15.98b; `skeptical-review.md`.
 
 ## T69 — Mark the PR ready when the review stops
 
-Status: open
+Status: closed, not run
 Depends on: nothing
 Stage: 7 (design §15.99)
 
-Reported 2026-09-29: a run on another machine did not mark its PR ready.
-That machine's plugin version is not yet checked; this rule shipped in
-0.1.76.
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 A run opens a draft PR, and the principal marks it ready by hand. The
 principal asked for crew to mark it ready itself, once the skeptical review

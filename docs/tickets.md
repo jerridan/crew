@@ -2256,15 +2256,10 @@ Status: open (design §15.93)
 Depends on: nothing
 Stage: 7 (design §15.93)
 
-Rewritten 2026-09-29. This ticket first fixed where the lead placed each
-project lead in tmux: one session named `crew`, one window per project lead
-(PR #74). T57 removed the lead tier and `session-launch.md` with it, so that
-half is gone. The principal now launches each project lead, and the README
-shows the tmux launch. The other half still holds: `--teammate-mode tmux`
-gives each named agent its own pane (`full-path.md`, "Check the launch
-conditions"), and no full-path run has shown that yet. The one tmux run so
-far, `pp-06-books-slug` (design §15.93h), was simple path with one unnamed
-IC, so its window never split.
+`--teammate-mode tmux` gives each named agent its own pane
+(`full-path.md`, "Check the launch conditions"), and no full-path run has
+shown that yet. The one tmux run so far, `pp-06-books-slug` (design §15.93h),
+was simple path with one unnamed IC, so its window never split.
 
 T66 names every dispatch, so under tmux a scout and a critic get a pane as
 well as an IC. No run has exercised T66 yet: both §15.98 records show

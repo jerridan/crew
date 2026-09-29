@@ -1,7 +1,7 @@
 {
   "name": "crew",
   "description": "A team of agents that takes one goal to a PR ready for review — split across parallel implementers, independently reviewed, no approval gates",
-  "version": "0.1.76",
+  "version": "0.1.77",
   "author": {
     "name": "Jerridan Quiring"
   }

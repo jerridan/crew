@@ -2767,29 +2767,31 @@ Read first: design §15.94g; `skills/project-lead/scripts/crew-stats.py`;
 
 Status: open
 Depends on: T61
-Stage: 7 (design §15.94)
+Stage: 7 (design §15.94, §15.100)
 
-Filed, not scheduled. T61 lets the goal, the charter or the principal name a
-replacement for a review step, one run at a time. A principal who wants the
-same replacement on every run has to say it every time. A layered config
-would hold it once.
+Built 2026-09-29 as design §15.100, and no run has exercised it. T61 lets the
+goal, the charter or the principal name a replacement for a review step, one
+run at a time. A principal who wants the same replacement on every run has to
+say it every time. A layered config holds it once.
 
-Scope. Three layers, most specific wins per step: a machine file at
-`~/.claude/crew/config.md`, a repo file at `.claude/crew.md`, and the run
-charter. Each holds the same section T61 reads, in the same plain language.
-The project lead resolves the three before the first review step.
+Scope. Two files join the three sources T61 reads: a machine file at
+`~/.claude/crew/config.md` and a repo file at `.claude/crew.md`. Each holds
+the same plain words. For each step the most specific source wins, and a
+source that names the step's own reviewer cancels a replacement below it.
+The project lead resolves the sources at "Take the goal", before any step
+runs.
 
 Run it. Set a machine-level replacement for the skeptical review, override it
 in a repo file, and run one item in that repo.
 
-Check that the repo file won, and that `run.steps_substituted` names the
-layer the replacement came from.
+Check that the repo file won, and that `run.substitutions_requested` holds
+`source: "repo"` for the skeptical review.
 
-Done when: the three layers resolve per step and the record says which layer
+Done when: the sources resolve per step and the record says which source
 supplied each replacement.
 
-Read first: design §15.94e; T61; `skills/project-lead/SKILL.md`;
-`record-format.md`.
+Read first: design §15.100; T61; `skills/project-lead/SKILL.md` "Take the
+goal"; `record-format.md`.
 
 ## T65 — Haiku runs only an agent whose tools need no approval
 

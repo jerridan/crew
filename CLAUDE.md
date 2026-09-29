@@ -58,7 +58,8 @@ the first run of T58 through T62's changes, once each — evidence for one
 step, not for the loop. T66's naming rule is not part of that probe: both
 §15.98 records show `ic_name: null`, so T66 stays unexercised. T69 marks a
 run's PR ready for review when the skeptical review stops, and no run has
-done that yet (§15.99).
+done that yet (§15.99). T63 lets a machine file or a repo file name a
+review replacement for every run, and no run has read one yet (§15.100).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

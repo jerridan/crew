@@ -117,12 +117,28 @@ the run works from, and the first thing that reads it can run before any
 branch exists — a replacement for the spec review, below (`record-format.md`).
 
 **A replacement the principal named is written down here, before any step
-runs.** Read the goal, `charter.md` and what the principal typed at launch for
-a named replacement of a review step. Write each one to
-`run.substitutions_requested` as `{step, replacement, source}`, `source` being
-`goal`, `charter` or `launch`. A resumed session reads that field and nothing
-else, because the words that named the replacement are not in its context. "A
-step the principal replaced" below owns what you then do with it.
+runs.** Five sources can name a replacement for a review step. They are
+listed from the most specific to the least:
+
+| `source` | Where you read it |
+|---|---|
+| `launch` | what the principal typed at launch |
+| `goal` | the goal text |
+| `charter` | `charter.md` |
+| `repo` | `.claude/crew.md` in `run.repo` |
+| `machine` | `~/.claude/crew/config.md`, at that path whatever the record root is |
+
+The two files hold the same plain words the principal types at launch. A
+missing file names nothing. For each step, the most specific source that
+names a reviewer wins. That source can name the step's own reviewer — "use
+the default skeptical review" — and then it cancels a replacement from a
+source below it.
+
+Write each replacement that wins to `run.substitutions_requested` as `{step,
+replacement, source}`. A resumed session reads that field and nothing else,
+because the words that named the replacement are not in its context, and a
+file can change after the run starts. "A step the principal replaced" below
+owns what you then do with it.
 
 **The path you picked is the first entry in `decisions.md`**, once the record
 exists. It is a precedent-route entry in `record-format.md`'s full shape,
@@ -312,11 +328,11 @@ back in writing where it is wrong here. **A finding is a claim, not a verdict.**
 
 ## A step the principal replaced
 
-The goal text, `charter.md`, or the principal at launch can name another
-reviewer for a review step, in plain language: "use Codex for the spec
-review". Two steps take a replacement, and no other step does — the spec
-critic, and the skeptical review (design §15.94d). "Take the goal" above
-recorded each one in `run.substitutions_requested`; this section runs it.
+The principal can name another reviewer for a review step, in plain
+language: "use Codex for the spec review". Two steps take a replacement, and
+no other step does — the spec critic, and the skeptical review (design
+§15.94d). "Take the goal" above resolved each one from five sources and
+recorded it in `run.substitutions_requested`; this section runs it.
 
 ### What the replacement is told
 

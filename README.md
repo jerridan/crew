@@ -80,6 +80,21 @@ goal:
 The run calls what you named in that step's place, writes its report into the
 record with the others, and records what ran and what it used.
 
+To name a reviewer for every run, write the same words in a file:
+
+| File | Applies to |
+|---|---|
+| `~/.claude/crew/config.md` | every run on this machine |
+| `.claude/crew.md` in the repo | every run in that repo |
+
+```
+use Codex via tmux for the skeptical review
+```
+
+Words with the goal win over the repo file, and the repo file wins over the
+machine file. To turn off a replacement from a file for one run, say "use the
+default skeptical review" with the goal.
+
 The run sizes the work itself and picks a path:
 
 | Path | When | What runs |

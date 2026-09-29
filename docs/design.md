@@ -7210,6 +7210,9 @@ Deliberately different:
        scheduled: a layered config file that reads the same replacement
        section as (d)(5) (T63), and a crew-owned skill that wraps `codex exec`
        with a pinned model for both the spec review and the diff review (T64).
+       T64 was later removed before it was scheduled. A replacement in plain
+       language, such as "use Codex via tmux for the skeptical review",
+       already runs Codex, and T63 lets a config file hold those words.
        One question stays open and undecided: whether the light path should
        swallow more work, so that a one-package item never spends 42 minutes
        on a spec and two critic rounds. The spec critic sends an artifact back
@@ -7451,3 +7454,38 @@ Deliberately different:
        the PR is still a draft. `gh pr view <url> --json isDraft` answers
        that, and "Mark the PR ready" reads it the same way.
     e. **Unexercised.** No run has marked a PR ready yet.
+
+100. **A config file names a review replacement for every run — 2026-09-29,
+     T63.** T61 let the principal name a replacement for a review step, one
+     run at a time. The principal uses Codex for the skeptical review on a
+     work machine, and has no Codex on a personal machine. So the same words
+     had to go with every goal on one machine, and never on the other.
+
+     a. **Five sources.** `SKILL.md`'s "Take the goal" reads, from the most
+        specific to the least: the words at launch, the goal, `charter.md`,
+        `.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`. The
+        two files hold the same plain words as the other three. For each
+        step, the most specific source that names a reviewer wins.
+     b. **A cancel.** A source can name the step's own reviewer — "use the
+        default skeptical review". It then wins like any other source, and
+        the step runs its default. Without this, a repo file that names
+        Codex blocks every run on a machine with no Codex.
+     c. **The machine file has a fixed path.** It stays at
+        `~/.claude/crew/config.md` when `$CREW_RECORD_ROOT` moves the
+        records. A machine setting belongs to the machine, not to a record
+        root. In the default root the file sits beside the records, and
+        `crew-stats.py`'s walk reads only directories and `state.json`, so
+        the file changes no count.
+     d. **The record names the source.** `run.substitutions_requested`
+        gains `repo` and `machine` as values of `source`. T63 first asked
+        for the layer on `run.steps_substituted`. It stays off that field:
+        `steps_substituted` logs each invocation, and the request field
+        already names where the words came from.
+     e. **Resolved once.** The sources are read at "Take the goal", and a
+        resumed session reads `substitutions_requested` only. A file edited
+        after the run starts changes nothing in that run.
+     f. **No Codex skill.** T64 would have wrapped `codex exec` in a
+        crew-owned skill. The principal runs Codex in a tmux pane, in plain
+        words, and a config file holds those words. T64 was removed before
+        it was scheduled.
+     g. **Unexercised.** No run has read either file yet.

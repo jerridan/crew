@@ -7210,6 +7210,9 @@ Deliberately different:
        scheduled: a layered config file that reads the same replacement
        section as (d)(5) (T63), and a crew-owned skill that wraps `codex exec`
        with a pinned model for both the spec review and the diff review (T64).
+       T64 was later removed before it was scheduled. A replacement in plain
+       language, such as "use Codex via tmux for the skeptical review",
+       already runs Codex, and T63 lets a config file hold those words.
        One question stays open and undecided: whether the light path should
        swallow more work, so that a one-package item never spends 42 minutes
        on a spec and two critic rounds. The spec critic sends an artifact back

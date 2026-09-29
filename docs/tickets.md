@@ -2791,34 +2791,6 @@ supplied each replacement.
 Read first: design §15.94e; T61; `skills/project-lead/SKILL.md`;
 `record-format.md`.
 
-## T64 — A crew-owned Codex review skill
-
-Status: open
-Depends on: T61
-Stage: 7 (design §15.94)
-
-Filed, not scheduled. Two review steps can go to Codex — the spec review and
-the diff review — and today each caller would write its own `codex exec`
-command. One skill holds the command, the model and the output shape.
-
-Scope. A crew-owned skill wraps `codex exec` with a pinned model. It takes
-either a diff base or a file list, so the same skill serves the spec review
-and the skeptical diff review. It writes its findings in `review-output.md`'s
-shape. T61's substitution rule names it as a replacement.
-
-Run it. Substitute the skill for the spec review on one item, then for the
-skeptical review on another.
-
-Check that both runs used the pinned model, that the file-list form and the
-diff-base form each produced findings, and that both outputs match
-`review-output.md`'s shape without hand editing.
-
-Done when: one skill serves both review steps and its output needs no
-reshaping.
-
-Read first: design §15.94e; T61; `review-output.md`; `skills/project-lead/`
-for how a crew skill is laid out.
-
 ## T65 — Haiku runs only an agent whose tools need no approval
 
 Status: done

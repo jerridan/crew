@@ -2256,7 +2256,8 @@ Status: closed, not run
 Depends on: nothing
 Stage: 7 (design §15.93)
 
-Closed 2026-09-29 without a probe. The principal watches for a fault in regular work.
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 `--teammate-mode tmux` gives each named agent its own pane
 (`full-path.md`, "Check the launch conditions"), and no full-path run has
@@ -2754,7 +2755,8 @@ Status: closed, not run
 Depends on: T61
 Stage: 7 (design §15.94, §15.100)
 
-Closed 2026-09-29 without a probe. The principal watches for a fault in regular work.
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 Built 2026-09-29 as design §15.100, and no run has exercised it. T61 lets the
 goal, the charter or the principal name a replacement for a review step, one
@@ -2817,7 +2819,8 @@ Status: closed, not run
 Depends on: T65
 Stage: 7 (design §15.20b, §15.31c)
 
-Closed 2026-09-29 without a probe. The principal watches for a fault in regular work.
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 The rule "only ICs are named" rests on design §3's claim that a teammate's
 output never returns to the project lead. §15.20b recorded the claim as
@@ -2909,11 +2912,13 @@ Read first: design §15.98b; `skeptical-review.md`.
 
 ## T69 — Mark the PR ready when the review stops
 
-Status: closed, not run
+Status: open
 Depends on: nothing
 Stage: 7 (design §15.99)
 
-Closed 2026-09-29 without a probe. The principal watches for a fault in regular work.
+Reported 2026-09-29: a run on another machine did not mark its PR ready.
+That machine's plugin version is not yet checked; this rule shipped in
+0.1.76.
 
 A run opens a draft PR, and the principal marks it ready by hand. The
 principal asked for crew to mark it ready itself, once the skeptical review

@@ -2846,9 +2846,14 @@ are easy to get wrong".
 
 ## T67 — The project lead session dominates run cost
 
-Status: open
+Status: done
 Depends on: nothing
-Stage: 7 (design §15.98g)
+Stage: 7 (design §15.98g, §15.101)
+
+Landed 2026-09-29 as design §15.101. The cost is cache writes, not cache
+reads: 28.5% of eight project-lead sessions went to rewriting the whole
+context after more than an hour with no call. T70 holds the
+cut.
 
 Filed, not scheduled. On run 1 of `add-padcenter-helper-5b0b`, the Opus total
 was $31.74 of the run's $32.87 — 277 messages, 35.8M cache-read tokens — but
@@ -2929,3 +2934,35 @@ Done when: a run marks its PR ready when the skeptical review stops, unless
 the goal asks to keep it a draft.
 
 Read first: design §15.99; `skeptical-review.md` "Mark the PR ready".
+
+## T70 — Resume a delivered run in a new session after an idle hour
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.101)
+
+The first message to a delivered run after more than an hour rewrites the
+whole context at the 1-hour cache-write price: $4.67 to $11.53 a message, and
+26.5% of eight project-lead sessions (design §15.101c). A new session that
+resumes the run from its record starts at about 60k tokens.
+
+Scope. The hand-over message tells the principal to return after an idle
+hour with `/crew:project-lead --resume <goal-slug>` in a new session, not in
+the old one. `simple-path.md`'s "The delivered window" loses its claim that
+an idle session spends nothing, and states the cost of a late return. Check
+that `--resume` into `delivered` answers a question about the change and
+takes a finding with only the record, the branch and the PR, since the new
+session has not read the code. If it cannot, the cut is wrong: close this
+ticket and record why in design §15.
+
+Run it. Hand over one run, wait more than an hour, then ask the same
+question in the old session and in a new `--resume` session.
+
+Check the first call's cache write in each, with the method in design
+§15.101a, and compare the two answers.
+
+Done when: the hand-over names the idle-hour return, and one measured pair
+shows the new session's first message costs less than the old session's.
+
+Read first: design §15.101, §15.92; `simple-path.md` "The delivered window";
+`skeptical-review.md` "Resume in the delivered window".

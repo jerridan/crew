@@ -263,8 +263,15 @@ here, not a failure (design §15.12).
 Read `run.compactions` before you accept. An entry whose `agent` is this IC's
 name, dated since its last accepted package, means it lost the context it
 planned in: send it its plan back with the fix round, and treat its report's
-claims about earlier packages as unverified. An entry with `agent: null` is
-your own session's compaction; re-read the record before your next decision.
+claims about earlier packages as unverified. An entry with `agent: null` and
+`agent_id: null` is your own session's compaction; re-read the record before
+your next decision.
+
+**An empty list is weak proof when your ICs run in panes.** The hook matches a
+split-pane IC by its team name, and no real split-pane compaction has tested
+that yet (design §15.102). Weigh the IC's own report as well: a fix round it
+cannot explain, or a claim about an earlier package it cannot support, is the
+same evidence an entry would have been.
 
 ## Fix rounds
 

@@ -7574,10 +7574,19 @@ Deliberately different:
         Against a seeded live copy of `pp-19`, a teammate's payload wrote
         `agent: ic-pp-19-image-sizes-r1`, the lead's payload wrote `agent:
         null` as before, and a session from another project wrote nothing.
+        A subagent that a split-pane teammate spawns carries an `agent_id`,
+        and its own transcript has no team name. So the hook reads the team
+        name from its session's transcript, `<session_id>.jsonl` beside the
+        subagent's folder. None of the 29 split-pane teammate transcripts on
+        the measuring machine has a subagent yet, so a seeded tree tested
+        it: one in the run's team wrote an entry, one in another team wrote
+        nothing.
      d. **No new field.** The teammate's id stays out of `run.session_ids`,
         so `hooks/session-end.py` still cannot mark a run `interrupted` when
         a teammate's pane closes.
      e. **The limits.** The team name holds only 8 characters of the lead's
         id. Two lead sessions that share those 8 characters and overlap in
         time would share teammates; at 4 billion values, that is left open.
-        The live hook path has not run in a real split-pane compaction.
+        The live hook path has not run in a real split-pane compaction, so
+        `full-path.md` still treats an empty `run.compactions` as weak proof
+        when ICs run in panes.

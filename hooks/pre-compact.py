@@ -7,7 +7,8 @@ in-process teammate carries `agent_id`; `agent` is the name resolved from the
 transcript's sibling `.meta.json`, which is the teammate's name the project
 lead spawned it under. A split-pane teammate is its own session, so it
 carries no `agent_id`; it is matched by the `teamName` in its transcript and
-named by its `agentName` (design §15.102). No `agent_id` and no team name
+named by its `agentName`. A subagent it spawns is matched by the team name
+in its session's transcript (design §15.102). No `agent_id` and no team name
 means the project lead's own session compacted. Writes only; deletes
 nothing; fails open (design §15.50).
 """
@@ -120,9 +121,17 @@ def main() -> None:
     session_id = payload.get("session_id")
     if not session_id:
         return
+    transcript = payload.get("transcript_path")
     team, teammate = None, None
     if not payload.get("agent_id"):
-        team, teammate = team_header(payload.get("transcript_path"))
+        team, teammate = team_header(transcript)
+    elif transcript:
+        # A subagent of a split-pane teammate: its own transcript carries no
+        # team name, but its session's does, at `<session_id>.jsonl` beside
+        # the `<session_id>/` folder that holds the subagent's transcript.
+        folder = next((p for p in Path(transcript).parents if p.name == session_id), None)
+        if folder is not None:
+            team, _ = team_header(str(folder.with_suffix(".jsonl")))
     entry = {
         "session_id": session_id,
         "agent_id": payload.get("agent_id"),

@@ -7489,3 +7489,58 @@ Deliberately different:
         words, and a config file holds those words. T64 was removed before
         it was scheduled.
      g. **Unexercised.** No run has read either file yet.
+
+101. **The project lead's cost is cache writes after an idle hour — 2026-09-29,
+     T67.** T67 asked where a project lead session's cost goes. Its own run,
+     `add-padcenter-helper-5b0b`, has no record or transcript left on the
+     measuring machine. So the measurement used the eight most recent
+     delivered runs whose project-lead transcripts remain: `w-303`,
+     `cms-edit-mode-poc`, `pp-19`, `pp-41-42`, `pp-38-39-40`, `pp-10`,
+     `pp-33` and `pp-css-convention`, 2026-09-18 to 26. Each project lead
+     ran on Fable 5.1. The scripts sit outside the repo; the method
+     is below, so a later session can repeat it.
+
+     a. **The method.** Read the project lead's own transcript, with no
+        subagents, and dedupe by message id. Price each call's input, cache
+        write (5-minute and 1-hour apart), cache read and output. Then find
+        each call that writes more than 30k tokens, and measure the time
+        from the call before it. Separately, charge each piece of content
+        that enters the context the cache reads it causes on every later
+        call, at 4 characters a token.
+     b. **The split.** The eight sessions cost $272.02: cache writes $149.55
+        (55%), cache reads $73.09 (27%), output $49.12 (18%), input $0.21.
+        T67 assumed the cache reads were the cost. They are half the size of
+        the writes.
+     c. **Where the writes go.** 11 calls rewrote nearly the whole context
+        after more than an hour with no call. The 1-hour cache had expired,
+        so the context was written again at the 1-hour write price.
+        Together they cost $77.52: 52% of the writes and 28.5% of the eight
+        sessions. Nine of the 11 came when the principal returned to a
+        delivered run, 80 minutes to 47 hours later, with a context of 230k
+        to 580k tokens. Those nine cost $72.11, $4.67 to $11.53 each. One
+        more came after a wait on the run's own question ($3.84), and one at
+        the start of a run in a session idle for an hour ($1.57). `w-303`
+        alone paid $35.53 of its $69.56 this way. The rest of the writes is the new content of each
+        call, plus the first call of each run and one `ToolSearch` that
+        changed the tool list ($5.09).
+     d. **What the reads carry.** Tool outputs and tool inputs dominate the
+        content that later calls read. Crew's own references, by `Read` and
+        by `cat`, cost about $10 over the eight runs: 3.7% of the total. A
+        cut to reference reads cannot reach the size of (c).
+     e. **The claim this corrects.** `simple-path.md`'s "The delivered
+        window" says an idle session spends nothing. The idle time is free,
+        but the first message after an hour of it costs a full rewrite of
+        the context, and a late run's context is its largest.
+     f. **The cut to try.** A cache read resets the 1-hour timer, and on
+        Fable 5.1 a read costs $0.25 a million tokens. So a small turn about
+        every 50 minutes while the run waits costs about $0.15 an hour on a
+        500k context, against $4.67 to $11.53 for one rewrite. That breaks
+        even after about 25 to 60 idle hours. Eight of the nine returns in
+        (c) came after 1.3 to 9 hours; only the 47-hour gap would have cost
+        more. A new session per return also avoids the rewrite, but the
+        principal returns to the same session too often for that. T70 holds
+        the keep-alive.
+     g. **`spend.py` priced Opus 5.5 at Opus 5's rates.** It matched every
+        Opus model to one row at $5/$25. Opus 5.5 is $4/$20 with $0.20 cache
+        reads, so its own row now prices it. The eight project-lead sessions
+        in (b) ran on Fable, so their totals do not change.

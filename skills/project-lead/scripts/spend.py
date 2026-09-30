@@ -49,6 +49,9 @@ from pathlib import Path
 
 PRICE = {  # input, 5m cache write, 1h cache write, cache read, output
     "fable": (10, 12.5, 20, 0.25, 50),
+    # A version gets its own row when its price differs from its family's.
+    # `family()` takes the first match, so it goes above the family row.
+    "opus-5-5": (4, 5, 8, 0.2, 20),
     "opus": (5, 6.25, 10, 0.5, 25),
     "sonnet": (2, 2.5, 4, 0.2, 10),
     "haiku": (1, 1.25, 2, 0.1, 5),
@@ -227,11 +230,11 @@ def start_time(record: Path, state: dict) -> float:
 
 def report(totals: dict) -> tuple[float, int]:
     """Print one row per model family, and return the dollars and the tokens."""
-    print(f"{'model':7} {'msgs':>5} {'input':>9} {'w5m':>10} {'w1h':>10} {'read':>12} {'output':>8} {'usd':>8}")
+    print(f"{'model':8} {'msgs':>5} {'input':>9} {'w5m':>10} {'w1h':>10} {'read':>12} {'output':>8} {'usd':>8}")
     grand = 0.0
     total_tokens = 0
     for fam, t in sorted(totals.items(), key=lambda kv: -kv[1]["usd"]):
-        print(f"{fam:7} {t['messages']:5d} {t['input']:9d} {t['cache_write_5m']:10d} {t['cache_write_1h']:10d} {t['cache_read']:12d} {t['output']:8d} {t['usd']:8.2f}")
+        print(f"{fam:8} {t['messages']:5d} {t['input']:9d} {t['cache_write_5m']:10d} {t['cache_write_1h']:10d} {t['cache_read']:12d} {t['output']:8d} {t['usd']:8.2f}")
         grand += t["usd"]
         total_tokens += t["input"] + t["cache_write_5m"] + t["cache_write_1h"] + t["cache_read"] + t["output"]
     print(f"total ${grand:.2f}  tokens {total_tokens}")

@@ -2855,9 +2855,14 @@ are easy to get wrong".
 
 ## T67 — The project lead session dominates run cost
 
-Status: open
+Status: done
 Depends on: nothing
-Stage: 7 (design §15.98g)
+Stage: 7 (design §15.98g, §15.101)
+
+Landed 2026-09-29 as design §15.101. The cost is cache writes, not cache
+reads: 28.5% of eight project-lead sessions went to rewriting the whole
+context after more than an hour with no call. T70 holds the
+cut.
 
 Filed, not scheduled. On run 1 of `add-padcenter-helper-5b0b`, the Opus total
 was $31.74 of the run's $32.87 — 277 messages, 35.8M cache-read tokens — but
@@ -2941,3 +2946,49 @@ Done when: a run marks its PR ready when the skeptical review stops, unless
 the goal asks to keep it a draft.
 
 Read first: design §15.99; `skeptical-review.md` "Mark the PR ready".
+
+## T70 — Keep the cache warm while a delivered run waits
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.101)
+
+The first message to a delivered run after more than an hour rewrites the
+whole context at the 1-hour cache-write price: $4.67 to $11.53 a message, and
+26.5% of eight project-lead sessions (design §15.101c). A cache read resets
+the 1-hour timer, and a read of a 500k context costs about $0.13 on Fable 5.1.
+So a small turn before each hour runs out costs far less than the rewrite it
+prevents (§15.101f).
+
+Scope. When the run goes `delivered`, the project lead schedules a
+keep-alive: a turn that does no work and replies in one word. Each keep-alive
+must start less than 60 minutes after the start of the call before it, since
+the cache lifetime counts from a request's start. `CronCreate` fires only
+while the session is idle, and a recurring job can fire up to 10% of its
+period late, so an hourly job can miss the window. Prefer a one-shot job about
+50 minutes out, re-armed by each keep-alive. Fall back to a recurring job every
+30 minutes if a one-shot cannot re-arm itself. Stop the keep-alive when the run
+goes `complete`, and 24 hours after the principal's last message, when one
+more miss costs less than more keep-alives. A new principal message starts
+the 24 hours again. `simple-path.md`'s "The delivered window" owns the rule,
+and loses its claim that an idle session spends nothing.
+
+Test first. In one idle interactive session, schedule a one-shot turn 50
+minutes out and type nothing. Check that it fires, and that its call reads
+the context from cache and writes only the new turn. If it does not fire
+while idle, or it misses the cache, close this ticket and record why in
+design §15.
+
+Run it. Hand over one run, leave it idle for three hours, then send one
+message.
+
+Check that the keep-alives fired about every 50 minutes, that the returning
+message's call reads the context from cache, and that the keep-alives cost
+less than one rewrite of the same context, with the method in design
+§15.101a.
+
+Done when: a delivered run stays warm through an idle period, and the
+measured keep-alive cost is below the rewrite it replaced.
+
+Read first: design §15.101; `simple-path.md` "The delivered window";
+`skeptical-review.md` "Resume in the delivered window".

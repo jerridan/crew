@@ -7496,8 +7496,8 @@ Deliberately different:
      measuring machine. So the measurement used the eight most recent
      delivered runs whose project-lead transcripts remain: `w-303`,
      `cms-edit-mode-poc`, `pp-19`, `pp-41-42`, `pp-38-39-40`, `pp-10`,
-     `pp-33` and `pp-css-convention`, 2026-09-18 to 26. Seven ran on Fable
-     5.1 and one on Opus 5.5. The scripts sit outside the repo; the method
+     `pp-33` and `pp-css-convention`, 2026-09-18 to 26. Each project lead
+     ran on Fable 5.1. The scripts sit outside the repo; the method
      is below, so a later session can repeat it.
 
      a. **The method.** Read the project lead's own transcript, with no
@@ -7531,6 +7531,16 @@ Deliberately different:
         window" says an idle session spends nothing. The idle time is free,
         but the first message after an hour of it costs a full rewrite of
         the context, and a late run's context is its largest.
-     f. **The cut to try.** When the principal returns to a delivered run
-        after more than an hour, a new session that resumes the run from its
-        record starts at about 60k tokens, not 230k to 580k. T70 holds it.
+     f. **The cut to try.** A cache read resets the 1-hour timer, and on
+        Fable 5.1 a read costs $0.25 a million tokens. So a small turn about
+        every 50 minutes while the run waits costs about $0.15 an hour on a
+        500k context, against $4.67 to $11.53 for one rewrite. That breaks
+        even after about 25 to 60 idle hours. Eight of the nine returns in
+        (c) came after 1.3 to 9 hours; only the 47-hour gap would have cost
+        more. A new session per return also avoids the rewrite, but the
+        principal returns to the same session too often for that. T70 holds
+        the keep-alive.
+     g. **`spend.py` priced Opus 5.5 at Opus 5's rates.** It matched every
+        Opus model to one row at $5/$25. Opus 5.5 is $4/$20 with $0.20 cache
+        reads, so its own row now prices it. The eight project-lead sessions
+        in (b) ran on Fable, so their totals do not change.

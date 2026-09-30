@@ -7590,3 +7590,39 @@ Deliberately different:
         The live hook path has not run in a real split-pane compaction, so
         `full-path.md` still treats an empty `run.compactions` as weak proof
         when ICs run in panes.
+
+103. **A delivered run keeps its cache warm — 2026-09-30, T70.** §15.101
+     found that the first message after an idle hour rewrites the project
+     lead's whole context. A cache read resets the 1-hour timer. So
+     `simple-path.md`'s "The delivered window" now keeps one keep-alive job
+     pending while the run is `delivered`: a one-shot `CronCreate` turn 50
+     minutes out, which re-arms itself, does no other work, and stops at
+     `complete` or 24 hours after the principal's last message.
+
+     a. **Why these subagents get none.** With split-pane teammates priced
+        in (§15.102), subagent and teammate calls in the eight runs of
+        §15.101 cost $176.93, and rewrites after a gap of more than 5
+        minutes $4.72, all in `w-303`. Only the project lead session waits
+        long enough to lose its cache.
+     b. **Why a one-shot job.** `CronCreate` fires only while the session is
+        idle, and a recurring job can fire up to 10% of its period late, so
+        an hourly job can miss the hour. A one-shot job lands within about 90
+        seconds of its time, and each keep-alive schedules the next.
+     c. **The probe.** An interactive Fable 5.1 session at high effort,
+        auto mode, in a scratch repo, 2026-09-29/30. It scheduled a one-shot
+        job 50 minutes out, and nobody typed after that. The job fired at
+        23:57, 49.7 minutes after the last call, re-armed itself, and the
+        second fired at 00:47, 49.9 minutes after. Both read the whole
+        context from cache (56.8k and 57.4k tokens) and wrote only their
+        own turn (129 to 320 tokens a call). Auto mode allowed `CronCreate`
+        with no prompt.
+     d. **The cost.** A keep-alive is one to three calls: a cache read of
+        the context, a few hundred written tokens, and a short reply. On a
+        500k context on Fable 5.1 that is about $0.15, so about $3.60 for a
+        full 24 hours against $4.67 to $11.53 for one rewrite.
+     e. **The claim this corrects.** "The delivered window" said an idle
+        session spends nothing. It now says the idle time is free and the
+        first message after an idle hour is not.
+     f. **What no run has shown.** The probe was a small session, not a
+        crew run. The principal watches for a fault in regular work, as for
+        T55, T63, T66 and T69.

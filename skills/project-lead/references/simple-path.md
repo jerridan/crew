@@ -417,9 +417,36 @@ The work is handed over and `run_state` is `delivered`. "The skeptical
 review" above is this window's first round. Stay in this session until the
 principal says the work shipped. You are the one session that has read the
 code, so a question about the change before the merge comes to you, and so
-does every change to the same PR after it. An idle session spends nothing; a
-killed one costs a relaunch and a `--resume` for every question (design
-§15.92).
+does every change to the same PR after it. A killed session costs a relaunch
+and a `--resume` for every question (design §15.92).
+
+### Keep the cache warm
+
+Idle time is free, but the prompt cache lives one hour. The first message
+after an idle hour rewrites your whole context, and in this window that
+context is the run's largest: $4.67 to $11.53 a message (design §15.101). A
+cache read resets the hour, and costs a small part of a rewrite.
+
+So keep one keep-alive job pending for as long as the run is `delivered`.
+Schedule it with `CronCreate` as a one-shot job (`recurring: false`) at the
+local time 50 minutes from now, with this prompt, `<goal-slug>` filled in:
+
+```
+Crew keep-alive for <goal-slug>. If the run is complete, or the principal's
+last message is more than 24 hours old, schedule nothing and reply "stopped".
+Otherwise schedule this same prompt as a one-shot CronCreate job at the local
+time 50 minutes from now, and reply "ok".
+```
+
+- **When to schedule it:** at the hand-over, and on every entry into this
+  window, a resume included. A job lives only in the session that made it.
+- **One job at a time.** Each keep-alive re-arms the next one. A real message
+  in between needs no new job: the pending one still fires within the hour.
+- **A keep-alive turn does no other work.** It runs no tool but `CronCreate`,
+  and reads nothing.
+- **When the run goes `complete`,** delete the pending job with `CronDelete`.
+- **After 24 hours with no message from the principal,** the chain stops by
+  itself. One more rewrite then costs less than more keep-alives.
 
 Four kinds of message reach you here. Answer each where it arrived: a
 message typed in your pane is answered in your pane, and a

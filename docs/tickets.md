@@ -2953,9 +2953,14 @@ Read first: design §15.99; `skeptical-review.md` "Mark the PR ready".
 
 ## T70 — Keep the cache warm while a delivered run waits
 
-Status: open
+Status: done
 Depends on: nothing
-Stage: 7 (design §15.101)
+Stage: 7 (design §15.101, §15.103)
+
+Landed 2026-09-30 as design §15.103. A probe session showed two one-shot
+`CronCreate` keep-alives fire with nobody typing, 50 minutes apart, and read
+the whole context from cache. No crew run was used; the principal watches
+for a fault in regular work.
 
 The first message to a delivered run after more than an hour rewrites the
 whole context at the 1-hour cache-write price: $4.67 to $11.53 a message, and

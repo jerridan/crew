@@ -6675,7 +6675,9 @@ Deliberately different:
        the day a run needs a split pane. **That day is T55, and the ticket is
        T56 (§15.93), which also found `run.session_ids` itself the wrong
        field: `hooks/session-end.py` reads it to mark a run interrupted, so a
-       teammate's id belongs in a field of its own instead.**
+       teammate's id belongs in a field of its own instead.** Closed by
+       §15.102: the teammate's own transcript names its team, so no field is
+       needed.
 
 91. **Two seeds tried to force a light-path promotion, and "Size the work"
     absorbed both — 2026-09-12, T53.** §15.88h left the promotion rule
@@ -7544,3 +7546,38 @@ Deliberately different:
         Opus model to one row at $5/$25. Opus 5.5 is $4/$20 with $0.20 cache
         reads, so its own row now prices it. The eight project-lead sessions
         in (b) ran on Fable, so their totals do not change.
+
+102. **A split-pane teammate is found by its team name — 2026-09-29, T56.**
+     A split-pane teammate is its own session, outside the project lead's
+     subtree. `spend.py` missed its cost, and the `PreCompact` hook matched
+     it against nothing (§15.90h, §15.93). T56 planned a new record field for
+     teammate ids, and asked where the project lead could learn them.
+
+     a. **The transcript already says.** Each entry of a split-pane
+        teammate's transcript, after the first few settings lines, carries
+        `teamName: session-<the first 8 characters of the lead's session
+        id>` and `agentName: <the name the project lead gave it>`. Two runs
+        on 2026-09-19, `pp-19` and `pp-css-convention`, show it. The team
+        config under `~/.claude/teams/` also names the members, but Claude
+        Code removes it at session end, so it cannot price a finished run.
+     b. **`spend.py`.** It reads the first 50 lines of each top-level
+        transcript modified since `run.created_at` and prices those whose
+        team name matches a session in `run.session_ids`, with each one's
+        own subtree. A resumed run has one team per session, and each one
+        matches. On `pp-19` it found 10 teammate transcripts, one of them in
+        another project directory, and the run's price went from $34.44 to
+        $45.61. `pp-css-convention` went from $68.55 to $104.59. A run whose
+        teammates ran in-process prices the same as before.
+     c. **The `PreCompact` hook.** A hook with no `agent_id` reads the same
+        header. A team name that matches a run's session makes the session
+        part of the run, and `agentName` becomes the entry's `agent`.
+        Against a seeded live copy of `pp-19`, a teammate's payload wrote
+        `agent: ic-pp-19-image-sizes-r1`, the lead's payload wrote `agent:
+        null` as before, and a session from another project wrote nothing.
+     d. **No new field.** The teammate's id stays out of `run.session_ids`,
+        so `hooks/session-end.py` still cannot mark a run `interrupted` when
+        a teammate's pane closes.
+     e. **The limits.** The team name holds only 8 characters of the lead's
+        id. Two lead sessions that share those 8 characters and overlap in
+        time would share teammates; at 4 billion values, that is left open.
+        The live hook path has not run in a real split-pane compaction.

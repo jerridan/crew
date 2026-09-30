@@ -2890,35 +2890,6 @@ Done when: the measurement exists and names a specific cut to try.
 
 Read first: design §15.98g; `skills/project-lead/scripts/spend.py`.
 
-## T68 — Move the skeptical review launch into scripts/
-
-Status: open
-Depends on: nothing
-Stage: 7 (design §15.98b)
-
-Filed, not scheduled. Five different launch shapes were typed across two
-probe runs before the working one in `skeptical-review.md` was found. A
-script removes the retyping and the chance of another broken shape.
-
-Scope. A `crew-review.py` (or an equivalent shell script) under
-`skills/project-lead/scripts/` takes the record directory, the round number,
-the review worktree and the suite command, and writes `-result.json`,
-`-result.stderr` and `-result.exit`, and records the session id, the way
-`skeptical-review.md`'s "The default command" and "Record the review's
-session id" say to. Depends on T59's fixed command, which this ticket wraps
-rather than replaces.
-
-Run it. Substitute the script for a hand-typed launch on one skeptical review
-round.
-
-Check that the script produces the same files, `-result.exit` included, in
-the same shape, that a hand-typed launch does.
-
-Done when: `skeptical-review.md` points at the script instead of stating the
-command inline.
-
-Read first: design §15.98b; `skeptical-review.md`.
-
 ## T69 — Mark the PR ready when the review stops
 
 Status: closed, not run

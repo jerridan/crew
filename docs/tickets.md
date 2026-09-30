@@ -2996,3 +2996,59 @@ measured keep-alive cost is below the rewrite it replaced.
 
 Read first: design §15.101; `simple-path.md` "The delivered window";
 `skeptical-review.md` "Resume in the delivered window".
+
+## T71 — Shut down a teammate that no rule can call again
+
+Status: open
+Depends on: nothing
+Stage: 7
+
+With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, every named dispatch is a
+teammate. A teammate goes idle after it reports. It does not exit. So a run
+keeps every scout, critic, advocate, researcher, spec writer and IC it
+dispatched until the session ends, and the delivered window keeps the session
+open until the ship word. Each idle teammate holds memory, and under
+`--teammate-mode tmux` it also holds a pane and a process. The principal asked
+for crew to shut down an agent when no rule can call it again.
+
+Scope. The project lead shuts down a teammate at the first point where no
+rule can send it another message:
+
+- A scout, a researcher, the spec writer, a critic, a review and an advocate:
+  after the project lead reads its result. A next round is a new dispatch
+  with a new name.
+- A simple-path or light-path IC, and an IC for a change request or a patch
+  package: after "Verify before you believe" passes, or when a fix round
+  replaces it. Each fix round is a fresh dispatch.
+- A full-path IC: `full-path.md` sends it its next package, fix rounds 1 to
+  3, and a fix round after a red suite at "Integrate". Shut it down when every
+  package it owns has merged with a green suite or is `abandoned`. Rounds 4
+  and 5 "stand the IC down" before the respawn; that step becomes this
+  shutdown.
+
+A plain subagent, with the flag unset, exits when it returns, and needs no
+change. `SKILL.md`'s "Every dispatch is named" owns the rule, beside "Read
+the result from the idle notification's final message". `full-path.md`'s
+"Fix rounds" and "Clean up" point at it. A shutdown must not remove the
+record file the teammate wrote, and a resume must not expect a teammate that
+was shut down.
+
+Test first. In one interactive session with the flag set, spawn a named
+teammate in-process, let it reply, then send it the agent-teams shutdown
+request by `SendMessage`. Check that it exits and that a second message to its
+name fails. Do the same under `--teammate-mode tmux`, and check that its pane
+closes and its process ends. If no shutdown exists in either mode, close this
+ticket and record why in design §15.
+
+Run it. Hand one two-package goal to a project lead on the fixture repo under
+`--teammate-mode tmux`.
+
+Check with `tmux list-panes` and `ps` that each scout's and critic's pane
+closes after the project lead reads its result, that each IC's pane closes
+after its last merge, and that no teammate is left when the run goes
+`delivered`.
+
+Done when: a delivered run holds no idle teammate.
+
+Read first: `SKILL.md` "Every dispatch is named"; `full-path.md` "Fix
+rounds" and "Clean up"; `simple-path.md` "Fix rounds"; design §15.20.

@@ -2252,9 +2252,12 @@ and "Closing it"; `simple-path.md` "End the run" and "The delivered window";
 
 ## T55 — Probe a full-path run under `--teammate-mode tmux`
 
-Status: open (design §15.93)
+Status: closed, not run
 Depends on: nothing
 Stage: 7 (design §15.93)
+
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 `--teammate-mode tmux` gives each named agent its own pane
 (`full-path.md`, "Check the launch conditions"), and no full-path run has
@@ -2291,7 +2294,7 @@ named".
 ## T56 — Price and log split-pane teammates outside `run.session_ids`
 
 Status: open (design §15.90h, §15.93)
-Depends on: T55
+Depends on: nothing
 Stage: 7 (design §15.93)
 
 `spend.py` and `crew-stats.py` price a run from its own sessions
@@ -2748,9 +2751,12 @@ Read first: design §15.94g; `skills/project-lead/scripts/crew-stats.py`;
 
 ## T63 — A layered config file for step substitutions
 
-Status: open
+Status: closed, not run
 Depends on: T61
 Stage: 7 (design §15.94, §15.100)
+
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 Built 2026-09-29 as design §15.100, and no run has exercised it. T61 lets the
 goal, the charter or the principal name a replacement for a review step, one
@@ -2809,9 +2815,12 @@ agent-definition shape.
 
 ## T66 — Name every dispatch
 
-Status: open
+Status: closed, not run
 Depends on: T65
 Stage: 7 (design §15.20b, §15.31c)
+
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 The rule "only ICs are named" rests on design §3's claim that a teammate's
 output never returns to the project lead. §15.20b recorded the claim as
@@ -2903,9 +2912,12 @@ Read first: design §15.98b; `skeptical-review.md`.
 
 ## T69 — Mark the PR ready when the review stops
 
-Status: open
+Status: closed, not run
 Depends on: nothing
 Stage: 7 (design §15.99)
+
+Closed 2026-09-29 without a probe. The principal watches for a fault in
+regular work.
 
 A run opens a draft PR, and the principal marks it ready by hand. The
 principal asked for crew to mark it ready itself, once the skeptical review

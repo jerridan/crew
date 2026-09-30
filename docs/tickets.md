@@ -2293,9 +2293,13 @@ named".
 
 ## T56 — Price and log split-pane teammates outside `run.session_ids`
 
-Status: open (design §15.90h, §15.93)
+Status: done (design §15.90h, §15.93, §15.102)
 Depends on: nothing
 Stage: 7 (design §15.93)
+
+Landed 2026-09-29 as design §15.102. The teammate's own transcript carries
+`teamName`, so `spend.py` and the `PreCompact` hook match it by team, and no
+new record field was needed.
 
 `spend.py` and `crew-stats.py` price a run from its own sessions
 (design §15.90), and a split-pane teammate is its own session, outside the

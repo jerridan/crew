@@ -53,10 +53,9 @@ checkout had a remote and there was nothing to ask.
 One more condition cannot be checked in advance: nothing in the run may stop
 for a human. A display mode is not a condition — in-process is the default and
 needs no setup (design §15.20c, §15.89d). A launch that passes you
-`--teammate-mode tmux` gives each IC its own pane (design §15.93). That
-costs you two things. A split-pane IC is its own session, so `spend.py`'s
-header says what its price leaves out and "Verify before you believe" says what
-its compaction record loses. A pane also needs room: a dispatch that
+`--teammate-mode tmux` gives each IC its own pane (design §15.93). A
+split-pane IC is its own session, and `spend.py` and the `PreCompact` hook
+find it by its team name (design §15.102). A pane needs room: a dispatch that
 fails with `create pane failed: pane too small` is an `environment` block, and
 it escalates the same way a stalled one does, below. A teammate's permission
 prompts surface in your session (design §15.12, §15.20), so one un-granted
@@ -264,14 +263,15 @@ here, not a failure (design §15.12).
 Read `run.compactions` before you accept. An entry whose `agent` is this IC's
 name, dated since its last accepted package, means it lost the context it
 planned in: send it its plan back with the fix round, and treat its report's
-claims about earlier packages as unverified. An entry with `agent: null` is
-your own session's compaction; re-read the record before your next decision.
+claims about earlier packages as unverified. An entry with `agent: null` and
+`agent_id: null` is your own session's compaction; re-read the record before
+your next decision.
 
-**An empty list is not proof when your ICs run in panes.** A split-pane
-IC is its own session, so `PreCompact` matches it against nothing and writes no
-entry (design §15.93). Weigh the IC's own report instead: a fix round it cannot
-explain, or a claim about an earlier package it cannot support, is the same
-evidence the entry would have been.
+**An empty list is weak proof when your ICs run in panes.** The hook matches a
+split-pane IC by its team name, and no real split-pane compaction has tested
+that yet (design §15.102). Weigh the IC's own report as well: a fix round it
+cannot explain, or a claim about an earlier package it cannot support, is the
+same evidence an entry would have been.
 
 ## Fix rounds
 

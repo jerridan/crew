@@ -19,14 +19,13 @@ under `$CLAUDE_CONFIG_DIR/projects/` when that variable is set). Two runs that
 share one checkout are then priced apart, which the checkout window could not
 do (design §15.90).
 
-**A split-pane teammate is its own session and falls outside that subtree.**
-In-process is the default (design §15.20c, §15.89d), so a run you start
-yourself, and a run launched as an iTerm2 tab, are both priced whole. A run
-launched with `--teammate-mode tmux` (design §15.93) reports short today, on
-the full path, with no line to say so.
-The fix is a field of its own for the teammate ids, not `run.session_ids`:
-`hooks/session-end.py` marks the whole run `interrupted` when any id in that
-field ends, so an IC finishing would fake a dead run (design §15.90h).
+**A split-pane teammate is its own session, outside that subtree.** Under
+`--teammate-mode tmux` or `iterm2` it writes a top-level transcript whose
+entries carry `teamName: session-<first 8 characters of the lead's session
+id>`. So each transcript modified since `run.created_at` whose team name
+matches a session in `run.session_ids` is priced too, with its own subtree.
+Its id never goes in `run.session_ids`: `hooks/session-end.py` marks the
+whole run `interrupted` when an id there ends (design §15.90h, §15.102).
 
 **The checkout is the fallback**, for a record written before
 `run.session_ids` existed or one whose sessions wrote no transcript. It reads
@@ -117,6 +116,56 @@ def session_files(session_ids, roots: list[Path]) -> list[Path]:
     return unique
 
 
+def team_name(path: Path) -> str | None:
+    """The `teamName` a teammate's transcript carries, or None.
+
+    A split-pane teammate writes its own top-level transcript, and every
+    entry after the first few settings lines carries `teamName`:
+    `session-<the first 8 characters of the project lead's session id>`.
+    `hooks/pre-compact.py` reads it the same way.
+    """
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as handle:
+            for n, line in enumerate(handle):
+                if n >= 50:
+                    return None
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(entry, dict) and entry.get("teamName"):
+                    return entry["teamName"]
+    except OSError:
+        return None
+    return None
+
+
+def teammate_files(session_ids, roots: list[Path], since: float) -> list[Path]:
+    """The transcripts of split-pane teammates the named sessions spawned.
+
+    Each lead session names its own team, so a resumed run has one team per
+    session. A teammate is a top-level session, so only files one directory
+    deep are read, and only those modified since the run began.
+    """
+    teams = {f"session-{s[:8]}" for s in session_ids or []
+             if isinstance(s, str) and SESSION_ID.match(s)}
+    own = {f"{s}.jsonl" for s in session_ids or [] if isinstance(s, str)}
+    found = []
+    for root in roots:
+        for path in sorted(root.glob("*/*.jsonl")):
+            if path.name in own:
+                continue
+            try:
+                if path.stat().st_mtime < since:
+                    continue
+            except OSError:
+                continue
+            if team_name(path) in teams:
+                found.append(path)
+                found.extend(sorted(path.with_suffix("").glob("**/*.jsonl")))
+    return found
+
+
 def run_files(state: dict) -> list[Path]:
     """The transcripts of this run's own sessions, or an empty list.
 
@@ -124,7 +173,8 @@ def run_files(state: dict) -> list[Path]:
     `run.review_session_ids` and never in `run.session_ids`: the `SessionEnd`
     hook reads the latter and would mark the whole run interrupted when the
     review ended (design §15.90h, §15.94c). It is still this run's cost, so it
-    is priced here.
+    is priced here. So is each split-pane teammate a lead session spawned,
+    found by its team name (design §15.102).
     """
     run = state.get("run")
     run = run if isinstance(run, dict) else {}
@@ -133,7 +183,22 @@ def run_files(state: dict) -> list[Path]:
         value = run.get(key)
         if isinstance(value, list):
             ids.extend(value)
-    return session_files(ids, project_roots())
+    roots = project_roots()
+    files = session_files(ids, roots)
+    if not files:
+        return files
+    since = 0.0
+    created = run.get("created_at")
+    if isinstance(created, str):
+        try:
+            since = datetime.datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            pass
+    for path in teammate_files(run.get("session_ids"), roots, since):
+        resolved = path.resolve()
+        if resolved not in files:
+            files.append(resolved)
+    return files
 
 
 def stamp(entry: dict) -> float | None:

@@ -5,8 +5,12 @@ Appends `{session_id, agent_id, agent, trigger, at}` to `run.compactions`
 in the run's `state.json`. A hook that fires inside a subagent or an
 in-process teammate carries `agent_id`; `agent` is the name resolved from the
 transcript's sibling `.meta.json`, which is the teammate's name the project
-lead spawned it under. No `agent_id` means the project lead's own session
-compacted. Writes only; deletes nothing; fails open (design §15.50).
+lead spawned it under. A split-pane teammate is its own session, so it
+carries no `agent_id`; it is matched by the `teamName` in its transcript and
+named by its `agentName`. A subagent it spawns is matched by the team name
+in its session's transcript (design §15.102). No `agent_id` and no team name
+means the project lead's own session compacted. Writes only; deletes
+nothing; fails open (design §15.50).
 """
 
 import datetime
@@ -43,8 +47,35 @@ def write_json(path: Path, data) -> None:
     os.replace(tmp, path)
 
 
-def session_in_run(record_dir: Path, run: dict, session_id: str) -> bool:
+def team_header(transcript_path: str) -> tuple[str | None, str | None]:
+    """`(teamName, agentName)` from a split-pane teammate's transcript.
+
+    Every entry after the first few settings lines carries both.
+    `skills/project-lead/scripts/spend.py`'s `team_name()` reads it the same
+    way.
+    """
+    if not transcript_path:
+        return None, None
+    try:
+        with open(transcript_path, encoding="utf-8", errors="ignore") as handle:
+            for n, line in enumerate(handle):
+                if n >= 50:
+                    break
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(entry, dict) and entry.get("teamName"):
+                    return entry["teamName"], entry.get("agentName")
+    except OSError:
+        pass
+    return None, None
+
+
+def session_in_run(record_dir: Path, run: dict, session_id: str, team: str | None = None) -> bool:
     if session_id in run.get("session_ids", []):
+        return True
+    if team and team in {f"session-{s[:8]}" for s in run.get("session_ids", []) if isinstance(s, str)}:
         return True
     worktrees = record_dir / "worktrees.json"
     if worktrees.is_file():
@@ -70,13 +101,13 @@ def agent_name(transcript_path: str) -> str | None:
         return None
 
 
-def record(state_path: Path, entry: dict) -> None:
+def record(state_path: Path, entry: dict, team: str | None = None) -> None:
     with state_path.open(encoding="utf-8") as handle:
         state = json.load(handle)
     run = state.get("run") or {}
     if run.get("run_state") not in LIVE_STATES:
         return
-    if not session_in_run(state_path.parent, run, entry["session_id"]):
+    if not session_in_run(state_path.parent, run, entry["session_id"], team):
         return
     run.setdefault("compactions", []).append(entry)
     write_json(state_path, state)
@@ -90,17 +121,28 @@ def main() -> None:
     session_id = payload.get("session_id")
     if not session_id:
         return
+    transcript = payload.get("transcript_path")
+    team, teammate = None, None
+    if not payload.get("agent_id"):
+        team, teammate = team_header(transcript)
+    elif transcript:
+        # A subagent of a split-pane teammate: its own transcript carries no
+        # team name, but its session's does, at `<session_id>.jsonl` beside
+        # the `<session_id>/` folder that holds the subagent's transcript.
+        folder = next((p for p in Path(transcript).parents if p.name == session_id), None)
+        if folder is not None:
+            team, _ = team_header(str(folder.with_suffix(".jsonl")))
     entry = {
         "session_id": session_id,
         "agent_id": payload.get("agent_id"),
-        "agent": agent_name(payload.get("transcript_path")),
+        "agent": agent_name(payload.get("transcript_path")) or teammate,
         "trigger": payload.get("trigger") or "unknown",
         "at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     for root in roots:
         for state_path in sorted(root.glob("*/state.json")):
             try:
-                record(state_path, entry)
+                record(state_path, entry, team)
             except Exception:
                 continue
 

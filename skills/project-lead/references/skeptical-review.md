@@ -472,6 +472,7 @@ CI, a bot or the principal is carried by the same entries. `<round>` is
 `review_pending.round`, and only entries 8–13 use `<round>`. **Every entry
 that runs git or dispatches an IC assumes the branch is back** — do
 `simple-path.md`'s "Get the branch back" once, before you read the list.
+Arm the keep-alive once too, by `simple-path.md`'s "Keep the cache warm".
 
 1. **A `run.rounds` entry and its ledger file disagree on whether the
    round's open finished.** `simple-path.md`'s "Findings from a review"

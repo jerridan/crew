@@ -427,26 +427,40 @@ after an idle hour rewrites your whole context, and in this window that
 context is the run's largest: $4.67 to $11.53 a message (design §15.101). A
 cache read resets the hour, and costs a small part of a rewrite.
 
-So keep one keep-alive job pending for as long as the run is `delivered`.
-Schedule it with `CronCreate` as a one-shot job (`recurring: false`) at the
-local time 50 minutes from now, with this prompt, `<goal-slug>` filled in:
+So keep one recurring keep-alive job in this session while the run is
+`delivered`. It fires every 30 minutes, and each fire is one cache read and a
+one-word reply. At that period a recurring job fires at most 3 minutes late,
+so every read lands inside the hour. A 50-minute gap would need a job that
+re-arms itself, and a re-arming turn costs three calls, not one (design
+§15.103).
 
-```
-Crew keep-alive for <goal-slug>. If the run is complete, or the principal's
-last message is more than 24 hours old, schedule nothing and reply "stopped".
-Otherwise schedule this same prompt as a one-shot CronCreate job at the local
-time 50 minutes from now, and reply "ok".
-```
+**Arm it** at the hand-over, on every entry into this window, a resume
+included, and after each message from the principal:
 
-- **When to schedule it:** at the hand-over, and on every entry into this
-  window, a resume included. A job lives only in the session that made it.
-- **One job at a time.** Each keep-alive re-arms the next one. A real message
-  in between needs no new job: the pending one still fires within the hour.
-- **A keep-alive turn does no other work.** It runs no tool but `CronCreate`,
-  and reads nothing.
-- **When the run goes `complete`,** delete the pending job with `CronDelete`.
-- **After 24 hours with no message from the principal,** the chain stops by
-  itself. One more rewrite then costs less than more keep-alives.
+1. Read `run.keep_alive` (`record-format.md`). When its `session_id` is this
+   session's and its `last_day` is tomorrow or later, the job is armed: stop
+   here. When its `session_id` is this session's and its `last_day` is
+   today or earlier, delete it with `CronDelete <job_id>` first. A job from
+   another session ended with that session, so ignore it.
+2. Run `date` for today's and tomorrow's day of the month and month.
+3. Call `CronCreate` with `recurring: true`, the cron `13,43 * <today>,<tomorrow>
+   <month> *` (both months, comma-separated, when tomorrow is in the next
+   one), and this prompt:
+
+   ```
+   Crew keep-alive. Reply with the single word ok. Run no tool.
+   ```
+4. Write `run.keep_alive` as `{job_id, session_id, last_day}` with
+   `crew-record.py <record-dir> run set keep_alive <json>`. `session_id` is
+   `$CLAUDE_CODE_SESSION_ID`, and `last_day` is tomorrow, as `YYYY-MM-DD`.
+
+The job stops by itself after tomorrow, so a run nobody returns to pays for
+at most two days of reads. **One job at a time** is what step 1 is for: a
+second job would double the reads, and `CronDelete` on the ship word would
+remove only one of them.
+
+**A keep-alive turn is not a message.** It is none of the kinds below. Reply
+"ok", run no tool, and sort nothing.
 
 Four kinds of message reach you here. Answer each where it arrived: a
 message typed in your pane is answered in your pane, and a
@@ -676,9 +690,11 @@ this repo where no `gh` command sees it. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.
-2. `scripts/spend.py --write`, so the figure covers this window.
-3. Stop every process the run left listening, as "End the run" says.
-4. Say the run is closed and this session can be. The principal closes the
+2. `CronDelete` the job `run.keep_alive` names, when its `session_id` is
+   this session's ("Keep the cache warm").
+3. `scripts/spend.py --write`, so the figure covers this window.
+4. Stop every process the run left listening, as "End the run" says.
+5. Say the run is closed and this session can be. The principal closes the
    pane or the window.
 
 A session that dies in this window is resumed like any other: `SessionEnd`

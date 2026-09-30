@@ -7594,35 +7594,56 @@ Deliberately different:
 103. **A delivered run keeps its cache warm — 2026-09-30, T70.** §15.101
      found that the first message after an idle hour rewrites the project
      lead's whole context. A cache read resets the 1-hour timer. So
-     `simple-path.md`'s "The delivered window" now keeps one keep-alive job
-     pending while the run is `delivered`: a one-shot `CronCreate` turn 50
-     minutes out, which re-arms itself, does no other work, and stops at
-     `complete` or 24 hours after the principal's last message.
+     `simple-path.md`'s "Keep the cache warm" keeps one recurring
+     `CronCreate` job in the session while the run is `delivered`. It fires
+     at :13 and :43 of each hour until the end of the day after it was
+     armed, and each fire replies "ok" and runs no tool.
 
      a. **Why these subagents get none.** With split-pane teammates priced
         in (§15.102), subagent and teammate calls in the eight runs of
         §15.101 cost $176.93, and rewrites after a gap of more than 5
         minutes $4.72, all in `w-303`. Only the project lead session waits
         long enough to lose its cache.
-     b. **Why a one-shot job.** `CronCreate` fires only while the session is
-        idle, and a recurring job can fire up to 10% of its period late, so
-        an hourly job can miss the hour. A one-shot job lands within about 90
-        seconds of its time, and each keep-alive schedules the next.
-     c. **The probe.** An interactive Fable 5.1 session at high effort,
-        auto mode, in a scratch repo, 2026-09-29/30. It scheduled a one-shot
-        job 50 minutes out, and nobody typed after that. The job fired at
-        23:57, 49.7 minutes after the last call, re-armed itself, and the
-        second fired at 00:47, 49.9 minutes after. Both read the whole
-        context from cache (56.8k and 57.4k tokens) and wrote only their
-        own turn (129 to 320 tokens a call). Auto mode allowed `CronCreate`
-        with no prompt.
-     d. **The cost.** A keep-alive is one to three calls: a cache read of
-        the context, a few hundred written tokens, and a short reply. On a
-        500k context on Fable 5.1 that is about $0.15, so about $3.60 for a
-        full 24 hours against $4.67 to $11.53 for one rewrite.
-     e. **The claim this corrects.** "The delivered window" said an idle
+     b. **Why every 30 minutes, not every 50.** A cron schedule names
+        minutes within the hour, so a recurring job can only be spaced
+        evenly at a divisor of 60. One fire an hour leaves a 60-minute gap,
+        and a recurring job can fire up to 10% of its period late. A
+        50-minute gap needs a one-shot job that schedules the next one. In
+        the first probe (c) each such fire took 3 calls: `date` through
+        Bash, `CronCreate`, and the reply. That is 3.6 reads of the context
+        an hour against 2 for the recurring job.
+     c. **First probe: the one-shot chain.** An interactive Fable 5.1 session
+        at high effort, auto mode, in a scratch repo, 2026-09-29/30. A
+        one-shot job fired at 23:57 and at 00:47, 49.7 and 49.9 minutes
+        after the previous call, with nobody typing. Both read the whole
+        context from cache (56.8k and 57.4k tokens). Auto mode allowed
+        `CronCreate` and `date` with no prompt.
+     d. **Second probe: the recurring job, and three idle states.** The same
+        setup in manual permission mode, 2026-09-30, with a job every
+        minute. Each fire was one call: the whole context read from cache,
+        31 to 36 tokens written, a 4-token reply. With text typed in the
+        input box and not sent, the job fired and the text stayed in the
+        box, unsent. With a permission prompt pending, no fire ran for three
+        minutes; after the prompt was declined, fires resumed once a minute,
+        with no backlog. A question the project lead asks as plain text
+        leaves the session idle, so a fire then adds an "ok" below it.
+        `AskUserQuestion` was not tested; it holds the turn open like a
+        permission prompt.
+     e. **The cost.** A fire costs one read of the context. On Fable 5.1
+        that is $0.25 a million tokens an hour, twice, against $20 a million
+        for the rewrite it prevents. So the job pays for itself for up to 40
+        idle hours, whatever the context's size. On a 500k context it costs
+        about $6 a day. It stops after the day after it was armed, 24 to 48
+        hours after the principal's last message, so a run nobody returns
+        to pays at most about $12.
+     f. **One job per session.** `run.keep_alive` holds the job's id, its
+        session and its last day. Arming reads it first, so an escalation's
+        return to `delivered`, a compaction or a resume does not add a
+        second job. A message from the principal on the job's last day
+        replaces it, which moves the end to the next day.
+     g. **The claim this corrects.** "The delivered window" said an idle
         session spends nothing. It now says the idle time is free and the
         first message after an idle hour is not.
-     f. **What no run has shown.** The probe was a small session, not a
-        crew run. The principal watches for a fault in regular work, as for
+     h. **What no run has shown.** The probes were small sessions, not crew
+        runs. The principal watches for a fault in regular work, as for
         T55, T63, T66 and T69.

@@ -2957,10 +2957,12 @@ Status: done
 Depends on: nothing
 Stage: 7 (design §15.101, §15.103)
 
-Landed 2026-09-30 as design §15.103. A probe session showed two one-shot
-`CronCreate` keep-alives fire with nobody typing, 50 minutes apart, and read
-the whole context from cache. No crew run was used; the principal watches
-for a fault in regular work.
+Landed 2026-09-30 as design §15.103, as a recurring `CronCreate` job every
+30 minutes, not the one-shot chain this ticket first named: a re-arming turn
+costs three calls. Two probe sessions showed the fires read the whole
+context from cache, skip a pending permission prompt, and leave unsent input
+alone. No crew run was used; the principal watches for a fault in regular
+work.
 
 The first message to a delivered run after more than an hour rewrites the
 whole context at the 1-hour cache-write price: $4.67 to $11.53 a message, and

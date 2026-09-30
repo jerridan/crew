@@ -2953,9 +2953,18 @@ Read first: design §15.99; `skeptical-review.md` "Mark the PR ready".
 
 ## T70 — Keep the cache warm while a delivered run waits
 
-Status: open
+Status: closed, not run
 Depends on: nothing
-Stage: 7 (design §15.101)
+Stage: 7 (design §15.101, §15.103)
+
+Built 2026-09-30 as design §15.103, and closed without the run below. The
+principal watches for a fault in regular work. What was built differs from
+the scope below in two ways: a recurring `CronCreate` job every 30 minutes,
+not a one-shot chain, because a re-arming turn costs three calls; and a stop
+at the end of the day after arming, 24 to 48 hours after the principal's
+last message, because a cron names days, not hours. Two probe sessions
+showed the fires read the whole context from cache, skip a pending
+permission prompt, and leave unsent input alone.
 
 The first message to a delivered run after more than an hour rewrites the
 whole context at the 1-hour cache-write price: $4.67 to $11.53 a message, and

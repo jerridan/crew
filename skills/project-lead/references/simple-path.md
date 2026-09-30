@@ -417,9 +417,53 @@ The work is handed over and `run_state` is `delivered`. "The skeptical
 review" above is this window's first round. Stay in this session until the
 principal says the work shipped. You are the one session that has read the
 code, so a question about the change before the merge comes to you, and so
-does every change to the same PR after it. An idle session spends nothing; a
-killed one costs a relaunch and a `--resume` for every question (design
-§15.92).
+does every change to the same PR after it. A killed session costs a relaunch
+and a `--resume` for every question (design §15.92).
+
+### Keep the cache warm
+
+Idle time is free, but the prompt cache lives one hour. The first message
+after an idle hour rewrites your whole context, and in this window that
+context is the run's largest: $4.67 to $11.53 a message (design §15.101). A
+cache read resets the hour, and costs a small part of a rewrite.
+
+So keep one recurring keep-alive job in this session while the run is
+`delivered` or `blocked`. It fires every 30 minutes, and each fire is one
+cache read and a one-word reply. At that period a recurring job fires at most
+3 minutes late, so every read lands inside the hour. A 50-minute gap would
+need a job that re-arms itself, and a re-arming turn costs three calls, not
+one (design §15.103).
+
+**Arm it** at the hand-over, on every entry into this window, a resume
+included, and on the principal's first message after the date changes.
+Claude Code tells you when the date changes:
+
+1. Call `CronList`. It lists the jobs this process holds, and a job ends
+   with the process that made it. Delete each job whose prompt starts
+   "Crew keep-alive" with `CronDelete`.
+2. Run `date +'%d %m'` and `date -v+1d +'%d %m'` (`date -d tomorrow` on
+   Linux) for today's and tomorrow's day of the month and month.
+3. Call `CronCreate` with `recurring: true`, the cron `13,43 * <today's
+   day>,<tomorrow's day> <month> *`, both months comma-separated when
+   tomorrow is in the next one, and this prompt:
+
+   ```
+   Crew keep-alive. Reply with the single word ok. Run no tool.
+   ```
+
+Across a month boundary the cron also matches other dates, such as October
+30 for `30,1 9,10`. Each is at least 28 days away, and a recurring job
+expires after 7 days, so none of them fires. The job stops by itself at the
+end of tomorrow, and a run nobody returns to pays for at most two days of
+reads. **One job at a time** is what step 1 is for: a second job would
+double the reads.
+
+The job keeps firing while the run is `blocked` on your own question, so an
+"ok" lands below the question every 30 minutes. That is the price of a cheap
+answer. The principal can scroll up, or ask you what the question was.
+
+**A keep-alive turn is not a message.** It is none of the kinds below. Reply
+"ok", run no tool, and sort nothing.
 
 Four kinds of message reach you here. Answer each where it arrived: a
 message typed in your pane is answered in your pane, and a
@@ -649,9 +693,11 @@ this repo where no `gh` command sees it. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.
-2. `scripts/spend.py --write`, so the figure covers this window.
-3. Stop every process the run left listening, as "End the run" says.
-4. Say the run is closed and this session can be. The principal closes the
+2. `CronList`, then `CronDelete` each job whose prompt starts "Crew
+   keep-alive" ("Keep the cache warm").
+3. `scripts/spend.py --write`, so the figure covers this window.
+4. Stop every process the run left listening, as "End the run" says.
+5. Say the run is closed and this session can be. The principal closes the
    pane or the window.
 
 A session that dies in this window is resumed like any other: `SessionEnd`

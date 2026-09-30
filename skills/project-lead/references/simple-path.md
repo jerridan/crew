@@ -428,36 +428,39 @@ context is the run's largest: $4.67 to $11.53 a message (design §15.101). A
 cache read resets the hour, and costs a small part of a rewrite.
 
 So keep one recurring keep-alive job in this session while the run is
-`delivered`. It fires every 30 minutes, and each fire is one cache read and a
-one-word reply. At that period a recurring job fires at most 3 minutes late,
-so every read lands inside the hour. A 50-minute gap would need a job that
-re-arms itself, and a re-arming turn costs three calls, not one (design
-§15.103).
+`delivered` or `blocked`. It fires every 30 minutes, and each fire is one
+cache read and a one-word reply. At that period a recurring job fires at most
+3 minutes late, so every read lands inside the hour. A 50-minute gap would
+need a job that re-arms itself, and a re-arming turn costs three calls, not
+one (design §15.103).
 
 **Arm it** at the hand-over, on every entry into this window, a resume
-included, and after each message from the principal:
+included, and on the principal's first message after the date changes.
+Claude Code tells you when the date changes:
 
-1. Read `run.keep_alive` (`record-format.md`). When its `session_id` is this
-   session's and its `last_day` is tomorrow or later, the job is armed: stop
-   here. When its `session_id` is this session's and its `last_day` is
-   today or earlier, delete it with `CronDelete <job_id>` first. A job from
-   another session ended with that session, so ignore it.
-2. Run `date` for today's and tomorrow's day of the month and month.
-3. Call `CronCreate` with `recurring: true`, the cron `13,43 * <today>,<tomorrow>
-   <month> *` (both months, comma-separated, when tomorrow is in the next
-   one), and this prompt:
+1. Call `CronList`. It lists the jobs this process holds, and a job ends
+   with the process that made it. Delete each job whose prompt starts
+   "Crew keep-alive" with `CronDelete`.
+2. Run `date +'%d %m'` and `date -v+1d +'%d %m'` (`date -d tomorrow` on
+   Linux) for today's and tomorrow's day of the month and month.
+3. Call `CronCreate` with `recurring: true`, the cron `13,43 * <today's
+   day>,<tomorrow's day> <month> *`, both months comma-separated when
+   tomorrow is in the next one, and this prompt:
 
    ```
    Crew keep-alive. Reply with the single word ok. Run no tool.
    ```
-4. Write `run.keep_alive` as `{job_id, session_id, last_day}` with
-   `crew-record.py <record-dir> run set keep_alive <json>`. `session_id` is
-   `$CLAUDE_CODE_SESSION_ID`, and `last_day` is tomorrow, as `YYYY-MM-DD`.
 
-The job stops by itself after tomorrow, so a run nobody returns to pays for
-at most two days of reads. **One job at a time** is what step 1 is for: a
-second job would double the reads, and `CronDelete` on the ship word would
-remove only one of them.
+Across a month boundary the cron also matches other dates, such as October
+30 for `30,1 9,10`. Each is at least 28 days away, and a recurring job
+expires after 7 days, so none of them fires. The job stops by itself at the
+end of tomorrow, and a run nobody returns to pays for at most two days of
+reads. **One job at a time** is what step 1 is for: a second job would
+double the reads.
+
+The job keeps firing while the run is `blocked` on your own question, so an
+"ok" lands below the question every 30 minutes. That is the price of a cheap
+answer. The principal can scroll up, or ask you what the question was.
 
 **A keep-alive turn is not a message.** It is none of the kinds below. Reply
 "ok", run no tool, and sort nothing.
@@ -690,8 +693,8 @@ this repo where no `gh` command sees it. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.
-2. `CronDelete` the job `run.keep_alive` names, when its `session_id` is
-   this session's ("Keep the cache warm").
+2. `CronList`, then `CronDelete` each job whose prompt starts "Crew
+   keep-alive" ("Keep the cache warm").
 3. `scripts/spend.py --write`, so the figure covers this window.
 4. Stop every process the run left listening, as "End the run" says.
 5. Say the run is closed and this session can be. The principal closes the

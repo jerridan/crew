@@ -7595,9 +7595,9 @@ Deliberately different:
      found that the first message after an idle hour rewrites the project
      lead's whole context. A cache read resets the 1-hour timer. So
      `simple-path.md`'s "Keep the cache warm" keeps one recurring
-     `CronCreate` job in the session while the run is `delivered`. It fires
-     at :13 and :43 of each hour until the end of the day after it was
-     armed, and each fire replies "ok" and runs no tool.
+     `CronCreate` job in the session while the run is `delivered` or
+     `blocked`. It fires at :13 and :43 of each hour, today and tomorrow,
+     and each fire replies "ok" and runs no tool.
 
      a. **Why these subagents get none.** With split-pane teammates priced
         in (§15.102), subagent and teammate calls in the eight runs of
@@ -7633,17 +7633,35 @@ Deliberately different:
         that is $0.25 a million tokens an hour, twice, against $20 a million
         for the rewrite it prevents. So the job pays for itself for up to 40
         idle hours, whatever the context's size. On a 500k context it costs
-        about $6 a day. It stops after the day after it was armed, 24 to 48
-        hours after the principal's last message, so a run nobody returns
-        to pays at most about $12.
-     f. **One job per session.** `run.keep_alive` holds the job's id, its
-        session and its last day. Arming reads it first, so an escalation's
-        return to `delivered`, a compaction or a resume does not add a
-        second job. A message from the principal on the job's last day
-        replaces it, which moves the end to the next day.
-     g. **The claim this corrects.** "The delivered window" said an idle
+        about $6 a day. It stops at the end of the day after it was armed,
+        24 to 48 hours after the principal's last message, so a run nobody
+        returns to pays at most about $12. T70 first named 24 hours; a day
+        boundary is what a cron can name.
+     f. **Arming, after a second review.** A `/code-review high` of the
+        first recurring form raised three points about arming. A cron that names days of the month and months matches every
+        pair of them, so `30,1 9,10` also matches October 30. That finding
+        does no harm: every extra date is at least 28 days away, and a
+        recurring job expires after 7 days. A weekday cron, tried as the
+        fix, is worse: a job armed on a Wednesday morning would fire again
+        the next Wednesday until it expires. The other two were real. A
+        record field holding the job's
+        session could not tell a resumed process from the old one, since
+        `claude --resume` can keep the session id; `CronList` shows the jobs
+        the live process holds, so arming deletes any keep-alive there and
+        creates one. And re-arming after every message cost a call each
+        time; it now runs at the hand-over, on entry into the window, and on
+        the principal's first message after Claude Code reports a new date.
+        The same review held that loading `CronCreate` through `ToolSearch`
+        rewrites the context. In the first probe it did not: the call after
+        it read the whole context from cache.
+     g. **While the run waits on its own question.** The job keeps firing
+        while the run is `blocked`, so an "ok" lands below the project
+        lead's question every 30 minutes. The principal chose that over a
+        full rewrite on the answer: the question is one scroll or one
+        question away.
+     h. **The claim this corrects.** "The delivered window" said an idle
         session spends nothing. It now says the idle time is free and the
         first message after an idle hour is not.
-     h. **What no run has shown.** The probes were small sessions, not crew
+     i. **What no run has shown.** The probes were small sessions, not crew
         runs. The principal watches for a fault in regular work, as for
         T55, T63, T66 and T69.

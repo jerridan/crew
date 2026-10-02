@@ -436,9 +436,9 @@ one (design §15.103).
 
 **Arm it** at the hand-over, on every entry into this window, a resume
 included, and on the principal's first message after the date changes.
-Claude Code tells you when the date changes. Do not arm it when
-`decisions.md` records that the principal stopped the keep-alive and has not
-asked for it again since.
+Claude Code tells you when the date changes. Do not arm it when the
+newer of the keep-alive lines in `decisions.md` says the principal stopped
+it.
 
 1. Call `CronList`. It lists the jobs this process holds, and a job ends
    with the process that made it. Delete each job whose prompt starts
@@ -457,7 +457,8 @@ step 1 is for: a second job would double the reads.
 
 **Stop it when the principal asks.** Delete each "Crew keep-alive" job, as
 step 1 says. Write one line to `decisions.md` that the principal stopped the
-keep-alive. Arm it again only when the principal asks.
+keep-alive. When the principal asks for it again, write one line that the
+principal started it again, then arm it.
 
 The job keeps firing while the run is `blocked` on your own question, so an
 "ok" lands below the question every 30 minutes. That is the price of a cheap

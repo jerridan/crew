@@ -7672,6 +7672,8 @@ Deliberately different:
         until the principal asks the project lead to stop it, or until
         Claude Code expires it 7 days after it was armed. The re-arm on
         the first message of a new date restarts the 7 days. A stop goes
-        into `decisions.md`, so a resume does not arm the job again. The
+        into `decisions.md`, and so does a request to start the job again.
+        Arming reads the newer of the two lines, so a resume, a compaction
+        or a new date keeps the principal's last choice. The
         cost bound in (e) changes: a run nobody returns to now pays about
         $6 a day on a 500k context, for up to 7 days.

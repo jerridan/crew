@@ -7665,3 +7665,15 @@ Deliberately different:
      i. **What no run has shown.** The probes were small sessions, not crew
         runs. The principal watches for a fault in regular work, as for
         T55, T63, T66 and T69.
+     j. **The two-day cap is gone — 2026-10-02.** In use, the principal
+        found that the cap counts from when the job is armed, not from
+        their last message. They chose no cap, and a stop on request. The
+        cron is now `13,43 * * * *`. The job fires until the ship word,
+        until the principal asks the project lead to stop it, or until
+        Claude Code expires it 7 days after it was armed. The re-arm on
+        the first message of a new date restarts the 7 days. A stop goes
+        into `decisions.md`, and so does a request to start the job again.
+        Arming reads the newer of the two lines, so a resume, a compaction
+        or a new date keeps the principal's last choice. The
+        cost bound in (e) changes: a run nobody returns to now pays about
+        $6 a day on a 500k context, for up to 7 days.

@@ -436,27 +436,29 @@ one (design §15.103).
 
 **Arm it** at the hand-over, on every entry into this window, a resume
 included, and on the principal's first message after the date changes.
-Claude Code tells you when the date changes:
+Claude Code tells you when the date changes. Do not arm it when the
+newer of the keep-alive lines in `decisions.md` says the principal stopped
+it.
 
 1. Call `CronList`. It lists the jobs this process holds, and a job ends
    with the process that made it. Delete each job whose prompt starts
    "Crew keep-alive" with `CronDelete`.
-2. Run `date +'%d %m'` and `date -v+1d +'%d %m'` (`date -d tomorrow` on
-   Linux) for today's and tomorrow's day of the month and month.
-3. Call `CronCreate` with `recurring: true`, the cron `13,43 * <today's
-   day>,<tomorrow's day> <month> *`, both months comma-separated when
-   tomorrow is in the next one, and this prompt:
+2. Call `CronCreate` with `recurring: true`, the cron `13,43 * * * *`, and
+   this prompt:
 
    ```
    Crew keep-alive. Reply with the single word ok. Run no tool.
    ```
 
-Across a month boundary the cron also matches other dates, such as October
-30 for `30,1 9,10`. Each is at least 28 days away, and a recurring job
-expires after 7 days, so none of them fires. The job stops by itself at the
-end of tomorrow, and a run nobody returns to pays for at most two days of
-reads. **One job at a time** is what step 1 is for: a second job would
-double the reads.
+The job has no end date. It fires until the run ships, until the principal
+stops it, or until Claude Code expires it 7 days after you armed it. The
+re-arm on a new date restarts those 7 days. **One job at a time** is what
+step 1 is for: a second job would double the reads.
+
+**Stop it when the principal asks.** Delete each "Crew keep-alive" job, as
+step 1 says. Write one line to `decisions.md` that the principal stopped the
+keep-alive. When the principal asks for it again, write one line that the
+principal started it again, then arm it.
 
 The job keeps firing while the run is `blocked` on your own question, so an
 "ok" lands below the question every 30 minutes. That is the price of a cheap

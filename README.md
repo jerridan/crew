@@ -214,10 +214,10 @@ its own. What it finds goes on the same PR as a patch round. So does what
 your reviewers and CI post on the PR, and anything you send yourself. Each
 finding gets a reply that says what changed or why the run disagreed. For
 anything but crew's own review, the project lead waits for your go-ahead
-before it patches or replies. A run takes three reviews at most. A question with no
-precedent goes to a council, where each advocate argues an assigned position,
-so the project lead weighs arguments instead of counting votes. A question
-about what you want is never debated. It comes to you.
+before it patches or replies. A run takes three reviews at most. A question
+with no precedent goes to a council, where each advocate argues an assigned
+position, so the project lead weighs arguments instead of counting votes. A
+question about what you want is never debated. It comes to you.
 
 The PR is the end of the work. Crew never merges. The project lead
 stays until you say the work shipped.

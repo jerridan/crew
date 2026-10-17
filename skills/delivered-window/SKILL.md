@@ -6,12 +6,13 @@ user-invocable: false
 
 # The delivered window
 
-The work is handed over and `run_state` is `delivered`. `simple-path.md`'s
-"The skeptical review" is this window's first round. Stay in this session
-until the principal says the work shipped. You are the one session that has
-read the code, so a question about the change before the merge comes to you,
-and so does every change to the same PR after it. A killed session costs a
-relaunch and a `--resume` for every question (design §15.92).
+This window opens at the hand-over, when `run_state` goes `delivered`.
+`simple-path.md`'s "The skeptical review" is its first round. Stay in this
+session until the principal says the work shipped. You are the one session
+that has read the code, so a question about the change before the merge
+comes to you, and so does every change to the same PR after it. A killed
+session costs a relaunch and a `--resume` for every question (design
+§15.92).
 
 **Paths.** `<project-lead-dir>` is the `skills/project-lead` directory
 beside this skill's base directory, which the invocation names. A file this
@@ -65,8 +66,7 @@ round and takes no action. "Mark the PR ready" stays the only place where
 crew marks the PR ready.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
-each key holds and when it is written. `crew-record.py run set watch <json>`
-writes it, the whole object each time.
+each key holds, when it is written and with which command.
 
 **Arm the monitor on every entry into this window**: at the hand-over, on a
 resume, and on every return from `blocked` to `delivered`. Do not arm it when
@@ -149,7 +149,7 @@ None of these is one of the four kinds of message below:
 
 - **A monitor event** is the lines of one wake. Sort them as "Findings from
   a review" says for items from the watch.
-- **The expiry notice** re-arms the monitor, and you reply "ok".
+- **The expiry notice** re-arms the monitor, as "Watch the PR" says.
 - **A keep-alive fire with no PR** takes the reply "ok". Run no tool, and
   sort nothing.
 - **A keep-alive fire with a PR** runs the fallback poll. Sort what it

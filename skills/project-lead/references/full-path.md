@@ -478,9 +478,9 @@ revised in place — correcting it takes a new package (design §10).
 
 An open package under a **terminal** deliverable belongs to a round of the
 delivered window, not to the original work. `crew:delivered-window`'s "A
-round killed mid-flight" owns that case. An `integrated` one that never published
-or never replied belongs to `record-format.md`'s "What a delivered-window
-round still owes".
+round killed mid-flight" owns that case. An `integrated` one that never
+published or never replied belongs to `record-format.md`'s "What a
+delivered-window round still owes".
 
 Move `run_state` out of `interrupted` **first**, then clear `orphaned` on
 each worktree as you reconcile it. In the other order, a session that dies

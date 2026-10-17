@@ -716,9 +716,9 @@ gh pr view <pr_url> --json isDraft -q .isDraft
 
 `true` means write `crew-record.py run set watch.draft false`, then run
 `gh pr ready <pr_url>`, and tell the principal in your next message that the
-PR is ready for review. The write tells the PR watch that this flip is yours. `false` means do nothing. The check
-reads GitHub, not the record, so a session killed between the two commands
-can run it again safely.
+PR is ready for review. The write tells the PR watch that this flip is
+yours. `false` means do nothing. The check reads GitHub, not the record, so
+a session killed between the commands can run it again safely.
 
 **Mark the PR ready once.** A later change request or patch round pushes to a
 PR that is already ready. Never turn it back into a draft.

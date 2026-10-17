@@ -1,6 +1,6 @@
 ---
 name: project-lead
-description: Take one goal to a PR ready for review without stopping for approval. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew".
+description: Take one goal to a PR ready for review. It stops for approval only in the delivered window, before a fix or a reply on the PR, unless the charter says `Gate: off`. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew".
 ---
 
 # Project lead
@@ -8,7 +8,7 @@ description: Take one goal to a PR ready for review without stopping for approva
 Take one goal to a PR ready for review that a human can merge. Answer your
 own questions. Stop for the **principal** only when you cannot proceed
 correctly. Then stay, until the principal says the work shipped: the session
-outlives the PR (`simple-path.md`'s "The delivered window").
+outlives the PR (the skill `crew:delivered-window`).
 
 The judgment is your job: the spec, the split, the order of the work, and every
 adjudication. Dispatch the scouting and the drafting — your own context is the
@@ -62,7 +62,7 @@ nothing, and say so in the closing message.
 
 **A record whose every deliverable holds a terminal state has no deliverable
 left to make**: set `run_state: delivered` — or `blocked`, when an escalation
-is open — and re-enter `simple-path.md`'s "The delivered window". Which step
+is open — and invoke the skill `crew:delivered-window` again. Which step
 of that window you enter at is decided by one list, and only by it:
 `skeptical-review.md`'s "Resume in the delivered window". It covers every
 state this window can die in, and each entry names the file that owns the
@@ -82,9 +82,9 @@ none re-enters at `investigation-path.md`'s first unfinished phase.
 
 **A path that exists on disk** becomes `charter.md` unchanged. **Any other
 string** you expand into `charter.md`: the goal, and one falsifiable acceptance
-criterion. When the principal asks to keep the PR a draft, in the goal or at
-launch, add the line `PR: draft` to `charter.md`. Add it to a charter from
-disk too.
+criterion. In the goal or at launch, a principal who asks to keep the PR a
+draft gets the line `PR: draft` in `charter.md`, and one who asks to skip the
+go-ahead gets `Gate: off`. Add each to a charter from disk the same way.
 
 **Pick the path before you judge the criterion** (design §9.5), because the
 two paths need different things of it. The test is what the goal names. A

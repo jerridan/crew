@@ -35,7 +35,8 @@ envelope carries no name.
 **Everything you send the principal goes by that route**, not escalations
 alone. The closing report is another: a principal that never learns the PR
 opened has to poll the record for it. So is every answer in the delivered
-window (`simple-path.md`), where the question arrived by the same route.
+window (`crew:delivered-window`), where the question arrived by the same
+route.
 
 **Write the ask into `escalations` before you send it, every time.** The record
 is what the run stands on, and a lost message costs latency, never correctness
@@ -343,6 +344,9 @@ one interruption; a run built in the wrong direction costs a day.
    deliverable's packages; nothing loops over deliverables or reads
    `split.md`'s `Depends on` yet. Say which deliverables you would cut it
    into, and ask whether to run the first alone.
+8. A round of the delivered window takes the go-ahead gate. The trigger text
+   is `go-ahead (round <round-id>)`. `crew:delivered-window`'s "The go-ahead
+   gate" owns which rounds take it and what the ask holds.
 
 Do everything that does not depend on the answer first, then ask once. Batch
 what you can into one interruption.
@@ -419,7 +423,7 @@ A run's cost is measured from its transcripts, in dollars at list price.
 After each package integrates, again before the PR opens, again after each
 skeptical review returns and its session id is recorded
 (`skeptical-review.md`), and once more at the principal's ship word
-(`simple-path.md`'s "The delivered window"), run
+(`crew:delivered-window`'s "The word that the work shipped"), run
 `python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
 prices this run's own sessions — yours, your subagents' and the teammates' —
 into `spend.transcript` (`record-format.md`). Nothing else counts the project

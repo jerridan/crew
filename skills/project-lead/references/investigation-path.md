@@ -219,7 +219,7 @@ Then run `scripts/spend.py --write` (`autonomy-contract.md`), and stop every
 process the run left listening — `lsof -iTCP -sTCP:LISTEN` names them
 (design §15.50). Name `diagnosis.md`'s absolute path in your last message: the
 record is what the principal is handed. Send that message the way the goal
-arrived (`autonomy-contract.md`). Then stay: `simple-path.md`'s "The
-delivered window" owns the rest of the session. A report has nothing to
-ship, so the word that closes it is the principal's, that the diagnosis is
-read and done with.
+arrived (`autonomy-contract.md`). Then stay: invoke the skill
+`crew:delivered-window`, which owns the rest of the session. A report has
+nothing to ship, so the word that closes it is the principal's, that the
+diagnosis is read and done with.

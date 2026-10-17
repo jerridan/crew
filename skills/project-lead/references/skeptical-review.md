@@ -468,15 +468,16 @@ Most entries end "re-enter": they changed what a later entry would read, so
 the list is read again from the top rather than fallen through. **Entries 2
 to 7 read every unfinished ledger** — every `run.rounds` entry whose
 `replied_at` is `null` — whatever round produced it, so a patch round from
-CI, a bot or the principal is carried by the same entries. `<round>` is
-`review_pending.round`, and only entries 8–13 use `<round>`. **Every entry
-that runs git or dispatches an IC assumes the branch is back** — do
-`simple-path.md`'s "Get the branch back" once, before you read the list.
-Arm the keep-alive once too, by `simple-path.md`'s "Keep the cache warm".
+CI, a bot or the principal is carried by the same entries. They skip a round
+that entry 1a marked waiting. `<round>` is `review_pending.round`, and only
+entries 8–13 use `<round>`. **Every entry that runs git or dispatches an IC
+assumes the branch is back** — do "Get the branch back" from
+`crew:delivered-window`'s "A change request" once, before you read the list.
+Arm the watch once too, by that skill's "Watch the PR".
 
 1. **A `run.rounds` entry and its ledger file disagree on whether the
-   round's open finished.** `simple-path.md`'s "Findings from a review"
-   writes the reply file first, then the round entry, so a kill of this
+   round's open finished.** `crew:delivered-window`'s "Findings from a
+   review" writes the reply file first, then the round entry, so a kill of this
    run's own open leaves at most the ledger, never the round entry alone:
    - **`run.rounds[<round-id>]` exists and `reviews/<round-id>-reply.md`
      does not.** Not a kill this run's own write order can produce — that
@@ -496,6 +497,27 @@ Arm the keep-alive once too, by `simple-path.md`'s "Keep the cache warm".
    before entry 2, because a kill here must not look like an ordinary
    unfinished ledger: entry 2 assumes the round is open and the ledger names
    real work, and an orphaned round entry with no ledger names none.
+1a. **A round the gate covers has `go_ahead_at: null`, and `charter.md` has
+   no `Gate: off` line.** `crew:delivered-window`'s "The go-ahead gate" says
+   which rounds it covers. Find the escalation whose trigger is `go-ahead
+   (round <round-id>)`:
+   - **None.** The kill came before the ask. Send the gate report now, as
+     that skill says. Re-enter.
+   - **It has no answer.** `autonomy-contract.md`'s re-send rule sent the
+     ask again before you read this list, so send nothing. Mark the round
+     waiting, in your own context: no package is created and no reply is
+     sent for it until the answer. Re-enter. On re-entry this entry skips a
+     round it already marked.
+   - **It has an answer.** The kill came before the `go_ahead_at` write.
+     Finish what the answer asks, as that skill says, and write
+     `go_ahead_at`. Re-enter.
+   **This comes right after entry 1**, so no later entry creates a package or
+   sends a reply for a round the principal has not approved.
+1b. **`run.watch.held` holds items of a kind with no open round of that
+   kind.** The kill came after the open round's reply was sent, and before
+   the held items opened their own round. Open it, as
+   `crew:delivered-window`'s "Findings from a review" says for held items.
+   Re-enter.
 2. **An unfinished ledger names a package id that `packages[]` does not
    hold.** Create that package from the ledger. Re-enter. **This comes right
    after entry 1** because a kill during package creation must not look like
@@ -508,10 +530,10 @@ Arm the keep-alive once too, by `simple-path.md`'s "Keep the cache warm".
    `review_pending`, not creating a package — `crew-record.py run set
    review_pending null`. Re-enter. **This comes before entry 4**, which
    would otherwise dispatch a package the ledger already created before the
-   clear its own order puts first (`skeptical-review.md`'s "Adjudication is
-   a ledger" step 4, `simple-path.md`'s "Findings from a review").
+   clear its own order puts first ("Adjudication is a ledger"'s **Clear
+   `review_pending`**, `crew:delivered-window`'s "Findings from a review").
 4. **A follow-up or patch package is `pending` or `in-flight`.** Recover it,
-   as `simple-path.md`'s "A round killed mid-flight" says. Re-enter. An
+   as `crew:delivered-window`'s "A round killed mid-flight" says. Re-enter. An
    unentered round waits behind it — that is the supersession rule, and this
    entry is where it happens.
 5. **The branch head is not on the remote branch**, the branch has a remote,
@@ -527,10 +549,11 @@ Arm the keep-alive once too, by `simple-path.md`'s "Keep the cache warm".
    memory**, so a session that died between an integration and its line
    finds the line missing and fills it from what landed.
 7. **An unfinished ledger has every accepted entry complete.** Send the file
-   to the round's `reply_to`, then write `replied_at`. Re-enter. An entry
-   still missing its outcome is entry 6's work, and a package still open is
-   entry 4's; both come first (`record-format.md`, `simple-path.md`'s
-   "Findings from a review").
+   to the round's `reply_to`, as `crew:delivered-window`'s "Send the reply
+   file" says, then write `replied_at`. Re-enter. An entry still missing its
+   outcome is entry 6's work, and a package still open is entry 4's; both
+   come first (`record-format.md`, `crew:delivered-window`'s "Findings from a
+   review").
 8. **`review_pending` is set, `review_rounds < review_pending.round`, and the
    branch head is an integrated commit that is not `pending.head`.** The
    round is unentered, so its reserved head is superseded:
@@ -589,25 +612,41 @@ skeptical-r<n>-result.exit      →  skeptical-r<n>-result-attempt<k>.exit
 Then delete `run.review_results[<n>]`, so nothing points at a file that has
 moved, and retry per the round-and-attempt table above.
 
-**Adjudication is a ledger, and the ledger is written first.** `simple-path.md`'s
-"Findings from a review" owns this write order for every round, whatever its
-source; this list cites it. Five steps, in this order, and a kill between any
-two of them is recoverable:
+**Adjudication is a ledger, and the ledger is written first.**
+`crew:delivered-window`'s "Findings from a review" owns this write order for
+every round, whatever its source; this list cites it. Six steps, in this
+order, and a kill between any two of them is recoverable:
 
 1. **Write the reply file**, `reviews/skeptical-r<round>-reply.md`, opening
    with `record-format.md`'s header. It holds every finding in the report
    with one of three dispositions: **accepted**, with the package id it will
    get; **declined**, with the reason you would give the principal; or **out
    of scope**, written as the new goal you propose for it. A finding outside
-   the charter's goal is not yours to take (`simple-path.md`'s "Findings from
-   a review"), and naming the goal is how it reaches the principal instead of
-   being dropped.
+   the charter's goal is not yours to take (`crew:delivered-window`'s
+   "Findings from a review"), and naming the goal is how it reaches the
+   principal instead of being dropped. A question that the PR watch found
+   takes a fourth, **answered**, with the answer and no package.
 2. **Open the round.** Write `run.rounds[<round-id>]` from the header you
-   just wrote, right after it, as "Findings from a review" step 5 says.
-3. **Create those packages** in `packages[]`, with the ids the reply named.
-4. **Clear `review_pending`.** The adjudication is complete by the rule
-   below the moment step 3 lands, so the field goes before any work does.
-5. **Dispatch**, as `simple-path.md`'s "Findings from a review" says.
+   just wrote, right after it, as that skill's "Open the round" says.
+3. **Wait for the go-ahead**, on a round the gate covers. A `skeptical`
+   round takes no gate. `crew:delivered-window`'s "The go-ahead gate" owns
+   the step.
+4. **Create those packages** in `packages[]`, with the ids the reply named.
+5. **Clear `review_pending`.** The adjudication is complete by the rule
+   below the moment **Create those packages** lands, so the field goes before
+   any work does.
+6. **Dispatch**, as `crew:delivered-window`'s "Findings from a review" says.
+
+**The rubric decides between the dispositions**, for every round of every
+source:
+
+- A bug the PR introduced is accepted, always.
+- A pre-existing issue is accepted when it is a small cleanup related to the
+  change. Otherwise it is out of scope. The reply says it is left alone, and
+  names the goal it would be.
+- A request for a test that adds little value is declined, with the reason.
+- Anything else that is not necessary is declined, and the reply pushes back
+  gently, with the reason. Everything else is accepted.
 
 **The ids in the reply are what stop a finding being answered twice.** A
 resumed session reads the reply, sees which of its ids `packages[]` already
@@ -627,7 +666,8 @@ earlier point:
 A round that declines every finding is complete by the second rule, and so is
 one that sends every finding out of scope. Both reached the same end.
 
-**That is step 4 of the ledger above, and never the write of the report.**
+**That is the ledger's "Clear `review_pending`" step above, and never the
+write of the report.**
 `crew-record.py run set review_pending null` is the clear, and it is the only
 `run set` this step takes: every arming goes through `deliver --review-head`
 at the hand-over, `integrate --review-head` as a follow-up's ordinary path, or
@@ -674,8 +714,9 @@ resume, entry 9 above runs it. Read the PR's state from GitHub:
 gh pr view <pr_url> --json isDraft -q .isDraft
 ```
 
-`true` means run `gh pr ready <pr_url>`, and tell the principal in your next
-message that the PR is ready for review. `false` means do nothing. The check
+`true` means write `crew-record.py run set watch.draft false`, then run
+`gh pr ready <pr_url>`, and tell the principal in your next message that the
+PR is ready for review. The write tells the PR watch that this flip is yours. `false` means do nothing. The check
 reads GitHub, not the record, so a session killed between the two commands
 can run it again safely.
 
@@ -699,17 +740,21 @@ somewhere else.
 | **Launch 5**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | the four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
 | **Launch 5**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |
 | the four checks, before adjudicating | 10, a passing entry | the report is adjudicated |
-| **Follow-up 1**, the package `integrated` and the head armed (one write, `simple-path.md`'s "Findings from a review" step 8) | 5, the head is not on the remote | the push happens; the round already runs on re-entry, since the integration write armed it |
+| **Follow-up 1**, the package `integrated` and the head armed (one write, `crew:delivered-window`'s "Take one group all the way through") | 5, the head is not on the remote | the push happens; the round already runs on re-entry, since the integration write armed it |
 | **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 5, the head is not on the remote | the push happens first; re-entry 9 finds the head already listed and owes nothing |
 | **Follow-up 2**, the push | 10 to 13 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written, before the round is opened | 1, second bullet | the round entry is rebuilt from the reply's header, then re-entry takes entry 2 |
-| **Ledger 2**, the round opened, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
-| **Ledger 2**, some of the packages created | 2, the ids still missing | creation is finished from the ledger, then 4 recovers them |
-| **Ledger 3**, all the packages created, `review_pending` not yet cleared | 3, `review_pending.head` still matches the round's report | `review_pending` is cleared; re-entry 4 dispatches the packages |
-| **Ledger 4**, `review_pending` cleared, before dispatch | 4, an open package | the packages are recovered |
-| **Ledger 5**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
+| **Ledger 2**, a gated round opened, before the ask was written | 1a, no escalation with the round's trigger | the gate report is sent, and the round waits |
+| **Ledger 3**, the ask sent, no answer yet | 1a, an escalation with no answer | the round waits; the re-send rule already sent the ask again |
+| **Ledger 3**, the answer recorded, `go_ahead_at` not yet written | 1a, an answered escalation | the answer is finished and `go_ahead_at` written, then re-entry takes entry 2 |
+| **Ledger 2** or **3**, the round open and past its gate, or not gated, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
+| **Ledger 3**, some of the packages created | 2, the ids still missing | creation is finished from the ledger, then 4 recovers them |
+| **Ledger 4**, all the packages created, `review_pending` not yet cleared | 3, `review_pending.head` still matches the round's report | `review_pending` is cleared; re-entry 4 dispatches the packages |
+| **Ledger 5**, `review_pending` cleared, before dispatch | 4, an open package | the packages are recovered |
+| **Ledger 6**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
 | **Patch 1**, a group integrated, its ledger entry not completed | 6, a terminal package with no outcome on its line | the line is filled from the package's commits and your verification note |
-| **Patch 2**, every accepted entry complete, the reply not sent | 7, a `null` `replied_at` | the reply file is sent as it stands |
+| **Patch 2**, every accepted entry complete, the reply not sent, or posted on the PR in part | 7, a `null` `replied_at` | the reply file is sent as it stands; on the PR, the marker search skips each item already answered |
+| **Hold**, a round's reply sent, its held items not yet a round | 1b, `run.watch.held` with no open round of that kind | the held items open their round |
 | **Ready 1**, the loop idle, the PR still a draft | 9, owe nothing | "Mark the PR ready" runs, and the PR leaves draft |
 
 ## The two verdict lines
@@ -721,4 +766,5 @@ lines, and it leaves the strings to each producer.
 
 `patch round needed` opens a round of the delivered window, never a fix round
 on a package: the packages are integrated and the work is handed over.
-`simple-path.md`'s "Findings from a review" owns what a finding becomes.
+`crew:delivered-window`'s "Findings from a review" owns what a finding
+becomes.

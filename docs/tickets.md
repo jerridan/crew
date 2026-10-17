@@ -2246,7 +2246,7 @@ the runs showed — including what the rule got wrong.
 
 Read first: design §15.92, §15.72, §15.87e; `skills/lead/SKILL.md` "A
 delivered item keeps its session"; `session-launch.md` "Resuming a dead one"
-and "Closing it"; `simple-path.md` "End the run" and "The delivered window";
+and "Closing it"; `simple-path.md` "End the run"; `crew:delivered-window`;
 `record-format.md` `run_state` transitions and the item state transitions;
 `crew-record.py`.
 
@@ -2625,8 +2625,9 @@ on a deliverable that had already passed both (design §15.94a). Most of those
 follow-ups were review findings, not new work, and the review layer added
 nothing to them. The delivered window needs to tell the two apart.
 
-Scope. `simple-path.md`'s "The delivered window" gains two message kinds. A
-**change request** is something the PR does not do yet. It stays one package,
+Scope. The delivered window, now `crew:delivered-window`, gains two message
+kinds. A **change request** is something the PR does not do yet. It stays one
+package,
 with an IC and the project lead's own verification. It gets no spec, no
 critic and no separate reviewer; the skeptical review re-runs on the push it
 produces, on `skeptical-review.md`'s schedule. **Findings from a review** —
@@ -2678,8 +2679,8 @@ group is an ordinary package entry, a killed round resumes at the push and at
 the reply, the re-arm rule is gone, and one run has declined a finding with a
 reason on the record.
 
-Read first: design §15.94a, §15.94d, §15.92c; `simple-path.md` "The delivered
-window"; `record-format.md` on `packages[]` and on `--resume`; `full-path.md`;
+Read first: design §15.94a, §15.94d, §15.92c; `crew:delivered-window`;
+`record-format.md` on `packages[]` and on `--resume`; `full-path.md`;
 T59 and `skeptical-review.md` for the schedule and the cap.
 
 ## T61 — Plain-language substitution of a review step
@@ -2954,8 +2955,8 @@ period late, so an hourly job can miss the window. Prefer a one-shot job about
 30 minutes if a one-shot cannot re-arm itself. Stop the keep-alive when the run
 goes `complete`, and 24 hours after the principal's last message, when one
 more miss costs less than more keep-alives. A new principal message starts
-the 24 hours again. `simple-path.md`'s "The delivered window" owns the rule,
-and loses its claim that an idle session spends nothing.
+the 24 hours again. The delivered window, now `crew:delivered-window`, owns
+the rule, and loses its claim that an idle session spends nothing.
 
 Test first. In one idle interactive session, schedule a one-shot turn 50
 minutes out and type nothing. Check that it fires, and that its call reads
@@ -2974,7 +2975,7 @@ less than one rewrite of the same context, with the method in design
 Done when: a delivered run stays warm through an idle period, and the
 measured keep-alive cost is below the rewrite it replaced.
 
-Read first: design §15.101; `simple-path.md` "The delivered window";
+Read first: design §15.101; `crew:delivered-window`;
 `skeptical-review.md` "Resume in the delivered window".
 
 ## T71 — Shut down a teammate that no rule can call again
@@ -3032,3 +3033,52 @@ Done when: a delivered run holds no idle teammate.
 
 Read first: `SKILL.md` "Every dispatch is named"; `full-path.md` "Fix
 rounds" and "Clean up"; `simple-path.md` "Fix rounds"; design §15.20.
+
+## T72 — Watch the PR, and wait for the go-ahead before a fix or a reply
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.103, §15.104)
+
+Scope. The delivered window is the skill `crew:delivered-window`, invoked by
+the project lead at the hand-over and on a resume. While the run is
+`delivered` or `blocked` and the deliverable has a PR, one `Monitor` polls
+the PR every 60 seconds. It reports the PR leaving draft, every review,
+review comment and conversation comment, and every failed check. It skips
+crew's own replies by their last line, `crew: <round-id>`. A round from the
+PR, from CI or from the principal waits for the principal's go-ahead before
+it creates a package or posts a reply, unless the charter says `Gate: off`.
+On the go-ahead, each item gets its own reply on the PR. Where the `Monitor`
+tool is absent, the cron keep-alive of T70 stays, and each fire polls once.
+
+Run it. Hand a goal to `/crew:project-lead` against the fixture repo
+`crew-fixture-string-kit`, with a charter that carries `PR: draft` and no
+`Gate: off` line. The run opens a draft PR. Then, with no message from the
+principal:
+
+1. A person runs `gh pr ready` on that PR.
+2. A person posts a review comment on that PR that names a bug the PR
+   introduced, and a second comment that asks for a low-value test.
+3. The principal gives the go-ahead.
+
+Check:
+
+1. After step 1, the project lead's next report to the principal says the PR
+   is ready for review.
+2. After step 2, the project lead's next report names both comments, states
+   its verification of each, recommends a fix for the first and a decline
+   for the second, and asks for the go-ahead. The branch head has not moved,
+   and no reply is on the PR.
+3. After step 3, the fix lands on the PR branch, and each of the two comments
+   has a reply from the project lead on the PR.
+4. The poll's check read runs against the probe PR and prints no `check`
+   line. The fixture has no CI, so `gh pr checks` reports no checks, and a
+   red check is not probed.
+
+Done when: all four checks pass, and design §15.104 holds the probe's
+result.
+
+Read first: design §15.103, §15.104; `crew:delivered-window`;
+`skeptical-review.md` "Adjudication is a ledger", "Resume in the delivered
+window" and "Mark the PR ready"; `record-format.md` `run.watch` and
+`rounds`.

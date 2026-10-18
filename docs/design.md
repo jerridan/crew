@@ -7721,7 +7721,9 @@ Deliberately different:
      d. **The marker.** Crew posts to the PR from the principal's own `gh`
         account, so the author of a comment cannot tell crew's reply from the
         principal's. Every comment crew posts ends with the line `crew:
-        <round-id>`, and the poll skips an item whose body ends with it.
+        <round-id> <item id>`, and the poll skips an item whose last line
+        starts `crew: `. The item id lets a resumed send match each reply to
+        the item it answers.
      e. **`Gate: off`.** A charter line turns the gate off for one run.
         `SKILL.md`'s "Take the goal" writes it when the principal asks in the
         goal or at launch, as it writes `PR: draft`.

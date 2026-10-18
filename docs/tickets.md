@@ -3045,9 +3045,10 @@ the project lead at the hand-over and on a resume. While the run is
 `delivered` or `blocked` and the deliverable has a PR, one `Monitor` polls
 the PR every 60 seconds. It reports the PR leaving draft, every review,
 review comment and conversation comment, and every failed check. It skips
-crew's own replies by their last line, `crew: <round-id>`. A round from the
-PR, from CI or from the principal waits for the principal's go-ahead before
-it creates a package or posts a reply, unless the charter says `Gate: off`.
+crew's own replies by their last line, `crew: <round-id> <item id>`. A round
+from the PR, from CI or from the principal waits for the principal's go-ahead
+before it creates a package or posts a reply, unless the charter says
+`Gate: off`.
 On the go-ahead, each item gets its own reply on the PR. Where the `Monitor`
 tool is absent, the cron keep-alive of T70 stays, and each fire polls once.
 

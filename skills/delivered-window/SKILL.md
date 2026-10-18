@@ -381,11 +381,11 @@ In order:
 
     Post nothing for an item whose ledger line says `no reply`. Each reply
     states that item's ledger line in plain words, with no hard wrap. **Its
-    last line is the marker `crew: <round-id>`.** Every comment you post on
-    the PR carries it, whatever the round's kind, because you post from the
-    principal's own account and the poll skips your replies by the marker. On
-    a resume, post no reply that `pr-watch.md`'s marker search finds already
-    there. Then write the round's `replied_at`. Your next message to the
+    last line is the marker `crew: <round-id> <item id>`.** Every comment you
+    post on the PR carries it, whatever the round's kind, because you post
+    from the principal's own account and the poll skips your replies by the
+    marker. On a resume, post no reply for an item whose id `pr-watch.md`'s
+    marker search prints. Then write the round's `replied_at`. Your next message to the
     principal names the reply's path, every proposed new goal, and an
     unpublished head if the push was refused. Then open the round the held
     items of this kind make, if any.

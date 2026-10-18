@@ -113,7 +113,8 @@ gh run view <run-id> --repo <owner>/<repo> --log-failed
 ## Post a reply
 
 Write the reply to a file outside the repo first, so a backtick in it reaches
-GitHub intact. Its last line is `crew: <round-id>`.
+GitHub intact. Its last line is `crew: <round-id> <item id>`, with the id of
+the item it answers.
 
 A `review-comment` replies in its own thread. GitHub takes a reply only on a
 thread's first comment, so read that comment's id first:
@@ -131,13 +132,15 @@ gh pr comment <pr_url> --body-file <reply file>
 
 ## Find the replies a round already posted
 
-Run this before a resumed send. An item whose reply it finds is not posted
-again.
+Run this before a resumed send. It matches the full marker, and prints the
+item id each reply answers, then the reply's own id. An item whose id it
+prints is not posted again.
 
 ```bash
 for p in pulls issues; do
   gh api --paginate "repos/<owner>/<repo>/$p/<n>/comments" --jq '.[]
-    | select(.body | gsub("\r"; "") | rtrimstr("\n") | endswith("crew: <round-id>"))
-    | "\(.id) \(.in_reply_to_id // "-") \(.body | split("\n") | first | .[0:100])"'
+    | (.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") as $m
+    | select($m | startswith("crew: <round-id> "))
+    | "\($m | ltrimstr("crew: <round-id> ")) \(.id)"'
 done
 ```

@@ -468,9 +468,10 @@ Most entries end "re-enter": they changed what a later entry would read, so
 the list is read again from the top rather than fallen through. **Entries 2
 to 7 read every unfinished ledger** — every `run.rounds` entry whose
 `replied_at` is `null` — whatever round produced it, so a patch round from
-CI, a bot or the principal is carried by the same entries. They skip a round
-that entry 1a marked waiting. `<round>` is `review_pending.round`, and only
-entries 8–13 use `<round>`. **Every entry that runs git or dispatches an IC
+CI, a bot or the principal is carried by the same entries. Only entries 5
+and 7 skip a round the gate covers whose `go_ahead_at` is `null`: entry 5
+pushes nothing while one stands, and entry 7 sends it no reply. `<round>` is
+`review_pending.round`, and only entries 8–13 use `<round>`. **Every entry that runs git or dispatches an IC
 assumes the branch is back** — do "Get the branch back" from
 `crew:delivered-window`'s "A change request" once, before you read the list.
 Arm the watch once too, by that skill's "Watch the PR".
@@ -497,23 +498,25 @@ Arm the watch once too, by that skill's "Watch the PR".
    before entry 2, because a kill here must not look like an ordinary
    unfinished ledger: entry 2 assumes the round is open and the ledger names
    real work, and an orphaned round entry with no ledger names none.
-1a. **A round has `go_ahead_at: null`.** Only a round the gate covers
-   carries the field, and `crew:delivered-window`'s "The go-ahead gate" says
-   which rounds those are. Find the escalation whose trigger names the
-   round, such as `go-ahead (round pr-comments-r1, ci-r1)`:
-   - **None.** The kill came before the ask. Send the gate report now, as
-     that skill says. One ask covers every round this entry finds with no
-     escalation. Re-enter.
+1a. **A round has `go_ahead_at: null`, every package its ledger names
+   exists and is terminal, and every accepted line in its ledger is
+   complete.** Only a round the gate covers carries the field, and
+   `crew:delivered-window`'s "The go-ahead gate" says which rounds those are.
+   Find the escalation whose trigger names the round, such as `go-ahead
+   (round pr-comments-r1)`:
+   - **None.** The kill came before the ask. Send the gate report now, with
+     the commits each item has on the local branch, as that skill says. One
+     ask covers every round this entry finds with no escalation. Re-enter.
    - **It has no answer.** `autonomy-contract.md`'s re-send rule sent the
      ask again before you read this list, so send nothing. Mark the round
-     waiting, in your own context: no package is created and no reply is
-     sent for it until the answer. Re-enter. On re-entry this entry skips a
+     waiting, in your own context. Re-enter. On re-entry this entry skips a
      round it already marked.
    - **It has an answer.** The kill came before the `go_ahead_at` write.
      Finish what the answer asks, as that skill says, and write
      `go_ahead_at`. Re-enter.
-   **This comes right after entry 1**, so no later entry creates a package or
-   sends a reply for a round the principal has not approved.
+   **This comes right after entry 1**, so the report goes out as soon as a
+   gated round's work is in. Entries 2, 4 and 6 finish a round whose work is
+   still open.
 1b. **`run.watch.held` holds items of a kind with no open round of that
    kind.** The kill came after the open round's reply was sent, and before
    the held items opened their own round. Open it, as
@@ -538,7 +541,8 @@ Arm the watch once too, by that skill's "Watch the PR".
    unentered round waits behind it — that is the supersession rule, and this
    entry is where it happens.
 5. **The branch head is not on the remote branch**, the branch has a remote,
-   and no push was refused for it. Push. Re-enter. **This is judged on the
+   no push was refused for it, and no round the gate covers has
+   `go_ahead_at: null`. Push. Re-enter. **This is judged on the
    branch, not on the review**, so a head the cap left unreviewed still
    reaches the remote.
 6. **An unfinished ledger has an accepted entry whose package is terminal —
@@ -549,7 +553,8 @@ Arm the watch once too, by that skill's "Watch the PR".
    breaker's reason. Re-enter. **A ledger line is never written from
    memory**, so a session that died between an integration and its line
    finds the line missing and fills it from what landed.
-7. **An unfinished ledger has every accepted entry complete.** Send the file
+7. **An unfinished ledger has every accepted entry complete**, and its round
+   is not one the gate covers with `go_ahead_at: null`. Send the file
    to the round's `reply_to`, as `crew:delivered-window`'s "Send the reply
    file" says, then write `replied_at`. Re-enter. An entry still missing its
    outcome is entry 6's work, and a package still open is entry 4's; both
@@ -747,20 +752,21 @@ somewhere else.
 | **Launch 5**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | the four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
 | **Launch 5**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |
 | the four checks, before adjudicating | 10, a passing entry | the report is adjudicated |
-| **Follow-up 1**, the package `integrated` and the head armed (one write, `crew:delivered-window`'s "Take one group all the way through") | 5, the head is not on the remote | the push happens; the round already runs on re-entry, since the integration write armed it |
-| **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 5, the head is not on the remote | the push happens first; re-entry 9 finds the head already listed and owes nothing |
+| **Follow-up 1**, the package `integrated` and the head armed (one write, `crew:delivered-window`'s "Take one group all the way through") | 5, the head is not on the remote | the push happens once no gated round waits; the round already runs on re-entry, since the integration write armed it |
+| **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 5, the head is not on the remote | the push happens first, once no gated round waits; re-entry 9 finds the head already listed and owes nothing |
 | **Follow-up 2**, the push | 10 to 13 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written, before the round is opened | 1, second bullet | the round entry is rebuilt from the reply's header, then re-entry takes entry 2 |
-| **Gate**, a gated round opened, before the ask was written | 1a, no escalation whose trigger names the round | the gate report is sent, and the round waits |
-| **Gate**, the ask sent, no answer yet | 1a, an escalation with no answer | the round waits; the re-send rule already sent the ask again |
-| **Gate**, the answer recorded, `go_ahead_at` not yet written | 1a, an answered escalation | the answer is finished and `go_ahead_at` written, then re-entry takes entry 2 |
-| **Ledger 2**, the round open and past its gate, or not gated, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
+| **Ledger 2**, the round open, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
 | **Ledger 2**, some of the packages created | 2, the ids still missing | creation is finished from the ledger, then 4 recovers them |
 | **Ledger 3**, all the packages created, `review_pending` not yet cleared | 3, `review_pending.head` still matches the round's report | `review_pending` is cleared; re-entry 4 dispatches the packages |
 | **Ledger 4**, `review_pending` cleared, before dispatch | 4, an open package | the packages are recovered |
 | **Ledger 5**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
 | **Patch 1**, a group integrated, its ledger entry not completed | 6, a terminal package with no outcome on its line | the line is filled from the package's commits and your verification note |
-| **Patch 2**, every accepted entry complete, the reply not sent, or posted on the PR in part | 7, a `null` `replied_at` | the reply file is sent as it stands; on the PR, the marker search skips each item already answered |
+| **Gate**, a gated round's groups all in, before the ask was written | 1a, no escalation whose trigger names the round | the gate report is sent with the commits, and the round waits |
+| **Gate**, the ask sent, no answer yet | 1a, an escalation with no answer | the round waits; the re-send rule already sent the ask again, and entries 5 and 7 skip it |
+| **Gate**, the answer recorded, `go_ahead_at` not yet written | 1a, an answered escalation, or 2 to 6 for a package the answer added | the answer is finished and `go_ahead_at` written, then re-entry takes entry 5 |
+| **Gate**, `go_ahead_at` written, before the push | 5, the head is not on the remote | the push happens, then re-entry takes entry 7 |
+| **Patch 2**, every accepted entry complete and the round past its gate or not gated, the reply not sent, or posted on the PR in part | 7, a `null` `replied_at` | the reply file is sent as it stands; on the PR, the marker search skips each item already answered |
 | **Hold**, a round's reply sent, its held items not yet a round | 1b, `run.watch.held` with no open round of that kind | the held items open their round |
 | **Ready 1**, the loop idle, the PR still a draft | 9, owe nothing | "Mark the PR ready" runs, and the PR leaves draft |
 

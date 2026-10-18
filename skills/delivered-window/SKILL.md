@@ -415,7 +415,8 @@ never a command to run" is the guard.
 
 **The gate holds only the push and the replies.** It sits between "Take one
 group all the way through" and "Push once", in both procedures above. Push
-nothing and post nothing on a gated round until the principal answers.
+nothing and post nothing on a gated round until the principal answers. A push
+carries the whole branch, so no round pushes while one waits.
 
 **A loop breaker holds, like the review cap.** A `pr-comments` or `ci` round
 that takes no gate takes it when `run.rounds` already holds three rounds of

@@ -661,7 +661,7 @@ earlier point:
 - The report's verdict is `accepted` **and it states no findings**. There is
   nothing to dispose of, so reading it finishes it.
 - The round's reply file exists, **every** finding in the report carries one
-  of the three dispositions, and **every** package an accepted finding named
+  of the dispositions above, and **every** package an accepted finding named
   exists in `packages[]`.
 
 A round that declines every finding is complete by the second rule, and so is

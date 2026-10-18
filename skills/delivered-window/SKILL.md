@@ -293,11 +293,12 @@ each round's `ref` and reply hold.
 `reviews/*-reply.md`, open or replied. A kill between a report and the
 cursor write then answers nothing twice.
 
-**Hold a wake whose round is open.** When a round of the same kind is open,
-with `replied_at` still `null`, put that wake's items in `run.watch.held` and
-tell the principal they are held. When the open round's reply is sent, the
-held items of that kind become the next round of that kind: run the steps
-below on them, and remove them from `held` once the round is open.
+**Hold a wake's items whose round is open.** When a round of the same kind
+is open, with `replied_at` still `null`, put that wake's items of that kind in
+`run.watch.held` and tell the principal they are held. When the open round's
+reply is sent, the held items of that kind become the next round of that
+kind: run the steps below on them, and remove them from `held` once the round
+is open.
 
 In order:
 
@@ -333,8 +334,8 @@ In order:
    request — with its disposition and, for an accepted one, the package id
    you just named, though that package exists nowhere in `packages[]` yet.
    Naming the id here, before the package does, is what stops an item being
-   answered twice. A line for an item from the watch also names its kind and
-   id, as `record-format.md` says.
+   answered twice. A line for an item from the watch also names its kind, id
+   and author, as `record-format.md` says.
 5. **Open the round.** Write `run.rounds[<round-id>]` with its `source`, its
    `reply_to`, its `opened_at` and `replied_at: null`, and `go_ahead_at:
    null` when the round takes the gate, right after the reply file lands.

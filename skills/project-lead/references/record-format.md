@@ -237,10 +237,11 @@ naming convention. Do not mix their contents.
   more than the highest already on disk under that name. Only a skeptical
   round carries the other four or five files, because only it runs a review
   (`crew:delivered-window`'s "Findings from a review"). **A line for an item
-  the PR watch found also names the item's kind and id**, such as
-  `review-comment 2468013579` or `check <link>@<startedAt>`. They say where
-  the item's reply goes on the PR, and they let a later wake skip an item a
-  ledger already holds. A line the principal marked at the go-ahead ends with
+  the PR watch found also names the item's kind, id and author**, such as
+  `review-comment 2468013579 octocat` or `check <link>@<startedAt> -`. A
+  check has no author, so its author is `-`. They say where the item's reply
+  goes on the PR, and they let a later wake skip an item a ledger already
+  holds. A line the principal marked at the go-ahead ends with
   `no reply`, and its item gets no reply on the PR.
 
   **Every `<round-id>-reply.md`, of either kind, opens with the same header**,

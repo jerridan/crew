@@ -30,7 +30,6 @@ poll() {
       | select((.body | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
       | "review \(.id) \(.user.login) \(.submitted_at) \(.state) \(.body | gsub("\r"; "") | split("\n") | first | .[0:100])"'
     gh api --paginate "repos/$R/pulls/$N/comments" --jq '.[]
-      | select(.created_at > $ENV.SINCE)
       | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
       | "review-comment \(.id) \(.user.login) \(.created_at) \(.path):\(.line // .original_line // 0) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
     gh api --paginate "repos/$R/issues/$N/comments" --jq '.[]
@@ -39,7 +38,7 @@ poll() {
       | "comment \(.id) \(.user.login) \(.created_at) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
     gh pr checks "$PR" --json name,bucket,link,startedAt --jq '.[]
       | select(.bucket == "fail")
-      | "check \(.link) - \(.startedAt) \(.name) failed"'
+      | "check \(if (.link // "") == "" then .name else .link end | gsub(" "; "_"))@\(.startedAt) - \(.startedAt) \(.name) failed"'
   } 2>/dev/null ) || true
   while IFS= read -r line; do
     [ -n "$line" ] || continue
@@ -51,11 +50,26 @@ poll() {
 }
 ```
 
+The review comments read has no time filter. GitHub dates an inline comment
+from when the reviewer drafted it, not from when the review was submitted, so
+`seen_ids` alone keeps an old one out.
+
 `gh pr checks` exits 1 when a check failed, and when the PR has no checks at
-all, so the read ends in `|| true`. A `check` line carries `-` for its
-author, because a check has none. A `ready` line carries the PR number as its
+all, so the read ends in `|| true`. A `check` id is `<link>@<startedAt>`, so
+a failure on a new run is a new item, also when the link stays the same. A
+check with no link uses its name, with each space as `_`. A `check` line
+carries `-` for its author, because a check has none. A `ready` line carries the PR number as its
 id, and that id never goes into `seen_ids`: the draft state is what stops a
 second `ready`.
+
+## The first write's ids
+
+The first write of `run.watch` puts in `seen_ids` every review comment
+already on the PR, so the first poll does not report them:
+
+```bash
+gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'
+```
 
 ## The monitor command
 

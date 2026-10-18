@@ -47,7 +47,7 @@ five kinds are `ready`, `review`, `review-comment`, `comment` and `check`.
   reply, and "Send the reply file" puts the marker there.
 - An item whose id is in `run.watch.seen_ids`.
 - A passing or pending check. A `check` item is one `gh pr checks` entry in
-  the `fail` bucket, and its id is its link URL, which a re-run changes.
+  the `fail` bucket, and its id holds its start time, so a re-run is new.
 
 An item from any other account is reported, the principal's own account
 included.

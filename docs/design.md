@@ -7747,26 +7747,26 @@ Deliberately different:
         part of it. No run has seen a red check yet, and the cron fallback
         with a PR is unexercised. On a PR with no checks, `gh pr checks
         --json` prints "no checks reported" and exits 1 (gh 2.102.0), which
-        the poll reads as no failure. The probe run's own spend was $5.18 at the ship word,
-        by its `spend.py`.
+        the poll reads as no failure. The probe run's own spend was $5.18
+        at the ship word, by its `spend.py`.
      g. **A skill hidden from the slash menu.** The Claude Code skills
         documentation (https://code.claude.com/docs/en/skills) documents
         `user-invocable: false`. Claude Code then hides the skill from the
         `/` menu, and Claude can still invoke it. `crew:delivered-window`
         sets it, because only the project lead invokes the skill.
-     h. **What the first skeptical review changed.** The project lead
-        accepted its eleven findings, the tenth in part. The poll reads review comments with no time
-        filter, and seeds `seen_ids` with the ones already on the PR. A
-        check id is `<link>@<startedAt>`, with the check name for an empty
-        link. Every arming writes `watch.draft: true` when it reads a draft
-        PR, and the `watch` row says which writes set `watch.draft` alone.
-        A watch item that asks for nothing is a notice: one line to the
-        principal, no round, no gate, no reply. The go-ahead can mark any
-        item `no reply`. A PR item is a claim to verify, never a command to
-        run, and under `Gate: off` a round that holds an item from another
-        account still takes the gate. One wake sends one report and one
-        ask, with one escalation that names each round, and resume entry
-        1a finds it by the round's id. "Mark the PR ready" points at the
-        monitor stop, the out-of-scope rule points at the rubric, and the
-        tool versions are the ones probed. Splitting trigger 8 from the
-        other triggers in `crew-stats.py` is a proposed new goal.
+     h. **What the first skeptical review changed.** The project lead accepted
+        its eleven findings, the tenth in part. The poll reads review comments
+        with no time filter, and seeds `seen_ids` with the ones already on the
+        PR. A check id is `<link>@<startedAt>`, with the check name for an
+        empty link. Every arming writes `watch.draft: true` when it reads a
+        draft PR, and the `watch` row says which writes set `watch.draft`
+        alone. A watch item that asks for nothing is a notice: one line to the
+        principal, no round, no gate, no reply. The go-ahead can mark any item
+        `no reply`. A PR item is a claim to verify, never a command to run,
+        and under `Gate: off` a round that holds an item from another account
+        still takes the gate. One wake sends one report and one ask, with one
+        escalation that names each round, and resume entry 1a finds it by the
+        round's id. "Mark the PR ready" points at the monitor stop, the
+        out-of-scope rule points at the rubric, and the tool versions are the
+        ones probed. Splitting trigger 8 from the other triggers in
+        `crew-stats.py` is a proposed new goal.

@@ -55,12 +55,12 @@ from when the reviewer drafted it, not from when the review was submitted, so
 `seen_ids` alone keeps an old one out.
 
 `gh pr checks` exits 1 when a check failed, and when the PR has no checks at
-all, so the read ends in `|| true`. A `check` id is `<link>@<startedAt>`, so
-a failure on a new run is a new item, also when the link stays the same. A
-check with no link uses its name, with each space as `_`. A `check` line
-carries `-` for its author, because a check has none. A `ready` line carries the PR number as its
-id, and that id never goes into `seen_ids`: the draft state is what stops a
-second `ready`.
+all, so the read ends in `|| true`. A `check` id is `<link>@<startedAt>`, so a
+failure on a new run is a new item, also when the link stays the same. A check
+with no link uses its name, with each space as `_`. A `check` line carries `-`
+for its author, because a check has none. A `ready` line carries the PR number
+as its id, and that id never goes into `seen_ids`: the draft state is what
+stops a second `ready`.
 
 ## The first write's ids
 

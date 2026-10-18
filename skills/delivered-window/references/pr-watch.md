@@ -24,12 +24,15 @@ poll() {
     draft=false
     echo "ready $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) the PR left draft"
   fi
+  export PEND=" $(gh api --paginate "repos/$R/pulls/$N/reviews" --jq '.[]
+    | select(.state == "PENDING") | .id' 2>/dev/null | tr '\n' ' ')"
   out=$( {
     gh api --paginate "repos/$R/pulls/$N/reviews" --jq '.[]
       | select(.state != "PENDING" and (.body // "") != "" and .submitted_at > $ENV.SINCE)
       | select((.body | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
       | "review \(.id) \(.user.login) \(.submitted_at) \(.state) \(.body | gsub("\r"; "") | split("\n") | first | .[0:100])"'
     gh api --paginate "repos/$R/pulls/$N/comments" --jq '.[]
+      | (.pull_request_review_id // 0) as $r | select($ENV.PEND | contains(" \($r) ") | not)
       | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
       | "review-comment \(.id) \(.user.login) \(.created_at) \(.path):\(.line // .original_line // 0) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
     gh api --paginate "repos/$R/issues/$N/comments" --jq '.[]
@@ -53,6 +56,12 @@ poll() {
 The review comments read has no time filter. GitHub dates an inline comment
 from when the reviewer drafted it, not from when the review was submitted, so
 `seen_ids` alone keeps an old one out.
+
+The review comments read also drops a comment whose `pull_request_review_id`
+names a `PENDING` review. That is the principal's own review, not yet
+submitted. The first reviews read in the same poll gives `PEND`, the ids of
+the pending reviews. The comment is reported once its review is submitted.
+When that read fails, `PEND` is empty, and the poll drops no comment.
 
 `gh pr checks` exits 1 when a check failed, and when the PR has no checks at
 all, so the read ends in `|| true`. A `check` id is `<link>@<startedAt>`, so a

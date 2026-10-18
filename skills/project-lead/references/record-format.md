@@ -91,8 +91,7 @@ each on its own, anywhere in the file:
 - `PR: draft` — the PR stays a draft, and only the principal marks it ready
   (`skeptical-review.md`'s "Mark the PR ready").
 - `Gate: off` — no round of the delivered window waits for the principal's
-  go-ahead before its packages and its replies, except a round that holds an
-  item from an account other than the principal's (`crew:delivered-window`'s
+  go-ahead before its packages and its replies (`crew:delivered-window`'s
   "The go-ahead gate").
 
 `SKILL.md`'s "Take the goal" writes the last two when the principal asks for

@@ -1,6 +1,6 @@
 ---
 name: project-lead
-description: Take one goal to a PR ready for review. It stops for approval only in the delivered window, before a fix or a reply on the PR. With `Gate: off` in the charter, only an item from another account waits. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew".
+description: Take one goal to a PR ready for review. It stops for approval only in the delivered window, before a fix or a reply on the PR. With `Gate: off` in the charter, nothing waits. Use for a whole goal, and for a one-line change too — it sizes the work itself and runs a small item on a light path. Triggers on "run this as a project", "hand this to crew".
 ---
 
 # Project lead

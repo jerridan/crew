@@ -222,10 +222,10 @@ your reviewers and CI post on the PR, and anything you send yourself. Each
 finding gets a reply that says what changed or why the run disagreed. The
 project lead patches the branch at once. For anything but crew's own review,
 a failed check and a comment from your own account, it waits for your
-go-ahead before it pushes or replies. A run takes three reviews at most. A question
-with no precedent goes to a council, where each advocate argues an assigned
-position, so the project lead weighs arguments instead of counting votes. A
-question about what you want is never debated. It comes to you.
+go-ahead before it pushes or replies. A run takes three reviews at most. A
+question with no precedent goes to a council, where each advocate argues an
+assigned position, so the project lead weighs arguments instead of counting
+votes. A question about what you want is never debated. It comes to you.
 
 The PR is the end of the work. Crew never merges. The project lead
 stays until you say the work shipped.

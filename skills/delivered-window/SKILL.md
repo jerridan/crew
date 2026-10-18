@@ -53,9 +53,9 @@ An item from any other account is reported, the principal's own account
 included.
 
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
-state is true. The command starts from `run.watch.draft`, and a poll that
-reads `isDraft` true sets its state back to true, so a PR returned to draft
-can fire `ready` again. **Your own flip is never reported**:
+state is true. The command starts from `run.watch.draft`. A poll that reads
+`isDraft` true sets its state back to true, and so does every arming, so a PR
+returned to draft can fire `ready` again. **Your own flip is never reported**:
 `skeptical-review.md`'s "Mark the PR ready" writes `run.watch.draft: false`
 before its `gh pr ready`. Stop the monitor before you run that step, and arm
 it again after it, so the new command starts from `false`.
@@ -77,7 +77,10 @@ it. A keep-alive line from an older run counts as a watch line.
    `Monitor` call returned. **One monitor at a time**: a second one doubles
    the wakes. A resumed process holds no monitor from the old one.
 2. When `run.watch` is absent, write it first, as its row says.
-3. Fill the monitor command in `pr-watch.md` from `run.watch`, and call
+3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
+   and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
+   watch.draft true`.
+4. Fill the monitor command in `pr-watch.md` from `run.watch`, and call
    `Monitor` with it and `timeout_ms: 1800000`, the maximum of 30 minutes.
 
 **The expiry notice re-arms it.** At 30 minutes the monitor ends, and

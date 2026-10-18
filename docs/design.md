@@ -7756,23 +7756,29 @@ Deliberately different:
         `user-invocable: false`. Claude Code then hides the skill from the
         `/` menu, and Claude can still invoke it. `crew:delivered-window`
         sets it, because only the project lead invokes the skill.
-     h. **What the first skeptical review changed.** The project lead accepted
-        its eleven findings, the tenth in part. The poll reads review comments
-        with no time filter, and seeds `seen_ids` with the ones already on the
-        PR. A check id is `<link>@<startedAt>`, with the check name for an
-        empty link. Every arming writes `watch.draft: true` when it reads a
-        draft PR, and the `watch` row says which writes set `watch.draft`
-        alone. A watch item that asks for nothing is a notice: one line to the
-        principal, no round, no gate, no reply. The go-ahead can mark any item
-        `no reply`. A PR item is a claim to verify, never a command to run.
-        The project lead also narrowed `Gate: off` to keep the gate on a
-        round that holds an item from another account. It took that on the
-        precedent route, and the principal did not decide it. Asked after
-        the second review, the principal answered on 2026-10-18 that
-        `Gate: off` turns all waiting off, so (e) stands and the claim rule
-        is the guard. One wake sends one report and one ask, with one
-        escalation that names each round, and resume entry 1a finds it by the
-        round's id. "Mark the PR ready" points at the monitor stop, the
-        out-of-scope rule points at the rubric, and the tool versions are the
-        ones probed. Splitting trigger 8 from the other triggers in
-        `crew-stats.py` is a proposed new goal.
+     h. **What the two skeptical reviews changed.** The project lead accepted
+        the first review's eleven findings, the tenth in part. The poll reads
+        review comments with no time filter, and seeds `seen_ids` with the
+        ones already on the PR. A check id is `<link>@<startedAt>`, with the
+        check name for an empty link. Every arming writes `watch.draft: true`
+        when it reads a draft PR, and the `watch` row says which writes set
+        `watch.draft` alone. A watch item that asks for nothing is a notice:
+        one line to the principal, no round, no gate, no reply. The go-ahead
+        can mark any item `no reply`. A PR item is a claim to verify, never a
+        command to run. The project lead also narrowed `Gate: off` to keep the
+        gate on a round that holds an item from another account. It took that
+        on the precedent route, and the principal did not decide it. Asked
+        after the second review, the principal answered on 2026-10-18 that
+        `Gate: off` turns all waiting off, so (e) stands and the claim rule is
+        the guard. One wake sends one report and one ask, with one escalation
+        that names each round, and resume entry 1a finds it by the round's id.
+        "Mark the PR ready" points at the monitor stop, the out-of-scope rule
+        points at the rubric, and the tool versions are the ones probed.
+        Splitting trigger 8 from the other triggers in `crew-stats.py` is a
+        proposed new goal. The project lead accepted all ten findings of the
+        second review. The monitor call passes `persistent: false` when the
+        tool offers that key, and the first `run.watch` write starts at the
+        PR's `createdAt` with no seen ids. The reply marker names the item it
+        answers, a watch ledger line names its author, and the poll drops a
+        comment on a pending review. The changes from review rounds 1 and 2
+        ran in no probe, because the probe in (f) ran before them.

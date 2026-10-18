@@ -3083,3 +3083,56 @@ Read first: design §15.103, §15.104; `crew:delivered-window`;
 `skeptical-review.md` "Adjudication is a ledger", "Resume in the delivered
 window" and "Mark the PR ready"; `record-format.md` `run.watch` and
 `rounds`.
+
+## T73 — State the build in CLAUDE.md as it is now
+
+Status: open
+Depends on: nothing
+Stage: 7 (design §15.88, §15.91, §15.92, §15.98, §15.103, §15.104)
+
+Scope. The "Build state" section of `CLAUDE.md` tells a story. It says when
+runs happened against tickets, such as "ran end to end before T66" and
+"predates T58 through T62". It says what a ticket removed. It lists tickets
+one by one with what each added. The rule under the section says the job:
+"Never write about an unbuilt stage as if it runs, or about a built one as if
+a run has exercised it." So the section must state what is built and what a
+run has exercised, as of now. `docs/design.md` §15 already holds the history.
+
+Rewrite the section. For each part, say whether it is built and whether a run
+has exercised it, and point at the §15 entry that holds the evidence. The
+parts are:
+
+- the four paths
+- the agents
+- the references
+- the hooks
+- the scripts
+- the delivered window, with its watch and its gate
+- the substitution rule
+- the naming rule
+
+Use a ticket number only where a ticket is the only name a part has. Do not
+use "before", "predates", "removed", "moved" or "added". A table is allowed
+if it is shorter than prose. `CLAUDE.md` stays under 200 lines.
+
+Test first. None. This is prose.
+
+Run it. Read the rewritten section against the rule under it. Then run this
+grep on the section and read each hit:
+
+```
+grep -nE 'before|predates|removed|moved|added|T[0-9]+' CLAUDE.md
+```
+
+Check:
+
+1. Each sentence in the section says what is built or what a run exercised.
+   No sentence says when, or by which ticket.
+2. `CLAUDE.md` is under 200 lines.
+3. Each §15 pointer in the section resolves to an entry that holds the
+   evidence it names.
+
+Done when: the section states the current build and exercise state only.
+
+Read first: `CLAUDE.md` "Build state" and the rule under it; design §13 and
+§15; the writing standard's `## Before you open the PR`.

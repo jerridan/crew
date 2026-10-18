@@ -3036,7 +3036,7 @@ rounds" and "Clean up"; `simple-path.md` "Fix rounds"; design §15.20.
 
 ## T72 — Watch the PR, and wait for the go-ahead before a fix or a reply
 
-Status: open
+Status: closed, run 2026-10-18
 Depends on: nothing
 Stage: 7 (design §15.103, §15.104)
 

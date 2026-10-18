@@ -7701,8 +7701,10 @@ Deliberately different:
         cache read that §15.103 bought with a cron fire. A re-arming turn
         takes two calls, the `Monitor` call and the reply, against the cron
         fire's one. §15.103(b) priced a re-arming turn at three. The probe
-        measures the calls per wake, and the figure is recorded at
-        integration. Where the `Monitor` tool is absent, the cron job stays,
+        in (f) measured two: its transcript holds one `Monitor` call and
+        the reply "ok" in the turn the expiry notice opened, and the status
+        line showed one monitor after it. Where the `Monitor` tool is absent,
+        the cron job stays,
         and each fire makes the same four reads in one Bash call. A run with
         no PR keeps the cron job of §15.103, whose fire runs no tool, and
         §15.103 stands as written for that case.
@@ -7723,11 +7725,29 @@ Deliberately different:
      e. **`Gate: off`.** A charter line turns the gate off for one run.
         `SKILL.md`'s "Take the goal" writes it when the principal asks in the
         goal or at launch, as it writes `PR: draft`.
-     f. **What the probe found.** The probe's result is recorded at
-        integration. The fixture repo has no CI, so a red check is not part
-        of it. On a PR with no checks, `gh pr checks --json` prints "no
+     f. **What the probe found.** One run, 2026-10-17/18, on
+        `crew-fixture-string-kit` PR 41 with a `kebabCase` goal and a charter
+        carrying `PR: draft`: a Fable 5.1 project lead at medium effort, auto
+        mode, launched with `--plugin-dir` at the change's own worktree,
+        with T72's four checks run by the session that built the change. All
+        four passed. The monitor reported `gh pr ready`, run by hand, 46
+        seconds after it, and the project lead said the PR was ready and the
+        flip was not its own. Two inline comments posted together reached the
+        project lead in one wake about 70 seconds later; its gate report
+        named both, ran `kebabCase("a\tb")` itself to confirm the first, and
+        recommended a fix for it and a decline for the one-character test,
+        with the head unmoved, no reply on the PR, and the record `blocked`
+        on `go-ahead (round pr-comments-r1)`. On the go-ahead the fix
+        landed, one push updated the PR, each comment got a threaded reply
+        ending in `crew: pr-comments-r1`, and the poll reported neither
+        reply. The skeptical review ran twice around the round, accepted
+        both times, and its second report's one concern, that `\s` joins more
+        than spaces, was declined because the principal had asked for it and
+        given the go-ahead. The fixture repo has no CI, so a red check is not
+        part of it. On a PR with no checks, `gh pr checks --json` prints "no
         checks reported" and exits 1 (gh 2.102.0), which the poll reads as
-        no failure.
+        no failure. The probe run's own spend was $5.18 at the ship word,
+        by its `spend.py`.
      g. **A skill hidden from the slash menu.** The Claude Code skills
         documentation (https://code.claude.com/docs/en/skills) documents
         `user-invocable: false`. Claude Code then hides the skill from the

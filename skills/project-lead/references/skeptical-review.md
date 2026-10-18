@@ -532,7 +532,7 @@ Arm the watch once too, by that skill's "Watch the PR".
    review_pending null`. Re-enter. **This comes before entry 4**, which
    would otherwise dispatch a package the ledger already created before the
    clear its own order puts first ("Adjudication is a ledger"'s **Clear
-   `review_pending`**, `crew:delivered-window`'s "Findings from a review").
+   `review_pending`**).
 4. **A follow-up or patch package is `pending` or `in-flight`.** Recover it,
    as `crew:delivered-window`'s "A round killed mid-flight" says. Re-enter. An
    unentered round waits behind it — that is the supersession rule, and this
@@ -613,30 +613,33 @@ skeptical-r<n>-result.exit      →  skeptical-r<n>-result-attempt<k>.exit
 Then delete `run.review_results[<n>]`, so nothing points at a file that has
 moved, and retry per the round-and-attempt table above.
 
-**Adjudication is a ledger, and the ledger is written first.**
-`crew:delivered-window`'s "Findings from a review" owns this write order for
-every round, whatever its source; this list cites it. Six steps, in this
-order, and a kill between any two of them is recoverable:
+**Adjudication is a ledger, and the ledger is written first.** These are
+the skeptical round's five steps, in this order, and a kill between any two
+of them is recoverable. A round from any other source follows
+`crew:delivered-window`'s "Findings from a review", which owns the order for
+those rounds.
 
 1. **Write the reply file**, `reviews/skeptical-r<round>-reply.md`, opening
-   with `record-format.md`'s header. It holds every finding in the report
-   with one of three dispositions: **accepted**, with the package id it will
-   get; **declined**, with the reason you would give the principal; or **out
-   of scope**, written as the new goal you propose for it. A finding outside
-   the charter's goal is not yours to take (`crew:delivered-window`'s
-   "Findings from a review"), and naming the goal is how it reaches the
-   principal instead of being dropped. A question that the PR watch found
-   takes a fourth, **answered**, with the answer and no package.
+   with `record-format.md`'s header. It gives every finding in the report one
+   of the dispositions below.
 2. **Open the round.** Write `run.rounds[<round-id>]` from the header you
    just wrote, right after it, as that skill's "Open the round" says.
-3. **Wait for the go-ahead**, on a round the gate covers. A `skeptical`
-   round takes no gate. `crew:delivered-window`'s "The go-ahead gate" owns
-   the step.
-4. **Create those packages** in `packages[]`, with the ids the reply named.
-5. **Clear `review_pending`.** The adjudication is complete by the rule
+3. **Create those packages** in `packages[]`, with the ids the reply named.
+4. **Clear `review_pending`.** The adjudication is complete by the rule
    below the moment **Create those packages** lands, so the field goes before
    any work does.
-6. **Dispatch**, as `crew:delivered-window`'s "Findings from a review" says.
+5. **Dispatch**, as `crew:delivered-window`'s "Findings from a review" says.
+
+**Every item takes one of four dispositions**, for every round of every
+source:
+
+- **accepted**, with the package id it will get;
+- **declined**, with the reason you would give the principal;
+- **out of scope**, written as the new goal you propose for it. A finding
+  outside the charter's goal is not yours to take, and naming the goal is how
+  it reaches the principal instead of being dropped;
+- **answered**, for a question the PR watch found, with the answer and no
+  package.
 
 **The rubric decides between the dispositions**, for every round of every
 source:
@@ -748,14 +751,14 @@ somewhere else.
 | **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 5, the head is not on the remote | the push happens first; re-entry 9 finds the head already listed and owes nothing |
 | **Follow-up 2**, the push | 10 to 13 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written, before the round is opened | 1, second bullet | the round entry is rebuilt from the reply's header, then re-entry takes entry 2 |
-| **Ledger 2**, a gated round opened, before the ask was written | 1a, no escalation whose trigger names the round | the gate report is sent, and the round waits |
-| **Ledger 3**, the ask sent, no answer yet | 1a, an escalation with no answer | the round waits; the re-send rule already sent the ask again |
-| **Ledger 3**, the answer recorded, `go_ahead_at` not yet written | 1a, an answered escalation | the answer is finished and `go_ahead_at` written, then re-entry takes entry 2 |
-| **Ledger 2** or **3**, the round open and past its gate, or not gated, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
-| **Ledger 3**, some of the packages created | 2, the ids still missing | creation is finished from the ledger, then 4 recovers them |
-| **Ledger 4**, all the packages created, `review_pending` not yet cleared | 3, `review_pending.head` still matches the round's report | `review_pending` is cleared; re-entry 4 dispatches the packages |
-| **Ledger 5**, `review_pending` cleared, before dispatch | 4, an open package | the packages are recovered |
-| **Ledger 6**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
+| **Gate**, a gated round opened, before the ask was written | 1a, no escalation whose trigger names the round | the gate report is sent, and the round waits |
+| **Gate**, the ask sent, no answer yet | 1a, an escalation with no answer | the round waits; the re-send rule already sent the ask again |
+| **Gate**, the answer recorded, `go_ahead_at` not yet written | 1a, an answered escalation | the answer is finished and `go_ahead_at` written, then re-entry takes entry 2 |
+| **Ledger 2**, the round open and past its gate, or not gated, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
+| **Ledger 2**, some of the packages created | 2, the ids still missing | creation is finished from the ledger, then 4 recovers them |
+| **Ledger 3**, all the packages created, `review_pending` not yet cleared | 3, `review_pending.head` still matches the round's report | `review_pending` is cleared; re-entry 4 dispatches the packages |
+| **Ledger 4**, `review_pending` cleared, before dispatch | 4, an open package | the packages are recovered |
+| **Ledger 5**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
 | **Patch 1**, a group integrated, its ledger entry not completed | 6, a terminal package with no outcome on its line | the line is filled from the package's commits and your verification note |
 | **Patch 2**, every accepted entry complete, the reply not sent, or posted on the PR in part | 7, a `null` `replied_at` | the reply file is sent as it stands; on the PR, the marker search skips each item already answered |
 | **Hold**, a round's reply sent, its held items not yet a round | 1b, `run.watch.held` with no open round of that kind | the held items open their round |

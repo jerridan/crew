@@ -345,7 +345,8 @@ one interruption; a run built in the wrong direction costs a day.
    `split.md`'s `Depends on` yet. Say which deliverables you would cut it
    into, and ask whether to run the first alone.
 8. A round of the delivered window takes the go-ahead gate. The trigger text
-   is `go-ahead (round <round-id>)`. `crew:delivered-window`'s "The go-ahead
+   is `go-ahead (round <round-id>[, <round-id>])`, one entry per wake that
+   names each gated round. `crew:delivered-window`'s "The go-ahead
    gate" owns which rounds take it and what the ask holds.
 
 Do everything that does not depend on the answer first, then ask once. Batch

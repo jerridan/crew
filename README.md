@@ -120,12 +120,14 @@ When the work is merged and deployed, say so, and the run closes. Closing the
 session instead leaves the run recorded as interrupted, which is fine for a
 run you merged yourself.
 
-To let the run fix and reply with no go-ahead, say so in the goal, or put
-this line in your charter file:
+To let the run fix and reply to your own comments and to CI with no
+go-ahead, say so in the goal, or put this line in your charter file:
 
 ```
 Gate: off
 ```
+
+A comment from any other account still waits for your go-ahead.
 
 A question comes to you in the same session. The triggers are fixed: no
 testable acceptance criterion, a preference the repo cannot settle, a council

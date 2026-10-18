@@ -7692,22 +7692,21 @@ Deliberately different:
         pointer. The skill names the project lead's skill directory once as
         `<project-lead-dir>`, because the references and scripts it uses stay
         under `skills/project-lead/`.
-     b. **A monitor replaces the cron keep-alive.** A `Monitor` command
-        polls the PR every 60 seconds through `gh`: its draft state, its
-        reviews, its review and conversation comments, and the `fail`
-        bucket of `gh pr checks`. It prints a line only for a new item, so a
-        quiet poll costs no turn. The monitor expires after 30 minutes, so
-        one cache read lands inside the hour, and the expiry wake re-arms
-        it. That wake is the cache read that §15.103 bought with a cron
-        fire. A re-arming turn takes two calls, the `Monitor` call and the
-        reply, against the cron fire's one. §15.103(b) priced a re-arming turn at three. The probe
-        in (f) measured two: its transcript holds one `Monitor` call and
-        the reply "ok" in the turn the expiry notice opened, and the status
-        line showed one monitor after it. Where the `Monitor` tool is absent,
-        the cron job stays,
-        and each fire makes the same four reads in one Bash call. A run with
-        no PR keeps the cron job of §15.103, whose fire runs no tool, and
-        §15.103 stands as written for that case.
+     b. **A monitor replaces the cron keep-alive.** A `Monitor` command polls
+        the PR every 60 seconds through `gh`: its draft state, its reviews, its
+        review and conversation comments, and the `fail` bucket of `gh pr
+        checks`. It prints a line only for a new item, so a quiet poll costs no
+        turn. The monitor expires after 30 minutes, so one cache read lands
+        inside the hour, and the expiry wake re-arms it. That wake is the cache
+        read that §15.103 bought with a cron fire. A re-arming turn takes two
+        calls, the `Monitor` call and the reply, against the cron fire's one.
+        §15.103(b) priced a re-arming turn at three. The probe in (f) measured
+        two: its transcript holds one `Monitor` call and the reply "ok" in the
+        turn the expiry notice opened, and the status line showed one monitor
+        after it. Where the `Monitor` tool is absent, the cron job stays, and
+        each fire makes the same five reads in one Bash call. A run with no PR
+        keeps the cron job of §15.103, whose fire runs no tool, and §15.103
+        stands as written for that case.
      c. **The go-ahead gate.** A round from the PR comments, from CI or from
         the principal waits for the principal's go-ahead before it creates a
         package, dispatches or posts. The skeptical review's own rounds take
@@ -7780,5 +7779,11 @@ Deliberately different:
         tool offers that key, and the first `run.watch` write starts at the
         PR's `createdAt` with no seen ids. The reply marker names the item it
         answers, a watch ledger line names its author, and the poll drops a
-        comment on a pending review. The changes from review rounds 1 and 2
-        ran in no probe, because the probe in (f) ran before them.
+        comment on a pending review. The project lead accepted all seven
+        findings of the third review. Each `run.watch` write now has one
+        owner, the `watch` row names the writers only, and the skeptical
+        ledger lists its own five steps. Under `Gate: off`, a fourth round
+        of one kind, `pr-comments` or `ci`, takes the gate again, a loop
+        breaker like the review cap. The poll reads the reviews endpoint
+        once and filters its cursor with `>=`. The changes from review rounds
+        1 to 3 ran in no probe, because the probe in (f) ran before them.

@@ -2625,10 +2625,9 @@ on a deliverable that had already passed both (design §15.94a). Most of those
 follow-ups were review findings, not new work, and the review layer added
 nothing to them. The delivered window needs to tell the two apart.
 
-Scope. The delivered window, now `crew:delivered-window`, gains two message
-kinds. A **change request** is something the PR does not do yet. It stays one
-package,
-with an IC and the project lead's own verification. It gets no spec, no
+Scope. `crew:delivered-window` gains two message kinds. A **change request**
+is something the PR does not do yet. It stays one package, with an IC and the
+project lead's own verification. It gets no spec, no
 critic and no separate reviewer; the skeptical review re-runs on the push it
 produces, on `skeptical-review.md`'s schedule. **Findings from a review** —
 CI, a bot, Codex, the principal reading the diff, or the skeptical review
@@ -2955,8 +2954,8 @@ period late, so an hourly job can miss the window. Prefer a one-shot job about
 30 minutes if a one-shot cannot re-arm itself. Stop the keep-alive when the run
 goes `complete`, and 24 hours after the principal's last message, when one
 more miss costs less than more keep-alives. A new principal message starts
-the 24 hours again. The delivered window, now `crew:delivered-window`, owns
-the rule, and loses its claim that an idle session spends nothing.
+the 24 hours again. `crew:delivered-window` owns the rule, and loses its
+claim that an idle session spends nothing.
 
 Test first. In one idle interactive session, schedule a one-shot turn 50
 minutes out and type nothing. Check that it fires, and that its call reads

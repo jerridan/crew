@@ -3033,7 +3033,7 @@ Done when: a delivered run holds no idle teammate.
 Read first: `SKILL.md` "Every dispatch is named"; `full-path.md` "Fix
 rounds" and "Clean up"; `simple-path.md` "Fix rounds"; design §15.20.
 
-## T72 — Watch the PR, and wait for the go-ahead before a fix or a reply
+## T72 — Watch the PR, and wait for the go-ahead before a push or a reply
 
 Status: closed, run 2026-10-18
 Depends on: nothing
@@ -3045,10 +3045,11 @@ the project lead at the hand-over and on a resume. While the run is
 the PR every 60 seconds. It reports the PR leaving draft, every review,
 review comment and conversation comment, and every failed check. It skips
 crew's own replies by their last line, `crew: <round-id> <item id>`. A round
-from the PR, from CI or from the principal waits for the principal's go-ahead
-before it creates a package or posts a reply, unless the charter says
-`Gate: off`.
-On the go-ahead, each item gets its own reply on the PR. Where the `Monitor`
+from the PR or from the principal is fixed on the local branch at once, and
+waits for the principal's go-ahead before its push and its replies, unless
+the charter says `Gate: off`. A round from CI, and a round whose every item
+is from the principal's own `gh` account, take no go-ahead. On the go-ahead,
+each item gets its own reply on the PR. Where the `Monitor`
 tool is absent, the cron keep-alive of T70 stays, and each fire polls once.
 
 Run it. Hand a goal to `/crew:project-lead` against the fixture repo

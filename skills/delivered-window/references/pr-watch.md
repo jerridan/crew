@@ -62,10 +62,20 @@ for its author, because a check has none. A `ready` line carries the PR number
 as its id, and that id never goes into `seen_ids`: the draft state is what
 stops a second `ready`.
 
-## The first write's ids
+## The first write's cursor
 
-The first write of `run.watch` puts in `seen_ids` every review comment
-already on the PR, so the first poll does not report them:
+The first write of `run.watch` takes `last_polled_at` from the PR's creation
+time, and starts `seen_ids` empty. The first poll then reports every item
+that landed before the arming. The marker already keeps out your own replies.
+
+```bash
+gh pr view <pr_url> --json createdAt -q .createdAt
+```
+
+A resume of a record that has no `run.watch` is the one exception. That
+record is from before the watch, so the principal brought its PR reviews to
+you by hand. Take `last_polled_at` from the clock, and put every review
+comment already on the PR in `seen_ids`:
 
 ```bash
 gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'

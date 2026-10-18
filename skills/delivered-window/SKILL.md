@@ -79,9 +79,8 @@ it. A keep-alive line from an older run counts as a watch line.
    and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
    watch.draft true`.
 4. Fill the monitor command in `pr-watch.md` from `run.watch`, and call
-   `Monitor` with it and `timeout_ms: 1800000`. A 30-minute expiry keeps
-   one cache read inside the one-hour cache. Pass `persistent: false` when
-   the tool offers that key.
+   `Monitor` with it and `timeout_ms: 1800000`, so one cache read lands inside
+   the one-hour cache. Pass `persistent: false` when the tool offers that key.
 
 **The expiry notice re-arms it.** At 30 minutes the monitor ends, and
 Claude Code sends you one notice. Arm it again by the steps above, and reply
@@ -293,12 +292,11 @@ each round's `ref` and reply hold.
 `reviews/*-reply.md`, open or replied. A kill between a report and the
 cursor write then answers nothing twice.
 
-**Hold a wake's items whose round is open.** When a round of the same kind
-is open, with `replied_at` still `null`, put that wake's items of that kind in
-`run.watch.held` and tell the principal they are held. When the open round's
-reply is sent, the held items of that kind become the next round of that
-kind: run the steps below on them, and remove them from `held` once the round
-is open.
+**Hold a wake's items whose round is open.** When a round of the same kind is
+open, with `replied_at` still `null`, put that wake's items of that kind in
+`run.watch.held`, and tell the principal they are held. When that round's
+reply is sent, the held items become the next round of that kind: run the
+steps below on them, and remove them from `held` once the round is open.
 
 In order:
 
@@ -385,10 +383,10 @@ In order:
     post on the PR carries it, whatever the round's kind, because you post
     from the principal's own account and the poll skips your replies by the
     marker. On a resume, post no reply for an item whose id `pr-watch.md`'s
-    marker search prints. Then write the round's `replied_at`. Your next message to the
-    principal names the reply's path, every proposed new goal, and an
-    unpublished head if the push was refused. Then open the round the held
-    items of this kind make, if any.
+    marker search prints. Then write the round's `replied_at`. Your next
+    message to the principal names the reply's path, every proposed new goal,
+    and an unpublished head if the push was refused. Then open the round the
+    held items of this kind make, if any.
 
 **A round where every finding is declined.** It has no group, no package, no
 patch, no push and no new head, so it earns no new review. It still opens a

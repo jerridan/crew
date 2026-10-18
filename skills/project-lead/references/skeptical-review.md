@@ -497,12 +497,13 @@ Arm the watch once too, by that skill's "Watch the PR".
    before entry 2, because a kill here must not look like an ordinary
    unfinished ledger: entry 2 assumes the round is open and the ledger names
    real work, and an orphaned round entry with no ledger names none.
-1a. **A round the gate covers has `go_ahead_at: null`, and `charter.md` has
-   no `Gate: off` line.** `crew:delivered-window`'s "The go-ahead gate" says
-   which rounds it covers. Find the escalation whose trigger is `go-ahead
-   (round <round-id>)`:
+1a. **A round has `go_ahead_at: null`.** Only a round the gate covers
+   carries the field, and `crew:delivered-window`'s "The go-ahead gate" says
+   which rounds those are. Find the escalation whose trigger names the
+   round, such as `go-ahead (round pr-comments-r1, ci-r1)`:
    - **None.** The kill came before the ask. Send the gate report now, as
-     that skill says. Re-enter.
+     that skill says. One ask covers every round this entry finds with no
+     escalation. Re-enter.
    - **It has no answer.** `autonomy-contract.md`'s re-send rule sent the
      ask again before you read this list, so send nothing. Mark the round
      waiting, in your own context: no package is created and no reply is
@@ -744,7 +745,7 @@ somewhere else.
 | **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 5, the head is not on the remote | the push happens first; re-entry 9 finds the head already listed and owes nothing |
 | **Follow-up 2**, the push | 10 to 13 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written, before the round is opened | 1, second bullet | the round entry is rebuilt from the reply's header, then re-entry takes entry 2 |
-| **Ledger 2**, a gated round opened, before the ask was written | 1a, no escalation with the round's trigger | the gate report is sent, and the round waits |
+| **Ledger 2**, a gated round opened, before the ask was written | 1a, no escalation whose trigger names the round | the gate report is sent, and the round waits |
 | **Ledger 3**, the ask sent, no answer yet | 1a, an escalation with no answer | the round waits; the re-send rule already sent the ask again |
 | **Ledger 3**, the answer recorded, `go_ahead_at` not yet written | 1a, an answered escalation | the answer is finished and `go_ahead_at` written, then re-entry takes entry 2 |
 | **Ledger 2** or **3**, the round open and past its gate, or not gated, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |

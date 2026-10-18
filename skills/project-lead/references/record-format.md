@@ -91,7 +91,8 @@ each on its own, anywhere in the file:
 - `PR: draft` — the PR stays a draft, and only the principal marks it ready
   (`skeptical-review.md`'s "Mark the PR ready").
 - `Gate: off` — no round of the delivered window waits for the principal's
-  go-ahead before its packages and its replies (`crew:delivered-window`'s
+  go-ahead before its packages and its replies, except a round that holds an
+  item from an account other than the principal's (`crew:delivered-window`'s
   "The go-ahead gate").
 
 `SKILL.md`'s "Take the goal" writes the last two when the principal asks for
@@ -240,7 +241,8 @@ naming convention. Do not mix their contents.
   the PR watch found also names the item's kind and id**, such as
   `review-comment 2468013579` or `check <link>@<startedAt>`. They say where the
   item's reply goes on the PR, and they let a later wake skip an item a
-  ledger already holds.
+  ledger already holds. A line the principal marked at the go-ahead ends with
+  `no reply`, and its item gets no reply on the PR.
 
   **Every `<round-id>-reply.md`, of either kind, opens with the same header**,
   five lines and then a blank line, before the items:
@@ -992,7 +994,7 @@ Every name this file defines, with what consumes it.
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied, and writes the report itself for a substituted step (`SKILL.md`). Consumer: stage 3 (`split-critic` output); `simple-path.md`'s "The skeptical review" (the skeptical review's report)
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
-- `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks. Consumer: `crew:delivered-window`'s "The go-ahead gate"; `skeptical-review.md`'s resume entry 1a
+- `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks. Consumer: `crew:delivered-window`'s "The go-ahead gate"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
 - `run.repo` — writer: the project lead, at `SKILL.md`'s "Take the goal". Consumer: a replacement for the spec review, which runs from it (`SKILL.md`); `simple-path.md`'s "End the run" (the worktree it removes); `skeptical-review.md` (every review worktree)

@@ -7707,16 +7707,20 @@ Deliberately different:
         each fire makes the same five reads in one Bash call. A run with no PR
         keeps the cron job of §15.103, whose fire runs no tool, and §15.103
         stands as written for that case.
-     c. **The go-ahead gate.** A round from the PR comments, from CI or from
-        the principal waits for the principal's go-ahead before it creates a
-        package, dispatches or posts. The skeptical review's own rounds take
-        no gate: the principal chose to leave them as they were. The ask is
-        escalation trigger 8, `go-ahead (round <round-id>)`, and the round's
-        `go_ahead_at` records the answer. Resume entry 1a holds a gated round
-        until the answer, and entry 1b opens a round from items that were
-        held while a round of their kind was open. The principal's rubric
-        for what is necessary went into `skeptical-review.md`'s "Adjudication
-        is a ledger", for every round of every source.
+     c. **The go-ahead gate.** A round from the PR comments or from the
+        principal is fixed on the local branch at once, and waits for the
+        principal's go-ahead before its push and its replies. A round from
+        CI takes no gate, and neither does a PR round whose every item is
+        from the principal's own `gh` account. The skeptical review's own
+        rounds take no gate: the principal chose to leave them as they were.
+        The ask is escalation trigger 8, `go-ahead (round <round-id>)`, and
+        the round's `go_ahead_at` records the answer. Resume entry 1a sends
+        the report once a gated round's work is in, entries 5 and 7 hold its
+        push and its reply until the answer, and entry 1b opens a round from
+        items that were held while a round of their kind was open. The
+        principal's rubric for what is necessary went into
+        `skeptical-review.md`'s "Adjudication is a ledger", for every round of
+        every source.
      d. **The marker.** Crew posts to the PR from the principal's own `gh`
         account, so the author of a comment cannot tell crew's reply from the
         principal's. Every comment crew posts ends with the line `crew:
@@ -7787,3 +7791,16 @@ Deliberately different:
         breaker like the review cap. The poll reads the reviews endpoint
         once and filters its cursor with `>=`. The changes from review rounds
         1 to 3 ran in no probe, because the probe in (f) ran before them.
+     i. **What the principal's review of PR 100 changed.** The principal
+        asked for four changes on 2026-10-18, and the project lead accepted
+        all four. CLAUDE.md's build state keeps what is built and exercised,
+        and drops the history of the review rounds. A `ci` round takes no
+        gate: a red check is fixed, pushed and answered at once. The gate
+        moved to after the fix and before the push: the project lead fixes
+        an accepted item on the local branch, then reports each item with
+        its commits and asks for the go-ahead to push and reply. A PR round
+        whose every item is from the principal's own `gh` account takes no
+        gate. The project lead also widened the three-round loop breaker
+        from `Gate: off` alone to every `pr-comments` or `ci` round that
+        takes no gate. No probe ran the moved gate: the probe in (f) ran the
+        gate before the fix.

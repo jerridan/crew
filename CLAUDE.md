@@ -62,13 +62,12 @@ run's PR ready for review when the skeptical review stops, and no run has
 done that yet (§15.99). T63 lets a machine file or a repo file name a
 review replacement for every run, and no run has read one yet (§15.100).
 T70 keeps a delivered run's cache warm with a recurring job, and no crew run
-has used it yet (§15.103). T72 moved the delivered window into the skill
-`crew:delivered-window`. It added a `Monitor` watch on the PR and CI, which
-replaces that job where the tool exists, and a go-ahead gate before a fix or a
-reply on the PR. One probe on the fixture repo ran all four of T72's checks
-(§15.104). The changes from review rounds 1 to 3 came after it and ran in no
-probe. No run has seen a red check yet, and the cron fallback with a PR is
-unexercised.
+has used it yet (§15.103). T72 is built: the delivered window is the skill
+`crew:delivered-window`, with a `Monitor` watch on the PR and CI, which
+replaces that job where the tool exists, and a go-ahead gate before a push or
+a reply on the PR. One probe on the fixture repo ran its four checks
+(§15.104). The watch's later changes, a red check and the cron fallback with a
+PR are unexercised.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

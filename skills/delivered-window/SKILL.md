@@ -27,12 +27,13 @@ relative path resolves against the target repo.
 **While `run_state` is `delivered` or `blocked`, and the deliverable has a
 `pr_url`, keep one `Monitor` armed in this session.** The watch was probed
 on Claude Code 2.1.302 and gh 2.102.0. The monitor's command polls every 60
-seconds, and each poll makes four reads through `gh`:
+seconds, and each poll makes five reads through `gh`:
 
 1. the PR's `isDraft` field;
 2. the PR reviews endpoint;
-3. the PR review comments endpoint and the issue comments endpoint;
-4. `gh pr checks`, with its JSON buckets.
+3. the PR review comments endpoint;
+4. the issue comments endpoint;
+5. `gh pr checks`, with its JSON buckets.
 
 The command prints one line per new item, and nothing otherwise. A line names
 the item's kind, its id, its author, its time and a one-line summary. The

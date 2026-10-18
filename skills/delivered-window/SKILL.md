@@ -53,10 +53,8 @@ included.
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
 state is true. The command starts from `run.watch.draft`. A poll that reads
 `isDraft` true sets its state back to true, and so does every arming, so a PR
-returned to draft can fire `ready` again. **Your own flip is never reported**:
-`skeptical-review.md`'s "Mark the PR ready" writes `run.watch.draft: false`
-before its `gh pr ready`. Stop the monitor before you run that step, and arm
-it again after it, so the new command starts from `false`.
+returned to draft can fire `ready` again. **Your own flip is never
+reported**, because `skeptical-review.md`'s "Mark the PR ready" says how.
 
 **A `ready` item produces one sentence** in your next message to the
 principal, that the PR is ready for review, **and nothing else.** It opens no
@@ -64,7 +62,11 @@ round and takes no action. "Mark the PR ready" stays the only place where
 crew marks the PR ready.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
-each key holds, when it is written and with which command.
+each key holds. After every wake that reported something, and never before
+your report to the principal lands, write the whole object with
+`crew-record.py <record-dir> run set watch '<json>'`. The reported ids join
+`seen_ids`. `last_polled_at` moves to the newest time among the reported
+`review` and `comment` items. `draft` goes to `false` after a `ready` item.
 
 **Arm the monitor on every entry into this window**: at the hand-over, on a
 resume, and on every return from `blocked` to `delivered`. Do not arm it when
@@ -74,7 +76,8 @@ it. A keep-alive line from an older run counts as a watch line.
 1. Stop the monitor you armed before, with `TaskStop` and the task id its
    `Monitor` call returned. **One monitor at a time**: a second one doubles
    the wakes. A resumed process holds no monitor from the old one.
-2. When `run.watch` is absent, write it first, as its row says.
+2. When `run.watch` is absent, write it first, as `pr-watch.md`'s "The first
+   write's cursor" says.
 3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
    and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
    watch.draft true`.

@@ -73,12 +73,14 @@ stops a second `ready`.
 
 ## The first write's cursor
 
-The first write of `run.watch` takes `last_polled_at` from the PR's creation
-time, and starts `seen_ids` empty. The first poll then reports every item
+Write `run.watch` first at the first arming, before the monitor starts, with
+`crew-record.py <record-dir> run set watch '<json>'`. It takes `draft` from
+the PR's `isDraft` and `last_polled_at` from the PR's creation time, and
+starts `seen_ids` and `held` empty. The first poll then reports every item
 that landed before the arming. The marker already keeps out your own replies.
 
 ```bash
-gh pr view <pr_url> --json createdAt -q .createdAt
+gh pr view <pr_url> --json isDraft,createdAt -q '"\(.isDraft) \(.createdAt)"'
 ```
 
 A resume of a record that has no `run.watch` is the one exception. That
@@ -107,9 +109,10 @@ The poll block, then this line, in one Bash call per keep-alive fire.
 poll; echo "isDraft=$d"
 ```
 
-A fire that prints `isDraft=true` while `run.watch.draft` is false writes
-`draft: true` to the cursor. The fallback keeps no state between fires, so
-this write is what lets a PR returned to draft fire `ready` again.
+A fire that prints `isDraft=true` while `run.watch.draft` is false runs
+`crew-record.py <record-dir> run set watch.draft true`. The fallback keeps no
+state between fires, so this write is what lets a PR returned to draft fire
+`ready` again.
 
 ## Verify a failed check
 

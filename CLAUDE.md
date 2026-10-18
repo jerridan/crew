@@ -66,7 +66,8 @@ has used it yet (§15.103). T72 moved the delivered window into the skill
 `crew:delivered-window`. It added a `Monitor` watch on the PR and CI, which
 replaces that job where the tool exists, and a go-ahead gate before a fix or a
 reply on the PR. One probe on the fixture repo ran all four of T72's checks
-(§15.104).
+(§15.104). No run has seen a red check yet, and the cron fallback with a PR
+is unexercised.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

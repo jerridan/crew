@@ -7696,8 +7696,8 @@ Deliberately different:
         polls the PR every 60 seconds through `gh`: its draft state, its
         reviews, its review and conversation comments, and the `fail`
         bucket of `gh pr checks`. It prints a line only for a new item, so a
-        quiet poll costs no turn. The monitor expires after 30 minutes, the
-        tool's maximum, and the expiry wake re-arms it. That wake is the
+        quiet poll costs no turn. The monitor expires after 30 minutes, so
+        one cache read lands inside the hour, and the expiry wake re-arms it. That wake is the
         cache read that §15.103 bought with a cron fire. A re-arming turn
         takes two calls, the `Monitor` call and the reply, against the cron
         fire's one. §15.103(b) priced a re-arming turn at three. The probe

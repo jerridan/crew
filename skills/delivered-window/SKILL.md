@@ -79,7 +79,9 @@ it. A keep-alive line from an older run counts as a watch line.
    and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
    watch.draft true`.
 4. Fill the monitor command in `pr-watch.md` from `run.watch`, and call
-   `Monitor` with it and `timeout_ms: 1800000`, the maximum of 30 minutes.
+   `Monitor` with it and `timeout_ms: 1800000`. A 30-minute expiry keeps
+   one cache read inside the one-hour cache. Pass `persistent: false` when
+   the tool offers that key.
 
 **The expiry notice re-arms it.** At 30 minutes the monitor ends, and
 Claude Code sends you one notice. Arm it again by the steps above, and reply

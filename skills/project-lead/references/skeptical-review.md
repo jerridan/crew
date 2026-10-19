@@ -225,7 +225,7 @@ Arm the watch once too, by that skill's "Watch the PR".
    clear its own order puts first ("Adjudication is a ledger"'s **Clear
    `review_pending`**).
 4. **A follow-up or patch package is `pending` or `in-flight`.** Recover it,
-   as `crew:delivered-window`'s "A round killed mid-flight" says. Re-enter. An
+   as `skeptical-review.md`'s "A round killed mid-flight" says. Re-enter. An
    unentered round waits behind it — that is the supersession rule, and this
    entry is where it happens.
 5. **The branch head is not on the remote branch**, the branch has a remote,
@@ -382,6 +382,36 @@ says: the work is done and the findings are free. At the cap, clear
 `review_pending` once its report is adjudicated, and tell the principal which
 findings are still open, which heads went unreviewed, and that the cap
 stopped the next round (`autonomy-contract.md`).
+
+## A round killed mid-flight
+
+On `--resume`, a `pending` or `in-flight` package under a terminal
+deliverable is a round that did not finish. The resume list above sends you
+here.
+
+**Get the branch back first**, as `crew:delivered-window`'s "A change
+request" says: switch `run.checkout` to the deliverable branch, or cut the
+worktree again. Every command below reads that tree, and a `git log` against
+the tree the principal left behind describes another branch.
+
+Then read the package's `base`:
+
+- **`base` is `null`.** The package was written and never dispatched. Run
+  `simple-path.md`'s "Dispatch the IC" now, which writes `base` from the
+  branch head as it goes.
+- **`base` is set.** The package was dispatched, so reconcile it from git the
+  way `full-path.md`'s "Resume after a kill" reconciles a worktree: `git -C
+  <run.checkout> status --porcelain` and `git -C <run.checkout> log
+  <base>..HEAD` are the evidence, and `state.json` is rewritten to match
+  them. Commit dirty work to the deliverable branch first. Then go to
+  `simple-path.md`'s "Verify before you believe" when the log holds commits,
+  or dispatch a fresh IC when it holds none.
+
+What a finished package still owes is `record-format.md`'s rule, not this
+one.
+
+`run_state` stays `delivered` throughout. An escalation raised in this window
+goes `delivered → blocked → delivered` (`record-format.md`).
 
 ## Mark the PR ready
 

@@ -484,7 +484,9 @@ pending ──▶ in-flight ──┼──▶ work-complete     (terminal)
   was never a PR to open (design §9.5).
 - `in-flight → under-review`: written only by a review run, in the `deliver`
   write, for the one deliverable that is the colleague's PR. A review run
-  has no package and no IC.
+  has no package of its own at the hand-over. The packages it creates later
+  are the delivered window's patch-round packages, and only when its charter
+  carries `Assist: on`.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   deliverable (design §10).
 
@@ -564,7 +566,7 @@ a `null` field:
 
 Two obligations sit outside this rule. `run.review_pending` is
 `skeptical-review.md`'s alone. A package still `pending` or `in-flight`
-belongs to `crew:delivered-window`'s "A round killed mid-flight".
+belongs to `skeptical-review.md`'s "A round killed mid-flight".
 
 ### Per-run fields (inside `run`)
 

@@ -470,33 +470,8 @@ for the review's report (`skeptical-review.md`'s "When the review runs").
 
 ## A round killed mid-flight
 
-On `--resume`, a `pending` or `in-flight` package under a terminal
-deliverable is a round that did not finish. This is where
-`skeptical-review.md`'s resume list sends you for it.
-
-**Get the branch back first**, as "A change request" says: switch
-`run.checkout` to the deliverable branch, or cut the worktree again. Every
-command below reads that tree, and a `git log` against the tree the principal
-left behind describes another branch.
-
-Then read the package's `base`:
-
-- **`base` is `null`.** The package was written and never dispatched. Run
-  `simple-path.md`'s "Dispatch the IC" now, which writes `base` from the
-  branch head as it goes.
-- **`base` is set.** The package was dispatched, so reconcile it from git the
-  way `full-path.md`'s "Resume after a kill" reconciles a worktree: `git -C
-  <run.checkout> status --porcelain` and `git -C <run.checkout> log
-  <base>..HEAD` are the evidence, and `state.json` is rewritten to match
-  them. Commit dirty work to the deliverable branch first. Then go to
-  `simple-path.md`'s "Verify before you believe" when the log holds commits,
-  or dispatch a fresh IC when it holds none.
-
-What a finished package still owes is `record-format.md`'s rule, not this
-one.
-
-`run_state` stays `delivered` throughout. An escalation raised in this window
-goes `delivered → blocked → delivered` (`record-format.md`).
+`skeptical-review.md`'s "A round killed mid-flight" owns the recovery of a
+package left `pending` or `in-flight` by a kill.
 
 ## The word that the work shipped
 

@@ -135,7 +135,7 @@ CLEAN_VERDICTS = ("accepted", "ready to split", "dispatchable")
 VERDICT = re.compile(r"Verdict:\s*([^\n.]+)")
 
 # `record-format.md`'s terminal deliverable states.
-TERMINAL_DELIVERABLE = ("draft-pr-opened", "work-complete", "abandoned")
+TERMINAL_DELIVERABLE = ("draft-pr-opened", "work-complete", "under-review", "abandoned")
 
 
 def delivered(state: dict) -> bool:

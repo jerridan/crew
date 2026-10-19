@@ -15,16 +15,25 @@ caller.
 A probe watched one finder agent run `git checkout main` inside the repo
 under review (design §15.94c). The review reads and tests; it must not be
 able to move the run's branch. So cut a worktree of its own, detached at the
-pending sha:
+pending sha, once per deliverable:
 
 ```
-git -C <run.repo> worktree add --detach <record-dir>/review-worktrees/r<n> <review_pending.head>
+git -C <run.repo> worktree add --detach <record-dir>/review-worktrees/<deliverable-id> <review_pending.head>
 ```
 
-Remove it in the same turn the review returns:
+**Every later round moves the same worktree to its pending head**, in place.
+A resumed reviewer works in the directory its session started in ("Resume
+the reviewer" below), so the path never changes:
 
 ```
-git -C <run.repo> worktree remove --force <record-dir>/review-worktrees/r<n>
+git -C <record-dir>/review-worktrees/<deliverable-id> switch --detach --discard-changes <review_pending.head>
+```
+
+Remove it at the ship word, never after a round:
+
+```
+git -C <run.repo> worktree remove --force <record-dir>/review-worktrees/<deliverable-id>
+git -C <run.repo> worktree prune
 ```
 
 **`run.repo`, never `run.checkout`.** "End the run" removes a checkout the
@@ -40,32 +49,31 @@ detaching it keeps the run's own branch out of reach.
 touches `review-worktrees/`, and nothing registers there in `worktrees.json`,
 which holds the run's own worktrees only (`record-format.md`).
 
-**Clean up before you cut a new worktree.** A killed session leaves the
-directory and its registration behind, and `worktree add` then fails on a
-path that already exists. So on every resume in `delivered`, whatever is on
-disk and whether or not a report exists, clear
-`<record-dir>/review-worktrees/r<n>` — the reserved round, never
-`review_rounds`, which still names the round before it:
+**Check the worktree before every round.** A killed session can leave the
+directory without its registration, or the registration without the
+directory. Before you move the worktree, run:
 
 ```
-git -C <run.repo> worktree remove --force <record-dir>/review-worktrees/r<n>
 git -C <run.repo> worktree prune
+git -C <record-dir>/review-worktrees/<deliverable-id> rev-parse --git-dir
 ```
 
-`--force` is right on a review worktree and nowhere else in this run — the
-removal above takes it too. The tree is detached at a sha the branch already
-holds, every piece of evidence the review produced is in the record, and a
-refusal here would strand a directory that the next round has to reuse. The
-rule that protects an IC worktree (`simple-path.md`'s "End the run") is
-protecting something this tree never has. Ignore a removal that fails because
-the path is already gone, then prune.
+When the second command fails, run the removal above, delete what is left at
+the path, and cut the worktree again at the same path.
+
+`--force` and `--discard-changes` are right on a review worktree and nowhere
+else in this run. The tree is detached at a sha the branch already holds, it
+holds no work except the setup command's output, and every piece of evidence
+the review produced is in the record. The rule that protects an IC worktree
+(`simple-path.md`'s "End the run") is protecting something this tree never
+has. Ignore a removal that fails because the path is already gone.
 
 ## The default command
 
 Write the instructions file first, then launch, from the review worktree:
 
 ```
-cd <record-dir>/review-worktrees/r<n> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<suite command> *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
+cd <record-dir>/review-worktrees/<deliverable-id> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<suite command> *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
 ```
 
 **The prompt rides on stdin, never as a positional argument.**
@@ -89,6 +97,110 @@ own error output, kept beside it for the same reason. `-result.exit` is the
 process's own exit status, the same protocol the substituted runner already
 uses (`substitution.md`) — check 1 below reads it rather than trusting the
 JSON's own shape when the process died before writing one.
+
+## Resume the reviewer
+
+**Round 1 of a deliverable launches as above. Every later round resumes the
+reviewer session of the round before it**, so the reviewer keeps what it read
+and does not inspect the whole PR again. Resume when both hold:
+
+- `run.review_sessions[skeptical-r<n-1>]` exists, and its `runner` is the
+  runner this round uses.
+- The head round `<n-1>` reviewed, the `Reviewed:` line of
+  `reviews/skeptical-r<n-1>.md`, is an ancestor of the pending head: `git
+  merge-base --is-ancestor <previous head> <review_pending.head>` exits 0. A
+  force-push, and a round on another deliverable, fail this check.
+
+Otherwise launch as round 1 does. Take the session id from the record, never
+from a runner's `--last`.
+
+**Write the resume prompt** to `<record-dir>/reviews/skeptical-r<n>-resume.md`.
+Write the instructions file as well, as every round does. Fill this block:
+
+```
+The change has a new head. In this session you reviewed <previous head sha>.
+This working directory is now a detached checkout at <pending head sha>.
+
+The change since your last review is `git diff <previous head sha>..HEAD`.
+Read it first. Read the whole change, `git diff <deliverable base>..HEAD`,
+again only where that delta touches code you did not review. Follow your
+first instructions on the suite.
+
+<one of the two literal lines below>
+
+<the file that line names, verbatim>
+
+Give a verdict on the whole change as it now stands, not on the delta alone.
+Use the same report shape and the same two verdict strings as before. Open
+the report with this line, and nothing before it:
+
+Reviewed: <pending head sha>
+
+Above the two verdict lines, write one line that starts `Beyond the
+findings:`. Write `Beyond the findings: none` when every hunk of the delta
+answers one of the findings in your last report. Otherwise, after the colon,
+name each hunk that does not.
+
+<the output sentence>
+```
+
+The literal line is "This is the project lead's reply to your last report.
+It says which findings it accepted, and why it declined or pushed back on the
+others:", followed by `reviews/skeptical-r<n-1>-reply.md`. When that round
+has no reply file, because its report had no finding to dispose of, the line
+is "Your last report had no finding to answer. This is that report:",
+followed by `reviews/skeptical-r<n-1>.md`.
+
+The output sentence is "Write your whole report to <absolute output path>
+before you finish." for the default runner, and the replacement sentence in
+"Reviewer instructions" below for a replacement.
+
+**One runner call per round.** The pushback rides in the resume prompt. A
+second call per round would double the runner's spend, and the reviewer needs
+the context, not a dialogue.
+
+**The resume commands.** The default runner keeps "The default command" with
+two changes: `--resume <session id>` in place of `--session-id <uuid>`, and
+the resume prompt on stdin in place of the `printf` line:
+
+```
+cd <record-dir>/review-worktrees/<deliverable-id> && claude -p --resume <session id> --model opus --effort high --output-format json --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "<the same list>" < <record-dir>/reviews/skeptical-r<n>-resume.md > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
+```
+
+A replacement keeps `substitution.md`'s run script, with this `codex exec`
+line. The resumed session keeps the directory it started in:
+
+```
+  codex exec resume -c sandbox_mode=read-only <session id> - \
+    < <record-dir>/reviews/skeptical-r<n>-resume.md \
+    2>&1 > <record-dir>/reviews/skeptical-r<n>-result.txt
+```
+
+**Record the round's session** in `run.review_sessions[skeptical-r<n>]`,
+with `crew-record.py <record-dir> run set review_sessions.skeptical-r<n>
+'<json>'`. A resumed round writes `resumed_from: "skeptical-r<n-1>"` and
+`fresh_reason: null`. A round that launches fresh writes `resumed_from:
+null`, and `fresh_reason` names the condition above that failed, or `null` on
+round 1. A retry overwrites the round's entry.
+
+- **The default runner** writes the entry before the launch. A resumed
+  session keeps its id, which `run.review_session_ids` already holds, so
+  append nothing to that list.
+- **A replacement** prints `session id: <uuid>` on stderr. Write the entry
+  after the run, from `sed -n 's/^session id: //p'
+  <record-dir>/reviews/skeptical-r<n>-result.stderr | head -1`. With no such
+  line, write no entry, and the next round launches fresh. Never put this id
+  in `run.review_session_ids`: `spend.py` prices Claude sessions alone.
+
+**A resume that exits non-zero launches fresh, in the same round.** The
+session can be gone, or a runner upgrade cannot read it. Retire the attempt
+as `skeptical-review.md`'s "Retiring an attempt before you retry it" says,
+write `fresh_reason: "resume exited <status>"`, and launch as round 1 does.
+That launch is not the failure path's retry. A resume that exits 0 and fails
+a check below takes the failure path, and its retry launches fresh.
+
+This rule is for the skeptical review alone. A spec critic, replaced or not,
+and every in-process critic, start fresh each round (design §15.108).
 
 ## The permissions the review needs
 
@@ -311,11 +423,12 @@ the review could not produce a report, and hand over what the branch holds.
 
 ## Record the review's session id
 
-**Generate the id before you launch.** `uuidgen` prints one. Pass it as
+**Generate the id before you launch a fresh round.** `uuidgen` prints one. Pass it as
 `--session-id <uuid>`, and append it to `state.json`'s
 `run.review_session_ids` **before** the command runs. A review killed
 halfway then still prices into the run; an id read out of the result
-afterwards is lost with the process that died.
+afterwards is lost with the process that died. A resumed round generates
+none, as "Resume the reviewer" says.
 
 `spend.py` prices those transcripts into the run, and `crew-stats.py` reports
 them. **Never put one in `run.session_ids`**: `hooks/session-end.py` marks

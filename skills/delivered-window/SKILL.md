@@ -492,11 +492,13 @@ stays the principal's. On the word:
    `completed_at`.
 2. Stop the watch: `TaskStop` the monitor, then `CronList`, then
    `CronDelete` each job whose prompt starts "Crew keep-alive".
-3. `<project-lead-dir>/scripts/spend.py --write`, so the figure covers this
+3. Remove each deliverable's review worktree, as `review-runner.md`'s "Never
+   review in the run's own checkout" says.
+4. `<project-lead-dir>/scripts/spend.py --write`, so the figure covers this
    window.
-4. Stop every process the run left listening, as `simple-path.md`'s "End the
+5. Stop every process the run left listening, as `simple-path.md`'s "End the
    run" says.
-5. Say the run is closed and this session can be. The principal closes the
+6. Say the run is closed and this session can be. The principal closes the
    pane or the window.
 
 A session that dies in this window is resumed like any other: `SessionEnd`

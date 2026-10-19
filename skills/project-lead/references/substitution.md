@@ -59,7 +59,8 @@ cd <dir> && {
 
 `2>&1 >` sends the runner's progress to `tee` and its output to the file.
 `tee` shows the progress in a pane and keeps it in `-result.stderr`, where
-the runner prints its session id.
+the runner prints its session id. A later skeptical round changes only the
+`codex exec` line, as `review-runner.md`'s "Resume the reviewer" says.
 
 **The exit file goes in the same script as the command.** `$?` holds the
 runner's status only until the next command runs, and a status you keep in
@@ -169,7 +170,7 @@ runner's own. Map them:
 |---|---|
 | exit 0, with `is_error` false | the runner's own exit status, read from `-result.exit` |
 | `permission_denials` empty | `denials_ok: "not applicable: <runner>"` |
-| `--session-id`, appended to `run.review_session_ids` | write no session id; the cost goes in the substitution entry's `usage` |
+| `--session-id`, appended to `run.review_session_ids` | the `session id:` line of `-result.stderr`, written to `run.review_sessions` alone; the cost goes in the substitution entry's `usage` |
 
 The other two checks hold word for word for every runner: the report file
 exists, and its last two lines are the verdict pair while its first line is

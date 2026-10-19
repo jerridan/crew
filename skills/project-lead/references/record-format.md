@@ -18,7 +18,7 @@ One directory per goal, outside the target repo (design §4):
 ├── plans/            one plan per package, written by its IC
 ├── diffs/            one diff per deliverable, written by the project lead
 ├── evidence/         investigation path only: one file per evidence dispatch
-├── review-worktrees/ one throwaway checkout per skeptical review, removed after
+├── review-worktrees/ one checkout per deliverable for its skeptical reviews, removed at ship
 └── reviews/          raw critic and reviewer output
 ```
 
@@ -194,7 +194,9 @@ naming convention. Do not mix their contents.
   report at all, only its reservation file.
   Five files per skeptical review round under the default runner, always,
   and six under a replacement runner, always. Either runner adds the
-  conditional reply file. All are named by the round `<n>` and none by a
+  conditional reply file, and a later round that resumes its reviewer adds
+  `reviews/skeptical-r<n>-resume.md`, the resume prompt, which retires to
+  `skeptical-r<n>-resume-attempt<k>.md`. All are named by the round `<n>` and none by a
   deliverable id, because the review is per branch head.
 
   **The default runner writes five:** `reviews/skeptical-r<n>.md`, the
@@ -591,6 +593,7 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `unreviewed_heads` | a list of `{head, reason, at}`, one per branch head that was handed over or pushed with no review owed for it. `reason` is `cap` today, the only case that produces one. Appended by `arm_review` in the same write that would have armed the head. Absent until the first one. A head here shipped unreviewed, and `skeptical-review.md` says who has to be told. |
 | `review_results` | an object keyed by round number, each value `{exit, denials_ok, report_ok, at}`: the outcome of the four checks the project lead runs over a finished review. A round with no entry has not been checked, whatever sits in `reviews/`. Absent until the first check. `review-runner.md`'s "Check the review before you read it" owns the checks and what a passing entry permits. |
 | `review_session_ids` | a list of session ids, one per skeptical review this run started. The project lead generates each id itself and appends it **before** it launches that review, then passes it to the review as `--session-id`, so a review that dies halfway is still priced (`review-runner.md` owns the procedure). `spend.py` prices these transcripts into the run and `crew-stats.py` reports them. **Both hooks ignore this field.** An id here is a foreign session, so it never goes in `run.session_ids`, whose ending marks the whole run `interrupted` (`hooks/session-end.py`, design §15.90h). Absent until the first review. |
+| `review_sessions` | an object keyed by round id (`skeptical-r<n>`). Each value is `{runner: "claude" \| "codex", session_id, resumed_from: <round id> \| null, fresh_reason: null \| <string>}`: the reviewer session that round ran in, the round whose session it resumed, and, for a later round that launched fresh, why. A round finds its predecessor's session here. Codex ids go only here, never in `review_session_ids`, which `spend.py` prices as Claude sessions. `review-runner.md`'s "Resume the reviewer" owns every write. Absent on a record from before T76, so its next round launches fresh. |
 | `repo` | the absolute path to the target-repo clone the project lead was launched in, written at `SKILL.md`'s "Take the goal" from `git rev-parse --show-toplevel`, before any step can need it — a replacement for the spec review runs from it and no branch exists yet (`substitution.md`). On a free checkout the two are equal; on a held one, `checkout` is the worktree this run cut and `repo` is the clone it was cut from. **It is the path that outlives the run's own worktrees**, so every `worktree add`, `remove` and `prune` runs against it — the removal at "End the run", and every skeptical review (`review-runner.md`). Every run has one: "Take the goal" writes it before the path is chosen. |
 | `rounds` | an object keyed by `<round-id>`, one entry per patch round, written by the project lead when it opens the round and before it writes any package (`crew:delivered-window`'s "Findings from a review"). Each value holds: `source`, the `{kind, ref}` pair below; `reply_to`, where the reply goes; `opened_at`, an ISO-8601 UTC timestamp; `replied_at`, the timestamp of the send that delivered `reviews/<round-id>-reply.md`, `null` until it happens; `go_ahead_at`, the timestamp the principal's go-ahead to push and reply landed, `null` until it does, and absent on a round the go-ahead gate does not cover (`crew:delivered-window`'s "The go-ahead gate"); and `push_refused`, a `{at, reason}` written only when the remote refused this round's push twice. A round entry with a `null` `replied_at` is the one thing that says a reply is still owed, and a round with no package at all still has one, so an all-declined round knows its own reader. Absent until the first patch round. |
 | `rounds[].source` | `{kind, ref}`. `kind` is one of `ci`, `pr-comments`, `principal` and `skeptical`. `ref` names the one source of that kind. For `pr-comments` it is the PR URL. For `ci` it is the failing run's URL, or the PR's checks page URL, `<pr_url>/checks`, when one wake found failures in more than one run. For `principal` it is the principal's session name or `"typed"`, and for `skeptical` it is `skeptical-r<n>`. |
@@ -796,8 +799,9 @@ per territory, keyed by the IC's name. Either path cuts one for the
 deliverable when another run already held the checkout, and that entry is
 keyed by the deliverable id, because no IC owns it (`simple-path.md`, "Create
 the branch"). A run that cut none writes no file. **A review worktree is not one of these.**
-It lives under `<record-dir>/review-worktrees/`, the project lead alone makes
-and removes it, and nothing registers it here (`review-runner.md`).
+It lives under `<record-dir>/review-worktrees/<deliverable-id>`, the project
+lead alone makes it and removes it at the ship word, and nothing registers it
+here (`review-runner.md`).
 
 **An entry lives exactly as long as its worktree.** The step that removes a
 worktree deletes the entry. Never add a field that says the worktree is gone:
@@ -1177,6 +1181,7 @@ Every name this file defines, with what consumes it.
 - `reviews/<deliverable-id>-split-critic-r<n>.md` — consumer: stage 3 (`split-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
 - `reviews/skeptical-r<n>.md` — writer: the skeptical review's own headless session, or the project lead when the fallback supplies it (`review-runner.md`). Consumer: `simple-path.md`'s "The skeptical review"; `scripts/crew-stats.py` (the review kind and its catch rate)
 - `reviews/skeptical-r<n>-instructions.md` — writer: the project lead, before it launches that review. Consumer: `--append-system-prompt-file` on the review's own command; a human asking what the reviewer was told
+- `reviews/skeptical-r<n>-resume.md` — writer: the project lead, before it resumes the reviewer of round `<n-1>` (`review-runner.md`'s "Resume the reviewer"). Consumer: the resumed runner, on stdin
 - `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the project lead's four checks, live and on a resume
 - `reviews/skeptical-r<n>-result.stderr` — writer: the same shell line's `2>` redirect, on the default runner's own command (`review-runner.md`), or the run script's `tee` on a replacement's (`substitution.md`). Consumer: a human or the project lead reading why a check failed; the project lead, which reads a replacement's session id from it
 - `reviews/<prefix>-r<n>-run.sh` — writer: the project lead, before it runs a replacement (`substitution.md`). Consumer: the pane or the headless shell that runs it

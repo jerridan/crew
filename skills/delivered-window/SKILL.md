@@ -140,8 +140,8 @@ nothing: a bot's notice, an approval with no ask, an acknowledgement. On a
 `run.kind: review` run, an item that neither answers a crew-posted finding
 (its thread holds a `pr-review` marker) nor addresses the principal is a
 notice too. A notice gets one line in your next message to the principal, and
-its id still joins `seen_ids`. It opens no round, takes no gate and gets no reply.
-Every other item opens its round and gets its reply on the PR. A change
+its id still joins `seen_ids`. It opens no round, takes no gate and gets no
+reply. Every other item opens its round and gets its reply on the PR. A change
 request from the watch is adjudicated like a finding, because the principal
 did not ask for it. A question from the watch takes the disposition
 `answered` (`skeptical-review.md`'s "Adjudication is a ledger").

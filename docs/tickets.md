@@ -3136,3 +3136,34 @@ Done when: the section states the current build and exercise state only.
 
 Read first: `CLAUDE.md` "Build state" and the rule under it; design §13 and
 §15; the writing standard's `## Before you open the PR`.
+
+## T74 — Crew merges on the principal's word
+
+Status: closed, not run
+Depends on: nothing
+Stage: 7 (design §15.105)
+
+Closed 2026-10-19 in the PR that filed it. The principal watches for a
+fault in regular work.
+
+The rule said a human merges and crew never does, and escalation trigger 4
+stops a run before any action on main. The principal asks crew to merge all
+the time, and the rule they hold is that crew merges only on their word.
+
+Scope. `CLAUDE.md`'s Workflow line and the README say crew merges only when
+the principal says to. `crew:delivered-window` gains "A merge request": the
+principal's word, `gh pr merge` with the repo's own method, one line in
+`decisions.md`, and the ship word still asked for after it. Trigger 4 in
+`autonomy-contract.md` says a merge the principal asked for is the answer,
+not the trigger.
+
+Run it. In a delivered run, tell the project lead to merge the PR.
+
+Check: the PR merges with the repo's method, `decisions.md` holds the line,
+and the run stays `delivered` until the ship word.
+
+Done when: a delivered run merges its PR on the principal's word and not
+before.
+
+Read first: design §15.105; `crew:delivered-window` "A merge request";
+`autonomy-contract.md` trigger 4.

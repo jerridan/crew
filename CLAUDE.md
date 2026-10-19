@@ -173,7 +173,8 @@ Ask when a choice is genuinely the user's. Name the option you recommend.
 
 ## Workflow
 
-- Branch, commit with a one-line message, open a draft PR. A human merges.
+- Branch, commit with a one-line message, open a draft PR. Crew merges only
+  when the principal says to.
 - Fill in `.github/pull_request_template.md` for every PR: a plain-language
   summary, the ticket link and the change type, then the agent context.
 - Never hard wrap text you send to GitHub — `writing-standard.md` says why.

@@ -7804,3 +7804,14 @@ Deliberately different:
         from `Gate: off` alone to every `pr-comments` or `ci` round that
         takes no gate. No probe ran the moved gate: the probe in (f) ran the
         gate before the fix.
+
+105. **Crew merges on the principal's word — 2026-10-19, T74.** The rule
+     read "A human merges" in `CLAUDE.md` and "Crew never merges" in the
+     README, and escalation trigger 4 stops a run before any action on
+     main. The principal's practice is the opposite: they ask crew to merge
+     all the time, and merged PR 100 that way. The rule now says crew merges
+     only when the principal says to. `crew:delivered-window` gains "A merge
+     request": `gh pr merge` on the principal's word, one line in
+     `decisions.md`, and the ship word still asked for after it. Trigger 4
+     says a merge the principal asked for is the answer, not the trigger.
+     Not probed: PR 100 was merged before the rule was written.

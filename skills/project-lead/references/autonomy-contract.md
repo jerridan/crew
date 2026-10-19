@@ -334,7 +334,8 @@ one interruption; a run built in the wrong direction costs a day.
 3. A balanced council on an architecture-moving question, or a council-route
    question you can neither answer with a citation nor frame into positions.
 4. Any action outside the deliverable branch: the main branch, production,
-   or credentials.
+   or credentials. A merge the principal asked for is the answer, not the
+   trigger: `crew:delivered-window`'s "A merge request" runs it.
 5. The fix-round breaker fired at the top band.
 6. One of the three launch checks in `full-path.md`'s "Check the launch
    conditions" fails: the goal needs the full path and agent teams are off or

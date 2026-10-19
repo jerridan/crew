@@ -388,7 +388,8 @@ stopped the next round (`autonomy-contract.md`).
 The PR opens as a draft at the hand-over (`simple-path.md`'s "End the run").
 It leaves draft when the skeptical review stops. The repo's own automated
 reviewers then start on a diff that crew has finished with. This file is the
-only place that decides when.
+only place that decides when. This section does not apply to a `run.kind:
+review` run, because the PR and its draft state are the author's.
 
 Mark the PR ready when all of these hold:
 

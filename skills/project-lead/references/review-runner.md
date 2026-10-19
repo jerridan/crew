@@ -112,7 +112,8 @@ and does not inspect the whole PR again. Resume when both hold:
   force-push, and a round on another deliverable, fail this check.
 
 Otherwise launch as round 1 does. Take the session id from the record, never
-from a runner's `--last`.
+from a runner's `--last`. A fresh launch at a later round takes the base that
+`/crew:review`'s "Find the base of a later round" sets for it.
 
 **Write the resume prompt** to `<record-dir>/reviews/skeptical-r<n>-resume.md`.
 Write the instructions file as well, as every round does. Fill this block:

@@ -7824,8 +7824,9 @@ Deliberately different:
      also needs the rule for a review step the principal replaced. Both
      sat inside the lifecycle: the mechanics in `skeptical-review.md`, and
      the rule in `SKILL.md`. `review-runner.md` now holds seven sections of
-     `skeptical-review.md` word for word. `substitution.md` holds `SKILL.md`'s
-     "A step the principal replaced" whole, and `SKILL.md` keeps a pointer.
+     `skeptical-review.md` word for word. `substitution.md` holds the whole
+     section of `SKILL.md` on a replaced review step, and `SKILL.md` keeps
+     a pointer to `substitution.md`.
      `skeptical-review.md` keeps the stance, the inputs, the schedule, the
      resume list, the ready step, the kill table and the verdict lines.
      The five-source table stays in "Take the goal". No rule changed, and

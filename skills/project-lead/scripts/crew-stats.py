@@ -16,6 +16,9 @@ principal approved as they stood: over the escalations that carry `draft`, the
 count with `draft_changed: false` divided by the count with `draft_changed` not
 `null`, as a whole percentage, or `-` when no draft was answered. It prints per
 run and in the totals, and `--json` carries it under `untouched_draft_rate`.
+An escalation answered `"Gate: off"` is no ask the principal saw. The script
+leaves it out of the `escalations` count, and `read_drafts` skips it because
+the skill writes its `draft_changed` as `null`.
 A replaced step is not a Claude session, so `spend.py` cannot price it: its
 cost prints as `unmeasured` unless the record's `usage` object carries a
 dollar figure, and a `usage.tokens` count with no dollar figure prints in its
@@ -634,7 +637,8 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "councils": councils,
         "council_tokens": council_tokens,
         "adversary": adversary,
-        "escalations": len(as_list(run.get("escalations"))),
+        "escalations": len([e for e in as_list(run.get("escalations"))
+                            if not (isinstance(e, dict) and e.get("answer") == "Gate: off")]),
         "compactions": len(as_list(run.get("compactions"))),
         "steps_skipped": read_steps_skipped(record.name, run, skips),
         "steps_substituted": read_steps_substituted(record.name, run, skips),

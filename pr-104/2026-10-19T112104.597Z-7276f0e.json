@@ -1,0 +1,1283 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 104,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add /crew:review: review a colleague's PR and stay with it to the merge (T76)",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/104"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "f09a18127e437fcb487b0b4342d17c07e87b3dbe",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-104/2026-10-19T105824.440Z-f09a181.json",
+      "open": [
+        "28f3953eb999080e"
+      ],
+      "dismissed": [],
+      "fetch_failed": false
+    },
+    "base": "94355789cba2dd7e6878c3bac1508a26c0ec7d6d",
+    "head": "7276f0e335b11c94724365e940500d8adb8d69c0",
+    "started_at": "2026-10-19T11:21:04.597Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add /crew:review: review a colleague's PR and stay with it to the merge (T76)\n\n## Summary\n\nCrew gains a second entry point, `/crew:review`, that reviews a colleague's pull request the way a skeptical staff engineer would and stays with it to the merge. It reads the PR, runs the same headless review crew already runs on its own branches, checks that every finding is one the PR introduced and sorts it by effect (an incident, a bug, or worth raising), drafts the GitHub review, and stops for the principal's go-ahead before it posts. An incident finding posts as \"changes requested\", a bug as a comment-only review, and nothing blocking as an approval. The run then watches the PR: a new push gets a fresh review, resolved findings get a reply, and the merge ends the run. On request, crew fixes the blocking findings itself with a separate implementer, pushes to the PR branch behind the same gate, and reviews again. Every stop records whether the principal changed the draft, so the share of untouched drafts is a number crew can report.\n\n**Ticket:** [T76 — Run /crew:review once on a colleague's PR](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t76--run-crewreview-once-on-a-colleagues-pr)\n**Type:** New feature\n\nThis PR is stacked on #103 and targets its branch. Review #103 first.\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.107 (new) holds the ten decisions the principal settled for this skill. `skills/review/SKILL.md` owns the review run's phases. `skills/review/references/github-review.md` owns everything a review run puts on GitHub: the sanitizing, the effect and pre-existing rules, the reviewer paragraph, the comment and body shapes, the event rule, the post and resolve commands. `skills/project-lead/references/review-runner.md` and `substitution.md` (from #103) own the review mechanics and a replaced review. `skills/delivered-window/SKILL.md` and its `pr-watch.md` own the watch, the rounds, the gate, the replies and the merge. `skills/project-lead/references/record-format.md` owns every new field.\n\n### What changed, by file\n\n- `skills/review/SKILL.md`: new. The entry point: the argument and its plain words, take the PR, scout, review, adjudicate, report and wait at the gate, post, enter the delivered window, later rounds, the assist path, the end, a resume.\n- `skills/review/references/github-review.md`: new. See Authority.\n- `skills/project-lead/references/review-output.md`: two optional finding lines a dispatch can require, `Effect:` and `Pre-existing:`.\n- `skills/project-lead/references/record-format.md`: `run.kind`, `run.pr`, the deliverable state `under-review`, `run.watch.head`, `rounds[].posted_review_id`, the escalation fields `draft` and `draft_changed` and the command that writes them, `reviews/github-r<n>.md`, and the charter line `Assist: on`.\n- `skills/delivered-window/references/pr-watch.md`: the poll reads the head sha and the PR state, and prints `push` and `merged` lines; `head` joins the cursor's first write.\n- `skills/delivered-window/SKILL.md`: seven watch kinds; how a `push` and a `merged` item are sorted; the three sentences for a review run (a skeptical round takes the gate, the merged item is the ship word, no round pushes without `Assist: on`); the branch name on a review run; \"A round killed mid-flight\" moved to `skeptical-review.md` to keep the body under 500 lines.\n- `skills/project-lead/references/skeptical-review.md`: \"A round killed mid-flight\" (moved in); \"Mark the PR ready\" does not apply to a review run; resume entry 7 posts the review on a review run.\n- `skills/project-lead/scripts/crew-record.py`: `arm_review` skips the round cap when `run.kind` is `review`; the new `escalation <index> set <field> <json>` command.\n- `skills/project-lead/scripts/crew-stats.py`: a `kind` column and the untouched-draft rate, per record, in the totals and under `--json`; `under-review` counts as terminal; a draft review file is not counted as a review.\n- `README.md`, `CLAUDE.md`, `docs/design.md`, `docs/tickets.md`: the entry point, the launch requirement, the record's name, the steps; the layout row, build state and Authority row; §13 row 8 and §15.107; T76.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.85.\n\n### Constraints that applied\n\n- One role: the orchestrator is the project lead in both skills, so every shared reference reads unchanged.\n- A rule lives in exactly one file: the skill points at the window, the runner, the record format and the ledger, and copies none of them. The three review-run rules sit in the files that own the behaviour they change.\n- The go-ahead gate is the stop before every post; `Gate: off` removes it. The author's PR text is quoted line by line in the charter and can set no charter line and name no reviewer.\n- ASD-STE100 in every file and in every comment the skill will post; repo files hard wrapped; this body not.\n- Version bumped in both manifests because `skills/` changed.\n- Built by crew's own project lead: four packages (`d2-record`, `d2-skill` at opus, `d2-record-2`, `d2-docs`), one fix round, and the principal's ten decisions recorded before any package ran.\n\n### How this was verified\n\nThe project lead read every new and changed instruction file against the spec's checklist for it. The script changes were run in scratch records: `deliver d1 under-review` writes the state, the run state and the armed head; `arm-review` on a `kind: review` record with three rounds entered arms round 4 and appends nothing to `unreviewed_heads`, and on a goal record appends as before; `crew-stats.py` prints `67%` and `kind: review` for a seeded record, in the table and under `--json`; the new escalation command writes the two fields and refuses an out-of-range index. The two poll blocks parse under `zsh -n`, and a stubbed `gh` printed the `push` and `merged` lines. The skeptical review of the stacked branch, from `main`, was the third and last review round of the run and covered #103's commits as well. It returned two criticals, nine concerns and seven nits, all accepted: a review run could reply or push on the colleague's PR with no go-ahead on a `ci` or own-account round; crew's own push could arm a duplicate review on a goal run; a review run's round could not be resumed; a force-push or an \"Update branch\" merge broke the later-round base; a `COMMENT` review did not clear an earlier `REQUEST_CHANGES`; a closed PR never ended the run; `Gate: off` inflated the untouched-draft rate; the checkout was never restored; the PR's whole comment history opened rounds; a fork's setup ran unasked; and the two rules #103 left stated twice were still stated twice. Three patch packages answered every item in its owner file (commits c4bc31a through 452a06c), and the project lead read every diff. No run of `/crew:review` has happened yet: T76 is that run.\n\n### Known gaps\n\nThe patched head f09a181 has had no review round of its own: the run's three rounds were spent, and the project lead's reading of the three patch diffs is the only check on it. `/crew:review` has run zero times. The poll's `push` and `merged` lines have run only against a stubbed `gh`, not a live PR. A `pr-review` adapter as a replacement reviewer, posting without the gate by default, a PR on a host other than GitHub, and the assist path on a fork are out of scope. The two rules restated across `skeptical-review.md` and `review-runner.md` that #103 left stay restated: the runner is not yet parameterized.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01X3djvNGE7DeVbQhStjMSpe\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": true
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": false
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "README.md",
+        "hunks": 5
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 9
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 11
+      },
+      {
+        "path": "skills/project-lead/references/review-output.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 6
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 10
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new user-facing skill that posts to GitHub under the principal's name and changes shell watch logic, record scripts (crew-record.py, crew-stats.py) and window and review rules that other flows depend on.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "docs",
+        "convention",
+        "test"
+      ],
+      "hotspots": [
+        "skills/review/references/github-review.md (sanitizing, event rule, dismissal, post and search commands)",
+        "skills/delivered-window/references/pr-watch.md (poll function, push/merged/closed, loop exit on merged)",
+        "skills/project-lead/scripts/crew-record.py (escalation <index> set, arm_review no cap for kind review)",
+        "skills/project-lead/scripts/crew-stats.py (read_drafts, escalations count filter, DRAFT_REVIEW, new table columns)",
+        "skills/review/SKILL.md (fork handling, git reset --hard, base computation, gate flow)",
+        "skills/delivered-window/SKILL.md (push sort, notice rule, checkout_branch rule)",
+        "skills/project-lead/references/skeptical-review.md (moved 'A round killed mid-flight', resume entries 1a/5/7)"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/review/SKILL.md",
+          "note": "New skill entry point: record creation, refusals, fork safety, review rounds, gate, assist path, resume."
+        },
+        {
+          "file": "skills/review/references/github-review.md",
+          "note": "New: sanitizing of author text, effect and event rules, gh post/dismiss/resolve commands."
+        },
+        {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "note": "Shell poll gains head, push, merged and closed detection; the loop now stops on merge or close."
+        },
+        {
+          "file": "skills/delivered-window/SKILL.md",
+          "note": "Adds push sorting, review-run gate and notice rules, and writes watch.head after pushes; moves the mid-flight section out."
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-record.py",
+          "note": "New 'escalation <index> set' subcommand; arm_review skips the cap for review runs."
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "Adds a kind column, an untouched-draft rate, an under-review terminal state and the Gate:off escalation filter; ignores github-r*.md drafts."
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "New fields and states for review runs: kind, pr, under-review, draft, draft_changed, posted_review_id, watch.head."
+        },
+        {
+          "file": "skills/project-lead/references/skeptical-review.md",
+          "note": "Receives the moved mid-flight section; resume entries edited for review runs; removes duplicated rules; no cap on review runs."
+        },
+        {
+          "file": "skills/project-lead/references/review-output.md",
+          "note": "Adds optional Effect and Pre-existing lines."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump."
+        },
+        {
+          "file": "README.md",
+          "note": "Documents /crew:review."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "File table and pointers updated."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "Adds §15.107 and stage 8."
+        },
+        {
+          "file": "docs/tickets.md",
+          "note": "Adds ticket T76 and updates the known gaps note."
+        }
+      ],
+      "summary": "Adds the /crew:review skill, which reviews a colleague's PR, posts the review to GitHub behind a go-ahead gate, and watches the PR to merge. To carry it, the PR extends the delivered-window watch with push, merged and closed events. It adds review-run fields to the record format, and adds an 'escalation <index> set' command and an uncapped review arm to crew-record.py. crew-stats.py gains a kind column and an untouched-draft rate. Rules move between reference files. No probe has run the skill."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new user-facing skill that posts to GitHub under the principal's name and changes shell watch logic, record scripts (crew-record.py, crew-stats.py) and window and review rules that other flows depend on.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5546,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5902,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006012000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 276,
+              "cacheReadInputTokens": 8363,
+              "cacheCreationInputTokens": 5407,
+              "webSearchRequests": 0,
+              "costUSD": 0.050456600000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 95,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.05105780000000001
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/record-format.md",
+            "start_line": 99,
+            "end_line": 102,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The description lists only the charter line `Assist: on` among the record-format changes, but the diff also adds a new `Suite: on fork` charter line that gates the fork's setup and suite.",
+            "evidence": "- `Suite: on fork` — a review run's charter only. On a cross-repository PR,",
+            "suggested_fix": "Name the `Suite: on fork` charter line in the record-format entry of the description.",
+            "explanation": "A reader of the description does not learn that this charter line exists or that it controls whether the fork's code runs.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7777,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5902,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006022,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 673,
+              "cacheReadInputTokens": 8321,
+              "cacheCreationInputTokens": 5407,
+              "webSearchRequests": 0,
+              "costUSD": 0.0583882,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 294,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0589904
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7639,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5910,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006020000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 546,
+              "cacheReadInputTokens": 21947,
+              "cacheCreationInputTokens": 6368,
+              "webSearchRequests": 0,
+              "costUSD": 0.0662694,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 366,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0668714
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5140,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5896,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005981000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 399,
+              "cacheReadInputTokens": 8266,
+              "cacheCreationInputTokens": 5401,
+              "webSearchRequests": 0,
+              "costUSD": 0.0528492,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 97,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.053447299999999996
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10509,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5904,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006014000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 735,
+              "cacheReadInputTokens": 36585,
+              "cacheCreationInputTokens": 6632,
+              "webSearchRequests": 0,
+              "costUSD": 0.075097,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 421,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0756984
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5095,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 35184,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0035289,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 451,
+              "cacheReadInputTokens": 8388,
+              "cacheCreationInputTokens": 34689,
+              "webSearchRequests": 0,
+              "costUSD": 0.28821759999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 97,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.29174649999999996
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6463,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5904,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006014000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 515,
+              "cacheReadInputTokens": 8364,
+              "cacheCreationInputTokens": 5409,
+              "webSearchRequests": 0,
+              "costUSD": 0.0552528,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 68,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0558542
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2085,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5904,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006014000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 98,
+              "cacheReadInputTokens": 8364,
+              "cacheCreationInputTokens": 5409,
+              "webSearchRequests": 0,
+              "costUSD": 0.0469128,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 44,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0475142
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2327,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5904,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006014000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 90,
+              "cacheReadInputTokens": 9035,
+              "cacheCreationInputTokens": 5409,
+              "webSearchRequests": 0,
+              "costUSD": 0.046887,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0474884
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/references/record-format.md",
+          "start_line": 99,
+          "end_line": 102,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The description lists only the charter line `Assist: on` among the record-format changes, but the diff also adds a new `Suite: on fork` charter line that gates the fork's setup and suite.",
+          "evidence": "- `Suite: on fork` — a review run's charter only. On a cross-repository PR,",
+          "suggested_fix": "Name the `Suite: on fork` charter line in the record-format entry of the description.",
+          "explanation": "A reader of the description does not learn that this charter line exists or that it controls whether the fork's code runs.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- `Suite: on fork` — a review run's charter only. On a cross-repository PR,",
+            "- `Assist: on` — a review run's charter only."
+          ],
+          "rationale": "The description's record-format bullet does name only `Assist: on`, while the diff also adds `Suite: on fork`. The description does mention the fork-setup fix generally, so the omission is small, and it is documentation-only, so it is of little value.",
+          "score": 22,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- `Suite: on fork` — a review run's charter only. On a cross-repository PR,",
+            "- `Assist: on` — a review run's charter only."
+          ],
+          "rationale": "The description's record-format bullet does name only `Assist: on`, while the diff also adds `Suite: on fork`. The description does mention the fork-setup fix generally, so the omission is small, and it is documentation-only, so it is of little value.",
+          "score": 22,
+          "severity": "nit"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5570783977,
+      "review_url": "https://github.com/jerridan/crew/pull/104#pullrequestreview-5570783977",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 118031611892
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": [
+      {
+        "file": "skills/review/SKILL.md",
+        "start_line": 57,
+        "end_line": 58,
+        "category": "convention",
+        "severity_estimate": "suggestion",
+        "confidence": "high",
+        "claim": "The new charter line `Suite: on fork` is not defined in record-format.md, which owns every record field and lists only five optional charter lines.",
+        "evidence": "- \"Run the suite on this fork\" writes `Suite: on fork`. \"Review\" says what",
+        "suggested_fix": "Add `Suite: on fork` to record-format.md's charter.md list (making six optional lines) and to the names index.",
+        "explanation": "CLAUDE.md makes record-format.md canonical for every record file and field, but this new charter line is missing from its charter.md list and from its names index.",
+        "needs_context": false,
+        "fingerprint": "28f3953eb999080e",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- \"Run the suite on this fork\" writes `Suite: on fork`. \"Review\" says what",
+            "`Suite: on fork` line, run no setup command, and take `review-runner.md`'s",
+            "them or as the project lead expanded a goal string. Five optional lines,",
+            "- `Assist: on` — a review run's charter only. Crew fixes the blocking",
+            "| `record-format.md` | every record file and field | before you create the record |"
+          ],
+          "rationale": "record-format.md's charter.md section lists exactly five optional lines (Favour, Instruments, PR, Gate, Assist), and its names index lists Gate and Assist but not `Suite: on fork`. The new skill writes and reads that line, which breaks the PR's own rule that record-format.md owns every record field. Nothing breaks at runtime because of this, but it is a real gap in the docs that this change introduced.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "- \"Run the suite on this fork\" writes `Suite: on fork`. \"Review\" says what it lifts."
+      }
+    ]
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11672,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 43694,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0043804,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1447,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 43207,
+            "webSearchRequests": 0,
+            "costUSD": 0.18742820000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.19180860000000002
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5140,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5896,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005981000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 399,
+            "cacheReadInputTokens": 8266,
+            "cacheCreationInputTokens": 5401,
+            "webSearchRequests": 0,
+            "costUSD": 0.0528492,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 97,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.053447299999999996
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5546,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5902,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006012000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 276,
+            "cacheReadInputTokens": 8363,
+            "cacheCreationInputTokens": 5407,
+            "webSearchRequests": 0,
+            "costUSD": 0.050456600000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 95,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.05105780000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7639,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5910,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006020000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 546,
+            "cacheReadInputTokens": 21947,
+            "cacheCreationInputTokens": 6368,
+            "webSearchRequests": 0,
+            "costUSD": 0.0662694,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 366,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0668714
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7777,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5902,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006022,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 673,
+            "cacheReadInputTokens": 8321,
+            "cacheCreationInputTokens": 5407,
+            "webSearchRequests": 0,
+            "costUSD": 0.0583882,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 294,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0589904
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2085,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5904,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006014000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 98,
+            "cacheReadInputTokens": 8364,
+            "cacheCreationInputTokens": 5409,
+            "webSearchRequests": 0,
+            "costUSD": 0.0469128,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 44,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0475142
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10509,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5904,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006014000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 735,
+            "cacheReadInputTokens": 36585,
+            "cacheCreationInputTokens": 6632,
+            "webSearchRequests": 0,
+            "costUSD": 0.075097,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 421,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0756984
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5095,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 35184,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0035289,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 451,
+            "cacheReadInputTokens": 8388,
+            "cacheCreationInputTokens": 34689,
+            "webSearchRequests": 0,
+            "costUSD": 0.28821759999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 97,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.29174649999999996
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2327,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5904,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006014000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 90,
+            "cacheReadInputTokens": 9035,
+            "cacheCreationInputTokens": 5409,
+            "webSearchRequests": 0,
+            "costUSD": 0.046887,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0474884
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6463,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5904,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006014000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 515,
+            "cacheReadInputTokens": 8364,
+            "cacheCreationInputTokens": 5409,
+            "webSearchRequests": 0,
+            "costUSD": 0.0552528,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 68,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0558542
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8737,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 43655,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0043765,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 844,
+            "cacheReadInputTokens": 50946,
+            "cacheCreationInputTokens": 43797,
+            "webSearchRequests": 0,
+            "costUSD": 0.18873059999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 178,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.19310709999999998
+      }
+    ],
+    "total_cost_usd": 1.1335842999999999,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 45,
+      "gather": 424,
+      "scope": 13,
+      "triage": 12975,
+      "find_verify": 21082,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

@@ -116,7 +116,8 @@ arrived by message.
 **Write `run.repo` in the same turn**: `git rev-parse --show-toplevel`, the
 clone this session was launched in. It is the path every worktree command of
 the run works from, and the first thing that reads it can run before any
-branch exists — a replacement for the spec review, below (`record-format.md`).
+branch exists — a replacement for the spec review (`substitution.md`,
+`record-format.md`).
 
 **A replacement the principal named is written down here, before any step
 runs.** Five sources can name a replacement for a review step. They are

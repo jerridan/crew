@@ -7197,7 +7197,7 @@ Deliberately different:
        for and did not find. The initial implementation was the headless
        run from (c), in a fresh worktree of the branch; §15.98b found it
        broken three ways and replaced it with the stdin-piped runner
-       `skeptical-review.md`'s "The default command" now states (T59).
+       `review-runner.md`'s "The default command" now states (T59).
        (4) The delivered window gets a patch mode. A change request stays one
        package with an IC and the project lead's verification. Findings from a
        review — CI, a bot, Codex, the principal, or the skeptical review —

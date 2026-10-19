@@ -97,7 +97,8 @@ the records, and on 1 of the 3 that ran over a `light` package (design §15.77).
 No band takes this step away. Only the light path does, by writing no spec at
 all — see the section below.
 
-**The skeptical review takes no band either** (`skeptical-review.md`).
+**The skeptical review takes no band either** (`review-runner.md`'s
+"Prepare the worktree before you launch").
 
 ## What the light path skips
 

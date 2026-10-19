@@ -6,7 +6,7 @@ no other step does — the spec critic, and the skeptical review (design
 §15.94d). `SKILL.md`'s "Take the goal" resolved each one from five sources
 and recorded it in `run.substitutions_requested`; this file runs it.
 
-### What the replacement is told
+## What the replacement is told
 
 Give the replacement what the step's own reviewer would have had:
 
@@ -40,7 +40,7 @@ Every file this file names uses `<prefix>`, so a substituted skeptical
 review writes the same names the rest of the run already looks for
 (`record-format.md`, and `skeptical-review.md`'s resume list).
 
-### Running it
+## Running it
 
 The runner is a separate program, so the prompt goes in on stdin and the
 output comes back on stdout:
@@ -73,7 +73,7 @@ standing in for `-result.json` wherever entries 11 and 12 name it. **A
 never reached the status write, so entry 11's rule holds — retire the attempt
 and retry the round.
 
-### The lifecycle holds; three checks change
+## The lifecycle holds; three checks change
 
 `skeptical-review.md` owns that step whole, and `review-runner.md` owns its
 mechanics. A replacement changes none of it: the detached worktree, the
@@ -98,7 +98,7 @@ because that entry is what lets a later session adjudicate the report. `exit`
 is the runner's exit status, `denials_ok` is the string above, and `report_ok`
 is the report check. Nothing else about the round changes.
 
-### You write the report file
+## You write the report file
 
 The replacement returns the whole report as its output, and nothing writes the
 file for you. Read `<prefix>-r<n>-result.txt` and write the report to
@@ -117,11 +117,11 @@ run changes.
 principal's own words for it, the time, and a `usage` object holding what the
 runner reported. `record-format.md` owns the field.
 
-### One worked example
+## One worked example
 
 The principal types "use Codex for the spec review" at launch, and "Take the
-goal" writes that to `run.substitutions_requested`. At "Have the spec
-reviewed" you assemble the instructions, then run Codex in place of
+goal" writes that to `run.substitutions_requested`. At `SKILL.md`'s "Have
+the spec reviewed" you assemble the instructions, then run Codex in place of
 `crew:spec-critic`:
 
 ```

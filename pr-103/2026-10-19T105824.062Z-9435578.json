@@ -1,0 +1,1731 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 103,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Split the review mechanics and the replacement rule into their own files (T75)",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/103"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "df3316c7b1d1e7b13dbed8f1a4524b4155997ec6",
+    "head": "94355789cba2dd7e6878c3bac1508a26c0ec7d6d",
+    "started_at": "2026-10-19T10:58:24.062Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Split the review mechanics and the replacement rule into their own files (T75)\n\n## Summary\n\nTwo new reference files now hold text that used to sit inside the project lead's own lifecycle: the mechanics of launching a headless review (the detached worktree, the instructions file, the runner command, the four result checks and the session id), and the rule for a review step the principal replaced with another reviewer. The next PR adds a second skill that reviews a colleague's PR, and it needs both without the project lead's schedule, resume list and ready step around them. No rule changed. Every pointer follows the move, and the project lead's skill file is 141 lines shorter.\n\n**Ticket:** [T75 — Split the review mechanics and the replacement rule out of their lifecycles](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t75--split-the-review-mechanics-and-the-replacement-rule-out-of-their-lifecycles)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.106 (new), §15.94d, §15.98b. `skills/project-lead/references/skeptical-review.md` keeps the stance, the inputs, the schedule, the resume list, \"Mark the PR ready\", the kill table and the verdict lines. `skills/project-lead/references/review-runner.md` now owns the mechanics. `skills/project-lead/references/substitution.md` now owns a replaced review step. `skills/project-lead/SKILL.md` keeps the five-source table in \"Take the goal\" and a pointer heading.\n\n### What changed, by file\n\n- `skills/project-lead/references/review-runner.md`: new. Holds, moved word for word from `skeptical-review.md`, the sections \"Never review in the run's own checkout\", \"The default command\", \"The permissions the review needs\", \"Prepare the worktree before you launch\", \"Reviewer instructions\", \"Check the review before you read it\" and \"Record the review's session id\", plus an opening paragraph that says what the caller supplies.\n- `skills/project-lead/references/substitution.md`: new. Holds, moved word for word from `SKILL.md`, the section \"A step the principal replaced\" with its five subsections and the two harness limits.\n- `skills/project-lead/references/skeptical-review.md`: loses the seven sections above; its opening paragraph and its remaining sections point at `review-runner.md`.\n- `skills/project-lead/SKILL.md`: loses the replacement section and keeps a three-line pointer under the same heading; its \"Where the rules live\" table gains two rows.\n- `skills/project-lead/references/record-format.md`, `simple-path.md`, `review-output.md`, `band-rubric.md`, `autonomy-contract.md`, `skills/project-lead/scripts/crew-stats.py`, `skills/project-lead/scripts/spend.py`: pointers follow the move.\n- `CLAUDE.md`: the Authority list gains the two files; the build state counts twelve references.\n- `docs/design.md`: finding 106. `docs/tickets.md`: T75, closed in this PR.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.84.\n\n### Constraints that applied\n\n- A rule lives in exactly one file: each moved block left a one-sentence pointer, never a copy. Checked with `git grep` for the seven headings and the replacement heading.\n- No behaviour change: `git diff --color-moved=dimmed-zebra main...HEAD` over the four files shows every section as a moved block; the only plain additions and removals are file names, section pointers, the two file headers and the two table rows.\n- The version bumps in both manifests because `skills/` changed. The two values are equal.\n- ASD-STE100 prose and hard wrap in repo files; this body is not wrapped.\n- Written by crew's own project lead, with one `crew:ic-instructions` package and one fix round for four pointers outside the first file set.\n\n### How this was verified\n\nThe project lead read the color-moved diff filtered to plain additions and removals (78 lines, all pointers or headers), ran both greps, counted `SKILL.md` at 355 lines against 495 on `main`, confirmed the seven headings exist only in `review-runner.md` and the five subsections only in `substitution.md`, and read finding 106 and T75. There is no test suite. Two skeptical review rounds then read the branch, headless at opus, and each found pointers or referents the move had left behind: round 1 at 8ad7c46 (three concerns, six nits), round 2 at 0b5d9c7 (two concerns, four nits). Each was adjudicated and patched in full (commits 80930c3, 0b5d9c7, 9435578), and the second round confirmed every round-1 item fixed. The reports and ledgers are in the run's record under `reviews/`.\n\n### Known gaps\n\nThe move has run in no probe: the first run of `/crew:project-lead` after this merges is the first time a skeptical review reads its instructions from `review-runner.md`. Two rules stay stated in both `skeptical-review.md` and `review-runner.md` (the no-suite rule and the retry-does-not-count rule) until the next PR parameterizes the runner; T75's Known gaps records it. The head 9435578 has not had its own review round: the third and last round of this run reads the stacked branch of the next PR, which holds every commit here.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01X3djvNGE7DeVbQhStjMSpe\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": true
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": false
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 3
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/band-rubric.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/project-lead/references/review-output.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/review-runner.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/references/substitution.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/scripts/spend.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Although mostly a move of instruction text between markdown files, these files are runtime instructions read by agents (runner command, permissions, checks), and the move includes a small rule addition and many cross-references that could dangle.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/project-lead/references/review-runner.md",
+        "skills/project-lead/references/skeptical-review.md",
+        "skills/project-lead/references/substitution.md",
+        "skills/project-lead/SKILL.md",
+        "skills/project-lead/references/record-format.md"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/project-lead/references/review-runner.md",
+          "note": "New file; claimed word-for-word move from skeptical-review.md, but the failure path gains a new sentence about retiring the attempt (\"Retiring an attempt before you retry it\"), and check 1 / review_results wording changed (<round> to <n>). Verify the cited heading exists in skeptical-review.md."
+        },
+        {
+          "file": "skills/project-lead/references/skeptical-review.md",
+          "note": "Seven sections removed; pointers added. Check that no remaining reference cites a moved heading and that the launch steps still read correctly."
+        },
+        {
+          "file": "skills/project-lead/references/substitution.md",
+          "note": "New file moved from SKILL.md; headings demoted a level and pointers retargeted. Check consistency with review-runner.md."
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "Replacement section reduced to a pointer; the table gains two rows. Check that the pointers to the old heading resolve."
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "Many pointer retargets; confirm each now names the right file and heading."
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "Pointer retarget."
+        },
+        {
+          "file": "skills/project-lead/references/band-rubric.md",
+          "note": "Pointer retarget; one cites a heading that must exist."
+        },
+        {
+          "file": "skills/project-lead/references/review-output.md",
+          "note": "Pointer retargets."
+        },
+        {
+          "file": "skills/project-lead/references/simple-path.md",
+          "note": "Pointer updates."
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "Comment-only change."
+        },
+        {
+          "file": "skills/project-lead/scripts/spend.py",
+          "note": "Docstring-only change."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Reference count is now twelve and two references are listed; verify the count."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "Pointer updates plus new §15.106."
+        },
+        {
+          "file": "docs/tickets.md",
+          "note": "Pointer update plus new ticket T75."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.84."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.84."
+        }
+      ],
+      "summary": "The change splits the headless review mechanics out of skeptical-review.md into a new review-runner.md, and the replaced-step rule out of SKILL.md into a new substitution.md. Cross-references across the references, scripts' comments, CLAUDE.md and the docs are retargeted, and the plugin version goes to 0.1.84. The ticket says the move is verbatim with no rule change, but at least one added sentence in the failure path suggests a small drift."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Although mostly a move of instruction text between markdown files, these files are runtime instructions read by agents (runner command, permissions, checks), and the move includes a small rule addition and many cross-references that could dangle.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/review-runner.md",
+            "start_line": 305,
+            "end_line": 307,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The failure path in the moved text adds a new instruction to retire the attempt, which breaks the change's own verbatim-move rule.",
+            "evidence": "Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+            "suggested_fix": "Restore the original sentence, or record the added rule in T75 and in design §15.106.",
+            "explanation": "T75 and §15.106 say no rule is added or reworded, but this sentence was added to a moved section. That is a rule change the ticket does not record.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [
+          {
+            "finding": {
+              "file": "skills/project-lead/references/review-runner.md",
+              "start_line": 284,
+              "end_line": 284,
+              "category": "convention",
+              "severity_estimate": "nit",
+              "confidence": "low",
+              "claim": "The moved text renames the key `<round>` to `<n>`, so the move is not word for word.",
+              "evidence": "`run.review_results[<round>]` was changed to `run.review_results[<n>] = {exit, denials_ok, report_ok, at}`",
+              "explanation": "The ticket says the move is verbatim except for pointers, and this edit is not a pointer.",
+              "needs_context": false
+            },
+            "reason": "bad-quote"
+          }
+        ],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 18620,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40901,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0041016,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 815,
+              "cacheReadInputTokens": 48695,
+              "cacheCreationInputTokens": 49297,
+              "webSearchRequests": 0,
+              "costUSD": 0.420431,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 173,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4245326
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/review-runner.md",
+            "start_line": 304,
+            "end_line": 310,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The description says the sections moved word for word and no rule changed, but the failure path gains a new instruction to retire the attempt before the retry.",
+            "evidence": "the attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+            "suggested_fix": "Remove the sentence, or say in the description that the failure path changed.",
+            "explanation": "The old text said only to record the failure and run the review once more, so this moved block adds a step.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/references/review-runner.md",
+            "start_line": 282,
+            "end_line": 284,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The moved text renames the key from review_results[<round>] to review_results[<n>], so the move is not word for word.",
+            "evidence": "`run.review_results[<n>] = {exit, denials_ok, report_ok, at}`",
+            "explanation": "This is a wording change inside a block the description says moved verbatim.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10352,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40883,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004097300000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 884,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 45576,
+              "webSearchRequests": 0,
+              "costUSD": 0.38290779999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 206,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3870051
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/review-runner.md",
+            "start_line": 305,
+            "end_line": 307,
+            "category": "other",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The failure path gains a new instruction to retire the attempt, which the original text did not have, although the change says it moved the text word for word.",
+            "evidence": "Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+            "suggested_fix": "Keep the sentence and say in §15.106 and T75 that it was added on purpose, or take it out so the move stays verbatim.",
+            "explanation": "This adds a step to the live failure path, so the move is not verbatim and the behaviour can drift from what the PR says it keeps.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 14050,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40887,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040982,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 576,
+              "cacheReadInputTokens": 51643,
+              "cacheCreationInputTokens": 45837,
+              "webSearchRequests": 0,
+              "costUSD": 0.38856060000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 153,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.39265880000000003
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/review-runner.md",
+            "start_line": 305,
+            "end_line": 307,
+            "category": "other",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The moved failure path adds a new instruction to retire the attempt, so the move is not verbatim as the ticket says it is.",
+            "evidence": "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire",
+            "suggested_fix": "Keep the sentence and record the change in §15.106, or remove it so the move stays verbatim.",
+            "explanation": "T75 says no rule is added or reworded, but this sentence is new text in a block the change calls a word-for-word move. It also points at a bold paragraph, not a section heading.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7677,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40899,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004100899999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 515,
+              "cacheReadInputTokens": 51655,
+              "cacheCreationInputTokens": 45853,
+              "webSearchRequests": 0,
+              "costUSD": 0.387471,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 105,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3915719
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/review-runner.md",
+            "start_line": 305,
+            "end_line": 307,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The failure path gains a new sentence about retiring the attempt, so it is not a word-for-word move. This contradicts the 'No rule changed' and 'word for word' claims in design §15.106 and T75.",
+            "evidence": "Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+            "suggested_fix": "Remove the added sentence, or record the addition in §15.106 and T75.",
+            "explanation": "Design §15.106 says the seven sections moved 'word for word except for its pointers', but this sentence adds a step to the failure path.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7791,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40891,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040986,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 681,
+              "cacheReadInputTokens": 51654,
+              "cacheCreationInputTokens": 46045,
+              "webSearchRequests": 0,
+              "costUSD": 0.3923268,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 248,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.39642540000000004
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/review-runner.md",
+            "start_line": 305,
+            "end_line": 310,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The failure path adds a 'retire the attempt' instruction. The ticket and the PR say the move is word for word with no rule added, so this is a rule change.",
+            "evidence": "Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+            "suggested_fix": "Remove the sentence, or record the change in T75 and in design §15.106.",
+            "explanation": "In skeptical-review.md at the base, the failure path said only 'Record the failure in decisions.md and run it once more'. T75 and finding 106 say no rule is added or reworded, and this sentence contradicts that.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 13610,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 69319,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.006941400000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 846,
+              "cacheReadInputTokens": 80197,
+              "cacheCreationInputTokens": 74676,
+              "webSearchRequests": 0,
+              "costUSD": 0.6303834,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 277,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.6373248
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8307,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40893,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040983,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 117,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 45629,
+              "webSearchRequests": 0,
+              "costUSD": 0.36799180000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.37209010000000003
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11239,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40891,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040981,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 92,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 45627,
+              "webSearchRequests": 0,
+              "costUSD": 0.3674758,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3715739
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5425,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40887,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0041002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 349,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 46294,
+              "webSearchRequests": 0,
+              "costUSD": 0.3779518,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 107,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.382052
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/references/review-runner.md",
+          "start_line": 305,
+          "end_line": 307,
+          "category": "other",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The moved failure path adds a new instruction to retire the attempt, so the move is not verbatim as the ticket says it is.",
+          "evidence": "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire",
+          "suggested_fix": "Keep the sentence and record the change in §15.106, or remove it so the move stays verbatim.",
+          "explanation": "T75 says no rule is added or reworded, but this sentence is new text in a block the change calls a word-for-word move. It also points at a bold paragraph, not a section heading.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire",
+            "the attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+            "**Retiring an attempt before you retry it.** A retry reuses the round's"
+          ],
+          "rationale": "The \"Otherwise the review failed\" paragraph is the moved failure path from the old \"Check the review\" section. The \"Retire the attempt\" step points at the bold paragraph \"Retiring an attempt before you retry it\", which still exists in `skeptical-review.md`. The description lists section pointers as expected edits, and the retry-does-not-count rule is named as a known duplicate. I couldn't view the pre-change file, so the finding's claim that the sentence is new is unsupported. At most, the pointer targets a bold paragraph and not a heading, which is a nit.",
+          "score": 8,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire",
+            "the attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+            "**Retiring an attempt before you retry it.** A retry reuses the round's"
+          ],
+          "rationale": "The \"Otherwise the review failed\" paragraph is the moved failure path from the old \"Check the review\" section. The \"Retire the attempt\" step points at the bold paragraph \"Retiring an attempt before you retry it\", which still exists in `skeptical-review.md`. The description lists section pointers as expected edits, and the retry-does-not-count rule is named as a known duplicate. I couldn't view the pre-change file, so the finding's claim that the sentence is new is unsupported. At most, the pointer targets a bold paragraph and not a heading, which is a nit.",
+          "score": 8,
+          "severity": "nit"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/review-runner.md",
+          "start_line": 305,
+          "end_line": 307,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The failure path gains a new sentence about retiring the attempt, so it is not a word-for-word move. This contradicts the 'No rule changed' and 'word for word' claims in design §15.106 and T75.",
+          "evidence": "Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+          "suggested_fix": "Remove the added sentence, or record the addition in §15.106 and T75.",
+          "explanation": "Design §15.106 says the seven sections moved 'word for word except for its pointers', but this sentence adds a step to the failure path.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says."
+          ],
+          "rationale": "The sentence is a cross-file pointer to a section that still exists in `skeptical-review.md`, and the description lists such pointers as the intended plain additions. I found no evidence that it adds a new rule, so the claim that it adds a step is probably false and is at most a minor wording point.",
+          "score": 10,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says."
+          ],
+          "rationale": "The sentence is a cross-file pointer to a section that still exists in `skeptical-review.md`, and the description lists such pointers as the intended plain additions. I found no evidence that it adds a new rule, so the claim that it adds a step is probably false and is at most a minor wording point.",
+          "score": 10,
+          "severity": "nit"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/review-runner.md",
+          "start_line": 304,
+          "end_line": 310,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The description says the sections moved word for word and no rule changed, but the failure path gains a new instruction to retire the attempt before the retry.",
+          "evidence": "the attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+          "suggested_fix": "Remove the sentence, or say in the description that the failure path changed.",
+          "explanation": "The old text said only to record the failure and run the review once more, so this moved block adds a step.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+            "**Retiring an attempt before you retry it.** A retry reuses the round's\nnames, so move the old attempt aside first rather than overwriting it"
+          ],
+          "rationale": "I couldn't see the old text, so the claim that it said only \"record and rerun\" is unproven. The retire rule already existed in skeptical-review.md: its \"Retiring an attempt before you retry it\" section is still there, and resume entries 11 and 12 already say to retire the attempt. The sentence is most likely the old \"below says\" pointer rewritten to name the other file, which the description allows. If it was new, it would restate an existing rule, not change one.",
+          "score": 12,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+            "**Retiring an attempt before you retry it.** A retry reuses the round's\nnames, so move the old attempt aside first rather than overwriting it"
+          ],
+          "rationale": "I couldn't see the old text, so the claim that it said only \"record and rerun\" is unproven. The retire rule already existed in skeptical-review.md: its \"Retiring an attempt before you retry it\" section is still there, and resume entries 11 and 12 already say to retire the attempt. The sentence is most likely the old \"below says\" pointer rewritten to name the other file, which the description allows. If it was new, it would restate an existing rule, not change one.",
+          "score": 12,
+          "severity": "nit"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/review-runner.md",
+          "start_line": 282,
+          "end_line": 284,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The moved text renames the key from review_results[<round>] to review_results[<n>], so the move is not word for word.",
+          "evidence": "`run.review_results[<n>] = {exit, denials_ok, report_ok, at}`",
+          "explanation": "This is a wording change inside a block the description says moved verbatim.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "`run.review_results[<n>] = {exit, denials_ok, report_ok, at}`"
+          ],
+          "rationale": "I could not confirm the claimed rename, because the original text is not available in the checkout. The head already uses `<n>` for the round in `substitution.md` and elsewhere in `skeptical-review.md`. Even if the rename happened, it is a trivial wording change that matches the file's own `<n>` convention, so it is not worth a review comment.",
+          "score": 8,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "`run.review_results[<n>] = {exit, denials_ok, report_ok, at}`"
+          ],
+          "rationale": "I could not confirm the claimed rename, because the original text is not available in the checkout. The head already uses `<n>` for the round in `substitution.md` and elsewhere in `skeptical-review.md`. Even if the rename happened, it is a trivial wording change that matches the file's own `<n>` convention, so it is not worth a review comment.",
+          "score": 8,
+          "severity": "nit"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/review-runner.md",
+          "start_line": 305,
+          "end_line": 307,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The failure path in the moved text adds a new instruction to retire the attempt, which breaks the change's own verbatim-move rule.",
+          "evidence": "Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+          "suggested_fix": "Restore the original sentence, or record the added rule in T75 and in design §15.106.",
+          "explanation": "T75 and §15.106 say no rule is added or reworded, but this sentence was added to a moved section. That is a rule change the ticket does not record.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire",
+            "the attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+            "12. **`review_pending` is set, the instructions file or the round's worktree"
+          ],
+          "rationale": "There is no evidence that the retire instruction is new. It points at a section that still exists in `skeptical-review.md`, and the resume list there already says \"Retire it\". Design §15.106 allows pointer changes (\"word for word except for its pointers\"). The finding is speculation, because the original text is not available to compare.",
+          "score": 10,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire",
+            "the attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry",
+            "12. **`review_pending` is set, the instructions file or the round's worktree"
+          ],
+          "rationale": "There is no evidence that the retire instruction is new. It points at a section that still exists in `skeptical-review.md`, and the resume list there already says \"Retire it\". Design §15.106 allows pointer changes (\"word for word except for its pointers\"). The finding is speculation, because the original text is not available to compare.",
+          "score": 10,
+          "severity": "nit"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/review-runner.md",
+          "start_line": 305,
+          "end_line": 310,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The failure path adds a 'retire the attempt' instruction. The ticket and the PR say the move is word for word with no rule added, so this is a rule change.",
+          "evidence": "Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+          "suggested_fix": "Remove the sentence, or record the change in T75 and in design §15.106.",
+          "explanation": "In skeptical-review.md at the base, the failure path said only 'Record the failure in decisions.md and run it once more'. T75 and finding 106 say no rule is added or reworded, and this sentence contradicts that.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+            "**Retiring an attempt before you retry it.** A retry reuses the round's\nnames, so move the old attempt aside first rather than overwriting it"
+          ],
+          "rationale": "I could not confirm the base text, because I could not read git history. The retire-before-retry rule already exists in skeptical-review.md (\"Retiring an attempt before you retry it\", and resume entries 11 and 12 say \"retire the attempt and retry\"). So the added sentence is most likely a pointer to an existing rule, not a new rule. That is a minor wording difference in a refactor, not a real behaviour change.",
+          "score": 22,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**Otherwise the review failed.** Record the failure in `decisions.md`. Retire\nthe attempt as `skeptical-review.md`'s \"Retiring an attempt before you retry\nit\" says.",
+            "**Retiring an attempt before you retry it.** A retry reuses the round's\nnames, so move the old attempt aside first rather than overwriting it"
+          ],
+          "rationale": "I could not confirm the base text, because I could not read git history. The retire-before-retry rule already exists in skeptical-review.md (\"Retiring an attempt before you retry it\", and resume entries 11 and 12 say \"retire the attempt and retry\"). So the added sentence is most likely a pointer to an existing rule, not a new rule. That is a minor wording difference in a refactor, not a real behaviour change.",
+          "score": 22,
+          "severity": "nit"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5570549098,
+      "review_url": "https://github.com/jerridan/crew/pull/103#pullrequestreview-5570549098",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 118022745886
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11070,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38987,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039107000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1259,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 39761,
+            "webSearchRequests": 0,
+            "costUSD": 0.17163799999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.17554869999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7677,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40899,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004100899999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 515,
+            "cacheReadInputTokens": 51655,
+            "cacheCreationInputTokens": 45853,
+            "webSearchRequests": 0,
+            "costUSD": 0.387471,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 105,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3915719
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7791,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40891,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040986,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 681,
+            "cacheReadInputTokens": 51654,
+            "cacheCreationInputTokens": 46045,
+            "webSearchRequests": 0,
+            "costUSD": 0.3923268,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 248,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.39642540000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10352,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40883,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004097300000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 884,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 45576,
+            "webSearchRequests": 0,
+            "costUSD": 0.38290779999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 206,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3870051
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14050,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40887,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040982,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 576,
+            "cacheReadInputTokens": 51643,
+            "cacheCreationInputTokens": 45837,
+            "webSearchRequests": 0,
+            "costUSD": 0.38856060000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 153,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.39265880000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8307,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40893,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040983,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 117,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 45629,
+            "webSearchRequests": 0,
+            "costUSD": 0.36799180000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.37209010000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 18620,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40901,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0041016,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 815,
+            "cacheReadInputTokens": 48695,
+            "cacheCreationInputTokens": 49297,
+            "webSearchRequests": 0,
+            "costUSD": 0.420431,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 173,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4245326
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5425,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40887,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0041002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 349,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 46294,
+            "webSearchRequests": 0,
+            "costUSD": 0.3779518,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 107,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.382052
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13610,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 69319,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.006941400000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 846,
+            "cacheReadInputTokens": 80197,
+            "cacheCreationInputTokens": 74676,
+            "webSearchRequests": 0,
+            "costUSD": 0.6303834,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 277,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.6373248
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11239,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40891,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040981,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 92,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 45627,
+            "webSearchRequests": 0,
+            "costUSD": 0.3674758,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3715739
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11056,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16009,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016114,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 813,
+            "cacheReadInputTokens": 19410,
+            "cacheCreationInputTokens": 20429,
+            "webSearchRequests": 0,
+            "costUSD": 0.091795,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 298,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0934064
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11083,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15906,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016016000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 709,
+            "cacheReadInputTokens": 23196,
+            "cacheCreationInputTokens": 15845,
+            "webSearchRequests": 0,
+            "costUSD": 0.07279759999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 293,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0743992
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 16607,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15984,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016094000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1144,
+            "cacheReadInputTokens": 39229,
+            "cacheCreationInputTokens": 21013,
+            "webSearchRequests": 0,
+            "costUSD": 0.0994269,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 382,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1010363
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 21186,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15950,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.001605,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 1650,
+            "cacheReadInputTokens": 87041,
+            "cacheCreationInputTokens": 20366,
+            "webSearchRequests": 0,
+            "costUSD": 0.1066881,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 544,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10829309999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 12631,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16004,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016089000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1404,
+            "cacheReadInputTokens": 43746,
+            "cacheCreationInputTokens": 18396,
+            "webSearchRequests": 0,
+            "costUSD": 0.0920106,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 491,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0936195
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 21068,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15999,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016099,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 1859,
+            "cacheReadInputTokens": 87887,
+            "cacheCreationInputTokens": 19424,
+            "webSearchRequests": 0,
+            "costUSD": 0.1050947,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 450,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1067046
+      }
+    ],
+    "total_cost_usd": 4.508242399999999,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 53,
+      "gather": 419,
+      "triage": 12182,
+      "find_verify": 45739,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

@@ -29,20 +29,10 @@ seconds, with seven `gh` reads: `isDraft`, the head sha, reviews, review
 comments, issue comments, `gh pr checks` and the PR state.
 
 The command prints one line per new item, and nothing otherwise. A line names
-the item's kind, id, author, time and a one-line summary. The seven kinds are
-`ready`, `review`, `review-comment`, `comment`, `check`, `push` and `merged`.
-`pr-watch.md` holds the command. Any other account is reported, the
-principal's own included.
-
-**The poll leaves out six things:**
-
-- A pending review and its inline comments. They are not yet submitted.
-- A review whose body is empty.
-- A review or conversation comment older than `run.watch.last_polled_at`.
-- An item whose last line starts `crew: `. That marker is your own reply.
-- An item whose id is in `run.watch.seen_ids`.
-- A passing or pending check. A `check` is a `fail`-bucket entry of
-  `gh pr checks`. Its id holds its start time, so a re-run is new.
+the item's kind, id, author, time and a one-line summary. The eight kinds are
+`ready`, `review`, `review-comment`, `comment`, `check`, `push`, `merged` and
+`closed`. `pr-watch.md` holds the command, and lists what the poll leaves
+out. Any other account is reported, the principal's own included.
 
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
 state is true. The command starts from `run.watch.draft`. A poll that reads
@@ -54,15 +44,17 @@ reported**, because `skeptical-review.md`'s "Mark the PR ready" says how.
 principal, that the PR is ready for review, **and nothing else.** "Mark the
 PR ready" stays the only place where crew marks the PR ready.
 
-**A `push` item is sorted by its sha.** A `push` whose sha equals
-`run.watch.head` is a notice. Any other `push` is a head move. Run
+**A `push` item is sorted by its sha.** A `push` is a notice when its sha
+equals `run.watch.head`, `run.review_pending.head`, or the `Reviewed:` sha of
+the latest `reviews/skeptical-r<n>.md`. Any other `push` is a head move. Run
 `crew-record.py <record-dir> arm-review --head <sha>`, and the skeptical
 review runs on it, as `skeptical-review.md`'s "When the review runs" says for
 a head that moves in the delivered window. Then write `run.watch.head` with
 `crew-record.py <record-dir> run set watch.head '"<sha>"'`. A `merged` item
 is a notice in a goal run, and the ship word is still asked for. In a
 `run.kind: review` run it is the ship word (see "The word that the work
-shipped").
+shipped"). A `closed` item ends a review run the same way. In a goal run it
+is a notice that asks the principal for the ship word or for a new goal.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
 each key holds. After every wake that reported something, and never before
@@ -177,10 +169,12 @@ also a change request.
 
 **A wake's lines are sorted the same way, with one more result.** Each item
 is a finding, a change request, a question or a **notice**. A notice asks for
-nothing: a bot's notice, an approval with no ask, an acknowledgement. It gets
-one line in your next message to the principal, and its id still joins
-`seen_ids`. It opens no round, takes no gate and gets no reply. Every other
-item opens its round and gets its reply on the PR. A change
+nothing: a bot's notice, an approval with no ask, an acknowledgement. On a
+`run.kind: review` run, an item that neither answers a crew-posted finding
+(its thread holds a crew marker) nor addresses the principal is a notice too.
+A notice gets one line in your next message to the principal, and its id
+still joins `seen_ids`. It opens no round, takes no gate and gets no reply.
+Every other item opens its round and gets its reply on the PR. A change
 request from the watch is adjudicated like a finding, because the principal
 did not ask for it. A question from the watch takes the disposition
 `answered` (`skeptical-review.md`'s "Adjudication is a ledger").
@@ -252,10 +246,11 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    the run", so run its "Create the branch" again with one difference: the
    branch exists. A free checkout switches to it — `git -C <repo> switch
    crew/<goal-slug>/<deliverable-id>` — and writes `checkout_branch` from
-   what the tree was on, with `checkout_restored` back to `null`. A held one,
-   or a run that cut its own worktree the first time, cuts the worktree
-   again at the same path from the existing branch — no `-b` — and registers
-   it. On a `run.kind: review` run, the deliverable branch is the PR's head
+   what the tree was on, with `checkout_restored` back to `null`. When the tree
+   is already on the deliverable branch, keep `checkout_branch`: write it
+   only when the switch changes branches. A held one, or a run that cut its
+   own worktree the first time, cuts the worktree again at the same path from
+   the existing branch — no `-b` — and registers it. On a `run.kind: review` run, the deliverable branch is the PR's head
    ref (`deliverables[].branch`, which `/crew:review` set to
    `<headRefName>`), so the switch targets that branch, or the detached head
    on a cross-repository PR.
@@ -276,7 +271,9 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    local head: the review reads a sha and needs no remote
    (`skeptical-review.md`). **Set `pushed_at` only after a push that
    succeeded.** A refusal here leaves the field `null`, and you say so to the
-   principal, whose request this answers. Then finish the cleanup
+   principal, whose request this answers. After a push that succeeded, write
+   `run.watch.head` to the pushed sha with `crew-record.py <record-dir> run
+   set watch.head '"<sha>"'`. Then finish the cleanup
    `simple-path.md`'s "End the run" lists: remove a worktree you cut, restore
    the checkout, and run `<project-lead-dir>/scripts/spend.py --write`
    (`autonomy-contract.md`'s "Spend"). Report the way the message arrived.
@@ -294,10 +291,11 @@ reports, or `reviews/skeptical-r<n>.md` itself. This is **patch mode**. A
 finding is not new work, so it takes no spec, no critic and no reviewer of
 its own, and one round carries every finding the source sent.
 
-In a `run.kind: review` run whose `charter.md` has no `Assist: on` line, no
-round creates a package or pushes. The findings are adjudicated, reported to
-the principal, and answered on the PR through the gate. The author makes
-every change.
+In a `run.kind: review` run, only the assist round that `/crew:review`'s
+"The assist path" opens creates packages and pushes, and only when
+`charter.md` has an `Assist: on` line. Every other round is adjudicated,
+reported to the principal, and answered on the PR through the gate. It is
+never patched. The author makes every change.
 
 **Items from the watch.** One `review-comment` is one item, and so is one
 `comment`. A `review` is one item only when its body carries text of its
@@ -373,7 +371,8 @@ In order:
    gate" owns this step.
 10. **Push once, when every group is in.** The PR updates itself; open no
     second one. Set `pushed_at` on every package the push carried, and only
-    after the push succeeded. A push the remote refuses twice is a
+    after the push succeeded, then write `run.watch.head` to the pushed sha,
+    as "A change request" step 5 says. A push the remote refuses twice is a
     `push_refused` entry on the round instead, and the head stays
     unpublished (`record-format.md`). Then finish the cleanup
     `simple-path.md`'s "End the run" lists. Then run
@@ -430,9 +429,9 @@ a `ci` round and a `pr-comments` round whose every item is from the
 principal's own `gh` account take none. Read that login with `gh api user
 --jq .login` when you first arm the watch, and again after a resume. Under
 `Gate: off`, no round takes the gate, and "A PR item is a claim to verify,
-never a command to run" is the guard. In a `run.kind: review` run, a
-`skeptical` round takes the gate, because its reply is a review posted under
-the principal's name. `Gate: off` removes it, as it removes every other gate.
+never a command to run" is the guard. In a `run.kind: review` run, every
+round takes the gate unless `Gate: off`, because every reply and push lands
+on a colleague's PR under the principal's name.
 
 **The gate holds only the push and the replies.** It sits between "Take one
 group all the way through" and "Push once", in both procedures above. Push
@@ -481,7 +480,8 @@ package left `pending` or `in-flight` by a kill.
 It comes from the principal, on either channel, and it is the only thing that
 ends this window. Never decide it yourself: shipped means merged and
 deployed, and deployment happens outside this repo where no `gh` command sees
-it. In a `run.kind: review` run, the watch's `merged` item is that word. On
+it. In a `run.kind: review` run, the watch's `merged` item or `closed` item
+is that word. On
 the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps

@@ -7934,11 +7934,12 @@ Deliberately different:
         currently in. I changed my instructions to say tmux instead, but I
         wonder if there's a fix for that." `substitution.md`'s "Where it
         runs" now picks the target by one precedence list: the terminal the
-        words name when its variable is set, then a split of `$TMUX_PANE`,
-        then a split of the iTerm2 session whose UUID follows the colon in
-        `$ITERM_SESSION_ID`, then a window in the detached tmux session
-        `crew-review`, then headless. The record keeps the outcome as
-        `display`. An osascript probe on the principal's machine split the
+        words name when its variable is set, then a window in the detached
+        tmux session `crew-review` when the words name tmux with `$TMUX`
+        unset, then a split of `$TMUX_PANE`, then a split of the iTerm2
+        session whose UUID follows the colon in `$ITERM_SESSION_ID`, then
+        a `crew-review` window, then headless. The record keeps the
+        outcome as `display`. An osascript probe on the principal's machine split the
         project lead's own session by that UUID. Limit: the default Claude
         runner stays headless, and no run has used the list yet.
      c. **Note 3, the reviewer stays open.** "The skeptical reviewer should

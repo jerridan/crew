@@ -78,11 +78,12 @@ the first rule that holds:
 
 1. The words name a terminal, and its variable is set: `$TMUX` for tmux,
    `$ITERM_SESSION_ID` for iTerm2. Split the project lead's own pane there.
-2. `$TMUX` is set: split the project lead's own tmux pane.
-3. `$ITERM_SESSION_ID` is set: split the project lead's own iTerm2 session.
-4. `tmux` is installed: open a window in the detached tmux session
-   `crew-review`.
-5. Otherwise, headless.
+2. The words name tmux, `$TMUX` is unset, and `tmux` is installed: open a
+   window in the detached tmux session `crew-review`.
+3. `$TMUX` is set: split the project lead's own tmux pane.
+4. `$ITERM_SESSION_ID` is set: split the project lead's own iTerm2 session.
+5. `tmux` is installed: open a window in `crew-review`.
+6. Otherwise, headless.
 
 **Never split the current session or the focused tab.** The principal can
 be in another window, and a split there lands in the principal's own work.

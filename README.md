@@ -17,8 +17,8 @@ merge, or ask for a change to the PR after.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
 you what it fixed or declined and why, and waits for your go-ahead before it
-pushes or replies on the PR. A failed check and a comment from your own
-GitHub account take no go-ahead.
+pushes or replies on the PR. In a goal run, a failed check and a comment
+from your own GitHub account take no go-ahead.
 
 Two entry points:
 
@@ -160,9 +160,14 @@ Or give its number, with plain words to ask for more:
 The PR must be open. "Fix the blockers yourself" lets crew push fixes to the
 PR's branch, and it does not work on a PR from a fork.
 
-Before every review, reply and push, crew shows you the draft and waits for
-your go-ahead. You can change any finding or the text, or mark a finding
-"no reply". To turn the wait off, say `post without asking` with the command.
+In a review run, crew waits for your go-ahead before every review, reply
+and push, whoever the item came from. This includes a failed check and a
+comment from your own GitHub account. Crew shows you the draft first. You
+can change any finding or the text, or mark a finding "no reply". To turn
+every wait off, say `post without asking` with the command.
+
+Crew does not run a fork's tests or setup unless you say
+`run the suite on this fork`.
 
 Each finding has one of three effects:
 
@@ -173,9 +178,11 @@ Each finding has one of three effects:
 | `non-blocking` | A comment on something worth raising but not essential, such as a gap in test coverage. The review approves when only these are left. |
 
 A nit never posts. A defect that the PR did not add stays out of the review.
-Crew lists it for you as a possible new goal. On your own PR, GitHub does
-not allow an approval or a request for changes, so the review posts as a
-comment.
+Crew lists it for you as a possible new goal. On your own PR, the review
+posts as a comment.
+
+A new review that approves or comments clears an earlier "changes
+requested" that crew posted.
 
 Crew reviews each new push on the PR the same way. It leaves the merge to the
 PR's author. With "fix the blockers yourself", it merges when you tell it to.
@@ -279,14 +286,14 @@ A review run takes these steps:
 |---|---|
 | Take the PR | Reads the PR, refuses one that is not open, and opens the record. |
 | Scout | Finds the test command and the instruction files. |
-| Review | A separate session reads the diff against the PR's own description and assumes it is wrong. |
+| Review | A separate session reads the diff against the PR's description and the repo. |
 | Adjudicate | Crew checks each finding and its effect, and drops nits and defects that were already there. |
 | Report and wait | Crew sends you the draft and waits for your go-ahead. |
 | Post | Crew posts the review on the PR, with one inline comment per finding. |
 | Watch | Crew watches the PR for a new push and for the merge. |
 | Later rounds | Each new push is reviewed again. A finding whose code is gone is marked resolved. |
 | The assist path | With "fix the blockers yourself", crew fixes the `incident` and `bug` findings and pushes them to the PR's branch, after your go-ahead. |
-| The end | The run closes when the PR merges. |
+| The end | The run closes when the PR merges. A PR that is closed without a merge also ends the run. |
 
 ## Models
 

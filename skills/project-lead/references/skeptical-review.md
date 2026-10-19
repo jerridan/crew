@@ -109,10 +109,12 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    integration write. Standalone `arm-review --head` is for recovery and
    supersession alone: entries 8 and 9 below, never a follow-up's own launch.
 2. **Set `review_rounds` to `review_pending.round`**, by the table below.
-3. **Cut `review-worktrees/r<n>`** and run the setup command in it
+3. **Cut or move the deliverable's review worktree** and run the setup
+   command in it (`review-runner.md`).
+4. **Write the instructions file**, and the resume prompt on a later round
    (`review-runner.md`).
-4. **Write the instructions file** (`review-runner.md`).
-5. **Launch** (`review-runner.md`'s "The default command").
+5. **Launch, or resume the reviewer of the round before** (`review-runner.md`'s
+   "The default command" and "Resume the reviewer").
 
 **Every `<n>` in this file is `review_pending.round`, never `review_rounds`.**
 The two agree once step 2 has run, and they do not agree before it. A cleanup
@@ -283,8 +285,8 @@ Arm the watch once too, by that skill's "Watch the PR".
    write the entry and take entry 10 — applying the result-field fallback
    first when the report file never landed. Failing, retire the attempt and
    retry at launch step 2.
-12. **`review_pending` is set, the instructions file or the round's worktree
-   is there, and `-result.json` is not.** The attempt died before its process
+12. **`review_pending` is set, the round's instructions file is there, and
+   `-result.json` is not.** The attempt died before its process
    finished. Retire it and retry at launch step 2.
 13. **`review_pending` is set and nothing for the round is on disk.** Retry at
    launch step 2 — setting `review_rounds` to the reserved round first when
@@ -303,13 +305,14 @@ ties a report to a tree.
 
 **Retiring an attempt before you retry it.** A retry reuses the round's
 names, so move the old attempt aside first rather than overwriting it — it is
-the only evidence of what went wrong. Rename whichever of the five exist,
+the only evidence of what went wrong. Rename whichever of the six exist,
 with `<k>` one more than the highest `-attempt` already on disk for this
 round:
 
 ```
 skeptical-r<n>.md               →  skeptical-r<n>-attempt<k>.md
 skeptical-r<n>-instructions.md  →  skeptical-r<n>-instructions-attempt<k>.md
+skeptical-r<n>-resume.md        →  skeptical-r<n>-resume-attempt<k>.md
 skeptical-r<n>-result.json      →  skeptical-r<n>-result-attempt<k>.json
 skeptical-r<n>-result.stderr    →  skeptical-r<n>-result-attempt<k>.stderr
 skeptical-r<n>-result.exit      →  skeptical-r<n>-result-attempt<k>.exit
@@ -479,7 +482,7 @@ somewhere else.
 | **Round 0**, the reply file written before `run.rounds[<round-id>]` — the ordinary kill point under this run's own order | 1, second bullet | the round entry is rebuilt from the reply's header, and the list re-enters |
 | **Launch 1**, the arming | 13, nothing on disk | `review_rounds` is set to the reserved round, then the review runs at launch step 2 |
 | **Launch 2**, `review_rounds` set | 13, nothing on disk | the review runs at launch step 2, in the same round |
-| **Launch 3**, the worktree cut and setup run | 12, a worktree and no JSON | nothing exists to retire; cleanup removes the worktree (`review-runner.md`) and the review runs at launch step 2 |
+| **Launch 3**, the worktree cut or moved and setup run | 13, nothing for the round on disk | the review runs at launch step 2, which checks the worktree again (`review-runner.md`) |
 | **Launch 4**, the instructions written, before the redirected command starts | 12, instructions and no JSON | the attempt is retired, then the review runs at launch step 2 |
 | **Launch 5**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | `review-runner.md`'s four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
 | **Launch 5**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |

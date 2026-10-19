@@ -1,7 +1,7 @@
 # PR watch commands
 
-The exact command lines for `SKILL.md`'s "Watch the PR" and "Send the reply
-file". That file owns when each one runs.
+The exact command lines and arming steps for `SKILL.md`'s "Watch the PR" and
+"Send the reply file". That file owns when each one runs.
 
 Fill `<owner>`, `<repo>` and `<n>` from the deliverable's `pr_url`, which is
 `https://github.com/<owner>/<repo>/pull/<n>`. Fill `<since>`, `<seen ids>`,
@@ -40,7 +40,7 @@ poll() {
   revs=$(gh api --paginate "repos/$R/pulls/$N/reviews" --jq '.[]
     | if .state == "PENDING" then "pending \(.id)"
       elif (.body // "") != "" and .submitted_at >= $ENV.SINCE
-        and ((.body | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
+        and ((.body | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
       then "review \(.id) \(.user.login) \(.submitted_at) \(.state) \(.body | gsub("\r"; "") | split("\n") | first | .[0:100])"
       else empty end' 2>/dev/null) || revs=''
   export PEND=" $(printf '%s\n' "$revs" | sed -n 's/^pending //p' | tr '\n' ' ')"
@@ -48,11 +48,11 @@ poll() {
     printf '%s\n' "$revs" | grep '^review '
     gh api --paginate "repos/$R/pulls/$N/comments" --jq '.[]
       | (.pull_request_review_id // 0) as $r | select($ENV.PEND | contains(" \($r) ") | not)
-      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
+      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
       | "review-comment \(.id) \(.user.login) \(.created_at) \(.path):\(.line // .original_line // 0) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
     gh api --paginate "repos/$R/issues/$N/comments" --jq '.[]
       | select(.created_at >= $ENV.SINCE)
-      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
+      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
       | "comment \(.id) \(.user.login) \(.created_at) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
     gh pr checks "$PR" --json name,bucket,link,startedAt --jq '.[]
       | select(.bucket == "fail")
@@ -66,12 +66,22 @@ poll() {
     printf '%s\n' "$line"
   done <<< "$out"
   m=$(gh pr view "$PR" --json state,mergedAt -q '"\(.state) \(.mergedAt)"' 2>/dev/null) || true
+  q=$(gh api graphql -f owner="${R%/*}" -f repo="${R#*/}" -F n="$N" -f query='
+    query($owner: String!, $repo: String!, $n: Int!) {
+      repository(owner: $owner, name: $repo) {
+        pullRequest(number: $n) { isInMergeQueue mergeQueueEntry { enqueuedAt } }
+      }
+    }' --jq '.data.repository.pullRequest | select(.isInMergeQueue) | .mergeQueueEntry.enqueuedAt // "-"' 2>/dev/null) || q=''
   if [ "${m%% *}" = MERGED ]; then
     merged=1
     echo "merged $N - ${m#* } the PR merged"
   elif [ "${m%% *}" = CLOSED ]; then
     merged=1
     echo "closed $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) the PR closed"
+  elif [ -n "$q" ]; then
+    [ "$q" != - ] || q=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    merged=1
+    echo "queued $N - $q the PR entered the merge queue"
   fi
 }
 ```
@@ -108,12 +118,20 @@ so the items of that poll are reported first. A `closed` line is the same for
 a PR closed without a merge: the PR number as its id, the time of the poll, no
 author, and the loop stops on it.
 
+A `queued` line is the same for a PR that entered the merge queue: the PR
+number as its id, the `enqueuedAt` time, no author, and the loop stops on it.
+`gh pr view --json` has no merge-queue field, so the poll reads
+`isInMergeQueue` through `gh api graphql`. A `merged` or `closed` state wins
+over the queue. The watch does not see a PR that leaves the queue later, such
+as on a failed queue check.
+
 ## What the poll leaves out
 
 - A pending review and its inline comments. They are not yet submitted.
 - A review whose body is empty.
 - A review or conversation comment older than `run.watch.last_polled_at`.
-- An item whose last line starts `crew: `. That marker is your own reply.
+- An item whose last line starts `<!-- pr-review: `. That marker is your
+  own reply.
 - An item whose id is in `run.watch.seen_ids`.
 - A passing or pending check. A `check` is a `fail`-bucket entry of
   `gh pr checks`. Its id holds its start time, so a re-run is new.
@@ -144,6 +162,20 @@ comment already on the PR in `seen_ids`:
 gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'
 ```
 
+## Arm the monitor
+
+1. Stop the monitor you armed before, with `TaskStop` and the task id its
+   `Monitor` call returned. **One monitor at a time**: a second one doubles
+   the wakes. A resumed process holds no monitor from the old one.
+2. When `run.watch` is absent, write it first, as "The first write's cursor"
+   says.
+3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
+   and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
+   watch.draft true`.
+4. Fill "The monitor command" below from `run.watch`, and call
+   `Monitor` with it and `timeout_ms: 1800000`, so one cache read lands inside
+   the one-hour cache. Pass `persistent: false` when the tool offers that key.
+
 ## The monitor command
 
 The poll block, then this loop. Pass the whole text as the `Monitor`
@@ -152,6 +184,29 @@ command.
 ```bash
 while [ -z "$merged" ]; do poll; sleep 60; done
 ```
+
+## Arm the keep-alive job
+
+1. Call `CronList`. It lists the jobs this process holds, and a job ends
+   with the process that made it. Delete each job whose prompt starts
+   "Crew keep-alive" with `CronDelete`.
+2. Call `CronCreate` with `recurring: true`, the cron `13,43 * * * *`, and
+   one of these prompts. With a `pr_url`:
+
+   ```
+   Crew keep-alive with a PR watch. Run the fallback poll in pr-watch.md, in one Bash call, and sort what it prints.
+   ```
+
+   With no `pr_url`:
+
+   ```
+   Crew keep-alive. Reply with the single word ok. Run no tool.
+   ```
+
+The job has no end date. It fires until the run ships, until the principal
+stops it, or until Claude Code expires it 7 days after you armed it. The
+re-arm on a new date restarts those 7 days. **One job at a time** is what
+step 1 is for: a second job would double the reads.
 
 ## The fallback poll
 
@@ -164,9 +219,10 @@ poll; echo "isDraft=$d"
 A fire that prints `isDraft=true` while `run.watch.draft` is false runs
 `crew-record.py <record-dir> run set watch.draft true`. The fallback keeps no
 state between fires, so this write is what lets a PR returned to draft fire
-`ready` again. A fire after the merge prints the `merged` line again, and a
-fire after a close prints the `closed` line again, so sort each as a notice
-already reported.
+`ready` again. A fire after the merge prints the `merged` line again, a fire
+after a close prints the `closed` line again, and a fire while the PR is in
+the merge queue prints the `queued` line again. Sort each as a notice already
+reported.
 
 ## Verify a failed check
 
@@ -179,8 +235,8 @@ gh run view <run-id> --repo <owner>/<repo> --log-failed
 ## Post a reply
 
 Write the reply to a file outside the repo first, so a backtick in it reaches
-GitHub intact. Its last line is `crew: <round-id> <item id>`, with the id of
-the item it answers.
+GitHub intact. Its last line is `<!-- pr-review: <round-id> <item id> -->`,
+with the id of the item it answers.
 
 A `review-comment` replies in its own thread. GitHub takes a reply only on a
 thread's first comment, so read that comment's id first:
@@ -206,7 +262,7 @@ prints is not posted again.
 for p in pulls issues; do
   gh api --paginate "repos/<owner>/<repo>/$p/<n>/comments" --jq '.[]
     | (.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") as $m
-    | select($m | startswith("crew: <round-id> "))
-    | "\($m | ltrimstr("crew: <round-id> ")) \(.id)"'
+    | select($m | startswith("<!-- pr-review: <round-id> "))
+    | "\($m | ltrimstr("<!-- pr-review: <round-id> ") | rtrimstr(" -->")) \(.id)"'
 done
 ```

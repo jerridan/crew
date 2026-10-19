@@ -1131,7 +1131,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
 | 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per item (§15.70; T36, T37, T9, T51) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), and the two goals **proved 2026-09-06** (T9, §15.80). The lead's size triage **ran 2026-09-05 to 2026-09-07** (T39, §15.79) and moved to the project lead **2026-09-11** (T51, §15.88) |
-| 8 | The review skill: `/crew:review` (§15.107; T76) | One colleague's PR reaches its merge through it — **built 2026-10-19**, T76 open |
+| 8 | The review skill: `/crew:review` (§15.107; T76) | One colleague's PR reaches its merge through it — **built 2026-10-19**, and **run once 2026-10-19** (T76, §15.108) |
 
 ### 13.1 Hooks
 
@@ -7892,4 +7892,113 @@ Deliberately different:
      one skeptical review covering both at the end. A later ticket can
      turn this precedent into a rule.
 
-     The skill has run in no probe. T76 runs it once on a real PR.
+     The skill had run in no probe when it was built. T76 ran it once on a
+     real PR (§15.108).
+
+108. **The first `/crew:review` run — 2026-10-19, T76.** One run of the
+     skill took PR AdaSupport/monorepo#8122 from its first review to the
+     merge queue, in session `c32ee511-ed00-4dbc-b1c2-a7dbe28f85e9`. Both
+     skeptical rounds ran through Codex, a replacement that the machine file
+     `~/.claude/crew/config.md` named (§15.100). Both gate stops were
+     answered `go`, with `draft_changed: false`. Round 1 posted an approval
+     with one inline non-blocking comment on prompt wording. Round 2 posted
+     an approval and resolved that thread with "Resolved at <sha>". The run
+     cost $14.75 at list price: Fable $14.47 and Haiku $0.29, over 22.0M
+     tokens, almost all of them cache reads.
+
+     Codex's round 1 tagged a [Critical] for two failing tests in the
+     required suite. The project lead found both pre-existing: the diff
+     touched lines 26935 to 27491 of the test file, the failures sat at
+     lines 22479 to 22589, and every CI check was green. It kept both
+     local-only failures off the PR. The PR entered the merge queue at
+     16:53Z. The watch read only `state` and `mergedAt`, so it saw nothing,
+     and the principal gave the ship word by hand at 17:04Z, with the PR
+     still `OPEN` in the queue. The machine file asked for Codex "in a new
+     iterm2 pane". The pane opened in the iTerm2 session that had focus,
+     because the project lead's own command addressed the current session.
+
+     The principal took six notes. T76 closes on this run, and the PR that
+     records it changes the skill for five of the notes.
+
+     a. **Note 1, the posted text.** "Review comment doesn't need to include
+        the summary of the PR. That's just for me. Also don't need to
+        mention 'crew', that's my personal tooling and isn't known by
+        others." The body posts no PR summary. The summary moves to a
+        `--- summary` section of the draft file, which never posts, and the
+        gate report keeps it. Every marker is an HTML comment that starts
+        `<!-- pr-review: `, and no posted text names crew. Limit: the poll
+        no longer skips the old `crew: ` marker, so a record from before this
+        change, resumed on its PR, reports its own old replies once.
+     b. **Note 2, the pane.** "When I set up custom instructions to run
+        codex in separate iterm panes, they open in whatever session I'm
+        currently in. I changed my instructions to say tmux instead, but I
+        wonder if there's a fix for that." `substitution.md`'s "Where it
+        runs" now picks the target by one precedence list: the terminal the
+        words name when its variable is set, then a window in the detached
+        tmux session `crew-review` when the words name tmux with `$TMUX`
+        unset, then a split of `$TMUX_PANE`, then a split of the iTerm2
+        session whose UUID follows the colon in `$ITERM_SESSION_ID`, then
+        a `crew-review` window, then headless. The record keeps the
+        outcome as `display`. An osascript probe on the principal's machine split the
+        project lead's own session by that UUID. Limit: the default Claude
+        runner stays headless, and no run has used the list yet.
+     c. **Note 3, the reviewer stays open.** "The skeptical reviewer should
+        be left open and communicated back to (ex review lead pushing back
+        on a finding), so that when a change happens in the PR then the same
+        reviewer looks at it with the recent context, and doesn't have to
+        inspect the PR again. (Side note, should other skeptical reviewers
+        we use in either skill also be left open?)" Every later skeptical
+        round resumes the session of the round before it: `claude -p
+        --resume <id>`, or `codex exec resume <id> -`. One prompt carries
+        the new head, the delta, the project lead's reply file with its
+        pushback, and the ask for a verdict on the whole PR. One call per
+        round, because a second call would double the runner's spend. The
+        review worktree is one per deliverable, moved in place and removed
+        at the ship word, because a resumed session keeps its directory.
+        `run.review_sessions` maps each round to its session. Codex ids stay
+        out of `run.review_session_ids`, which `spend.py` prices as Claude
+        sessions. `codex exec resume` takes no `--sandbox` flag
+        (codex-cli 0.163.0), so the resume passes `-c
+        sandbox_mode=read-only`. The side note: the resume covers the
+        skeptical review in both skills, and nothing else. An in-process
+        critic's subject is one short file it re-reads in seconds, and a
+        subagent's context ends with it. The runner-based skeptical review is
+        the one whose re-inspection of a whole PR costs real time. Limits:
+        no resume for an in-process critic, and none for a spec critic,
+        replaced or not. A force-push starts a fresh session. A run killed
+        and never resumed leaves its review worktree on disk.
+     d. **Note 4, the merge queue.** "Monitor did not catch that the PR had
+        been added to the merge queue. It should watch for a PR entering the
+        merge queue, and consider that the same thing as 'merged'." The poll
+        reads `isInMergeQueue` and `mergeQueueEntry { enqueuedAt }` through
+        `gh api graphql`, because `gh pr view --json` has no merge-queue
+        field (gh 2.92.0). On PR 8122 that read returned `isInMergeQueue:
+        true`, PR state `OPEN`, entry state `MERGEABLE` and position 11. A
+        `queued` line stops the loop as `merged` does. It is the ship word on
+        a review run and a notice on a goal run. Limit: a PR removed from
+        the queue later, for example on a failed queue check, is an event the
+        watch does not see, and nothing re-arms it. On a goal run the loop
+        stops at the queue, so it reports no later merge either.
+     e. **Note 5, the pre-existing filter.** "Crew lead did a good job at
+        filtering out pre-existing issues." No change: `github-review.md`'s
+        pre-existing rule held two local-only failures out of the post.
+     f. **Note 6, two rounds with no wait.** The principal asked that the
+        gate not wait in two cases, when the new head's skeptical review is
+        clean and the author made no other significant change: the review
+        approved with suggestions or nits and the author took them, or it
+        withheld approval over blocking findings and the author fixed them.
+        `crew:delivered-window`'s "The go-ahead gate" now posts round `n+1`
+        with no ask when six conditions hold: every round-`n` finding was
+        inline, the resumed review lists no finding that is not
+        pre-existing, no push of the run's own is in the range, every hunk of
+        the delta sits within 30 lines of a finding or in its test file, the
+        review says `Beyond the findings: none`, and the span text of every
+        open posted finding from every earlier round is gone at the new
+        head. The entry's answer is
+        `auto: findings answered`, and `crew-stats.py` counts it as an auto
+        post, not an escalation. Limits: a body-only finding keeps the gate,
+        a goal run is out of scope, and the 30-line bound is a guess no run
+        has tested.
+
+     The resume, the merge-queue line, the pane rule and the no-wait post
+     are unexercised. T77 runs each of them once on the fixture repo.

@@ -25,14 +25,14 @@ relative path resolves against the target repo.
 **While `run_state` is `delivered` or `blocked`, and the deliverable has a
 `pr_url`, keep one `Monitor` armed in this session.** The watch was probed
 on Claude Code 2.1.302 and gh 2.102.0. The monitor's command polls every 60
-seconds, with seven `gh` reads: `isDraft`, the head sha, reviews, review
-comments, issue comments, `gh pr checks` and the PR state.
+seconds, with eight `gh` reads: `isDraft`, the head sha, reviews, review
+comments, issue comments, `gh pr checks`, the PR state and the merge queue.
 
 The command prints one line per new item, and nothing otherwise. A line names
-the item's kind, id, author, time and a one-line summary. The eight kinds are
-`ready`, `review`, `review-comment`, `comment`, `check`, `push`, `merged` and
-`closed`. `pr-watch.md` holds the command, and lists what the poll leaves
-out. Any other account is reported, the principal's own included.
+the item's kind, id, author, time and a one-line summary. The nine kinds are
+`ready`, `review`, `review-comment`, `comment`, `check`, `push`, `merged`,
+`queued` and `closed`. `pr-watch.md` holds the command, and lists what the
+poll leaves out. Any other account is reported, the principal's own included.
 
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
 state is true. The command starts from `run.watch.draft`. A poll that reads
@@ -53,7 +53,9 @@ a head that moves in the delivered window. Then write `run.watch.head` with
 `crew-record.py <record-dir> run set watch.head '"<sha>"'`. A `merged` item
 is a notice in a goal run, and the ship word is still asked for. In a
 `run.kind: review` run it is the ship word (see "The word that the work
-shipped"). A `closed` item ends a review run the same way. In a goal run it
+shipped"). A `queued` item, the PR in the merge queue, is the same as a
+`merged` item: a notice in a goal run, and the ship word in a review run. A
+`closed` item ends a review run the same way. In a goal run it
 is a notice that asks the principal for the ship word or for a new goal.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
@@ -66,36 +68,21 @@ your report to the principal lands, write the whole object with
 **Arm the monitor on every entry into this window**: at the hand-over, on a
 resume, and on every return from `blocked` to `delivered`. Do not arm it when
 the newer of the watch lines in `decisions.md` says the principal stopped
-it. A keep-alive line from an older run counts as a watch line.
-
-1. Stop the monitor you armed before, with `TaskStop` and the task id its
-   `Monitor` call returned. **One monitor at a time**: a second one doubles
-   the wakes. A resumed process holds no monitor from the old one.
-2. When `run.watch` is absent, write it first, as `pr-watch.md`'s "The first
-   write's cursor" says.
-3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
-   and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
-   watch.draft true`.
-4. Fill the monitor command in `pr-watch.md` from `run.watch`, and call
-   `Monitor` with it and `timeout_ms: 1800000`, so one cache read lands inside
-   the one-hour cache. Pass `persistent: false` when the tool offers that key.
+it. A keep-alive line from an older run counts as a watch line. Arm it by
+`pr-watch.md`'s "Arm the monitor".
 
 **The expiry notice re-arms it.** At 30 minutes the monitor ends, and
-Claude Code sends you one notice. Arm it again by the steps above, and reply
-"ok". That wake is also the cache read that keeps your context warm.
+Claude Code sends you one notice. Arm it again by the same steps, and reply
+"ok". That wake is also the cache read that keeps your context warm. The
+cache lives one hour, and the first message after an idle hour rewrites your
+whole context (design §15.101).
 
 **The watch stops at the ship word, and when the principal asks.** To stop
-it, `TaskStop` the monitor, or delete the cron job as "The fallback" says.
+it, `TaskStop` the monitor, or delete the cron job as `pr-watch.md`'s "Arm
+the keep-alive job" step 1 says.
 Write one line to `decisions.md` that the principal stopped the watch. When
 the principal asks for it again, write one line that the principal started
 it again, then arm it.
-
-### Keep the cache warm
-
-The prompt cache lives one hour, and the first message after an idle hour
-rewrites your whole context (design §15.101). The monitor's expiry every 30
-minutes is the cache read that resets it. A run with no monitor keeps a cron
-job instead.
 
 ### The fallback
 
@@ -111,28 +98,8 @@ The job fires every 30 minutes, at most 3 minutes late (design §15.103).
 
 **Arm it** when you would arm the monitor, and on the principal's first
 message after the date changes. Claude Code tells you when the date changes.
-The stop line in `decisions.md` holds here too.
-
-1. Call `CronList`. It lists the jobs this process holds, and a job ends
-   with the process that made it. Delete each job whose prompt starts
-   "Crew keep-alive" with `CronDelete`.
-2. Call `CronCreate` with `recurring: true`, the cron `13,43 * * * *`, and
-   one of these prompts. With a `pr_url`:
-
-   ```
-   Crew keep-alive with a PR watch. Run the fallback poll in pr-watch.md, in one Bash call, and sort what it prints.
-   ```
-
-   With no `pr_url`:
-
-   ```
-   Crew keep-alive. Reply with the single word ok. Run no tool.
-   ```
-
-The job has no end date. It fires until the run ships, until the principal
-stops it, or until Claude Code expires it 7 days after you armed it. The
-re-arm on a new date restarts those 7 days. **One job at a time** is what
-step 1 is for: a second job would double the reads.
+The stop line in `decisions.md` holds here too. Arm it by `pr-watch.md`'s
+"Arm the keep-alive job".
 
 ### What wakes you
 
@@ -171,10 +138,10 @@ also a change request.
 is a finding, a change request, a question or a **notice**. A notice asks for
 nothing: a bot's notice, an approval with no ask, an acknowledgement. On a
 `run.kind: review` run, an item that neither answers a crew-posted finding
-(its thread holds a crew marker) nor addresses the principal is a notice too.
-A notice gets one line in your next message to the principal, and its id
-still joins `seen_ids`. It opens no round, takes no gate and gets no reply.
-Every other item opens its round and gets its reply on the PR. A change
+(its thread holds a `pr-review` marker) nor addresses the principal is a
+notice too. A notice gets one line in your next message to the principal, and
+its id still joins `seen_ids`. It opens no round, takes no gate and gets no
+reply. Every other item opens its round and gets its reply on the PR. A change
 request from the watch is adjudicated like a finding, because the principal
 did not ask for it. A question from the watch takes the disposition
 `answered` (`skeptical-review.md`'s "Adjudication is a ledger").
@@ -394,7 +361,8 @@ In order:
 
     Post nothing for an item whose ledger line says `no reply`. Each reply
     states that item's ledger line in plain words, with no hard wrap. **Its
-    last line is the marker `crew: <round-id> <item id>`.** Every comment you
+    last line is the marker `<!-- pr-review: <round-id> <item id> -->`.** Every
+    comment you
     post on the PR carries it, whatever the round's kind, because you post
     from the principal's own account and the poll skips your replies by the
     marker. On a resume, post no reply for an item whose id `pr-watch.md`'s
@@ -439,6 +407,37 @@ group all the way through" and "Push once", in both procedures above. Push
 nothing and post nothing on a gated round until the principal answers. A push
 carries the whole branch, so no round pushes while one waits.
 
+**Two kinds of skeptical round post with no wait.** On a `run.kind: review`
+run, skeptical round `n+1` posts its draft with no ask when all six of these
+hold. Otherwise it takes the gate. `<head n>` is the `Reviewed:` sha of
+`reviews/skeptical-r<n>.md`.
+
+1. Round `n` posted at least one finding, under any event, and each one was
+   an inline comment: `reviews/github-r<n>.md` holds a `--- comment` block
+   and no finding in its body. A body-only finding has no `line` for test 4.
+2. Round `n+1`'s report lists no finding marked `Pre-existing: no`. A finding
+   you would decline still counts.
+3. No package of this run has a `pushed_at` later than round `n`'s
+   `replied_at`. A push of yours on the assist path takes the gate.
+4. Every hunk of `git diff -U0 <head n>..<head n+1>` stays near the findings.
+   A hunk qualifies when its old-side range lies within 30 lines of the
+   `line` of a round-`n` comment on the same `path`, or when it is in a test
+   file for that `path`. A test file for a path has the path's basename,
+   without its extension, in its own basename, and `test` in its basename or
+   its directory. Every other hunk fails. This test bounds the change, and
+   test 5 attributes it.
+5. Round `n+1`'s report carries the line `Beyond the findings: none`: every
+   hunk of that delta answers one of round `n`'s findings. Any other value
+   takes the gate.
+6. Every open posted finding, from every earlier round, is resolved at
+   `<head n+1>`: its span text is gone, as `/crew:review`'s "Later rounds"
+   checks it. An open finding whose span remains takes the gate.
+
+The post is the draft round `n+1` wrote, with its thread resolves. Record
+its escalation as `/crew:review`'s "Report and wait at the gate" says, write
+`go_ahead_at` at the post, and name the post in your next message to the
+principal. `Gate: off` still covers every round.
+
 **A loop breaker holds, like the review cap.** A `pr-comments` or `ci` round
 that takes no gate takes it when `run.rounds` already holds three rounds of
 its `source.kind`. Its report says the breaker fired.
@@ -481,19 +480,21 @@ package left `pending` or `in-flight` by a kill.
 It comes from the principal, on either channel, and it is the only thing that
 ends this window. Never decide it yourself: shipped means merged and
 deployed, and deployment happens outside this repo where no `gh` command sees
-it. In a `run.kind: review` run, the watch's `merged` item or `closed` item
-is that word. On
-the word:
+it. In a `run.kind: review` run, the watch's `merged`, `queued` or `closed`
+item is that word. In a goal run, a `queued` item is a notice, and the word
+stays the principal's. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.
 2. Stop the watch: `TaskStop` the monitor, then `CronList`, then
    `CronDelete` each job whose prompt starts "Crew keep-alive".
-3. `<project-lead-dir>/scripts/spend.py --write`, so the figure covers this
+3. Remove each deliverable's review worktree, as `review-runner.md`'s "Never
+   review in the run's own checkout" says.
+4. `<project-lead-dir>/scripts/spend.py --write`, so the figure covers this
    window.
-4. Stop every process the run left listening, as `simple-path.md`'s "End the
+5. Stop every process the run left listening, as `simple-path.md`'s "End the
    run" says.
-5. Say the run is closed and this session can be. The principal closes the
+6. Say the run is closed and this session can be. The principal closes the
    pane or the window.
 
 A session that dies in this window is resumed like any other: `SessionEnd`

@@ -146,7 +146,8 @@ git switch --detach FETCH_HEAD
 
 **Find the base of a later round.** It is the head the previous round
 reviewed, the `Reviewed:` line of `reviews/skeptical-r<n-1>.md`, only when
-both of these hold. The new head is `run.review_pending.head`:
+the round resumes the session of round `<n-1>`, and both of these hold. The
+new head is `run.review_pending.head`:
 
 ```bash
 git merge-base --is-ancestor <previous head> <new head>
@@ -155,11 +156,17 @@ git merge-base <new head> origin/<baseRefName>
 
 The first exits 0, and the second prints the deliverable's `base`. Otherwise
 the base is the new merge base that the second prints, and the round reviews
-the whole PR diff again. Write it to the deliverable before the launch:
+the whole PR diff again. A round that is not resumed takes that merge base
+too, for every fresh-launch reason that `review-runner.md`'s "Resume the
+reviewer" names. A fresh reviewer has no context from the earlier rounds, so
+it must read the whole PR. Write the base to the deliverable before the launch:
 
 ```bash
 python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable d1 set base '"<new merge base>"'
 ```
+
+A resume that fails after this write launches fresh, and that launch first
+does the recompute that `review-runner.md`'s "Resume the reviewer" names.
 
 These two checks cover the two cases a fast-forward cannot: a force-push
 fails the first, and an "Update branch" merge fails the second.
@@ -209,11 +216,16 @@ window" says. Under `Gate: off` it takes none, so write no `go_ahead_at`.
 
 ## Report and wait at the gate
 
-Write the draft review to `reviews/github-r<n>.md` first: the body, then one
-block per inline comment with `path`, `line`, `side` and the text, in
-`github-review.md`'s shapes.
+Write the draft review to `reviews/github-r<n>.md` first: the summary, the
+body, then one block per inline comment with `path`, `line`, `side` and the
+text, in `github-review.md`'s shapes.
 
-Then send the principal one message:
+**A later round can post with no wait.** `crew:delivered-window`'s "The
+go-ahead gate" holds the six conditions. When they hold, send no message and
+no ask. Write the entry as below, with the answer `"auto: findings
+answered"` and `draft_changed` `null`, then go to "Post the review".
+
+Otherwise, send the principal one message:
 
 - what the PR does, in two to five sentences;
 - the verdict, and the event it maps to;
@@ -267,8 +279,8 @@ and it already carries the sentences for a `run.kind: review` run:
 - only the assist round of "The assist path" below creates packages and
   pushes, and every other round is answered and never patched: its
   "Findings from a review";
-- the `merged` item and the `closed` item are each the ship word: its "Watch
-  the PR" and "The word that the work shipped";
+- the `merged`, `queued` and `closed` items are each the ship word: its
+  "Watch the PR" and "The word that the work shipped";
 - an item that neither answers a crew-posted finding nor addresses the
   principal is a notice, so other people's conversations open no round: its
   "Sort what reaches you";
@@ -290,7 +302,8 @@ After you adjudicate round `<n>`, re-verify each open posted finding from an
 earlier round against the new head. Its span is the line the finding quoted:
 
 - **The span text is gone.** Reply "Resolved at <sha>." in its thread, with
-  the marker `crew: skeptical-r<n> <finding id>` as the last line, and
+  the marker `<!-- pr-review: skeptical-r<n> <finding id> -->` as the last
+  line, and
   resolve the thread. `github-review.md`'s "The resolve command" owns both.
 - **The span text remains.** The finding stays open, and it counts for the
   event.
@@ -326,12 +339,12 @@ A merge is the window's "A merge request" as it stands.
 
 ## The end
 
-The `merged` item or the `closed` item is the ship word, and the window owns
-the steps. Before its closing message, restore the checkout as
+The `merged`, `queued` or `closed` item is the ship word, and the window
+owns the steps. Before its closing message, restore the checkout as
 `simple-path.md`'s "Restore the checkout at every end" says, with the
 deliverable's `checkout_branch`. On a cross-repository PR, that switch also
-leaves the detached head. The closing message says whether the PR merged or
-closed, and names the record.
+leaves the detached head. The closing message says whether the PR merged,
+entered the merge queue or closed, and names the record.
 
 ## A resume
 

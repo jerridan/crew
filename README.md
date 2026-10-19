@@ -166,6 +166,12 @@ comment from your own GitHub account. Crew shows you the draft first. You
 can change any finding or the text, or mark a finding "no reply". To turn
 every wait off, say `post without asking` with the command.
 
+Crew posts a later review with no wait in two cases. The last review approved
+with suggestions and the author took them, or it held back approval over
+blocking findings and the author fixed them. Both cases need a clean new
+review, every earlier finding posted on a line of the diff, and no other
+change in the author's push.
+
 Crew does not run a fork's tests or setup unless you say
 `run the suite on this fork`.
 
@@ -186,6 +192,7 @@ requested" that crew posted.
 
 Crew reviews each new push on the PR the same way. It leaves the merge to the
 PR's author. With "fix the blockers yourself", it merges when you tell it to.
+The run ends when the PR enters the merge queue, merges or closes.
 To use another reviewer, say so in plain words, as for a goal:
 `use Codex for the review`.
 

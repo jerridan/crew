@@ -71,8 +71,8 @@ a reply on the PR. One probe on the fixture repo ran its four checks
 (§15.104). The watch's later changes, a red check and the cron fallback with a
 PR are unexercised.
 
-`/crew:review` is built. It reviews a colleague's PR and reuses the window and
-the review runner. No run has exercised it (T76).
+`/crew:review` is built and ran once (§15.108). Its reviewer resume, queue
+line, pane rule and no-wait post are unexercised (T77).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

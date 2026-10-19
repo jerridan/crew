@@ -16,9 +16,12 @@ principal approved as they stood: over the escalations that carry `draft`, the
 count with `draft_changed: false` divided by the count with `draft_changed` not
 `null`, as a whole percentage, or `-` when no draft was answered. It prints per
 run and in the totals, and `--json` carries it under `untouched_draft_rate`.
-An escalation answered `"Gate: off"` is no ask the principal saw. The script
-leaves it out of the `escalations` count, and `read_drafts` skips it because
-the skill writes its `draft_changed` as `null`.
+An escalation answered `"Gate: off"` or `"auto: findings answered"` is no ask
+the principal saw. The script leaves both out of the `escalations` count, and
+`read_drafts` skips them because the skill writes their `draft_changed` as
+`null`. The second is a skeptical round that posted with no wait
+(`crew:delivered-window`'s "The go-ahead gate"); the script counts those as
+`auto_posts`, per run and in the totals.
 A replaced step is not a Claude session, so `spend.py` cannot price it: its
 cost prints as `unmeasured` unless the record's `usage` object carries a
 dollar figure, and a `usage.tokens` count with no dollar figure prints in its
@@ -117,9 +120,12 @@ RETIRED_KINDS = {"package review", "deliverable review"}
 # `-result.txt` and `-result.exit` are a replacement runner's stand-ins for
 # `-result.json` (`record-format.md`, T61). `-result.stderr` is the default
 # runner's own stderr, redirected there beside its `-result.json`
-# (`review-runner.md`'s "The default command"). Their `-attempt<k>` forms
-# are caught by ATTEMPT below.
-COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json", "-result.txt", "-result.exit", "-result.stderr")
+# (`review-runner.md`'s "The default command"). `-resume.md` is a later
+# round's resume prompt (`review-runner.md`'s "Resume the reviewer"), and
+# `-run.sh` a replacement's run script (`substitution.md`). Their
+# `-attempt<k>` forms are caught by ATTEMPT below.
+COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-resume.md", "-run.sh", "-result.json", "-result.txt",
+                      "-result.exit", "-result.stderr")
 ATTEMPT = re.compile(r"-attempt\d+\.[A-Za-z0-9]+$")
 # A review run's draft GitHub review is a draft, not a review (`record-format.md`).
 DRAFT_REVIEW = re.compile(r"^github-r\d+\.md$")
@@ -569,6 +575,11 @@ def read_decisions(record: Path, skips: list) -> tuple[int, int, int, dict]:
     return len(entries), councils, tokens, adversary
 
 
+# Two escalation answers mark a go-ahead no principal saw (`record-format.md`).
+AUTO_POST = "auto: findings answered"
+UNSEEN_ANSWERS = ("Gate: off", AUTO_POST)
+
+
 def read_drafts(run: dict) -> dict:
     """Count the go-ahead drafts a run's principal answered.
 
@@ -638,7 +649,9 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "council_tokens": council_tokens,
         "adversary": adversary,
         "escalations": len([e for e in as_list(run.get("escalations"))
-                            if not (isinstance(e, dict) and e.get("answer") == "Gate: off")]),
+                            if not (isinstance(e, dict) and e.get("answer") in UNSEEN_ANSWERS)]),
+        "auto_posts": len([e for e in as_list(run.get("escalations"))
+                           if isinstance(e, dict) and e.get("answer") == AUTO_POST]),
         "compactions": len(as_list(run.get("compactions"))),
         "steps_skipped": read_steps_skipped(record.name, run, skips),
         "steps_substituted": read_steps_substituted(record.name, run, skips),
@@ -680,11 +693,12 @@ def report(records: list[dict], skips: list[str]) -> None:
     print("Runs\n")
     rows = [
         [r["run"], r["kind"], r["packages"], r["fix_rounds"], r["promotions"], r["decisions"], r["councils"],
-         r["adversary"]["entries"], r["escalations"], r["compactions"], sum(r["reviews"].values()), r["untouched_draft_rate"],
+         r["adversary"]["entries"], r["escalations"], r["auto_posts"], r["compactions"], sum(r["reviews"].values()),
+         r["untouched_draft_rate"],
          money(r["usd"])]
         for r in records
     ]
-    print(table(["run", "kind", "pkgs", "fixes", "promos", "decis", "councils", "advers", "escal", "compact", "reviews",
+    print(table(["run", "kind", "pkgs", "fixes", "promos", "decis", "councils", "advers", "escal", "auto", "compact", "reviews",
                  "untouched", "usd"],
                 rows))
 
@@ -812,6 +826,7 @@ def report(records: list[dict], skips: list[str]) -> None:
         ["council tokens", council_tokens],
         ["adversary entries", adversary["entries"]],
         ["escalations", sum(r["escalations"] for r in records)],
+        ["auto posts", sum(r["auto_posts"] for r in records)],
         ["compactions", sum(r["compactions"] for r in records)],
         ["untouched-draft rate", percent(sum(r["drafts"]["untouched"] for r in records),
                                          sum(r["drafts"]["answered"] for r in records))],

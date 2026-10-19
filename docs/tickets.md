@@ -3167,3 +3167,31 @@ before.
 
 Read first: design §15.105; `crew:delivered-window` "A merge request";
 `autonomy-contract.md` trigger 4.
+
+## T75 — Split the review mechanics and the replacement rule out of their lifecycles
+
+Status: closed, not run
+Depends on: nothing
+Stage: 7 (design §15.106)
+
+Closed 2026-10-19 in the PR that filed it. The principal watches for a
+fault in regular work.
+
+A second skill that reviews a colleague's PR needs the review mechanics and
+the replacement rule. Both sat inside the project lead's lifecycle, in
+`skeptical-review.md` and in `SKILL.md`.
+
+Scope. `review-runner.md` takes seven sections of `skeptical-review.md`
+word for word. `substitution.md` takes "A step the principal replaced" from
+`SKILL.md`, which keeps a pointer. Every pointer to a moved section follows
+it. No rule is added, removed or reworded.
+
+Run it. Read the diff with `git diff --color-moved=dimmed-zebra`.
+
+Check: every moved block shows as moved, and the two greps for a stale
+pointer print nothing.
+
+Done when: the two files hold the moved text, `SKILL.md` is 120 lines
+shorter, and no pointer names the old file for a moved section.
+
+Read first: design §15.106.

@@ -7815,3 +7815,18 @@ Deliberately different:
      `decisions.md`, and the ship word still asked for after it. Trigger 4
      says a merge the principal asked for is the answer, not the trigger.
      Not probed: PR 100 was merged before the rule was written.
+
+106. **The review mechanics and the replacement rule get their own files —
+     2026-10-19, T75.** A second crew skill that reviews a colleague's PR
+     needs two things the project lead's lifecycle held. It needs the
+     mechanics of a headless review: the detached worktree, the
+     instructions file, the runner, the four checks and the session id. It
+     also needs the rule for a review step the principal replaced. Both
+     sat inside the lifecycle: the mechanics in `skeptical-review.md`, and
+     the rule in `SKILL.md`. `review-runner.md` now holds seven sections of
+     `skeptical-review.md` word for word. `substitution.md` holds `SKILL.md`'s
+     "A step the principal replaced" whole, and `SKILL.md` keeps a pointer.
+     `skeptical-review.md` keeps the stance, the inputs, the schedule, the
+     resume list, the ready step, the kill table and the verdict lines.
+     The five-source table stays in "Take the goal". No rule changed, and
+     every pointer follows the move. The move ran in no probe.

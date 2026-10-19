@@ -3203,3 +3203,29 @@ not count toward the round count. They stay until the second PR
 parameterizes the runner, because this PR rewords no rule.
 
 Read first: design §15.106.
+
+## T76 — Run /crew:review once on a colleague's PR
+
+Status: open
+Depends on: T75
+Stage: 7 (design §15.107)
+
+The review skill is built and has run in no probe. This ticket runs it.
+
+Scope. Run `/crew:review` on one real PR on the watch path. Check that the
+review posts with the right event, that the watch sees the next push and the
+merge, and that the run ends.
+
+Run it. In a clone of the PR's repo, with `gh` signed in as you, run
+`/crew:review <PR URL>`. Answer the go-ahead gate. Push to the PR once, then
+let it merge.
+
+Check: the posted review carries the event the findings earned, the next
+push arms a second round, the merge closes the run, and `reviews/` holds a
+`github-r<n>.md` for each round.
+
+Done when: one PR reached its merge through the skill and the record shows
+the gate stop with `draft_changed` set.
+
+Read first: design §15.107; `skills/review/SKILL.md`;
+`skills/review/references/github-review.md`.

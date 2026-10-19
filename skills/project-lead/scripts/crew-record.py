@@ -25,7 +25,9 @@ usage:
 `--published` flag stamps `pushed_at` in the same write, for a branch with no
 remote, where the commit is the publication and no push is ever owed.
 `deliver` sets the deliverable's terminal state and `run_state: delivered` in
-one write, which `record-format.md` requires for `work-complete`.
+one write, which `record-format.md` requires for `work-complete`. The state is
+one of `draft-pr-opened`, `work-complete` and `under-review`, the last for a
+review run's one deliverable, the colleague's PR.
 `--review-head <sha>` on either one writes `run.review_pending` in that same
 write, so a state change and the review it owes cannot come apart
 (`skeptical-review.md`). `arm-review --head` does the same arming on its own,
@@ -37,7 +39,8 @@ that shared step. The value
 is `{head, round}`, and `round` is one more than `run.review_rounds`: the
 round the owed review will run at, so the sha and the report name it expects
 are written together. At the round cap it writes no pending head at all and
-appends the head to `run.unreviewed_heads` instead. `ship` sets
+appends the head to `run.unreviewed_heads` instead. A review run, with
+`run.kind` set to `"review"`, has no cap: every head is armed. `ship` sets
 `run_state: complete`. The first write that sets `run_state` to `delivered`
 stamps `run.delivered_at`, and a later one never moves it. A write that sets
 `run_state` to `complete` — `ship`, `run state complete`, or
@@ -121,13 +124,14 @@ def arm_review(run: dict, head: str | None) -> None:
     --head` on its own is for recovery and supersession, never a follow-up's
     ordinary path (`skeptical-review.md`). At the cap no further review runs,
     so the head is logged as unreviewed instead of armed, and the next report
-    to the principal names it.
+    to the principal names it. A review run (`run.kind` is `"review"`) has no
+    cap and arms every head.
     """
     if not head:
         return
     rounds = run.get("review_rounds")
     rounds = rounds if isinstance(rounds, int) and not isinstance(rounds, bool) else 0
-    if rounds >= REVIEW_ROUND_CAP:
+    if rounds >= REVIEW_ROUND_CAP and run.get("kind") != "review":
         run["review_pending"] = None
         unreviewed = run.get("unreviewed_heads")
         if not isinstance(unreviewed, list):

@@ -25,14 +25,14 @@ relative path resolves against the target repo.
 **While `run_state` is `delivered` or `blocked`, and the deliverable has a
 `pr_url`, keep one `Monitor` armed in this session.** The watch was probed
 on Claude Code 2.1.302 and gh 2.102.0. The monitor's command polls every 60
-seconds, with seven `gh` reads: `isDraft`, the head sha, reviews, review
-comments, issue comments, `gh pr checks` and the PR state.
+seconds, with eight `gh` reads: `isDraft`, the head sha, reviews, review
+comments, issue comments, `gh pr checks`, the PR state and the merge queue.
 
 The command prints one line per new item, and nothing otherwise. A line names
-the item's kind, id, author, time and a one-line summary. The eight kinds are
-`ready`, `review`, `review-comment`, `comment`, `check`, `push`, `merged` and
-`closed`. `pr-watch.md` holds the command, and lists what the poll leaves
-out. Any other account is reported, the principal's own included.
+the item's kind, id, author, time and a one-line summary. The nine kinds are
+`ready`, `review`, `review-comment`, `comment`, `check`, `push`, `merged`,
+`queued` and `closed`. `pr-watch.md` holds the command, and lists what the
+poll leaves out. Any other account is reported, the principal's own included.
 
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
 state is true. The command starts from `run.watch.draft`. A poll that reads
@@ -53,7 +53,9 @@ a head that moves in the delivered window. Then write `run.watch.head` with
 `crew-record.py <record-dir> run set watch.head '"<sha>"'`. A `merged` item
 is a notice in a goal run, and the ship word is still asked for. In a
 `run.kind: review` run it is the ship word (see "The word that the work
-shipped"). A `closed` item ends a review run the same way. In a goal run it
+shipped"). A `queued` item, the PR in the merge queue, is the same as a
+`merged` item: a notice in a goal run, and the ship word in a review run. A
+`closed` item ends a review run the same way. In a goal run it
 is a notice that asks the principal for the ship word or for a new goal.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
@@ -482,9 +484,9 @@ package left `pending` or `in-flight` by a kill.
 It comes from the principal, on either channel, and it is the only thing that
 ends this window. Never decide it yourself: shipped means merged and
 deployed, and deployment happens outside this repo where no `gh` command sees
-it. In a `run.kind: review` run, the watch's `merged` item or `closed` item
-is that word. On
-the word:
+it. In a `run.kind: review` run, the watch's `merged`, `queued` or `closed`
+item is that word. In a goal run, a `queued` item is a notice, and the word
+stays the principal's. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.

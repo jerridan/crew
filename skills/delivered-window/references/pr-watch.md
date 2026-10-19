@@ -66,12 +66,22 @@ poll() {
     printf '%s\n' "$line"
   done <<< "$out"
   m=$(gh pr view "$PR" --json state,mergedAt -q '"\(.state) \(.mergedAt)"' 2>/dev/null) || true
+  q=$(gh api graphql -f owner="${R%/*}" -f repo="${R#*/}" -F n="$N" -f query='
+    query($owner: String!, $repo: String!, $n: Int!) {
+      repository(owner: $owner, name: $repo) {
+        pullRequest(number: $n) { isInMergeQueue mergeQueueEntry { enqueuedAt } }
+      }
+    }' --jq '.data.repository.pullRequest | select(.isInMergeQueue) | .mergeQueueEntry.enqueuedAt // "-"' 2>/dev/null) || q=''
   if [ "${m%% *}" = MERGED ]; then
     merged=1
     echo "merged $N - ${m#* } the PR merged"
   elif [ "${m%% *}" = CLOSED ]; then
     merged=1
     echo "closed $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) the PR closed"
+  elif [ -n "$q" ]; then
+    [ "$q" != - ] || q=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    merged=1
+    echo "queued $N - $q the PR entered the merge queue"
   fi
 }
 ```
@@ -107,6 +117,13 @@ once, and the monitor command stops its loop on it. The poll prints it last,
 so the items of that poll are reported first. A `closed` line is the same for
 a PR closed without a merge: the PR number as its id, the time of the poll, no
 author, and the loop stops on it.
+
+A `queued` line is the same for a PR that entered the merge queue: the PR
+number as its id, the `enqueuedAt` time, no author, and the loop stops on it.
+`gh pr view --json` has no merge-queue field, so the poll reads
+`isInMergeQueue` through `gh api graphql`. A `merged` or `closed` state wins
+over the queue. The watch does not see a PR that leaves the queue later, such
+as on a failed queue check.
 
 ## What the poll leaves out
 
@@ -165,9 +182,10 @@ poll; echo "isDraft=$d"
 A fire that prints `isDraft=true` while `run.watch.draft` is false runs
 `crew-record.py <record-dir> run set watch.draft true`. The fallback keeps no
 state between fires, so this write is what lets a PR returned to draft fire
-`ready` again. A fire after the merge prints the `merged` line again, and a
-fire after a close prints the `closed` line again, so sort each as a notice
-already reported.
+`ready` again. A fire after the merge prints the `merged` line again, a fire
+after a close prints the `closed` line again, and a fire while the PR is in
+the merge queue prints the `queued` line again. Sort each as a notice already
+reported.
 
 ## Verify a failed check
 

@@ -9,6 +9,12 @@ Fill `<owner>`, `<repo>` and `<n>` from the deliverable's `pr_url`, which is
 by spaces, `draft` and `head`. Every command runs as the principal's own
 `gh` account.
 
+When `run.watch` has no `head`, the record is from before the key. Take
+`head` from the `Reviewed:` line of the latest `reviews/skeptical-r<n>.md`,
+or the deliverable's `base` when there is none. Write it to `run.watch` before
+the monitor starts, so the first poll prints no `push` for a head the project
+lead already knows.
+
 ## The poll
 
 This block defines the poll, and runs nothing. Each read that fails prints
@@ -63,6 +69,9 @@ poll() {
   if [ "${m%% *}" = MERGED ]; then
     merged=1
     echo "merged $N - ${m#* } the PR merged"
+  elif [ "${m%% *}" = CLOSED ]; then
+    merged=1
+    echo "closed $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) the PR closed"
   fi
 }
 ```
@@ -95,7 +104,19 @@ author (`-` when that read fails) and the time of the poll, and the command
 sets `head`. A `merged` line carries the PR number as its id, the `mergedAt`
 time and no author. Like `ready`, it never goes into `seen_ids`. It prints
 once, and the monitor command stops its loop on it. The poll prints it last,
-so the items of that poll are reported first.
+so the items of that poll are reported first. A `closed` line is the same for
+a PR closed without a merge: the PR number as its id, the time of the poll, no
+author, and the loop stops on it.
+
+## What the poll leaves out
+
+- A pending review and its inline comments. They are not yet submitted.
+- A review whose body is empty.
+- A review or conversation comment older than `run.watch.last_polled_at`.
+- An item whose last line starts `crew: `. That marker is your own reply.
+- An item whose id is in `run.watch.seen_ids`.
+- A passing or pending check. A `check` is a `fail`-bucket entry of
+  `gh pr checks`. Its id holds its start time, so a re-run is new.
 
 ## The first write's cursor
 
@@ -105,6 +126,10 @@ the PR's `isDraft`, `head` from its `headRefOid` and `last_polled_at` from
 the PR's creation time, and starts `seen_ids` and `held` empty. The first
 poll then reports every item that landed before the arming. The marker
 already keeps out your own replies.
+
+On a `run.kind: review` run, `last_polled_at` is the arming time instead, not
+the PR's creation time. Every earlier item is left to the people already in
+that conversation.
 
 ```bash
 gh pr view <pr_url> --json isDraft,createdAt,headRefOid -q '"\(.isDraft) \(.createdAt) \(.headRefOid)"'
@@ -139,8 +164,9 @@ poll; echo "isDraft=$d"
 A fire that prints `isDraft=true` while `run.watch.draft` is false runs
 `crew-record.py <record-dir> run set watch.draft true`. The fallback keeps no
 state between fires, so this write is what lets a PR returned to draft fire
-`ready` again. A fire after the merge prints the `merged` line again, so
-sort it as a notice already reported.
+`ready` again. A fire after the merge prints the `merged` line again, and a
+fire after a close prints the `closed` line again, so sort each as a notice
+already reported.
 
 ## Verify a failed check
 

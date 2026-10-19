@@ -165,6 +165,9 @@ it must read the whole PR. Write the base to the deliverable before the launch:
 python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable d1 set base '"<new merge base>"'
 ```
 
+A resume that fails after this write launches fresh, and that launch first
+does the recompute that `review-runner.md`'s "Resume the reviewer" names.
+
 These two checks cover the two cases a fast-forward cannot: a force-push
 fails the first, and an "Update branch" merge fails the second.
 

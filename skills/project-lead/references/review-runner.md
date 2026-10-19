@@ -198,7 +198,12 @@ session can be gone, or a runner upgrade cannot read it. Retire the attempt
 as `skeptical-review.md`'s "Retiring an attempt before you retry it" says,
 write `fresh_reason: "resume exited <status>"`, and launch as round 1 does.
 That launch is not the failure path's retry. A resume that exits 0 and fails
-a check below takes the failure path, and its retry launches fresh.
+a check below takes the failure path, and its retry launches fresh. Before
+either fresh launch, replace the previous-head base the resume used. First,
+recompute the merge base, as `/crew:review`'s "Find the base of a later
+round" does for a round that is not resumed. Then write it to
+`deliverable.base`. Then write the round's instructions file again, with the
+whole-PR range `git diff <merge base>..HEAD`.
 
 This rule is for the skeptical review alone. A spec critic, replaced or not,
 and every in-process critic, start fresh each round (design §15.108).

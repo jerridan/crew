@@ -114,8 +114,8 @@ RETIRED_KINDS = {"package review", "deliverable review"}
 # `-result.txt` and `-result.exit` are a replacement runner's stand-ins for
 # `-result.json` (`record-format.md`, T61). `-result.stderr` is the default
 # runner's own stderr, redirected there beside its `-result.json`
-# (`skeptical-review.md`). Their `-attempt<k>` forms are caught by ATTEMPT
-# below.
+# (`review-runner.md`'s "The default command"). Their `-attempt<k>` forms
+# are caught by ATTEMPT below.
 COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json", "-result.txt", "-result.exit", "-result.stderr")
 ATTEMPT = re.compile(r"-attempt\d+\.[A-Za-z0-9]+$")
 # A review run's draft GitHub review is a draft, not a review (`record-format.md`).

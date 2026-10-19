@@ -3,8 +3,8 @@
 This file owns the mechanics of a headless review. It says how any caller
 cuts the detached worktree, writes the instructions file, launches the
 runner, checks the result and records the session. The caller supplies its
-round `<n>`, its file prefix (`skeptical` today), its goal text, its base
-ref and its pending head. `skeptical-review.md` is the first caller.
+round `<n>`, its goal text, its base ref and its pending head. The body
+names its files `skeptical-r<n>`. `skeptical-review.md` is the first caller.
 
 ## Never review in the run's own checkout
 
@@ -70,11 +70,12 @@ one more tool name, and the process exits 1 with "Input must be provided
 either through stdin or as a prompt argument" (design §15.98b). Piping the
 prompt on stdin keeps the tool list closed.
 
-**No slash command runs.** The bundled pull-request reviewer this step used to
-invoke reads a base ref as the commit to review, not the whole diff against
-the goal, and even retargeted at the right commit it wrote no report file and
-no verdict pair (design §15.98b). The stance `skeptical-review.md` states is
-what the printed line and the appended system prompt carry instead.
+**No slash command runs.** The bundled pull-request reviewer the skeptical
+review used to invoke reads a base ref as the commit to review, not the whole
+diff against the goal, and even retargeted at the right commit it wrote no
+report file and no verdict pair (design §15.98b). The stance
+`skeptical-review.md` states is what the printed line and the appended system
+prompt carry instead.
 
 **Redirect every piece of evidence to the record, and read it from there.**
 The checks below run against `-result.json`, so a session that dies between
@@ -99,7 +100,7 @@ Each rule buys one thing the review cannot work without:
 | `Read`, `Glob`, `Grep` | reading the tree the review is about |
 | `Bash(git diff *)`, `Bash(git log *)`, `Bash(git show *)` | the history and the diff |
 | `Bash(git rev-parse *)` | the sha the reviewer opens its report with (`git rev-parse HEAD`) |
-| `Bash(<suite command> *)` | the suite run the stance requires. `<suite command>` is the one the scout recorded; under the no-suite outcome there is no such command, so leave this rule out |
+| `Bash(<suite command> *)` | the suite run `skeptical-review.md`'s stance requires. `<suite command>` is the one the scout recorded; under the no-suite outcome there is no such command, so leave this rule out |
 | `Edit(//<record-dir>/reviews/**)` | the report file, which sits in the record and not in the worktree |
 
 **The list adds capabilities and removes none.** Headless mode already allows
@@ -132,9 +133,10 @@ each part, trimmed. One rule for the whole string matches only the first
 command the reviewer runs, and the rest are denied one at a time.
 
 **A denied suite component fails the review; it never becomes a finding.** A
-reviewer that could not run the tests has not done the job the stance asks
-for, and a finding built on a suite it could not run is a guess. Check 2
-below catches it, and the failure path is where it goes.
+reviewer that could not run the tests has not done the job
+`skeptical-review.md`'s stance asks for, and a finding built on a suite it
+could not run is a guess. Check 2 below catches it, and the failure path is
+where it goes.
 
 ## Prepare the worktree before you launch
 
@@ -244,9 +246,9 @@ Under the no-suite outcome, this replaces the whole paragraph — never a
 This repository has no suite. Read the diff without running one.
 ```
 
-**A replacement for this step receives this same file, plus one sentence that
-overrides the block's file rule** (`substitution.md`). That sentence is the
-only addition:
+**A replacement for the skeptical review receives this same file, plus one
+sentence that overrides the block's file rule** (`substitution.md`). That
+sentence is the only addition:
 
 ```
 For a replacement runner, this invocation replaces the file rule above: do
@@ -296,11 +298,12 @@ Take the `Reviewed:` sha from the text when it carries one, and from
 `run.review_pending.head` when it does not — that is the sha the review was
 launched against. The review counts and its round stands.
 
-**Otherwise the review failed.** Record the failure in `decisions.md` and run
-it once more, and **do not increment `run.review_rounds` for the retry** — no
-review happened, so the cap has nothing to count. A second failure is an
-escalation to the principal (`autonomy-contract.md`): say the review could
-not produce a report, and hand over what the branch holds.
+**Otherwise the review failed.** Record the failure in `decisions.md`. Retire
+the attempt as `skeptical-review.md`'s "Retiring an attempt before you retry
+it" says. Then run it once more, and **do not increment `run.review_rounds`
+for the retry** — no review happened, so the cap has nothing to count. A
+second failure is an escalation to the principal (`autonomy-contract.md`): say
+the review could not produce a report, and hand over what the branch holds.
 
 ## Record the review's session id
 

@@ -111,9 +111,10 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    integration write. Standalone `arm-review --head` is for recovery and
    supersession alone: entries 8 and 9 below, never a follow-up's own launch.
 2. **Set `review_rounds` to `review_pending.round`**, by the table below.
-3. **Cut `review-worktrees/r<n>`** and run the setup command in it.
-4. **Write the instructions file.**
-5. **Launch.**
+3. **Cut `review-worktrees/r<n>`** and run the setup command in it
+   (`review-runner.md`).
+4. **Write the instructions file** (`review-runner.md`).
+5. **Launch** (`review-runner.md`'s "The default command").
 
 **Every `<n>` in this file is `review_pending.round`, never `review_rounds`.**
 The two agree once step 2 has run, and they do not agree before it. A cleanup
@@ -268,9 +269,10 @@ Arm the watch once too, by that skill's "Watch the PR".
    one exists: it says which findings already have packages, and the
    adjudication continues from there rather than starting over.
 11. **`review_pending` is set, `-result.json` is there, and no passing entry
-   exists.** Run the four checks over that JSON. Passing, write the entry and
-   take entry 10 — applying the result-field fallback first when the report
-   file never landed. Failing, retire the attempt and retry at launch step 2.
+   exists.** Run `review-runner.md`'s four checks over that JSON. Passing,
+   write the entry and take entry 10 — applying the result-field fallback
+   first when the report file never landed. Failing, retire the attempt and
+   retry at launch step 2.
 12. **`review_pending` is set, the instructions file or the round's worktree
    is there, and `-result.json` is not.** The attempt died before its process
    finished. Retire it and retry at launch step 2.
@@ -468,7 +470,7 @@ somewhere else.
 | **Launch 2**, `review_rounds` set | 13, nothing on disk | the review runs at launch step 2, in the same round |
 | **Launch 3**, the worktree cut and setup run | 12, a worktree and no JSON | nothing exists to retire; cleanup removes the worktree and the review runs at launch step 2 |
 | **Launch 4**, the instructions written, before the redirected command starts | 12, instructions and no JSON | the attempt is retired, then the review runs at launch step 2 |
-| **Launch 5**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | the four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
+| **Launch 5**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | `review-runner.md`'s four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
 | **Launch 5**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |
 | the four checks, before adjudicating | 10, a passing entry | the report is adjudicated |
 | **Follow-up 1**, the package `integrated` and the head armed (one write, `crew:delivered-window`'s "Take one group all the way through") | 5, the head is not on the remote | the push happens once no gated round waits; the round already runs on re-entry, since the integration write armed it |
@@ -493,8 +495,8 @@ somewhere else.
 
 Your two verdict strings are `accepted` and `patch round needed`. The
 block in `review-runner.md`'s "Reviewer instructions" is where the reviewer is
-told both, and when each applies. `review-output.md` owns the shape of the two closing
-lines, and it leaves the strings to each producer.
+told both, and when each applies. `review-output.md` owns the shape of the
+two closing lines, and it leaves the strings to each producer.
 
 `patch round needed` opens a round of the delivered window, never a fix round
 on a package: the packages are integrated and the work is handed over.

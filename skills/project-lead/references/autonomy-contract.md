@@ -426,7 +426,8 @@ After each package integrates, again before the PR opens, again after each
 skeptical review returns and its session id is recorded
 (`review-runner.md`'s "Record the review's session id"), and once more at
 the principal's ship word (`crew:delivered-window`'s "The word that the work
-shipped"), run `python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
+shipped"), run
+`python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
 prices this run's own sessions — yours, your subagents' and the teammates' —
 into `spend.transcript` (`record-format.md`). Nothing else counts the project
 lead's own session or a teammate, and those were 90% of two measured runs

@@ -30,6 +30,22 @@ Tag each finding with one of:
 A check that passes needs no severity tag. Tag only `[Critical]`, `[Concern]`
 and `[Nit]` findings — the ones that need attention.
 
+### Two optional lines a dispatch can require
+
+When your dispatch asks for them, put these two lines after each finding's
+title, each on its own line:
+
+```
+Effect: incident | bug | non-blocking
+Pre-existing: yes | no
+```
+
+`Effect:` says what the change does when it runs, if it merges as it is.
+`Pre-existing:` says whether the defect sits in code that the change did not
+add, change or aggravate. A dispatch that does not ask for them gets reports
+without them. `skills/review/references/github-review.md` owns the rule that
+maps the values to a review event.
+
 ## Cannot verify
 
 When you cannot confirm a check from what you were given, write `Cannot verify

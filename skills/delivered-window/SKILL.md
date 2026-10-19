@@ -133,7 +133,7 @@ step 1 is for: a second job would double the reads.
 
 ### What wakes you
 
-None of these is one of the four kinds of message below:
+None of these is one of the five kinds of message below:
 
 - **A monitor event** is the lines of one wake. Sort them as "Findings from
   a review" says for items from the watch.
@@ -266,6 +266,12 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    `simple-path.md`'s "End the run" lists: remove a worktree you cut, restore
    the checkout, and run `<project-lead-dir>/scripts/spend.py --write`
    (`autonomy-contract.md`'s "Spend"). Report the way the message arrived.
+
+### A merge request
+
+Only the principal can tell you to merge the PR. Then run `gh pr merge
+<pr_url> --squash --delete-branch`, or the repo's own merge method, and write
+one line in `decisions.md`. A merge is not the ship word, so ask for it.
 
 ### Findings from a review
 
@@ -473,12 +479,6 @@ one.
 
 `run_state` stays `delivered` throughout. An escalation raised in this window
 goes `delivered → blocked → delivered` (`record-format.md`).
-
-### A merge request
-
-Only the principal can tell you to merge the PR. Then run `gh pr merge
-<pr_url> --squash --delete-branch`, or the repo's own merge method, and write
-one line in `decisions.md`. A merge is not the ship word, so ask for it.
 
 ## The word that the work shipped
 

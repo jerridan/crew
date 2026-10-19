@@ -248,7 +248,10 @@ Arm the watch once too, by that skill's "Watch the PR".
    file" says, then write `replied_at`. Re-enter. An entry still missing its
    outcome is entry 6's work, and a package still open is entry 4's; both
    come first (`record-format.md`, `crew:delivered-window`'s "Findings from a
-   review").
+   review"). On a `run.kind: review` run, the reply of a `skeptical` round is
+   the posted GitHub review, so this entry runs `/crew:review`'s "Post the
+   review", whose owner file searches for a review already posted before it
+   posts.
 8. **`review_pending` is set, `review_rounds < review_pending.round`, and the
    branch head is an integrated commit that is not `pending.head`.** The
    round is unentered, so its reserved head is superseded:

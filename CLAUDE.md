@@ -16,7 +16,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `.claude-plugin/plugin.json` | plugin manifest | the plugin loader |
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
-| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, a review step the principal replaced, then a route to one path file | its skill trigger |
+| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and the steps the principal replaced over every record | the project lead, from Bash; a person runs `crew-stats.py` |
@@ -33,7 +33,7 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 ## Build state
 
 Stages 0 through 7 are built: seven agents — the six workers and the
-read-only `crew:scout` — ten references, both hooks and all four of
+read-only `crew:scout` — twelve references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
 one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
@@ -107,6 +107,9 @@ Each reference owns one subject and is canonical for it:
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
 - `review-output.md` — the shape every review reports its findings in.
 - `skeptical-review.md` — the review of the finished diff, and when it runs.
+- `review-runner.md` — the mechanics of a headless review: the detached
+  worktree, the instructions file, the runner, the checks and the session id.
+- `substitution.md` — how a review step the principal replaced runs.
 - `writing-standard.md` — how an instruction file and a README are written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A

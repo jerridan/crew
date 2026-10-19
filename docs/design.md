@@ -7197,7 +7197,7 @@ Deliberately different:
        for and did not find. The initial implementation was the headless
        run from (c), in a fresh worktree of the branch; §15.98b found it
        broken three ways and replaced it with the stdin-piped runner
-       `skeptical-review.md`'s "The default command" now states (T59).
+       `review-runner.md`'s "The default command" now states (T59).
        (4) The delivered window gets a patch mode. A change request stays one
        package with an IC and the project lead's verification. Findings from a
        review — CI, a bot, Codex, the principal, or the skeptical review —
@@ -7379,8 +7379,9 @@ Deliberately different:
        one more tool name, the bundled pull-request reviewer read the base
        sha as its target commit, and even retargeted at the right diff it
        wrote no report file and no verdict pair. The fixed shape is the one
-       now in `skeptical-review.md`. The review, once it ran, caught a
-       defect the project lead's own verification had accepted: an
+       now in `review-runner.md`'s "The default command". The review, once
+       it ran, caught a defect the project lead's own verification had
+       accepted: an
        `assert.throws` object validator checks the `name` string, not the
        class, and a commit message claimed a class assertion its diff did
        not add. Skeptical review rounds in run 1: r1 no conforming report,
@@ -7815,3 +7816,20 @@ Deliberately different:
      `decisions.md`, and the ship word still asked for after it. Trigger 4
      says a merge the principal asked for is the answer, not the trigger.
      Not probed: PR 100 was merged before the rule was written.
+
+106. **The review mechanics and the replacement rule get their own files —
+     2026-10-19, T75.** A second crew skill that reviews a colleague's PR
+     needs two things the project lead's lifecycle held. It needs the
+     mechanics of a headless review: the detached worktree, the
+     instructions file, the runner, the four checks and the session id. It
+     also needs the rule for a review step the principal replaced. Both
+     sat inside the lifecycle: the mechanics in `skeptical-review.md`, and
+     the rule in `SKILL.md`. `review-runner.md` now holds seven sections of
+     `skeptical-review.md` word for word except for its pointers.
+     `substitution.md` holds the whole section of `SKILL.md` on a replaced
+     review step, and `SKILL.md` keeps
+     a pointer to `substitution.md`.
+     `skeptical-review.md` keeps the stance, the inputs, the schedule, the
+     resume list, the ready step, the kill table and the verdict lines.
+     The five-source table stays in "Take the goal". No rule changed, and
+     every pointer follows the move. The move ran in no probe.

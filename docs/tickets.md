@@ -2547,7 +2547,7 @@ owns the step, and it owns the schedule as well. It holds:
   review.
 - **The default headless command.** The initial implementation was `claude -p
   --model opus "/code-review high <base>"`; §15.98b's probe found it broken
-  three ways and replaced it. `skeptical-review.md`'s "The default command"
+  three ways and replaced it. `review-runner.md`'s "The default command"
   now owns the runner, and this ticket does not restate it.
 - **How the findings are collected.** The JSON `result` field holds only the
   last message, so use `--output-format stream-json`, or put an instruction
@@ -3167,3 +3167,39 @@ before.
 
 Read first: design §15.105; `crew:delivered-window` "A merge request";
 `autonomy-contract.md` trigger 4.
+
+## T75 — Split the review mechanics and the replacement rule out of their lifecycles
+
+Status: closed, not run
+Depends on: nothing
+Stage: 7 (design §15.106)
+
+Closed 2026-10-19 in the PR that filed it. The principal watches for a
+fault in regular work.
+
+A second skill that reviews a colleague's PR needs the review mechanics and
+the replacement rule. Both sat inside the project lead's lifecycle, in
+`skeptical-review.md` and in `SKILL.md`.
+
+Scope. `review-runner.md` takes seven sections of `skeptical-review.md`
+word for word except for its pointers. `substitution.md` takes "A step the
+principal replaced" from `SKILL.md`, which keeps a pointer. Every pointer to
+a moved section follows it. No rule is added, removed or reworded.
+
+Run it. Read the diff with `git diff --color-moved=dimmed-zebra`.
+
+Check: every moved block shows as moved. Then run two greps. The first is
+`git grep -n "skeptical-review.md" -- skills CLAUDE.md README.md`. Read each
+hit: none may cite one of the seven moved headings. The second is
+`git grep -n "A step the principal replaced"`. It prints only this ticket,
+the pointer heading in `SKILL.md` and the title of `substitution.md`.
+
+Done when: the two files hold the moved text, `SKILL.md` is 140 lines
+shorter, and no pointer names the old file for a moved section.
+
+Known gaps: two rules stay stated in both `skeptical-review.md` and
+`review-runner.md`. They are the no-suite rule and the rule that a retry does
+not count toward the round count. They stay until the second PR
+parameterizes the runner, because this PR rewords no rule.
+
+Read first: design §15.106.

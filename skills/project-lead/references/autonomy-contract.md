@@ -424,8 +424,9 @@ Write nothing when the principal refuses, or answers the question and not the
 A run's cost is measured from its transcripts, in dollars at list price.
 After each package integrates, again before the PR opens, again after each
 skeptical review returns and its session id is recorded
-(`skeptical-review.md`), and once more at the principal's ship word
-(`crew:delivered-window`'s "The word that the work shipped"), run
+(`review-runner.md`'s "Record the review's session id"), and once more at
+the principal's ship word (`crew:delivered-window`'s "The word that the work
+shipped"), run
 `python3 <skill-dir>/scripts/spend.py <record-dir> <checkout> --write`. It
 prices this run's own sessions — yours, your subagents' and the teammates' —
 into `spend.transcript` (`record-format.md`). Nothing else counts the project

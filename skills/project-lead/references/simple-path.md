@@ -402,11 +402,11 @@ review" below.
 The work is handed over and `run_state` is `delivered`. Read
 `skeptical-review.md` and do what it says. It owns the step whole, on every
 path and at every band: when a review runs, the stance, the inputs, the
-worktree, the command, the instructions, the session id, the verdicts, and
-when the record clears.
+verdicts, and when the record clears. `review-runner.md` owns the mechanics:
+the worktree, the command, the instructions and the session id.
 
-**A replacement named for this step runs in its place.** `SKILL.md`'s "A step
-the principal replaced" owns that case.
+**A replacement named for this step runs in its place.** `substitution.md`
+owns that case.
 
 **Its findings are findings like any other source's.**
 `crew:delivered-window`'s "Findings from a review" owns all of them: the

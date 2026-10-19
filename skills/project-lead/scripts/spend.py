@@ -11,10 +11,10 @@ includes the project lead's own session and the IC teammates (design §8,
 
 **The run's own sessions are the window.** `run.session_ids` in `state.json`
 names them, and `run.review_session_ids` names each headless skeptical review
-the run started (`skeptical-review.md`). Claude Code writes each session as
-`<session-id>.jsonl` with its subagents and its in-process teammates under
-`<session-id>/`. So a run is
-priced by that subtree, wherever it sits under `~/.claude/projects/` (and
+the run started (`review-runner.md`'s "Record the review's session id").
+Claude Code writes each session as `<session-id>.jsonl` with its subagents
+and its in-process teammates under `<session-id>/`. So a run is priced by
+that subtree, wherever it sits under `~/.claude/projects/` (and
 under `$CLAUDE_CONFIG_DIR/projects/` when that variable is set). Two runs that
 share one checkout are then priced apart, which the checkout window could not
 do (design §15.90).

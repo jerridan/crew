@@ -97,7 +97,8 @@ the records, and on 1 of the 3 that ran over a `light` package (design §15.77).
 No band takes this step away. Only the light path does, by writing no spec at
 all — see the section below.
 
-**The skeptical review takes no band either** (`skeptical-review.md`).
+**The skeptical review takes no band either** (`review-runner.md`'s
+"Prepare the worktree before you launch").
 
 ## What the light path skips
 
@@ -122,7 +123,8 @@ there reads as a step that failed to run.
 
 A band is for a **package**. `crew:spec-critic` and `crew:split-critic` are
 not packages, and neither of them gets a band. The skeptical review is not a
-package either, and `skeptical-review.md` names the model its command passes.
+package either, and `review-runner.md`'s "The default command" names the
+model its command passes.
 
 **Pass no spawn-time `model` when you dispatch one.** Each definition already
 carries the model its job needs, and a spawn-time value silently overrides it

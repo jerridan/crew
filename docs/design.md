@@ -7993,7 +7993,8 @@ Deliberately different:
         pre-existing, no push of the run's own is in the range, every hunk of
         the delta sits within 30 lines of a finding or in its test file, the
         review says `Beyond the findings: none`, and the span text of every
-        open round-`n` finding is gone at the new head. The entry's answer is
+        open posted finding from every earlier round is gone at the new
+        head. The entry's answer is
         `auto: findings answered`, and `crew-stats.py` counts it as an auto
         post, not an escalation. Limits: a body-only finding keeps the gate,
         a goal run is out of scope, and the 30-line bound is a guess no run

@@ -151,8 +151,9 @@ must pass two checks that `github-review.md` owns before it may post:
 2. **The `Effect:` is right** by the effect rule. When you change an effect,
    record both values on the ledger line.
 
-Decline a `[Nit]` with the reason `nit`. An accepted finding names no package
-on a review run: it posts. Only the assist path makes packages.
+Decline a `[Nit]` with the reason `nit`. The skeptical ledger names no
+package on a review run: an accepted finding posts. Only the assist path
+makes packages, in a round of its own.
 
 Write the ledger to `reviews/skeptical-r<n>-reply.md`, with
 `record-format.md`'s header. Open `run.rounds[skeptical-r<n>]` with
@@ -177,15 +178,22 @@ Then send the principal one message:
 The ask is escalation trigger 8, with the trigger text `go-ahead (round
 skeptical-r<n>)`. Write and send it as `autonomy-contract.md`'s "How to
 escalate" says. The entry carries two more fields: `draft:
-reviews/github-r<n>.md` and `draft_changed: null`. The run is `blocked` until
-the answer.
+reviews/github-r<n>.md` and `draft_changed: null`. Write each one on the
+entry, with `<index>` the index `escalation add` printed:
+
+```bash
+python3 <project-lead-dir>/scripts/crew-record.py <record-dir> escalation <index> set draft '"reviews/github-r<n>.md"'
+python3 <project-lead-dir>/scripts/crew-record.py <record-dir> escalation <index> set draft_changed null
+```
+
+The run is `blocked` until the answer.
 
 The principal can change any disposition or effect, mark any finding `no
 reply`, or edit the text. When the answer lands:
 
 1. Rewrite the draft file where the answer changed it.
-2. Set `draft_changed`: `true` when any text or disposition changed, and
-   `false` otherwise.
+2. Set `draft_changed` with the same command: `true` when any text or
+   disposition changed, and `false` otherwise.
 3. Record the answer, as "How to escalate" says.
 4. Write `go_ahead_at`.
 
@@ -249,8 +257,10 @@ With `Assist: on`, after the first post and after each later post, group the
 accepted `incident` and `bug` findings it posted into packages. Run
 `crew:delivered-window`'s "Findings from a review" steps 3 to 11 as they
 stand, on the deliverable branch in `run.checkout`, as a `principal` round:
-the principal asked for the fix at launch. The one difference is the push:
-it goes to `origin <headRefName>`, behind the gate.
+the principal asked for the fix at launch. Its ledger names one package per
+group, it takes the gate, and a resume recovers it through
+`skeptical-review.md`'s resume entries 1a to 7. The one difference is the
+push: it goes to `origin <headRefName>`, behind the gate.
 
 Write `run.watch.head` after your own push, before you re-arm the monitor.
 The integration write arms the new head, and "Review" runs again. "Later

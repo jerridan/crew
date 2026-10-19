@@ -676,6 +676,10 @@ transcript, and `crew-stats.py` then closes the window at `completed_at`
 | `draft` | a record-relative path such as `reviews/github-r<n>.md`. Present on a review run's go-ahead escalation. |
 | `draft_changed` | `true`, `false` or `null`. Set when the principal answers: `true` when the principal changed the draft's text or any disposition, and `false` when they approved it as it stood. `null` until then. |
 
+The project lead writes `draft` and `draft_changed` with `crew-record.py
+<record-dir> escalation <index> set <field> <json>`, for example `escalation
+0 set draft_changed false`. `run set escalations` stays forbidden.
+
 ### Worked example
 
 One run, two packages, in different states:

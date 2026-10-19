@@ -8,7 +8,8 @@ other file this one names is in `skills/project-lead/references/`.
 
 Everything crew posts is concise and polite, in ASD-STE100. Polite means it
 names the defect and never the author. Never hard wrap text you send to
-GitHub.
+GitHub. The posted text never contains the word `crew`, because the author
+and the other reviewers do not know that tool.
 
 ## The sanitizing
 
@@ -125,10 +126,15 @@ A one-line fix also gets a GitHub suggestion block:
 ```
 ````
 
-The last line is the marker `crew: skeptical-r<n> <finding id>`. A marker's
-finding id is `<k>` for this round's own comments, the finding's ordinal in
-the round's report, and `r<m>-<k>` for finding `<k>` of an earlier round
-`<m>`. The two never match in `pr-watch.md`'s marker search.
+The last line is the marker `<!-- pr-review: skeptical-r<n> <finding id> -->`.
+A marker's finding id is `<k>` for this round's own comments, the finding's
+ordinal in the round's report, and `r<m>-<k>` for finding `<k>` of an earlier
+round `<m>`. The two never match in `pr-watch.md`'s marker search.
+
+**Every marker is an HTML comment that starts `<!-- pr-review: `.** GitHub
+does not show it, and the watch and the searches match that prefix. A body
+marker is `<!-- pr-review: <round-id> -->`. A comment or a reply marker is
+`<!-- pr-review: <round-id> <id> -->`.
 
 GitHub takes an inline comment only on a line inside the diff. A finding on
 any other line goes in the body's list instead.
@@ -137,21 +143,28 @@ any other line goes in the body's list instead.
 
 In this order:
 
-1. The summary of what the PR does, in two to five sentences.
-2. The event the findings earned. On the principal's own PR, add this
+1. The event the findings earned. On the principal's own PR, add this
    sentence: "GitHub does not let an author approve or request changes on
    their own pull request, so this review posts as a comment."
-3. The list of findings that are not inline, each in the comment shape
+2. The list of findings that are not inline, each in the comment shape
    without its marker.
-4. On the assist path, one line that names the commits crew pushed.
-5. The marker `crew: skeptical-r<n> review`, last.
+3. On the assist path, one line that names the pushed commits, such as
+   "Commits 3f9c2a7 and 8b1d4e0 on this branch fix the blocking findings."
+4. The marker `<!-- pr-review: skeptical-r<n> -->`, last.
+
+The body holds no summary of the PR. The author already knows what the PR
+does. The summary is for the principal alone, in the draft file.
 
 ## The draft file
 
-`reviews/github-r<n>.md` holds the draft of round `<n>`'s review: the body,
-then one block per inline comment.
+`reviews/github-r<n>.md` holds the draft of round `<n>`'s review: the
+summary, then the body, then one block per inline comment.
 
 ```
+--- summary
+<what the PR does, in two to five sentences, for the principal>
+
+--- body
 <the body>
 
 --- comment
@@ -205,20 +218,22 @@ changes stays in force.
 
 ## The post command
 
-Build a JSON file from the draft, and write it outside the repo. `commit_id`
-is the head the round reviewed. Each comment takes `side: "RIGHT"`.
+Build a JSON file from the draft, and write it outside the repo. It takes
+every section of the draft except `--- summary`, which never posts.
+`commit_id` is the head the round reviewed. Each comment takes `side:
+"RIGHT"`.
 
 ```json
 {
   "commit_id": "3f9c2a7d1e4b8f6a0c5d2e9b7a1f4c8d6e3b0a92",
   "event": "COMMENT",
-  "body": "This PR adds a CSV export for the report page.\n\nThe findings earn a comment: one bug.\n\ncrew: skeptical-r1 review",
+  "body": "The findings earn a comment: one bug.\n\n<!-- pr-review: skeptical-r1 -->",
   "comments": [
     {
       "path": "src/export.py",
       "line": 42,
       "side": "RIGHT",
-      "body": "The loop stops one row early, so the export drops the last row. Use the full range.\n\n```suggestion\nfor i in range(len(rows)):\n```\n\ncrew: skeptical-r1 1"
+      "body": "The loop stops one row early, so the export drops the last row. Use the full range.\n\n```suggestion\nfor i in range(len(rows)):\n```\n\n<!-- pr-review: skeptical-r1 1 -->"
     }
   ]
 }
@@ -237,7 +252,7 @@ review, so do not post again:
 
 ```bash
 gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews --jq '.[]
-  | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") == "crew: skeptical-r<n> review")
+  | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") == "<!-- pr-review: skeptical-r<n> -->")
   | .id'
 ```
 

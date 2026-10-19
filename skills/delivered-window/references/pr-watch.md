@@ -40,7 +40,7 @@ poll() {
   revs=$(gh api --paginate "repos/$R/pulls/$N/reviews" --jq '.[]
     | if .state == "PENDING" then "pending \(.id)"
       elif (.body // "") != "" and .submitted_at >= $ENV.SINCE
-        and ((.body | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
+        and ((.body | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
       then "review \(.id) \(.user.login) \(.submitted_at) \(.state) \(.body | gsub("\r"; "") | split("\n") | first | .[0:100])"
       else empty end' 2>/dev/null) || revs=''
   export PEND=" $(printf '%s\n' "$revs" | sed -n 's/^pending //p' | tr '\n' ' ')"
@@ -48,11 +48,11 @@ poll() {
     printf '%s\n' "$revs" | grep '^review '
     gh api --paginate "repos/$R/pulls/$N/comments" --jq '.[]
       | (.pull_request_review_id // 0) as $r | select($ENV.PEND | contains(" \($r) ") | not)
-      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
+      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
       | "review-comment \(.id) \(.user.login) \(.created_at) \(.path):\(.line // .original_line // 0) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
     gh api --paginate "repos/$R/issues/$N/comments" --jq '.[]
       | select(.created_at >= $ENV.SINCE)
-      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("crew: ")) | not)
+      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
       | "comment \(.id) \(.user.login) \(.created_at) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
     gh pr checks "$PR" --json name,bucket,link,startedAt --jq '.[]
       | select(.bucket == "fail")
@@ -113,7 +113,8 @@ author, and the loop stops on it.
 - A pending review and its inline comments. They are not yet submitted.
 - A review whose body is empty.
 - A review or conversation comment older than `run.watch.last_polled_at`.
-- An item whose last line starts `crew: `. That marker is your own reply.
+- An item whose last line starts `<!-- pr-review: `. That marker is your
+  own reply.
 - An item whose id is in `run.watch.seen_ids`.
 - A passing or pending check. A `check` is a `fail`-bucket entry of
   `gh pr checks`. Its id holds its start time, so a re-run is new.
@@ -179,8 +180,8 @@ gh run view <run-id> --repo <owner>/<repo> --log-failed
 ## Post a reply
 
 Write the reply to a file outside the repo first, so a backtick in it reaches
-GitHub intact. Its last line is `crew: <round-id> <item id>`, with the id of
-the item it answers.
+GitHub intact. Its last line is `<!-- pr-review: <round-id> <item id> -->`,
+with the id of the item it answers.
 
 A `review-comment` replies in its own thread. GitHub takes a reply only on a
 thread's first comment, so read that comment's id first:
@@ -206,7 +207,7 @@ prints is not posted again.
 for p in pulls issues; do
   gh api --paginate "repos/<owner>/<repo>/$p/<n>/comments" --jq '.[]
     | (.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") as $m
-    | select($m | startswith("crew: <round-id> "))
-    | "\($m | ltrimstr("crew: <round-id> ")) \(.id)"'
+    | select($m | startswith("<!-- pr-review: <round-id> "))
+    | "\($m | ltrimstr("<!-- pr-review: <round-id> ") | rtrimstr(" -->")) \(.id)"'
 done
 ```

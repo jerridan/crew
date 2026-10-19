@@ -171,9 +171,9 @@ also a change request.
 is a finding, a change request, a question or a **notice**. A notice asks for
 nothing: a bot's notice, an approval with no ask, an acknowledgement. On a
 `run.kind: review` run, an item that neither answers a crew-posted finding
-(its thread holds a crew marker) nor addresses the principal is a notice too.
-A notice gets one line in your next message to the principal, and its id
-still joins `seen_ids`. It opens no round, takes no gate and gets no reply.
+(its thread holds a `pr-review` marker) nor addresses the principal is a
+notice too. A notice gets one line in your next message to the principal, and
+its id still joins `seen_ids`. It opens no round, takes no gate and gets no reply.
 Every other item opens its round and gets its reply on the PR. A change
 request from the watch is adjudicated like a finding, because the principal
 did not ask for it. A question from the watch takes the disposition
@@ -394,7 +394,8 @@ In order:
 
     Post nothing for an item whose ledger line says `no reply`. Each reply
     states that item's ledger line in plain words, with no hard wrap. **Its
-    last line is the marker `crew: <round-id> <item id>`.** Every comment you
+    last line is the marker `<!-- pr-review: <round-id> <item id> -->`.** Every
+    comment you
     post on the PR carries it, whatever the round's kind, because you post
     from the principal's own account and the poll skips your replies by the
     marker. On a resume, post no reply for an item whose id `pr-watch.md`'s

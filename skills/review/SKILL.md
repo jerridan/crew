@@ -209,9 +209,9 @@ window" says. Under `Gate: off` it takes none, so write no `go_ahead_at`.
 
 ## Report and wait at the gate
 
-Write the draft review to `reviews/github-r<n>.md` first: the body, then one
-block per inline comment with `path`, `line`, `side` and the text, in
-`github-review.md`'s shapes.
+Write the draft review to `reviews/github-r<n>.md` first: the summary, the
+body, then one block per inline comment with `path`, `line`, `side` and the
+text, in `github-review.md`'s shapes.
 
 Then send the principal one message:
 
@@ -290,7 +290,8 @@ After you adjudicate round `<n>`, re-verify each open posted finding from an
 earlier round against the new head. Its span is the line the finding quoted:
 
 - **The span text is gone.** Reply "Resolved at <sha>." in its thread, with
-  the marker `crew: skeptical-r<n> <finding id>` as the last line, and
+  the marker `<!-- pr-review: skeptical-r<n> <finding id> -->` as the last
+  line, and
   resolve the thread. `github-review.md`'s "The resolve command" owns both.
 - **The span text remains.** The finding stays open, and it counts for the
   event.

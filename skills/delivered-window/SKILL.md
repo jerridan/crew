@@ -255,7 +255,10 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    what the tree was on, with `checkout_restored` back to `null`. A held one,
    or a run that cut its own worktree the first time, cuts the worktree
    again at the same path from the existing branch — no `-b` — and registers
-   it.
+   it. On a `run.kind: review` run, the deliverable branch is the PR's head
+   ref (`deliverables[].branch`, which `/crew:review` set to
+   `<headRefName>`), so the switch targets that branch, or the detached head
+   on a cross-repository PR.
 4. **Run `simple-path.md`'s "Dispatch the IC" through "Integrate"** on that
    package. Every rule of those sections holds, including the package's own
    `base` and the deliverable's terminal state: one with a PR stays

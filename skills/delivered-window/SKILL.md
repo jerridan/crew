@@ -27,24 +27,23 @@ relative path resolves against the target repo.
 **While `run_state` is `delivered` or `blocked`, and the deliverable has a
 `pr_url`, keep one `Monitor` armed in this session.** The watch was probed
 on Claude Code 2.1.302 and gh 2.102.0. The monitor's command polls every 60
-seconds. Each poll makes five reads through `gh`: the PR's `isDraft`, its
-reviews, its review comments, its issue comments and `gh pr checks`.
+seconds, with five `gh` reads: `isDraft`, reviews, review comments, issue
+comments and `gh pr checks`.
 
 The command prints one line per new item, and nothing otherwise. A line names
-the item's kind, its id, its author, its time and a one-line summary. The
-five kinds are `ready`, `review`, `review-comment`, `comment` and `check`.
-`pr-watch.md` holds the command.
+the item's kind, id, author, time and a one-line summary. The five kinds are
+`ready`, `review`, `review-comment`, `comment` and `check`. `pr-watch.md`
+holds the command. Any other account is reported, the principal's own included.
 
-**The poll leaves out three things, and nothing else:**
+**The poll leaves out six things:**
 
-- An item whose body ends with a line that starts `crew: `. That is your own
-  reply, and "Send the reply file" puts the marker there.
+- A pending review and its inline comments. They are not yet submitted.
+- A review whose body is empty.
+- A review or conversation comment older than `run.watch.last_polled_at`.
+- An item whose last line starts `crew: `. That marker is your own reply.
 - An item whose id is in `run.watch.seen_ids`.
-- A passing or pending check. A `check` item is one `gh pr checks` entry in
-  the `fail` bucket, and its id holds its start time, so a re-run is new.
-
-An item from any other account is reported, the principal's own account
-included.
+- A passing or pending check. A `check` is a `fail`-bucket entry of
+  `gh pr checks`. Its id holds its start time, so a re-run is new.
 
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
 state is true. The command starts from `run.watch.draft`. A poll that reads

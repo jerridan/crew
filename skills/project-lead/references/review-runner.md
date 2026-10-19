@@ -3,8 +3,12 @@
 This file owns the mechanics of a headless review. It says how any caller
 cuts the detached worktree, writes the instructions file, launches the
 runner, checks the result and records the session. The caller supplies its
-round `<n>`, its goal text, its base ref and its pending head. The body
-names its files `skeptical-r<n>`. `skeptical-review.md` is the first caller.
+round `<n>`, its goal text and where it reads that text, its base ref, its
+pending head, its suite command and its output path
+(`<record-dir>/reviews/skeptical-r<n>.md`). `skeptical-review.md`, "The
+inputs", is the table that lists every value and where it is read from. The
+body names its files `skeptical-r<n>`. `skeptical-review.md` is the first
+caller.
 
 ## Never review in the run's own checkout
 
@@ -277,7 +281,7 @@ All four pass, or this is the failure path below:
 
 **Write the outcome down.** These checks decide whether a report may be
 adjudicated, so their result belongs in the record and not in your context:
-`run.review_results[<round>] = {exit, denials_ok, report_ok, at}`
+`run.review_results[<n>] = {exit, denials_ok, report_ok, at}`
 (`record-format.md`). A resumed session adjudicates a report only when that
 entry exists and passes. With no entry it runs the four checks again from the
 saved JSON, rather than trusting the report it finds.

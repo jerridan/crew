@@ -3182,9 +3182,9 @@ the replacement rule. Both sat inside the project lead's lifecycle, in
 `skeptical-review.md` and in `SKILL.md`.
 
 Scope. `review-runner.md` takes seven sections of `skeptical-review.md`
-word for word. `substitution.md` takes "A step the principal replaced" from
-`SKILL.md`, which keeps a pointer. Every pointer to a moved section follows
-it. No rule is added, removed or reworded.
+word for word except for its pointers. `substitution.md` takes "A step the
+principal replaced" from `SKILL.md`, which keeps a pointer. Every pointer to
+a moved section follows it. No rule is added, removed or reworded.
 
 Run it. Read the diff with `git diff --color-moved=dimmed-zebra`.
 
@@ -3194,7 +3194,7 @@ hit: none may cite one of the seven moved headings. The second is
 `git grep -n "A step the principal replaced"`. It prints only this ticket,
 the pointer heading in `SKILL.md` and the title of `substitution.md`.
 
-Done when: the two files hold the moved text, `SKILL.md` is 141 lines
+Done when: the two files hold the moved text, `SKILL.md` is 140 lines
 shorter, and no pointer names the old file for a moved section.
 
 Known gaps: two rules stay stated in both `skeptical-review.md` and

@@ -134,7 +134,7 @@ A retry reuses every `skeptical-r<round>` name, because it replaces an
 attempt that produced nothing worth keeping. It appends its own session id to
 `run.review_session_ids`, since it is a second process and costs its own
 money. That one rule covers both retries: the resume after a crash, and the
-rerun the failure path asks for.
+rerun the failure path asks for (`review-runner.md`).
 
 **A head superseded before its review started owes no review.** Findings
 from outside crew — CI, a bot, the principal reading the diff — can arrive
@@ -437,7 +437,7 @@ somewhere else.
 | **Round 0**, the reply file written before `run.rounds[<round-id>]` — the ordinary kill point under this run's own order | 1, second bullet | the round entry is rebuilt from the reply's header, and the list re-enters |
 | **Launch 1**, the arming | 13, nothing on disk | `review_rounds` is set to the reserved round, then the review runs at launch step 2 |
 | **Launch 2**, `review_rounds` set | 13, nothing on disk | the review runs at launch step 2, in the same round |
-| **Launch 3**, the worktree cut and setup run | 12, a worktree and no JSON | nothing exists to retire; cleanup removes the worktree and the review runs at launch step 2 |
+| **Launch 3**, the worktree cut and setup run | 12, a worktree and no JSON | nothing exists to retire; cleanup removes the worktree (`review-runner.md`) and the review runs at launch step 2 |
 | **Launch 4**, the instructions written, before the redirected command starts | 12, instructions and no JSON | the attempt is retired, then the review runs at launch step 2 |
 | **Launch 5**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | `review-runner.md`'s four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
 | **Launch 5**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |

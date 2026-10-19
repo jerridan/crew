@@ -16,7 +16,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `.claude-plugin/plugin.json` | plugin manifest | the plugin loader |
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
-| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, a review step the principal replaced, then a route to one path file | its skill trigger |
+| `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and the steps the principal replaced over every record | the project lead, from Bash; a person runs `crew-stats.py` |

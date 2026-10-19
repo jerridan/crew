@@ -93,7 +93,7 @@ The other two checks hold word for word for every runner: the report file
 exists, and its last two lines are the verdict pair while its first line is
 `Reviewed: <sha>`, matching `run.review_pending.head`.
 
-**A substituted skeptical review still writes `run.review_results[<round>]`**,
+**A substituted skeptical review still writes `run.review_results[<n>]`**,
 because that entry is what lets a later session adjudicate the report. `exit`
 is the runner's exit status, `denials_ok` is the string above, and `report_ok`
 is the report check. Nothing else about the round changes.

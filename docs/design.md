@@ -7379,8 +7379,9 @@ Deliberately different:
        one more tool name, the bundled pull-request reviewer read the base
        sha as its target commit, and even retargeted at the right diff it
        wrote no report file and no verdict pair. The fixed shape is the one
-       now in `skeptical-review.md`. The review, once it ran, caught a
-       defect the project lead's own verification had accepted: an
+       now in `review-runner.md`'s "The default command". The review, once
+       it ran, caught a defect the project lead's own verification had
+       accepted: an
        `assert.throws` object validator checks the `name` string, not the
        class, and a commit message claimed a class assertion its diff did
        not add. Skeptical review rounds in run 1: r1 no conforming report,
@@ -7824,8 +7825,9 @@ Deliberately different:
      also needs the rule for a review step the principal replaced. Both
      sat inside the lifecycle: the mechanics in `skeptical-review.md`, and
      the rule in `SKILL.md`. `review-runner.md` now holds seven sections of
-     `skeptical-review.md` word for word. `substitution.md` holds the whole
-     section of `SKILL.md` on a replaced review step, and `SKILL.md` keeps
+     `skeptical-review.md` word for word except for its pointers.
+     `substitution.md` holds the whole section of `SKILL.md` on a replaced
+     review step, and `SKILL.md` keeps
      a pointer to `substitution.md`.
      `skeptical-review.md` keeps the stance, the inputs, the schedule, the
      resume list, the ready step, the kill table and the verdict lines.

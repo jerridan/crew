@@ -242,8 +242,8 @@ def read_steps_skipped(name: str, run: dict, skips: list) -> dict:
 
 
 # The principal may name another runner for a review step, and only for these
-# two (`SKILL.md`'s "A step the principal replaced"). The step ran, so it is
-# not a skipped step and it never reaches the table above.
+# two (`substitution.md`). The step ran, so it is not a skipped step and it
+# never reaches the table above.
 SUBSTITUTABLE_STEPS = ["spec-critic", "skeptical-review"]
 
 

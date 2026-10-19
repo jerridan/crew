@@ -122,7 +122,8 @@ there reads as a step that failed to run.
 
 A band is for a **package**. `crew:spec-critic` and `crew:split-critic` are
 not packages, and neither of them gets a band. The skeptical review is not a
-package either, and `skeptical-review.md` names the model its command passes.
+package either, and `review-runner.md`'s "The default command" names the
+model its command passes.
 
 **Pass no spawn-time `model` when you dispatch one.** Each definition already
 carries the model its job needs, and a spawn-time value silently overrides it

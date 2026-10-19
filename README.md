@@ -1,18 +1,23 @@
 # crew
 
-A Claude Code plugin that takes your goals to PRs ready for review, and does
-not stop for approval on the way.
+A Claude Code plugin that takes your goals to PRs ready for review. It does
+not stop for approval until the PR is open. Then it watches the PR and CI,
+and fixes what lands. Before it pushes or replies on the PR, it waits for
+your go-ahead.
 
 You hand a goal to a project lead. It reads its repo, writes the spec, splits
 the work, picks a model for each piece, dispatches implementers, checks each
 piece itself, integrates the work and hands it over as a PR. Only then
 is the whole diff reviewed. A separate session reads it against your goal and
 assumes it is wrong. What that session finds comes back as patch rounds on the
-same PR. When that review is done, the PR goes ready for review. You merge
-it when you are ready. The project lead stays until you say
-its work shipped, so you can ask it about the change before you merge, ask for
-a change to the PR after, or send it a review's findings and get a reply on
-each one.
+same PR. When that review is done, the PR leaves draft. You merge it when you
+are ready. The project lead stays until you say its work shipped, so you can
+ask it about the change before you merge, or ask for a change to the PR after.
+It watches the PR and CI the whole time. It assesses each comment and failed
+check that lands, and fixes what it accepts on the branch at once. It tells
+you what it fixed or declined and why, and waits for your go-ahead before it
+pushes or replies on the PR. A failed check and a comment from your own
+GitHub account take no go-ahead.
 
 One entry point:
 
@@ -105,20 +110,35 @@ The run sizes the work itself and picks a path:
 | Investigation | A symptom | Reproduce, gather evidence, diagnose. Then a spec and a fix, or a report with no change. |
 
 The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a
-draft PR from it. The PR goes ready for review when crew's own review of it
-is done, so your automated reviewers start after that. To keep it a draft,
-say so in the goal. The run restores your checkout to the branch it started on, and the session
-stays. In that session you can ask about the change, ask for a change to the
-same PR, or paste what a reviewer found — CI, a bot, or your
-own reading of the diff. The run patches the findings on the same branch and
-answers each one. When the work is merged and deployed, say so, and the run
-closes. Closing the session instead leaves the run recorded as
-interrupted, which is fine for a run you merged yourself.
+draft PR from it. The PR leaves draft when crew's own review of it is done,
+so your automated reviewers start after that. To keep it a draft, say so in
+the goal. The run restores your checkout to the branch it started on, and the
+session stays. In that session you can ask about the change, or ask for a
+change to the same PR. You do not paste review findings: the project lead
+finds each review, comment and failed CI check on the PR itself. It verifies
+each one, and fixes what it accepts on the branch. Then it tells you what it
+fixed or declined, and why. When you give the go-ahead, it pushes and replies
+to each one on the PR. A failed check and a comment from your own GitHub
+account are pushed and answered with no go-ahead. You can still send findings
+from anywhere else, and they take the same go-ahead.
+When the work is merged and deployed, say so, and the run closes. Closing the
+session instead leaves the run recorded as interrupted, which is fine for a
+run you merged yourself.
+
+To let the run push and reply on the PR with no go-ahead, say so in the goal,
+or put this line in your charter file:
+
+```
+Gate: off
+```
+
+Then nothing waits for your go-ahead, from the PR or from you.
 
 A question comes to you in the same session. The triggers are fixed: no
 testable acceptance criterion, a preference the repo cannot settle, a council
 that cannot decide, an action outside the deliverable branch, a fix loop that
-ran out. Answer in the session and the run continues.
+ran out, and the go-ahead before a push or a reply on the PR. Answer in the
+session and the run continues.
 
 ## What a run needs
 
@@ -128,6 +148,7 @@ ran out. Answer in the session and the run continues.
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for the full path; required for a pane per dispatched agent on any path; optional otherwise |
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
+| The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 
 Crew never widens your permissions itself. Without the teams variable, the
@@ -196,12 +217,15 @@ The project lead checks every package itself. It runs the acceptance test and
 the suite, and a failure sends the package back, up to five times. Review
 comes after the work is handed over: a separate session reads the whole diff
 against your goal, assumes it is wrong, and runs the tests in a checkout of
-its own. What it finds, and anything you send yourself, goes on the same PR
-as a patch round, with a reply on each finding saying what changed or why the
-run disagreed. A run takes three reviews at most. A question with no
-precedent goes to a council, where each advocate argues an assigned position,
-so the project lead weighs arguments instead of counting votes. A question
-about what you want is never debated. It comes to you.
+its own. What it finds goes on the same PR as a patch round. So does what
+your reviewers and CI post on the PR, and anything you send yourself. Each
+finding gets a reply that says what changed or why the run disagreed. The
+project lead patches the branch at once. For anything but crew's own review,
+a failed check and a comment from your own account, it waits for your
+go-ahead before it pushes or replies. A run takes three reviews at most. A
+question with no precedent goes to a council, where each advocate argues an
+assigned position, so the project lead weighs arguments instead of counting
+votes. A question about what you want is never debated. It comes to you.
 
 The PR is the end of the work. Crew never merges. The project lead
 stays until you say the work shipped.
@@ -260,7 +284,7 @@ review catch rate, over every record.
 
 | Role | What it does |
 |---|---|
-| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays for questions, changes and review findings until the work ships. |
+| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays until the work ships: it watches the PR and CI, fixes what lands, and waits for your go-ahead before it pushes or replies, except on a failed check or your own comment. It answers your questions and takes your changes too. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |

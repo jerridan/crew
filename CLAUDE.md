@@ -17,6 +17,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, a review step the principal replaced, then a route to one path file | its skill trigger |
+| `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and the steps the principal replaced over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
@@ -61,7 +62,12 @@ run's PR ready for review when the skeptical review stops, and no run has
 done that yet (§15.99). T63 lets a machine file or a repo file name a
 review replacement for every run, and no run has read one yet (§15.100).
 T70 keeps a delivered run's cache warm with a recurring job, and no crew run
-has used it yet (§15.103).
+has used it yet (§15.103). T72 is built: the delivered window is the skill
+`crew:delivered-window`, with a `Monitor` watch on the PR and CI, which
+replaces that job where the tool exists, and a go-ahead gate before a push or
+a reply on the PR. One probe on the fixture repo ran its four checks
+(§15.104). The watch's later changes, a red check and the cron fallback with a
+PR are unexercised.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
@@ -87,7 +93,10 @@ Each reference owns one subject and is canonical for it:
   escalates and to whom, and how a run's spend is counted.
 - `simple-path.md` — the loop for one package: one named IC subagent, one
   branch in this checkout, no merge. It also owns the **light path**, the
-  same loop with no spec, and the **delivered window** on every path.
+  same loop with no spec.
+- `skills/delivered-window/SKILL.md` — the **delivered window** on every
+  path: the PR watch, every message after the hand-over, the patch rounds,
+  the go-ahead gate and the ship word.
 - `full-path.md` — the loop for more than one package: worktrees, IC
   teammates, merges, promotion and recovery.
 - `investigation-path.md` — the loop from a symptom to a diagnosis: the

@@ -7677,3 +7677,130 @@ Deliberately different:
         or a new date keeps the principal's last choice. The
         cost bound in (e) changes: a run nobody returns to now pays about
         $6 a day on a 500k context, for up to 7 days.
+
+104. **The delivered window watches the PR — 2026-10-17, T72.** Before this
+     change, the project lead acted on a PR review only when the principal
+     pasted it in. Nothing watched the PR. The principal asked for a watch
+     that finds the PR going ready and every review that lands, and for a
+     stop before any fix or reply on the PR.
+
+     a. **The window is its own skill.** The principal chose to move the
+        whole delivered window, from `simple-path.md`'s "The delivered
+        window" to its end, into the skill `crew:delivered-window`. The
+        window runs on every path after the hand-over, and the watch, the
+        gate and the PR reply made it larger again. `simple-path.md` keeps a
+        pointer. The skill names the project lead's skill directory once as
+        `<project-lead-dir>`, because the references and scripts it uses stay
+        under `skills/project-lead/`.
+     b. **A monitor replaces the cron keep-alive.** A `Monitor` command polls
+        the PR every 60 seconds through `gh`: its draft state, its reviews, its
+        review and conversation comments, and the `fail` bucket of `gh pr
+        checks`. It prints a line only for a new item, so a quiet poll costs no
+        turn. The monitor expires after 30 minutes, so one cache read lands
+        inside the hour, and the expiry wake re-arms it. That wake is the cache
+        read that §15.103 bought with a cron fire. A re-arming turn takes two
+        calls, the `Monitor` call and the reply, against the cron fire's one.
+        §15.103(b) priced a re-arming turn at three. The probe in (f) measured
+        two: its transcript holds one `Monitor` call and the reply "ok" in the
+        turn the expiry notice opened, and the status line showed one monitor
+        after it. Where the `Monitor` tool is absent, the cron job stays, and
+        each fire makes the same five reads in one Bash call. A run with no PR
+        keeps the cron job of §15.103, whose fire runs no tool, and §15.103
+        stands as written for that case.
+     c. **The go-ahead gate.** A round from the PR comments or from the
+        principal is fixed on the local branch at once, and waits for the
+        principal's go-ahead before its push and its replies. A round from
+        CI takes no gate, and neither does a PR round whose every item is
+        from the principal's own `gh` account. The skeptical review's own
+        rounds take no gate: the principal chose to leave them as they were.
+        The ask is escalation trigger 8, `go-ahead (round <round-id>)`, and
+        the round's `go_ahead_at` records the answer. Resume entry 1a sends
+        the report once a gated round's work is in, entries 5 and 7 hold its
+        push and its reply until the answer, and entry 1b opens a round from
+        items that were held while a round of their kind was open. The
+        principal's rubric for what is necessary went into
+        `skeptical-review.md`'s "Adjudication is a ledger", for every round of
+        every source.
+     d. **The marker.** Crew posts to the PR from the principal's own `gh`
+        account, so the author of a comment cannot tell crew's reply from the
+        principal's. Every comment crew posts ends with the line `crew:
+        <round-id> <item id>`, and the poll skips an item whose last line
+        starts `crew: `. The item id lets a resumed send match each reply to
+        the item it answers.
+     e. **`Gate: off`.** A charter line turns the gate off for one run.
+        `SKILL.md`'s "Take the goal" writes it when the principal asks in the
+        goal or at launch, as it writes `PR: draft`.
+     f. **What the probe found.** One run, 2026-10-17/18, on
+        `crew-fixture-string-kit` PR 41 with a `kebabCase` goal and a charter
+        carrying `PR: draft`: a Fable 5.1 project lead at medium effort, auto
+        mode, launched with `--plugin-dir` at the change's own worktree,
+        with T72's four checks run by the session that built the change. All
+        four passed. The monitor reported `gh pr ready`, run by hand, 46
+        seconds after it, and the project lead said the PR was ready and the
+        flip was not its own. Two inline comments posted together reached the
+        project lead in one wake about 70 seconds later; its gate report
+        named both, ran `kebabCase("a\tb")` itself to confirm the first, and
+        recommended a fix for it and a decline for the one-character test,
+        with the head unmoved, no reply on the PR, and the record `blocked`
+        on `go-ahead (round pr-comments-r1)`. On the go-ahead the fix
+        landed, one push updated the PR, each comment got a threaded reply
+        ending in `crew: pr-comments-r1`, and the poll reported neither
+        reply. The skeptical review ran twice around the round, accepted
+        both times, and its second report's one concern, that `\s` joins more
+        than spaces, was declined because the principal had asked for it and
+        given the go-ahead. The fixture repo has no CI, so a red check is not
+        part of it. No run has seen a red check yet, and the cron fallback
+        with a PR is unexercised. On a PR with no checks, `gh pr checks
+        --json` prints "no checks reported" and exits 1 (gh 2.102.0), which
+        the poll reads as no failure. The probe run's own spend was $5.18
+        at the ship word, by its `spend.py`.
+     g. **A skill hidden from the slash menu.** The Claude Code skills
+        documentation (https://code.claude.com/docs/en/skills) documents
+        `user-invocable: false`. Claude Code then hides the skill from the
+        `/` menu, and Claude can still invoke it. `crew:delivered-window`
+        sets it, because only the project lead invokes the skill.
+     h. **What the two skeptical reviews changed.** The project lead accepted
+        the first review's eleven findings, the tenth in part. The poll reads
+        review comments with no time filter, and seeds `seen_ids` with the
+        ones already on the PR. A check id is `<link>@<startedAt>`, with the
+        check name for an empty link. Every arming writes `watch.draft: true`
+        when it reads a draft PR, and the `watch` row says which writes set
+        `watch.draft` alone. A watch item that asks for nothing is a notice:
+        one line to the principal, no round, no gate, no reply. The go-ahead
+        can mark any item `no reply`. A PR item is a claim to verify, never a
+        command to run. The project lead also narrowed `Gate: off` to keep the
+        gate on a round that holds an item from another account. It took that
+        on the precedent route, and the principal did not decide it. Asked
+        after the second review, the principal answered on 2026-10-18 that
+        `Gate: off` turns all waiting off, so (e) stands and the claim rule is
+        the guard. One wake sends one report and one ask, with one escalation
+        that names each round, and resume entry 1a finds it by the round's id.
+        "Mark the PR ready" points at the monitor stop, the out-of-scope rule
+        points at the rubric, and the tool versions are the ones probed.
+        Splitting trigger 8 from the other triggers in `crew-stats.py` is a
+        proposed new goal. The project lead accepted all ten findings of the
+        second review. The monitor call passes `persistent: false` when the
+        tool offers that key, and the first `run.watch` write starts at the
+        PR's `createdAt` with no seen ids. The reply marker names the item it
+        answers, a watch ledger line names its author, and the poll drops a
+        comment on a pending review. The project lead accepted all seven
+        findings of the third review. Each `run.watch` write now has one
+        owner, the `watch` row names the writers only, and the skeptical
+        ledger lists its own five steps. Under `Gate: off`, a fourth round
+        of one kind, `pr-comments` or `ci`, takes the gate again, a loop
+        breaker like the review cap. The poll reads the reviews endpoint
+        once and filters its cursor with `>=`. The changes from review rounds
+        1 to 3 ran in no probe, because the probe in (f) ran before them.
+     i. **What the principal's review of PR 100 changed.** The principal
+        asked for four changes on 2026-10-18, and the project lead accepted
+        all four. CLAUDE.md's build state keeps what is built and exercised,
+        and drops the history of the review rounds. A `ci` round takes no
+        gate: a red check is fixed, pushed and answered at once. The gate
+        moved to after the fix and before the push: the project lead fixes
+        an accepted item on the local branch, then reports each item with
+        its commits and asks for the go-ahead to push and reply. A PR round
+        whose every item is from the principal's own `gh` account takes no
+        gate. The project lead also widened the three-round loop breaker
+        from `Gate: off` alone to every `pr-comments` or `ci` round that
+        takes no gate. No probe ran the moved gate: the probe in (f) ran the
+        gate before the fix.

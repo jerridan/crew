@@ -75,7 +75,7 @@ parse and writes nothing.
 ## `charter.md`
 
 The goal and its falsifiable acceptance criteria, as the principal wrote
-them or as the project lead expanded a goal string. Five optional lines,
+them or as the project lead expanded a goal string. Six optional lines,
 each on its own, anywhere in the file:
 
 - `Favour: time` or `Favour: spend` — what the split optimises. `time`
@@ -96,6 +96,10 @@ each on its own, anywhere in the file:
 - `Assist: on` — a review run's charter only. Crew fixes the blocking
   findings itself and pushes to the PR branch (`crew:delivered-window`'s
   "Findings from a review").
+- `Suite: on fork` — a review run's charter only. On a cross-repository PR,
+  the fork's setup command and suite run only when the charter carries this
+  line. The principal writes it at launch. The project lead writes it when
+  the principal lifts the block at the gate (`/crew:review`'s "Review").
 
 `SKILL.md`'s "Take the goal" writes `PR: draft` and `Gate: off` when the
 principal asks for them in the goal or at launch.
@@ -1023,6 +1027,7 @@ Every name this file defines, with what consumes it.
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks. Consumer: `crew:delivered-window`'s "The go-ahead gate"
 - `charter.md` `Assist: on` line — writer: the principal, or `/crew:review` when the principal asks. Consumer: `crew:delivered-window`'s "Findings from a review"
+- `charter.md` `Suite: on fork` line — writer: the principal at launch, or the project lead when the principal lifts the block at the gate. Consumer: `/crew:review`'s "Review"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
 - `run.repo` — writer: the project lead, at `SKILL.md`'s "Take the goal". Consumer: a replacement for the spec review, which runs from it (`substitution.md`); `simple-path.md`'s "End the run" (the worktree it removes); `review-runner.md` (every review worktree)

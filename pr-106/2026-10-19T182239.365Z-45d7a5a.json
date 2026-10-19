@@ -1,0 +1,200 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 106,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Close T76 on the first /crew:review run and apply its six notes to the review skill",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/106"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "d2b52b81cb0e0fb03af557c6125b988f6c7ce2bb",
+    "head": "45d7a5a617988a6718dee558ceb75cd6eef3dfe8",
+    "started_at": "2026-10-19T18:22:39.365Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Close T76 on the first /crew:review run and apply its six notes to the review skill\n\n## Summary\n\nThe first real `/crew:review` run worked, and the principal took six notes on it. This PR closes T76 on that run and changes the review skill for five of the notes. A posted review now carries no PR summary and no visible tool marker, because the author and the other reviewers do not know the tool. The skeptical reviewer's session is resumed on every later round, so it carries its context instead of re-reading the PR. The PR watch treats a PR that enters the merge queue as merged. The go-ahead gate posts a later approval with no wait when the author answered every inline finding and changed nothing else. A replacement reviewer's pane opens beside the project lead's own terminal session, never in whichever one has focus.\n\n**Ticket:** [T76 — Run /crew:review once on a colleague's PR](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t76--run-crewreview-once-on-a-colleagues-pr)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.107 (the review skill) and the new §15.108 (the first run and its six notes). `skills/review/references/github-review.md` owns what a review run posts. `skills/project-lead/references/review-runner.md` owns the reviewer launch and the new \"Resume the reviewer\". `skills/project-lead/references/substitution.md` owns a replacement's run script and the new \"Where it runs\". `skills/delivered-window/references/pr-watch.md` owns the poll and the new `queued` line. `skills/delivered-window/SKILL.md` \"The go-ahead gate\" owns the five no-wait conditions. `skills/project-lead/references/record-format.md` owns `run.review_sessions`, `steps_substituted[].display` and the `auto: findings answered` answer.\n\n### What changed, by file\n\n- `skills/review/references/github-review.md`: the body opens on the event, holds no PR summary; every marker is an HTML comment ``; the draft file gains a `--- summary` section the post command never sends.\n- `skills/review/SKILL.md`: the draft file shape, the no-wait pointer to the gate, `queued` as a ship word, the new reply marker.\n- `skills/delivered-window/SKILL.md`: the `queued` item, the five no-wait conditions in \"The go-ahead gate\", the arming steps moved to `pr-watch.md` to stay under 500 lines.\n- `skills/delivered-window/references/pr-watch.md`: the GraphQL merge-queue read, the `queued` line, the new marker prefix in the three poll filters and the reply search, the arming steps.\n- `skills/project-lead/references/review-runner.md`: one review worktree per deliverable moved in place; \"Resume the reviewer\" with the Claude and Codex resume commands, the resume prompt and the `review_sessions` writes.\n- `skills/project-lead/references/substitution.md`: the run script, \"Where it runs\" with the terminal precedence list and the three pane commands, the Codex session id captured from stderr, `display` on the log entry.\n- `skills/project-lead/references/skeptical-review.md`: launch steps 3 to 5 and the retire list name the moved worktree and the resume prompt.\n- `skills/project-lead/references/record-format.md`: `run.review_sessions`, `steps_substituted[].display`, the `--- summary` section, the `queued` line, the two unseen escalation answers.\n- `skills/project-lead/scripts/crew-stats.py`: `auto: findings answered` leaves the escalation count and prints as `auto posts`; `-resume.md` and `-run.sh` are companion files.\n- `docs/design.md`: §15.108; the §13 stage 8 row; §15.107's last line.\n- `docs/tickets.md`: T76 closed; T77, the probe of the four unexercised changes.\n- `CLAUDE.md`, `README.md`: build state and the two user-visible sentences.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: 0.1.86.\n\n### Constraints that applied\n\nOne rule in one file: the no-wait rule lives in the gate section and `skills/review/SKILL.md` points at it; the resume rule lives in `review-runner.md` and `skeptical-review.md` and `substitution.md` point at it. Size targets: the window skill body is 495 lines after the arming steps moved out, and `CLAUDE.md` is 199. The version bump is in both manifests and equal. The README cites no design section. The effect rule and the pre-existing rule are unchanged, because note 5 says the pre-existing filter worked.\n\n### How this was verified\n\nThe project lead read the whole diff against the spec's six `Acceptance:` lines and the writing checklist. Every grep the spec names returns what it should: no `crew` inside a posted shape, the merge-queue read and the `queued` stop in the poll, the five conditions and `Beyond the findings: none` in the gate, the `$ITERM_SESSION_ID` and tmux commands with `current session` only on the line that forbids it. `crew-stats.py` exits 0 over the 29 real records (37 escalations, 0 auto posts) and over a seeded record with one `auto: findings answered` entry (1 escalation, 1 auto post). Facts the spec relies on were probed on the machine: `gh` 2.92.0 has no merge-queue field in `pr view --json`; `gh api graphql` returned `isInMergeQueue: true` for PR 8122 while it sat in the queue; `codex exec` 0.163.0 prints `session id:` on stderr and `codex exec resume <id> -` exists; an osascript split by the UUID in `ITERM_SESSION_ID` opened a pane beside the project lead. The spec went through three Codex spec-critic rounds, each applied, with one pushback recorded.\n\n### Known gaps\n\nThe reviewer resume, the `queued` line, the pane rule and the no-wait post have run in no probe. T77 runs each once on the fixture repo. The 30-line bound in the gate's diff test is a guess until then. A record from before this change, resumed on its PR, reports its own old `crew: ` replies once. A PR that leaves the merge queue after the `queued` line is not seen.\n\n<details>\n<summary>spec.md</summary>\n\n# Spec\n\n## Goal\n\nClose ticket T76 from the first real run of `/crew:review`, and record that run in `docs/design.md`. Change the review skill so it acts on the principal's six notes from that run.\n\nPaths are relative to the repo root. Line ranges anchor each requirement as the files read today.\n\n## Requirements\n\n### R1: What a review run posts (notes 1 and 5)\n\nOwner files: `skills/review/references/github-review.md` (comment shape :114-134, body shape :136-147, draft file :149-163, post command :206-242, resolve command :244-271) and `skills/delivered-window/SKILL.md` (reply marker :395-401).\n\n1. The body a review run posts carries no summary of the PR. It opens on the event sentence or the findings, not on a description of the PR. Today body item 1 (:140) is that summary, and the example JSON (:215) opens with one.\n2. No text posted to GitHub contains the word `crew`. This holds for the review body, an inline comment, a reply and a marker. Today the markers are `crew: skeptical-r<n> review` (:147, :215, :240), `crew: skeptical-r<n> <finding id>` (:128, :221) and `crew: <round-id> <item id>` (`skills/delivered-window/SKILL.md` :397-398).\n3. Each marker keeps its job under a new form. It is an HTML comment, so a reader on GitHub cannot see it. It does not contain `crew`. The prefix is fixed: `pr-review`. A body marker is ``. An inline comment marker is ``. A reply marker is ``. A search matches the prefix.\n4. Every reader of the old marker uses the new prefix. These are the re-review search (`skills/review/references/github-review.md` :239-241), the poll's three `startswith(\"crew: \")` filters (`skills/delivered-window/references/pr-watch.md` :43, :51, :55), the \"What the poll leaves out\" line (:116) and the marker text in `skills/project-lead/references/record-format.md` (:592). The marker search the resume uses for a reply also follows the new prefix.\n5. The assist-path line in the body (:146) names the commits that were pushed. It does not use the word `crew`.\n6. The PR summary stays available to the principal. The gate report (`skills/review/SKILL.md` :216-224) keeps its summary. The draft file `reviews/github-r<n>.md` opens with a `--- summary` section that holds the PR summary for the principal. The post command sends every other section and never the summary section. `skills/project-lead/references/record-format.md`'s `reviews/` row (:240) names this shape.\n7. Nothing else about a post changes. The event rule (:165-204), the pre-existing rule (:107-109), the inline anchors and the resolve replies stay as they are. Note 5 says the pre-existing rule worked, so this change does not touch it.\n\nAcceptance: In the PR diff, every posted shape in `skills/review/references/github-review.md` has no `crew` outside instruction prose, and the example body does not begin with a PR summary. `git diff` shows no change to the lines of \"The event rule\" or to the three `Pre-existing` lines.\n\n### R2: The reviewer session persists across rounds (note 3)\n\nOwner files: `skills/project-lead/references/review-runner.md` (worktree :16-61, launch :63-91, session id :312-323), `skills/project-lead/references/substitution.md` (Codex launch :43-53, check map :86-90) and `skills/project-lead/references/skeptical-review.md` (when the review runs :61-149, reply file :327).\n\n1. Round 1 of a deliverable launches as it does today.\n2. Every later skeptical round on the same deliverable resumes the reviewer session of the round before it when the record holds one. The Claude runner uses `claude -p --resume <id>`. A Codex replacement uses `codex exec resume <id> -`. The id comes from the record, never from `--last`.\n3. The Codex path records its session id. Verified: `codex exec` prints `session id: <uuid>` on stderr (codex-cli 0.163.0). The runner writes that id into `run.review_sessions` (item 4), never into `run.review_session_ids`. Today `substitution.md` :90 says a replacement writes no session id, so that row changes.\n4. `run.review_session_ids` stays what it is today, a list of Claude session id strings, so `spend.py` keeps pricing them. The record gains a new object `run.review_sessions`, keyed by round id (`skeptical-r<n>`). Each value is `{runner: \"claude\" | \"codex\", session_id, resumed_from: <round id> | null, fresh_reason: null | <string>}`. A round finds its predecessor's session there. `skills/project-lead/references/record-format.md` defines it in those words in the same PR. Codex ids go only in `review_sessions`. The `spend.py` and `crew-stats.py` readers of `run.review_session_ids` (:587, :658) keep parsing it.\n5. A resumed round's prompt carries four things: the new head, the delta `git diff <previous reviewed head>..<new head>`, the project lead's reply file from the round before (`reviews/skeptical-r<n>-reply.md`, which holds the pushback; when the previous round has no reply file because the previous report had no finding to dispose of, the prompt carries the previous report `reviews/skeptical-r<n>.md` in its place and says so), and a request for a verdict on the whole PR as it now stands in `review-output.md`'s shape. It also asks for the line that R4 names. It tells the reviewer not to re-read the whole diff unless the delta touches code the reviewer did not review.\n6. The pushback reaches the reviewer in that same resume. There is one runner call per round. A second call per round doubles the runner spend, and the note asks for carried context, not a dialogue. `skills/project-lead/references/review-runner.md` states this reason in one sentence.\n7. A resumed reviewer can inspect the new head from the working directory its session was created with, because a resumed session keeps that directory (Codex `-C`, the Claude runner's worktree). The IC chooses how: one worktree path per deliverable with the head checked out in place is the expected shape, and another is acceptable when it meets the rule. Review worktrees are removed at `ship`, not after each round. `review-runner.md` (:16-61) and the `review-worktrees/` lines of `record-format.md` (:21, :788-800) say so. Today they name `r<n>` per round and remove it when the review returns.\n8. When a resume fails, the round launches fresh as round 1 does, and the record notes the fallback. A resume fails when the session is gone, when the runner was upgraded, or when `resume` exits non-zero.\n9. R2 covers the skeptical review on both skills, `/crew:review` and `/crew:project-lead`, because both run `skeptical-review.md`. In-process critics are out of scope. The run record's decisions file, `~/.claude/crew/t76-review-skill-first-run-9e2c/decisions.md`, holds the reason under \"Which review rounds keep their reviewer open\"; the PR reads it and `docs/design.md` §15.108 states it (see R6). No repo file named `decisions.md` is created.\n\nAcceptance: In the PR diff, `skills/project-lead/references/review-runner.md` holds one resume rule with both launch forms, `substitution.md` no longer says a replacement writes no session id, and `skills/project-lead/references/record-format.md` defines a round-to-session map. `grep -n 'resume' skills/project-lead/references/*.md` shows no second copy of the rule outside the owner file, only pointers.\n\n### R3: The watch sees the merge queue (note 4)\n\nOwner files: `skills/delivered-window/references/pr-watch.md` (poll :27-76, merged branch :68-71, line text :101-109, loop :152-154, fallback poll :156-169) and `skills/delivered-window/SKILL.md` (merged item :53-57, ship word :479-486).\n\n1. The poll reads the merge-queue state once per cycle. Verified: `gh pr view --json` has no merge-queue field in gh 2.92.0. Verified: GraphQL has `isInMergeQueue` and `mergeQueueEntry { state position enqueuedAt }` on `PullRequest`, and a timeline item `AddedToMergeQueueEvent`. On PR 8122 the result was `isInMergeQueue: true`, PR state `OPEN`, entry state `MERGEABLE`, position 11. The poll reads the GraphQL fields `isInMergeQueue` or `mergeQueueEntry` (verified through `gh api graphql` on PR 8122). The IC builds the command.\n2. A PR in the merge queue produces one `queued` line. Its shape is the shape of the `merged` line (:104-105): the PR number as its id, a time, and no author. The watch treats it as the `merged` line. The loop stops (:153), and the fallback poll (:156-169) treats a repeated `queued` line as a notice already reported.\n3. On a `run.kind: review` run the `queued` line is the ship word, as `merged` is. On a goal run it is the same notice that `merged` is, and the ship word stays the principal's. `skills/delivered-window/SKILL.md` :53-57 and :484-486 say both.\n4. A PR removed from the queue after that, for example on a failed queue check, is a later event the watch does not cover. `docs/design.md` §15 names this as a limitation. The PR builds no re-arm.\n5. The `run.watch` row (`skills/project-lead/references/record-format.md` :593) and the fallback poll stay consistent with the new line. The `merged` text in the row (:593) names `queued` as well.\n\nAcceptance: In the PR diff, `skills/delivered-window/references/pr-watch.md` holds a `gh api graphql` read that names `isInMergeQueue` or `mergeQueueEntry`, one `queued` echo line, and a stop on it. `grep -n 'queued' skills/delivered-window/SKILL.md` returns the notice and ship-word sentences.\n\n### R4: Two no-wait cases at the gate (note 6)\n\nOwner files: `skills/delivered-window/SKILL.md` \"The go-ahead gate\" (:425-469), `skills/review/SKILL.md` (:207-248), `skills/project-lead/references/record-format.md` (escalations :600, :680-685; rounds :589), `skills/project-lead/scripts/crew-stats.py` (:572-588, :640-641).\n\n1. A skeptical round `n+1` on a review run posts without the gate when all five conditions hold. Otherwise it takes the gate.\n1. Round `n` posted at least one finding, under any event, and every finding it posted was an inline comment with a `path` and a `line` (`github-review.md` :114-134). A round whose findings include one body-only finding has no anchor for the diff test, so round `n+1` takes the gate. This covers note 6(a), an approval with non-blocking findings, and note 6(b), a `COMMENT` or `REQUEST_CHANGES` with `bug` or `incident` findings. The event rule (`github-review.md` :165-204) maps only `incident` to `REQUEST_CHANGES`, so \"withheld approval\" means any event other than `APPROVE`.\n2. The resumed reviewer (R2) comes back clean: its report lists no finding with `Pre-existing: no`. A finding the project lead would decline still counts, so a declined finding takes the gate. A `Pre-existing: yes` finding does not count, because it is not about the new head and the pre-existing rule already keeps it off the PR.\n3. Every commit in `<head n>..<head n+1>` is the author's, or a collaborator's, and none is crew's own push. On the assist path crew's push takes the gate, because the charter conditions the no-wait on what the author made.\n4. The delta `git diff <head n>..<head n+1>` is confined to the findings. A hunk qualifies when its old-side line range sits within 30 lines of the `line` of a round-`n` finding in that `path`, or when it sits in a test file for that path. A test file for a path is a file whose basename contains the path's basename without its extension and whose own basename or directory contains `test`. Every other hunk fails the test and the round takes the gate. File membership alone is not enough. This test is a bound, not an attribution: it rejects a change far from every finding, and condition 5 is what rejects an unrelated change near one. The rule is written so a reader can check it with that one command.\n5. The resumed reviewer's report carries the line `Beyond the findings: none`. The resume prompt of R2 asks for it, and tells the reviewer the line means every hunk in the delta answers one of round `n`'s findings. Any other value takes the gate. Conditions 4 and 5 together are the charter's \"no other significant change\": 4 is the mechanical bound, 5 is the reviewer's attribution of each hunk. A body-only finding in round `n` stays outside the rule on purpose: it has no anchor for condition 4, and the gate is the safe default. The charter permits the no-wait; it does not require it in every case.\n2. The post is the approval that round `n+1` would have drafted, with the same thread resolves. `Gate: off` is unchanged and still covers more.\n3. The record marks the post. The escalation entry is written with `answer` set to the string `auto: findings answered` for the auto case, in parallel to `\"Gate: off\"`. `crew-stats.py` matches that string. `draft_changed` is `null`. `rounds.<id>.go_ahead_at` is stamped at the post. `record-format.md`'s escalation rows (:680-685) say so.\n4. `crew-stats.py` leaves these entries out of the escalation count, as it leaves out `Gate: off` (:640-641). It reports the count of auto posts.\n5. A goal run (the project lead's own PR) is out of scope. Its skeptical rounds already take no gate.\n6. The gate section holds the rule once. `skills/review/SKILL.md` points to it.\n\nAcceptance: In the PR diff, `skills/delivered-window/SKILL.md` \"The go-ahead gate\" lists the five conditions with the line `Beyond the findings: none` and the diff test. Run `crew-stats.py` on a seeded record that holds one auto-post entry. The escalation count excludes it, and an auto-post count prints. Run it on `~/.claude/crew/` and every record still parses.\n\n### R5: The pane opens beside the project lead (note 2)\n\nOwner file: `skills/project-lead/references/substitution.md` (Codex launch :43-53). The display rule applies to a replacement only. The default Claude runner stays headless, and `review-runner.md`'s launch does not change for R5.\n\n1. When the replacement words ask for a visible pane, the runner opens it beside the project lead's own session when that session is a tmux pane or an iTerm2 session. When it is neither, the runner opens it in a named detached tmux session that the principal attaches to. In no case does it open in the focused session.\n2. On iTerm2 the pane splits the session identified by the UUID after the colon in `$ITERM_SESSION_ID`, never the focused one. The IC chooses the mechanism. An osascript probe on this machine verified that this target is reachable, so the IC can start there.\n3. The runner picks the target by one precedence list. Fi",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "README.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 10
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 10
+      },
+      {
+        "path": "skills/project-lead/references/review-runner.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/substitution.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 6
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 5
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [],
+    "github": null,
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 52,
+      "gather": 37,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

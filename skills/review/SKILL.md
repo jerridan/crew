@@ -156,10 +156,10 @@ git merge-base <new head> origin/<baseRefName>
 
 The first exits 0, and the second prints the deliverable's `base`. Otherwise
 the base is the new merge base that the second prints, and the round reviews
-the whole PR diff again. A round that launches fresh also takes that merge
-base, for every reason `review-runner.md`'s "Resume the reviewer" names. A
-fresh reviewer has no context from the earlier rounds, so it must read the
-whole PR. Write the base to the deliverable before the launch:
+the whole PR diff again. A round that is not resumed takes that merge base
+too, for every fresh-launch reason that `review-runner.md`'s "Resume the
+reviewer" names. A fresh reviewer has no context from the earlier rounds, so
+it must read the whole PR. Write the base to the deliverable before the launch:
 
 ```bash
 python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable d1 set base '"<new merge base>"'

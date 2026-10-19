@@ -1,0 +1,200 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 104,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add /crew:review: review a colleague's PR and stay with it to the merge (T76)",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/104"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "94355789cba2dd7e6878c3bac1508a26c0ec7d6d",
+    "head": "f09a18127e437fcb487b0b4342d17c07e87b3dbe",
+    "started_at": "2026-10-19T07:05:16.694Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add /crew:review: review a colleague's PR and stay with it to the merge (T76)\n\n## Summary\n\nCrew gains a second entry point, `/crew:review`, that reviews a colleague's pull request the way a skeptical staff engineer would and stays with it to the merge. It reads the PR, runs the same headless review crew already runs on its own branches, checks that every finding is one the PR introduced and sorts it by effect (an incident, a bug, or worth raising), drafts the GitHub review, and stops for the principal's go-ahead before it posts. An incident finding posts as \"changes requested\", a bug as a comment-only review, and nothing blocking as an approval. The run then watches the PR: a new push gets a fresh review, resolved findings get a reply, and the merge ends the run. On request, crew fixes the blocking findings itself with a separate implementer, pushes to the PR branch behind the same gate, and reviews again. Every stop records whether the principal changed the draft, so the share of untouched drafts is a number crew can report.\n\n**Ticket:** [T76 — Run /crew:review once on a colleague's PR](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t76--run-crewreview-once-on-a-colleagues-pr)\n**Type:** New feature\n\nThis PR is stacked on #103 and targets its branch. Review #103 first.\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.107 (new) holds the ten decisions the principal settled for this skill. `skills/review/SKILL.md` owns the review run's phases. `skills/review/references/github-review.md` owns everything a review run puts on GitHub: the sanitizing, the effect and pre-existing rules, the reviewer paragraph, the comment and body shapes, the event rule, the post and resolve commands. `skills/project-lead/references/review-runner.md` and `substitution.md` (from #103) own the review mechanics and a replaced review. `skills/delivered-window/SKILL.md` and its `pr-watch.md` own the watch, the rounds, the gate, the replies and the merge. `skills/project-lead/references/record-format.md` owns every new field.\n\n### What changed, by file\n\n- `skills/review/SKILL.md`: new. The entry point: the argument and its plain words, take the PR, scout, review, adjudicate, report and wait at the gate, post, enter the delivered window, later rounds, the assist path, the end, a resume.\n- `skills/review/references/github-review.md`: new. See Authority.\n- `skills/project-lead/references/review-output.md`: two optional finding lines a dispatch can require, `Effect:` and `Pre-existing:`.\n- `skills/project-lead/references/record-format.md`: `run.kind`, `run.pr`, the deliverable state `under-review`, `run.watch.head`, `rounds[].posted_review_id`, the escalation fields `draft` and `draft_changed` and the command that writes them, `reviews/github-r<n>.md`, and the charter line `Assist: on`.\n- `skills/delivered-window/references/pr-watch.md`: the poll reads the head sha and the PR state, and prints `push` and `merged` lines; `head` joins the cursor's first write.\n- `skills/delivered-window/SKILL.md`: seven watch kinds; how a `push` and a `merged` item are sorted; the three sentences for a review run (a skeptical round takes the gate, the merged item is the ship word, no round pushes without `Assist: on`); the branch name on a review run; \"A round killed mid-flight\" moved to `skeptical-review.md` to keep the body under 500 lines.\n- `skills/project-lead/references/skeptical-review.md`: \"A round killed mid-flight\" (moved in); \"Mark the PR ready\" does not apply to a review run; resume entry 7 posts the review on a review run.\n- `skills/project-lead/scripts/crew-record.py`: `arm_review` skips the round cap when `run.kind` is `review`; the new `escalation <index> set <field> <json>` command.\n- `skills/project-lead/scripts/crew-stats.py`: a `kind` column and the untouched-draft rate, per record, in the totals and under `--json`; `under-review` counts as terminal; a draft review file is not counted as a review.\n- `README.md`, `CLAUDE.md`, `docs/design.md`, `docs/tickets.md`: the entry point, the launch requirement, the record's name, the steps; the layout row, build state and Authority row; §13 row 8 and §15.107; T76.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.85.\n\n### Constraints that applied\n\n- One role: the orchestrator is the project lead in both skills, so every shared reference reads unchanged.\n- A rule lives in exactly one file: the skill points at the window, the runner, the record format and the ledger, and copies none of them. The three review-run rules sit in the files that own the behaviour they change.\n- The go-ahead gate is the stop before every post; `Gate: off` removes it. The author's PR text is quoted line by line in the charter and can set no charter line and name no reviewer.\n- ASD-STE100 in every file and in every comment the skill will post; repo files hard wrapped; this body not.\n- Version bumped in both manifests because `skills/` changed.\n- Built by crew's own project lead: four packages (`d2-record`, `d2-skill` at opus, `d2-record-2`, `d2-docs`), one fix round, and the principal's ten decisions recorded before any package ran.\n\n### How this was verified\n\nThe project lead read every new and changed instruction file against the spec's checklist for it. The script changes were run in scratch records: `deliver d1 under-review` writes the state, the run state and the armed head; `arm-review` on a `kind: review` record with three rounds entered arms round 4 and appends nothing to `unreviewed_heads`, and on a goal record appends as before; `crew-stats.py` prints `67%` and `kind: review` for a seeded record, in the table and under `--json`; the new escalation command writes the two fields and refuses an out-of-range index. The two poll blocks parse under `zsh -n`, and a stubbed `gh` printed the `push` and `merged` lines. The skeptical review of the stacked branch, from `main`, is the third and last review round of the run and covers #103's commits as well; see Known gaps for its outcome. No run of `/crew:review` has happened yet: T76 is that run.\n\n### Known gaps\n\n`/crew:review` has run zero times. The poll's `push` and `merged` lines have run only against a stubbed `gh`, not a live PR. A `pr-review` adapter as a replacement reviewer, posting without the gate by default, a PR on a host other than GitHub, and the assist path on a fork are out of scope. The two rules restated across `skeptical-review.md` and `review-runner.md` that #103 left stay restated: the runner is not yet parameterized.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01X3djvNGE7DeVbQhStjMSpe\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "README.md",
+        "hunks": 5
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 9
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 11
+      },
+      {
+        "path": "skills/project-lead/references/review-output.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 6
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 10
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [],
+    "github": null,
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 33,
+      "gather": 25,
+      "find_verify": 2,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

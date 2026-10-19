@@ -8,10 +8,8 @@ user-invocable: false
 
 This window opens at the hand-over, when `run_state` goes `delivered`.
 `simple-path.md`'s "The skeptical review" is its first round. Stay in this
-session until the principal says the work shipped. You are the one session
-that has read the code, so a question about the change before the merge
-comes to you, and so does every change to the same PR after it (design
-§15.92).
+session until the principal says the work shipped: a question about the
+change, and every later change to the PR, come to you (design §15.92).
 
 **Paths.** `<project-lead-dir>` is the `skills/project-lead` directory
 beside this skill's base directory, which the invocation names. A file this
@@ -52,9 +50,8 @@ returned to draft can fire `ready` again. **Your own flip is never
 reported**, because `skeptical-review.md`'s "Mark the PR ready" says how.
 
 **A `ready` item produces one sentence** in your next message to the
-principal, that the PR is ready for review, **and nothing else.** It opens no
-round and takes no action. "Mark the PR ready" stays the only place where
-crew marks the PR ready.
+principal, that the PR is ready for review, **and nothing else.** "Mark the
+PR ready" stays the only place where crew marks the PR ready.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
 each key holds. After every wake that reported something, and never before
@@ -88,14 +85,14 @@ Claude Code sends you one notice. Arm it again by the steps above, and reply
 it, `TaskStop` the monitor, or delete the cron job as "The fallback" says.
 Write one line to `decisions.md` that the principal stopped the watch. When
 the principal asks for it again, write one line that the principal started
-it again, then arm it. A stopped watch keeps no cache warm either.
+it again, then arm it.
 
 ### Keep the cache warm
 
-The prompt cache lives one hour. The first message after an idle hour
-rewrites your whole context, the run's largest (design §15.101). The
-monitor's expiry every 30 minutes is the cache read that resets the hour. A
-run with no monitor keeps a cron job instead.
+The prompt cache lives one hour, and the first message after an idle hour
+rewrites your whole context (design §15.101). The monitor's expiry every 30
+minutes is the cache read that resets it. A run with no monitor keeps a cron
+job instead.
 
 ### The fallback
 
@@ -107,8 +104,7 @@ your tool list nor `ToolSearch` offers it. With a PR and no `Monitor`, your
 first message to the principal in this window says that the watch runs on
 the 30-minute fallback.
 
-The job fires every 30 minutes, at most 3 minutes late, so every read lands
-inside the hour (design §15.103).
+The job fires every 30 minutes, at most 3 minutes late (design §15.103).
 
 **Arm it** when you would arm the monitor, and on the principal's first
 message after the date changes. Claude Code tells you when the date changes.
@@ -150,7 +146,7 @@ None of these is one of the four kinds of message below:
 
 ## Sort what reaches you
 
-Four kinds of message reach you here. Answer each where it arrived: a
+Five kinds of message reach you here. Answer each where it arrived: a
 message typed in your pane is answered in your pane, and a
 `<cross-session-message>` by `SendMessage` to its `from-name`
 (`autonomy-contract.md`, "Reach the principal"). A principal that sent the
@@ -383,8 +379,7 @@ In order:
     held items of this kind make, if any.
 
 **A round where every finding is declined** has no package, no push and no
-new head, so it earns no new review. It still opens a round, because
-`run.rounds` says where its reply goes.
+new head, so it earns no new review. It still opens a round.
 
 **Adjudicating findings from outside clears no reservation.** Only
 adjudicating the skeptical review's own report clears the `review_pending` it
@@ -478,6 +473,12 @@ one.
 
 `run_state` stays `delivered` throughout. An escalation raised in this window
 goes `delivered → blocked → delivered` (`record-format.md`).
+
+### A merge request
+
+Only the principal can tell you to merge the PR. Then run `gh pr merge
+<pr_url> --squash --delete-branch`, or the repo's own merge method, and write
+one line in `decisions.md`. A merge is not the ship word, so ask for it.
 
 ## The word that the work shipped
 

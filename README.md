@@ -10,9 +10,10 @@ the work, picks a model for each piece, dispatches implementers, checks each
 piece itself, integrates the work and hands it over as a PR. Only then
 is the whole diff reviewed. A separate session reads it against your goal and
 assumes it is wrong. What that session finds comes back as patch rounds on the
-same PR. When that review is done, the PR leaves draft. You merge it when you
-are ready. The project lead stays until you say its work shipped, so you can
-ask it about the change before you merge, or ask for a change to the PR after.
+same PR. When that review is done, the PR leaves draft. Merge it when you
+are ready, or tell the project lead to merge it. The project lead stays until
+you say its work shipped, so you can ask it about the change before the
+merge, or ask for a change to the PR after.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
 you what it fixed or declined and why, and waits for your go-ahead before it
@@ -204,7 +205,7 @@ The full path requires the variable.
       │                  │
       │ accepted         └──▶  patch rounds on the same PR,
       ▼                        up to three reviews in all
-   you merge it, and say when it shipped
+   you merge it, or tell the run to, and say when it shipped
 ```
 
 A package is dispatchable only with four things: its own acceptance
@@ -227,8 +228,8 @@ question with no precedent goes to a council, where each advocate argues an
 assigned position, so the project lead weighs arguments instead of counting
 votes. A question about what you want is never debated. It comes to you.
 
-The PR is the end of the work. Crew never merges. The project lead
-stays until you say the work shipped.
+The PR is the end of the work. Crew merges only when you tell it to. The
+project lead stays until you say the work shipped.
 
 ## Models
 

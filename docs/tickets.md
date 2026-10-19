@@ -3206,7 +3206,7 @@ Read first: design §15.106.
 
 ## T76 — Run /crew:review once on a colleague's PR
 
-Status: open
+Status: closed, run 2026-10-19
 Depends on: T75
 Stage: 7 (design §15.107)
 
@@ -3229,3 +3229,43 @@ the gate stop with `draft_changed` set.
 
 Read first: design §15.107; `skills/review/SKILL.md`;
 `skills/review/references/github-review.md`.
+
+## T77 — Probe the reviewer resume, the merge-queue line, the pane and the no-wait post
+
+Status: open
+Depends on: T76
+Stage: 7 (design §15.108)
+
+The changes from the first `/crew:review` run are built and have run in no
+probe. This ticket runs each of them once.
+
+Scope. Run `/crew:review` on one PR in the fixture repo
+`crew-fixture-string-kit`, with "use Codex for the review in a new iTerm2
+pane" at launch, from a project lead in an iTerm2 session that does not have
+focus. The PR carries one finding that the first round posts as an inline
+comment.
+
+Run it. Answer round 1's gate with `go`. Push a commit that answers the
+finding and changes nothing else. Then add the PR to a merge queue. The
+fixture repo needs a merge queue rule on its default branch first.
+
+Check:
+
+1. Round 1's Codex pane opens beside the project lead's own session, not in
+   the focused one, and its `run.steps_substituted` entry says
+   `display: iterm2-split`.
+2. Round 2 resumes round 1's Codex session: `run.review_sessions` holds
+   `skeptical-r2` with `resumed_from: "skeptical-r1"`, and its report
+   carries a `Beyond the findings:` line.
+3. Round 2 posts with no ask, and its escalation's answer is `auto: findings
+   answered`.
+4. No posted text contains the word `crew`, and the posted body holds no PR
+   summary.
+5. The watch prints a `queued` line when the PR enters the queue, and the run
+   closes on it.
+
+Done when: all five checks pass, and design §15 holds the probe's result.
+
+Read first: design §15.108; `review-runner.md` "Resume the reviewer";
+`substitution.md` "Where it runs"; `crew:delivered-window`'s "The go-ahead
+gate"; `pr-watch.md`'s poll.

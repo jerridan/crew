@@ -72,7 +72,9 @@ a reply on the PR. One probe on the fixture repo ran its four checks
 PR are unexercised.
 
 `/crew:review` is built. It reviews a colleague's PR and reuses the window and
-the review runner. No run has exercised it (T76).
+the review runner. One run took a real PR to the merge queue (§15.108). The
+changes from that run are unexercised: the reviewer resume, the merge-queue
+line, the pane beside the project lead and the no-wait post (T77).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

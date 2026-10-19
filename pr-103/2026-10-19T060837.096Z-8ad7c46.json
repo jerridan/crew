@@ -1,0 +1,217 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 103,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Split the review mechanics and the replacement rule into their own files (T75)",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/103"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "df3316c7b1d1e7b13dbed8f1a4524b4155997ec6",
+    "head": "8ad7c462f143e99ad01d846388bd70fe2f1a2dc8",
+    "started_at": "2026-10-19T06:08:37.096Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Split the review mechanics and the replacement rule into their own files (T75)\n\n## Summary\n\nTwo new reference files now hold text that used to sit inside the project lead's own lifecycle: the mechanics of launching a headless review (the detached worktree, the instructions file, the runner command, the four result checks and the session id), and the rule for a review step the principal replaced with another reviewer. The next PR adds a second skill that reviews a colleague's PR, and it needs both without the project lead's schedule, resume list and ready step around them. No rule changed. Every pointer follows the move, and the project lead's skill file is 141 lines shorter.\n\n**Ticket:** [T75 — Split the review mechanics and the replacement rule out of their lifecycles](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t75--split-the-review-mechanics-and-the-replacement-rule-out-of-their-lifecycles)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.106 (new), §15.94d, §15.98b. `skills/project-lead/references/skeptical-review.md` keeps the stance, the inputs, the schedule, the resume list, \"Mark the PR ready\", the kill table and the verdict lines. `skills/project-lead/references/review-runner.md` now owns the mechanics. `skills/project-lead/references/substitution.md` now owns a replaced review step. `skills/project-lead/SKILL.md` keeps the five-source table in \"Take the goal\" and a pointer heading.\n\n### What changed, by file\n\n- `skills/project-lead/references/review-runner.md`: new. Holds, moved word for word from `skeptical-review.md`, the sections \"Never review in the run's own checkout\", \"The default command\", \"The permissions the review needs\", \"Prepare the worktree before you launch\", \"Reviewer instructions\", \"Check the review before you read it\" and \"Record the review's session id\", plus an opening paragraph that says what the caller supplies.\n- `skills/project-lead/references/substitution.md`: new. Holds, moved word for word from `SKILL.md`, the section \"A step the principal replaced\" with its five subsections and the two harness limits.\n- `skills/project-lead/references/skeptical-review.md`: loses the seven sections above; its opening paragraph and its remaining sections point at `review-runner.md`.\n- `skills/project-lead/SKILL.md`: loses the replacement section and keeps a three-line pointer under the same heading; its \"Where the rules live\" table gains two rows.\n- `skills/project-lead/references/record-format.md`, `simple-path.md`, `review-output.md`, `band-rubric.md`, `autonomy-contract.md`, `skills/project-lead/scripts/crew-stats.py`, `skills/project-lead/scripts/spend.py`: pointers follow the move.\n- `CLAUDE.md`: the Authority list gains the two files; the build state counts twelve references.\n- `docs/design.md`: finding 106. `docs/tickets.md`: T75, closed in this PR.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.84.\n\n### Constraints that applied\n\n- A rule lives in exactly one file: each moved block left a one-sentence pointer, never a copy. Checked with `git grep` for the seven headings and the replacement heading.\n- No behaviour change: `git diff --color-moved=dimmed-zebra main...HEAD` over the four files shows every section as a moved block; the only plain additions and removals are file names, section pointers, the two file headers and the two table rows.\n- The version bumps in both manifests because `skills/` changed. The two values are equal.\n- ASD-STE100 prose and hard wrap in repo files; this body is not wrapped.\n- Written by crew's own project lead, with one `crew:ic-instructions` package and one fix round for four pointers outside the first file set.\n\n### How this was verified\n\nThe project lead read the color-moved diff filtered to plain additions and removals (78 lines, all pointers or headers), ran both greps, counted `SKILL.md` at 354 lines against 495 on `main`, confirmed the seven headings exist only in `review-runner.md` and the five subsections only in `substitution.md`, and read finding 106 and T75. There is no test suite. The skeptical review of the branch runs after this PR opens, as on every crew run.\n\n### Known gaps\n\nThe move has run in no probe: the first run of `/crew:project-lead` after this merges is the first time a skeptical review reads its instructions from `review-runner.md`. History lines in `docs/design.md` and `docs/tickets.md` that name the old location of \"The default command\" are left as history.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01X3djvNGE7DeVbQhStjMSpe\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/band-rubric.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/project-lead/references/review-output.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/review-runner.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/substitution.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/spend.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5567538985,
+      "review_url": "https://github.com/jerridan/crew/pull/103#pullrequestreview-5567538985",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 117915589850
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 54,
+      "gather": 37,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

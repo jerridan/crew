@@ -21,7 +21,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md` | what a review run puts on GitHub: the sanitizing, the effect rule, the shapes and the post command | the project lead, in a review run |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and the steps the principal replaced over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |

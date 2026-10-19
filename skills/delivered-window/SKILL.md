@@ -68,26 +68,16 @@ your report to the principal lands, write the whole object with
 **Arm the monitor on every entry into this window**: at the hand-over, on a
 resume, and on every return from `blocked` to `delivered`. Do not arm it when
 the newer of the watch lines in `decisions.md` says the principal stopped
-it. A keep-alive line from an older run counts as a watch line.
-
-1. Stop the monitor you armed before, with `TaskStop` and the task id its
-   `Monitor` call returned. **One monitor at a time**: a second one doubles
-   the wakes. A resumed process holds no monitor from the old one.
-2. When `run.watch` is absent, write it first, as `pr-watch.md`'s "The first
-   write's cursor" says.
-3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
-   and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
-   watch.draft true`.
-4. Fill the monitor command in `pr-watch.md` from `run.watch`, and call
-   `Monitor` with it and `timeout_ms: 1800000`, so one cache read lands inside
-   the one-hour cache. Pass `persistent: false` when the tool offers that key.
+it. A keep-alive line from an older run counts as a watch line. Arm it by
+`pr-watch.md`'s "Arm the monitor".
 
 **The expiry notice re-arms it.** At 30 minutes the monitor ends, and
-Claude Code sends you one notice. Arm it again by the steps above, and reply
+Claude Code sends you one notice. Arm it again by the same steps, and reply
 "ok". That wake is also the cache read that keeps your context warm.
 
 **The watch stops at the ship word, and when the principal asks.** To stop
-it, `TaskStop` the monitor, or delete the cron job as "The fallback" says.
+it, `TaskStop` the monitor, or delete the cron job as `pr-watch.md`'s "Arm
+the keep-alive job" step 1 says.
 Write one line to `decisions.md` that the principal stopped the watch. When
 the principal asks for it again, write one line that the principal started
 it again, then arm it.
@@ -113,28 +103,8 @@ The job fires every 30 minutes, at most 3 minutes late (design §15.103).
 
 **Arm it** when you would arm the monitor, and on the principal's first
 message after the date changes. Claude Code tells you when the date changes.
-The stop line in `decisions.md` holds here too.
-
-1. Call `CronList`. It lists the jobs this process holds, and a job ends
-   with the process that made it. Delete each job whose prompt starts
-   "Crew keep-alive" with `CronDelete`.
-2. Call `CronCreate` with `recurring: true`, the cron `13,43 * * * *`, and
-   one of these prompts. With a `pr_url`:
-
-   ```
-   Crew keep-alive with a PR watch. Run the fallback poll in pr-watch.md, in one Bash call, and sort what it prints.
-   ```
-
-   With no `pr_url`:
-
-   ```
-   Crew keep-alive. Reply with the single word ok. Run no tool.
-   ```
-
-The job has no end date. It fires until the run ships, until the principal
-stops it, or until Claude Code expires it 7 days after you armed it. The
-re-arm on a new date restarts those 7 days. **One job at a time** is what
-step 1 is for: a second job would double the reads.
+The stop line in `decisions.md` holds here too. Arm it by `pr-watch.md`'s
+"Arm the keep-alive job".
 
 ### What wakes you
 

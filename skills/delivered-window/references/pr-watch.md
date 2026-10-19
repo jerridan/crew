@@ -1,7 +1,7 @@
 # PR watch commands
 
-The exact command lines for `SKILL.md`'s "Watch the PR" and "Send the reply
-file". That file owns when each one runs.
+The exact command lines and arming steps for `SKILL.md`'s "Watch the PR" and
+"Send the reply file". That file owns when each one runs.
 
 Fill `<owner>`, `<repo>` and `<n>` from the deliverable's `pr_url`, which is
 `https://github.com/<owner>/<repo>/pull/<n>`. Fill `<since>`, `<seen ids>`,
@@ -162,6 +162,20 @@ comment already on the PR in `seen_ids`:
 gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'
 ```
 
+## Arm the monitor
+
+1. Stop the monitor you armed before, with `TaskStop` and the task id its
+   `Monitor` call returned. **One monitor at a time**: a second one doubles
+   the wakes. A resumed process holds no monitor from the old one.
+2. When `run.watch` is absent, write it first, as "The first write's cursor"
+   says.
+3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
+   and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
+   watch.draft true`.
+4. Fill "The monitor command" below from `run.watch`, and call
+   `Monitor` with it and `timeout_ms: 1800000`, so one cache read lands inside
+   the one-hour cache. Pass `persistent: false` when the tool offers that key.
+
 ## The monitor command
 
 The poll block, then this loop. Pass the whole text as the `Monitor`
@@ -170,6 +184,29 @@ command.
 ```bash
 while [ -z "$merged" ]; do poll; sleep 60; done
 ```
+
+## Arm the keep-alive job
+
+1. Call `CronList`. It lists the jobs this process holds, and a job ends
+   with the process that made it. Delete each job whose prompt starts
+   "Crew keep-alive" with `CronDelete`.
+2. Call `CronCreate` with `recurring: true`, the cron `13,43 * * * *`, and
+   one of these prompts. With a `pr_url`:
+
+   ```
+   Crew keep-alive with a PR watch. Run the fallback poll in pr-watch.md, in one Bash call, and sort what it prints.
+   ```
+
+   With no `pr_url`:
+
+   ```
+   Crew keep-alive. Reply with the single word ok. Run no tool.
+   ```
+
+The job has no end date. It fires until the run ships, until the principal
+stops it, or until Claude Code expires it 7 days after you armed it. The
+re-arm on a new date restarts those 7 days. **One job at a time** is what
+step 1 is for: a second job would double the reads.
 
 ## The fallback poll
 

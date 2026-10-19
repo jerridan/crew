@@ -118,6 +118,8 @@ RETIRED_KINDS = {"package review", "deliverable review"}
 # below.
 COMPANION_SUFFIXES = ("-instructions.md", "-reply.md", "-result.json", "-result.txt", "-result.exit", "-result.stderr")
 ATTEMPT = re.compile(r"-attempt\d+\.[A-Za-z0-9]+$")
+# A review run's draft GitHub review is a draft, not a review (`record-format.md`).
+DRAFT_REVIEW = re.compile(r"^github-r\d+\.md$")
 
 # Each review names its own two verdict strings. The first of each pair
 # accepts the artifact and the second sends it back for another round
@@ -366,7 +368,7 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         # the project lead's adjudication (`record-format.md`). Each is an
         # input to or an output of the review, not a review, and counting them
         # would inflate the "other" row several times per round.
-        if name.endswith(COMPANION_SUFFIXES) or ATTEMPT.search(name):
+        if name.endswith(COMPANION_SUFFIXES) or ATTEMPT.search(name) or DRAFT_REVIEW.match(name):
             continue
         for kind, pattern in REVIEW_KINDS:
             found = pattern.search(name)

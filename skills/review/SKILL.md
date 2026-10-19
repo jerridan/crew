@@ -218,7 +218,7 @@ body, then one block per inline comment with `path`, `line`, `side` and the
 text, in `github-review.md`'s shapes.
 
 **A later round can post with no wait.** `crew:delivered-window`'s "The
-go-ahead gate" holds the five conditions. When they hold, send no message and
+go-ahead gate" holds the six conditions. When they hold, send no message and
 no ask. Write the entry as below, with the answer `"auto: findings
 answered"` and `draft_changed` `null`, then go to "Post the review".
 

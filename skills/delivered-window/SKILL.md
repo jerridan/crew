@@ -408,7 +408,7 @@ nothing and post nothing on a gated round until the principal answers. A push
 carries the whole branch, so no round pushes while one waits.
 
 **Two kinds of skeptical round post with no wait.** On a `run.kind: review`
-run, skeptical round `n+1` posts its draft with no ask when all five of these
+run, skeptical round `n+1` posts its draft with no ask when all six of these
 hold. Otherwise it takes the gate. `<head n>` is the `Reviewed:` sha of
 `reviews/skeptical-r<n>.md`.
 
@@ -429,6 +429,9 @@ hold. Otherwise it takes the gate. `<head n>` is the `Reviewed:` sha of
 5. Round `n+1`'s report carries the line `Beyond the findings: none`: every
    hunk of that delta answers one of round `n`'s findings. Any other value
    takes the gate.
+6. Every open round-`n` finding is resolved at `<head n+1>`: its span text
+   is gone, as `/crew:review`'s "Later rounds" checks it. An open finding
+   whose span remains takes the gate.
 
 The post is the draft round `n+1` wrote, with its thread resolves. Record
 its escalation as `/crew:review`'s "Report and wait at the gate" says, write

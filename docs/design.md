@@ -7988,11 +7988,12 @@ Deliberately different:
         approved with suggestions or nits and the author took them, or it
         withheld approval over blocking findings and the author fixed them.
         `crew:delivered-window`'s "The go-ahead gate" now posts round `n+1`
-        with no ask when five conditions hold: every round-`n` finding was
+        with no ask when six conditions hold: every round-`n` finding was
         inline, the resumed review lists no finding that is not
         pre-existing, no push of the run's own is in the range, every hunk of
-        the delta sits within 30 lines of a finding or in its test file, and
-        the review says `Beyond the findings: none`. The entry's answer is
+        the delta sits within 30 lines of a finding or in its test file, the
+        review says `Beyond the findings: none`, and the span text of every
+        open round-`n` finding is gone at the new head. The entry's answer is
         `auto: findings answered`, and `crew-stats.py` counts it as an auto
         post, not an escalation. Limits: a body-only finding keeps the gate,
         a goal run is out of scope, and the 30-line bound is a guess no run

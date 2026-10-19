@@ -15,6 +15,7 @@ usage:
   crew-record.py <record-dir> run set <dotted.field> <json>
   crew-record.py <record-dir> escalation add <trigger> <question>
   crew-record.py <record-dir> escalation answer <index> <answer>
+  crew-record.py <record-dir> escalation <index> set <field> <json>
   crew-record.py <record-dir> integrate <package-id> [--review-head <sha>] [--published]
   crew-record.py <record-dir> deliver <deliverable-id> <deliverable-state> [--pr-url <url>] [--review-head <sha>]
   crew-record.py <record-dir> arm-review --head <sha>
@@ -51,7 +52,10 @@ replaces a `null` level with an object. A level that holds a list, a string or
 a number exits with a message, because no path runs through one.
 `escalation add` appends one ask and stamps `asked_at`, so a batch is one
 call per question and no earlier ask is lost; it prints the new entry's
-index, which `escalation answer` takes.
+index, which `escalation answer` takes. `escalation <index> set` writes one
+field on that entry and leaves the rest, as `deliverable <id> set` does. An
+index that is not an integer, or is out of range, exits with a message and
+writes nothing.
 `record-format.md` owns every field name and every transition; this script
 checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 """
@@ -258,6 +262,14 @@ def main(argv: list[str]) -> None:
             if index < 0 or index >= len(asks):
                 sys.exit(f"no escalation at index {index}")
             asks[index]["answer"] = arg(rest, 2)
+        elif arg(rest, 1) == "set":
+            try:
+                index = int(rest[0])
+            except ValueError:
+                sys.exit(f"escalation index is not an integer: {rest[0]}")
+            if index < 0 or index >= len(asks):
+                sys.exit(f"no escalation at index {index}")
+            asks[index][arg(rest, 2)] = json.loads(arg(rest, 3))
         else:
             usage()
     elif kind == "integrate":

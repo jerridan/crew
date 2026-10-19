@@ -73,7 +73,9 @@ it. A keep-alive line from an older run counts as a watch line. Arm it by
 
 **The expiry notice re-arms it.** At 30 minutes the monitor ends, and
 Claude Code sends you one notice. Arm it again by the same steps, and reply
-"ok". That wake is also the cache read that keeps your context warm.
+"ok". That wake is also the cache read that keeps your context warm. The
+cache lives one hour, and the first message after an idle hour rewrites your
+whole context (design §15.101).
 
 **The watch stops at the ship word, and when the principal asks.** To stop
 it, `TaskStop` the monitor, or delete the cron job as `pr-watch.md`'s "Arm
@@ -81,13 +83,6 @@ the keep-alive job" step 1 says.
 Write one line to `decisions.md` that the principal stopped the watch. When
 the principal asks for it again, write one line that the principal started
 it again, then arm it.
-
-### Keep the cache warm
-
-The prompt cache lives one hour, and the first message after an idle hour
-rewrites your whole context (design §15.101). The monitor's expiry every 30
-minutes is the cache read that resets it. A run with no monitor keeps a cron
-job instead.
 
 ### The fallback
 
@@ -411,6 +406,34 @@ on a colleague's PR under the principal's name.
 group all the way through" and "Push once", in both procedures above. Push
 nothing and post nothing on a gated round until the principal answers. A push
 carries the whole branch, so no round pushes while one waits.
+
+**Two kinds of skeptical round post with no wait.** On a `run.kind: review`
+run, skeptical round `n+1` posts its draft with no ask when all five of these
+hold. Otherwise it takes the gate. `<head n>` is the `Reviewed:` sha of
+`reviews/skeptical-r<n>.md`.
+
+1. Round `n` posted at least one finding, under any event, and each one was
+   an inline comment: `reviews/github-r<n>.md` holds a `--- comment` block
+   and no finding in its body. A body-only finding has no `line` for test 4.
+2. Round `n+1`'s report lists no finding marked `Pre-existing: no`. A finding
+   you would decline still counts.
+3. No package of this run has a `pushed_at` later than round `n`'s
+   `replied_at`. A push of yours on the assist path takes the gate.
+4. Every hunk of `git diff -U0 <head n>..<head n+1>` stays near the findings.
+   A hunk qualifies when its old-side range lies within 30 lines of the
+   `line` of a round-`n` comment on the same `path`, or when it is in a test
+   file for that `path`. A test file for a path has the path's basename,
+   without its extension, in its own basename, and `test` in its basename or
+   its directory. Every other hunk fails. This test bounds the change, and
+   test 5 attributes it.
+5. Round `n+1`'s report carries the line `Beyond the findings: none`: every
+   hunk of that delta answers one of round `n`'s findings. Any other value
+   takes the gate.
+
+The post is the draft round `n+1` wrote, with its thread resolves. Record
+its escalation as `/crew:review`'s "Report and wait at the gate" says, write
+`go_ahead_at` at the post, and name the post in your next message to the
+principal. `Gate: off` still covers every round.
 
 **A loop breaker holds, like the review cap.** A `pr-comments` or `ci` round
 that takes no gate takes it when `run.rounds` already holds three rounds of

@@ -213,7 +213,12 @@ Write the draft review to `reviews/github-r<n>.md` first: the summary, the
 body, then one block per inline comment with `path`, `line`, `side` and the
 text, in `github-review.md`'s shapes.
 
-Then send the principal one message:
+**A later round can post with no wait.** `crew:delivered-window`'s "The
+go-ahead gate" holds the five conditions. When they hold, send no message and
+no ask. Write the entry as below, with the answer `"auto: findings
+answered"` and `draft_changed` `null`, then go to "Post the review".
+
+Otherwise, send the principal one message:
 
 - what the PR does, in two to five sentences;
 - the verdict, and the event it maps to;

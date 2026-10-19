@@ -42,25 +42,107 @@ review writes the same names the rest of the run already looks for
 
 ## Running it
 
-The runner is a separate program, so the prompt goes in on stdin and the
-output comes back on stdout:
+The runner is a separate program. The prompt goes in on stdin, and the output
+comes back on stdout. Write this script to
+`<record-dir>/reviews/<prefix>-r<n>-run.sh`, with `<dir>` set to `run.repo`
+for a spec review and to the review worktree `review-runner.md` names for a
+skeptical review:
 
 ```
-codex exec --sandbox read-only -C <run.repo, or the review worktree> - \
-  < <record-dir>/reviews/<prefix>-r<n>-instructions.md \
-  > <record-dir>/reviews/<prefix>-r<n>-result.txt; \
+cd <dir> && {
+  codex exec --sandbox read-only -C <dir> - \
+    < <record-dir>/reviews/<prefix>-r<n>-instructions.md \
+    2>&1 > <record-dir>/reviews/<prefix>-r<n>-result.txt
   echo $? > <record-dir>/reviews/<prefix>-r<n>-result.exit
+} | tee <record-dir>/reviews/<prefix>-r<n>-result.stderr
 ```
 
-**The exit file goes in the same shell line as the command.** `$?` holds the
+`2>&1 >` sends the runner's progress to `tee` and its output to the file.
+`tee` shows the progress in a pane and keeps it in `-result.stderr`, where
+the runner prints its session id.
+
+**The exit file goes in the same script as the command.** `$?` holds the
 runner's status only until the next command runs, and a status you keep in
 your own context is lost with the session.
 
-Two rules hold whatever the runner is. **Run it from a git repository** —
-`run.repo` for a spec review, and the detached worktree `review-runner.md`
-cuts for a skeptical review. And **never put the instructions inside a
-double-quoted shell string**: they are markdown, and one backtick in them ends
-the command.
+Two rules hold whatever the runner is. **Run it from a git repository**:
+`<dir>` above is one. And **never put the instructions inside a double-quoted
+shell string**: they are markdown, and one backtick in them ends the command.
+
+## Where it runs
+
+**Run the script headless unless the replacement words ask for a visible
+pane**, such as "run Codex in a new iTerm2 pane". When they ask for one, take
+the first rule that holds:
+
+1. The words name a terminal, and its variable is set: `$TMUX` for tmux,
+   `$ITERM_SESSION_ID` for iTerm2. Split the project lead's own pane there.
+2. `$TMUX` is set: split the project lead's own tmux pane.
+3. `$ITERM_SESSION_ID` is set: split the project lead's own iTerm2 session.
+4. `tmux` is installed: open a window in the detached tmux session
+   `crew-review`.
+5. Otherwise, headless.
+
+**Never split the current session or the focused tab.** The principal can
+be in another window, and a split there lands in the principal's own work.
+Each command below names the project lead's own pane or session.
+
+`tmux-split`, from the pane id tmux gives the project lead's shell:
+
+```
+tmux split-window -h -t "$TMUX_PANE" "sh <run script>"
+```
+
+`iterm2-split`, from the UUID after the colon in `$ITERM_SESSION_ID`:
+
+```
+osascript - "${ITERM_SESSION_ID#*:}" "sh <run script>" <<'OSA'
+on run argv
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          if unique id of s is item 1 of argv then
+            tell s to split vertically with default profile command (item 2 of argv)
+            return
+          end if
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  error "no iTerm2 session " & (item 1 of argv)
+end run
+OSA
+```
+
+`tmux-session`, one window per round. Tell the principal to run `tmux attach
+-t crew-review`:
+
+```
+if tmux has-session -t crew-review 2>/dev/null; then
+  tmux new-window -t crew-review -n <prefix>-r<n> "sh <run script>"
+else
+  tmux new-session -d -s crew-review -n <prefix>-r<n> "sh <run script>"
+fi
+```
+
+`headless`:
+
+```
+sh <run script> > /dev/null
+```
+
+**A pane runs apart from your session.** Wait until `-result.exit` exists
+before you read the output:
+
+```
+until [ -s <record-dir>/reviews/<prefix>-r<n>-result.exit ]; do sleep 15; done
+```
+
+A pane command that fails falls to the next rule in the list. Record the
+display that ran as the `display` of the invocation's `run.steps_substituted`
+entry: `tmux-split`, `iterm2-split`, `tmux-session` or `headless`. This rule
+is for a replacement alone. The default Claude runner stays headless.
 
 **`-result.txt` and `-result.exit` sit where `-result.json` would.** A
 skeptical review the Claude runner ran saves its own JSON output; a
@@ -114,28 +196,26 @@ run changes.
 
 **Log every invocation, retries included.** One entry in
 `run.steps_substituted` per run of the replacement: the step, the round, the
-principal's own words for it, the time, and a `usage` object holding what the
-runner reported. `record-format.md` owns the field.
+principal's own words for it, the time, a `usage` object holding what the
+runner reported, and the `display` that ran. `record-format.md` owns the field.
 
 ## One worked example
 
 The principal types "use Codex for the spec review" at launch, and "Take the
 goal" writes that to `run.substitutions_requested`. At `SKILL.md`'s "Have
 the spec reviewed" you assemble the instructions, then run Codex in place of
-`crew:spec-critic`:
+`crew:spec-critic`. Write `reviews/spec-critic-r1-run.sh` with `<dir>` set to
+`run.repo`. The words ask for no pane, so run it headless:
 
 ```
-codex exec --sandbox read-only -C <run.repo> - \
-  < <record-dir>/reviews/spec-critic-r1-instructions.md \
-  > <record-dir>/reviews/spec-critic-r1-result.txt; \
-  echo $? > <record-dir>/reviews/spec-critic-r1-result.exit
+sh <record-dir>/reviews/spec-critic-r1-run.sh > /dev/null
 ```
 
 Write the report to `reviews/spec-critic-r1.md`, and append the entry:
 
 ```
 {"step": "spec-critic", "round": 1, "replacement": "use Codex for the spec review",
- "at": "2026-09-16T10:04:00Z", "usage": {"tokens": 41233}}
+ "at": "2026-09-16T10:04:00Z", "usage": {"tokens": 41233}, "display": "headless"}
 ```
 
 **Two harness limits.** The `Skill` tool is auto-rejected under `claude -p`

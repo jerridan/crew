@@ -193,8 +193,8 @@ naming convention. Do not mix their contents.
   alone is not enough, because a critic whose write was denied leaves no
   report at all, only its reservation file.
   Five files per skeptical review round under the default runner, always,
-  plus a conditional sixth; four under a replacement runner, always, plus the
-  same conditional sixth. All are named by the round `<n>` and none by a
+  and six under a replacement runner, always. Either runner adds the
+  conditional reply file. All are named by the round `<n>` and none by a
   deliverable id, because the review is per branch head.
 
   **The default runner writes five:** `reviews/skeptical-r<n>.md`, the
@@ -215,18 +215,23 @@ naming convention. Do not mix their contents.
   `skeptical-r<n>-result-attempt<k>.exit`, `<k>` counting up from the highest
   already there, so the evidence of a failed attempt survives.
 
-  **A review a replacement ran writes four, with no `.stderr`:**
+  **A review a replacement ran writes six:**
   `reviews/skeptical-r<n>.md`, the same report; `reviews/skeptical-r<n>-instructions.md`,
-  the text it read on stdin; `reviews/skeptical-r<n>-result.txt` in place of
-  the `.json`, holding the runner's own output; and
-  `reviews/skeptical-r<n>-result.exit`, the same command's own exit status.
-  These four retire under the same rule, to `skeptical-r<n>-attempt<k>.md`,
+  the text it read on stdin; `reviews/skeptical-r<n>-run.sh`, the script
+  that runs it; `reviews/skeptical-r<n>-result.txt` in place of the `.json`,
+  holding the runner's own output; `reviews/skeptical-r<n>-result.stderr`,
+  the runner's progress and its session id; and
+  `reviews/skeptical-r<n>-result.exit`, the script's record of the runner's
+  exit status. All but the script retire under the same rule, to
+  `skeptical-r<n>-attempt<k>.md`,
   `skeptical-r<n>-instructions-attempt<k>.md`,
-  `skeptical-r<n>-result-attempt<k>.txt` and
-  `skeptical-r<n>-result-attempt<k>.exit`. A `.txt` with no `.exit` beside it
-  is an attempt whose shell never finished (`substitution.md`).
+  `skeptical-r<n>-result-attempt<k>.txt`,
+  `skeptical-r<n>-result-attempt<k>.stderr` and
+  `skeptical-r<n>-result-attempt<k>.exit`. A retry writes the script again.
+  A `.txt` with no `.exit` beside it is an attempt whose shell never finished
+  (`substitution.md`).
 
-  **Either runner's round carries the same conditional sixth file**, when the
+  **Either runner's round carries the same conditional reply file**, when the
   report holds at least one finding to dispose of: `reviews/skeptical-r<n>-reply.md`,
   the project lead's adjudication of that report, one line per item it
   adjudicated — a finding, here, since the skeptical review reports only
@@ -601,7 +606,7 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`, or for a split-pane teammate from the `agentName` in its transcript; `null` with `agent_id` also `null` means the project lead's own session compacted; `null` with an `agent_id` is an unnamed subagent. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
 | `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step the light path let the run skip. `step` is `spec-critic`, and nothing else: a `spec-critic` entry leaves both `package` and `deliverable` `null`, because the run writes no spec and the skip belongs to the whole run. A record written before T58 or T59 can also carry a `plan-gate` or a `deliverable-review` entry, from the two steps those tickets retired (design §15.94d). Read one as history, and write neither on a new skip. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the path and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What the light path skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). |
-| `steps_substituted` | a list of `{step, round, replacement, at, usage}`, **one entry per invocation of a replacement**, a retry included (`substitution.md`). `step` is `spec-critic` or `skeptical-review`, and nothing else: no other step takes a replacement. `round` is the review round this invocation ran at, the same `<n>` as its report file. `replacement` is the principal's own words for what ran, such as `"use Codex for the spec review"` — crew holds no list of runners to name it from. `at` is an ISO-8601 UTC timestamp you write yourself, because `run set` stamps nothing. `usage` is an object with two optional keys, `tokens` (an integer) and `usd` (a number), holding whatever the runner reported; `null` when it reported neither. `crew-stats.py` prices `usd` and nothing else, so an entry carrying only `tokens` prints that count in its own `tokens` column, with `usd` reported as `unmeasured`. **A substituted step is not a skipped step.** The step ran, and its report sits at the step's own path under `reviews/`, so `steps_skipped` gets no entry for it. Absent until the first invocation. Write it with `run set steps_substituted <json>`, the whole list each time. |
+| `steps_substituted` | a list of `{step, round, replacement, at, usage, display}`, **one entry per invocation of a replacement**, a retry included (`substitution.md`). `step` is `spec-critic` or `skeptical-review`, and nothing else: no other step takes a replacement. `round` is the review round this invocation ran at, the same `<n>` as its report file. `replacement` is the principal's own words for what ran, such as `"use Codex for the spec review"` — crew holds no list of runners to name it from. `at` is an ISO-8601 UTC timestamp you write yourself, because `run set` stamps nothing. `display` is where the runner ran, one of `tmux-split`, `iterm2-split`, `tmux-session` or `headless` (`substitution.md`'s "Where it runs"); an entry written before T76 has none. `usage` is an object with two optional keys, `tokens` (an integer) and `usd` (a number), holding whatever the runner reported; `null` when it reported neither. `crew-stats.py` prices `usd` and nothing else, so an entry carrying only `tokens` prints that count in its own `tokens` column, with `usd` reported as `unmeasured`. **A substituted step is not a skipped step.** The step ran, and its report sits at the step's own path under `reviews/`, so `steps_skipped` gets no entry for it. Absent until the first invocation. Write it with `run set steps_substituted <json>`, the whole list each time. |
 | `substitutions_requested` | a list of `{step, replacement, source}`, one entry per review step whose replacement won, written at `SKILL.md`'s "Take the goal" before any step runs. `step` is `spec-critic` or `skeptical-review`. `replacement` is the principal's words. `source` is `launch`, `goal`, `charter`, `repo` or `machine`, naming the source whose words won; "Take the goal" owns what each one means and which one wins. A record written before T63 holds only the first three. **This field is the request, and `steps_substituted` is what ran.** A resumed session reads this one, because the words that named the replacement are in no later session's context. Absent when the principal named none. Write it with `run set substitutions_requested <json>`, the whole list each time. |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
@@ -1173,7 +1178,8 @@ Every name this file defines, with what consumes it.
 - `reviews/skeptical-r<n>.md` — writer: the skeptical review's own headless session, or the project lead when the fallback supplies it (`review-runner.md`). Consumer: `simple-path.md`'s "The skeptical review"; `scripts/crew-stats.py` (the review kind and its catch rate)
 - `reviews/skeptical-r<n>-instructions.md` — writer: the project lead, before it launches that review. Consumer: `--append-system-prompt-file` on the review's own command; a human asking what the reviewer was told
 - `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the project lead's four checks, live and on a resume
-- `reviews/skeptical-r<n>-result.stderr` — writer: the same shell line's `2>` redirect, on the default runner's own command (`review-runner.md`). Consumer: a human or the project lead reading why a check failed
+- `reviews/skeptical-r<n>-result.stderr` — writer: the same shell line's `2>` redirect, on the default runner's own command (`review-runner.md`), or the run script's `tee` on a replacement's (`substitution.md`). Consumer: a human or the project lead reading why a check failed; the project lead, which reads a replacement's session id from it
+- `reviews/<prefix>-r<n>-run.sh` — writer: the project lead, before it runs a replacement (`substitution.md`). Consumer: the pane or the headless shell that runs it
 - `reviews/skeptical-r<n>-result.txt` — writer: the shell redirect on a replacement's own command, in place of the `.json` (`substitution.md`). Consumer: the project lead, which reads the report out of it and runs the checks the runner supports
 - `reviews/skeptical-r<n>-result.exit` — writer: the same shell line's trailing `echo $? >`, on the default runner's own command and on a replacement's alike. Consumer: the project lead's exit check, live and on a resume; its absence marks an attempt that never finished (`substitution.md`)
 - `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)

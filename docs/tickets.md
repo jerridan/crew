@@ -3197,10 +3197,10 @@ the pointer heading in `SKILL.md` and the title of `substitution.md`.
 Done when: the two files hold the moved text, `SKILL.md` is 140 lines
 shorter, and no pointer names the old file for a moved section.
 
-Known gaps: two rules stay stated in both `skeptical-review.md` and
+Known gaps: two rules were stated in both `skeptical-review.md` and
 `review-runner.md`. They are the no-suite rule and the rule that a retry does
-not count toward the round count. They stay until the second PR
-parameterizes the runner, because this PR rewords no rule.
+not count toward the round count. T76's PR removed the copies from
+`skeptical-review.md`. `review-runner.md` now holds each rule once.
 
 Read first: design §15.106.
 

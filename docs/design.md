@@ -1131,6 +1131,7 @@ Staged so each stage is independently useful and independently abandonable.
 | 5 | Full path: worktrees, territories, merges, promotion | One multi-package goal reaches a draft PR with zero prompts — **done 2026-09-01**, over three runs (§15.30, §15.35, §15.36). `SessionEnd` closed the stage on 2026-09-02 (§15.38). |
 | 6 | Council + routing + `decisions.md` | An architecture-moving question is resolved and audited without a prompt — routing and `decisions.md` **done 2026-08-31** (T4); `crew:council-advocate` and the council procedure **done 2026-09-02** (§15.41), and a run convened one the same day (§15.47) |
 | 7 | The lead tier: `/crew:lead`, a portfolio record, one project-lead session per item (§15.70; T36, T37, T9, T51) | Two concurrent goals run from one lead session, and every escalation reaches the human through the lead — the channel **proved 2026-09-05** (§15.72), the skill **built 2026-09-05** (T37, §15.74), and the two goals **proved 2026-09-06** (T9, §15.80). The lead's size triage **ran 2026-09-05 to 2026-09-07** (T39, §15.79) and moved to the project lead **2026-09-11** (T51, §15.88) |
+| 8 | The review skill: `/crew:review` (§15.107; T76) | One colleague's PR reaches its merge through it — **built 2026-10-19**, T76 open |
 
 ### 13.1 Hooks
 
@@ -7833,3 +7834,62 @@ Deliberately different:
      resume list, the ready step, the kill table and the verdict lines.
      The five-source table stays in "Take the goal". No rule changed, and
      every pointer follows the move. The move ran in no probe.
+
+107. **The review skill: `/crew:review` — 2026-10-19, T76.** A second
+     user-facing skill reviews a colleague's PR as a skeptical staff
+     reviewer and stays with it to the merge. The principal settled ten
+     decisions for it on 2026-10-19.
+     1. **The stop before a post.** The skill stops at the go-ahead gate
+        before every post and push. "Post without asking" at launch, or
+        `Gate: off` in the charter, removes it. The principal's goal is to
+        iterate until the skill earns the right to post on its own. Each
+        stop records whether the principal changed the draft
+        (`draft_changed`), so `crew-stats.py` prints an untouched-draft
+        rate.
+     2. **Three effects on a finding.** `incident` posts "changes
+        requested". `bug` posts a comment-only review. `non-blocking` is
+        worth raising and not essential, a test-coverage gap for example.
+        A slightly stale PR description is not worth raising. A `[Nit]`
+        never posts. A finding posts only when the PR introduced it. A
+        pre-existing defect stays in the record as a proposed new goal.
+     3. **The assist path.** "Fix the blockers yourself" at launch, or
+        `Assist: on` in the charter, lets the skill push to the PR branch
+        itself, behind the gate. It refuses a fork.
+     4. **The merge.** The watch path leaves it to the author. The assist
+        path merges on the principal's word.
+     5. **A replacement for the review.** "Use Codex for the review" works
+        as in the project lead: the same five sources and the same rule
+        (`substitution.md`).
+     6. **One role.** The orchestrator is the project lead in both skills,
+        so every shared reference reads unchanged.
+     7. **The window.** The skill enters `crew:delivered-window` after the
+        first post. The watch path and the assist path are that window's
+        own rounds.
+     8. **The refactor first.** `review-runner.md` and `substitution.md`
+        were split out in the PR this one is stacked on (T75, §15.106).
+     9. **The watch.** A background `Monitor`, as the window already uses,
+        with `push` and `merged` added to its kinds. A review run has no
+        review round cap.
+     10. **The trust data.** Each gate stop records the draft and whether
+        the principal changed it.
+
+     What was built: `skills/review/SKILL.md` and
+     `skills/review/references/github-review.md`. The window, the watch,
+     `record-format.md`, `skeptical-review.md`, `review-output.md`,
+     `crew-record.py` and `crew-stats.py` changed to carry a review run.
+     A review run's record is `pr-<owner>-<repo>-<n>-<hex>/` with
+     `run.kind: review`. Its one deliverable is the PR, in state
+     `under-review`. A `skeptical` round takes the gate in a review run.
+     The `merged` item is the ship word. The author's PR text is quoted
+     line by line in the charter, so it can set no charter line and name no
+     reviewer. GitHub refuses an approval or "changes requested" on the
+     principal's own PR, so there the event is a comment.
+
+     This run was a goal with two stacked deliverables: the refactor and
+     the skill. `full-path.md` says two deliverables is escalation trigger
+     7. The principal's ask for two PRs answered the trigger. The project
+     lead ran the deliverables one after the other in one checkout, with
+     one skeptical review covering both at the end. A later ticket can
+     turn this precedent into a rule.
+
+     The skill has run in no probe. T76 runs it once on a real PR.

@@ -51,9 +51,7 @@ asked for. The stance above only works on the whole goal.
 **Send the suite the way it is run, not the name of a tool.** The reviewer
 gets the invocation word for word and the directory to run it in, and both go
 in the suite paragraph of `review-runner.md`'s "Reviewer instructions"
-verbatim. Under the no-suite outcome the paragraph says there is no suite and
-drops the sentence that asks for one — an instruction to run a suite that does
-not exist buys a `Cannot verify` line at best.
+verbatim. `review-runner.md`'s suite paragraph owns the no-suite outcome.
 
 **`<n>` is the reserved round**, `run.review_pending.round`, and never a
 number you pick. Every file of a round shares it, and a retry of a round
@@ -133,8 +131,8 @@ launch, compare:
 A retry reuses every `skeptical-r<round>` name, because it replaces an
 attempt that produced nothing worth keeping. It appends its own session id to
 `run.review_session_ids`, since it is a second process and costs its own
-money. That one rule covers both retries: the resume after a crash, and the
-rerun the failure path asks for (`review-runner.md`).
+money. `review-runner.md`'s failure path owns whether a rerun counts toward
+the rounds.
 
 **A head superseded before its review started owes no review.** Findings
 from outside crew — CI, a bot, the principal reading the diff — can arrive
@@ -189,20 +187,26 @@ Arm the watch once too, by that skill's "Watch the PR".
    real work, and an orphaned round entry with no ledger names none.
 1a. **A round has `go_ahead_at: null`, every package its ledger names
    exists and is terminal, and every accepted line in its ledger is
-   complete.** Only a round the gate covers carries the field, and
+   complete.** An accepted line that names no package is complete when it
+   carries the finding's effect and its comment text, as in a review run's
+   skeptical ledger. Only a round the gate covers carries the field, and
    `crew:delivered-window`'s "The go-ahead gate" says which rounds those are.
    Find the escalation whose trigger names the round, such as `go-ahead
    (round pr-comments-r1)`:
    - **None.** The kill came before the ask. Send the gate report now, with
-     the commits each item has on the local branch, as that skill says. One
-     ask covers every round this entry finds with no escalation. Re-enter.
+     the commits each item has on the local branch, as that skill says. On a
+     `run.kind: review` run, run `/crew:review`'s "Report and wait at the
+     gate" instead: the draft file and the two `escalation <index> set`
+     writes. One ask covers every round this entry finds with no
+     escalation. Re-enter.
    - **It has no answer.** `autonomy-contract.md`'s re-send rule sent the
      ask again before you read this list, so send nothing. Mark the round
      waiting, in your own context. Re-enter. On re-entry this entry skips a
      round it already marked.
    - **It has an answer.** The kill came before the `go_ahead_at` write.
      Finish what the answer asks, as that skill says, and write
-     `go_ahead_at`. Re-enter.
+     `go_ahead_at`. On a review run, also set `draft_changed`, as that
+     section says. Re-enter.
    **This comes right after entry 1**, so the report goes out as soon as a
    gated round's work is in. Entries 2, 4 and 6 finish a round whose work is
    still open.
@@ -226,12 +230,14 @@ Arm the watch once too, by that skill's "Watch the PR".
    clear its own order puts first ("Adjudication is a ledger"'s **Clear
    `review_pending`**).
 4. **A follow-up or patch package is `pending` or `in-flight`.** Recover it,
-   as `crew:delivered-window`'s "A round killed mid-flight" says. Re-enter. An
+   as `skeptical-review.md`'s "A round killed mid-flight" says. Re-enter. An
    unentered round waits behind it — that is the supersession rule, and this
    entry is where it happens.
 5. **The branch head is not on the remote branch**, the branch has a remote,
    no push was refused for it, and no round the gate covers has
-   `go_ahead_at: null`. Push. Re-enter. **This is judged on the
+   `go_ahead_at: null`. Push. After a push that succeeded, write
+   `run.watch.head` to the pushed sha with `crew-record.py <record-dir> run
+   set watch.head '"<sha>"'`. Re-enter. **This is judged on the
    branch, not on the review**, so a head the cap left unreviewed still
    reaches the remote.
 6. **An unfinished ledger has an accepted entry whose package is terminal —
@@ -242,13 +248,17 @@ Arm the watch once too, by that skill's "Watch the PR".
    breaker's reason. Re-enter. **A ledger line is never written from
    memory**, so a session that died between an integration and its line
    finds the line missing and fills it from what landed.
-7. **An unfinished ledger has every accepted entry complete**, and its round
+7. **An unfinished ledger has every accepted entry complete** (entry 1a says
+   when a line with no package is), and its round
    is not one the gate covers with `go_ahead_at: null`. Send the file
    to the round's `reply_to`, as `crew:delivered-window`'s "Send the reply
    file" says, then write `replied_at`. Re-enter. An entry still missing its
    outcome is entry 6's work, and a package still open is entry 4's; both
    come first (`record-format.md`, `crew:delivered-window`'s "Findings from a
-   review").
+   review"). On a `run.kind: review` run, the reply of a `skeptical` round is
+   the posted GitHub review, so this entry runs `/crew:review`'s "Post the
+   review", whose owner file searches for a review already posted before it
+   posts.
 8. **`review_pending` is set, `review_rounds < review_pending.round`, and the
    branch head is an integrated commit that is not `pending.head`.** The
    round is unentered, so its reserved head is superseded:
@@ -376,7 +386,8 @@ adjudicated.** When an arming has moved `review_pending` on to a newer head,
 that head is owed its own review,
 so leave it alone.
 
-**Three rounds is the cap for the run**, the first review included.
+**Three rounds is the cap for the run**, the first review included. A
+`run.kind: review` run has no cap.
 `crew-record.py`'s `REVIEW_ROUND_CAP` is where the record enforces it, and
 the two numbers move together. **The cap decides whether a head is armed, and
 nothing else.** A report already on disk is adjudicated whatever the count
@@ -385,12 +396,43 @@ says: the work is done and the findings are free. At the cap, clear
 findings are still open, which heads went unreviewed, and that the cap
 stopped the next round (`autonomy-contract.md`).
 
+## A round killed mid-flight
+
+On `--resume`, a `pending` or `in-flight` package under a terminal
+deliverable is a round that did not finish. The resume list above sends you
+here.
+
+**Get the branch back first**, as `crew:delivered-window`'s "A change
+request" says: switch `run.checkout` to the deliverable branch, or cut the
+worktree again. Every command below reads that tree, and a `git log` against
+the tree the principal left behind describes another branch.
+
+Then read the package's `base`:
+
+- **`base` is `null`.** The package was written and never dispatched. Run
+  `simple-path.md`'s "Dispatch the IC" now, which writes `base` from the
+  branch head as it goes.
+- **`base` is set.** The package was dispatched, so reconcile it from git the
+  way `full-path.md`'s "Resume after a kill" reconciles a worktree: `git -C
+  <run.checkout> status --porcelain` and `git -C <run.checkout> log
+  <base>..HEAD` are the evidence, and `state.json` is rewritten to match
+  them. Commit dirty work to the deliverable branch first. Then go to
+  `simple-path.md`'s "Verify before you believe" when the log holds commits,
+  or dispatch a fresh IC when it holds none.
+
+What a finished package still owes is `record-format.md`'s rule, not this
+one.
+
+`run_state` stays `delivered` throughout. An escalation raised in this window
+goes `delivered → blocked → delivered` (`record-format.md`).
+
 ## Mark the PR ready
 
 The PR opens as a draft at the hand-over (`simple-path.md`'s "End the run").
 It leaves draft when the skeptical review stops. The repo's own automated
 reviewers then start on a diff that crew has finished with. This file is the
-only place that decides when.
+only place that decides when. This section does not apply to a `run.kind:
+review` run, because the PR and its draft state are the author's.
 
 Mark the PR ready when all of these hold:
 

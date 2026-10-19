@@ -17,17 +17,18 @@ merge, or ask for a change to the PR after.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
 you what it fixed or declined and why, and waits for your go-ahead before it
-pushes or replies on the PR. A failed check and a comment from your own
-GitHub account take no go-ahead.
+pushes or replies on the PR. In a goal run, a failed check and a comment
+from your own GitHub account take no go-ahead.
 
-One entry point:
+Two entry points:
 
 | Command | Use it for |
 |---|---|
 | `/crew:project-lead` | One goal, run in the session you are in. It sizes the work itself and brings you every question it cannot answer. |
+| `/crew:review` | One colleague's PR. It reviews the PR as a skeptical staff reviewer, posts the review on GitHub, and stays with the PR to the merge. |
 
 Crew is experimental. It has taken real goals to draft PRs, and the plugin
-changes often.
+changes often. `/crew:review` has not run yet.
 
 ## Install
 
@@ -141,6 +142,53 @@ that cannot decide, an action outside the deliverable branch, a fix loop that
 ran out, and the go-ahead before a push or a reply on the PR. Answer in the
 session and the run continues.
 
+### Review a colleague's PR
+
+Start Claude Code in a clone of the PR's repo, with `gh` signed in as you.
+Then give the PR's URL:
+
+```
+/crew:review https://github.com/<owner>/<repo>/pull/<n>
+```
+
+Or give its number, with plain words to ask for more:
+
+```
+/crew:review 123 fix the blockers yourself
+```
+
+The PR must be open. "Fix the blockers yourself" lets crew push fixes to the
+PR's branch, and it does not work on a PR from a fork.
+
+In a review run, crew waits for your go-ahead before every review, reply
+and push, whoever the item came from. This includes a failed check and a
+comment from your own GitHub account. Crew shows you the draft first. You
+can change any finding or the text, or mark a finding "no reply". To turn
+every wait off, say `post without asking` with the command.
+
+Crew does not run a fork's tests or setup unless you say
+`run the suite on this fork`.
+
+Each finding has one of three effects:
+
+| Effect | What crew posts |
+|---|---|
+| `incident` | A review that requests changes. |
+| `bug` | A review with comments only. |
+| `non-blocking` | A comment on something worth raising but not essential, such as a gap in test coverage. The review approves when only these are left. |
+
+A nit never posts. A defect that the PR did not add stays out of the review.
+Crew lists it for you as a possible new goal. On your own PR, the review
+posts as a comment.
+
+A new review that approves or comments clears an earlier "changes
+requested" that crew posted.
+
+Crew reviews each new push on the PR the same way. It leaves the merge to the
+PR's author. With "fix the blockers yourself", it merges when you tell it to.
+To use another reviewer, say so in plain words, as for a goal:
+`use Codex for the review`.
+
 ## What a run needs
 
 | Requirement | How | Which runs |
@@ -150,6 +198,7 @@ session and the run continues.
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
+| A clone of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the clone | every `/crew:review` run |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 
 Crew never widens your permissions itself. Without the teams variable, the
@@ -231,6 +280,21 @@ votes. A question about what you want is never debated. It comes to you.
 The PR is the end of the work. Crew merges only when you tell it to. The
 project lead stays until you say the work shipped.
 
+A review run takes these steps:
+
+| Step | What happens |
+|---|---|
+| Take the PR | Reads the PR, refuses one that is not open, and opens the record. |
+| Scout | Finds the test command and the instruction files. |
+| Review | A separate session reads the diff against the PR's description and the repo. |
+| Adjudicate | Crew checks each finding and its effect, and drops nits and defects that were already there. |
+| Report and wait | Crew sends you the draft and waits for your go-ahead. |
+| Post | Crew posts the review on the PR, with one inline comment per finding. |
+| Watch | Crew watches the PR for a new push and for the merge. |
+| Later rounds | Each new push is reviewed again. A finding whose code is gone is marked resolved. |
+| The assist path | With "fix the blockers yourself", crew fixes the `incident` and `bug` findings and pushes them to the PR's branch, after your go-ahead. |
+| The end | The run closes when the PR merges. A PR that is closed without a merge also ends the run. |
+
 ## Models
 
 A package is `light`, `standard` or `deep`. Both `light` and `standard` run on
@@ -269,6 +333,9 @@ to see every judgment call with its citation.
 ├── reviews/        every critic and reviewer output, and the reply to each
 └── diffs/          one diff per deliverable
 ```
+
+A review run's directory is `pr-<owner>-<repo>-<n>-<hex>/`. Its drafts are
+`reviews/github-r<n>.md`, one per round.
 
 Set `CREW_RECORD_ROOT` to move the root.
 

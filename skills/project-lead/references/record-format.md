@@ -75,7 +75,7 @@ parse and writes nothing.
 ## `charter.md`
 
 The goal and its falsifiable acceptance criteria, as the principal wrote
-them or as the project lead expanded a goal string. Four optional lines,
+them or as the project lead expanded a goal string. Six optional lines,
 each on its own, anywhere in the file:
 
 - `Favour: time` or `Favour: spend` — what the split optimises. `time`
@@ -92,10 +92,17 @@ each on its own, anywhere in the file:
   (`skeptical-review.md`'s "Mark the PR ready").
 - `Gate: off` — no round of the delivered window waits for the principal's
   go-ahead before its push and its replies (`crew:delivered-window`'s "The
-  go-ahead gate").
+  go-ahead gate"). It holds on a review run too.
+- `Assist: on` — a review run's charter only. Crew fixes the blocking
+  findings itself and pushes to the PR branch (`crew:delivered-window`'s
+  "Findings from a review").
+- `Suite: on fork` — a review run's charter only. On a cross-repository PR,
+  the fork's setup command and suite run only when the charter carries this
+  line. The principal writes it at launch. The project lead writes it when
+  the principal lifts the block at the gate (`/crew:review`'s "Review").
 
-`SKILL.md`'s "Take the goal" writes the last two when the principal asks for
-them in the goal or at launch.
+`SKILL.md`'s "Take the goal" writes `PR: draft` and `Gate: off` when the
+principal asks for them in the goal or at launch.
 
 ## `diagnosis.md`
 
@@ -228,6 +235,12 @@ naming convention. Do not mix their contents.
   report whose verdict is `accepted` and which states no findings needs no
   disposing of, so `skeptical-review.md`'s "Adjudication is a ledger" writes
   none.
+
+  **A review run writes one more file per skeptical round**, before the
+  gate ask: `reviews/github-r<n>.md`, the draft GitHub review for round
+  `<n>`. It holds the review body, then one block per inline comment with
+  `path`, `line`, `side` and the text. It is a draft and no review, so
+  `crew-stats.py` counts it as none.
 
   `crew-stats.py` counts none of the renamed files as a review. **A patch
   round from any other source writes the same reply file under its own
@@ -393,9 +406,9 @@ One entry per deliverable (design §5):
 | Field | Meaning |
 |---|---|
 | `id` | referenced by each package's `deliverable` field |
-| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). `null` on an investigation run that ends in a report: nothing is edited, so no branch is created (design §9.5). |
+| `branch` | the deliverable branch every package's IC branches from (design §9.3). Always `crew/<goal-slug>/<deliverable-id>`, except on an `under-review` deliverable. The slug carries the run's random suffix, which is what keeps two runs in one repo from generating the same branch name — deliverable ids restart at 1 every run (design §15.34). `null` on an investigation run that ends in a report: nothing is edited, so no branch is created (design §9.5). |
 | `base` | the commit sha at the deliverable branch's head when it was created — the `<base>` in `git -C <wt> log <base>..HEAD` (design §10.1). `null` when `branch` is `null`. |
-| `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `abandoned`. `draft-pr-opened` and `work-complete` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a PR, so no crew state ever means a deliverable reached `main`. The state stays `draft-pr-opened` after the PR leaves draft (`skeptical-review.md`'s "Mark the PR ready", design §15.99). `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. |
+| `state` | one of `pending`, `in-flight`, `draft-pr-opened`, `work-complete`, `under-review`, `abandoned`. `draft-pr-opened`, `work-complete` and `under-review` are a deliverable's own terminal states, not `integrated` — design §9.3 and §11 stop at opening a PR, so no crew state ever means a deliverable reached `main`. The state stays `draft-pr-opened` after the PR leaves draft (`skeptical-review.md`'s "Mark the PR ready", design §15.99). `work-complete` means the work is complete and trusted but no PR was opened; `abandoned` means the work is not trusted. `under-review` is written only by a review run, for the one deliverable that is the colleague's PR. Its `branch` is the PR's head ref, its `pr_url` is the PR, and its `base` is the merge base. |
 | `state_changed_at` | ISO-8601 UTC timestamp of this deliverable's last `state` transition |
 | `pr_url` | the PR opened in `draft-pr-opened` (design §9.3); `null` until then. Stays `null` in `work-complete`. There, the `branch` name is what the principal gets instead — or, for an investigation run that ends in a report and not a change, `diagnosis.md` (design §9.5). |
 | `checkout_branch` | the branch the checkout was on before the run switched it, so the run can put it back. Both paths switch it and both write this field: `simple-path.md`'s "Create the branch" on the simple path, `full-path.md`'s "Create the branch and the worktrees" on the full path. `base` holds the sha at the deliverable branch's head, which is not the same thing. `null` for a detached head, and `null` on an investigation run that ends in a report, which never switches the checkout (design §15.54, §9.5). |
@@ -445,14 +458,16 @@ pending ──▶ in-flight ──▶ integrated   (terminal)
   transition (design §10). Correcting integrated work never revises the same
   record — it creates a new package in `pending`.
 
-A deliverable follows the same shape, with `draft-pr-opened` and
-`work-complete` in place of `integrated`:
+A deliverable follows the same shape, with `draft-pr-opened`,
+`work-complete` and, on a review run, `under-review` in place of
+`integrated`:
 
 ```
                         ┌──▶ draft-pr-opened   (terminal)
-pending ──▶ in-flight ──┤
-   │            │       └──▶ work-complete     (terminal)
-   │            │
+                        │
+pending ──▶ in-flight ──┼──▶ work-complete     (terminal)
+   │            │       │
+   │            │       └──▶ under-review      (terminal)
    └─────┬──────┘
          ▼
      abandoned                                 (terminal)
@@ -471,10 +486,16 @@ pending ──▶ in-flight ──┤
   patch rounds leave the deliverable `work-complete`. Or the run took the
   investigation path and its `diagnosis.md` `Outcome` is `no change`, so there
   was never a PR to open (design §9.5).
+- `in-flight → under-review`: written only by a review run, in the `deliver`
+  write, for the one deliverable that is the colleague's PR. A review run
+  has no package of its own at the hand-over. The packages it creates later
+  are the delivered window's patch-round packages, and only when its charter
+  carries `Assist: on`.
 - `pending → abandoned` or `in-flight → abandoned`: a re-plan drops the
   deliverable (design §10).
 
-`draft-pr-opened`, `work-complete`, and `abandoned` are all terminal. None
+`draft-pr-opened`, `work-complete`, `under-review`, and `abandoned` are all
+terminal. None
 has an outgoing transition (design §10).
 
 These arrows are **transitions**: one-way project lead decisions. A
@@ -549,13 +570,15 @@ a `null` field:
 
 Two obligations sit outside this rule. `run.review_pending` is
 `skeptical-review.md`'s alone. A package still `pending` or `in-flight`
-belongs to `crew:delivered-window`'s "A round killed mid-flight".
+belongs to `skeptical-review.md`'s "A round killed mid-flight".
 
 ### Per-run fields (inside `run`)
 
 | Field | Meaning |
 |---|---|
 | `run_state` | one of `active`, `blocked`, `delivered`, `interrupted`, `complete`. See `run_state` transitions below. `delivered` means every deliverable holds a terminal state and the session stays up for questions, changes to the PR, a review's findings and the principal's word that the work shipped (`crew:delivered-window`). `complete` means that word came. |
+| `kind` | a string. `"review"` on a review run, written by `/crew:review` with `run set kind` at the record's creation. Absent on a goal run, which means `goal`. A review run has no review cap: `crew-record.py`'s `arm_review` arms every head and appends nothing to `unreviewed_heads`. |
+| `pr` | an object, written once by `/crew:review` at the record's creation, and absent on a goal run. It holds at least `owner`, `repo`, `url`, `author`, `base_ref`, `head_ref` and `merge_base` (strings), `number` (an integer) and `cross_repository` (a boolean). |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. It is also what prices the run: `spend.py` reads each id's transcript subtree (Spend below). |
 | `review_rounds` | an integer: how many skeptical review rounds this run has entered. Starts at 0, and absent means 0. It names the round whose files are `reviews/skeptical-r<n>.*`. `skeptical-review.md` owns when it moves, what caps it, and why a retry leaves it where it is. |
 | `review_pending` | `{head, round}` — the branch head sha a skeptical review is owed on, and the round reserved for it — or `null` when none is owed. One object, not two fields, so the sha and the round it names cannot disagree. Every arming goes through `crew-record.py`'s `arm_review`, reached by `deliver --review-head` at the hand-over, by `integrate --review-head` when a delivered-window package integrates, and by `arm-review --head` on its own; `run set review_pending null` is for clearing it and nothing else. `skeptical-review.md` owns every transition and what a set value means to a resumed run. |
@@ -565,8 +588,9 @@ belongs to `crew:delivered-window`'s "A round killed mid-flight".
 | `repo` | the absolute path to the target-repo clone the project lead was launched in, written at `SKILL.md`'s "Take the goal" from `git rev-parse --show-toplevel`, before any step can need it — a replacement for the spec review runs from it and no branch exists yet (`substitution.md`). On a free checkout the two are equal; on a held one, `checkout` is the worktree this run cut and `repo` is the clone it was cut from. **It is the path that outlives the run's own worktrees**, so every `worktree add`, `remove` and `prune` runs against it — the removal at "End the run", and every skeptical review (`review-runner.md`). Every run has one: "Take the goal" writes it before the path is chosen. |
 | `rounds` | an object keyed by `<round-id>`, one entry per patch round, written by the project lead when it opens the round and before it writes any package (`crew:delivered-window`'s "Findings from a review"). Each value holds: `source`, the `{kind, ref}` pair below; `reply_to`, where the reply goes; `opened_at`, an ISO-8601 UTC timestamp; `replied_at`, the timestamp of the send that delivered `reviews/<round-id>-reply.md`, `null` until it happens; `go_ahead_at`, the timestamp the principal's go-ahead to push and reply landed, `null` until it does, and absent on a round the go-ahead gate does not cover (`crew:delivered-window`'s "The go-ahead gate"); and `push_refused`, a `{at, reason}` written only when the remote refused this round's push twice. A round entry with a `null` `replied_at` is the one thing that says a reply is still owed, and a round with no package at all still has one, so an all-declined round knows its own reader. Absent until the first patch round. |
 | `rounds[].source` | `{kind, ref}`. `kind` is one of `ci`, `pr-comments`, `principal` and `skeptical`. `ref` names the one source of that kind. For `pr-comments` it is the PR URL. For `ci` it is the failing run's URL, or the PR's checks page URL, `<pr_url>/checks`, when one wake found failures in more than one run. For `principal` it is the principal's session name or `"typed"`, and for `skeptical` it is `skeptical-r<n>`. |
-| `rounds[].reply_to` | where this round's reply is sent, decided by `kind` and written when the round opens. **`pr-comments` and `ci` are the PR.** Each item gets its own reply there, placed by the kind and id on its ledger line: a `review-comment` in its own thread, a `review` or a `comment` as a PR comment that quotes its first line, and a `check` as a PR comment that links the failing run. **Every comment the project lead posts on the PR ends with the marker line `crew: <round-id> <item id>`**, the id of the item it answers, whatever the round's kind (`crew:delivered-window`'s "Send the reply file"). `principal` is the channel the message arrived on. `skeptical` is the record alone — the reply file is the reply, and the next status message to the principal names its path. |
-| `watch` | `{last_polled_at, seen_ids, draft, held}`, the cursor of the PR watch. `last_polled_at` is the ISO-8601 UTC time a re-armed monitor polls from: a `review` or `comment` older than it is not reported. `seen_ids` lists every item id the project lead has reported to the principal, a check's `<link>@<startedAt>` id included and a `ready` line's id excluded. `draft` is the last draft state the project lead itself knows. `held` lists the items, each `{kind, id, author, at, summary}`, that arrived while a round of the same kind was open, until their own round opens. Each write has one owner, which says when it runs and with which command. The first write is written by `crew:delivered-window`'s `pr-watch.md`, "The first write's cursor". The write after a wake is written by that skill's "Watch the PR", and `held` by its "Findings from a review". `draft` alone is also written by "Watch the PR"'s arming step 3, by `pr-watch.md`'s "The fallback poll" and by `skeptical-review.md`'s "Mark the PR ready". Absent on a run that never had a PR. |
+| `rounds[].posted_review_id` | an integer, the id of the GitHub review that a review-run round posted. Absent on a goal run. |
+| `rounds[].reply_to` | where this round's reply is sent, decided by `kind` and written when the round opens. **`pr-comments` and `ci` are the PR.** Each item gets its own reply there, placed by the kind and id on its ledger line: a `review-comment` in its own thread, a `review` or a `comment` as a PR comment that quotes its first line, and a `check` as a PR comment that links the failing run. **Every comment the project lead posts on the PR ends with the marker line `crew: <round-id> <item id>`**, the id of the item it answers, whatever the round's kind (`crew:delivered-window`'s "Send the reply file"). `principal` is the channel the message arrived on. `skeptical` is the record alone — the reply file is the reply, and the next status message to the principal names its path. On a `run.kind: review` run, a `skeptical` round's `reply_to` is the PR URL, and the reply is the review posted there. |
+| `watch` | `{last_polled_at, seen_ids, head, draft, held}`, the cursor of the PR watch. `last_polled_at` is the ISO-8601 UTC time a re-armed monitor polls from: a `review` or `comment` older than it is not reported. `seen_ids` lists every item id the project lead has reported to the principal, a check's `<link>@<startedAt>` id included and the id of a `ready` or `merged` line excluded. `head` is a sha, the last PR head the project lead knows. It joins the first write, and a `push` wake updates it after the item is sorted. The project lead also writes it after every push it makes itself. `draft` is the last draft state the project lead itself knows. `held` lists the items, each `{kind, id, author, at, summary}`, that arrived while a round of the same kind was open, until their own round opens. Each write has one owner, which says when it runs and with which command. The first write is written by `crew:delivered-window`'s `pr-watch.md`, "The first write's cursor". The write after a wake is written by that skill's "Watch the PR", and `held` by its "Findings from a review". `draft` alone is also written by "Watch the PR"'s arming step 3, by `pr-watch.md`'s "The fallback poll" and by `skeptical-review.md`'s "Mark the PR ready". Absent on a run that never had a PR. |
 | `checkout` | the absolute path this run does its git work in, written at `simple-path.md`'s "Create the branch". It is the target repo the charter named, unless another run already held that checkout — then it is the worktree this run cut, registered in `worktrees.json`. Every git command, the test suite and the push run against it. It is not where the run's transcripts live: those follow the session's own working directory, which the launch fixed (design §15.90). Absent on an investigation run that ends in a report, which creates no branch. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it when it has to price from a checkout. |
@@ -653,6 +677,12 @@ transcript, and `crew-stats.py` then closes the window at `completed_at`
 | `question` | what the project lead asked |
 | `asked_at` | ISO-8601 UTC timestamp |
 | `answer` | `null` until the human responds; a non-`null` value flips `run_state` from `blocked` back to the state it left, `active` or `delivered` |
+| `draft` | a record-relative path such as `reviews/github-r<n>.md`. Present on a review run's go-ahead escalation. |
+| `draft_changed` | `true`, `false` or `null`. Set when the principal answers: `true` when the principal changed the draft's text or any disposition, and `false` when they approved it as it stood. `null` until then, and it stays `null` on an entry answered `"Gate: off"`, because no principal saw that draft. |
+
+The project lead writes `draft` and `draft_changed` with `crew-record.py
+<record-dir> escalation <index> set <field> <json>`, for example `escalation
+0 set draft_changed false`. `run set escalations` stays forbidden.
 
 ### Worked example
 
@@ -996,6 +1026,8 @@ Every name this file defines, with what consumes it.
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks. Consumer: `crew:delivered-window`'s "The go-ahead gate"
+- `charter.md` `Assist: on` line — writer: the principal, or `/crew:review` when the principal asks. Consumer: `crew:delivered-window`'s "Findings from a review"
+- `charter.md` `Suite: on fork` line — writer: the principal at launch, or the project lead when the principal lifts the block at the gate. Consumer: `/crew:review`'s "Review"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
 - `run.repo` — writer: the project lead, at `SKILL.md`'s "Take the goal". Consumer: a replacement for the spec review, which runs from it (`substitution.md`); `simple-path.md`'s "End the run" (the worktree it removes); `review-runner.md` (every review worktree)
@@ -1005,8 +1037,12 @@ Every name this file defines, with what consumes it.
 - `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head`, `integrate --review-head` and `arm-review --head`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
 - `run.rounds` — writer: the project lead, when it opens a patch round, again at a push or a refusal, again at the go-ahead, and again at the reply's send (`crew:delivered-window`'s "Findings from a review"). Consumer: this file's "What a delivered-window round still owes"; `packages[].round` points into it
 - `run.rounds[].go_ahead_at` — writer: the project lead, when the principal's go-ahead lands (`crew:delivered-window`'s "The go-ahead gate"). Consumer: `skeptical-review.md`'s resume entries 1a, 5 and 7; this file's "What a delivered-window round still owes"
-- `run.watch` — writer: the project lead, at the first arming (`crew:delivered-window`'s `pr-watch.md`, "The first write's cursor"), after every wake that reported something, and for `draft` at an arming (that skill's "Watch the PR"); at a fallback poll, for `draft` (`pr-watch.md`'s "The fallback poll"); and at `skeptical-review.md`'s "Mark the PR ready", for `draft`. Consumer: the monitor command and the fallback poll, which start from it; `skeptical-review.md`'s resume entry 1b, for `held`
+- `run.watch` — writer: the project lead, at the first arming (`crew:delivered-window`'s `pr-watch.md`, "The first write's cursor"), after every wake that reported something, and for `draft` at an arming (that skill's "Watch the PR"); at a fallback poll, for `draft` (`pr-watch.md`'s "The fallback poll"); and at `skeptical-review.md`'s "Mark the PR ready", for `draft`. `head` has two more writers: the window's `push` sort, after it arms a head move, and each push crew makes itself, in the window's "A change request" and "Findings from a review" and in `skeptical-review.md`'s resume entry 5. Consumer: the monitor command and the fallback poll, which start from it; `skeptical-review.md`'s resume entry 1b, for `held`
 - `run.review_session_ids` — writer: the project lead, before it launches each skeptical review (`review-runner.md`). Consumer: `scripts/spend.py` and `scripts/crew-stats.py` (the transcripts that price the review into the run). Neither hook reads it
+- `run.kind` — writer: `/crew:review`, with `run set kind` at the record's creation. Consumer: `crew-record.py`'s `arm_review` (no cap); `crew:delivered-window` (the gate, the notice sort, the assist rule and the ship word); `scripts/crew-stats.py` (the `kind` column)
+- `run.pr` — writer: `/crew:review`, once, at the record's creation. Consumer: `github-review.md`, which fills every `gh` command from it
+- `run.rounds[].posted_review_id` — writer: the project lead, when `/crew:review`'s "Post the review" posts. Consumer: `github-review.md`'s search for a review already posted, before a post
+- `run.escalations[].draft`, `run.escalations[].draft_changed` — writer: the project lead, with `escalation <index> set`, at `/crew:review`'s "Report and wait at the gate"; and `skeptical-review.md`'s resume entry 1a on a review run. Consumer: `scripts/crew-stats.py` (the untouched-draft rate)
 - `run.created_at` — writer: `crew-record.py init`. Consumer: `scripts/spend.py` (the checkout fallback only)
 - `run.delivered_at` — writer: `crew-record.py`, on the first `deliver`, `run state delivered`, or `run set run_state delivered`. Consumer: `scripts/crew-stats.py` (the end of an `interrupted` run that has delivered); a human, or a later session, asking when the work was handed over and how long the delivered window ran
 - `run.completed_at` — writer: `crew-record.py`, on `ship`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)

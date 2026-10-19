@@ -18,8 +18,10 @@ code, run against a seeded record (design §15.38, §15.50).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
+| `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
+| `skills/review/references/github-review.md` | what a review run puts on GitHub: the sanitizing, the effect rule, the shapes and the post command | the project lead, in a review run |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps and the steps the principal replaced over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
@@ -69,6 +71,9 @@ a reply on the PR. One probe on the fixture repo ran its four checks
 (§15.104). The watch's later changes, a red check and the cron fallback with a
 PR are unexercised.
 
+`/crew:review` is built. It reviews a colleague's PR and reuses the window and
+the review runner. No run has exercised it (T76).
+
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
 sessions rather than from the checkout (§15.90).
@@ -110,6 +115,7 @@ Each reference owns one subject and is canonical for it:
 - `review-runner.md` — the mechanics of a headless review: the detached
   worktree, the instructions file, the runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.
+- `skills/review/references/github-review.md` — what a review run posts.
 - `writing-standard.md` — how an instruction file and a README are written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A

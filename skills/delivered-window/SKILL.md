@@ -250,7 +250,8 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    is already on the deliverable branch, keep `checkout_branch`: write it
    only when the switch changes branches. A held one, or a run that cut its
    own worktree the first time, cuts the worktree again at the same path from
-   the existing branch — no `-b` — and registers it. On a `run.kind: review` run, the deliverable branch is the PR's head
+   the existing branch — no `-b` — and registers it. On a `run.kind: review`
+   run, the deliverable branch is the PR's head
    ref (`deliverables[].branch`, which `/crew:review` set to
    `<headRefName>`), so the switch targets that branch, or the detached head
    on a cross-repository PR.

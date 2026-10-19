@@ -9,7 +9,13 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
 counts, the review catch rate, the steps a band or the light path let a run
-skip, and the review steps the principal replaced with a runner of their own.
+skip, a `kind` column (`review` for a run of `/crew:review`, `goal` otherwise),
+the untouched-draft rate, and the review steps the principal replaced with a runner of their own.
+The untouched-draft rate is the share of the answered go-ahead drafts that the
+principal approved as they stood: over the escalations that carry `draft`, the
+count with `draft_changed: false` divided by the count with `draft_changed` not
+`null`, as a whole percentage, or `-` when no draft was answered. It prints per
+run and in the totals, and `--json` carries it under `untouched_draft_rate`.
 A replaced step is not a Claude session, so `spend.py` cannot price it: its
 cost prints as `unmeasured` unless the record's `usage` object carries a
 dollar figure, and a `usage.tokens` count with no dollar figure prints in its
@@ -558,6 +564,25 @@ def read_decisions(record: Path, skips: list) -> tuple[int, int, int, dict]:
     return len(entries), councils, tokens, adversary
 
 
+def read_drafts(run: dict) -> dict:
+    """Count the go-ahead drafts a run's principal answered.
+
+    `answered` counts the escalations that carry `draft` and a `draft_changed`
+    that is not `null`. `untouched` counts those with `draft_changed: false`
+    (`record-format.md`).
+    """
+    answered = untouched = 0
+    for ask in as_list(run.get("escalations")):
+        if not isinstance(ask, dict) or not ask.get("draft"):
+            continue
+        changed = ask.get("draft_changed")
+        if changed is None:
+            continue
+        answered += 1
+        untouched += changed is False
+    return {"answered": answered, "untouched": untouched}
+
+
 def blank_adversary() -> dict:
     return {"entries": 0, "whole": 0, "part": 0, "overturned": 0, "unparsed": 0}
 
@@ -594,8 +619,10 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
     bands = {p.get("id"): (p.get("band") if p.get("band") in BANDS else "unknown") for p in packages}
     reviews, catch, catch_by_band = read_reviews(record, bands, skips)
     usd = price_run(record, state, checkout, forced, skips, reprice)
+    drafts = read_drafts(run)
     return {
         "run": record.name,
+        "kind": run.get("kind") if isinstance(run.get("kind"), str) and run.get("kind") else "goal",
         "run_state": run.get("run_state"),
         "packages": len(packages),
         "by_band": per_band,
@@ -613,6 +640,8 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "catch": catch,
         "catch_by_band": catch_by_band,
         "usd": usd,
+        "drafts": drafts,
+        "untouched_draft_rate": percent(drafts["untouched"], drafts["answered"]),
     }
 
 
@@ -636,14 +665,21 @@ def rate(part: int, whole: int) -> str:
     return "-" if not whole else f"{100 * part / whole:.1f}%"
 
 
+def percent(part: int, whole: int) -> str:
+    """A whole-number percentage, or `-` when there is nothing to divide by."""
+    return "-" if not whole else f"{100 * part / whole:.0f}%"
+
+
 def report(records: list[dict], skips: list[str]) -> None:
     print("Runs\n")
     rows = [
-        [r["run"], r["packages"], r["fix_rounds"], r["promotions"], r["decisions"], r["councils"],
-         r["adversary"]["entries"], r["escalations"], r["compactions"], sum(r["reviews"].values()), money(r["usd"])]
+        [r["run"], r["kind"], r["packages"], r["fix_rounds"], r["promotions"], r["decisions"], r["councils"],
+         r["adversary"]["entries"], r["escalations"], r["compactions"], sum(r["reviews"].values()), r["untouched_draft_rate"],
+         money(r["usd"])]
         for r in records
     ]
-    print(table(["run", "pkgs", "fixes", "promos", "decis", "councils", "advers", "escal", "compact", "reviews", "usd"],
+    print(table(["run", "kind", "pkgs", "fixes", "promos", "decis", "councils", "advers", "escal", "compact", "reviews",
+                 "untouched", "usd"],
                 rows))
 
     # A run's dollars cover the whole run. Nothing in the record attributes
@@ -771,6 +807,8 @@ def report(records: list[dict], skips: list[str]) -> None:
         ["adversary entries", adversary["entries"]],
         ["escalations", sum(r["escalations"] for r in records)],
         ["compactions", sum(r["compactions"] for r in records)],
+        ["untouched-draft rate", percent(sum(r["drafts"]["untouched"] for r in records),
+                                         sum(r["drafts"]["answered"] for r in records))],
         ["usd, priced runs", money(sum(priced) if priced else None)],
         ["usd per priced run", money(sum(priced) / len(priced) if priced else None)],
     ]

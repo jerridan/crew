@@ -141,11 +141,18 @@ any other line goes in the body's list instead.
 
 ## The body shape
 
+The body is for the author. The author never sees the effect rule, the
+event rule, the ledger or the round, so the body names none of them, and no
+sentence says why the review is a comment and not a request for changes.
+GitHub labels the event itself.
+
 In this order:
 
-1. The event the findings earned. On the principal's own PR, add this
-   sentence: "GitHub does not let an author approve or request changes on
-   their own pull request, so this review posts as a comment."
+1. A count of the findings, in plain words: "One finding, inline.", "Two
+   findings: one inline, one below." or "No findings." On the principal's
+   own PR, add this sentence: "GitHub does not let an author approve or
+   request changes on their own pull request, so this review posts as a
+   comment."
 2. The list of findings that are not inline, each in the comment shape
    without its marker.
 3. On the assist path, one line that names the pushed commits, such as

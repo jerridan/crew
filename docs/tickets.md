@@ -3293,7 +3293,14 @@ Scope, all in `skills/review/SKILL.md`:
 3. Dispatch the scout right after the checkout, before the charter and the
    record writes, so it runs while the project lead writes.
 
+Also in scope, found on the same runs: the review body opened with a
+sentence about the event the findings earned, in crew's words. The author
+reads about effects, earning and rounds, which exist only in the record.
+`github-review.md`'s "The body shape" now opens with a plain count of the
+findings and names none of those.
+
 Done when: the skill holds the template, names one scout, dispatches it
-before the charter, and the version is bumped.
+before the charter, the body shape opens with the count, and the version is
+bumped.
 
 Read first: design §15.109; `skills/review/SKILL.md` "Take the PR".

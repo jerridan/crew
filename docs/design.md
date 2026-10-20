@@ -8035,3 +8035,14 @@ Deliberately different:
      round-trips. A cached per-repo suite command in the machine config
      would remove the scout on both paths, and the principal set it aside
      because a repo's suite command changes.
+
+     The same runs showed a second defect. The review body opened with the
+     event the findings earned, as `github-review.md`'s "The body shape"
+     then said, and the project lead wrote it in crew's words: "The
+     findings earn a comment: one bug, posted inline. It is the must-fix
+     the description already names, so this review stays a comment until
+     that fix lands." An author has no effect rule, no ledger and no round
+     to read that against. GitHub labels the event itself. The body shape
+     now opens with a plain count of the findings and names none of crew's
+     machinery. The own-PR sentence stays, because GitHub gives the author
+     no other reason for a comment where an approval was due.

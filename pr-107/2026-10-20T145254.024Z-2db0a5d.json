@@ -1,0 +1,177 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 107,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Cut the review skill's steps before the reviewer launches (T78)",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/107"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "a39f7112e1a7628938b39eafb0c9da58d0f23597",
+    "head": "2db0a5dc87cb5a55e854e50293fb16db16333f8a",
+    "started_at": "2026-10-20T14:52:54.024Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Cut the review skill's steps before the reviewer launches (T78)\n\n## Summary\n\nA review run now reaches the skeptical reviewer with less work in front of it. Six review runs took a median of seven minutes from the launch to the reviewer's start, and most of that was the project lead opening earlier records to learn the charter's shape and drafting the record, while one of its two scouts answered a question nothing read. The review skill now holds the charter's shape as a template, dispatches one scout, and dispatches it before the charter and the record writes so it runs while the project lead writes. The project-lead path keeps its four scout questions: the dropped question has readers there and none on a review.\n\n**Ticket:** [T78 — Cut the review skill's steps before the reviewer launches](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t78--cut-the-review-skills-steps-before-the-reviewer-launches)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.109 holds the timing finding and the three changes.\n- `skills/review/SKILL.md` \"Take the PR\" owns the review run's steps before the reviewer.\n- `skills/review/references/github-review.md` \"The sanitizing\" owns the charter heading the template reuses.\n- `skills/project-lead/references/review-runner.md` owns what the reviewer takes from the scout: the suite command and the setup command.\n- `skills/project-lead/SKILL.md` \"Every dispatch is named\" and \"Scout\" own the dispatch shape, unchanged.\n\n### What changed, by file\n\n- `skills/review/SKILL.md`: \"Take the PR\" moves the checkout to step 5, adds the one-scout dispatch as step 6, writes the charter's shape as a template block in step 7, and the `## Scout` section is gone. \"Review\" gains one paragraph that reads `scout-1`'s answer before the first launch.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.86 to 0.1.87.\n- `CLAUDE.md`: the build state says T78 is built and unexercised.\n- `docs/tickets.md`: T78, done.\n- `docs/design.md`: §15.109, the finding from six review records and one live transcript.\n\n### Constraints that applied\n\n- A change under `skills/` bumps the version in both manifests, kept equal: done.\n- A rule lives in one file: the charter heading stays `github-review.md`'s, and the template names that file as its owner. The dispatch shape stays in the project lead's SKILL.md.\n- Every dispatch is named: the one scout is `scout-1`.\n- Never write about a built change as if a run exercised it: `CLAUDE.md` and §15.109 say no run has.\n- `writing-standard.md` \"Before you open the PR\": the skill body is 372 lines, no step sends the reader to a third file, and the new sentences carry one instruction each.\n\n### How this was verified\n\nRead, not run. Three read-only agents produced the evidence: one mapped every step of the review skill before the reviewer launch and found no reader of the second scout's answer in the review skill, `skeptical-review.md` or `review-runner.md`; one mined the six review records and their transcripts for the timeline, the scout answers and where they were consumed; one built a tool-call timeline of a review run in progress. A grep of `skills/`, `README.md`, `CLAUDE.md` and `.claude/rules` finds no remaining reference to `scout-2` or two scouts.\n\n### Known gaps\n\nNo run has exercised the new order. The next `/crew:review` launch is the probe: check that the charter matches the template with no earlier record opened, that one scout runs, and that the reviewer's instructions carry its suite command.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01ADzBMHNDu3SnQHibJSJTUF\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 3
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5586856096,
+      "review_url": "https://github.com/jerridan/crew/pull/107#pullrequestreview-5586856096",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 118698462345
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 53,
+      "gather": 37,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

@@ -8002,3 +8002,36 @@ Deliberately different:
 
      The resume, the merge-queue line, the pane rule and the no-wait post
      are unexercised. T77 runs each of them once on the fixture repo.
+
+109. **Where a review run's time goes before the reviewer starts —
+     2026-10-20, T78.** Six `/crew:review` records (PRs 8110, 8121, 8122,
+     8544, 8545 and 8588 of AdaSupport/monorepo) took a median 7.3 minutes
+     from the launch to the reviewer's start, with a range of 4.9 to 16.0.
+     The two scouts took a median 0.9 minutes of it, cost $0.29 to $0.60 a
+     run, and ran beside the project lead's own writes: in two runs the
+     project lead read their answers one to three minutes after they
+     returned. The transcript of the 8110 run put the rest in three places.
+     The project lead spent 1.3 minutes opening the T76 and 8122 records to
+     learn the charter's and the ledger's shape, 1.6 minutes drafting the
+     charter, the record and `decisions.md`, and two minutes on an API error
+     that made it re-read the references it had just read.
+
+     Scout-1's answer, the suite and setup command, reached the runner's
+     instructions in all six runs, and the four reviewers that ran used it.
+     In 8121 it set the review's working directory, because the
+     `Bash(yarn test *)` rule matches only a command that starts with
+     `yarn test`. Scout-2's answer, which instruction files apply, had no
+     reader: no instructions file carried it, and the one finding that cited
+     a rule file cited one scout-2 had not named. The question earns its
+     place on the goal path, where the spec and the ICs read it, and not on
+     a review.
+
+     T78 made three changes to `skills/review/SKILL.md`: the charter's shape
+     is a template block in the skill, the review dispatches one scout, and
+     the dispatch moves to right after the checkout so the scout runs while
+     the project lead writes the charter and the record. No run has
+     exercised the change. The ceiling is three to four minutes off the
+     phase; the remainder is the project lead's own drafting and `gh`
+     round-trips. A cached per-repo suite command in the machine config
+     would remove the scout on both paths, and the principal set it aside
+     because a repo's suite command changes.

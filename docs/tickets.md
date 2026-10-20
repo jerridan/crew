@@ -3269,3 +3269,31 @@ Done when: all five checks pass, and design §15 holds the probe's result.
 Read first: design §15.108; `review-runner.md` "Resume the reviewer";
 `substitution.md` "Where it runs"; `crew:delivered-window`'s "The go-ahead
 gate"; `pr-watch.md`'s poll.
+
+## T78 — Cut the review skill's steps before the reviewer launches
+
+Status: done 2026-10-20
+Depends on: T76
+Stage: 8 (design §15.109)
+
+Six review runs took a median 7.3 minutes from the launch to the reviewer's
+start. The scouts took under a minute of it and ran beside the project
+lead's own writes. The rest was the project lead reading earlier records to
+learn the charter's shape, and drafting the record, with one scout answer
+that nothing read.
+
+Scope, all in `skills/review/SKILL.md`:
+
+1. Write the charter's shape into the skill as a template block, so the
+   project lead opens no earlier record.
+2. Drop the second scout. Its question, which instruction files apply, has
+   no reader in the review skill, `skeptical-review.md` or
+   `review-runner.md`. Keep the suite-and-setup scout: the runner's block,
+   the `--allowedTools` rule and the setup run read its answer.
+3. Dispatch the scout right after the checkout, before the charter and the
+   record writes, so it runs while the project lead writes.
+
+Done when: the skill holds the template, names one scout, dispatches it
+before the charter, and the version is bumped.
+
+Read first: design §15.109; `skills/review/SKILL.md` "Take the PR".

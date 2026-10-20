@@ -1,0 +1,1260 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 107,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Cut the review skill's steps before the reviewer launches (T78)",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/107"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "a39f7112e1a7628938b39eafb0c9da58d0f23597",
+    "head": "1f4901b9a1f3b4134323faacf10c82857e8080c7",
+    "started_at": "2026-10-20T15:49:42.012Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Cut the review skill's steps before the reviewer launches (T78)\n\n## Summary\n\nA review run now reaches the skeptical reviewer with less work in front of it. Six review runs took a median of seven minutes from the launch to the reviewer's start, and most of that was the project lead opening earlier records to learn the charter's shape and drafting the record, while one of its two scouts answered a question nothing read. The review skill now holds the charter's shape as a template, dispatches one scout, and dispatches it before the charter and the record writes so it runs while the project lead writes. The project-lead path keeps its four scout questions: the dropped question has readers there and none on a review. The same runs showed a second defect: the review body opened with a sentence about the event the findings earned, in crew's own words, which an author cannot read. The body now opens with a plain count of the findings, and GitHub labels the event itself.\n\n**Ticket:** [T78 — Cut the review skill's steps before the reviewer launches](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t78--cut-the-review-skills-steps-before-the-reviewer-launches)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.109 holds the timing finding and the three changes.\n- `skills/review/SKILL.md` \"Take the PR\" owns the review run's steps before the reviewer.\n- `skills/review/references/github-review.md` \"The sanitizing\" owns the charter heading the template reuses.\n- `skills/project-lead/references/review-runner.md` owns what the reviewer takes from the scout: the suite command and the setup command.\n- `skills/project-lead/SKILL.md` \"Every dispatch is named\" and \"Scout\" own the dispatch shape, unchanged.\n\n### What changed, by file\n\n- `skills/review/SKILL.md`: \"Take the PR\" moves the checkout to step 5, adds the one-scout dispatch as step 6, writes the charter's shape as a template block in step 7, and the `## Scout` section is gone. \"Review\" gains one paragraph that reads `scout-1`'s answer before the first launch.\n- `skills/review/references/github-review.md`: \"The body shape\" says the body is for the author and names none of crew's machinery, and item 1 is a plain count of the findings instead of the event they earned.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.86 to 0.1.87.\n- `CLAUDE.md`: the build state says T78 is built and unexercised.\n- `docs/tickets.md`: T78, done.\n- `docs/design.md`: §15.109, the finding from six review records and one live transcript.\n\n### Constraints that applied\n\n- A change under `skills/` bumps the version in both manifests, kept equal: done.\n- A rule lives in one file: the charter heading stays `github-review.md`'s, and the template names that file as its owner. The dispatch shape stays in the project lead's SKILL.md.\n- Every dispatch is named: the one scout is `scout-1`.\n- Never write about a built change as if a run exercised it: `CLAUDE.md` and §15.109 say no run has.\n- `writing-standard.md` \"Before you open the PR\": the skill body is 372 lines, no step sends the reader to a third file, and the new sentences carry one instruction each.\n\n### How this was verified\n\nRead, not run. Three read-only agents produced the evidence: one mapped every step of the review skill before the reviewer launch and found no reader of the second scout's answer in the review skill, `skeptical-review.md` or `review-runner.md`; one mined the six review records and their transcripts for the timeline, the scout answers and where they were consumed; one built a tool-call timeline of a review run in progress. A grep of `skills/`, `README.md`, `CLAUDE.md` and `.claude/rules` finds no remaining reference to `scout-2` or two scouts.\n\n### Known gaps\n\nNo run has exercised the new order. The next `/crew:review` launch is the probe: check that the charter matches the template with no earlier record opened, that one scout runs, and that the reviewer's instructions carry its suite command.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01ADzBMHNDu3SnQHibJSJTUF\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": false
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "The skill file is the agent's executable instruction set, and the change reorders its steps, drops a scout and changes the review body format, which alters runtime behavior.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "skills/review/SKILL.md: reordered steps 5-10 (checkout now before charter and deliverable, scout dispatched at step 6)",
+        "skills/review/SKILL.md: removed '## Scout' section while other text may still reference it; new 'Read scout-1's answer' paragraph",
+        "skills/review/SKILL.md: charter template block vs the old charter wording (heading, optional lines)",
+        "skills/review/references/github-review.md: 'The body shape' item 1 now a findings count, with the own-PR sentence kept",
+        "Step 8 reads checkout_branch after the new checkout in step 5, so the branch value may differ from before"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump 0.1.86 to 0.1.87"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump, matches plugin.json"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "status note that T78 is unexercised"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new §15.109 rationale; docs only"
+        },
+        {
+          "file": "docs/tickets.md",
+          "note": "new T78 ticket; docs only"
+        },
+        {
+          "file": "skills/review/SKILL.md",
+          "note": "behavioral change: step reorder, one scout instead of two, charter template"
+        },
+        {
+          "file": "skills/review/references/github-review.md",
+          "note": "review body format change: opens with a plain count of findings"
+        }
+      ],
+      "summary": "The change cuts the pre-review steps of the /crew:review skill. It moves the head checkout earlier, dispatches a single suite-and-setup scout right after it, and gives the charter as an inline template. It also changes the review body to open with a plain findings count and not crew-specific wording. The rest is a version bump and docs."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: The skill file is the agent's executable instruction set, and the change reorders its steps, drops a scout and changes the review body format, which alters runtime behavior.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 12410,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8020,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.000813,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 598,
+              "cacheReadInputTokens": 19157,
+              "cacheCreationInputTokens": 13308,
+              "webSearchRequests": 0,
+              "costUSD": 0.1222714,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 411,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1230844
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5185,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8028,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008148000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 346,
+              "cacheReadInputTokens": 35455,
+              "cacheCreationInputTokens": 13767,
+              "webSearchRequests": 0,
+              "costUSD": 0.12417099999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 27,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1249858
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/review/SKILL.md",
+            "start_line": 120,
+            "end_line": 122,
+            "category": "bug",
+            "severity_estimate": "blocking",
+            "confidence": "medium",
+            "claim": "`checkout_branch` is now read after step 5 has already checked out the head, so it records the PR head branch (or null when detached) and not the branch the principal had checked out before the run.",
+            "evidence": "8. **Add the one deliverable, and deliver it in the same turn.** Read\n   `checkout_branch` first: `git branch --show-current`, or `null` on a\n   detached head. Then:",
+            "suggested_fix": "Read `checkout_branch` before step 5 (for example, in step 4), or keep the deliverable step before the checkout.",
+            "explanation": "`checkout_branch` and `checkout_restored` exist so the run can put the original branch back later, and reading the branch after the switch loses that branch.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11874,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8022,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008162,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 699,
+              "cacheReadInputTokens": 19062,
+              "cacheCreationInputTokens": 15013,
+              "webSearchRequests": 0,
+              "costUSD": 0.13791240000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 225,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1387286
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7606,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8030,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008150000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 484,
+              "cacheReadInputTokens": 35771,
+              "cacheCreationInputTokens": 13859,
+              "webSearchRequests": 0,
+              "costUSD": 0.1277302,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 204,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1285452
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7231,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8028,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008158000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 362,
+              "cacheReadInputTokens": 36798,
+              "cacheCreationInputTokens": 15083,
+              "webSearchRequests": 0,
+              "costUSD": 0.1352876,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1361034
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5123,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 13966,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0014096,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 350,
+              "cacheReadInputTokens": 48896,
+              "cacheCreationInputTokens": 21203,
+              "webSearchRequests": 0,
+              "costUSD": 0.1864272,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 30,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1878368
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6013,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8020,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008139999999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 397,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 13040,
+              "webSearchRequests": 0,
+              "costUSD": 0.1128798,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 94,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1136938
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2551,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8016,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008146000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 127,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 13036,
+              "webSearchRequests": 0,
+              "costUSD": 0.10744780000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 73,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.10826240000000001
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2396,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8012,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008132,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 95,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 13703,
+              "webSearchRequests": 0,
+              "costUSD": 0.1121438,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.112957
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/review/SKILL.md",
+          "start_line": 120,
+          "end_line": 122,
+          "category": "bug",
+          "severity_estimate": "blocking",
+          "confidence": "medium",
+          "claim": "`checkout_branch` is now read after step 5 has already checked out the head, so it records the PR head branch (or null when detached) and not the branch the principal had checked out before the run.",
+          "evidence": "8. **Add the one deliverable, and deliver it in the same turn.** Read\n   `checkout_branch` first: `git branch --show-current`, or `null` on a\n   detached head. Then:",
+          "suggested_fix": "Read `checkout_branch` before step 5 (for example, in step 4), or keep the deliverable step before the checkout.",
+          "explanation": "`checkout_branch` and `checkout_restored` exist so the run can put the original branch back later, and reading the branch after the switch loses that branch.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "5. **Check out the head.** On a same-repository PR, switch to",
+            "8. **Add the one deliverable, and deliver it in the same turn.** Read\n   `checkout_branch` first: `git branch --show-current`, or `null` on a\n   detached head."
+          ],
+          "rationale": "The PR moved the head checkout to step 5, ahead of step 8, which reads `git branch --show-current` as `checkout_branch`. That now records the PR head branch, or null on a cross-repository PR. The original order read it before the switch, and the end-of-run restore (`simple-path.md`) switches back to this value, so the original branch is lost.",
+          "score": 93,
+          "severity": "blocking"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "5. **Check out the head.** On a same-repository PR, switch to\n   `<headRefName>` tracking `origin/<headRefName>`. On a cross-repository PR,\n   check out `headRefOid` detached.",
+            "8. **Add the one deliverable, and deliver it in the same turn.** Read\n   `checkout_branch` first: `git branch --show-current`, or `null` on a\n   detached head. Then:",
+            "restore the checkout as\n`simple-path.md`'s \"Restore the checkout at every end\" says, with the\ndeliverable's `checkout_branch`."
+          ],
+          "rationale": "The diff moved the head checkout from after the deliverable step to step 5, before step 8 reads `git branch --show-current`. So `checkout_branch` now holds the PR head branch, or null on a cross-repo PR. \"The end\" then cannot restore the principal's original branch. That is a real regression from the reordering.",
+          "score": 92,
+          "severity": "blocking"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "5. **Check out the head.** On a same-repository PR, switch to\n   `<headRefName>` tracking `origin/<headRefName>`. On a cross-repository PR,\n   check out `headRefOid` detached.",
+            "8. **Add the one deliverable, and deliver it in the same turn.** Read\n   `checkout_branch` first: `git branch --show-current`, or `null` on a\n   detached head. Then:",
+            "restore the checkout as\n`simple-path.md`'s \"Restore the checkout at every end\" says, with the\ndeliverable's `checkout_branch`."
+          ],
+          "rationale": "The diff moved the head checkout from after the deliverable step to step 5, before step 8 reads `git branch --show-current`. So `checkout_branch` now holds the PR head branch, or null on a cross-repo PR. \"The end\" then cannot restore the principal's original branch. That is a real regression from the reordering.",
+          "score": 92,
+          "severity": "blocking"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would request changes",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [
+      {
+        "file": "skills/review/SKILL.md",
+        "start_line": 120,
+        "end_line": 122,
+        "category": "bug",
+        "severity_estimate": "blocking",
+        "confidence": "medium",
+        "claim": "`checkout_branch` is now read after step 5 has already checked out the head, so it records the PR head branch (or null when detached) and not the branch the principal had checked out before the run.",
+        "evidence": "8. **Add the one deliverable, and deliver it in the same turn.** Read\n   `checkout_branch` first: `git branch --show-current`, or `null` on a\n   detached head. Then:",
+        "suggested_fix": "Read `checkout_branch` before step 5 (for example, in step 4), or keep the deliverable step before the checkout.",
+        "explanation": "`checkout_branch` and `checkout_restored` exist so the run can put the original branch back later, and reading the branch after the switch loses that branch.",
+        "needs_context": true,
+        "fingerprint": "9123f40c92b631a7",
+        "severity": "blocking",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "5. **Check out the head.** On a same-repository PR, switch to\n   `<headRefName>` tracking `origin/<headRefName>`. On a cross-repository PR,\n   check out `headRefOid` detached.",
+            "8. **Add the one deliverable, and deliver it in the same turn.** Read\n   `checkout_branch` first: `git branch --show-current`, or `null` on a\n   detached head. Then:",
+            "restore the checkout as\n`simple-path.md`'s \"Restore the checkout at every end\" says, with the\ndeliverable's `checkout_branch`."
+          ],
+          "rationale": "The diff moved the head checkout from after the deliverable step to step 5, before step 8 reads `git branch --show-current`. So `checkout_branch` now holds the PR head branch, or null on a cross-repo PR. \"The end\" then cannot restore the principal's original branch. That is a real regression from the reordering.",
+          "score": 92,
+          "severity": "blocking"
+        },
+        "span_text": "8. **Add the one deliverable, and deliver it in the same turn.** Read `checkout_branch` first: `git branch --show-current`, or `null` on a detached head. Then:"
+      }
+    ],
+    "github": {
+      "review_id": 5587722290,
+      "review_url": "https://github.com/jerridan/crew/pull/107#pullrequestreview-5587722290",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "9123f40c92b631a7",
+          "comment_id": 4327067222
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 118729310129
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10596,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 6236,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006336000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 805,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 5748,
+            "webSearchRequests": 0,
+            "costUSD": 0.031172199999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.031805799999999995
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5185,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8028,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008148000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 346,
+            "cacheReadInputTokens": 35455,
+            "cacheCreationInputTokens": 13767,
+            "webSearchRequests": 0,
+            "costUSD": 0.12417099999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 27,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1249858
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7231,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8028,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008158000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 362,
+            "cacheReadInputTokens": 36798,
+            "cacheCreationInputTokens": 15083,
+            "webSearchRequests": 0,
+            "costUSD": 0.1352876,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1361034
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7606,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8030,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008150000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 484,
+            "cacheReadInputTokens": 35771,
+            "cacheCreationInputTokens": 13859,
+            "webSearchRequests": 0,
+            "costUSD": 0.1277302,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 204,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1285452
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2551,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8016,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008146000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 127,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 13036,
+            "webSearchRequests": 0,
+            "costUSD": 0.10744780000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 73,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10826240000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5123,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13966,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014096,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 350,
+            "cacheReadInputTokens": 48896,
+            "cacheCreationInputTokens": 21203,
+            "webSearchRequests": 0,
+            "costUSD": 0.1864272,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 30,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1878368
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11874,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8022,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008162,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 699,
+            "cacheReadInputTokens": 19062,
+            "cacheCreationInputTokens": 15013,
+            "webSearchRequests": 0,
+            "costUSD": 0.13791240000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 225,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1387286
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12410,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8020,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000813,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 598,
+            "cacheReadInputTokens": 19157,
+            "cacheCreationInputTokens": 13308,
+            "webSearchRequests": 0,
+            "costUSD": 0.1222714,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 411,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1230844
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6013,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8020,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008139999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 397,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 13040,
+            "webSearchRequests": 0,
+            "costUSD": 0.1128798,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 94,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1136938
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2396,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8012,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008132,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 95,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 13703,
+            "webSearchRequests": 0,
+            "costUSD": 0.1121438,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.112957
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8471,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 12664,
+            "outputTokens": 253,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013929,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 232,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 676,
+            "cacheReadInputTokens": 19954,
+            "cacheCreationInputTokens": 15789,
+            "webSearchRequests": 0,
+            "costUSD": 0.0719194,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 137,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0733123
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7361,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 12670,
+            "outputTokens": 310,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.001422,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 289,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 716,
+            "cacheReadInputTokens": 19952,
+            "cacheCreationInputTokens": 13427,
+            "webSearchRequests": 0,
+            "costUSD": 0.1257424,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 120,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1271644
+      }
+    ],
+    "total_cost_usd": 1.4064799000000001,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 56,
+      "gather": 172,
+      "triage": 11581,
+      "find_verify": 30319,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

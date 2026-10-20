@@ -87,7 +87,10 @@ sanitizing" says so.
    - `checkout`, the same path;
    - `pr`, with the fields `record-format.md`'s `pr` row names;
    - `principal`, when the goal arrived by message, as "Take the goal" says.
-5. **Check out the head.** On a same-repository PR, switch to
+5. **Read `checkout_branch`, then check out the head.** The branch to put
+   back at the end is the one the checkout is on now, before the switch:
+   `git branch --show-current`, or `null` on a detached head. Keep it for
+   step 8. Then, on a same-repository PR, switch to
    `<headRefName>` tracking `origin/<headRefName>`. On a cross-repository PR,
    check out `headRefOid` detached. Git refuses the switch on a dirty tree:
    escalate, and never stash.
@@ -117,9 +120,8 @@ sanitizing" says so.
    when the launch asked for it. Do not write `PR: draft`: the PR's draft
    state is the author's. This block is the whole shape, so open no earlier
    record to learn it.
-8. **Add the one deliverable, and deliver it in the same turn.** Read
-   `checkout_branch` first: `git branch --show-current`, or `null` on a
-   detached head. Then:
+8. **Add the one deliverable, and deliver it in the same turn**, with the
+   `checkout_branch` step 5 read:
 
    ```bash
    python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable add '{"id": "d1", "branch": "<headRefName>", "base": "<merge base>", "pr_url": "<url>", "checkout_branch": "<branch>", "checkout_restored": null}'

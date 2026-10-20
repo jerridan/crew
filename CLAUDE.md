@@ -72,7 +72,9 @@ a reply on the PR. One probe on the fixture repo ran its four checks
 PR are unexercised.
 
 `/crew:review` is built and ran once (§15.108). Its reviewer resume, queue
-line, pane rule and no-wait post are unexercised (T77).
+line, pane rule and no-wait post are unexercised (T77). T78 cut its
+pre-review steps to one scout and a charter template, and no run has
+exercised that (§15.109).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

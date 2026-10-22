@@ -1,0 +1,169 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 108,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Report an approval with no body in the PR watch",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/108"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "f31e2a2056d5991a7a8dbf52f6ab86e947f93bee",
+    "head": "6f861dbebef764f2281c2c789f93b8a63e7e9428",
+    "started_at": "2026-10-22T19:03:06.548Z",
+    "tool_version": "0.1.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Report an approval with no body in the PR watch\n\n## Summary\n\nThe watch that follows a PR after the hand-over did not report an approval that had no comment text. GitHub lets a reviewer approve with an empty body, and most approvals are like that, so the project lead often did not tell the principal that a PR was approved. The watch now reports every approval. It still skips a comment-only review with no text, because that review holds only inline comments, and the watch reports those on their own.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.110 (new) records the defect. `skills/delivered-window/references/pr-watch.md` owns the poll's command lines; `skills/delivered-window/SKILL.md` owns how a wake's lines are sorted, and already sorts an approval with no ask as a notice, so it needs no change.\n\n### What changed, by file\n\n- `skills/delivered-window/references/pr-watch.md`: the reviews read in the poll keeps a review when its body is not empty or its state is `APPROVED`. Both `.body` reads now default to `\"\"`, so a null body prints an empty summary rather than `null` or an error. \"What the poll leaves out\" now names the approval exception and why an empty comment-only review stays out.\n- `docs/design.md`: §15.110 records the defect and the fix.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.87 to 0.1.88.\n\n### Constraints that applied\n\n- A change to `skills/` bumps both manifests, to equal values. Done.\n- A rule lives in one file: the sort rule stays in `SKILL.md`; only the poll changed.\n\n### How this was verified\n\nRan the new `jq` filter with `SINCE=2026-10-22T00:00:00Z` against seven sample reviews. It printed an `APPROVED` review with body `\"\"` and one with body `null`, printed a `CHANGES_REQUESTED` review with its first line, and printed the `PENDING` id. It dropped a `COMMENTED` review with an empty body, an approval that ends with the `",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5619429110,
+      "review_url": "https://github.com/jerridan/crew/pull/108#pullrequestreview-5619429110",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 120026794567
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 64,
+      "gather": 35,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

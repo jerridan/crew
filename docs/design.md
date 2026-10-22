@@ -8046,3 +8046,15 @@ Deliberately different:
      now opens with a plain count of the findings and names none of crew's
      machinery. The own-PR sentence stays, because GitHub gives the author
      no other reason for a comment where an approval was due.
+
+110. **The PR watch missed an approval with no body — 2026-10-22.** The
+     principal saw an approval land on a PR and no `review` line reach the
+     project lead. The poll's reviews read kept a review only when its body
+     was not empty. GitHub lets a reviewer approve with no body, and that is
+     the usual approval, so the watch dropped most of them. An approval is a
+     notice in the delivered window's sort, but the principal must hear
+     about it: it is often the word that the PR can merge. The read now also
+     keeps an approval with an empty body. It still drops a comment-only
+     review with an empty body, because that review holds only inline
+     comments, and the review comments read reports those. Checked against
+     sample reviews with `jq`; no live run has read the change yet.

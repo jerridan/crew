@@ -39,9 +39,9 @@ poll() {
   fi
   revs=$(gh api --paginate "repos/$R/pulls/$N/reviews" --jq '.[]
     | if .state == "PENDING" then "pending \(.id)"
-      elif (.body // "") != "" and .submitted_at >= $ENV.SINCE
-        and ((.body | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
-      then "review \(.id) \(.user.login) \(.submitted_at) \(.state) \(.body | gsub("\r"; "") | split("\n") | first | .[0:100])"
+      elif ((.body // "") != "" or .state == "APPROVED") and .submitted_at >= $ENV.SINCE
+        and ((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
+      then "review \(.id) \(.user.login) \(.submitted_at) \(.state) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"
       else empty end' 2>/dev/null) || revs=''
   export PEND=" $(printf '%s\n' "$revs" | sed -n 's/^pending //p' | tr '\n' ' ')"
   out=$( {
@@ -128,7 +128,9 @@ as on a failed queue check.
 ## What the poll leaves out
 
 - A pending review and its inline comments. They are not yet submitted.
-- A review whose body is empty.
+- A review whose body is empty, unless it is an approval. A comment-only
+  review with an empty body holds only inline comments, and the review
+  comments read reports those.
 - A review or conversation comment older than `run.watch.last_polled_at`.
 - An item whose last line starts `<!-- pr-review: `. That marker is your
   own reply.

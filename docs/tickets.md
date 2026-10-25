@@ -3322,7 +3322,8 @@ Scope, one line per issue:
 1. #88: check 2 fails on outcomes, not on denials. The allow list grants
    every verification gate and read-only package probes.
 2. #89: `review-runner.md` documents the refusal of a headless write under
-   `~/.claude` and the `result`-field fallback. The default root stays.
+   `~/.claude`, seen once in a cloud routine, and the `result`-field
+   fallback. The default root stays.
 3. #109: the go-ahead gate is decided by the author of each item. The
    six-condition no-wait rule is removed.
 4. #110: the project lead writes `reviews/baseline.md` once per deliverable,

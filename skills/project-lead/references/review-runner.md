@@ -320,19 +320,21 @@ edit. The findings come back to you, and you decide what each one earns.
 ## Reviewer instructions
 
 **You assemble this file; you do not copy a second copy of the report
-shape.** It has two parts, in this order:
+shape.** It has three parts, in this order:
 
 1. **`review-output.md`, verbatim.** It owns the severity tags, the
    `Cannot verify` rule, the report-never-fix rule and the two closing lines,
    and it is the same text every review dispatch injects. The child process
    reads no file of this plugin, so a reference by name would not resolve.
-2. **The block below**, with its bracketed values filled in. It holds what is
-   this review's own and nothing that part 1 already states: the goal text,
-   the diff range, the suite and the line that says the dependencies are
-   installed (or the no-suite sentence), the output path, and the pending
-   head.
+2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
+   says.
+3. **The block below**, with its bracketed values filled in. It holds what is
+   this review's own and nothing that parts 1 and 2 already state: the goal
+   text, the diff range, the suite and the line that says the dependencies
+   are installed (or the no-suite sentence), the output path, and the
+   pending head.
 
-Write the two into
+Write the three into
 `<record-dir>/reviews/skeptical-r<n>-instructions.md` and pass that path to
 `--append-system-prompt-file`.
 

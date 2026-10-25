@@ -116,12 +116,11 @@ None of these is one of the five kinds of message below:
 
 ## Sort what reaches you
 
-Five kinds of message reach you here. Answer each where it arrived: a
-message typed in your pane is answered in your pane, and a
-`<cross-session-message>` by `SendMessage` to its `from-name`
-(`autonomy-contract.md`, "Reach the principal"). A principal that sent the
-goal by message answers by message; one that typed it answers in your pane.
-Both are the principal's channel.
+Five kinds of message reach you here. Answer each where it arrived: a message
+typed in your pane is answered in your pane, and a `<cross-session-message>`
+by `SendMessage` to its `from-name` (`autonomy-contract.md`, "Reach the
+principal"). A principal that sent the goal by message answers by message; one
+that typed it answers in your pane. Both are the principal's channel.
 
 **Sort the message before you act on it.** Two sections below take work, and
 one line divides them. A **finding** says the code the PR already holds is
@@ -132,7 +131,8 @@ Sort by that line and never by who sent the message. A message that holds
 both is sorted, then run through the one procedure below — **"A message that
 holds a finding"** — never split into two sections run on their own.
 **One defect is processed once**: a finding that became a package is not
-also a change request.
+also a change request. A message that corrects a repo fact also gets an
+offer (`autonomy-contract.md`'s "Record the answer as precedent").
 
 **A wake's lines are sorted the same way, with one more result.** Each item
 is a finding, a change request, a question or a **notice**. A notice asks for
@@ -477,12 +477,13 @@ package left `pending` or `in-flight` by a kill.
 
 ## The word that the work shipped
 
-It comes from the principal, on either channel, and it is the only thing that
-ends this window. Never decide it yourself: shipped means merged and
-deployed, and deployment happens outside this repo where no `gh` command sees
-it. In a `run.kind: review` run, the watch's `merged`, `queued` or `closed`
-item is that word. In a goal run, a `queued` item is a notice, and the word
-stays the principal's. On the word:
+It comes from the principal, on either channel, and it alone ends this
+window. Never decide it yourself: shipped means merged and deployed, and no
+`gh` command sees a deploy. In a `run.kind: review` run, the watch's
+`merged`, `queued` or `closed` item is that word. In a goal run, a `queued`
+item is a notice. A `Done: rolled out` standing-instructions section
+(`<project-lead-dir>/SKILL.md`) makes the word wait for the principal's word
+that the change is live, and a `merged` item is then a notice. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.

@@ -118,7 +118,10 @@ it cuts the deliverable's own checkout there and this run's worktrees branch
 from that one. **Every `<repo>` below this line means `run.checkout`.**
 
 Then one worktree per territory, all branching from that same head, so
-integration is a merge and never a rebase (design §9.3):
+integration is a merge and never a rebase (design §9.3). A `Branch names`
+section names the deliverable branch alone, through "Create the branch".
+The territory branches keep crew's names, because they never reach the
+remote:
 
 ```
 git -C <run.checkout> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
@@ -157,6 +160,8 @@ of: `ic-contract.md`'s full text, the brief, the file set, **the absolute
 worktree path**, the interface contract, the acceptance criterion, the global
 constraints section, the package id, and **that it is a teammate** —
 `ic-contract.md`'s report rules branch on it, and an IC cannot tell on its own.
+The standing instructions go in after the contract and before the brief, as
+`SKILL.md`'s "Standing instructions" says.
 
 It also carries the record root, as an absolute path. An interactive teammate
 can write there (design §15.31b), so a full-path IC writes `plans/<id>.md` and
@@ -427,9 +432,10 @@ them to that IC's branch, or surface them. Remove only worktrees this run
 created, proven by `worktrees.json` — a path pattern is not ownership (design
 §13.1).
 
-The work ends here, and your closing report says so. Send it to the
-principal the way the goal arrived (`autonomy-contract.md`). A pane is not a
-report when nobody is watching it. Then stay: the skill
+The work ends here, and your closing report says so. It lists every
+decision taken on a recommendation, as `simple-path.md`'s "End the run" says.
+Send it to the principal the way the goal arrived (`autonomy-contract.md`).
+A pane is not a report when nobody is watching it. Then stay: the skill
 `crew:delivered-window`, which "End the run" invoked, owns the rest of the
 session on every path. A change
 request there is one package on the simple path's loop, and a review's

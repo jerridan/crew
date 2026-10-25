@@ -49,7 +49,17 @@ to a charter.
 **Note who handed you the goal.** A goal that arrived as a
 `<cross-session-message>` makes the sending session your principal. Keep that
 envelope's `from-name` for the record step below. `autonomy-contract.md` owns
-how you reach it.
+how you reach it, and its "How to escalate" owns what you check before any
+ask.
+
+**Then look for a live run on the same ticket**, unless the argument is
+`--resume`. A ticket id is any token in the goal that matches
+`[A-Z]+-[0-9]+`. Read `goal` and `run.run_state` in every `state.json` under
+the record root (`record-format.md` says where the root is). A record whose
+`goal` names the same ticket id, and whose `run_state` is not `complete`, is a
+live run. Tell the principal about it, offer `--resume <its slug>`, and wait
+for the answer before you write `charter.md`. Never start a second run on the
+same ticket without saying so.
 
 **`--resume <goal-slug>` skips the rest of this rule.** It reopens the existing
 record, never a new directory. Append this session's id to `run.session_ids`,
@@ -119,35 +129,73 @@ the run works from, and the first thing that reads it can run before any
 branch exists — a replacement for the spec review (`substitution.md`,
 `record-format.md`).
 
-**A replacement the principal named is written down here, before any step
-runs.** Five sources can name a replacement for a review step. They are
-listed from the most specific to the least:
-
-| `source` | Where you read it |
-|---|---|
-| `launch` | what the principal typed at launch |
-| `goal` | the goal text |
-| `charter` | `charter.md` |
-| `repo` | `.claude/crew.md` in `run.repo` |
-| `machine` | `~/.claude/crew/config.md`, at that path whatever the record root is |
-
-The two files hold the same plain words the principal types at launch. A
-missing file names nothing. For each step, the most specific source that
-names a reviewer wins. That source can name the step's own reviewer — "use
-the default skeptical review" — and then it cancels a replacement from a
-source below it.
-
-Write each replacement that wins to `run.substitutions_requested` as `{step,
-replacement, source}`. A resumed session reads that field and nothing else,
-because the words that named the replacement are not in its context, and a
-file can change after the run starts. `references/substitution.md` owns what
-you then do with it.
+**Read the standing instructions in the same turn**, as "Standing
+instructions" below says. That read writes down every replacement the
+principal named, before any step runs.
 
 **The path you picked is the first entry in `decisions.md`**, once the record
 exists. It is a precedent-route entry in `record-format.md`'s full shape,
 every field included, and its `Citation:` quotes the words in the goal you
 read the path off. Nothing else in the record says an investigation run was
 chosen rather than fallen into.
+
+## Standing instructions
+
+Two files tell every run what the principal wants it to know about a repo:
+`.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path
+whatever the record root is. Read both whole at "Take the goal", on every
+path and on a review run. A missing file holds nothing. Then write
+`run set standing_instructions '{"repo": <path or null>, "machine": <path or
+null>}'`, with `null` for a missing file. A resumed session reads the files
+at those paths again before its first dispatch.
+
+**Each file holds optional `##` sections.** You act on these nine:
+
+| Section | What you do with it |
+|---|---|
+| `Reviewers` | the plain words that name a replacement for a review step, read as below |
+| `Known red tests` | it seeds `reviews/baseline.md` |
+| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it |
+| `Hook workarounds` | read it before every push and every merge |
+| `Ticket defaults` | read it before you create or name a ticket. It answers that question without an escalation (`autonomy-contract.md`, "How to escalate") |
+| `PR readiness` | `ready` or `draft`. `draft` adds `PR: draft` to `charter.md` |
+| `Done` | `merged` or `rolled out`. `crew:delivered-window`'s "The word that the work shipped" reads it |
+| `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
+| `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
+
+A file with no `##` heading is one `Reviewers` section. Read no other
+section yourself, and pass it through to ICs and reviewers unread.
+
+**One order decides between sources, for every section.** It runs from the
+most specific source to the least:
+
+| `source` | Where you read it |
+|---|---|
+| `launch` | what the principal typed at launch |
+| `goal` | the goal text |
+| `charter` | `charter.md` |
+| `repo` | `.claude/crew.md` |
+| `machine` | `~/.claude/crew/config.md` |
+
+The most specific source that answers wins. So a charter `Gate: off` line
+overrides a `Go-ahead` section, and a repo section overrides a machine
+section of the same name.
+
+**Every IC dispatch and every reviewer's instructions carry both files'
+text**, whole, the repo file first. It goes after the contract and before
+the brief. Each dispatch site points here.
+
+**`Reviewers` names a replacement for a review step.** It holds the same
+plain words the principal types at launch. For each step, the most specific
+source that names a reviewer wins. That source can name the step's own
+reviewer — "use the default skeptical review" — and then it cancels a
+replacement from a source below it.
+
+Write each replacement that wins to `run.substitutions_requested` as `{step,
+replacement, source}`. A resumed session reads that field and nothing else,
+because the words that named the replacement are not in its context, and a
+file can change after the run starts. `references/substitution.md` owns what
+you then do with it.
 
 ## Every dispatch is named
 
@@ -309,7 +357,8 @@ That write is what reserves the round.
 
 Then dispatch `crew:spec-critic`, named `spec-critic-r<n>` for the same
 round, with `spec.md`, `charter.md`, the repo path, `review-output.md`
-whole, and the absolute path it writes its findings to:
+whole, the standing instructions as "Standing instructions" above says, and
+the absolute path it writes its findings to:
 `reviews/spec-critic-r<n>.md`. Every review dispatch in this run reserves
 and names its round the same way, and returns the short result
 `review-output.md` defines, read as "Every dispatch is named" above says;
@@ -339,9 +388,10 @@ dispatch that step.
 
 ## Sweep for preference questions
 
-Escalate every question in `charter.md` and `spec.md` that the repo cannot
-answer, as one batch, before you split. `autonomy-contract.md` owns the
-rule.
+Before you split, take every question in `charter.md` and `spec.md` that
+the repo cannot answer. Decide each one the reversible rule allows, and
+escalate the rest as one batch. `autonomy-contract.md`'s "The preference
+sweep" owns both rules.
 
 ## Choose the shape
 

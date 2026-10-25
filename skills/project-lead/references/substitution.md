@@ -3,8 +3,8 @@
 The principal can name another reviewer for a review step, in plain
 language: "use Codex for the spec review". Two steps take a replacement, and
 no other step does — the spec critic, and the skeptical review (design
-§15.94d). `SKILL.md`'s "Take the goal" resolved each one from five sources
-and recorded it in `run.substitutions_requested`; this file runs it.
+§15.94d). `SKILL.md`'s "Standing instructions" resolved each one from five
+sources and recorded it in `run.substitutions_requested`. This file runs it.
 
 ## What the replacement is told
 
@@ -12,8 +12,8 @@ Give the replacement what the step's own reviewer would have had:
 
 | The step | What the replacement gets |
 |---|---|
-| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` whole, and the absolute paths of `spec.md` and `charter.md` |
-| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, plus the branch at `run.review_pending.head` and the base ref |
+| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
+| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
 
 **The spec critic's whole body, never the seven checks alone.** The scope
 limit, the over-specification checks, the rule against a re-spec for one

@@ -109,6 +109,10 @@ file: `record-format.md` keeps those out of a package's file set, and
 This section owns where a run's git work happens. `full-path.md` borrows it
 (design §15.90).
 
+**A `Branch names` section in the standing instructions replaces crew's
+branch name**, `crew/<goal-slug>/<deliverable-id>`, everywhere this section
+uses it (`SKILL.md`, "Standing instructions").
+
 **Ask first whether another run holds this checkout.** It is held when either
 of these is true:
 
@@ -178,7 +182,8 @@ an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text,
 the brief, the file set, `run.checkout`, the interface contract, the
 acceptance criterion, the global constraints section, the record root, and
-the package id.
+the package id. The standing instructions go in after the contract and
+before the brief, as `SKILL.md`'s "Standing instructions" says.
 
 **One dispatch carries the package.** The IC writes `plans/<id>.md`, then
 continues per `ic-contract.md`'s "Write your plan first".
@@ -389,9 +394,10 @@ left registered is work for a human (design §15.88g, §15.90).
 `checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
 why not in `checkout_restored`. A run that cut its own checkout switched
 nothing, so `checkout_branch` is `null` and this step is already done. Name
-both branches in your closing report, and send it to the principal the way
-the goal arrived (`autonomy-contract.md`). A pane is not a report when nobody
-is watching it.
+both branches in your closing report, and list in it every decision taken on
+a recommendation (`autonomy-contract.md`'s "The preference sweep"). Send it to
+the principal the way the goal arrived (`autonomy-contract.md`). A pane is
+not a report when nobody is watching it.
 
 **The report ends the work, not the session.** Invoke the skill
 `crew:delivered-window` with the `Skill` tool, then read "The skeptical

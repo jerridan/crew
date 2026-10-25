@@ -102,7 +102,9 @@ each on its own, anywhere in the file:
   the principal lifts the block at the gate (`/crew:review`'s "Review").
 
 `SKILL.md`'s "Take the goal" writes `PR: draft` and `Gate: off` when the
-principal asks for them in the goal or at launch.
+principal asks for them in the goal or at launch, and "Standing
+instructions" writes them for a `PR readiness: draft` or `Go-ahead: off`
+section.
 
 ## `diagnosis.md`
 
@@ -610,7 +612,8 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`, or for a split-pane teammate from the `agentName` in its transcript; `null` with `agent_id` also `null` means the project lead's own session compacted; `null` with an `agent_id` is an unnamed subagent. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
 | `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step the light path let the run skip. `step` is `spec-critic`, and nothing else: a `spec-critic` entry leaves both `package` and `deliverable` `null`, because the run writes no spec and the skip belongs to the whole run. A record written before T58 or T59 can also carry a `plan-gate` or a `deliverable-review` entry, from the two steps those tickets retired (design §15.94d). Read one as history, and write neither on a new skip. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the path and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What the light path skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). |
 | `steps_substituted` | a list of `{step, round, replacement, at, usage, display, report_source}`, **one entry per invocation of a replacement**, a retry included (`substitution.md`). `step` is `spec-critic` or `skeptical-review`, and nothing else: no other step takes a replacement. `round` is the review round this invocation ran at, the same `<n>` as its report file. `replacement` is the principal's own words for what ran, such as `"use Codex for the spec review"` — crew holds no list of runners to name it from. `at` is an ISO-8601 UTC timestamp you write yourself, because `run set` stamps nothing. `display` is where the runner ran, one of `tmux-split`, `iterm2-split`, `tmux-session` or `headless` (`substitution.md`'s "Where it runs"); an entry written before T76 has none. `report_source` is where the project lead read the report: `file` when the runner wrote a usable report file, `output` when the project lead transcribed the runner's output (`substitution.md`'s "Read or write the report file"). An entry written before T79 has none. `usage` is an object with two optional keys, `tokens` (an integer) and `usd` (a number), holding whatever the runner reported; `null` when it reported neither. `crew-stats.py` prices `usd` and nothing else, so an entry carrying only `tokens` prints that count in its own `tokens` column, with `usd` reported as `unmeasured`. **A substituted step is not a skipped step.** The step ran, and its report sits at the step's own path under `reviews/`, so `steps_skipped` gets no entry for it. Absent until the first invocation. Write it with `run set steps_substituted <json>`, the whole list each time. |
-| `substitutions_requested` | a list of `{step, replacement, source}`, one entry per review step whose replacement won, written at `SKILL.md`'s "Take the goal" before any step runs. `step` is `spec-critic` or `skeptical-review`. `replacement` is the principal's words. `source` is `launch`, `goal`, `charter`, `repo` or `machine`, naming the source whose words won; "Take the goal" owns what each one means and which one wins. A record written before T63 holds only the first three. **This field is the request, and `steps_substituted` is what ran.** A resumed session reads this one, because the words that named the replacement are in no later session's context. Absent when the principal named none. Write it with `run set substitutions_requested <json>`, the whole list each time. |
+| `standing_instructions` | an object, `{repo, machine}`, written once, at `SKILL.md`'s "Take the goal" or at `/crew:review`'s "Take the PR". `repo` is the path of `.claude/crew.md` in `run.repo` and `machine` the path of `~/.claude/crew/config.md`, each `null` when that file was missing. It says what the run read. A resumed session reads the files at those paths again, and `SKILL.md`'s "Standing instructions" owns what it does with them. Absent on a record written before T79. Write it with `run set standing_instructions <json>`. |
+| `substitutions_requested` | a list of `{step, replacement, source}`, one entry per review step whose replacement won, written at `SKILL.md`'s "Take the goal" before any step runs. `step` is `spec-critic` or `skeptical-review`. `replacement` is the principal's words. `source` is `launch`, `goal`, `charter`, `repo` or `machine`, naming the source whose words won; `SKILL.md`'s "Standing instructions" owns what each one means and which one wins. A record written before T63 holds only the first three. **This field is the request, and `steps_substituted` is what ran.** A resumed session reads this one, because the words that named the replacement are in no later session's context. Absent when the principal named none. Write it with `run set substitutions_requested <json>`, the whole list each time. |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
@@ -937,6 +940,21 @@ completes every answer; the file name lands later, at integration, because
 that is when the rule is written and the container check can move it. Reopen
 the entry there and finish the line.
 
+**A question the sweep decides on a recommendation gets an entry of its
+own**, not a place in `Questions:` (`autonomy-contract.md`'s "The preference
+sweep"). It carries the line `Reversible: yes, decided on recommendation`
+after `Confidence:`:
+
+```markdown
+## Which label does the new menu entry use?
+Route: preference
+Answer: "Export as CSV", the wording of the two menu entries beside it.
+Citation: charter.md is silent on the label. src/menu.ts:40-52 holds the neighbours.
+Confidence: medium
+Reversible: yes, decided on recommendation
+Timestamp: 2026-08-24T14:30:00Z
+```
+
 ### A council entry
 
 A council-route entry carries five more lines (design §6.1). `Prior`,
@@ -1035,7 +1053,7 @@ Every name this file defines, with what consumes it.
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied, and writes the report itself for a substituted step (`substitution.md`). Consumer: stage 3 (`split-critic` output); `simple-path.md`'s "The skeptical review" (the skeptical review's report)
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
-- `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks. Consumer: `crew:delivered-window`'s "The go-ahead gate"
+- `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks, or its "Standing instructions" for a `Go-ahead: off` section. Consumer: `crew:delivered-window`'s "The go-ahead gate"
 - `charter.md` `Assist: on` line — writer: the principal, or `/crew:review` when the principal asks. Consumer: `crew:delivered-window`'s "Findings from a review"
 - `charter.md` `Suite: on fork` line — writer: the principal at launch, or the project lead when the principal lifts the block at the gate. Consumer: `/crew:review`'s "Review"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
@@ -1059,6 +1077,7 @@ Every name this file defines, with what consumes it.
 - `run.completed_at` — writer: `crew-record.py`, on `ship`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md`'s "Verify before you believe" (re-verify after an IC compacts) and "The territory's next package" (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
+- `run.standing_instructions` — writer: the project lead, at `SKILL.md`'s "Take the goal", or `/crew:review`'s "Take the PR". Consumer: a resumed session, which reads the two files again before its first dispatch
 - `run.substitutions_requested` — writer: the project lead, at `SKILL.md`'s "Take the goal". Consumer: `substitution.md` (which step takes a replacement, in this session and in every resumed one)
 - `run.steps_substituted` — writer: the project lead, at each substitution `substitution.md` allows. Consumer: `scripts/crew-stats.py` ("Steps the principal replaced"); a human, or a later session, asking what ran in a review step's place (design §15.94d)
 - `run.steps_skipped` — writer: the project lead, at each skip `band-rubric.md`'s "What the light path skips" allows. Consumer: `scripts/crew-stats.py` ("Steps skipped by rule"); a human, or a later session, asking which steps ran (design §15.77)

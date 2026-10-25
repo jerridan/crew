@@ -97,8 +97,10 @@ sanitizing" says so.
 6. **Dispatch the scout, and do not wait for it.** One `crew:scout`
    subagent at `haiku`, named `scout-1` as `<project-lead-dir>/SKILL.md`'s
    "Every dispatch is named" says. Its "Scout" gives the dispatch shape. The
-   one question: what runs the suite, and what is the setup command? The
-   scout reads the checkout while you write the next four steps, and
+   one question is that section's third, and its answer carries the setup
+   command too:
+   "What runs the suite, and what other gates does CI run: types, lint, build?"
+   The scout reads the checkout while you write the next four steps, and
    "Review" reads its answer. A review run asks no other question. The
    reviewer reads the repo's instruction files itself, and a review has no
    work to size.
@@ -193,8 +195,8 @@ gate. When it comes at the gate, add the line to the charter.
 
 **Read `scout-1`'s answer** before the first launch, as
 `<project-lead-dir>/SKILL.md`'s "Every dispatch is named" says. It is the
-suite command and the setup command that `review-runner.md` says the scout
-recorded.
+suite command, the other gates and the setup command that `review-runner.md`
+says the scout recorded.
 
 Then run the review through `review-runner.md`, with the files named
 `skeptical-r<n>` and `<n>` from `run.review_pending.round`. Set

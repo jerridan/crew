@@ -241,8 +241,10 @@ than restate it.
 ## Scout
 
 Four questions, answered from this repo before any spec exists. Does an
-analogous implementation exist? Do tests cover this surface? What runs the
-suite? Which instruction files apply?
+analogous implementation exist? Do tests cover this surface?
+What runs the suite, and what other gates does CI run: types, lint, build?
+Which instruction files apply? The scout records each gate command and the
+setup command word for word.
 
 Dispatch `crew:scout` subagents at `haiku`, named `scout-<n>` for the
 question number, and read each answer as "Every dispatch is named" above

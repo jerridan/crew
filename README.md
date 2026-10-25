@@ -207,12 +207,38 @@ To use another reviewer, say so in plain words, as for a goal:
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
 | A clone of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the clone | every `/crew:review` run |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
+| Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |
 
 Crew never widens your permissions itself. Without the teams variable, the
 light, simple and investigation paths still work: every named agent launches
 as an ordinary subagent, so you keep the per-package model and the isolated
 context, and you lose the messaging between agents and the shared task list.
 The full path requires the variable.
+
+Crew reads both standing-instruction files whole at launch, and gives their
+text to every agent it dispatches. Each file holds optional sections, each
+under a `##` heading with one of these names:
+
+| Section | What to write |
+|---|---|
+| `Reviewers` | the reviewer to use in place of a review step, in plain words |
+| `Known red tests` | the tests that already fail on the main branch, and why |
+| `Gates` | the exact commands CI runs: tests, types, lint and build |
+| `Hook workarounds` | what to do when a git hook stops a push or a merge |
+| `Ticket defaults` | where a new ticket goes, such as its team |
+| `PR readiness` | `ready` or `draft` |
+| `Done` | `merged`, or `rolled out` to wait for your word that the change is live |
+| `Branch names` | your rule for a branch name |
+| `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
+
+```
+## Known red tests
+test_search_emits_analytics fails on main while the local search flag is on.
+
+## Gates
+yarn test
+yarn check-types-strict
+```
 
 ## How it works
 
@@ -340,6 +366,9 @@ to see every judgment call with its citation.
 ├── reviews/        every critic and reviewer output, and the reply to each
 └── diffs/          one diff per deliverable
 ```
+
+`reviews/baseline.md` lists the tests and checks that already fail before
+the change. Reviewers do not raise them.
 
 A review run's directory is `pr-<owner>-<repo>-<n>-<hex>/`. Its drafts are
 `reviews/github-r<n>.md`, one per round.

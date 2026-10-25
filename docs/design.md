@@ -8058,3 +8058,285 @@ Deliberately different:
      review with an empty body, because that review holds only inline
      comments, and the review comments read reports those. Checked against
      sample reviews with `jq`; no live run has read the change yet.
+
+111. **The review runner lost rounds to its own mechanics — 2026-10-25, T79.**
+     Issue #115. Eight records lost a headless review round to
+     `review-runner.md`, not to the review. A resumed round wrote over the
+     round-1 report in `agi-3942-reviewer-55-models-c178/decisions.md:75`,
+     `agi-3973-zendesk-support-recipe-f216/decisions.md:109` and
+     `agi-4411-auto-review-evals-v1-7e3a/decisions.md:110`, and the project
+     lead restored the text from its own context. The variadic
+     `--allowedTools` flag took the prompt as one of its values in
+     `add-padcenter-helper-5b0b/decisions.md:297`,
+     `add-truncate-helper-cfd5/decisions.md:101-116` and
+     `deepsec-gha-hardening-cd71/decisions.md:108-112`. The runner reviewed
+     the wrong commit twice (`add-padcenter-helper-5b0b/decisions.md:126-152`,
+     `add-truncate-helper-cfd5/decisions.md:118-142`). After two failed runs,
+     one head shipped with no review
+     (`add-truncate-helper-cfd5/decisions.md:144-157`). Codex wrote its own
+     report file against the "return it as output" instruction in five
+     records, among them
+     `agi-3062-linked-playbook-return-status-0e44/decisions.md:88`.
+
+     T79 changed `review-runner.md` and `substitution.md` in three places. A
+     resumed round writes to its own round's path, never to the previous
+     round's path. Check 4 confirms that the previous report still opens with
+     its own `Reviewed:` sha. A `Reviewed:` sha that does not match
+     `run.review_pending.head` fails the round, and the round reruns fresh. A
+     result with an empty `result` field and `Input must be provided` on
+     stderr is a failed launch. The project lead retires it, reruns it as the
+     failure path's one retry, and logs the command line. A replacement runner
+     gets the absolute report path. The project lead reads that file first and
+     the runner's output second, and `run.steps_substituted` records which one
+     it read.
+
+     The issue also asked for the Codex sandbox flags that stop the yarn, git
+     and localhost denials. That is out of scope. The repo holds no evidence
+     of which flag stops which denial, and nothing in this run could test
+     Codex. No run has exercised any of these changes.
+
+112. **Check 2 failed a sound review, and the report write was refused —
+     2026-10-25, T79.** Issues #88 and #89. One cloud-routine run, on crew
+     0.1.75 and Claude Code 2.1.280, took a one-package upgrade to
+     jerridan/websites#66. Both review attempts said `accepted` and ran the
+     suite green. Both failed check 2, because the reviewer tried `pnpm
+     install --frozen-lockfile`, `npm view`, `node -e` and `pnpm check-types`,
+     and each denial counted as a failure. The second failure escalated, and
+     the routine ended `blocked` with nobody to answer it. In the same run,
+     the reviewer could not write its report under `/root/.claude/crew/`: a
+     headless session treats a path under `~/.claude` as sensitive. The
+     evidence is the PR body of jerridan/websites#66, section "Spike
+     findings".
+
+     Check 2 now fails on outcomes, not on denials: no report in the file or
+     in the `result` field, a suite that did not run, or a `Cannot verify`
+     that bears on the verdict. Every other denial goes to
+     `run.review_results[<n>].denied`, and adjudication reads it. The allow
+     list grants every verification gate the scout recorded, one rule per
+     gate, and read-only package probes such as `npm view` and `pnpm why`.
+     `node -e`, `python -c` and every install command stay off it. The scout's
+     suite question now asks for the other CI gates too. When the project lead
+     ran the setup command, the reviewer's instructions say "Dependencies are
+     installed. Do not install."
+
+     `review-runner.md` now states the sensitive-path refusal. It says that a
+     `CREW_RECORD_ROOT` outside `~/.claude` avoids it, and it names the
+     `result`-field fallback for a write that is refused anyway. The
+     `Write(...)` rule that #89 proposed is not added: `Edit(...)` governs the
+     report write, and the paragraph that says so stays. The default record
+     root stays `~/.claude/crew/`. The spec left a move to the principal's
+     sweep answer, and the root did not move. No run has exercised these
+     changes.
+
+113. **Standing instructions are read whole — 2026-10-25, T79.** Issue #111.
+     Across 44 records, the project lead relearned facts about a repo, or the
+     principal typed them again. About 16 records found again which tests are
+     red on main. About 10 tripped on a pre-push hook that rejects a rebased
+     branch, for example
+     `agi-3068-attempt-transitions-ch-810b/decisions.md:270-273` and
+     `sup-306-run-error-handoff-6298/decisions.md:91-94`. Six records missed a
+     CI gate in local verification and paid a patch round for it, for example
+     `byron-menu-trigger-button-c217/decisions.md:69`. Five records needed
+     "mark the PR ready" although `config.md` already said so
+     (`agi-3058-requested-attempt-hooks-a4b6/decisions.md:117`). Three
+     escalations asked which Linear team owns a new ticket
+     (`byron-menu-trigger-button-c217/decisions.md:47-48`).
+
+     The project lead now reads `.claude/crew.md` and
+     `~/.claude/crew/config.md` whole at "Take the goal", on every path and on
+     a review run, and writes `run.standing_instructions`. `SKILL.md`'s
+     "Standing instructions" names the nine sections it acts on: `Reviewers`,
+     `Known red tests`, `Gates`, `Hook workarounds`, `Ticket defaults`, `PR
+     readiness`, `Done`, `Branch names` and `Go-ahead`. The
+     reviewer-replacement parse is now the `Reviewers` section. Every IC
+     dispatch and every reviewer's instructions carry the text of both files.
+     When the principal corrects a repo fact at the hand-over or in the
+     delivered window, the project lead offers to write it to
+     `.claude/crew.md`, and quotes the wording. No run has read a
+     standing-instructions file under these rules.
+
+114. **A baseline of red tests per deliverable — 2026-10-25, T79.** Issue
+     #110. About 16 of 44 records show a reviewer raising a test that was
+     already red on the merge base, and the project lead finding the cause
+     again.
+     `sup-306-run-error-handoff-6298/decisions.md:72,100,121,156,177,191,219`
+     raised the same `TestFastKnowledgeSearchEmitsAnalytics` pair in 7 of 10
+     rounds. `pr-AdaSupport-monorepo-8122-44e8/decisions.md:15-18,29-31`
+     raised the same `[Critical]` for a baseline failure in two rounds.
+     `pr-AdaSupport-monorepo-8110-b4a8/decisions.md:17` reproduced 128
+     baseline type errors in both rounds. A local LaunchDarkly flag broke the
+     flag-off tests in three records, and each diagnosed it again, for example
+     `agi-3067-attempt-id-trigger-response-f7bd/decisions.md:202,222`.
+
+     Before round 1 of a deliverable, the project lead now detaches the review
+     worktree at the deliverable's `base`, runs every gate the scout recorded,
+     and writes `reviews/baseline.md`, seeded first from `Known red tests`. A
+     repo with no suite writes `No suite.` Every reviewer's instructions and
+     every delivered-window IC dispatch carry the file, with the sentence that
+     a test on it is red before the change. Adjudication declines a finding
+     that names a listed test, with the reason `baseline`. It does not decline
+     a finding that a listed test fails differently. The issue proposed that
+     an IC run the baseline on the full path. The project lead runs it on
+     every path instead, in the review worktree it already cuts. No run has
+     written a baseline.
+
+115. **The project lead escalated questions it could answer — 2026-10-25,
+     T79.** Issue #114. Of 16 escalations in one batch of 11 records, at least
+     7 ended with the principal choosing the option the project lead had
+     recommended. All four "proceed or one more spec round?" asks got
+     "proceed". The charter already held the answer in
+     `add-truncate-helper-cfd5/decisions.md:17-20` and
+     `remove-processes-v3-7e3a/decisions.md:4,17`. Three records asked which
+     Linear ticket to use, and every answer named a team
+     (`byron-menu-trigger-button-c217/decisions.md:47`).
+     `agi-3068-attempt-transitions-0368/decisions.md:33` asked the question
+     that `agi-3068-attempt-transitions-ch-810b/decisions.md:61-69` had asked,
+     and that the principal had answered 15 hours earlier. A VPN fault in
+     `delete-26-integration-icons-9bd7` cleared before the principal replied.
+
+     `autonomy-contract.md` now has the project lead check three sources
+     before any escalation except trigger 8: the charter, the standing
+     instructions, and every sibling record on the same ticket. The
+     escalation's entry carries a `Checked:` line. A reversible preference
+     question with a recommendation at medium confidence or higher is decided
+     on that recommendation, logged with `Reversible: yes, decided on
+     recommendation`, and listed at the hand-over. "Take the goal" scans the
+     record root for a live run on the same ticket before it writes the
+     charter, and offers `--resume`. The project lead retries an environment
+     fault three times at one minute before it escalates. No run has exercised
+     these rules.
+
+116. **The go-ahead gate stopped on bot rounds — 2026-10-25, T79.** Issue
+     #109. Across 44 records, 34 go-ahead asks were answered, and 31 of them
+     were "go" with no change to the draft. The waits ran from 1 minute to 17
+     hours. `agi-3973-zendesk-support-recipe-f216/decisions.md:121-123` waited
+     17 hours on a bot round, and
+     `pr-AdaSupport-monorepo-8699-a8ae/state.json` spent 143 minutes at the
+     gate, 77% of the run. The six-condition no-wait rule for a later
+     skeptical round never fired in 11 review runs. On 2026-10-23 the
+     principal said: "do not wait for my permission to reply to bot-generated
+     reviews. Only human reviews."
+
+     The gate is now decided by the author of each item. A `pr-comments` round
+     takes it only when an item comes from a human who is not the principal. A
+     login that ends in `[bot]`, or that equals the principal's own `gh`
+     login, is not one. A `ci` round takes no gate, and a `principal` round
+     still takes it. The six-condition rule is gone. On a review run,
+     skeptical round 1 takes the gate, and a later round posts with no wait
+     when its report raises no new finding. `Gate: off` still covers
+     everything. T77's probe of the old no-wait post is struck. No run has
+     exercised the new gate.
+
+117. **The review cap stays at three, and an accepted verdict stops the review
+     — 2026-10-25, T79.** Issue #113. After the three-round cap, every new
+     head ships with no crew review: `agi-3058-requested-attempt-hooks-a4b6`
+     holds 15 unreviewed heads, `agi-3067-attempt-id-trigger-response-f7bd` 10
+     and `byron-menu-trigger-button-c217` 8. The principal ordered rounds past
+     the cap in at least 7 records, for example
+     `agi-3062-linked-playbook-return-status-0e44/decisions.md:103,126`. In
+     `sup-306-run-error-handoff-6298/decisions.md:128` the project lead
+     hand-edited `review_pending` to run one. Each round started with no
+     memory of the last:
+     `agi-3066-simpleapp-http-attempt-7120/decisions.md:124,145,187` declined
+     the same Critical three times, for about 345k Codex tokens and no
+     package.
+
+     The cap stays at three rounds, counted as before. That is the principal's
+     constraint, so the issue's proposal that a round with nothing above
+     `[Nit]` spends no cap is not adopted. Instead, an `accepted` verdict
+     stops the review. The patch round for its findings integrates with
+     `--no-review accepted-round`, the new head is not armed, and
+     `unreviewed_heads` records it with that reason. The next message to the
+     principal names the head. A head with new scope is armed as before. A
+     resumed round is a delta review: the reviewer reads `git diff <previous
+     head>..HEAD` and the reply file first. A finding the project lead
+     declined with a reason stays declined unless the reviewer names new
+     evidence. "Run one more review" past the cap is `crew-record.py
+     arm-review --head <sha> --past-cap`, and the project lead never
+     hand-edits `review_pending`. No run has exercised these changes.
+
+118. **The spec critic is capped at two rounds — 2026-10-25, T79.** Issue
+     #112. The spec critic ran 44 rounds over 18 spec-path records, about 2.9
+     a spec. One audit batch counted 2 declines in about 100 findings, and the
+     project lead's own entries called the findings "wording gaps"
+     (`agi-3066-simpleapp-http-attempt-7120/decisions.md:82`,
+     `agi-3973-zendesk-support-recipe-f216/decisions.md:45`). Six records
+     reached the three-round cap. Four of them asked "proceed or one more
+     round?" with a recommendation to proceed, for example
+     `agi-3945-deep-finders-twice-delta-rereview-bdc2/decisions.md:38-50`, and
+     every answer was "proceed". `add-truncate-helper-cfd5/decisions.md:29-83`
+     spent three rounds on a one-file helper.
+
+     Two rounds is the cap now. At the cap, the project lead applies every
+     open finding it accepts, logs the rest as declined, and goes on to the
+     split with no ask. Only a finding under check 1, 2 or 3 of
+     `agents/spec-critic.md` may be `[Critical]`: an unfalsifiable criterion,
+     a dropped charter requirement, or a contradiction. A `[Concern]` or
+     `[Nit]` on the spec is a wording fix. The project lead applies it itself,
+     with no writer and no critic round. The same holds for a split-critic
+     round with no `[Critical]` finding. No run has exercised the cap.
+
+119. **Fix rounds patched the cited line only — 2026-10-25, T79.** Issue #116.
+     Four records fixed one defect class in three successive rounds.
+     `agi-4411-auto-review-evals-v1-7e3a/decisions.md:131,145,152` fixed
+     sanitising in rounds 1, 3 and 4, and `:180,187,194` a process kill in
+     rounds 5, 6 and 7.
+     `agi-3973-zendesk-support-recipe-f216/decisions.md:117,151,179` fixed
+     `check_handle` in rounds 1, 3 and 4. In
+     `agi-3731-attempt-contract-test-8533/decisions.md:187`, four reviewers
+     missed a test that passed with the code deleted.
+
+     The issue named a fix-round brief in `ic-contract.md`, and that file
+     holds none. The brief rule went to `simple-path.md`'s "Fix rounds", and
+     the IC's own duties to `ic-contract.md`'s "Report contract". A fix-round
+     or patch-round brief now asks the IC to search the deliverable's whole
+     diff for every other site of the same defect class, fix each one, and
+     list the sites it checked. The project lead's verification greps for the
+     pattern the finding named, not the cited line alone. For a weak-test
+     finding, the IC breaks the behaviour, confirms the test fails, restores
+     the behaviour, and reports both outputs. No run has exercised these
+     rules.
+
+120. **The script writes the logbook — 2026-10-25, T79.** Issue #117. The
+     model typed `decisions.md` timestamps, and they disagree with
+     `state.json` by hours.
+     `agi-3945-deep-finders-twice-delta-rereview-bdc2/decisions.md:108-113`
+     says 10-23 00:55 for a delivery that `state.json` stamps 10-22 23:16.
+     `t76-review-skill-first-run-9e2c/decisions.md:99-104` says 22:07 for a
+     run complete at 18:59.
+     `agi-3068-attempt-transitions-ch-810b/decisions.md:10-36` holds five
+     identical stamps. Entries late in long runs lack `Route`, `Citation` or
+     `Timestamp`, for example
+     `agi-3355-escalation-on-accepted-1ffa/decisions.md:55-78`. `state.json`
+     holds a `replied_at` before its `opened_at` in rounds 2 and 3 of
+     `agi-3966-cleanup-items-1cce`. Review runs logged the runner choice in 4
+     of 11.
+
+     `crew-record.py` gained a `decision` subcommand, with `--pending` and
+     `decision update`. It stamps `Timestamp:` from the clock, writes the
+     lines in one fixed order, and exits 2 on a missing field. It gained
+     `round open`, `round go-ahead`, `round replied` and `round drop`, so the
+     clock writes every round stamp, in order. `record-format.md` owns both. A
+     hand-written entry is the fallback when the script is unavailable, and it
+     is marked `Written by hand`. The three opening entries are one call each.
+     A review run logs its runner choice from `run.substitutions_requested`
+     before round 1. The issue proposed that `init` write the opening entries.
+     Each stays a `decision` call at its own step instead. No run has used the
+     subcommands.
+
+121. **Launch check 1 reports a block that does not hold — 2026-10-25, T79.**
+     `full-path.md`'s launch check 1 tests worktree isolation with `git -C
+     <repo> status` from another worktree, and reads a refusal as a block on
+     the full path. This run's own record, `eleven-open-issues-c11b`, shows
+     that the block does not hold. Its `decisions.md` entry "Preference sweep"
+     records a worktree-isolated session. The guard refused every `git -C
+     <foreign path>` form, and every compound command it could not parse. It
+     allowed `git worktree add <path>` from the checkout, and a plain `cd
+     <path> && git ...` after it. The run cut two worktrees and finished the
+     full path. Two earlier records, `d2-reviewers-and-repo-config-6be9` and
+     `d3-github-posting-and-ci-packaging-35e4`, asked the principal the same
+     question and left the worktree instead.
+
+     Launch check 1 and the IC contract's worktree rule, which forbids `cd
+     <path> && git`, both need a correction. T79 changes neither file. A later
+     ticket owns the correction, and no run has exercised it.

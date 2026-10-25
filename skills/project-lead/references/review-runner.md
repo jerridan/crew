@@ -126,25 +126,23 @@ Write the instructions file as well, as every round does. Fill this block:
 The change has a new head. In this session you reviewed <previous head sha>.
 This working directory is now a detached checkout at <pending head sha>.
 
-The change since your last review is `git diff <previous head sha>..HEAD`.
-Read it first. Read the whole change, `git diff <deliverable base>..HEAD`,
-again only where that delta touches code you did not review. Follow your
-first instructions on the suite.
+Read two things before anything else: the change since your last review,
+`git diff <previous head sha>..HEAD`, and the file below. Read the whole
+change, `git diff <deliverable base>..HEAD`, only where that delta touches
+code you did not review. Follow your first instructions on the suite.
 
 <one of the two literal lines below>
 
 <the file that line names, verbatim>
+
+A finding the project lead declined with a reason stays declined unless you
+have new evidence. When you raise it again, name that evidence.
 
 Give a verdict on the whole change as it now stands, not on the delta alone.
 Use the same report shape and the same two verdict strings as before. Open
 the report with this line, and nothing before it:
 
 Reviewed: <pending head sha>
-
-Above the two verdict lines, write one line that starts `Beyond the
-findings:`. Write `Beyond the findings: none` when every hunk of the delta
-answers one of the findings in your last report. Otherwise, after the colon,
-name each hunk that does not.
 
 <the output sentence>
 
@@ -297,6 +295,11 @@ granting the child a rule for it, which would let the review install
 whatever it liked. A setup that ran adds the line "Dependencies are
 installed. Do not install." to the instructions ("Reviewer instructions").
 
+**Before the deliverable's first round, the baseline runs here.**
+`skeptical-review.md`'s "When the review runs" owns that step. It moves the
+worktree with the `switch` command above, to the deliverable's `base` and
+then back to the pending head.
+
 **A setup that fails is an environment failure, not a finding.** Record it in
 `decisions.md`, and run that round with the no-suite outcome: the reviewer is
 told there is no suite, and reads the diff without one. Say so in the round's
@@ -320,7 +323,7 @@ edit. The findings come back to you, and you decide what each one earns.
 ## Reviewer instructions
 
 **You assemble this file; you do not copy a second copy of the report
-shape.** It has three parts, in this order:
+shape.** It has four parts, in this order:
 
 1. **`review-output.md`, verbatim.** It owns the severity tags, the
    `Cannot verify` rule, the report-never-fix rule and the two closing lines,
@@ -328,13 +331,15 @@ shape.** It has three parts, in this order:
    reads no file of this plugin, so a reference by name would not resolve.
 2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
    says.
-3. **The block below**, with its bracketed values filled in. It holds what is
-   this review's own and nothing that parts 1 and 2 already state: the goal
+3. **`reviews/baseline.md`, whole**, then this sentence, verbatim: "A test
+   or gate on this list is red before the change. Do not raise it."
+4. **The block below**, with its bracketed values filled in. It holds what is
+   this review's own and nothing that parts 1 to 3 already state: the goal
    text, the diff range, the suite and the line that says the dependencies
    are installed (or the no-suite sentence), the output path, and the
    pending head.
 
-Write the three into
+Write the four into
 `<record-dir>/reviews/skeptical-r<n>-instructions.md` and pass that path to
 `--append-system-prompt-file`.
 

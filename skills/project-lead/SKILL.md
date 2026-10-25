@@ -134,9 +134,15 @@ instructions" below says. That read writes down every replacement the
 principal named, before any step runs.
 
 **The path you picked is the first entry in `decisions.md`**, once the record
-exists. It is a precedent-route entry in `record-format.md`'s full shape,
-every field included, and its `Citation:` quotes the words in the goal you
-read the path off. Nothing else in the record says an investigation run was
+exists. Write it with one call, as `record-format.md`'s "`decisions.md`"
+says. The `Answer:` is one line, and the `Citation:` quotes the words in the
+goal you read the path off:
+
+```
+crew-record.py <record-dir> decision precedent "Which path does this goal take?" --answer "<path>" --citation "<the goal's words>" --confidence <level>
+```
+
+Nothing else in the record says an investigation run was
 chosen rather than fallen into.
 
 ## Standing instructions
@@ -316,8 +322,14 @@ answer each from those two:
    repo's own instruction files?
 
 **Write the answer down first, whichever way it goes.** One `decisions.md`
-entry, the second in the record, on the precedent route, naming the answer that
-decided it. A run that leaves no entry cannot be told from one that never ran
+entry, the second in the record, on the precedent route. Its one-line
+`Answer:` names the answer that decided it:
+
+```
+crew-record.py <record-dir> decision precedent "Does the work take the light path?" --answer "<yes, or the first no>" --citation "<the scout's report and charter.md>" --confidence <level>
+```
+
+A run that leaves no entry cannot be told from one that never ran
 this step.
 
 **Four yeses take the light path.** Read `simple-path.md`'s "The light path".
@@ -400,7 +412,16 @@ dispatch that step.
 Before you split, take every question in `charter.md` and `spec.md` that
 the repo cannot answer. Decide each one the reversible rule allows, and
 escalate the rest as one batch. `autonomy-contract.md`'s "The preference
-sweep" owns both rules.
+sweep" owns both rules. Open the sweep's entry with one call. When you
+escalate, it is this call. When you escalate nothing, it is a complete call
+with `--answer none`.
+
+```
+crew-record.py <record-dir> decision preference "Preference sweep: what does the principal want that the repo cannot say?" --pending --line "Questions: <each question>"
+```
+
+`record-format.md`'s "A preference-sweep entry" owns the entry's later
+writes.
 
 ## Choose the shape
 

@@ -55,7 +55,9 @@ nobody holds stalls the run for good.
 
 Classify every question, and **write the routing into `decisions.md` before
 you answer it**. A pivotal question that was routed wrongly is then visible
-to an audit. Routing with no recorded reason is a defect.
+to an audit. Routing with no recorded reason is a defect. Write every entry
+this file asks for with `crew-record.py`'s `decision`, in the form
+`record-format.md`'s "`decisions.md`" gives for it.
 
 | Route | For | How |
 |---|---|---|
@@ -111,12 +113,12 @@ question qualifies when all three of these hold:
 3. The choice is reversible before the hand-over: no file is deleted, no
    public interface is renamed, and no data is migrated.
 
-Decide it on your recommendation. Log a `preference` entry for it with the
-line `Reversible: yes, decided on recommendation` (`record-format.md`). The
-hand-over message lists every decision taken this way, so the principal can
-reverse one before the merge. A question that fails any condition escalates,
-so the batch holds only those questions. The rule holds for a preference
-question found later in the run too.
+Decide it on your recommendation. Log it with one `decision preference` call
+and `--line "Reversible: yes, decided on recommendation"`
+(`record-format.md`). The hand-over message lists every decision taken this
+way, so the principal can reverse one before the merge. A question that fails
+any condition escalates, so the batch holds only those questions. The rule
+holds for a preference question found later in the run too.
 
 Ask one block per question:
 
@@ -202,10 +204,11 @@ with no citation is not confidence, and it routes to a council.
 
 ### The default council is one adversary
 
-1. **Write your own answer first.** Put it in the `decisions.md` entry as
-   `Prior:`, with the confidence you hold it at, before you dispatch. An
-   answer written after the advocate reports is a reaction, not a prior, and
-   it cannot be compared with the adjudication later.
+1. **Write your own answer first.** Put it on the `Prior:` line of the
+   entry's first write, `decision council "<question>" --pending`, with the
+   confidence you hold it at, before you dispatch. An answer written after
+   the advocate reports is a reaction, not a prior, and it cannot be
+   compared with the adjudication later.
 2. **Dispatch one `crew:council-advocate` to argue the opposite.** Give it the
    question, its own assigned position, the repo path, and whatever context
    you already hold. Name it as an advocate, per `SKILL.md`'s "Every dispatch
@@ -249,10 +252,10 @@ costs (design §15.47).
 
 Frame two or three positions. Each must be a position an advocate can argue
 from this repo's own evidence, not a preference. Write the question, the
-positions and your prior into `decisions.md` before you dispatch, then send
-every dispatch in one message, or the advocates run one after another. Read
-each advocate's case from its final message, as `SKILL.md`'s "Every
-dispatch is named" says.
+positions and your prior into `decisions.md` with the same `--pending` write
+before you dispatch, then send every dispatch in one message, or the advocates
+run one after another. Read each advocate's case from its final message, as
+`SKILL.md`'s "Every dispatch is named" says.
 
 ### An investigation council
 
@@ -302,8 +305,8 @@ does not.
 
 ### Record the decision
 
-Write one `decisions.md` entry per council, in `record-format.md`'s council
-entry shape. That file owns the five fields a council adds — `Prior`,
+Complete each council's entry with `decision update`, in `record-format.md`'s
+council entry shape. That file owns the five fields a council adds — `Prior`,
 `Positions`, `Losing`, `Models` and `Spend`. Three of them need saying why:
 
 - `Prior:`, your own answer and confidence, written before the dispatch. It is
@@ -380,7 +383,8 @@ its `run_state`. Read their `decisions.md` entries and their `escalations`
 answers. A `Ticket defaults` section settles a ticket question, so that
 question never escalates. A source that answers ends the question.
 Otherwise, the `decisions.md` entry for the escalation carries a `Checked:`
-line that names the three sources and what each said:
+line, written with `--line`, that names the three sources and what each
+said:
 
 ```
 Checked: charter: no answer. Standing instructions: no section on it. Sibling records: AGI-3068-a4b6 asked and got no answer.
@@ -447,15 +451,17 @@ crew in this repo goes in `.claude/crew.md`, under its section in
 `SKILL.md`'s "Standing instructions". You ran that checklist at the
 sweep, on the wording you proposed. Run its container check again now, since
 the repo may have changed under you, and **name the file you wrote the rule
-into on the sweep entry's `Answer:` line** (`record-format.md`).
+into on the sweep entry's `Answer:` line**, with a second `decision update`
+(`record-format.md`).
 
 `crew:ic-instructions` owns the answer that cannot pass the checklist as one
 rule. That is a package, so it goes in the split — which is why the sweep,
 not this step, judges the fit.
 
 Write nothing when the principal refuses, or answers the question and not the
-`Record it?` line. Record the refusal in the sweep entry instead
-(`record-format.md`), so an audit can tell a refusal from a step you skipped.
+`Record it?` line. Record the refusal in the sweep entry instead, with the
+same `decision update` (`record-format.md`), so an audit can tell a refusal
+from a step you skipped.
 
 **A corrected repo fact gets the same offer.** At the hand-over and in the
 delivered window, the principal can correct you on a fact about this repo:

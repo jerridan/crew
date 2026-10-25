@@ -47,7 +47,18 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation answer <index
 python3 <skill-dir>/scripts/crew-record.py <record-dir> integrate <package-id> --review-head <sha> [--published]
 python3 <skill-dir>/scripts/crew-record.py <record-dir> deliver <deliverable-id> draft-pr-opened --pr-url <url> --review-head <sha>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> ship
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision <route> "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision <route> "<title>" --pending [--line "<Key>: <text>"]...
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision update "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round open <round-id> --kind <ci|pr-comments|principal|skeptical> --ref "<ref>" --reply-to "<where>" [--gated] [--opened-at <ISO-8601 UTC>]
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round go-ahead <round-id>
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round replied <round-id>
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round drop <round-id>
 ```
+
+`decision` writes `decisions.md`, and "`decisions.md`" below owns its three
+forms. `round` writes `run.rounds`, and the `rounds` row below owns its
+fields.
 
 **Never write `escalations` with `run set`.** That command replaces the key,
 so it drops every ask already in the list. `escalation add` appends one ask,
@@ -606,7 +617,7 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `review_session_ids` | a list of session ids, one per skeptical review this run started. The project lead generates each id itself and appends it **before** it launches that review, then passes it to the review as `--session-id`, so a review that dies halfway is still priced (`review-runner.md` owns the procedure). `spend.py` prices these transcripts into the run and `crew-stats.py` reports them. **Both hooks ignore this field.** An id here is a foreign session, so it never goes in `run.session_ids`, whose ending marks the whole run `interrupted` (`hooks/session-end.py`, design §15.90h). Absent until the first review. |
 | `review_sessions` | an object keyed by round id (`skeptical-r<n>`). Each value is `{runner: "claude" \| "codex", session_id, resumed_from: <round id> \| null, fresh_reason: null \| <string>}`: the reviewer session that round ran in, the round whose session it resumed, and, for a later round that launched fresh, why. A round finds its predecessor's session here. Codex ids go only here, never in `review_session_ids`, which `spend.py` prices as Claude sessions. `review-runner.md`'s "Resume the reviewer" owns every write. Absent on a record from before T76, so its next round launches fresh. |
 | `repo` | the absolute path to the target-repo clone the project lead was launched in, written at `SKILL.md`'s "Take the goal" from `git rev-parse --show-toplevel`, before any step can need it — a replacement for the spec review runs from it and no branch exists yet (`substitution.md`). On a free checkout the two are equal; on a held one, `checkout` is the worktree this run cut and `repo` is the clone it was cut from. **It is the path that outlives the run's own worktrees**, so every `worktree add`, `remove` and `prune` runs against it — the removal at "End the run", and every skeptical review (`review-runner.md`). Every run has one: "Take the goal" writes it before the path is chosen. |
-| `rounds` | an object keyed by `<round-id>`, one entry per patch round, written by the project lead when it opens the round and before it writes any package (`crew:delivered-window`'s "Findings from a review"). Each value holds: `source`, the `{kind, ref}` pair below; `reply_to`, where the reply goes; `opened_at`, an ISO-8601 UTC timestamp; `replied_at`, the timestamp of the send that delivered `reviews/<round-id>-reply.md`, `null` until it happens; `go_ahead_at`, the timestamp the principal's go-ahead to push and reply landed, or of the post itself on a round answered `auto: findings answered`, `null` until it does, and absent on a round the go-ahead gate does not cover (`crew:delivered-window`'s "The go-ahead gate"); and `push_refused`, a `{at, reason}` written only when the remote refused this round's push twice. A round entry with a `null` `replied_at` is the one thing that says a reply is still owed, and a round with no package at all still has one, so an all-declined round knows its own reader. Absent until the first patch round. |
+| `rounds` | an object keyed by `<round-id>`, one entry per patch round, written with `round open` when the project lead opens the round and before it writes any package (`crew:delivered-window`'s "Findings from a review"). The clock writes the three stamps: `round open` writes `opened_at`, `round go-ahead` writes `go_ahead_at`, and `round replied` writes `replied_at`. Never write a stamp with `run set`. Each value holds: `source`, the `{kind, ref}` pair below; `reply_to`, where the reply goes; `opened_at`, an ISO-8601 UTC timestamp; `replied_at`, the timestamp of the send that delivered `reviews/<round-id>-reply.md`, `null` until it happens; `go_ahead_at`, the timestamp the principal's go-ahead to push and reply landed, or of the post itself on a round answered `auto: findings answered`, `null` until it does, and absent on a round the go-ahead gate does not cover (`crew:delivered-window`'s "The go-ahead gate"); and `push_refused`, a `{at, reason}` written only when the remote refused this round's push twice. A round entry with a `null` `replied_at` is the one thing that says a reply is still owed, and a round with no package at all still has one, so an all-declined round knows its own reader. Absent until the first patch round. |
 | `rounds[].source` | `{kind, ref}`. `kind` is one of `ci`, `pr-comments`, `principal` and `skeptical`. `ref` names the one source of that kind. For `pr-comments` it is the PR URL. For `ci` it is the failing run's URL, or the PR's checks page URL, `<pr_url>/checks`, when one wake found failures in more than one run. For `principal` it is the principal's session name or `"typed"`, and for `skeptical` it is `skeptical-r<n>`. |
 | `rounds[].posted_review_id` | an integer, the id of the GitHub review that a review-run round posted. Absent on a goal run. |
 | `rounds[].reply_to` | where this round's reply is sent, decided by `kind` and written when the round opens. **`pr-comments` and `ci` are the PR.** Each item gets its own reply there, placed by the kind and id on its ledger line: a `review-comment` in its own thread, a `review` or a `comment` as a PR comment that quotes its first line, and a `check` as a PR comment that links the failing run. **Every comment the project lead posts on the PR ends with the marker line `<!-- pr-review: <round-id> <item id> -->`**, the id of the item it answers, whatever the round's kind (`crew:delivered-window`'s "Send the reply file"). `principal` is the channel the message arrived on. `skeptical` is the record alone — the reply file is the reply, and the next status message to the principal names its path. On a `run.kind: review` run, a `skeptical` round's `reply_to` is the PR URL, and the reply is the review posted there. |
@@ -888,71 +899,99 @@ level, and a timestamp. `Route` is one of `precedent`, `council`,
 own values are lowercase, as design §4's worked example shows). `Confidence`
 is one of `high`, `medium`, `low`.
 
-Design §4's worked example, with a `Timestamp` line added:
+**Write every entry with `crew-record.py`'s `decision`**, in one of the three
+forms the usage block above gives. The script writes the heading
+`## <title>`, reads `Timestamp:` from the clock, and puts the lines in this
+order: `Route`, then `Prior` and `Positions` when given, `Answer`, `Citation`,
+`Losing` when given, `Confidence`, every other `--line` in the order given,
+then `Timestamp`. Exit 2 names the missing field or the wrong route. Correct
+the call and run it again.
+
+- **One call** writes an entry that is complete when you write it.
+- **`--pending`, then `decision update`,** writes a council entry and a sweep
+  entry. The first write proves that the routing came first. `update`
+  rewrites the most recent entry with that title and stamps `Timestamp:`
+  again. It keeps every line the entry holds, and a key you give again
+  replaces its line. It never appends.
+
+`pending` is the only sanctioned placeholder. The
+no-citation-at-high-confidence check does not apply to an entry that still
+holds it.
+
+**Write an entry by hand only when the script is unavailable.** Use the same
+lines in the same order. Read `Timestamp:` from `date -u
++%Y-%m-%dT%H:%M:%SZ`, never from memory. A run that guesses stamps every
+entry at midnight, and a human cannot put that trail in order (design
+§15.47, the same failure as the invented session id of §15.39). End the entry
+with the line `Written by hand`. A later `decision update` drops that line,
+because the script then wrote the entry.
+
+Design §4's worked example, as one call writes it:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision precedent "Should the version bump be part of package 2?" --answer "No — the project lead bumps versions at integration." --citation "CLAUDE.md \"Development Workflow\" step 3 requires both plugin.json and marketplace.json to change, which no two packages can own disjointly." --confidence high
+```
 
 ```markdown
 ## Should the version bump be part of package 2?
 Route: precedent
 Answer: No — the project lead bumps versions at integration.
-Citation: CLAUDE.md "Development Workflow" step 3 requires both plugin.json and
-marketplace.json to change, which no two packages can own disjointly.
+Citation: CLAUDE.md "Development Workflow" step 3 requires both plugin.json and marketplace.json to change, which no two packages can own disjointly.
 Confidence: high
 Timestamp: 2026-08-24T14:32:00Z
 ```
 
 An entry with high confidence and no citation is a defect.
 
-**Read the clock for `Timestamp`, never write one from memory.** `date -u
-+%Y-%m-%dT%H:%M:%SZ` prints it. A run that guesses stamps every entry at
-midnight, which makes a decision trail a human cannot order (design §15.47).
-This is the same failure as an invented session id (§15.39), in a field that
-looks harmless.
-
 ### A preference-sweep entry
 
 `autonomy-contract.md`'s sweep writes one entry before the split, on every
-run, including a run that found nothing.
+run, including a run that found nothing. **A sweep that escalates nothing is
+one call**, with `--answer none`.
 
-**A sweep entry starts like a council entry.** Before the ask it carries the
-questions and `Answer: pending`, which proves the routing came first. The
-principal's reply completes each answer: one `Answer:` line per question, each
-naming the question it settles, so `decisions.md` holds what was decided and
-not only that something was asked. A sweep that found nothing is finished in
-one write, with `Answer: none`.
+**A sweep that escalated writes its entry three times:**
 
-`Citation:` names the files the sweep read. Each escalated question also gets
-its own `escalations` entry, written with `escalation add` above, so one
-batch reads as one interruption in `state.json` too.
+1. **Before the ask**, `--pending` with the `Questions:` line. This proves
+   that the routing came first.
+2. **At the principal's reply**, `decision update`. The one `Answer:` line
+   gives one numbered answer per question, so `decisions.md` holds what was
+   decided and not only that something was asked.
+3. **At integration**, a second `decision update`, which adds where each
+   answer was written back. The file name lands then, because that is when
+   the rule is written and the container check can move it.
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision preference "Preference sweep: what does the principal want that the repo cannot say?" --pending --line "Questions: 1. Does each book get its own route? 2. Is the old URL kept?"
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision update "Preference sweep: what does the principal want that the repo cannot say?" --answer "1. Yes, one route per book. 2. No." --citation "charter.md and spec.md hold no other open question that an instruction, a prior decision or repo precedent settles." --confidence high
+```
+
+The entry after the third write:
 
 ```markdown
 ## Preference sweep: what does the principal want that the repo cannot say?
 Route: preference
-Questions: 1. Does each book get its own route? 2. Is the old URL kept?
 Answer: 1. Yes, one route per book — recorded in CLAUDE.md. 2. No — not recorded.
-Citation: charter.md and spec.md hold no other open question that an
-instruction, a prior decision or repo precedent settles.
+Citation: charter.md and spec.md hold no other open question that an instruction, a prior decision or repo precedent settles.
 Confidence: high
+Questions: 1. Does each book get its own route? 2. Is the old URL kept?
 Timestamp: 2026-08-24T14:32:00Z
 ```
 
-`Questions:` is the sweep's own field, and it holds every question the sweep
-escalated, in the order it asked them. An entry with `Answer: none` needs no
-`Questions:` line.
+`Citation:` names the files the sweep read. `Questions:` is the sweep's own
+line, and it holds every question the sweep escalated, in the order it asked
+them. An entry with `Answer: none` needs no `Questions:` line. Each escalated
+question also gets its own `escalations` entry, written with `escalation add`
+above, so one batch reads as one interruption in `state.json` too.
 
 **Each answer ends with where it was written back**: the target repo file
 that now carries it as a rule, or `not recorded` when the principal refused
 (`autonomy-contract.md`). That lets an audit tell a refusal from a step the
 run skipped.
 
-That makes the sweep entry the one entry written three times. The reply
-completes every answer; the file name lands later, at integration, because
-that is when the rule is written and the container check can move it. Reopen
-the entry there and finish the line.
-
 **A question the sweep decides on a recommendation gets an entry of its
 own**, not a place in `Questions:` (`autonomy-contract.md`'s "The preference
-sweep"). It carries the line `Reversible: yes, decided on recommendation`
-after `Confidence:`:
+sweep"). It is one call, with `--line "Reversible: yes, decided on
+recommendation"`:
 
 ```markdown
 ## Which label does the new menu entry use?
@@ -971,13 +1010,20 @@ A council-route entry carries five more lines (design §6.1). `Prior`,
 than its winner.
 
 **A council entry is written twice.** `autonomy-contract.md` has the project
-lead write the question, `Route: council`, `Prior` and `Positions` **before**
-it dispatches, which is what proves the routing came first. At that point no
-answer exists, so `Answer` and `Confidence` both read `pending`, and
-`Citation`, `Losing`, `Models`, `Spend` and `Timestamp` are absent. The
-adjudication fills them in. `pending` is the only sanctioned placeholder, and
-the no-citation-at-high-confidence check does not apply to an entry still
-holding it.
+lead write the question, `Prior` and `Positions` **before** it dispatches,
+which is what proves the routing came first:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision council "<question>" --pending --line "Prior: <the answer> (<confidence>)" --line "Positions: A. <first>. B. <second>."
+```
+
+That write holds `Answer: pending`, `Confidence: pending` and a `Timestamp:`.
+It holds no `Citation`, `Losing`, `Models` or `Spend`. The adjudication
+completes it, and gives neither `Prior` nor `Positions` again:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision update "<question>" --answer "<the winner>" --citation "<the evidence>" --confidence <high|medium|low> --line "Losing: <each loser>" --line "Models: <advocates>, <model>. Adjudicated at <model>." --line "Spend: <n> tokens"
+```
 
 - `Prior:` — the project lead's own answer, and the confidence it held that
   answer at, as `<the answer> (<high | medium | low>)`. Every council entry
@@ -1004,7 +1050,8 @@ holding it.
 - `Spend:` — the advocates' `total_tokens`, summed from their completion
   notifications; `unmeasured` when a dispatch shape reported none.
 
-The default shape, one adversary against the project lead's prior:
+The default shape, one adversary against the project lead's prior, after the
+adjudication:
 
 ```markdown
 ## Where does the retry budget live: the client or the call site?
@@ -1012,11 +1059,8 @@ Route: council
 Prior: the client owns it (medium)
 Positions: A. the client owns it. B. each call site owns it.
 Answer: A — the client owns it.
-Citation: src/http/client.ts:44 already holds the timeout and the backoff, and
-CLAUDE.md "HTTP" says one place owns transport policy.
-Losing: B argued call sites vary (src/sync/push.ts:80 retries 5 times). The
-client's per-request override at src/http/client.ts:61 already covers that,
-so the variation costs no second owner.
+Citation: src/http/client.ts:44 already holds the timeout and the backoff, and CLAUDE.md "HTTP" says one place owns transport policy.
+Losing: B argued call sites vary (src/sync/push.ts:80 retries 5 times). The client's per-request override at src/http/client.ts:61 already covers that, so the variation costs no second owner.
 Confidence: high
 Models: 1 advocate, sonnet. Adjudicated at opus.
 Spend: 14800 tokens
@@ -1072,8 +1116,8 @@ Every name this file defines, with what consumes it.
 - `run.unreviewed_heads` — writer: `crew-record.py`'s `arm_review`, through either command, when the cap or an accepted verdict (`--no-review accepted-round`) stops a head being armed. Consumer: the project lead's next report to the principal (`skeptical-review.md`)
 - `run.review_results` — writer: the project lead, after the four checks over a finished review. Consumer: `skeptical-review.md` (whether a report may be adjudicated)
 - `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head`, `integrate --review-head` and `arm-review --head`, with or without `--past-cap`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
-- `run.rounds` — writer: the project lead, when it opens a patch round, again at a push or a refusal, again at the go-ahead, and again at the reply's send (`crew:delivered-window`'s "Findings from a review"). Consumer: this file's "What a delivered-window round still owes"; `packages[].round` points into it
-- `run.rounds[].go_ahead_at` — writer: the project lead, when the principal's go-ahead lands (`crew:delivered-window`'s "The go-ahead gate"). Consumer: `skeptical-review.md`'s resume entries 1a, 5 and 7; this file's "What a delivered-window round still owes"
+- `run.rounds` — writer: the project lead, with `round open` when it opens a patch round, with `run set` at a refusal, with `round go-ahead` at the go-ahead, and with `round replied` at the reply's send (`crew:delivered-window`'s "Findings from a review"). Consumer: this file's "What a delivered-window round still owes"; `packages[].round` points into it
+- `run.rounds[].go_ahead_at` — writer: the project lead, with `round go-ahead` when the principal's go-ahead lands (`crew:delivered-window`'s "The go-ahead gate"). Consumer: `skeptical-review.md`'s resume entries 1a, 5 and 7; this file's "What a delivered-window round still owes"
 - `run.watch` — writer: the project lead, at the first arming (`crew:delivered-window`'s `pr-watch.md`, "The first write's cursor"), after every wake that reported something, and for `draft` at an arming (that skill's "Watch the PR"); at a fallback poll, for `draft` (`pr-watch.md`'s "The fallback poll"); and at `skeptical-review.md`'s "Mark the PR ready", for `draft`. `head` has two more writers: the window's `push` sort, after it arms a head move, and each push crew makes itself, in the window's "A change request" and "Findings from a review" and in `skeptical-review.md`'s resume entry 5. Consumer: the monitor command and the fallback poll, which start from it; `skeptical-review.md`'s resume entry 1b, for `held`
 - `run.review_session_ids` — writer: the project lead, before it launches each skeptical review (`review-runner.md`). Consumer: `scripts/spend.py` and `scripts/crew-stats.py` (the transcripts that price the review into the run). Neither hook reads it
 - `run.review_sessions` — writer: the project lead, once per skeptical round (`review-runner.md`'s "Resume the reviewer"). Consumer: the same section's resume check on the next round. Neither hook nor script reads it

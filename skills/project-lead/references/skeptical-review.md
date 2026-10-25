@@ -203,14 +203,17 @@ Arm the watch once too, by that skill's "Watch the PR".
      order writes the ledger first — so this is a pre-existing orphan: a
      record from before this order, or a hand edit. Nothing on disk says
      what the round would have answered. Tell the principal the message
-     needs sending again, then remove the orphan entry — `crew-record.py
-     <record-dir> run set rounds <the object with that key dropped>`.
+     needs sending again, then remove the orphan entry with `crew-record.py
+     <record-dir> round drop <round-id>`.
    - **`reviews/<round-id>-reply.md` exists and `run.rounds[<round-id>]`
      does not.** The reply file survived past the write that was meant to
-     follow it — the ordinary kill point under this run's own order. Write
-     the entry from `record-format.md`'s reply-ledger header: `source` from
-     its `Source:` line, `reply_to` from its `Reply to:` line, `opened_at`
-     from its `Opened at:` line, and `replied_at: null`.
+     follow it — the ordinary kill point under this run's own order.
+     Rebuild the entry from `record-format.md`'s reply-ledger header with
+     `crew-record.py <record-dir> round open <round-id> --kind <kind>
+     --ref "<ref>" --reply-to "<where>" --opened-at <the Opened at: line>`.
+     `--kind` and `--ref` come from its `Source:` line, and `--reply-to`
+     from its `Reply to:` line. Add `--gated` when the round takes the gate
+     (`crew:delivered-window`'s "The go-ahead gate").
    Either way, re-enter: removing an orphan or rebuilding an entry proves
    nothing about whatever else the record still owes. **This is first**,
    before entry 2, because a kill here must not look like an ordinary
@@ -235,8 +238,8 @@ Arm the watch once too, by that skill's "Watch the PR".
      waiting, in your own context. Re-enter. On re-entry this entry skips a
      round it already marked.
    - **It has an answer.** The kill came before the `go_ahead_at` write.
-     Finish what the answer asks, as that skill says, and write
-     `go_ahead_at`. On a review run, also set `draft_changed`, as that
+     Finish what the answer asks, as that skill says, and run `round
+     go-ahead <round-id>`. On a review run, also set `draft_changed`, as that
      section says. Re-enter.
    **This comes right after entry 1**, so the report goes out as soon as a
    gated round's work is in. Entries 2, 4 and 6 finish a round whose work is
@@ -283,7 +286,7 @@ Arm the watch once too, by that skill's "Watch the PR".
    when a line with no package is), and its round
    is not one the gate covers with `go_ahead_at: null`. Send the file
    to the round's `reply_to`, as `crew:delivered-window`'s "Send the reply
-   file" says, then write `replied_at`. Re-enter. An entry still missing its
+   file" says, then run `round replied <round-id>`. Re-enter. An entry still missing its
    outcome is entry 6's work, and a package still open is entry 4's; both
    come first (`record-format.md`, `crew:delivered-window`'s "Findings from a
    review"). On a `run.kind: review` run, the reply of a `skeptical` round is
@@ -363,8 +366,8 @@ those rounds.
    of the dispositions below. It is also the hand-off the next round reads:
    the resume prompt carries it to the reviewer (`review-runner.md`'s "Resume
    the reviewer").
-2. **Open the round.** Write `run.rounds[<round-id>]` from the header you
-   just wrote, right after it, as that skill's "Open the round" says.
+2. **Open the round.** Run `round open` from the header you just wrote,
+   right after it, as that skill's "Open the round" says.
 3. **Create those packages** in `packages[]`, with the ids the reply named.
 4. **Clear `review_pending`.** The adjudication is complete by the rule
    below the moment **Create those packages** lands, so the field goes before

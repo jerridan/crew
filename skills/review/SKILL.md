@@ -138,8 +138,16 @@ sanitizing" says so.
    The PR already exists, so the run is `delivered` from its first write, and
    that write arms the first review.
 9. **Write the first `decisions.md` entry**: the path, watch or assist, and
-   the gate. It is a precedent-route entry, and its `Citation:` quotes the
-   launch words.
+   the gate. It is one `decision precedent` call, as `record-format.md`
+   says, and its `Citation:` quotes the launch words. **Then log the runner
+   choice**, before round 1. Read the `skeptical-review` entry of
+   `run.substitutions_requested`. With none, the answer is
+   `review-runner.md`'s default command, and the citation says no source
+   names a replacement:
+
+   ```bash
+   python3 <project-lead-dir>/scripts/crew-record.py <record-dir> decision precedent "Which runner reviews this PR?" --answer "<the entry's replacement, or the default command>" --citation "<the entry's source and words>" --confidence high
+   ```
 10. **Write `run.watch`** as `pr-watch.md`'s "The first write's cursor" says,
     `head` included.
 
@@ -236,10 +244,14 @@ comment text on its ledger line. Only the assist path makes packages, in a
 round of its own.
 
 Write the ledger to `reviews/skeptical-r<n>-reply.md`, with
-`record-format.md`'s header. Open `run.rounds[skeptical-r<n>]` with
-`source.kind: skeptical`, `reply_to` the PR URL, `replied_at: null` and
-`go_ahead_at: null` when the round takes the gate. `crew:delivered-window`'s
-"The go-ahead gate" says which rounds do.
+`record-format.md`'s header. Then open the round:
+
+```bash
+python3 <project-lead-dir>/scripts/crew-record.py <record-dir> round open skeptical-r<n> --kind skeptical --ref skeptical-r<n> --reply-to "<PR URL>" --gated
+```
+
+Leave out `--gated` when the round takes no gate. `crew:delivered-window`'s
+"The go-ahead gate" says which rounds take it.
 
 ## Report and wait at the gate
 
@@ -280,7 +292,7 @@ reply`, or edit the text. When the answer lands:
 2. Set `draft_changed` with the same command: `true` when any text or
    disposition changed, and `false` otherwise.
 3. Record the answer, as "How to escalate" says.
-4. Write `go_ahead_at`.
+4. Run `crew-record.py <record-dir> round go-ahead skeptical-r<n>`.
 
 Under `Gate: off`, still write the entry, with the answer `"Gate: off"`, and
 leave `draft_changed` `null`. Nothing waits. The untouched-draft rate then
@@ -290,9 +302,12 @@ counts only the stops the principal saw.
 
 `github-review.md`'s "The event rule" and "The post command" own the post.
 When the event falls from `REQUEST_CHANGES`, the event rule's dismissal
-comes before the post. Then write
-`run.rounds[skeptical-r<n>].posted_review_id` and `replied_at`, and run
-`<project-lead-dir>/scripts/spend.py --write`.
+comes before the post. After the post, in this order:
+
+1. On a round that posted with no wait, run `round go-ahead skeptical-r<n>`.
+2. Write `run.rounds[skeptical-r<n>].posted_review_id` with `run set`.
+3. Run `round replied skeptical-r<n>`.
+4. Run `<project-lead-dir>/scripts/spend.py --write`.
 
 A failed post is retried once, with every inline comment folded into the
 body. A second failure is an escalation.

@@ -126,19 +126,9 @@ Write the instructions file as well, as every round does. Fill this block:
 The change has a new head. In this session you reviewed <previous head sha>.
 This working directory is now a detached checkout at <pending head sha>.
 
-Read two things before anything else: the change since your last review,
-`git diff <previous head sha>..HEAD`, and the file below. Read the whole
-change, `git diff <deliverable base>..HEAD`, only where that delta touches
-code you did not review. Follow your first instructions on the suite.
+<part 5 of "Reviewer instructions", the later-round block, filled in>
 
-<one of the two literal lines below>
-
-<the file that line names, verbatim>
-
-A finding the project lead declined with a reason stays declined unless you
-have new evidence. When you raise it again, name that evidence.
-
-Give a verdict on the whole change as it now stands, not on the delta alone.
+Follow your first instructions on the suite. Give a verdict on the whole change as it now stands, not on the delta alone.
 Use the same report shape and the same two verdict strings as before. Open
 the report with this line, and nothing before it:
 
@@ -155,12 +145,8 @@ never to the previous round's path.** The resumed session still holds the
 path its first instructions named. A reviewer that writes there overwrites
 the last round's report, so the block names both paths.
 
-The literal line is "This is the project lead's reply to your last report.
-It says which findings it accepted, and why it declined or pushed back on the
-others:", followed by `reviews/skeptical-r<n-1>-reply.md`. When that round
-has no reply file, because its report had no finding to dispose of, the line
-is "Your last report had no finding to answer. This is that report:",
-followed by `reviews/skeptical-r<n-1>.md`.
+The resume prompt takes part 5 from "Reviewer instructions" below, filled in
+the same way as the instructions file. Do not write a second version of it.
 
 The output sentence is "Write your whole report to <absolute output path>
 before you finish." for the default runner, and the replacement sentence in
@@ -253,12 +239,14 @@ rule is the absolute-path anchor: the record directory's own leading slash
 is not doubled, it is written after the anchor. The rule is scoped to
 `reviews/`, so this buys the report file and no code edit anywhere.
 
-**A headless run refuses a write under ~/.claude, whatever the allow list
-grants.** Claude Code treats that tree as a sensitive path, and the default
-record root, `~/.claude/crew/`, is inside it. A run whose `CREW_RECORD_ROOT`
-points outside ~/.claude avoids the refusal. When the write is refused
-anyway, the result-field fallback in "Check the review before you read it"
-is the documented path.
+**A headless run can refuse a write under ~/.claude.** This was seen once: a
+cloud routine on Claude Code 2.1.280 could not write its report under
+`/root/.claude/crew/`, which it treated as a sensitive path. A local headless
+review on this plugin's own repo wrote under `~/.claude/crew/` with no
+refusal. The default record root, `~/.claude/crew/`, is inside that tree. A
+run whose `CREW_RECORD_ROOT` points outside ~/.claude avoids the refusal.
+When the write is refused anyway, the result-field fallback in "Check the
+review before you read it" is the documented path.
 
 **`node -e`, `python -c` and every install command stay off the list.**
 `node -e` and `python -c` run any code they get, so either one lets the
@@ -323,7 +311,8 @@ edit. The findings come back to you, and you decide what each one earns.
 ## Reviewer instructions
 
 **You assemble this file; you do not copy a second copy of the report
-shape.** It has four parts, in this order:
+shape.** It has four parts, and a fifth for any round after the first, in
+this order:
 
 1. **`review-output.md`, verbatim.** It owns the severity tags, the
    `Cannot verify` rule, the report-never-fix rule and the two closing lines,
@@ -338,8 +327,11 @@ shape.** It has four parts, in this order:
    text, the diff range, the suite and the line that says the dependencies
    are installed (or the no-suite sentence), the output path, and the
    pending head.
+5. **For a round `n > 1`, the later-round block** after the block below. A
+   fresh launch and a resume both get it, whatever made the round launch
+   fresh.
 
-Write the four into
+Write the parts into
 `<record-dir>/reviews/skeptical-r<n>-instructions.md` and pass that path to
 `--append-system-prompt-file`.
 
@@ -408,6 +400,30 @@ Under the no-suite outcome, this replaces the whole paragraph — never a
 ```
 This repository has no suite. Read the diff without running one.
 ```
+
+**Part 5, the later-round block, for any round `n > 1`.** `<previous head
+sha>` is the `Reviewed:` line of `reviews/skeptical-r<n-1>.md`:
+
+```
+The previous round reviewed <previous head sha>. Read two things before
+anything else: the change since that round, `git diff <previous head
+sha>..HEAD`, and the file below. Read the whole change only where that delta
+touches code the previous round did not review.
+
+<one of the two literal lines below>
+
+<the file that line names, verbatim>
+
+A finding the project lead declined with a reason stays declined unless you
+have new evidence. When you raise it again, name that evidence.
+```
+
+The literal line is "This is the project lead's reply to the last report. It
+says which findings it accepted, and why it declined or pushed back on the
+others:", followed by `reviews/skeptical-r<n-1>-reply.md`. When that round
+has no reply file, because its report had no finding to dispose of, the line
+is "The last report had no finding to answer. This is that report:", followed
+by `reviews/skeptical-r<n-1>.md`.
 
 **A replacement for the skeptical review receives this same file, plus one
 sentence that names the report path and asks for the output too**

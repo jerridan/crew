@@ -8103,10 +8103,12 @@ Deliberately different:
      install --frozen-lockfile`, `npm view`, `node -e` and `pnpm check-types`,
      and each denial counted as a failure. The second failure escalated, and
      the routine ended `blocked` with nobody to answer it. In the same run,
-     the reviewer could not write its report under `/root/.claude/crew/`: a
-     headless session treats a path under `~/.claude` as sensitive. The
-     evidence is the PR body of jerridan/websites#66, section "Spike
-     findings".
+     the reviewer could not write its report under `/root/.claude/crew/`: that
+     headless session treated the path as sensitive. The evidence is the PR
+     body of jerridan/websites#66, section "Spike findings". This is one
+     observation, in one cloud routine, on one version. T79's own skeptical
+     review, a local headless run, wrote its report under `~/.claude/crew/`
+     with no refusal.
 
      Check 2 now fails on outcomes, not on denials: no report in the file or
      in the `result` field, a suite that did not run, or a `Cannot verify`
@@ -8119,7 +8121,8 @@ Deliberately different:
      ran the setup command, the reviewer's instructions say "Dependencies are
      installed. Do not install."
 
-     `review-runner.md` now states the sensitive-path refusal. It says that a
+     `review-runner.md` now states the sensitive-path refusal as seen once,
+     with the local run that saw none. It says that a
      `CREW_RECORD_ROOT` outside `~/.claude` avoids it, and it names the
      `result`-field fallback for a write that is refused anyway. The
      `Write(...)` rule that #89 proposed is not added: `Edit(...)` governs the

@@ -16,9 +16,16 @@ usage:
   crew-record.py <record-dir> escalation add <trigger> <question>
   crew-record.py <record-dir> escalation answer <index> <answer>
   crew-record.py <record-dir> escalation <index> set <field> <json>
-  crew-record.py <record-dir> integrate <package-id> [--review-head <sha>] [--published]
-  crew-record.py <record-dir> deliver <deliverable-id> <deliverable-state> [--pr-url <url>] [--review-head <sha>]
-  crew-record.py <record-dir> arm-review --head <sha>
+  crew-record.py <record-dir> integrate <package-id> [--review-head <sha>] [--no-review accepted-round] [--published]
+  crew-record.py <record-dir> deliver <deliverable-id> <deliverable-state> [--pr-url <url>] [--review-head <sha>] [--no-review accepted-round]
+  crew-record.py <record-dir> arm-review --head <sha> [--past-cap]
+  crew-record.py <record-dir> decision <route> "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
+  crew-record.py <record-dir> decision <route> "<title>" --pending [--line "<Key>: <text>"]...
+  crew-record.py <record-dir> decision update "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
+  crew-record.py <record-dir> round open <round-id> --kind <ci|pr-comments|principal|skeptical> --ref "<ref>" --reply-to "<where>" [--gated] [--opened-at <ISO-8601 UTC>]
+  crew-record.py <record-dir> round drop <round-id>
+  crew-record.py <record-dir> round replied <round-id>
+  crew-record.py <record-dir> round go-ahead <round-id>
   crew-record.py <record-dir> ship
 
 `init` creates state.json with `created_at`. `integrate` sets a package
@@ -56,6 +63,31 @@ index, which `escalation answer` takes. `escalation <index> set` writes one
 field on that entry and leaves the rest, as `deliverable <id> set` does. An
 index that is not an integer, or is out of range, exits with a message and
 writes nothing.
+`decision` writes one entry to `decisions.md` in the record, with the heading
+`## <title>` and a `Timestamp:` from the clock. The route is `precedent`,
+`council` or `preference`. A new entry needs `--answer`, `--citation` and
+`--confidence`, and the script exits 2 and names the first one missing.
+`--pending` writes `Answer: pending` and `Confidence: pending` with no
+`Citation:`, for a council or a sweep that is not yet answered. `--line` is
+optional and repeatable, and takes any key. The line order is always `Route`,
+`Prior`, `Positions`, `Answer`, `Citation`, `Losing`, `Confidence`, every
+other `--line` in the order given, then `Timestamp`. `decision update` is a
+verb, not a route. It writes the whole most recent entry with that title again
+in that order, with the new values and lines, and stamps `Timestamp:` again.
+It exits 2 when no entry has the title. It never appends, and it may run on a
+completed entry.
+`round open` writes `run.rounds[<round-id>]` with `source`, `reply_to`,
+`opened_at` and `replied_at: null`. `--gated` adds `go_ahead_at: null`.
+`opened_at` is the clock, or `--opened-at` for a rebuilt round. `round drop`
+removes a round. `round go-ahead` and `round replied` stamp `go_ahead_at` and
+`replied_at` from the clock. `replied` exits 2 on a gated round that has no
+`go_ahead_at`. Each `round` form but `open` exits 2 on a round id that is
+absent, and `open` exits 2 on an id that exists.
+`--past-cap` on `arm-review` arms the head when `review_rounds` is at the
+cap, and appends nothing to `unreviewed_heads`. `--no-review accepted-round`
+on `integrate` or `deliver` does not arm the head at any round count. It
+appends `{head, reason: "accepted-round", at}` to `unreviewed_heads` and needs
+`--review-head`.
 `record-format.md` owns every field name and every transition; this script
 checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 """
@@ -63,6 +95,7 @@ checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 import datetime
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -84,6 +117,12 @@ def find(items, value):
         if item.get("id") == value:
             return item
     sys.exit(f"no entry with id {value}")
+
+
+def die(message: str) -> None:
+    """Exit 2 with a one-line message: a usage error or a refused change."""
+    print(message, file=sys.stderr)
+    sys.exit(2)
 
 
 def usage() -> None:
@@ -119,7 +158,7 @@ def set_dotted(target: dict, dotted: str, value) -> None:
 REVIEW_ROUND_CAP = 3
 
 
-def arm_review(run: dict, head: str | None) -> None:
+def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap: bool = False) -> None:
     """Record the head a skeptical review is owed on, or record that none is.
 
     Every arming in the run comes through here: `deliver --review-head` folds
@@ -129,21 +168,42 @@ def arm_review(run: dict, head: str | None) -> None:
     ordinary path (`skeptical-review.md`). At the cap no further review runs,
     so the head is logged as unreviewed instead of armed, and the next report
     to the principal names it. A review run (`run.kind` is `"review"`) has no
-    cap and arms every head.
+    cap and arms every head. `past_cap` arms the head at the cap too, for one
+    more round the principal asked for, and logs nothing.
+
+    `reason` names why a caller does not arm a head. `None` means the caller
+    wants the review, and the cap may still stop it with the reason `cap`.
+    `accepted-round` means an accepted verdict stopped the review, so the head
+    is never armed, at any round count.
     """
     if not head:
         return
     rounds = run.get("review_rounds")
     rounds = rounds if isinstance(rounds, int) and not isinstance(rounds, bool) else 0
-    if rounds >= REVIEW_ROUND_CAP and run.get("kind") != "review":
+    at_cap = rounds >= REVIEW_ROUND_CAP and run.get("kind") != "review" and not past_cap
+    if reason is None and at_cap:
+        reason = "cap"
+    if reason is not None:
         run["review_pending"] = None
         unreviewed = run.get("unreviewed_heads")
         if not isinstance(unreviewed, list):
             unreviewed = []
-        unreviewed.append({"head": head, "reason": "cap", "at": now()})
+        unreviewed.append({"head": head, "reason": reason, "at": now()})
         run["unreviewed_heads"] = unreviewed
         return
     run["review_pending"] = {"head": head, "round": rounds + 1}
+
+
+def no_review_reason(rest: list[str]) -> str | None:
+    """The reason `--no-review` gives, or `None` when the flag is absent."""
+    if "--no-review" not in rest:
+        return None
+    reason = flag(rest, "--no-review")
+    if reason != "accepted-round":
+        die(f"--no-review takes accepted-round, got {reason}")
+    if not flag(rest, "--review-head"):
+        die("--no-review needs --review-head")
+    return reason
 
 
 STAMPS = {"delivered": "delivered_at", "complete": "completed_at"}
@@ -171,6 +231,149 @@ def stamp_on_transition(run: dict, before: str | None) -> None:
         run[STAMPS[after]] = now()
 
 
+ROUTES = ("precedent", "council", "preference")
+CONFIDENCES = ("high", "medium", "low")
+ROUND_KINDS = ("ci", "pr-comments", "principal", "skeptical")
+LINE_KEY = re.compile(r"^([A-Z][A-Za-z]*(?: [A-Za-z]+)?):\s?(.*)$", re.S)
+# These keys have their own flag or the clock, so `--line` may not carry them.
+OWN_KEYS = ("Route", "Answer", "Citation", "Confidence", "Timestamp")
+# Keys with a fixed place in an entry. Every other key is an extra line.
+FIXED_KEYS = OWN_KEYS + ("Prior", "Positions", "Losing")
+
+
+def all_flags(rest: list[str], name: str) -> list[str]:
+    """Every value of a repeatable flag, in the order given."""
+    values = []
+    for i, item in enumerate(rest):
+        if item == name:
+            if i + 1 >= len(rest):
+                die(f"{name} needs a value")
+            values.append(rest[i + 1])
+    return values
+
+
+def parse_lines(texts: list[str]) -> list[tuple[str, str]]:
+    pairs = []
+    for text in texts:
+        found = LINE_KEY.match(text)
+        if not found or found.group(1) in OWN_KEYS:
+            die(f'--line wants "<Key>: <text>" with a key other than {", ".join(OWN_KEYS)}: {text}')
+        pairs.append((found.group(1), found.group(2)))
+    return pairs
+
+
+def parse_entry(block: list[str]) -> list[tuple[str, str]]:
+    """Split an entry's lines (after the heading) into `(key, text)` pairs.
+
+    A line that opens no key continues the one before it.
+    """
+    pairs = []
+    for line in block:
+        found = LINE_KEY.match(line)
+        if found:
+            pairs.append((found.group(1), found.group(2)))
+        elif pairs:
+            pairs[-1] = (pairs[-1][0], pairs[-1][1] + "\n" + line)
+    return pairs
+
+
+def render_entry(title: str, route: str, answer: str, citation: str | None, confidence: str,
+                 lines: list[tuple[str, str]]) -> list[str]:
+    """One entry's lines in the fixed order, ending in a clock `Timestamp:`."""
+    def pick(key: str) -> list[tuple[str, str]]:
+        return [(k, v) for k, v in lines if k == key]
+
+    out = [("Route", route)] + pick("Prior") + pick("Positions") + [("Answer", answer)]
+    if citation is not None:
+        out.append(("Citation", citation))
+    out += pick("Losing") + [("Confidence", confidence)]
+    out += [(k, v) for k, v in lines if k not in FIXED_KEYS]
+    out.append(("Timestamp", now()))
+    return [f"## {title}"] + "\n".join(f"{k}: {v}" for k, v in out).split("\n")
+
+
+def decision(record: Path, rest: list[str]) -> None:
+    """Write or complete one `decisions.md` entry. The usage block says how."""
+    route, title = arg(rest, 0), arg(rest, 1)
+    updating = route == "update"
+    if not updating and route not in ROUTES:
+        die(f"route must be one of {', '.join(ROUTES)}, got {route}")
+    lines = parse_lines(all_flags(rest, "--line"))
+    path = record / "decisions.md"
+    existing = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    start = end = 0
+    if updating:
+        starts = [i for i, line in enumerate(existing) if line == f"## {title}"]
+        if not starts:
+            die(f"no decision entry titled {title}")
+        start = starts[-1]
+        end = next((i for i in range(start + 1, len(existing)) if existing[i].startswith("## ")), len(existing))
+        old = parse_entry(existing[start + 1:end])
+        route = next((v for k, v in old if k == "Route"), "")
+        # Lines the entry already holds stay, unless this call gives the same key.
+        given = {k for k, _ in lines}
+        lines = [(k, v) for k, v in old if k not in OWN_KEYS and k not in given] + lines
+    if "--pending" in rest and not updating:
+        entry = render_entry(title, route, "pending", None, "pending", lines)
+    else:
+        values = {name: flag(rest, f"--{name}") for name in ("answer", "citation", "confidence")}
+        for name, value in values.items():
+            if not value:
+                die(f"decision needs --{name}")
+        if values["confidence"] not in CONFIDENCES:
+            die(f"--confidence must be one of {', '.join(CONFIDENCES)}, got {values['confidence']}")
+        entry = render_entry(title, route, values["answer"], values["citation"], values["confidence"], lines)
+    record.mkdir(parents=True, exist_ok=True)
+    if updating:
+        merged = existing[:start] + entry + existing[end:]
+    else:
+        merged = existing + ([""] if existing else []) + entry
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    tmp.write_text("\n".join(merged) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def round_cmd(run: dict, rest: list[str]) -> None:
+    """The `round` forms. The clock writes every stamp."""
+    verb, round_id = arg(rest, 0), arg(rest, 1)
+    rounds = run.get("rounds")
+    if not isinstance(rounds, dict):
+        rounds = {}
+        run["rounds"] = rounds
+    if verb == "open":
+        if round_id in rounds:
+            die(f"round {round_id} exists")
+        kind = flag(rest, "--kind")
+        if kind not in ROUND_KINDS:
+            die(f"--kind must be one of {', '.join(ROUND_KINDS)}, got {kind}")
+        ref, reply_to = flag(rest, "--ref"), flag(rest, "--reply-to")
+        if ref is None or reply_to is None:
+            die("round open needs --ref and --reply-to")
+        entry = {
+            "source": {"kind": kind, "ref": ref},
+            "reply_to": reply_to,
+            "opened_at": flag(rest, "--opened-at") or now(),
+            "replied_at": None,
+        }
+        if "--gated" in rest:
+            entry["go_ahead_at"] = None
+        rounds[round_id] = entry
+        return
+    if verb not in ("drop", "go-ahead", "replied"):
+        usage()
+    if round_id not in rounds:
+        die(f"no round {round_id}")
+    entry = rounds[round_id]
+    if verb == "drop":
+        del rounds[round_id]
+    elif verb == "go-ahead":
+        entry["go_ahead_at"] = now()
+    else:
+        if "go_ahead_at" in entry and entry["go_ahead_at"] is None:
+            die(f"round {round_id} is gated and has no go-ahead")
+        entry["replied_at"] = now()
+
+
 def main(argv: list[str]) -> None:
     if len(argv) < 2:
         usage()
@@ -194,6 +397,11 @@ def main(argv: list[str]) -> None:
         }
         record.mkdir(parents=True, exist_ok=True)
         write_json(state_path, state)
+        print("ok")
+        return
+
+    if kind == "decision":
+        decision(record, rest)
         print("ok")
         return
 
@@ -280,7 +488,7 @@ def main(argv: list[str]) -> None:
         # integration stamps it and no push is ever owed (`record-format.md`).
         if "--published" in rest:
             pkg["pushed_at"] = now()
-        arm_review(run, flag(rest, "--review-head"))
+        arm_review(run, flag(rest, "--review-head"), no_review_reason(rest))
     elif kind == "deliver":
         dl = find(state.get("deliverables", []), arg(rest, 0))
         dl["state"] = arg(rest, 1)
@@ -288,7 +496,7 @@ def main(argv: list[str]) -> None:
         url = flag(rest, "--pr-url")
         if url:
             dl["pr_url"] = url
-        arm_review(run, flag(rest, "--review-head"))
+        arm_review(run, flag(rest, "--review-head"), no_review_reason(rest))
         before = run.get("run_state")
         run["run_state"] = "delivered"
         stamp_on_transition(run, before)
@@ -296,7 +504,9 @@ def main(argv: list[str]) -> None:
         head = flag(rest, "--head")
         if not head:
             usage()
-        arm_review(run, head)
+        arm_review(run, head, past_cap="--past-cap" in rest)
+    elif kind == "round":
+        round_cmd(run, rest)
     elif kind == "ship":
         before = run.get("run_state")
         run["run_state"] = "complete"

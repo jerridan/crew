@@ -8341,5 +8341,5 @@ Deliberately different:
      question and left the worktree instead.
 
      Launch check 1 and the IC contract's worktree rule, which forbids `cd
-     <path> && git`, both need a correction. T79 changes neither file. A later
-     ticket owns the correction, and no run has exercised it.
+     <path> && git`, both need a correction. T79 changes neither file. T80
+     owns the correction, and no run has exercised it.

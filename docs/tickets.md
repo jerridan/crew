@@ -3361,8 +3361,32 @@ baseline file and the standing-instructions file, and the version is bumped.
 
 Unexercised: no run has read any of these rules. The first run on 0.1.89 is
 the first evidence. The correction to `full-path.md`'s launch check 1 and to
-the IC contract's worktree rule (design §15.121) is not in this ticket.
+the IC contract's worktree rule (design §15.121) is not in this ticket. T80
+owns it.
 
 Read first: design §15.111 to §15.121; `review-runner.md`;
 `skeptical-review.md` "When the review runs"; `SKILL.md` "Standing
 instructions"; `record-format.md` "`decisions.md`".
+
+## T80 — Correct launch check 1 and the IC contract's worktree rule
+
+Status: open
+Depends on: T79
+Stage: 8 (design §15.121)
+
+Scope. `full-path.md`'s "Check the launch conditions" check 1 reads a refused
+`git -C <repo> status` as a block on the full path. A worktree-isolated
+session refuses that form and still runs the full path. `ic-contract.md`'s
+"The worktree rule" forbids `cd <worktree> && git`, which is the form such a
+session allows. Correct both, as design §15.121 records.
+
+Files: `skills/project-lead/references/full-path.md`,
+`skills/project-lead/references/ic-contract.md`, `docs/design.md`,
+`docs/tickets.md`, and the version in both manifests.
+
+Done when: a worktree-isolated session runs the full path with no
+escalation, and an IC's `cd <worktree> && git` form is allowed where `-C` is
+refused.
+
+Read first: design §15.121; `full-path.md` "Check the launch conditions";
+`ic-contract.md` "The worktree rule".

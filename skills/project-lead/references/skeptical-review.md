@@ -111,8 +111,8 @@ that round is not entered (`review_rounds` is below `review_pending.round`),
 nothing is listed. If that round is entered (`review_rounds` is not below
 it), `review_pending` stays, and the accepted round's head is listed with the
 reason `accepted-round`, so a resume owes nothing for it. A later head that
-carries new scope, such as a change request or a finding from another source, is armed
-as above.
+carries new scope, such as a change request or a finding from another
+source, is armed as above.
 
 **One more round past the cap is a command.** When the principal says "run
 one more review", run `crew-record.py <record-dir> arm-review --head <branch
@@ -293,13 +293,13 @@ Arm the watch once too, by that skill's "Watch the PR".
    when a line with no package is), and its round
    is not one the gate covers with `go_ahead_at: null`. Send the file
    to the round's `reply_to`, as `crew:delivered-window`'s "Send the reply
-   file" says, then run `round replied <round-id>`. Re-enter. An entry still missing its
-   outcome is entry 6's work, and a package still open is entry 4's; both
-   come first (`record-format.md`, `crew:delivered-window`'s "Findings from a
-   review"). On a `run.kind: review` run, the reply of a `skeptical` round is
-   the posted GitHub review, so this entry runs `/crew:review`'s "Post the
-   review", whose owner file searches for a review already posted before it
-   posts.
+   file" says, then run `round replied <round-id>`. Re-enter. An entry still
+   missing its outcome is entry 6's work, and a package still open is entry
+   4's; both come first (`record-format.md`, `crew:delivered-window`'s
+   "Findings from a review"). On a `run.kind: review` run, the reply of a
+   `skeptical` round is the posted GitHub review, so this entry runs
+   `/crew:review`'s "Post the review", whose owner file searches for a review
+   already posted before it posts.
 8. **`review_pending` is set, `review_rounds < review_pending.round`, and the
    branch head is an integrated commit that is not `pending.head`.** The
    round is unentered, so its reserved head is superseded:

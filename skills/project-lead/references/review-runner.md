@@ -408,8 +408,8 @@ sha>` is the `Reviewed:` line of `reviews/skeptical-r<n-1>.md`:
 <one of the two reading paragraphs below>
 
 For this round, this reading instruction replaces the earlier instruction
-to read the whole diff. Give a verdict on the whole change as it now stands, not on the delta
-alone.
+to read the whole diff. Give a verdict on the whole change as it now stands,
+not on the delta alone.
 
 <one of the two literal lines below>
 

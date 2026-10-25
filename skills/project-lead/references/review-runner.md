@@ -128,10 +128,9 @@ This working directory is now a detached checkout at <pending head sha>.
 
 <part 5 of "Reviewer instructions", the later-round block, filled in>
 
-Follow your first instructions on the suite. Give a verdict on the whole
-change as it now stands, not on the delta alone. Use the same report shape
-and the same two verdict strings as before. Open the report with this line,
-and nothing before it:
+Follow your first instructions on the suite. Use the same report shape and
+the same two verdict strings as before. Open the report with this line, and
+nothing before it:
 
 Reviewed: <pending head sha>
 
@@ -330,7 +329,7 @@ this order:
    pending head.
 5. **For a round `n > 1`, the later-round block** after the block below. A
    fresh launch and a resume both get it, whatever made the round launch
-   fresh.
+   fresh. Its reading instruction replaces part 4's for that round.
 
 Write the parts into
 `<record-dir>/reviews/skeptical-r<n>-instructions.md` and pass that path to
@@ -406,10 +405,11 @@ This repository has no suite. Read the diff without running one.
 sha>` is the `Reviewed:` line of `reviews/skeptical-r<n-1>.md`:
 
 ```
-The previous round reviewed <previous head sha>. Read two things before
-anything else: the change since that round, `git diff <previous head
-sha>..HEAD`, and the file below. Read the whole change only where that delta
-touches code the previous round did not review.
+<one of the two reading paragraphs below>
+
+For this round, this reading instruction replaces the one in the block
+above. Give a verdict on the whole change as it now stands, not on the delta
+alone.
 
 <one of the two literal lines below>
 
@@ -417,6 +417,27 @@ touches code the previous round did not review.
 
 A finding the project lead declined with a reason stays declined unless you
 have new evidence. When you raise it again, name that evidence.
+```
+
+**The reading paragraph depends on the ancestor check** that "Resume the
+reviewer" runs on the previous head and the pending head. Run that check
+for every later round, also for a round that launches fresh. When the check
+passes, the paragraph is the delta:
+
+```
+The previous round reviewed <previous head sha>. Read two things before
+anything else: the change since that round, `git diff <previous head
+sha>..HEAD`, and the file below. Read the whole change only where that delta
+touches code the previous round did not review.
+```
+
+When the check fails, a diff from the previous head also holds commits that
+are not part of this change, so the paragraph is the whole change:
+
+```
+The previous round reviewed <previous head sha>. That commit is not an
+ancestor of this head. Read the file below first. Then read the whole
+change, `git diff <base>..HEAD`.
 ```
 
 The literal line is "This is the project lead's reply to the last report. It

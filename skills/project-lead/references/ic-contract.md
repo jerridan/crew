@@ -90,6 +90,11 @@ This holds for a new test only. A criterion that names a test which already
 exists and already fails needs no red commit, and neither does an acceptance
 checklist for an instruction package.
 
+**A finding that a test is weak takes a mutation check.** Break the behaviour
+the test covers, and run the test. Check that its output
+confirms the test fails. Then restore the behaviour and run the test again.
+Commit neither the break nor its output. Both outputs go in your report.
+
 **The project lead's half of this check.** It runs once per package, in the
 checkout the package was worked in, on the clean tree `simple-path.md`'s
 "Verify before you believe" defines:
@@ -196,6 +201,10 @@ Include:
 - The commits you made.
 - Your red commit's sha, and the criterion's failing output at it, when the
   section "Write the failing test first" applies to you.
+- On a fix round or a patch round, every site of the defect class you
+  checked, and for each one whether you fixed it or why it needs no fix.
+- Both outputs of a mutation check, when "Write the failing test first" asks
+  for one.
 - Every assumption you took, from the Questions protocol.
 - Every question you raised, and how you resolved it or why it is still
   open.

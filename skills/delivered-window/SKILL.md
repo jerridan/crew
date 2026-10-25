@@ -329,16 +329,18 @@ In order:
 8. **Take one group all the way through before you start the next.** Dispatch
    its IC with `reviews/baseline.md` and its sentence, as `review-runner.md`'s
    "Reviewer instructions" gives them. Every IC this window dispatches gets
-   both. Run `simple-path.md`'s "Verify before you believe", run its "Fix
-   rounds" where a check fails, then run its "Integrate" in full, with the
-   substitution "A change request" names. A package that answers an `accepted`
-   skeptical report integrates with `--no-review accepted-round`
-   (`skeptical-review.md`'s "When the review runs"). One checkout holds one
-   writer, and a group that finishes before the next one starts is a group a
-   resume can tell apart. **Then complete every accepted item line that names
-   this group's package**, in the reply file: the commit sha, one line on what
-   changed, and what your verification found. A group the fix-round breaker
-   parks is recorded there as `abandoned`, with the breaker's reason.
+   both. Its brief asks for the whole defect class, as `simple-path.md`'s "Fix
+   rounds" says. Run its "Verify before you believe", which greps for the
+   pattern each finding named, run its "Fix rounds" where a check fails, then
+   run its "Integrate" in full, with the substitution "A change request"
+   names. A package that answers an `accepted` skeptical report integrates
+   with `--no-review accepted-round` (`skeptical-review.md`'s "When the review
+   runs"). One checkout holds one writer, and a group that finishes before the
+   next one starts is a group a resume can tell apart. **Then complete every
+   accepted item line that names this group's package**, in the reply file:
+   the commit sha, one line on what changed, and what your verification found.
+   A group the fix-round breaker parks is recorded there as `abandoned`, with
+   the breaker's reason.
 9. **Wait for the go-ahead**, when the round takes the gate. "The go-ahead
    gate" owns this step.
 10. **Push once, when every group is in.** The PR updates itself; open no

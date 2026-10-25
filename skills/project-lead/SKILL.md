@@ -365,8 +365,17 @@ and names its round the same way, and returns the short result
 open the file only when the count says there is something to adjudicate.
 
 `Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
-`spec-writer-r<n>` again for the next round. Three re-specs is the cap;
-escalate at it.
+`spec-writer-r<n>` again for the next round. The critic's next round reads
+the whole spec. **Two rounds is the cap.** At the cap, apply every open
+finding you accept to `spec.md` yourself, log the rest in `decisions.md` as
+declined with reasons, and go on to the split. Do not ask.
+
+**A `[Concern]` or `[Nit]` on the spec is a wording fix.** Apply it to
+`spec.md` yourself, and dispatch no spec writer and no critic round for it.
+**A spec-critic or split-critic round with no `[Critical]` finding is
+finished when the project lead applies the findings it accepts inline.** No
+writer and no critic round follows it. A `ready to split` round with
+findings ends this way.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,

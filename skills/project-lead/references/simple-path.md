@@ -285,6 +285,12 @@ and on every path. Every other file points here rather than keep a second copy:
 - a commit outside the IC's own branch or worktree, which only the full path
   can produce (`full-path.md`'s "Verify before you believe" runs that check).
 
+**A fix or patch package is checked against the pattern, not the line.**
+Grep the deliverable's diff, `git -C <repo> diff <deliverable base>..HEAD`,
+for the pattern the finding named, and read every hit. A hit the package left
+unfixed is a defect you can name. Write the pattern and the count of hits in
+the package's `decisions.md` entry.
+
 **Run the criterion at the red commit too**, when the package adds the test its
 criterion names (design §7). `ic-contract.md`'s "Write the failing test first"
 owns the procedure and the clean-tree precondition. Run it in `<repo>`, against
@@ -308,6 +314,13 @@ prompt describes what is already committed — `git log --oneline` plus
 new name to `ic_name` the same way "Dispatch the IC" does, before you
 dispatch. Rounds 4 and 5 promote a band; `band-rubric.md` says what a `deep`
 package does instead.
+
+**A fix-round brief, and a patch-round brief, ask for the whole defect
+class.** Tell the IC: before you report, search the whole diff of this
+deliverable, `git diff <deliverable base>..HEAD`, for
+every other site of the same defect class, and fix each one in this package.
+The IC lists the sites it checked in its report (`ic-contract.md`'s "Report
+contract").
 
 **Every round goes back through "Verify before you believe"** — a fix you did
 not re-run is a claim. Leave only when every check there passes. Increment

@@ -104,9 +104,10 @@ deliverables' first rounds from sharing `split-critic-r1` — with `split.md`,
 `spec.md`, the repo path, `review-output.md` whole, and the absolute path it
 writes its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
 
-Adjudicate as `SKILL.md`'s "Have the spec reviewed" says. A failed invariant is
-not a style note — fix the split and dispatch again. Three re-splits is the
-cap; escalate at it.
+Adjudicate as `SKILL.md`'s "Have the spec reviewed" says, and end a round
+with no `[Critical]` finding as it says. A failed invariant is not a style
+note — fix the split and dispatch again. Three re-splits is the cap; escalate
+at it.
 
 ## Create the branch and the worktrees
 
@@ -281,7 +282,9 @@ same evidence an entry would have been.
 ## Fix rounds
 
 A round runs only on a failure you saw yourself: a check that failed at "Verify
-before you believe", or a red suite at "Integrate". Five is the cap.
+before you believe", or a red suite at "Integrate". Five is the cap. Every
+round's message or prompt asks for the whole defect class, as
+`simple-path.md`'s "Fix rounds" says.
 
 - **Rounds 1 to 3** message the same IC. It keeps its context, which is the
   point of a teammate. Tell it to append a `## Fix round <n>` section to

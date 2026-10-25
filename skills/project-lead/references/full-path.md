@@ -101,8 +101,9 @@ Then dispatch `crew:split-critic`, named `split-critic-<deliverable-id>-r<n>`
 for the same round — `record-format.md`'s `reviews/` section scopes `<n>` to
 one deliverable, so the deliverable id in the name is what keeps two
 deliverables' first rounds from sharing `split-critic-r1` — with `split.md`,
-`spec.md`, the repo path, `review-output.md` whole, and the absolute path it
-writes its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
+`spec.md`, the repo path, `review-output.md` whole, the standing instructions
+as `SKILL.md`'s "Standing instructions" says, and the absolute path it writes
+its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
 
 Adjudicate as `SKILL.md`'s "Have the spec reviewed" says, and end a round
 with no `[Critical]` finding as it says. A failed invariant is not a style

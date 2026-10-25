@@ -169,7 +169,7 @@ at those paths again before its first dispatch.
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
 
-A file with no `##` heading is one `Reviewers` section. Read no other
+A file with no `##` heading is one `Reviewers` section. Act on no other
 section yourself, and pass it through to ICs and reviewers unread.
 
 **One order decides between sources, for every section.** It runs from the
@@ -382,8 +382,8 @@ the whole spec. **Two rounds is the cap.** At the cap, apply every open
 finding you accept to `spec.md` yourself, log the rest in `decisions.md` as
 declined with reasons, and go on to the split. Do not ask.
 
-**A `[Concern]` or `[Nit]` on the spec is a wording fix.** Apply it to
-`spec.md` yourself, and dispatch no spec writer and no critic round for it.
+**A `[Concern]` or `[Nit]` on the spec is a wording fix.** Apply each one you
+accept to `spec.md` yourself, and dispatch no spec writer and no critic round for it.
 **A spec-critic or split-critic round with no `[Critical]` finding is
 finished when the project lead applies the findings it accepts inline.** No
 writer and no critic round follows it. A `ready to split` round with

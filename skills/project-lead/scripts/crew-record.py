@@ -182,7 +182,12 @@ def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap:
     `reason` names why a caller does not arm a head. `None` means the caller
     wants the review, and the cap may still stop it with the reason `cap`.
     `accepted-round` means an accepted verdict stopped the review, so the head
-    is never armed, at any round count.
+    is never armed, at any round count. Both reasons leave a pending review
+    of another head running. For `cap` the head is listed and the pending
+    review stays. For `accepted-round`, a pending round not yet entered
+    (`review_rounds < pending["round"]`) moves to the given head and keeps
+    its number, and nothing is listed. An entered round keeps its head, and
+    the given head is listed, so a resume owes nothing for it.
     """
     if not head:
         return
@@ -194,14 +199,23 @@ def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap:
     if reason is not None:
         # A pending head other than this one still owes its review: this
         # head's accepted verdict or the cap says nothing about it. For an
-        # accepted round the head is then not listed, because the pending
-        # review covers the scope.
+        # accepted round, a pending round not yet entered moves to this head
+        # and keeps its number, so one review covers both changes, and
+        # nothing is listed. An entered round keeps its head, and this head
+        # is listed, so a resume owes nothing for it.
         pending = run.get("review_pending")
         other = isinstance(pending, dict) and pending.get("head") != head
         if not other:
             run["review_pending"] = None
         if other and reason == "accepted-round":
-            return
+            pending_round = pending.get("round")
+            if (
+                isinstance(pending_round, int)
+                and not isinstance(pending_round, bool)
+                and rounds < pending_round
+            ):
+                run["review_pending"] = {"head": head, "round": pending_round}
+                return
         unreviewed = run.get("unreviewed_heads")
         if not isinstance(unreviewed, list):
             unreviewed = []

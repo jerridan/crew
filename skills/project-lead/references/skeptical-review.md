@@ -92,7 +92,8 @@ could fail**:
 **Arming at the cap arms nothing, and says so.** When `review_rounds` already
 equals the cap, the same write leaves `review_pending` `null` and appends
 `{head, reason: "cap", at}` to `run.unreviewed_heads` instead
-(`record-format.md`). `crew-record.py`'s `arm_review` does both, so no caller
+(`record-format.md`). The write leaves a pending review of another head
+alone. `crew-record.py`'s `arm_review` does both, so no caller
 can record a head it will never review and forget it. **Name every head in
 that list in your next message to the principal**, as work that shipped
 unreviewed. A silent cap is worse than no cap.
@@ -104,9 +105,13 @@ findings integrates with `crew-record.py integrate <package-id>
 leaves `review_pending` `null` and appends `{head, reason:
 "accepted-round", at}` to `run.unreviewed_heads`. Your next message to the
 principal says the review stopped on an accepted verdict, and names the
-head. When `review_pending` already names another head, that head keeps its
-review and the accepted round's head is not listed. A later head that carries
-new scope, such as a change request or a finding from another source, is armed
+head. When `review_pending` already names another head, two cases apply. If
+that round is not entered (`review_rounds` is below `review_pending.round`),
+`review_pending` moves to the accepted round's head and keeps its number, and
+nothing is listed. If that round is entered (`review_rounds` is not below
+it), `review_pending` stays, and the accepted round's head is listed with the
+reason `accepted-round`, so a resume owes nothing for it. A later head that
+carries new scope, such as a change request or a finding from another source, is armed
 as above.
 
 **One more round past the cap is a command.** When the principal says "run

@@ -21,7 +21,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md` | what a review run puts on GitHub: the sanitizing, the effect rule, the shapes and the post command | the project lead, in a review run |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
@@ -39,8 +39,7 @@ read-only `crew:scout` — twelve references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
 one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
-`--resume` recovery. Both paths ran end to end before T66: the simple
-path's IC was unnamed, and the full path named only its ICs.
+`--resume` recovery. Both paths ran end to end before T66.
 The **investigation path** takes a symptom to a diagnosis, then to a fix or to
 a report ending; both endings have run, and it is `crew:researcher`'s only
 caller, which no run has dispatched yet. The **light path** is the simple path
@@ -56,10 +55,9 @@ the fixture repo `crew-fixture-string-kit` (§15.98).
 
 **Every other run named above predates T58 through T62 and T66**, which cut
 two review steps, moved the last to after the hand-over, gave the window a
-patch mode, added the substitution rule, and named every dispatch. §15.98 is
-the first run of T58 through T62's changes, once each — evidence for one
-step, not for the loop. T66's naming rule is not part of that probe: both
-§15.98 records show `ic_name: null`, so T66 stays unexercised. T69 marks a
+patch mode, added the substitution rule, and named every dispatch. §15.98 ran
+T58 through T62's changes once each, with `ic_name: null`, so T66 stays
+unexercised. T69 marks a
 run's PR ready for review when the skeptical review stops, and no run has
 done that yet (§15.99). T63 lets a machine file or a repo file name a
 review replacement for every run, and no run has read one yet (§15.100).
@@ -72,9 +70,15 @@ a reply on the PR. One probe on the fixture repo ran its four checks
 PR are unexercised.
 
 `/crew:review` is built and ran once (§15.108). Its reviewer resume, queue
-line, pane rule and no-wait post are unexercised (T77). T78 cut its
-pre-review steps to one scout and a charter template, and no run has
-exercised that (§15.109).
+line and pane rule are unexercised (T77). T78 cut its pre-review steps to
+one scout and a charter template, and no run has exercised that (§15.109).
+
+T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
+allow list, standing instructions from `.claude/crew.md`, a red-test baseline
+per deliverable, a gate decided by each item's author, a review that stops on
+an accepted verdict, a delta re-review, a two-round spec critic, whole-class
+fix rounds, and `crew-record.py`'s `decision` and `round` subcommands. No run
+has read any of it yet.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

@@ -88,6 +88,9 @@ cap, and appends nothing to `unreviewed_heads`. `--no-review accepted-round`
 on `integrate` or `deliver` does not arm the head at any round count. It
 appends `{head, reason: "accepted-round", at}` to `unreviewed_heads` and needs
 `--review-head`.
+A decision value (`--answer`, `--citation`, `--line`) is one line: a newline
+exits 2. `--opened-at` must read `YYYY-MM-DDTHH:MM:SSZ` and be no later than
+the clock, or `round open` exits 2. A flag with no value exits 2.
 `record-format.md` owns every field name and every transition; this script
 checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 """
@@ -136,7 +139,12 @@ def arg(rest: list[str], i: int) -> str:
 
 
 def flag(rest: list[str], name: str):
-    return rest[rest.index(name) + 1] if name in rest else None
+    if name not in rest:
+        return None
+    i = rest.index(name)
+    if i + 1 >= len(rest):
+        die(f"{name} needs a value")
+    return rest[i + 1]
 
 
 def set_dotted(target: dict, dotted: str, value) -> None:
@@ -184,7 +192,16 @@ def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap:
     if reason is None and at_cap:
         reason = "cap"
     if reason is not None:
-        run["review_pending"] = None
+        # A pending head other than this one still owes its review: this
+        # head's accepted verdict or the cap says nothing about it. For an
+        # accepted round the head is then not listed, because the pending
+        # review covers the scope.
+        pending = run.get("review_pending")
+        other = isinstance(pending, dict) and pending.get("head") != head
+        if not other:
+            run["review_pending"] = None
+        if other and reason == "accepted-round":
+            return
         unreviewed = run.get("unreviewed_heads")
         if not isinstance(unreviewed, list):
             unreviewed = []
@@ -241,6 +258,13 @@ OWN_KEYS = ("Route", "Answer", "Citation", "Confidence", "Timestamp")
 FIXED_KEYS = OWN_KEYS + ("Prior", "Positions", "Losing")
 
 
+def one_line(name: str, value: str) -> str:
+    """A decision value is one line: a newline would break the entry."""
+    if "\n" in value or "\r" in value:
+        die(f"{name} must be one line")
+    return value
+
+
 def all_flags(rest: list[str], name: str) -> list[str]:
     """Every value of a repeatable flag, in the order given."""
     values = []
@@ -255,6 +279,7 @@ def all_flags(rest: list[str], name: str) -> list[str]:
 def parse_lines(texts: list[str]) -> list[tuple[str, str]]:
     pairs = []
     for text in texts:
+        one_line("--line", text)
         found = LINE_KEY.match(text)
         if not found or found.group(1) in OWN_KEYS:
             die(f'--line wants "<Key>: <text>" with a key other than {", ".join(OWN_KEYS)}: {text}')
@@ -308,6 +333,9 @@ def decision(record: Path, rest: list[str]) -> None:
             die(f"no decision entry titled {title}")
         start = starts[-1]
         end = next((i for i in range(start + 1, len(existing)) if existing[i].startswith("## ")), len(existing))
+        # The blank line between entries is not part of this entry.
+        while end > start + 1 and existing[end - 1] == "":
+            end -= 1
         old = parse_entry(existing[start + 1:end])
         route = next((v for k, v in old if k == "Route"), "")
         # Lines the entry already holds stay, unless this call gives the same key.
@@ -320,12 +348,17 @@ def decision(record: Path, rest: list[str]) -> None:
         for name, value in values.items():
             if not value:
                 die(f"decision needs --{name}")
+            if name != "confidence":
+                one_line(f"--{name}", value)
         if values["confidence"] not in CONFIDENCES:
             die(f"--confidence must be one of {', '.join(CONFIDENCES)}, got {values['confidence']}")
         entry = render_entry(title, route, values["answer"], values["citation"], values["confidence"], lines)
     record.mkdir(parents=True, exist_ok=True)
     if updating:
-        merged = existing[:start] + entry + existing[end:]
+        tail = existing[end:]
+        if tail and tail[0].startswith("## "):
+            tail = [""] + tail
+        merged = existing[:start] + entry + tail
     else:
         merged = existing + ([""] if existing else []) + entry
     tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
@@ -349,10 +382,18 @@ def round_cmd(run: dict, rest: list[str]) -> None:
         ref, reply_to = flag(rest, "--ref"), flag(rest, "--reply-to")
         if ref is None or reply_to is None:
             die("round open needs --ref and --reply-to")
+        opened_at = flag(rest, "--opened-at")
+        if opened_at is not None:
+            try:
+                datetime.datetime.strptime(opened_at, "%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
+                die(f"--opened-at must be YYYY-MM-DDTHH:MM:SSZ, got {opened_at}")
+            if opened_at > now():
+                die(f"--opened-at is later than the clock: {opened_at}")
         entry = {
             "source": {"kind": kind, "ref": ref},
             "reply_to": reply_to,
-            "opened_at": flag(rest, "--opened-at") or now(),
+            "opened_at": opened_at or now(),
             "replied_at": None,
         }
         if "--gated" in rest:

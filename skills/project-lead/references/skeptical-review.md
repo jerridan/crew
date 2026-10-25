@@ -104,8 +104,10 @@ findings integrates with `crew-record.py integrate <package-id>
 leaves `review_pending` `null` and appends `{head, reason:
 "accepted-round", at}` to `run.unreviewed_heads`. Your next message to the
 principal says the review stopped on an accepted verdict, and names the
-head. A later head that carries new scope, such as a change request or a
-finding from another source, is armed as above.
+head. When `review_pending` already names another head, that head keeps its
+review and the accepted round's head is not listed. A later head that carries
+new scope, such as a change request or a finding from another source, is armed
+as above.
 
 **One more round past the cap is a command.** When the principal says "run
 one more review", run `crew-record.py <record-dir> arm-review --head <branch

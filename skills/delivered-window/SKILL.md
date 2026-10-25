@@ -463,10 +463,12 @@ package left `pending` or `in-flight` by a kill.
 It comes from the principal, on either channel, and it alone ends this
 window. Never decide it yourself: shipped means merged and deployed, and no
 `gh` command sees a deploy. In a `run.kind: review` run, the watch's
-`merged`, `queued` or `closed` item is that word. In a goal run, a `queued`
-item is a notice. A `Done: rolled out` standing-instructions section
-(`<project-lead-dir>/SKILL.md`) makes the word wait for the principal's word
-that the change is live, and a `merged` item is then a notice. On the word:
+`merged`, `queued` or `closed` item is that word by default. There, a `Done:
+rolled out` standing-instructions section (`<project-lead-dir>/SKILL.md`)
+makes a `merged` or `queued` item a notice, and the word waits for the
+principal's word that the change is live. In a goal run, a `merged` or
+`queued` item is a notice and the word is always the principal's, so `Done`
+changes nothing there. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.

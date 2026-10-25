@@ -128,9 +128,10 @@ This working directory is now a detached checkout at <pending head sha>.
 
 <part 5 of "Reviewer instructions", the later-round block, filled in>
 
-Follow your first instructions on the suite. Give a verdict on the whole change as it now stands, not on the delta alone.
-Use the same report shape and the same two verdict strings as before. Open
-the report with this line, and nothing before it:
+Follow your first instructions on the suite. Give a verdict on the whole
+change as it now stands, not on the delta alone. Use the same report shape
+and the same two verdict strings as before. Open the report with this line,
+and nothing before it:
 
 Reviewed: <pending head sha>
 

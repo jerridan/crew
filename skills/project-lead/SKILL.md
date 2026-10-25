@@ -383,7 +383,8 @@ finding you accept to `spec.md` yourself, log the rest in `decisions.md` as
 declined with reasons, and go on to the split. Do not ask.
 
 **A `[Concern]` or `[Nit]` on the spec is a wording fix.** Apply each one you
-accept to `spec.md` yourself, and dispatch no spec writer and no critic round for it.
+accept to `spec.md` yourself, and dispatch no spec writer and no critic round
+for it.
 **A spec-critic or split-critic round with no `[Critical]` finding is
 finished when the project lead applies the findings it accepts inline.** No
 writer and no critic round follows it. A `ready to split` round with

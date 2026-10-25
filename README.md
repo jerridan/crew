@@ -2,8 +2,8 @@
 
 A Claude Code plugin that takes your goals to PRs ready for review. It does
 not stop for approval until the PR is open. Then it watches the PR and CI,
-and fixes what lands. Before it pushes or replies on the PR, it waits for
-your go-ahead.
+and fixes what lands. When another person comments on the PR, it waits for
+your go-ahead before it pushes or replies.
 
 You hand a goal to a project lead. It reads its repo, writes the spec, splits
 the work, picks a model for each piece, dispatches implementers, checks each
@@ -16,9 +16,10 @@ you say its work shipped, so you can ask it about the change before the
 merge, or ask for a change to the PR after.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
-you what it fixed or declined and why, and waits for your go-ahead before it
-pushes or replies on the PR. In a goal run, a failed check and a comment
-from your own GitHub account take no go-ahead.
+you what it fixed or declined and why. When another person commented, it
+waits for your go-ahead before it pushes or replies on the PR. A comment from
+a bot, a failed check and a comment from your own GitHub account take no
+go-ahead.
 
 Two entry points:
 
@@ -119,10 +120,11 @@ session stays. In that session you can ask about the change, or ask for a
 change to the same PR. You do not paste review findings: the project lead
 finds each review, comment and failed CI check on the PR itself. It verifies
 each one, and fixes what it accepts on the branch. Then it tells you what it
-fixed or declined, and why. When you give the go-ahead, it pushes and replies
-to each one on the PR. A failed check and a comment from your own GitHub
-account are pushed and answered with no go-ahead. You can still send findings
-from anywhere else, and they take the same go-ahead.
+fixed or declined, and why. When another person commented, it waits for your
+go-ahead, then pushes and replies to each one on the PR. A comment from a
+bot, a failed check and a comment from your own GitHub account are pushed and
+answered with no go-ahead. You can still send findings from anywhere else,
+and they wait for your go-ahead too.
 When the work is merged and deployed, say so, and the run closes. Closing the
 session instead leaves the run recorded as interrupted, which is fine for a
 run you merged yourself.
@@ -160,17 +162,15 @@ Or give its number, with plain words to ask for more:
 The PR must be open. "Fix the blockers yourself" lets crew push fixes to the
 PR's branch, and it does not work on a PR from a fork.
 
-In a review run, crew waits for your go-ahead before every review, reply
-and push, whoever the item came from. This includes a failed check and a
-comment from your own GitHub account. Crew shows you the draft first. You
-can change any finding or the text, or mark a finding "no reply". To turn
-every wait off, say `post without asking` with the command.
+In a review run, crew waits for your go-ahead before it posts its first
+review. It shows you the draft first. You can change any finding or the
+text, or mark a finding "no reply". A later review that raises nothing new
+posts with no wait. A later review with a new finding waits for you again.
 
-Crew posts a later review with no wait in two cases. The last review approved
-with suggestions and the author took them, or it held back approval over
-blocking findings and the author fixed them. Both cases need a clean new
-review, every earlier finding posted on a line of the diff, and no other
-change in the author's push.
+Replies and pushes in a review run follow the same rule as in a goal run.
+Crew waits when another person commented. A comment from a bot, a failed
+check and a comment from your own GitHub account take no go-ahead. To turn
+every wait off, say `post without asking` with the command.
 
 Crew does not run a fork's tests or setup unless you say
 `run the suite on this fork`.
@@ -227,7 +227,7 @@ under a `##` heading with one of these names:
 | `Hook workarounds` | what to do when a git hook stops a push or a merge |
 | `Ticket defaults` | where a new ticket goes, such as its team |
 | `PR readiness` | `ready` or `draft` |
-| `Done` | `merged`, or `rolled out` to wait for your word that the change is live |
+| `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for your word that the change is live, not for the merge |
 | `Branch names` | your rule for a branch name |
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
 
@@ -286,7 +286,7 @@ yarn check-types-strict
    └───────────────────────────────────────────────┘
       │                  │
       │ accepted         └──▶  patch rounds on the same PR,
-      ▼                        up to three reviews in all
+      ▼                        up to three reviews, unless you ask
    you merge it, or tell the run to, and say when it shipped
 ```
 
@@ -303,10 +303,19 @@ against your goal, assumes it is wrong, and runs the tests in a checkout of
 its own. What it finds goes on the same PR as a patch round. So does what
 your reviewers and CI post on the PR, and anything you send yourself. Each
 finding gets a reply that says what changed or why the run disagreed. The
-project lead patches the branch at once. For anything but crew's own review,
-a failed check and a comment from your own account, it waits for your
-go-ahead before it pushes or replies. A run takes three reviews at most. A
-question with no precedent goes to a council, where each advocate argues an
+project lead patches the branch at once. It waits for your go-ahead before it
+pushes or replies when another person commented, or when you sent the finding
+yourself.
+
+Crew's own review runs up to three times. A review that approves with only
+suggestions is the last one: after the suggestions land, no further review
+runs. To get one more review past that limit, say:
+
+```
+run one more review
+```
+
+A question with no precedent goes to a council, where each advocate argues an
 assigned position, so the project lead weighs arguments instead of counting
 votes. A question about what you want is never debated. It comes to you.
 
@@ -324,7 +333,7 @@ A review run takes these steps:
 | Report and wait | Crew sends you the draft and waits for your go-ahead. |
 | Post | Crew posts the review on the PR, with one inline comment per finding. |
 | Watch | Crew watches the PR for a new push and for the merge. |
-| Later rounds | Each new push is reviewed again. A finding whose code is gone is marked resolved. |
+| Later rounds | Each new push is reviewed again. A finding whose code is gone is marked resolved. A review that raises nothing new posts with no wait. |
 | The assist path | With "fix the blockers yourself", crew fixes the `incident` and `bug` findings and pushes them to the PR's branch, after your go-ahead. |
 | The end | The run closes when the PR merges. A PR that is closed without a merge also ends the run. |
 
@@ -388,7 +397,7 @@ review catch rate, over every record.
 
 | Role | What it does |
 |---|---|
-| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays until the work ships: it watches the PR and CI, fixes what lands, and waits for your go-ahead before it pushes or replies, except on a failed check or your own comment. It answers your questions and takes your changes too. |
+| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays until the work ships: it watches the PR and CI, fixes what lands, and waits for your go-ahead before it answers another person's comment or a finding you sent. It answers your questions and takes your changes too. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |

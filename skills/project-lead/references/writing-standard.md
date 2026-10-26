@@ -145,16 +145,19 @@ not done.
    finish it. A reference **naming** the file that owns a rule is not a
    hop — that is how a rule keeps one owner — but a reference that sends
    you to a second file to learn what to do next is.
-4. **Size.** A `CLAUDE.md` or a `.claude/rules/` file stays under 200
-   lines, and a `SKILL.md` body under 500. Both figures are the Claude
-   Code documentation's own targets, and they are targets, not limits: a
+4. **Size.** A `CLAUDE.md` or a `.claude/rules/` file targets 200 lines,
+   and a `SKILL.md` body 500. Both figures are the Claude Code
+   documentation's own targets, and they are targets, not limits: a
    longer file loads and costs context on every turn, and adherence drops
    with its length (https://code.claude.com/docs/en/claude-md and
    https://code.claude.com/docs/en/skills). A file under `references/` has
    no target, because a reference loads only when a step sends the reader
    to it. Count every line the file holds — blank lines included — from
    the line after the closing `---` of the frontmatter to the end. Over a
-   target, move the excess into a reference file (design §15.75).
+   target, split the file: move a subject into a reference file that the
+   file points at (design §15.75). Never cut a rule or a reason to fit the
+   number. The item passes when the excess has moved to a reference, or
+   when the PR says why the file stays over its target.
 5. **ASD-STE100 prose.** Every sentence is short, uses active voice, and
    carries exactly one instruction. A sentence you must reread to parse
    is too long — split it.

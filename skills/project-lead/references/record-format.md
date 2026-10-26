@@ -909,15 +909,17 @@ forms the usage block above gives. The script writes the heading
 `## <title>`, reads `Timestamp:` from the clock, and puts the lines in this
 order: `Route`, then `Prior` and `Positions` when given, `Answer`, `Citation`,
 `Losing` when given, `Confidence`, every other `--line` in the order given,
-then `Timestamp`. Exit 2 names the missing field or the wrong route. Correct
+then `Timestamp`, then `Updated` on an updated entry. Exit 2 names the missing field or the wrong route. Correct
 the call and run it again.
 
 - **One call** writes an entry that is complete when you write it.
 - **`--pending`, then `decision update`,** writes a council entry and a sweep
-  entry. The first write proves that the routing came first. `update`
-  rewrites the most recent entry with that title and stamps `Timestamp:`
-  again. It keeps every line the entry holds, and a key you give again
-  replaces its line. It never appends.
+  entry. `Timestamp:` is the time of the first write, and it proves that the
+  routing came first. `update` rewrites the most recent entry with that
+  title. It keeps `Timestamp:`, and writes `Updated:` from the clock as the
+  last line. Each later update writes `Updated:` again. It keeps every other
+  line the entry holds, and a key you give again replaces its line. `--line`
+  may not carry `Updated`. It never appends.
 
 `pending` is the only sanctioned placeholder. The
 no-citation-at-high-confidence check does not apply to an entry that still
@@ -980,6 +982,7 @@ Citation: charter.md and spec.md hold no other open question that an instruction
 Confidence: high
 Questions: 1. Does each book get its own route? 2. Is the old URL kept?
 Timestamp: 2026-08-24T14:32:00Z
+Updated: 2026-08-24T16:05:00Z
 ```
 
 `Citation:` names the files the sweep read. `Questions:` is the sweep's own
@@ -1070,6 +1073,7 @@ Confidence: high
 Models: 1 advocate, sonnet. Adjudicated at opus.
 Spend: 14800 tokens
 Timestamp: 2026-08-24T14:32:00Z
+Updated: 2026-08-24T14:51:00Z
 ```
 
 A three-advocate council (`autonomy-contract.md` names the two cases that earn
@@ -1249,6 +1253,7 @@ Every name this file defines, with what consumes it.
 - `Models` — consumer: stage 6 (council entries only); Task 5 (`band-rubric.md`'s promotion data covers councils, design §15.9)
 - `Spend` — consumer: stage 6 (council entries only)
 - `Timestamp` — consumer: a human auditing the record's timeline; stage 6
+- `Updated` — writer: `crew-record.py`'s `decision update`. Consumer: a human auditing the record's timeline
 
 **Goal-slug format**
 - `<kebab-case-slug>-<4 lowercase hex chars>` — consumer: stage 4 (project lead generates it when creating the record directory)

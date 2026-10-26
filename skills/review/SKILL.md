@@ -306,12 +306,14 @@ counts only the stops the principal saw.
 
 `github-review.md`'s "The event rule" and "The post command" own the post.
 When the event falls from `REQUEST_CHANGES`, the event rule's dismissal
-comes before the post. After the post, in this order:
+comes before the post. On a round that posts with no wait, its `auto:
+findings answered` entry comes before the post too. When a resume finds no
+such entry, write it first, as "Report and wait at the gate" says. After the
+post, in this order:
 
-1. On a round that posted with no wait, run `round go-ahead skeptical-r<n>`.
-2. Write `run.rounds[skeptical-r<n>].posted_review_id` with `run set`.
-3. Run `round replied skeptical-r<n>`.
-4. Run `<project-lead-dir>/scripts/spend.py --write`.
+1. Write `run.rounds[skeptical-r<n>].posted_review_id` with `run set`.
+2. Run `round replied skeptical-r<n>`.
+3. Run `<project-lead-dir>/scripts/spend.py --write`.
 
 A failed post is retried once, with every inline comment folded into the
 body. A second failure is an escalation.

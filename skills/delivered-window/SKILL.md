@@ -412,9 +412,11 @@ after a resume. A `principal` round takes the gate. A `ci` round and a
 skeptical rounds differ: round 1 takes the gate. A later skeptical round
 posts with no wait when its report raises no new finding: every finding in
 it re-verifies one already posted. A round with a new finding takes the
-gate. For a round that posts with no wait, record its escalation as
-`/crew:review`'s "Report and wait at the gate" says, run `round go-ahead` at
-the post, and name the post in your next message to the principal.
+gate. A round that posts with no wait takes no gate: open it without
+`--gated`, and write no `round go-ahead` for it. Record its escalation as
+`/crew:review`'s "Report and wait at the gate" says. That entry, with the
+answer `auto: findings answered`, is the record of the post. Name the post in
+your next message to the principal.
 
 **The gate holds only the push and the replies.** It sits between "Take one
 group all the way through" and "Push once", in both procedures above. Push

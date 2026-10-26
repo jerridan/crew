@@ -68,14 +68,18 @@ writes nothing.
 `council` or `preference`. A new entry needs `--answer`, `--citation` and
 `--confidence`, and the script exits 2 and names the first one missing.
 `--pending` writes `Answer: pending` and `Confidence: pending` with no
-`Citation:`, for a council or a sweep that is not yet answered. `--line` is
-optional and repeatable, and takes any key. The line order is always `Route`,
-`Prior`, `Positions`, `Answer`, `Citation`, `Losing`, `Confidence`, every
-other `--line` in the order given, then `Timestamp`. `decision update` is a
+`Citation:`, for a council or a sweep that is not yet answered. It exits 2
+with `--answer`, `--citation`, `--confidence` or `update`.
+`decision` exits 2 and creates nothing when `<record-dir>/state.json` is
+absent. `--line` is optional and repeatable, and takes any key. The line order
+is always `Route`, `Prior`, `Positions`, `Answer`, `Citation`, `Losing`,
+`Confidence`, every other `--line` in the order given, then `Timestamp`. `decision update` is a
 verb, not a route. It writes the whole most recent entry with that title again
-in that order, with the new values and lines, and stamps `Timestamp:` again.
-It exits 2 when no entry has the title. It never appends, and it may run on a
-completed entry.
+in that order, with the new values and lines. It keeps the entry's `Timestamp:`
+and writes `Updated:` from the clock as the last line, after it, and each later
+update writes `Updated:` again. `--line` may not carry `Updated`. It exits 2
+when no entry has the title. It never appends, and it may run on a completed
+entry.
 `round open` writes `run.rounds[<round-id>]` with `source`, `reply_to`,
 `opened_at` and `replied_at: null`. `--gated` adds `go_ahead_at: null`.
 `opened_at` is the clock, or `--opened-at` for a rebuilt round. `round drop`
@@ -87,10 +91,15 @@ absent, and `open` exits 2 on an id that exists.
 cap, and appends nothing to `unreviewed_heads`. `--no-review accepted-round`
 on `integrate` or `deliver` does not arm the head at any round count. It
 appends `{head, reason: "accepted-round", at}` to `unreviewed_heads` and needs
-`--review-head`.
-A decision value (`--answer`, `--citation`, `--line`) is one line: a newline
-exits 2. `--opened-at` must read `YYYY-MM-DDTHH:MM:SSZ` and be no later than
-the clock, or `round open` exits 2. A flag with no value exits 2.
+`--review-head`. It exits 2 when `run.kind` is `"review"`: a review run arms
+every head.
+A flag a command does not take exits 2: `--pr-url` or `--past-cap` on
+`integrate`, `--published` or `--past-cap` on `deliver`, `--review-head`,
+`--no-review`, `--published` or `--pr-url` on `arm-review`, and a `round open`
+flag on any other `round` form.
+A decision value (the title, `--answer`, `--citation`, `--line`) is one line:
+a newline exits 2. `--opened-at` must read `YYYY-MM-DDTHH:MM:SSZ` and be no
+later than the clock, or `round open` exits 2. A flag with no value exits 2.
 `record-format.md` owns every field name and every transition; this script
 checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 """
@@ -191,6 +200,8 @@ def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap:
     """
     if not head:
         return
+    if reason == "accepted-round" and run.get("kind") == "review":
+        die("a review run arms every head: --no-review accepted-round is not allowed")
     rounds = run.get("review_rounds")
     rounds = rounds if isinstance(rounds, int) and not isinstance(rounds, bool) else 0
     at_cap = rounds >= REVIEW_ROUND_CAP and run.get("kind") != "review" and not past_cap
@@ -223,6 +234,13 @@ def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap:
         run["unreviewed_heads"] = unreviewed
         return
     run["review_pending"] = {"head": head, "round": rounds + 1}
+
+
+def refuse_flags(command: str, rest: list[str], names: tuple[str, ...]) -> None:
+    """Exit 2 on a flag this command does not take, so none is dropped in silence."""
+    for name in names:
+        if name in rest:
+            die(f"{command} does not take {name}")
 
 
 def no_review_reason(rest: list[str]) -> str | None:
@@ -267,7 +285,7 @@ CONFIDENCES = ("high", "medium", "low")
 ROUND_KINDS = ("ci", "pr-comments", "principal", "skeptical")
 LINE_KEY = re.compile(r"^([A-Z][A-Za-z]*(?: [A-Za-z]+)?):\s?(.*)$", re.S)
 # These keys have their own flag or the clock, so `--line` may not carry them.
-OWN_KEYS = ("Route", "Answer", "Citation", "Confidence", "Timestamp")
+OWN_KEYS = ("Route", "Answer", "Citation", "Confidence", "Timestamp", "Updated")
 # Keys with a fixed place in an entry. Every other key is an extra line.
 FIXED_KEYS = OWN_KEYS + ("Prior", "Positions", "Losing")
 
@@ -317,8 +335,14 @@ def parse_entry(block: list[str]) -> list[tuple[str, str]]:
 
 
 def render_entry(title: str, route: str, answer: str, citation: str | None, confidence: str,
-                 lines: list[tuple[str, str]]) -> list[str]:
-    """One entry's lines in the fixed order, ending in a clock `Timestamp:`."""
+                 lines: list[tuple[str, str]], timestamp: str | None = None,
+                 updated: bool = False) -> list[str]:
+    """One entry's lines in the fixed order, ending in `Timestamp:`.
+
+    A new entry takes the clock for `Timestamp:`. An update passes the entry's
+    own `timestamp` and `updated=True`, which adds `Updated:` from the clock
+    as the last line.
+    """
     def pick(key: str) -> list[tuple[str, str]]:
         return [(k, v) for k, v in lines if k == key]
 
@@ -327,20 +351,34 @@ def render_entry(title: str, route: str, answer: str, citation: str | None, conf
         out.append(("Citation", citation))
     out += pick("Losing") + [("Confidence", confidence)]
     out += [(k, v) for k, v in lines if k not in FIXED_KEYS]
-    out.append(("Timestamp", now()))
+    out.append(("Timestamp", timestamp or now()))
+    if updated:
+        out.append(("Updated", now()))
     return [f"## {title}"] + "\n".join(f"{k}: {v}" for k, v in out).split("\n")
 
 
 def decision(record: Path, rest: list[str]) -> None:
     """Write or complete one `decisions.md` entry. The usage block says how."""
     route, title = arg(rest, 0), arg(rest, 1)
+    one_line("the title", title)
     updating = route == "update"
     if not updating and route not in ROUTES:
         die(f"route must be one of {', '.join(ROUTES)}, got {route}")
+    if "--pending" in rest:
+        if updating:
+            die("--pending writes a new entry: decision update takes --answer, --citation and --confidence")
+        for name in ("--answer", "--citation", "--confidence"):
+            if name in rest:
+                die(f"--pending conflicts with {name}: a pending entry has no answer")
     lines = parse_lines(all_flags(rest, "--line"))
+    # A decision lands in a record that exists: a mistyped path must not
+    # create a directory.
+    if not (record / "state.json").is_file():
+        die(f"no record at {record}: state.json is missing")
     path = record / "decisions.md"
     existing = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
     start = end = 0
+    timestamp = None
     if updating:
         starts = [i for i, line in enumerate(existing) if line == f"## {title}"]
         if not starts:
@@ -352,10 +390,13 @@ def decision(record: Path, rest: list[str]) -> None:
             end -= 1
         old = parse_entry(existing[start + 1:end])
         route = next((v for k, v in old if k == "Route"), "")
+        # The entry keeps the Timestamp: its write gave it. A line that
+        # continues the value (`Written by hand`) is not part of it.
+        timestamp = next((v.split("\n")[0] for k, v in old if k == "Timestamp"), None)
         # Lines the entry already holds stay, unless this call gives the same key.
         given = {k for k, _ in lines}
         lines = [(k, v) for k, v in old if k not in OWN_KEYS and k not in given] + lines
-    if "--pending" in rest and not updating:
+    if "--pending" in rest:
         entry = render_entry(title, route, "pending", None, "pending", lines)
     else:
         values = {name: flag(rest, f"--{name}") for name in ("answer", "citation", "confidence")}
@@ -366,8 +407,8 @@ def decision(record: Path, rest: list[str]) -> None:
                 one_line(f"--{name}", value)
         if values["confidence"] not in CONFIDENCES:
             die(f"--confidence must be one of {', '.join(CONFIDENCES)}, got {values['confidence']}")
-        entry = render_entry(title, route, values["answer"], values["citation"], values["confidence"], lines)
-    record.mkdir(parents=True, exist_ok=True)
+        entry = render_entry(title, route, values["answer"], values["citation"], values["confidence"], lines,
+                              timestamp, updating)
     if updating:
         tail = existing[end:]
         if tail and tail[0].startswith("## "):
@@ -416,6 +457,7 @@ def round_cmd(run: dict, rest: list[str]) -> None:
         return
     if verb not in ("drop", "go-ahead", "replied"):
         usage()
+    refuse_flags(f"round {verb}", rest, ("--kind", "--ref", "--reply-to", "--gated", "--opened-at"))
     if round_id not in rounds:
         die(f"no round {round_id}")
     entry = rounds[round_id]
@@ -536,6 +578,7 @@ def main(argv: list[str]) -> None:
         else:
             usage()
     elif kind == "integrate":
+        refuse_flags("integrate", rest, ("--pr-url", "--past-cap"))
         pkg = find(state.get("packages", []), arg(rest, 0))
         pkg["state"] = "integrated"
         pkg["state_changed_at"] = now()
@@ -545,6 +588,7 @@ def main(argv: list[str]) -> None:
             pkg["pushed_at"] = now()
         arm_review(run, flag(rest, "--review-head"), no_review_reason(rest))
     elif kind == "deliver":
+        refuse_flags("deliver", rest, ("--published", "--past-cap"))
         dl = find(state.get("deliverables", []), arg(rest, 0))
         dl["state"] = arg(rest, 1)
         dl["state_changed_at"] = now()
@@ -556,6 +600,7 @@ def main(argv: list[str]) -> None:
         run["run_state"] = "delivered"
         stamp_on_transition(run, before)
     elif kind == "arm-review":
+        refuse_flags("arm-review", rest, ("--review-head", "--no-review", "--published", "--pr-url"))
         head = flag(rest, "--head")
         if not head:
             usage()

@@ -98,21 +98,21 @@ can record a head it will never review and forget it. **Name every head in
 that list in your next message to the principal**, as work that shipped
 unreviewed. A silent cap is worse than no cap.
 
-**An accepted verdict stops the review too.** When a skeptical round's
-verdict is `accepted`, every package of the patch round that answers its
-findings integrates with `crew-record.py integrate <package-id>
+**An accepted verdict stops the review too**, on a goal run. When a skeptical
+round's verdict is `accepted`, every package of the patch round that answers
+its findings integrates with `crew-record.py integrate <package-id>
 --review-head <sha> --no-review accepted-round`. That write arms nothing. It
-leaves `review_pending` `null` and appends `{head, reason:
-"accepted-round", at}` to `run.unreviewed_heads`. Your next message to the
-principal says the review stopped on an accepted verdict, and names the
-head. When `review_pending` already names another head, two cases apply. If
-that round is not entered (`review_rounds` is below `review_pending.round`),
+leaves `review_pending` `null` and appends `{head, reason: "accepted-round",
+at}` to `run.unreviewed_heads`. Your next message to the principal says the
+review stopped on an accepted verdict, and names the head. When
+`review_pending` already names another head, two cases apply. If that round is
+not entered (`review_rounds` is below `review_pending.round`),
 `review_pending` moves to the accepted round's head and keeps its number, and
-nothing is listed. If that round is entered (`review_rounds` is not below
-it), `review_pending` stays, and the accepted round's head is listed with the
+nothing is listed. If that round is entered (`review_rounds` is not below it),
+`review_pending` stays, and the accepted round's head is listed with the
 reason `accepted-round`, so a resume owes nothing for it. A later head that
-carries new scope, such as a change request or a finding from another
-source, is armed as above.
+carries new scope, such as a change request or a finding from another source,
+is armed as above.
 
 **A review run arms every head.** On a `run.kind: review` run, an accepted
 verdict stops nothing, and `--no-review accepted-round` exits 2. Crew's own

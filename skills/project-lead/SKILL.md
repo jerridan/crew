@@ -53,16 +53,16 @@ how you reach it, and its "How to escalate" owns what you check before any
 ask.
 
 **Then look for a live run on the same ticket**, unless the argument is
-`--resume`. A ticket id is any token in the goal that matches
-`[A-Z]+-[0-9]+`. Read `goal_slug`, `run.kind` and `run.run_state` in every
-`state.json` under the record root (`record-format.md` says where the root
-is). **A sibling record** is one whose `goal_slug` starts with the ticket id
-in lowercase, and whose `run.kind` is not `review`. The slug test keeps a
-token such as `UTF-8` in the goal text from matching an unrelated record, and
-the kind test keeps out a review of a colleague's PR. A sibling record whose `run_state` is not `complete` is a
-live run. Tell the principal about it, offer `--resume <its slug>`, and wait
-for the answer before you write `charter.md`. Never start a second run on the
-same ticket without saying so.
+`--resume`. A ticket id is any token in the goal that matches `[A-Z]+-[0-9]+`.
+Read `goal_slug`, `run.kind` and `run.run_state` in every `state.json` under
+the record root (`record-format.md` says where the root is). **A sibling
+record** is one whose `goal_slug` starts with the ticket id in lowercase, and
+whose `run.kind` is not `review`. The slug test keeps a token such as `UTF-8`
+in the goal text from matching an unrelated record, and the kind test keeps
+out a review of a colleague's PR. A sibling record whose `run_state` is not
+`complete` is a live run. Tell the principal about it, offer `--resume <its
+slug>`, and wait for the answer before you write `charter.md`. Never start a
+second run on the same ticket without saying so.
 
 **`--resume <goal-slug>` skips the rest of this rule.** It reopens the existing
 record, never a new directory. Append this session's id to `run.session_ids`,
@@ -121,11 +121,11 @@ command. Escalation trigger 1 fires there instead of here when no reproduction
 can be written.
 
 Then the record: `<record-root>/<slug>-<4 hex chars>/`, the suffix generated
-once; `record-format.md` says where the root is. A goal that names a ticket
-id starts its slug with that id in lowercase, so the sibling match finds it. Write `charter.md`, then
-`crew-record.py init` with `$CLAUDE_CODE_SESSION_ID` — read it, never invent
-it — and `run set principal` with the `from-name` you kept above when the goal
-arrived by message.
+once; `record-format.md` says where the root is. A goal that names a ticket id
+starts its slug with that id in lowercase, so the sibling match finds it.
+Write `charter.md`, then `crew-record.py init` with `$CLAUDE_CODE_SESSION_ID`
+— read it, never invent it — and `run set principal` with the `from-name` you
+kept above when the goal arrived by message.
 
 **Write `run.repo` in the same turn**: `git rev-parse --show-toplevel`, the
 clone this session was launched in. It is the path every worktree command of

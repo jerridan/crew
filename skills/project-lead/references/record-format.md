@@ -905,12 +905,12 @@ own values are lowercase, as design §4's worked example shows). `Confidence`
 is one of `high`, `medium`, `low`.
 
 **Write every entry with `crew-record.py`'s `decision`**, in one of the three
-forms the usage block above gives. The script writes the heading
-`## <title>`, reads `Timestamp:` from the clock, and puts the lines in this
-order: `Route`, then `Prior` and `Positions` when given, `Answer`, `Citation`,
-`Losing` when given, `Confidence`, every other `--line` in the order given,
-then `Timestamp`, then `Updated` on an updated entry. Exit 2 names the missing field or the wrong route. Correct
-the call and run it again.
+forms the usage block above gives. The script writes the heading `## <title>`,
+reads `Timestamp:` from the clock, and puts the lines in this order: `Route`,
+then `Prior` and `Positions` when given, `Answer`, `Citation`, `Losing` when
+given, `Confidence`, every other `--line` in the order given, then
+`Timestamp`, then `Updated` on an updated entry. Exit 2 names the missing
+field or the wrong route. Correct the call and run it again.
 
 - **One call** writes an entry that is complete when you write it.
 - **`--pending`, then `decision update`,** writes a council entry and a sweep

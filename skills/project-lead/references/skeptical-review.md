@@ -136,17 +136,22 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
 2. **Set `review_rounds` to `review_pending.round`**, by the table below.
 3. **Cut or move the deliverable's review worktree** and run the setup
    command in it (`review-runner.md`).
-4. **Write the baseline, before the deliverable's first round.** Skip this
-   step when `reviews/baseline.md` already exists. Move the worktree to the
-   deliverable's `base`, run every gate the scout recorded there, then move
-   it back to the pending head. Write `reviews/baseline.md` in one write,
-   after every gate ran, so a file on disk is a finished baseline: one line
-   per test or gate that fails at the base, with its cause when known. The
-   standing instructions' `Known red tests` section seeds the file: write its
-   lines first (`SKILL.md`, "Standing instructions"). Under the no-suite
-   outcome, the file holds the one line `No suite.` A run holds one
-   deliverable (`autonomy-contract.md`, trigger 7), so it writes one
-   baseline.
+4. **Write the baseline, before the first round at each `base`.** Skip
+   this step when `reviews/baseline.md` exists and its first line names the
+   deliverable's `base`. A file with another sha there, or with no `Base:`
+   line, was measured at an old base: write it again. Move the worktree to
+   the deliverable's `base`, run every gate the scout recorded there, then
+   move it back to the pending head. Write `reviews/baseline.md` in one
+   write, after every gate ran, so a file on disk is a finished baseline.
+   Its first line is `Base: <sha>`, the base it was measured at. Then one
+   line per test or gate that fails at the base, with its cause when known.
+   The standing instructions' `Known red tests` section seeds the file:
+   write its lines first after the `Base:` line (`SKILL.md`, "Standing
+   instructions"). Under the no-suite outcome, the file holds the `Base:`
+   line and the line `No suite.` A run holds one deliverable
+   (`autonomy-contract.md`, trigger 7), so it holds one baseline file. A
+   review run's base moves when the PR's base moves, and `/crew:review`'s
+   "Find the base of a later round" writes the new one.
 5. **Write the instructions file**, and the resume prompt on a later round
    (`review-runner.md`).
 6. **Launch, or resume the reviewer of the round before** (`review-runner.md`'s
@@ -529,7 +534,7 @@ somewhere else.
 | **Launch 1**, the arming | 13, nothing on disk | `review_rounds` is set to the reserved round, then the review runs at launch step 2 |
 | **Launch 2**, `review_rounds` set | 13, nothing on disk | the review runs at launch step 2, in the same round |
 | **Launch 3**, the worktree cut or moved and setup run | 13, nothing for the round on disk | the review runs at launch step 2, which checks the worktree again (`review-runner.md`) |
-| **Launch 4**, the baseline running or written | 13, nothing for the round on disk | the review runs at launch step 2. Step 3 moves the worktree back to the pending head, and step 4 runs again only when `reviews/baseline.md` is missing |
+| **Launch 4**, the baseline running or written | 13, nothing for the round on disk | the review runs at launch step 2. Step 3 moves the worktree back to the pending head, and step 4 runs again only when `reviews/baseline.md` is missing or its `Base:` line names another sha |
 | **Launch 5**, the instructions written, before the redirected command starts | 12, instructions and no JSON | the attempt is retired, then the review runs at launch step 2 |
 | **Launch 6**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | `review-runner.md`'s four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
 | **Launch 6**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |

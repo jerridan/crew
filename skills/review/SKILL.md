@@ -195,6 +195,9 @@ reviewer reads first. Write the base to the deliverable before the launch:
 python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable d1 set base '"<new merge base>"'
 ```
 
+A new base owes a new baseline. `skeptical-review.md`'s launch step 4 writes
+it again at that base, before the round.
+
 A resume that fails after this write launches fresh, and that launch first
 does the recompute that `review-runner.md`'s "Resume the reviewer" names.
 
@@ -215,7 +218,7 @@ says the scout recorded.
 Then run the review through `review-runner.md`, with the files named
 `skeptical-r<n>` and `<n>` from `run.review_pending.round`. Set
 `run.review_rounds` as `skeptical-review.md`'s "When the review runs" table
-says, and write the baseline before round 1 as its launch order says. The
+says, and write the baseline as its launch step 4 says. The
 inputs that differ from a goal run:
 
 | Input | On a review run |

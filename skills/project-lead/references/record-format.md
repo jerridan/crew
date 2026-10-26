@@ -50,7 +50,7 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> ship
 python3 <skill-dir>/scripts/crew-record.py <record-dir> decision <route> "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
 python3 <skill-dir>/scripts/crew-record.py <record-dir> decision <route> "<title>" --pending [--line "<Key>: <text>"]...
 python3 <skill-dir>/scripts/crew-record.py <record-dir> decision update "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
-python3 <skill-dir>/scripts/crew-record.py <record-dir> round open <round-id> --kind <ci|pr-comments|principal|skeptical> --ref "<ref>" --reply-to "<where>" [--gated] [--opened-at <ISO-8601 UTC>]
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round open <round-id> --kind <ci|pr-comments|principal|skeptical> --ref "<ref>" --reply-to "<where>" [--gated] [--opened-at <YYYY-MM-DDTHH:MM:SSZ>]
 python3 <skill-dir>/scripts/crew-record.py <record-dir> round go-ahead <round-id>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> round replied <round-id>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> round drop <round-id>
@@ -257,13 +257,14 @@ naming convention. Do not mix their contents.
   none.
 
   **`reviews/baseline.md` is one file per deliverable**, written by the
-  project lead before the deliverable's first skeptical round
-  (`skeptical-review.md`'s "When the review runs"). It holds one line per
-  test or gate that fails at the deliverable's base, with its cause when
-  known, and starts from the standing instructions' `Known red tests`
-  section. Under the no-suite outcome it holds the one line `No suite.` Every
-  reviewer and every delivered-window IC reads it, and adjudication declines
-  a finding on it.
+  project lead before the first skeptical round at each of the
+  deliverable's bases (`skeptical-review.md`'s "When the review runs"). Its
+  first line is `Base: <sha>`, the base it was measured at, so a resume can
+  tell a file from an old base. Then it holds one line per test or gate that
+  fails at that base, with its cause when known, and starts from the standing
+  instructions' `Known red tests` section. Under the no-suite outcome it
+  holds the `Base:` line and the line `No suite.` Every reviewer and every
+  delivered-window IC reads it, and adjudication declines a finding on it.
 
   **A review run writes one more file per skeptical round**, before the
   gate ask: `reviews/github-r<n>.md`, the draft GitHub review for round
@@ -293,9 +294,13 @@ naming convention. Do not mix their contents.
   Round: <round-id>
   Source: <kind> <ref>
   Reply to: <where the reply goes>
-  Opened at: <ISO-8601 UTC>
+  Opened at: <YYYY-MM-DDTHH:MM:SSZ>
   Head: <the sha this round covers>
   ```
+
+  Write `Opened at:` from `date -u +%Y-%m-%dT%H:%M:%SZ`, never from memory.
+  It is the script's own shape, so `round open --opened-at` reads it back.
+  The script refuses every other ISO-8601 form.
 
   `crew:delivered-window`'s "Write the round's reply file first" writes it,
   the same turn it writes the file. It is what lets a resumed session rebuild
@@ -1260,7 +1265,7 @@ Every name this file defines, with what consumes it.
 - `reviews/<prefix>-r<n>-run.sh` — writer: the project lead, before it runs a replacement (`substitution.md`). Consumer: the pane or the headless shell that runs it
 - `reviews/skeptical-r<n>-result.txt` — writer: the shell redirect on a replacement's own command, in place of the `.json` (`substitution.md`). Consumer: the project lead, which reads the report out of it when the runner wrote no usable report file, and runs the checks the runner supports
 - `reviews/skeptical-r<n>-result.exit` — writer: the same shell line's trailing `echo $? >`, on the default runner's own command and on a replacement's alike. Consumer: the project lead's exit check, live and on a resume; its absence marks an attempt that never finished (`substitution.md`)
-- `reviews/baseline.md` — writer: the project lead, once per deliverable, before its first skeptical round (`skeptical-review.md`). Consumer: every reviewer's instructions file (`review-runner.md`); every IC the delivered window dispatches (`crew:delivered-window`); adjudication, which declines a finding on it
+- `reviews/baseline.md` — writer: the project lead, once per deliverable base, before the first skeptical round at that base (`skeptical-review.md`). Consumer: every reviewer's instructions file (`review-runner.md`); every IC the delivered window dispatches (`crew:delivered-window`); adjudication, which declines a finding on it
 - `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)
 - `reviews/<round-id>-reply.md` — the same file for a patch round from any other source, with `<round-id>` from `run.rounds`. Writer and consumer as above; the send that closes it is `crew:delivered-window`'s "Send the reply file"
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts

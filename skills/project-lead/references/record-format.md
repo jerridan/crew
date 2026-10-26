@@ -1150,7 +1150,7 @@ Every name this file defines, with what consumes it.
 
 **`state.json` top-level keys**
 - `goal` — consumer: stage 4 (project lead records the original goal text); Task 11 (PR body)
-- `goal_slug` — consumer: stage 4 (record directory name); this file's Goal-slug uniqueness rule
+- `goal_slug` — consumer: stage 4 (record directory name); this file's Goal-slug uniqueness rule; `SKILL.md`'s sibling-record match in "Take the goal"
 - `deliverables` — consumer: stage 5 (per-deliverable integration and recovery, design §9.3, §10.1)
 - `run` — consumer: stage 4/5 (project lead loop); stage 6 (spend, escalations)
 - `packages` — consumer: stage 4 (project lead dispatch loop); stage 5 (recovery, design §10.1)

@@ -377,9 +377,9 @@ what you can into one interruption.
 
 **Check three sources first, before every escalation except trigger 8.**
 Look for the answer in the charter text, in the standing instructions
-(`SKILL.md`'s "Standing instructions"), and in the sibling records: every
-record under the record root whose `goal` names the same ticket id, whatever
-its `run_state`. Read their `decisions.md` entries and their `escalations`
+(`SKILL.md`'s "Standing instructions"), and in the sibling records,
+whatever their `run_state`. `SKILL.md`'s "Take the goal" says which records
+are siblings. Read their `decisions.md` entries and their `escalations`
 answers. A `Ticket defaults` section settles a ticket question, so that
 question never escalates. A source that answers ends the question.
 Otherwise, the `decisions.md` entry for the escalation carries a `Checked:`

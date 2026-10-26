@@ -73,14 +73,15 @@ has. Ignore a removal that fails because the path is already gone.
 Write the instructions file first, then launch, from the review worktree:
 
 ```
-cd <record-dir>/review-worktrees/<deliverable-id> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<suite command> *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
+cd <record-dir>/review-worktrees/<deliverable-id> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<gate part> *),<one more such rule per gate part>,Bash(npm view *),Bash(npm ls *),Bash(pnpm ls *),Bash(pnpm why *),Bash(yarn why *),Bash(pip show *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
 ```
 
 **The prompt rides on stdin, never as a positional argument.**
 `--allowedTools` takes a variadic list, so a prompt placed after it is read as
 one more tool name, and the process exits 1 with "Input must be provided
 either through stdin or as a prompt argument" (design §15.98b). Piping the
-prompt on stdin keeps the tool list closed.
+prompt on stdin keeps the tool list closed. "Check the review before you read
+it" below catches a prompt that still did not arrive.
 
 **No slash command runs.** The bundled pull-request reviewer the skeptical
 review used to invoke reads a base ref as the commit to review, not the whole
@@ -102,7 +103,7 @@ JSON's own shape when the process died before writing one.
 
 **Round 1 of a deliverable launches as above. Every later round resumes the
 reviewer session of the round before it**, so the reviewer keeps what it read
-and does not inspect the whole PR again. Resume when both hold:
+and does not inspect the whole PR again. Resume when all three hold:
 
 - `run.review_sessions[skeptical-r<n-1>]` exists, and its `runner` is the
   runner this round uses.
@@ -110,6 +111,9 @@ and does not inspect the whole PR again. Resume when both hold:
   `reviews/skeptical-r<n-1>.md`, is an ancestor of the pending head: `git
   merge-base --is-ancestor <previous head> <review_pending.head>` exits 0. A
   force-push, and a round on another deliverable, fail this check.
+- No `reviews/skeptical-r<n>-resume-attempt<k>.md` exists. A retired resume
+  attempt means a resume of this round failed once, and the round now
+  launches fresh.
 
 Otherwise launch as round 1 does. Take the session id from the record, never
 from a runner's `--last`. A fresh launch at a later round takes the base that
@@ -122,35 +126,27 @@ Write the instructions file as well, as every round does. Fill this block:
 The change has a new head. In this session you reviewed <previous head sha>.
 This working directory is now a detached checkout at <pending head sha>.
 
-The change since your last review is `git diff <previous head sha>..HEAD`.
-Read it first. Read the whole change, `git diff <deliverable base>..HEAD`,
-again only where that delta touches code you did not review. Follow your
-first instructions on the suite.
+<part 5 of "Reviewer instructions", the later-round block, filled in>
 
-<one of the two literal lines below>
-
-<the file that line names, verbatim>
-
-Give a verdict on the whole change as it now stands, not on the delta alone.
-Use the same report shape and the same two verdict strings as before. Open
-the report with this line, and nothing before it:
+Follow your first instructions on the suite. Use the same report shape and
+the same two verdict strings as before. Open the report with this line, and
+nothing before it:
 
 Reviewed: <pending head sha>
 
-Above the two verdict lines, write one line that starts `Beyond the
-findings:`. Write `Beyond the findings: none` when every hunk of the delta
-answers one of the findings in your last report. Otherwise, after the colon,
-name each hunk that does not.
-
 <the output sentence>
+
+Do not write to <previous round's absolute report path>. That file is the
+report of your last round.
 ```
 
-The literal line is "This is the project lead's reply to your last report.
-It says which findings it accepted, and why it declined or pushed back on the
-others:", followed by `reviews/skeptical-r<n-1>-reply.md`. When that round
-has no reply file, because its report had no finding to dispose of, the line
-is "Your last report had no finding to answer. This is that report:",
-followed by `reviews/skeptical-r<n-1>.md`.
+**A resumed round writes its report to its own round's path,
+never to the previous round's path.** The resumed session still holds the
+path its first instructions named. A reviewer that writes there overwrites
+the last round's report, so the block names both paths.
+
+The resume prompt takes part 5 from "Reviewer instructions" below, filled in
+the same way as the instructions file. Do not write a second version of it.
 
 The output sentence is "Write your whole report to <absolute output path>
 before you finish." for the default runner, and the replacement sentence in
@@ -222,7 +218,8 @@ Each rule buys one thing the review cannot work without:
 | `Read`, `Glob`, `Grep` | reading the tree the review is about |
 | `Bash(git diff *)`, `Bash(git log *)`, `Bash(git show *)` | the history and the diff |
 | `Bash(git rev-parse *)` | the sha the reviewer opens its report with (`git rev-parse HEAD`) |
-| `Bash(<suite command> *)` | the suite run `skeptical-review.md`'s stance requires. `<suite command>` is the one the scout recorded; under the no-suite outcome there is no such command, so leave this rule out |
+| `Bash(<gate part> *)`, one rule per part of each gate | every verification gate the scout recorded, not the suite alone: tests, types, lint and build. The suite run is the one `skeptical-review.md`'s stance requires. Under the no-suite outcome, leave every gate rule out |
+| `Bash(npm view *)`, `Bash(npm ls *)`, `Bash(pnpm ls *)`, `Bash(pnpm why *)`, `Bash(yarn why *)`, `Bash(pip show *)` | read-only package probes: which version is installed, and why. When the scout's setup command uses another package manager, add its read-only equivalent |
 | `Edit(//<record-dir>/reviews/**)` | the report file, which sits in the record and not in the worktree |
 
 **The list adds capabilities and removes none.** Headless mode already allows
@@ -242,6 +239,21 @@ rule is the absolute-path anchor: the record directory's own leading slash
 is not doubled, it is written after the anchor. The rule is scoped to
 `reviews/`, so this buys the report file and no code edit anywhere.
 
+**A headless run can refuse a write under ~/.claude.** This was seen once: a
+cloud routine on Claude Code 2.1.280 could not write its report under
+`/root/.claude/crew/`, which it treated as a sensitive path. A local headless
+review on this plugin's own repo wrote under `~/.claude/crew/` with no
+refusal. The default record root, `~/.claude/crew/`, is inside that tree. A
+run whose `CREW_RECORD_ROOT` points outside ~/.claude avoids the refusal.
+When the write is refused anyway, the result-field fallback in "Check the
+review before you read it" is the documented path.
+
+**`node -e`, `python -c` and every install command stay off the list.**
+`node -e` and `python -c` run any code they get, so either one lets the
+review do more than report. An install changes the tree the review reads,
+and you already ran the setup command ("Prepare the worktree before you
+launch").
+
 **`Bash(<prefix> *)` matches the start of the command string, not a git
 subcommand.** The probe showed `Bash(git log *)` allow `git log --oneline`
 and deny `git -C <path> log --oneline`, because the second does not begin
@@ -249,7 +261,7 @@ with `git log`. The review runs with its worktree as the working directory
 for exactly this reason: the commands it needs start with `git`, with no
 `-C` in front.
 
-**A compound suite command takes one rule per part.** Split the recorded
+**A compound gate command takes one rule per part.** Split the recorded
 invocation on `&&`, `;`, `||` and `|`, and write a `Bash(<part> *)` rule for
 each part, trimmed. One rule for the whole string matches only the first
 command the reviewer runs, and the rest are denied one at a time.
@@ -268,7 +280,13 @@ suite fails there for a reason that has nothing to do with the diff. The
 scout records that command beside the suite command (`SKILL.md`, "Scout").
 Run it as the project lead, in the worktree, before the launch — never by
 granting the child a rule for it, which would let the review install
-whatever it liked.
+whatever it liked. A setup that ran adds the line "Dependencies are
+installed. Do not install." to the instructions ("Reviewer instructions").
+
+**Before the deliverable's first round, the baseline runs here.**
+`skeptical-review.md`'s "When the review runs" owns that step. It moves the
+worktree with the `switch` command above, to the deliverable's `base` and
+then back to the pending head.
 
 **A setup that fails is an environment failure, not a finding.** Record it in
 `decisions.md`, and run that round with the no-suite outcome: the reviewer is
@@ -293,18 +311,27 @@ edit. The findings come back to you, and you decide what each one earns.
 ## Reviewer instructions
 
 **You assemble this file; you do not copy a second copy of the report
-shape.** It has two parts, in this order:
+shape.** It has four parts, and a fifth for any round after the first, in
+this order:
 
 1. **`review-output.md`, verbatim.** It owns the severity tags, the
    `Cannot verify` rule, the report-never-fix rule and the two closing lines,
    and it is the same text every review dispatch injects. The child process
    reads no file of this plugin, so a reference by name would not resolve.
-2. **The block below**, with its bracketed values filled in. It holds what is
-   this review's own and nothing that part 1 already states: the goal text,
-   the diff range, the suite (or the no-suite sentence), the output path, and
-   the pending head.
+2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
+   says.
+3. **`reviews/baseline.md`, whole**, then this sentence, verbatim: "A test
+   or gate on this list is red before the change. Do not raise it."
+4. **The block below**, with its bracketed values filled in. It holds what is
+   this review's own and nothing that parts 1 to 3 already state: the goal
+   text, the diff range, the suite and the line that says the dependencies
+   are installed (or the no-suite sentence), the output path, and the
+   pending head.
+5. **For a round `n > 1`, the later-round block** after the block below. A
+   fresh launch and a resume both get it, whatever made the round launch
+   fresh. Its reading instruction replaces part 4's for that round.
 
-Write the two into
+Write the parts into
 `<record-dir>/reviews/skeptical-r<n>-instructions.md` and pass that path to
 `--append-system-prompt-file`.
 
@@ -361,6 +388,12 @@ Run the suite yourself, and report what you saw: <suite command>, run in
 about another tree.
 ```
 
+When you ran the setup command, add this line after that block, verbatim:
+
+```
+Dependencies are installed. Do not install.
+```
+
 Under the no-suite outcome, this replaces the whole paragraph — never a
 "run the suite" sentence with nothing to run:
 
@@ -368,15 +401,61 @@ Under the no-suite outcome, this replaces the whole paragraph — never a
 This repository has no suite. Read the diff without running one.
 ```
 
-**A replacement for the skeptical review receives this same file, plus one
-sentence that overrides the block's file rule** (`substitution.md`). That
-sentence is the only addition:
+**Part 5, the later-round block, for any round `n > 1`.** `<previous head
+sha>` is the `Reviewed:` line of `reviews/skeptical-r<n-1>.md`:
 
 ```
-For a replacement runner, this invocation replaces the file rule above: do
-not write the report file; return the complete report as your output,
-`Reviewed: <sha>` first and the two verdict lines last, and the project lead
-writes the file.
+<one of the two reading paragraphs below>
+
+For this round, this reading instruction replaces the earlier instruction
+to read the whole diff. Give a verdict on the whole change as it now stands,
+not on the delta alone.
+
+<one of the two literal lines below>
+
+<the file that line names, verbatim>
+
+A finding the project lead declined with a reason stays declined unless you
+have new evidence. When you raise it again, name that evidence.
+```
+
+**The reading paragraph depends on the ancestor check** that "Resume the
+reviewer" runs on the previous head and the pending head. Run that check
+for every later round, also for a round that launches fresh. When the check
+passes, the paragraph is the delta:
+
+```
+The previous round reviewed <previous head sha>. Read two things before
+anything else: the change since that round, `git diff <previous head
+sha>..HEAD`, and the file below. Read the whole change only where that delta
+touches code the previous round did not review.
+```
+
+When the check fails, a diff from the previous head also holds commits that
+are not part of this change, so the paragraph is the whole change:
+
+```
+The previous round reviewed <previous head sha>. That commit is not an
+ancestor of this head. Read the file below first. Then read the whole
+change, `git diff <base>..HEAD`.
+```
+
+The literal line is "This is the project lead's reply to the last report. It
+says which findings it accepted, and why it declined or pushed back on the
+others:", followed by `reviews/skeptical-r<n-1>-reply.md`. When that round
+has no reply file, because its report had no finding to dispose of, the line
+is "The last report had no finding to answer. This is that report:", followed
+by `reviews/skeptical-r<n-1>.md`.
+
+**A replacement for the skeptical review receives this same file, plus one
+sentence that names the report path and asks for the output too**
+(`substitution.md`). It replaces the block's rule that returns the report
+only when the write is denied. That sentence is the only addition:
+
+```
+For a replacement runner: write the complete report to <absolute output
+path>, and also return it whole as your output, `Reviewed: <sha>` first and
+the two verdict lines last, whether or not the write succeeded.
 ```
 
 ## Check the review before you read it
@@ -385,24 +464,43 @@ Four checks, on the JSON the process printed and on the record directory.
 All four pass, or this is the failure path below:
 
 1. **`-result.exit` reads `0`**, and the JSON's own `is_error` is false.
-2. **The predicate**: `permission_denials` is empty, except for exactly one
-   denied write to the named report path when the fallback below then
-   supplied a conforming report. Any other denial fails this check — a suite
-   component above all — because the review could not do what you asked, and
-   the findings are worth less than they look. Read the entries by their
-   `tool_name` and `tool_input` and no more: the shape of an entry is not
-   documented, so anything else about it can change.
+2. **The outcome.** Check 2 fails on outcomes, not on denials. It fails in
+   three cases:
+   - No report came back, from the file or from the `result` field.
+   - The suite did not run. A denied suite component is this case. So is a
+     report with no suite output when the review had a suite.
+   - The report marks a check `Cannot verify`, and that check bears on the
+     verdict.
+
+   Every other denial passes this check. Write the `tool_input` of each
+   denial in `permission_denials` to `denied`, below. Read the entries by
+   their `tool_name` and `tool_input` and no more: the shape of an entry is
+   not documented, so anything else about it can change.
 3. **The report file exists** at the output path, or the fallback below
    supplied it.
 4. **Its last two lines are the verdict pair**, and its first line is
-   `Reviewed: <sha>`, matching `run.review_pending.head`.
+   `Reviewed: <sha>`, matching `run.review_pending.head`. On a resumed
+   round, the previous round's report must also still open with its own
+   `Reviewed:` sha, the previous head sha that the resume prompt names.
+
+**A `Reviewed:` mismatch fails the round.** Take the failure path below:
+retire the attempt and rerun it. A resumed round that fails this way reruns
+fresh, as "Resume the reviewer" says. When the previous round's report opens
+with another sha, the resumed reviewer overwrote it. Restore it from the
+`result` field of `skeptical-r<n-1>-result.json` when that text ends with
+the two verdict lines. Use the fallback layout below, with the previous
+head sha on the `Reviewed:` line. Otherwise, record the loss in
+`decisions.md` with the round number, and go on. The current round still
+fails and reruns fresh.
 
 **Write the outcome down.** These checks decide whether a report may be
 adjudicated, so their result belongs in the record and not in your context:
-`run.review_results[<n>] = {exit, denials_ok, report_ok, at}`
+`run.review_results[<n>] = {exit, denials_ok, report_ok, denied, at}`
 (`record-format.md`). A resumed session adjudicates a report only when that
 entry exists and passes. With no entry it runs the four checks again from the
-saved JSON, rather than trusting the report it finds.
+saved JSON, rather than trusting the report it finds. When you adjudicate,
+read `denied` beside the report. A finding that rests on a denied command is
+unverified.
 
 **When the report file is missing, read `result` in the saved JSON.** A
 reviewer denied its report write prints the report there. When that text ends
@@ -426,6 +524,13 @@ it" says. Then run it once more, and **do not increment `run.review_rounds`
 for the retry** — no review happened, so the cap has nothing to count. A
 second failure is an escalation to the principal (`autonomy-contract.md`): say
 the review could not produce a report, and hand over what the branch holds.
+
+**A prompt that never reached the child is a failed launch.** The signs are
+an empty `result` in `-result.json`, or an empty file, and
+`Input must be provided` in `-result.stderr`. Take the failure path above,
+and put the whole command line you ran in its `decisions.md` entry. Its one
+retry is the rerun, not an extra one, and a second failure escalates as it
+says.
 
 ## Record the review's session id
 

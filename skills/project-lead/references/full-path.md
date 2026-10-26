@@ -101,12 +101,14 @@ Then dispatch `crew:split-critic`, named `split-critic-<deliverable-id>-r<n>`
 for the same round — `record-format.md`'s `reviews/` section scopes `<n>` to
 one deliverable, so the deliverable id in the name is what keeps two
 deliverables' first rounds from sharing `split-critic-r1` — with `split.md`,
-`spec.md`, the repo path, `review-output.md` whole, and the absolute path it
-writes its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
+`spec.md`, the repo path, `review-output.md` whole, the standing instructions
+as `SKILL.md`'s "Standing instructions" says, and the absolute path it writes
+its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
 
-Adjudicate as `SKILL.md`'s "Have the spec reviewed" says. A failed invariant is
-not a style note — fix the split and dispatch again. Three re-splits is the
-cap; escalate at it.
+Adjudicate as `SKILL.md`'s "Have the spec reviewed" says, and end a round
+with no `[Critical]` finding as it says. A failed invariant is not a style
+note — fix the split and dispatch again. Three re-splits is the cap; escalate
+at it.
 
 ## Create the branch and the worktrees
 
@@ -118,7 +120,10 @@ it cuts the deliverable's own checkout there and this run's worktrees branch
 from that one. **Every `<repo>` below this line means `run.checkout`.**
 
 Then one worktree per territory, all branching from that same head, so
-integration is a merge and never a rebase (design §9.3):
+integration is a merge and never a rebase (design §9.3). A `Branch names`
+section names the deliverable branch alone, through "Create the branch".
+The territory branches keep crew's names, because they never reach the
+remote:
 
 ```
 git -C <run.checkout> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
@@ -157,6 +162,8 @@ of: `ic-contract.md`'s full text, the brief, the file set, **the absolute
 worktree path**, the interface contract, the acceptance criterion, the global
 constraints section, the package id, and **that it is a teammate** —
 `ic-contract.md`'s report rules branch on it, and an IC cannot tell on its own.
+The standing instructions go in after the contract and before the brief, as
+`SKILL.md`'s "Standing instructions" says.
 
 It also carries the record root, as an absolute path. An interactive teammate
 can write there (design §15.31b), so a full-path IC writes `plans/<id>.md` and
@@ -276,7 +283,9 @@ same evidence an entry would have been.
 ## Fix rounds
 
 A round runs only on a failure you saw yourself: a check that failed at "Verify
-before you believe", or a red suite at "Integrate". Five is the cap.
+before you believe", or a red suite at "Integrate". Five is the cap. Every
+round's message or prompt asks for the whole defect class, as
+`simple-path.md`'s "Fix rounds" says.
 
 - **Rounds 1 to 3** message the same IC. It keeps its context, which is the
   point of a teammate. Tell it to append a `## Fix round <n>` section to
@@ -427,9 +436,10 @@ them to that IC's branch, or surface them. Remove only worktrees this run
 created, proven by `worktrees.json` — a path pattern is not ownership (design
 §13.1).
 
-The work ends here, and your closing report says so. Send it to the
-principal the way the goal arrived (`autonomy-contract.md`). A pane is not a
-report when nobody is watching it. Then stay: the skill
+The work ends here, and your closing report says so. It lists every
+decision taken on a recommendation, as `simple-path.md`'s "End the run" says.
+Send it to the principal the way the goal arrived (`autonomy-contract.md`).
+A pane is not a report when nobody is watching it. Then stay: the skill
 `crew:delivered-window`, which "End the run" invoked, owns the rest of the
 session on every path. A change
 request there is one package on the simple path's loop, and a review's

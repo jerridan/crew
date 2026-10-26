@@ -15,7 +15,7 @@ The project lead asks one of four questions, or a close variant:
 
 1. Does an analogous implementation already exist in this repo?
 2. Do tests already cover the surface the change would touch?
-3. What runs the test suite?
+3. What runs the suite, and what other gates does CI run: types, lint, build?
 4. Which instruction files apply — a `CLAUDE.md`, a `.claude/rules/` file, or
    a skill, scoped to the area the change would touch?
 

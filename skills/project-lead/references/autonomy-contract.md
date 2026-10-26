@@ -55,13 +55,15 @@ nobody holds stalls the run for good.
 
 Classify every question, and **write the routing into `decisions.md` before
 you answer it**. A pivotal question that was routed wrongly is then visible
-to an audit. Routing with no recorded reason is a defect.
+to an audit. Routing with no recorded reason is a defect. Write every entry
+this file asks for with `crew-record.py`'s `decision`, in the form
+`record-format.md`'s "`decisions.md`" gives for it.
 
 | Route | For | How |
 |---|---|---|
 | precedent | Anything an instruction or the repo already settles | An explicit instruction wins over repo precedent, however common that precedent is. Then a prior decision from this run. Then the repo. |
 | council | Judgment on a data model, a public interface, a service boundary, or a cross-cutting pattern, **that the repo does not already settle** | Convene a council — the section below. Answer inline **only** if you can cite why every alternative is implausible. |
-| preference | What the principal wants, where evidence cannot decide | Resolve from `CLAUDE.md`, `.claude/rules/`, or a prior decision. Otherwise escalate. Never debate a preference. |
+| preference | What the principal wants, where evidence cannot decide | Resolve from `CLAUDE.md`, `.claude/rules/`, or a prior decision. Otherwise decide it by the reversible rule in "The preference sweep", or escalate. Never debate a preference. |
 
 Answer a question inline only when you can cite why every alternative is
 implausible. Confidence with no citation is not confidence.
@@ -83,8 +85,9 @@ the pattern, a `deprecated` marker, a migration document, a codemod.
 ## The preference sweep
 
 Between the spec and the split, read `charter.md` and `spec.md` again. List
-every open question in them that turns on what the principal wants, and
-escalate the whole list as one batch.
+every open question in them that turns on what the principal wants. Decide
+each one the reversible rule below allows, and escalate the rest as one
+batch.
 
 **A preference question is one the repo cannot answer.** No instruction, no
 prior decision from this run and no precedent decides it.
@@ -101,6 +104,21 @@ like it answers them:
 
 Everything else the repo settles is a precedent question, however long the
 answer takes to find.
+
+**Decide a reversible question on your recommendation.** A preference
+question qualifies when all three of these hold:
+
+1. The charter does not settle it.
+2. You hold a recommendation at medium confidence or higher.
+3. The choice is reversible before the hand-over: no file is deleted, no
+   public interface is renamed, and no data is migrated.
+
+Decide it on your recommendation. Log it with one `decision preference` call
+and `--line "Reversible: yes, decided on recommendation"`
+(`record-format.md`). The hand-over message lists every decision taken this
+way, so the principal can reverse one before the merge. A question that fails
+any condition escalates, so the batch holds only those questions. The rule
+holds for a preference question found later in the run too.
 
 Ask one block per question:
 
@@ -153,10 +171,10 @@ An unanswered batch never becomes an assumption. A session that dies holding
 one is marked `interrupted`, and `--resume` reopens the run `blocked` on the
 same entries (`record-format.md`). Nothing else expires it.
 
-A run whose sweep finds no preference question escalates nothing and goes
-straight to the split. Record the sweep in `decisions.md` either way, so an
-audit can tell "none found" from "never looked". `record-format.md` owns that
-entry.
+A run whose sweep finds no preference question, or decides every one,
+escalates nothing and goes straight to the split. Record the sweep in
+`decisions.md` either way, so an audit can tell "none found" from "never
+looked". `record-format.md` owns that entry.
 
 ## Council
 
@@ -186,10 +204,11 @@ with no citation is not confidence, and it routes to a council.
 
 ### The default council is one adversary
 
-1. **Write your own answer first.** Put it in the `decisions.md` entry as
-   `Prior:`, with the confidence you hold it at, before you dispatch. An
-   answer written after the advocate reports is a reaction, not a prior, and
-   it cannot be compared with the adjudication later.
+1. **Write your own answer first.** Put it on the `Prior:` line of the
+   entry's first write, `decision council "<question>" --pending`, with the
+   confidence you hold it at, before you dispatch. An answer written after
+   the advocate reports is a reaction, not a prior, and it cannot be
+   compared with the adjudication later.
 2. **Dispatch one `crew:council-advocate` to argue the opposite.** Give it the
    question, its own assigned position, the repo path, and whatever context
    you already hold. Name it as an advocate, per `SKILL.md`'s "Every dispatch
@@ -233,10 +252,10 @@ costs (design §15.47).
 
 Frame two or three positions. Each must be a position an advocate can argue
 from this repo's own evidence, not a preference. Write the question, the
-positions and your prior into `decisions.md` before you dispatch, then send
-every dispatch in one message, or the advocates run one after another. Read
-each advocate's case from its final message, as `SKILL.md`'s "Every
-dispatch is named" says.
+positions and your prior into `decisions.md` with the same `--pending` write
+before you dispatch, then send every dispatch in one message, or the advocates
+run one after another. Read each advocate's case from its final message, as
+`SKILL.md`'s "Every dispatch is named" says.
 
 ### An investigation council
 
@@ -286,8 +305,8 @@ does not.
 
 ### Record the decision
 
-Write one `decisions.md` entry per council, in `record-format.md`'s council
-entry shape. That file owns the five fields a council adds — `Prior`,
+Complete each council's entry with `decision update`, in `record-format.md`'s
+council entry shape. That file owns the five fields a council adds — `Prior`,
 `Positions`, `Losing`, `Models` and `Spend`. Three of them need saying why:
 
 - `Prior:`, your own answer and confidence, written before the dispatch. It is
@@ -329,8 +348,9 @@ one interruption; a run built in the wrong direction costs a day.
    reproduction (design §9.5). Abort there on that one pass: leave the
    diagnosis deliverable in the state it reached, and change nothing in the
    repo.
-2. A preference question that no instruction resolves. The sweep above
-   collects these before the split; one found later still stops the run.
+2. A preference question that no instruction resolves and the reversible
+   rule in "The preference sweep" does not decide. The sweep above collects
+   these before the split. One found later still stops the run.
 3. A balanced council on an architecture-moving question, or a council-route
    question you can neither answer with a citation nor frame into positions.
 4. Any action outside the deliverable branch: the main branch, production,
@@ -354,6 +374,26 @@ Do everything that does not depend on the answer first, then ask once. Batch
 what you can into one interruption.
 
 ## How to escalate
+
+**Check three sources first, before every escalation except trigger 8.**
+Look for the answer in the charter text, in the standing instructions
+(`SKILL.md`'s "Standing instructions"), and in the sibling records,
+whatever their `run_state`. `SKILL.md`'s "Take the goal" says which records
+are siblings. Read their `decisions.md` entries and their `escalations`
+answers. A `Ticket defaults` section settles a ticket question, so that
+question never escalates. A source that answers ends the question.
+Otherwise, the `decisions.md` entry for the escalation carries a `Checked:`
+line, written with `--line`, that names the three sources and what each
+said:
+
+```
+Checked: charter: no answer. Standing instructions: no section on it. Sibling records: AGI-3068-a4b6 asked and got no answer.
+```
+
+**Retry an environment fault before you escalate it.** A fault you hit
+yourself, such as a VPN drop, a DNS failure or a 5xx from GitHub, may clear
+on its own. Retry it on a timer, three times at one minute intervals. Then
+escalate, and name the three attempts in the question.
 
 Write the ask into `state.json`'s `escalations` with all four of its
 fields — `trigger`, `question`, `asked_at`, and `answer: null` — set
@@ -404,20 +444,31 @@ uncommitted rule reaches no reviewer and no PR: the stale-status sweep and the
 final diff both read committed history.
 
 `writing-standard.md`'s `## Before you open the PR` checklist picks the
-container: a rule every session in the repo needs goes in the root
-`CLAUDE.md`, and a rule that covers one area of the repo goes in a
-`.claude/rules/` file scoped to that path. You ran that checklist at the
+container for a rule about the code: a rule every session in the repo needs
+goes in the root `CLAUDE.md`, and a rule that covers one area of the repo
+goes in a `.claude/rules/` file scoped to that path. A fact about running
+crew in this repo goes in `.claude/crew.md`, under its section in
+`SKILL.md`'s "Standing instructions". You ran that checklist at the
 sweep, on the wording you proposed. Run its container check again now, since
 the repo may have changed under you, and **name the file you wrote the rule
-into on the sweep entry's `Answer:` line** (`record-format.md`).
+into on the sweep entry's `Answer:` line**, with a second `decision update`
+(`record-format.md`).
 
 `crew:ic-instructions` owns the answer that cannot pass the checklist as one
 rule. That is a package, so it goes in the split — which is why the sweep,
 not this step, judges the fit.
 
 Write nothing when the principal refuses, or answers the question and not the
-`Record it?` line. Record the refusal in the sweep entry instead
-(`record-format.md`), so an audit can tell a refusal from a step you skipped.
+`Record it?` line. Record the refusal in the sweep entry instead, with the
+same `decision update` (`record-format.md`), so an audit can tell a refusal
+from a step you skipped.
+
+**A corrected repo fact gets the same offer.** At the hand-over and in the
+delivered window, the principal can correct you on a fact about this repo:
+a test that is red on main, a hook and its workaround, the team a ticket
+goes under. Then offer to write it to `.claude/crew.md` under the right
+section, and quote the wording word for word. On approval, write it on the
+deliverable branch and commit it. It goes out with the branch's next push.
 
 ## Spend
 

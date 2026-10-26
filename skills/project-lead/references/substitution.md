@@ -3,8 +3,8 @@
 The principal can name another reviewer for a review step, in plain
 language: "use Codex for the spec review". Two steps take a replacement, and
 no other step does — the spec critic, and the skeptical review (design
-§15.94d). `SKILL.md`'s "Take the goal" resolved each one from five sources
-and recorded it in `run.substitutions_requested`; this file runs it.
+§15.94d). `SKILL.md`'s "Standing instructions" resolved each one from five
+sources and recorded it in `run.substitutions_requested`. This file runs it.
 
 ## What the replacement is told
 
@@ -12,22 +12,21 @@ Give the replacement what the step's own reviewer would have had:
 
 | The step | What the replacement gets |
 |---|---|
-| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` whole, and the absolute paths of `spec.md` and `charter.md` |
-| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, plus the branch at `run.review_pending.head` and the base ref |
+| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
+| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
 
 **The spec critic's whole body, never the seven checks alone.** The scope
 limit, the over-specification checks, the rule against a re-spec for one
 missed item and the two verdict strings all sit around those checks, and a
 replacement given the checks by themselves loses every one of them.
 
-**Add one sentence, and only this one**: it tells the replacement to return
-the complete report as its output. For the skeptical review that sentence
-**overrides** the two instructions in `review-runner.md`'s block that tell
-the reviewer to write the report file itself and to return nothing by any
-other path. It overrides them for the replacement alone, and the block is
-otherwise unchanged. Write the whole of what you assembled to
-`<record-dir>/reviews/<prefix>-r<n>-instructions.md`, the shape
-`review-runner.md` already defines for its own file.
+**Add one sentence, and only this one**: it names the absolute report path
+that "Read or write the report file" below gives, and tells the replacement
+to write the complete report there and to return it as its output too. For
+the skeptical review, it is the sentence in `review-runner.md`'s "Reviewer
+instructions", and the block is otherwise unchanged. Write the whole of what
+you assembled to `<record-dir>/reviews/<prefix>-r<n>-instructions.md`, the
+shape `review-runner.md` already defines for its own file.
 
 **`<prefix>` is the step's file prefix, and the step name is not always it:**
 
@@ -170,7 +169,7 @@ runner's own. Map them:
 | The Claude runner | Any other runner |
 |---|---|
 | exit 0, with `is_error` false | the runner's own exit status, read from `-result.exit` |
-| `permission_denials` empty | `denials_ok: "not applicable: <runner>"` |
+| check 2 reads `permission_denials` for a denied suite component and fills `denied` from it | `denied: "not applicable: <runner>"`. Check 2's other cases hold |
 | `--session-id`, appended to `run.review_session_ids` | the `session id:` line of `-result.stderr`, written to `run.review_sessions` alone; the cost goes in the substitution entry's `usage` |
 
 The other two checks hold word for word for every runner: the report file
@@ -179,27 +178,32 @@ exists, and its last two lines are the verdict pair while its first line is
 
 **A substituted skeptical review still writes `run.review_results[<n>]`**,
 because that entry is what lets a later session adjudicate the report. `exit`
-is the runner's exit status, `denials_ok` is the string above, and `report_ok`
-is the report check. Nothing else about the round changes.
+is the runner's exit status, `denials_ok` is check 2 over the cases that
+hold, `denied` is the string above, and `report_ok` is the report check.
+Nothing else about the round changes.
 
-## You write the report file
+## Read or write the report file
 
-The replacement returns the whole report as its output, and nothing writes the
-file for you. Read `<prefix>-r<n>-result.txt` and write the report to
-`reviews/<prefix>-r<n>.md` — `<n>` one more than the highest on disk for a
-spec review, and the round `skeptical-review.md` reserved for a skeptical
-one. Open it with `Reviewed: <sha>` when the runner
-did not, and put `Source: <runner> output` on the next line. A spec review
-reads no sha, so it carries the source line alone. End the report with the
-step's own verdict pair — `ready to split` or `re-spec needed` for the spec
-critic, `accepted` or `patch round needed` for the skeptical review.
+The report path is `<record-dir>/reviews/<prefix>-r<n>.md`. `<n>` is one more
+than the highest on disk for a spec review, and the round
+`skeptical-review.md` reserved for a skeptical one.
+
+First, read the file the runner wrote at that path. When it is missing, or
+does not end with the step's verdict pair, transcribe the output in
+`<prefix>-r<n>-result.txt` to that path instead. Open the report with
+`Reviewed: <sha>` when the runner did not. Put `Source: <runner> file` or
+`Source: <runner> output` on the next line, for the source you used. A spec
+review reads no sha, so it carries the source line alone. End the report with
+the step's own verdict pair — `ready to split` or `re-spec needed` for the
+spec critic, `accepted` or `patch round needed` for the skeptical review.
 Adjudicate the findings as you adjudicate any review's. Nothing else in the
 run changes.
 
 **Log every invocation, retries included.** One entry in
 `run.steps_substituted` per run of the replacement: the step, the round, the
 principal's own words for it, the time, a `usage` object holding what the
-runner reported, and the `display` that ran. `record-format.md` owns the field.
+runner reported, the `display` that ran, and the `report_source` you used,
+`file` or `output`. `record-format.md` owns the field.
 
 ## One worked example
 
@@ -213,11 +217,13 @@ the spec reviewed" you assemble the instructions, then run Codex in place of
 sh <record-dir>/reviews/spec-critic-r1-run.sh > /dev/null
 ```
 
-Write the report to `reviews/spec-critic-r1.md`, and append the entry:
+Codex wrote no file, so transcribe its output to `reviews/spec-critic-r1.md`,
+and append the entry:
 
 ```
 {"step": "spec-critic", "round": 1, "replacement": "use Codex for the spec review",
- "at": "2026-09-16T10:04:00Z", "usage": {"tokens": 41233}, "display": "headless"}
+ "at": "2026-09-16T10:04:00Z", "usage": {"tokens": 41233}, "display": "headless",
+ "report_source": "output"}
 ```
 
 **Two harness limits.** The `Skill` tool is auto-rejected under `claude -p`

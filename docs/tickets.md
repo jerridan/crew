@@ -3255,16 +3255,17 @@ Check:
    the focused one, and its `run.steps_substituted` entry says
    `display: iterm2-split`.
 2. Round 2 resumes round 1's Codex session: `run.review_sessions` holds
-   `skeptical-r2` with `resumed_from: "skeptical-r1"`, and its report
-   carries a `Beyond the findings:` line.
-3. Round 2 posts with no ask, and its escalation's answer is `auto: findings
-   answered`.
+   `skeptical-r2` with `resumed_from: "skeptical-r1"`.
+3. ~~Round 2 posts with no ask, and its escalation's answer is `auto: findings
+   answered`.~~ Struck: R5.2 of T79 removed that rule and its `Beyond the
+   findings:` line.
 4. No posted text contains the word `crew`, and the posted body holds no PR
    summary.
 5. The watch prints a `queued` line when the PR enters the queue, and the run
    closes on it.
 
-Done when: all five checks pass, and design §15 holds the probe's result.
+Done when: checks 1, 2, 4 and 5 pass, and design §15 holds the probe's
+result.
 
 Read first: design §15.108; `review-runner.md` "Resume the reviewer";
 `substitution.md` "Where it runs"; `crew:delivered-window`'s "The go-ahead
@@ -3304,3 +3305,92 @@ before the charter, the body shape opens with the count, and the version is
 bumped.
 
 Read first: design §15.109; `skills/review/SKILL.md` "Take the PR".
+
+## T79 — Close eleven issues from an audit of 44 records
+
+Status: done 2026-10-25
+Depends on: T78
+Stage: 8 (design §15.111 to §15.121)
+
+An audit of 44 records filed eleven issues. Each one cost a run time, tokens,
+or an ask the principal did not need. This ticket closes all eleven in one
+PR, because they overlap on `review-runner.md`, `skeptical-review.md`,
+`record-format.md` and `crew-record.py`.
+
+Scope, one line per issue:
+
+1. #88: check 2 fails on outcomes, not on denials. The allow list grants
+   every verification gate and read-only package probes.
+2. #89: `review-runner.md` documents the refusal of a headless write under
+   `~/.claude`, seen once in a cloud routine, and the `result`-field
+   fallback. The default root stays.
+3. #109: the go-ahead gate is decided by the author of each item. The
+   six-condition no-wait rule is removed.
+4. #110: the project lead writes `reviews/baseline.md` once per deliverable,
+   and adjudication declines a finding that names a test on it.
+5. #111: `.claude/crew.md` and `~/.claude/crew/config.md` are standing
+   instructions, read whole at launch, with nine sections.
+6. #112: the spec critic stops at two rounds, and a `[Concern]` or `[Nit]`
+   on the spec is a wording fix.
+7. #113: the review cap stays at three. An accepted verdict stops the
+   review, a resumed round is a delta review, and `arm-review --past-cap`
+   runs one more round.
+8. #114: the project lead checks three sources before an escalation,
+   decides a reversible preference on its recommendation, and never starts
+   a second run on one ticket silently.
+9. #115: a resumed round never writes the previous round's report, a launch
+   with no prompt is a failed launch, and a replacement runner is told where
+   to write.
+10. #116: a fix-round brief asks for the whole defect class, verification
+    greps for its pattern, and a weak-test finding gets a mutation check.
+11. #117: `crew-record.py` writes every `decisions.md` entry and every round
+    stamp from the clock, with `decision` and `round`.
+12. The principal's `/code-review medium 118` round: nine fixes to the script
+    (`fdb4d8a`) and to the rules (`8776d62..e7e2a43`), one finding declined
+    (design §15.122).
+
+Out of scope: the Codex sandbox flags that #115 asked for. Nothing in the
+repo or in the run could test them.
+
+Files: `agents/scout.md`, `agents/spec-critic.md`, the three `SKILL.md`
+files, `autonomy-contract.md`, `full-path.md`, `ic-contract.md`,
+`record-format.md`, `review-runner.md`, `simple-path.md`,
+`skeptical-review.md`, `substitution.md`, `crew-record.py`,
+`docs/design.md`, `docs/tickets.md`, `README.md` and `CLAUDE.md`. The version
+goes to 0.1.89 in both manifests.
+
+Done when: each issue's phrase from the spec's map is in its file, the R8
+acceptance sequence passes against a temporary record, the README lists the
+baseline file and the standing-instructions file, and the version is bumped.
+
+Unexercised: no run has read any of these rules. The first run on 0.1.89 is
+the first evidence. The correction to `full-path.md`'s launch check 1 and to
+the IC contract's worktree rule (design §15.121) is not in this ticket. T80
+owns it.
+
+Read first: design §15.111 to §15.121; `review-runner.md`;
+`skeptical-review.md` "When the review runs"; `SKILL.md` "Standing
+instructions"; `record-format.md` "`decisions.md`".
+
+## T80 — Correct launch check 1 and the IC contract's worktree rule
+
+Status: open
+Depends on: T79
+Stage: 8 (design §15.121)
+
+Scope. `full-path.md`'s "Check the launch conditions" check 1 reads a refused
+`git -C <repo> status` as a block on the full path. A worktree-isolated
+session refuses that form and still runs the full path. `ic-contract.md`'s
+"The worktree rule" forbids `cd <worktree> && git`, which is the form such a
+session allows. Correct both, as design §15.121 records.
+
+Files: `skills/project-lead/references/full-path.md`,
+`skills/project-lead/references/ic-contract.md`, `docs/design.md`,
+`docs/tickets.md`, and the version in both manifests.
+
+Done when: a worktree-isolated session runs the full path with no
+escalation, and an IC's `cd <worktree> && git` form is allowed where `-C` is
+refused.
+
+Read first: design §15.121; `full-path.md` "Check the launch conditions";
+`ic-contract.md` "The worktree rule".

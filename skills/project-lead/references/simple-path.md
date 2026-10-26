@@ -109,6 +109,10 @@ file: `record-format.md` keeps those out of a package's file set, and
 This section owns where a run's git work happens. `full-path.md` borrows it
 (design §15.90).
 
+**A `Branch names` section in the standing instructions replaces crew's
+branch name**, `crew/<goal-slug>/<deliverable-id>`, everywhere this section
+uses it (`SKILL.md`, "Standing instructions").
+
 **Ask first whether another run holds this checkout.** It is held when either
 of these is true:
 
@@ -178,7 +182,8 @@ an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text,
 the brief, the file set, `run.checkout`, the interface contract, the
 acceptance criterion, the global constraints section, the record root, and
-the package id.
+the package id. The standing instructions go in after the contract and
+before the brief, as `SKILL.md`'s "Standing instructions" says.
 
 **One dispatch carries the package.** The IC writes `plans/<id>.md`, then
 continues per `ic-contract.md`'s "Write your plan first".
@@ -280,6 +285,12 @@ and on every path. Every other file points here rather than keep a second copy:
 - a commit outside the IC's own branch or worktree, which only the full path
   can produce (`full-path.md`'s "Verify before you believe" runs that check).
 
+**A fix or patch package is checked against the pattern, not the line.**
+Grep the deliverable's diff, `git -C <repo> diff <deliverable base>..HEAD`,
+for the pattern the finding named, and read every hit. A hit the package left
+unfixed is a defect you can name. Write the pattern and the count of hits in
+the package's `decisions.md` entry.
+
 **Run the criterion at the red commit too**, when the package adds the test its
 criterion names (design §7). `ic-contract.md`'s "Write the failing test first"
 owns the procedure and the clean-tree precondition. Run it in `<repo>`, against
@@ -303,6 +314,13 @@ prompt describes what is already committed — `git log --oneline` plus
 new name to `ic_name` the same way "Dispatch the IC" does, before you
 dispatch. Rounds 4 and 5 promote a band; `band-rubric.md` says what a `deep`
 package does instead.
+
+**A fix-round brief, and a patch-round brief, ask for the whole defect
+class.** Tell the IC: before you report, search the whole diff of this
+deliverable, `git diff <deliverable base>..HEAD`, for
+every other site of the same defect class, and fix each one in this package.
+The IC lists the sites it checked in its report (`ic-contract.md`'s "Report
+contract").
 
 **Every round goes back through "Verify before you believe"** — a fix you did
 not re-run is a claim. Leave only when every check there passes. Increment
@@ -389,9 +407,10 @@ left registered is work for a human (design §15.88g, §15.90).
 `checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
 why not in `checkout_restored`. A run that cut its own checkout switched
 nothing, so `checkout_branch` is `null` and this step is already done. Name
-both branches in your closing report, and send it to the principal the way
-the goal arrived (`autonomy-contract.md`). A pane is not a report when nobody
-is watching it.
+both branches in your closing report, and list in it every decision taken on
+a recommendation (`autonomy-contract.md`'s "The preference sweep"). Send it to
+the principal the way the goal arrived (`autonomy-contract.md`). A pane is
+not a report when nobody is watching it.
 
 **The report ends the work, not the session.** Invoke the skill
 `crew:delivered-window` with the `Skill` tool, then read "The skeptical

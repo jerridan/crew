@@ -47,7 +47,18 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> escalation answer <index
 python3 <skill-dir>/scripts/crew-record.py <record-dir> integrate <package-id> --review-head <sha> [--published]
 python3 <skill-dir>/scripts/crew-record.py <record-dir> deliver <deliverable-id> draft-pr-opened --pr-url <url> --review-head <sha>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> ship
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision <route> "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision <route> "<title>" --pending [--line "<Key>: <text>"]...
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision update "<title>" --answer "<text>" --citation "<text>" --confidence <high|medium|low> [--line "<Key>: <text>"]...
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round open <round-id> --kind <ci|pr-comments|principal|skeptical> --ref "<ref>" --reply-to "<where>" [--gated] [--opened-at <YYYY-MM-DDTHH:MM:SSZ>]
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round go-ahead <round-id>
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round replied <round-id>
+python3 <skill-dir>/scripts/crew-record.py <record-dir> round drop <round-id>
 ```
+
+`decision` writes `decisions.md`, and "`decisions.md`" below owns its three
+forms. `round` writes `run.rounds`, and the `rounds` row below owns its
+fields.
 
 **Never write `escalations` with `run set`.** That command replaces the key,
 so it drops every ask already in the list. `escalation add` appends one ask,
@@ -102,7 +113,9 @@ each on its own, anywhere in the file:
   the principal lifts the block at the gate (`/crew:review`'s "Review").
 
 `SKILL.md`'s "Take the goal" writes `PR: draft` and `Gate: off` when the
-principal asks for them in the goal or at launch.
+principal asks for them in the goal or at launch, and "Standing
+instructions" writes them for a `PR readiness: draft` or `Go-ahead: off`
+section.
 
 ## `diagnosis.md`
 
@@ -243,6 +256,16 @@ naming convention. Do not mix their contents.
   disposing of, so `skeptical-review.md`'s "Adjudication is a ledger" writes
   none.
 
+  **`reviews/baseline.md` is one file per deliverable**, written by the
+  project lead before the first skeptical round at each of the
+  deliverable's bases (`skeptical-review.md`'s "When the review runs"). Its
+  first line is `Base: <sha>`, the base it was measured at, so a resume can
+  tell a file from an old base. Then it holds one line per test or gate that
+  fails at that base, with its cause when known, and starts from the standing
+  instructions' `Known red tests` section. Under the no-suite outcome it
+  holds the `Base:` line and the line `No suite.` Every reviewer and every
+  delivered-window IC reads it, and adjudication declines a finding on it.
+
   **A review run writes one more file per skeptical round**, before the
   gate ask: `reviews/github-r<n>.md`, the draft GitHub review for round
   `<n>`. It opens with a `--- summary` section, the PR summary for the
@@ -271,9 +294,13 @@ naming convention. Do not mix their contents.
   Round: <round-id>
   Source: <kind> <ref>
   Reply to: <where the reply goes>
-  Opened at: <ISO-8601 UTC>
+  Opened at: <YYYY-MM-DDTHH:MM:SSZ>
   Head: <the sha this round covers>
   ```
+
+  Write `Opened at:` from `date -u +%Y-%m-%dT%H:%M:%SZ`, never from memory.
+  It is the script's own shape, so `round open --opened-at` reads it back.
+  The script refuses every other ISO-8601 form.
 
   `crew:delivered-window`'s "Write the round's reply file first" writes it,
   the same turn it writes the file. It is what lets a resumed session rebuild
@@ -589,13 +616,13 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `pr` | an object, written once by `/crew:review` at the record's creation, and absent on a goal run. It holds at least `owner`, `repo`, `url`, `author`, `base_ref`, `head_ref` and `merge_base` (strings), `number` (an integer) and `cross_repository` (a boolean). |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. It is also what prices the run: `spend.py` reads each id's transcript subtree (Spend below). |
 | `review_rounds` | an integer: how many skeptical review rounds this run has entered. Starts at 0, and absent means 0. It names the round whose files are `reviews/skeptical-r<n>.*`. `skeptical-review.md` owns when it moves, what caps it, and why a retry leaves it where it is. |
-| `review_pending` | `{head, round}` — the branch head sha a skeptical review is owed on, and the round reserved for it — or `null` when none is owed. One object, not two fields, so the sha and the round it names cannot disagree. Every arming goes through `crew-record.py`'s `arm_review`, reached by `deliver --review-head` at the hand-over, by `integrate --review-head` when a delivered-window package integrates, and by `arm-review --head` on its own; `run set review_pending null` is for clearing it and nothing else. `skeptical-review.md` owns every transition and what a set value means to a resumed run. |
-| `unreviewed_heads` | a list of `{head, reason, at}`, one per branch head that was handed over or pushed with no review owed for it. `reason` is `cap` today, the only case that produces one. Appended by `arm_review` in the same write that would have armed the head. Absent until the first one. A head here shipped unreviewed, and `skeptical-review.md` says who has to be told. |
-| `review_results` | an object keyed by round number, each value `{exit, denials_ok, report_ok, at}`: the outcome of the four checks the project lead runs over a finished review. A round with no entry has not been checked, whatever sits in `reviews/`. Absent until the first check. `review-runner.md`'s "Check the review before you read it" owns the checks and what a passing entry permits. |
+| `review_pending` | `{head, round}` — the branch head sha a skeptical review is owed on, and the round reserved for it — or `null` when none is owed. One object, not two fields, so the sha and the round it names cannot disagree. Every arming goes through `crew-record.py`'s `arm_review`, reached by `deliver --review-head` at the hand-over, by `integrate --review-head` when a delivered-window package integrates, and by `arm-review --head` on its own. `arm-review --head <sha> --past-cap` arms a head although `review_rounds` equals the cap, when the principal asks for one more round, and writes no `unreviewed_heads` entry. `run set review_pending null` is for clearing it and nothing else. `skeptical-review.md` owns every transition and what a set value means to a resumed run. |
+| `unreviewed_heads` | a list of `{head, reason, at}`, one per branch head that was handed over or pushed with no review armed for it. `reason` is `cap` when the review cap stopped the head, or `accepted-round` when the head is the patch round that answered an `accepted` skeptical report, written by `integrate` or `deliver` with `--no-review accepted-round`. Appended by `arm_review` in the same write that would have armed the head. Absent until the first one. No entry is a silent gap: the project lead names each one in its next message to the principal, a `cap` entry as work that shipped unreviewed and an `accepted-round` entry as a review that stopped on an accepted verdict (`skeptical-review.md`). |
+| `review_results` | an object keyed by round number, each value `{exit, denials_ok, report_ok, denied, at}`: the outcome of the four checks the project lead runs over a finished review. `denials_ok` is the outcome of check 2. `denied` is a list of the `tool_input` strings of every denial the review hit, `[]` when it hit none, and `"not applicable: <runner>"` for a replacement, which reports no denials. Adjudication reads `denied`. An entry written before T79 has none. A round with no entry has not been checked, whatever sits in `reviews/`. Absent until the first check. `review-runner.md`'s "Check the review before you read it" owns the checks and what a passing entry permits. |
 | `review_session_ids` | a list of session ids, one per skeptical review this run started. The project lead generates each id itself and appends it **before** it launches that review, then passes it to the review as `--session-id`, so a review that dies halfway is still priced (`review-runner.md` owns the procedure). `spend.py` prices these transcripts into the run and `crew-stats.py` reports them. **Both hooks ignore this field.** An id here is a foreign session, so it never goes in `run.session_ids`, whose ending marks the whole run `interrupted` (`hooks/session-end.py`, design §15.90h). Absent until the first review. |
 | `review_sessions` | an object keyed by round id (`skeptical-r<n>`). Each value is `{runner: "claude" \| "codex", session_id, resumed_from: <round id> \| null, fresh_reason: null \| <string>}`: the reviewer session that round ran in, the round whose session it resumed, and, for a later round that launched fresh, why. A round finds its predecessor's session here. Codex ids go only here, never in `review_session_ids`, which `spend.py` prices as Claude sessions. `review-runner.md`'s "Resume the reviewer" owns every write. Absent on a record from before T76, so its next round launches fresh. |
 | `repo` | the absolute path to the target-repo clone the project lead was launched in, written at `SKILL.md`'s "Take the goal" from `git rev-parse --show-toplevel`, before any step can need it — a replacement for the spec review runs from it and no branch exists yet (`substitution.md`). On a free checkout the two are equal; on a held one, `checkout` is the worktree this run cut and `repo` is the clone it was cut from. **It is the path that outlives the run's own worktrees**, so every `worktree add`, `remove` and `prune` runs against it — the removal at "End the run", and every skeptical review (`review-runner.md`). Every run has one: "Take the goal" writes it before the path is chosen. |
-| `rounds` | an object keyed by `<round-id>`, one entry per patch round, written by the project lead when it opens the round and before it writes any package (`crew:delivered-window`'s "Findings from a review"). Each value holds: `source`, the `{kind, ref}` pair below; `reply_to`, where the reply goes; `opened_at`, an ISO-8601 UTC timestamp; `replied_at`, the timestamp of the send that delivered `reviews/<round-id>-reply.md`, `null` until it happens; `go_ahead_at`, the timestamp the principal's go-ahead to push and reply landed, or of the post itself on a round answered `auto: findings answered`, `null` until it does, and absent on a round the go-ahead gate does not cover (`crew:delivered-window`'s "The go-ahead gate"); and `push_refused`, a `{at, reason}` written only when the remote refused this round's push twice. A round entry with a `null` `replied_at` is the one thing that says a reply is still owed, and a round with no package at all still has one, so an all-declined round knows its own reader. Absent until the first patch round. |
+| `rounds` | an object keyed by `<round-id>`, one entry per patch round, written with `round open` when the project lead opens the round and before it writes any package (`crew:delivered-window`'s "Findings from a review"). The clock writes the three stamps: `round open` writes `opened_at`, `round go-ahead` writes `go_ahead_at`, and `round replied` writes `replied_at`. Never write a stamp with `run set`. Each value holds: `source`, the `{kind, ref}` pair below; `reply_to`, where the reply goes; `opened_at`, an ISO-8601 UTC timestamp; `replied_at`, the timestamp of the send that delivered `reviews/<round-id>-reply.md`, `null` until it happens; `go_ahead_at`, the timestamp the principal's go-ahead to push and reply landed, `null` until it does, and absent on a round the go-ahead gate does not cover, a later skeptical round that posted with no wait included (`crew:delivered-window`'s "The go-ahead gate"); and `push_refused`, a `{at, reason}` written only when the remote refused this round's push twice. A round entry with a `null` `replied_at` is the one thing that says a reply is still owed, and a round with no package at all still has one, so an all-declined round knows its own reader. Absent until the first patch round. |
 | `rounds[].source` | `{kind, ref}`. `kind` is one of `ci`, `pr-comments`, `principal` and `skeptical`. `ref` names the one source of that kind. For `pr-comments` it is the PR URL. For `ci` it is the failing run's URL, or the PR's checks page URL, `<pr_url>/checks`, when one wake found failures in more than one run. For `principal` it is the principal's session name or `"typed"`, and for `skeptical` it is `skeptical-r<n>`. |
 | `rounds[].posted_review_id` | an integer, the id of the GitHub review that a review-run round posted. Absent on a goal run. |
 | `rounds[].reply_to` | where this round's reply is sent, decided by `kind` and written when the round opens. **`pr-comments` and `ci` are the PR.** Each item gets its own reply there, placed by the kind and id on its ledger line: a `review-comment` in its own thread, a `review` or a `comment` as a PR comment that quotes its first line, and a `check` as a PR comment that links the failing run. **Every comment the project lead posts on the PR ends with the marker line `<!-- pr-review: <round-id> <item id> -->`**, the id of the item it answers, whatever the round's kind (`crew:delivered-window`'s "Send the reply file"). `principal` is the channel the message arrived on. `skeptical` is the record alone — the reply file is the reply, and the next status message to the principal names its path. On a `run.kind: review` run, a `skeptical` round's `reply_to` is the PR URL, and the reply is the review posted there. |
@@ -609,8 +636,9 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `escalations` | a list of questions the project lead asked the human (design §6 triggers). See Escalations below. |
 | `compactions` | a list of `{session_id, agent_id, agent, trigger, at}`, appended by the `PreCompact` hook whenever a session in this run compacts. `agent` is the teammate's or subagent's name, resolved from its transcript's `.meta.json`, or for a split-pane teammate from the `agentName` in its transcript; `null` with `agent_id` also `null` means the project lead's own session compacted; `null` with an `agent_id` is an unnamed subagent. `full-path.md`'s "Verify before you believe" and "The territory's next package" consume it. Absent until the first compaction. |
 | `steps_skipped` | a list of `{step, package, deliverable, reason, at}`, one entry per step the light path let the run skip. `step` is `spec-critic`, and nothing else: a `spec-critic` entry leaves both `package` and `deliverable` `null`, because the run writes no spec and the skip belongs to the whole run. A record written before T58 or T59 can also carry a `plan-gate` or a `deliverable-review` entry, from the two steps those tickets retired (design §15.94d). Read one as history, and write neither on a new skip. Two keys, not one, because a package id and a deliverable id are not the same id space and a later session filters on one of them. `reason` is one line naming the path and the conditions that held, and `at` is an ISO-8601 UTC timestamp you write yourself — `run set` stamps nothing. `band-rubric.md`'s "What the light path skips" decides what may go in here, and nothing else may. Absent until the first skip, which is what makes an absent field mean "every step ran". Write it with `run set steps_skipped <json>`, the whole list each time. **A promotion off the light path removes the `spec-critic` entry.** The promoted run writes `spec.md` and dispatches the critic, so the step ran, and an entry that stays says a step was skipped that a review file on disk proves ran. `decisions.md`'s promotion entry holds the history of the skip. The write above sends the whole list, so the removal costs one call (design §15.91). |
-| `steps_substituted` | a list of `{step, round, replacement, at, usage, display}`, **one entry per invocation of a replacement**, a retry included (`substitution.md`). `step` is `spec-critic` or `skeptical-review`, and nothing else: no other step takes a replacement. `round` is the review round this invocation ran at, the same `<n>` as its report file. `replacement` is the principal's own words for what ran, such as `"use Codex for the spec review"` — crew holds no list of runners to name it from. `at` is an ISO-8601 UTC timestamp you write yourself, because `run set` stamps nothing. `display` is where the runner ran, one of `tmux-split`, `iterm2-split`, `tmux-session` or `headless` (`substitution.md`'s "Where it runs"); an entry written before T76 has none. `usage` is an object with two optional keys, `tokens` (an integer) and `usd` (a number), holding whatever the runner reported; `null` when it reported neither. `crew-stats.py` prices `usd` and nothing else, so an entry carrying only `tokens` prints that count in its own `tokens` column, with `usd` reported as `unmeasured`. **A substituted step is not a skipped step.** The step ran, and its report sits at the step's own path under `reviews/`, so `steps_skipped` gets no entry for it. Absent until the first invocation. Write it with `run set steps_substituted <json>`, the whole list each time. |
-| `substitutions_requested` | a list of `{step, replacement, source}`, one entry per review step whose replacement won, written at `SKILL.md`'s "Take the goal" before any step runs. `step` is `spec-critic` or `skeptical-review`. `replacement` is the principal's words. `source` is `launch`, `goal`, `charter`, `repo` or `machine`, naming the source whose words won; "Take the goal" owns what each one means and which one wins. A record written before T63 holds only the first three. **This field is the request, and `steps_substituted` is what ran.** A resumed session reads this one, because the words that named the replacement are in no later session's context. Absent when the principal named none. Write it with `run set substitutions_requested <json>`, the whole list each time. |
+| `steps_substituted` | a list of `{step, round, replacement, at, usage, display, report_source}`, **one entry per invocation of a replacement**, a retry included (`substitution.md`). `step` is `spec-critic` or `skeptical-review`, and nothing else: no other step takes a replacement. `round` is the review round this invocation ran at, the same `<n>` as its report file. `replacement` is the principal's own words for what ran, such as `"use Codex for the spec review"` — crew holds no list of runners to name it from. `at` is an ISO-8601 UTC timestamp you write yourself, because `run set` stamps nothing. `display` is where the runner ran, one of `tmux-split`, `iterm2-split`, `tmux-session` or `headless` (`substitution.md`'s "Where it runs"); an entry written before T76 has none. `report_source` is where the project lead read the report: `file` when the runner wrote a usable report file, `output` when the project lead transcribed the runner's output (`substitution.md`'s "Read or write the report file"). An entry written before T79 has none. `usage` is an object with two optional keys, `tokens` (an integer) and `usd` (a number), holding whatever the runner reported; `null` when it reported neither. `crew-stats.py` prices `usd` and nothing else, so an entry carrying only `tokens` prints that count in its own `tokens` column, with `usd` reported as `unmeasured`. **A substituted step is not a skipped step.** The step ran, and its report sits at the step's own path under `reviews/`, so `steps_skipped` gets no entry for it. Absent until the first invocation. Write it with `run set steps_substituted <json>`, the whole list each time. |
+| `standing_instructions` | an object, `{repo, machine}`, written once, at `SKILL.md`'s "Take the goal" or at `/crew:review`'s "Take the PR". `repo` is the path of `.claude/crew.md` in `run.repo` and `machine` the path of `~/.claude/crew/config.md`, each `null` when that file was missing. It says what the run read. A resumed session reads the files at those paths again, and `SKILL.md`'s "Standing instructions" owns what it does with them. Absent on a record written before T79. Write it with `run set standing_instructions <json>`. |
+| `substitutions_requested` | a list of `{step, replacement, source}`, one entry per review step whose replacement won, written at `SKILL.md`'s "Take the goal" before any step runs. `step` is `spec-critic` or `skeptical-review`. `replacement` is the principal's words. `source` is `launch`, `goal`, `charter`, `repo` or `machine`, naming the source whose words won; `SKILL.md`'s "Standing instructions" owns what each one means and which one wins. A record written before T63 holds only the first three. **This field is the request, and `steps_substituted` is what ran.** A resumed session reads this one, because the words that named the replacement are in no later session's context. Absent when the principal named none. Write it with `run set substitutions_requested <json>`, the whole list each time. |
 | `instruments_used` | a list of `{instrument, dispatched_by, purpose, at}`, appended each time the project lead or a researcher dispatches a charter-listed instrument (design §6.4). `instrument` is the name from the charter's `Instruments:` line, `dispatched_by` is `project-lead` or `researcher`, and `purpose` is one line naming the question the dispatch answered. Absent until the first dispatch. |
 
 **Read the session id, never invent it.** `echo $CLAUDE_CODE_SESSION_ID`
@@ -685,7 +713,7 @@ transcript, and `crew-stats.py` then closes the window at `completed_at`
 | `trigger` | which design §6 trigger fired |
 | `question` | what the project lead asked |
 | `asked_at` | ISO-8601 UTC timestamp |
-| `answer` | `null` until the human responds; a non-`null` value flips `run_state` from `blocked` back to the state it left, `active` or `delivered`. Two strings mark a go-ahead no principal saw: `"Gate: off"`, and `"auto: findings answered"` for a skeptical round that met the no-wait conditions of `crew:delivered-window`'s "The go-ahead gate". `crew-stats.py` counts neither as an escalation, and counts the second as an auto post. |
+| `answer` | `null` until the human responds; a non-`null` value flips `run_state` from `blocked` back to the state it left, `active` or `delivered`. Two strings mark a go-ahead no principal saw: `"Gate: off"`, and `"auto: findings answered"` for a later skeptical round on a review run that posted with no wait, as `crew:delivered-window`'s "The go-ahead gate" says. `crew-stats.py` counts neither as an escalation, and counts the second as an auto post. |
 | `draft` | a record-relative path such as `reviews/github-r<n>.md`. Present on a review run's go-ahead escalation. |
 | `draft_changed` | `true`, `false` or `null`. Set when the principal answers: `true` when the principal changed the draft's text or any disposition, and `false` when they approved it as it stood. `null` until then, and it stays `null` on an entry answered `"Gate: off"` or `"auto: findings answered"`, because no principal saw that draft. |
 
@@ -876,66 +904,112 @@ level, and a timestamp. `Route` is one of `precedent`, `council`,
 own values are lowercase, as design §4's worked example shows). `Confidence`
 is one of `high`, `medium`, `low`.
 
-Design §4's worked example, with a `Timestamp` line added:
+**Write every entry with `crew-record.py`'s `decision`**, in one of the three
+forms the usage block above gives. The script writes the heading `## <title>`,
+reads `Timestamp:` from the clock, and puts the lines in this order: `Route`,
+then `Prior` and `Positions` when given, `Answer`, `Citation`, `Losing` when
+given, `Confidence`, every other `--line` in the order given, then
+`Timestamp`, then `Updated` on an updated entry. Exit 2 names the missing
+field or the wrong route. Correct the call and run it again.
+
+- **One call** writes an entry that is complete when you write it.
+- **`--pending`, then `decision update`,** writes a council entry and a sweep
+  entry. `Timestamp:` is the time of the first write, and it proves that the
+  routing came first. `update` rewrites the most recent entry with that
+  title. It keeps `Timestamp:`, and writes `Updated:` from the clock as the
+  last line. Each later update writes `Updated:` again. It keeps every other
+  line the entry holds, and a key you give again replaces its line. `--line`
+  may not carry `Updated`. It never appends.
+
+`pending` is the only sanctioned placeholder. The
+no-citation-at-high-confidence check does not apply to an entry that still
+holds it.
+
+**Write an entry by hand only when the script is unavailable.** Use the same
+lines in the same order. Read `Timestamp:` from `date -u
++%Y-%m-%dT%H:%M:%SZ`, never from memory. A run that guesses stamps every
+entry at midnight, and a human cannot put that trail in order (design
+§15.47, the same failure as the invented session id of §15.39). End the entry
+with the line `Written by hand`. A later `decision update` drops that line,
+because the script then wrote the entry.
+
+Design §4's worked example, as one call writes it:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision precedent "Should the version bump be part of package 2?" --answer "No — the project lead bumps versions at integration." --citation "CLAUDE.md \"Development Workflow\" step 3 requires both plugin.json and marketplace.json to change, which no two packages can own disjointly." --confidence high
+```
 
 ```markdown
 ## Should the version bump be part of package 2?
 Route: precedent
 Answer: No — the project lead bumps versions at integration.
-Citation: CLAUDE.md "Development Workflow" step 3 requires both plugin.json and
-marketplace.json to change, which no two packages can own disjointly.
+Citation: CLAUDE.md "Development Workflow" step 3 requires both plugin.json and marketplace.json to change, which no two packages can own disjointly.
 Confidence: high
 Timestamp: 2026-08-24T14:32:00Z
 ```
 
 An entry with high confidence and no citation is a defect.
 
-**Read the clock for `Timestamp`, never write one from memory.** `date -u
-+%Y-%m-%dT%H:%M:%SZ` prints it. A run that guesses stamps every entry at
-midnight, which makes a decision trail a human cannot order (design §15.47).
-This is the same failure as an invented session id (§15.39), in a field that
-looks harmless.
-
 ### A preference-sweep entry
 
 `autonomy-contract.md`'s sweep writes one entry before the split, on every
-run, including a run that found nothing.
+run, including a run that found nothing. **A sweep that escalates nothing is
+one call**, with `--answer none`.
 
-**A sweep entry starts like a council entry.** Before the ask it carries the
-questions and `Answer: pending`, which proves the routing came first. The
-principal's reply completes each answer: one `Answer:` line per question, each
-naming the question it settles, so `decisions.md` holds what was decided and
-not only that something was asked. A sweep that found nothing is finished in
-one write, with `Answer: none`.
+**A sweep that escalated writes its entry three times:**
 
-`Citation:` names the files the sweep read. Each escalated question also gets
-its own `escalations` entry, written with `escalation add` above, so one
-batch reads as one interruption in `state.json` too.
+1. **Before the ask**, `--pending` with the `Questions:` line. This proves
+   that the routing came first.
+2. **At the principal's reply**, `decision update`. The one `Answer:` line
+   gives one numbered answer per question, so `decisions.md` holds what was
+   decided and not only that something was asked.
+3. **At integration**, a second `decision update`, which adds where each
+   answer was written back. The file name lands then, because that is when
+   the rule is written and the container check can move it.
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision preference "Preference sweep: what does the principal want that the repo cannot say?" --pending --line "Questions: 1. Does each book get its own route? 2. Is the old URL kept?"
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision update "Preference sweep: what does the principal want that the repo cannot say?" --answer "1. Yes, one route per book. 2. No." --citation "charter.md and spec.md hold no other open question that an instruction, a prior decision or repo precedent settles." --confidence high
+```
+
+The entry after the third write:
 
 ```markdown
 ## Preference sweep: what does the principal want that the repo cannot say?
 Route: preference
-Questions: 1. Does each book get its own route? 2. Is the old URL kept?
 Answer: 1. Yes, one route per book — recorded in CLAUDE.md. 2. No — not recorded.
-Citation: charter.md and spec.md hold no other open question that an
-instruction, a prior decision or repo precedent settles.
+Citation: charter.md and spec.md hold no other open question that an instruction, a prior decision or repo precedent settles.
 Confidence: high
+Questions: 1. Does each book get its own route? 2. Is the old URL kept?
 Timestamp: 2026-08-24T14:32:00Z
+Updated: 2026-08-24T16:05:00Z
 ```
 
-`Questions:` is the sweep's own field, and it holds every question the sweep
-escalated, in the order it asked them. An entry with `Answer: none` needs no
-`Questions:` line.
+`Citation:` names the files the sweep read. `Questions:` is the sweep's own
+line, and it holds every question the sweep escalated, in the order it asked
+them. An entry with `Answer: none` needs no `Questions:` line. Each escalated
+question also gets its own `escalations` entry, written with `escalation add`
+above, so one batch reads as one interruption in `state.json` too.
 
 **Each answer ends with where it was written back**: the target repo file
 that now carries it as a rule, or `not recorded` when the principal refused
 (`autonomy-contract.md`). That lets an audit tell a refusal from a step the
 run skipped.
 
-That makes the sweep entry the one entry written three times. The reply
-completes every answer; the file name lands later, at integration, because
-that is when the rule is written and the container check can move it. Reopen
-the entry there and finish the line.
+**A question the sweep decides on a recommendation gets an entry of its
+own**, not a place in `Questions:` (`autonomy-contract.md`'s "The preference
+sweep"). It is one call, with `--line "Reversible: yes, decided on
+recommendation"`:
+
+```markdown
+## Which label does the new menu entry use?
+Route: preference
+Answer: "Export as CSV", the wording of the two menu entries beside it.
+Citation: charter.md is silent on the label. src/menu.ts:40-52 holds the neighbours.
+Confidence: medium
+Reversible: yes, decided on recommendation
+Timestamp: 2026-08-24T14:30:00Z
+```
 
 ### A council entry
 
@@ -944,13 +1018,20 @@ A council-route entry carries five more lines (design §6.1). `Prior`,
 than its winner.
 
 **A council entry is written twice.** `autonomy-contract.md` has the project
-lead write the question, `Route: council`, `Prior` and `Positions` **before**
-it dispatches, which is what proves the routing came first. At that point no
-answer exists, so `Answer` and `Confidence` both read `pending`, and
-`Citation`, `Losing`, `Models`, `Spend` and `Timestamp` are absent. The
-adjudication fills them in. `pending` is the only sanctioned placeholder, and
-the no-citation-at-high-confidence check does not apply to an entry still
-holding it.
+lead write the question, `Prior` and `Positions` **before** it dispatches,
+which is what proves the routing came first:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision council "<question>" --pending --line "Prior: <the answer> (<confidence>)" --line "Positions: A. <first>. B. <second>."
+```
+
+That write holds `Answer: pending`, `Confidence: pending` and a `Timestamp:`.
+It holds no `Citation`, `Losing`, `Models` or `Spend`. The adjudication
+completes it, and gives neither `Prior` nor `Positions` again:
+
+```
+python3 <skill-dir>/scripts/crew-record.py <record-dir> decision update "<question>" --answer "<the winner>" --citation "<the evidence>" --confidence <high|medium|low> --line "Losing: <each loser>" --line "Models: <advocates>, <model>. Adjudicated at <model>." --line "Spend: <n> tokens"
+```
 
 - `Prior:` — the project lead's own answer, and the confidence it held that
   answer at, as `<the answer> (<high | medium | low>)`. Every council entry
@@ -977,7 +1058,8 @@ holding it.
 - `Spend:` — the advocates' `total_tokens`, summed from their completion
   notifications; `unmeasured` when a dispatch shape reported none.
 
-The default shape, one adversary against the project lead's prior:
+The default shape, one adversary against the project lead's prior, after the
+adjudication:
 
 ```markdown
 ## Where does the retry budget live: the client or the call site?
@@ -985,15 +1067,13 @@ Route: council
 Prior: the client owns it (medium)
 Positions: A. the client owns it. B. each call site owns it.
 Answer: A — the client owns it.
-Citation: src/http/client.ts:44 already holds the timeout and the backoff, and
-CLAUDE.md "HTTP" says one place owns transport policy.
-Losing: B argued call sites vary (src/sync/push.ts:80 retries 5 times). The
-client's per-request override at src/http/client.ts:61 already covers that,
-so the variation costs no second owner.
+Citation: src/http/client.ts:44 already holds the timeout and the backoff, and CLAUDE.md "HTTP" says one place owns transport policy.
+Losing: B argued call sites vary (src/sync/push.ts:80 retries 5 times). The client's per-request override at src/http/client.ts:61 already covers that, so the variation costs no second owner.
 Confidence: high
 Models: 1 advocate, sonnet. Adjudicated at opus.
 Spend: 14800 tokens
 Timestamp: 2026-08-24T14:32:00Z
+Updated: 2026-08-24T14:51:00Z
 ```
 
 A three-advocate council (`autonomy-contract.md` names the two cases that earn
@@ -1035,18 +1115,18 @@ Every name this file defines, with what consumes it.
 - `reviews/` — writer: each review agent, at the path its dispatch names (`review-output.md`); the project lead transcribes a report whose write was denied, and writes the report itself for a substituted step (`substitution.md`). Consumer: stage 3 (`split-critic` output); `simple-path.md`'s "The skeptical review" (the skeptical review's report)
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
-- `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks. Consumer: `crew:delivered-window`'s "The go-ahead gate"
+- `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks, or its "Standing instructions" for a `Go-ahead: off` section. Consumer: `crew:delivered-window`'s "The go-ahead gate"
 - `charter.md` `Assist: on` line — writer: the principal, or `/crew:review` when the principal asks. Consumer: `crew:delivered-window`'s "Findings from a review"
 - `charter.md` `Suite: on fork` line — writer: the principal at launch, or the project lead when the principal lifts the block at the gate. Consumer: `/crew:review`'s "Review"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
 - `run.repo` — writer: the project lead, at `SKILL.md`'s "Take the goal". Consumer: a replacement for the spec review, which runs from it (`substitution.md`); `simple-path.md`'s "End the run" (the worktree it removes); `review-runner.md` (every review worktree)
 - `run.review_rounds` — writer: the project lead, on first entry into a round (`skeptical-review.md`). Consumer: `skeptical-review.md` (the cap, and the round's file names)
-- `run.unreviewed_heads` — writer: `crew-record.py`'s `arm_review`, through either command, when the cap stops a head being armed. Consumer: the project lead's next report to the principal (`skeptical-review.md`)
+- `run.unreviewed_heads` — writer: `crew-record.py`'s `arm_review`, through either command, when the cap or an accepted verdict (`--no-review accepted-round`) stops a head being armed. Consumer: the project lead's next report to the principal (`skeptical-review.md`)
 - `run.review_results` — writer: the project lead, after the four checks over a finished review. Consumer: `skeptical-review.md` (whether a report may be adjudicated)
-- `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head`, `integrate --review-head` and `arm-review --head`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
-- `run.rounds` — writer: the project lead, when it opens a patch round, again at a push or a refusal, again at the go-ahead, and again at the reply's send (`crew:delivered-window`'s "Findings from a review"). Consumer: this file's "What a delivered-window round still owes"; `packages[].round` points into it
-- `run.rounds[].go_ahead_at` — writer: the project lead, when the principal's go-ahead lands (`crew:delivered-window`'s "The go-ahead gate"). Consumer: `skeptical-review.md`'s resume entries 1a, 5 and 7; this file's "What a delivered-window round still owes"
+- `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head`, `integrate --review-head` and `arm-review --head`, with or without `--past-cap`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
+- `run.rounds` — writer: the project lead, with `round open` when it opens a patch round, with `run set` at a refusal, with `round go-ahead` at the go-ahead, and with `round replied` at the reply's send (`crew:delivered-window`'s "Findings from a review"). Consumer: this file's "What a delivered-window round still owes"; `packages[].round` points into it
+- `run.rounds[].go_ahead_at` — writer: the project lead, with `round go-ahead` when the principal's go-ahead lands (`crew:delivered-window`'s "The go-ahead gate"). Consumer: `skeptical-review.md`'s resume entries 1a, 5 and 7; this file's "What a delivered-window round still owes"
 - `run.watch` — writer: the project lead, at the first arming (`crew:delivered-window`'s `pr-watch.md`, "The first write's cursor"), after every wake that reported something, and for `draft` at an arming (that skill's "Watch the PR"); at a fallback poll, for `draft` (`pr-watch.md`'s "The fallback poll"); and at `skeptical-review.md`'s "Mark the PR ready", for `draft`. `head` has two more writers: the window's `push` sort, after it arms a head move, and each push crew makes itself, in the window's "A change request" and "Findings from a review" and in `skeptical-review.md`'s resume entry 5. Consumer: the monitor command and the fallback poll, which start from it; `skeptical-review.md`'s resume entry 1b, for `held`
 - `run.review_session_ids` — writer: the project lead, before it launches each skeptical review (`review-runner.md`). Consumer: `scripts/spend.py` and `scripts/crew-stats.py` (the transcripts that price the review into the run). Neither hook reads it
 - `run.review_sessions` — writer: the project lead, once per skeptical round (`review-runner.md`'s "Resume the reviewer"). Consumer: the same section's resume check on the next round. Neither hook nor script reads it
@@ -1059,6 +1139,7 @@ Every name this file defines, with what consumes it.
 - `run.completed_at` — writer: `crew-record.py`, on `ship`, `run state complete`, and `run set run_state complete`. Consumer: `scripts/crew-stats.py` (`run_end`, design §15.51)
 - `run.compactions` — writer: `hooks/pre-compact.py`. Consumer: `full-path.md`'s "Verify before you believe" (re-verify after an IC compacts) and "The territory's next package" (respawn)
 - `run.instruments_used` — writer: the project lead or a researcher, on every instrument dispatch. Consumer: design §6.4 (audit of instrument use)
+- `run.standing_instructions` — writer: the project lead, at `SKILL.md`'s "Take the goal", or `/crew:review`'s "Take the PR". Consumer: a resumed session, which reads the two files again before its first dispatch
 - `run.substitutions_requested` — writer: the project lead, at `SKILL.md`'s "Take the goal". Consumer: `substitution.md` (which step takes a replacement, in this session and in every resumed one)
 - `run.steps_substituted` — writer: the project lead, at each substitution `substitution.md` allows. Consumer: `scripts/crew-stats.py` ("Steps the principal replaced"); a human, or a later session, asking what ran in a review step's place (design §15.94d)
 - `run.steps_skipped` — writer: the project lead, at each skip `band-rubric.md`'s "What the light path skips" allows. Consumer: `scripts/crew-stats.py` ("Steps skipped by rule"); a human, or a later session, asking which steps ran (design §15.77)
@@ -1078,7 +1159,7 @@ Every name this file defines, with what consumes it.
 
 **`state.json` top-level keys**
 - `goal` — consumer: stage 4 (project lead records the original goal text); Task 11 (PR body)
-- `goal_slug` — consumer: stage 4 (record directory name); this file's Goal-slug uniqueness rule
+- `goal_slug` — consumer: stage 4 (record directory name); this file's Goal-slug uniqueness rule; `SKILL.md`'s sibling-record match in "Take the goal"
 - `deliverables` — consumer: stage 5 (per-deliverable integration and recovery, design §9.3, §10.1)
 - `run` — consumer: stage 4/5 (project lead loop); stage 6 (spend, escalations)
 - `packages` — consumer: stage 4 (project lead dispatch loop); stage 5 (recovery, design §10.1)
@@ -1135,7 +1216,7 @@ Every name this file defines, with what consumes it.
 - `run.session_ids` — consumer: stage 5 (resume, matches this run's project lead sessions)
 - `run.repo` — consumer: stage 5 (every worktree command of the run)
 - `run.review_rounds` — consumer: `skeptical-review.md` (the cap)
-- `run.unreviewed_heads` — consumer: the principal, told which heads shipped unreviewed
+- `run.unreviewed_heads` — consumer: the principal, told which heads shipped unreviewed and why
 - `run.review_results` — consumer: stage 5 (resume, which adjudicates only a checked report)
 - `run.review_pending` — consumer: stage 5 (resume in `delivered`, which owes a review on `head` when it is set)
 - `run.review_session_ids` — consumer: `scripts/spend.py` (pricing); never the hooks
@@ -1172,6 +1253,7 @@ Every name this file defines, with what consumes it.
 - `Models` — consumer: stage 6 (council entries only); Task 5 (`band-rubric.md`'s promotion data covers councils, design §15.9)
 - `Spend` — consumer: stage 6 (council entries only)
 - `Timestamp` — consumer: a human auditing the record's timeline; stage 6
+- `Updated` — writer: `crew-record.py`'s `decision update`. Consumer: a human auditing the record's timeline
 
 **Goal-slug format**
 - `<kebab-case-slug>-<4 lowercase hex chars>` — consumer: stage 4 (project lead generates it when creating the record directory)
@@ -1186,8 +1268,9 @@ Every name this file defines, with what consumes it.
 - `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the project lead's four checks, live and on a resume
 - `reviews/skeptical-r<n>-result.stderr` — writer: the same shell line's `2>` redirect, on the default runner's own command (`review-runner.md`), or the run script's `tee` on a replacement's (`substitution.md`). Consumer: a human or the project lead reading why a check failed; the project lead, which reads a replacement's session id from it
 - `reviews/<prefix>-r<n>-run.sh` — writer: the project lead, before it runs a replacement (`substitution.md`). Consumer: the pane or the headless shell that runs it
-- `reviews/skeptical-r<n>-result.txt` — writer: the shell redirect on a replacement's own command, in place of the `.json` (`substitution.md`). Consumer: the project lead, which reads the report out of it and runs the checks the runner supports
+- `reviews/skeptical-r<n>-result.txt` — writer: the shell redirect on a replacement's own command, in place of the `.json` (`substitution.md`). Consumer: the project lead, which reads the report out of it when the runner wrote no usable report file, and runs the checks the runner supports
 - `reviews/skeptical-r<n>-result.exit` — writer: the same shell line's trailing `echo $? >`, on the default runner's own command and on a replacement's alike. Consumer: the project lead's exit check, live and on a resume; its absence marks an attempt that never finished (`substitution.md`)
+- `reviews/baseline.md` — writer: the project lead, once per deliverable base, before the first skeptical round at that base (`skeptical-review.md`). Consumer: every reviewer's instructions file (`review-runner.md`); every IC the delivered window dispatches (`crew:delivered-window`); adjudication, which declines a finding on it
 - `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)
 - `reviews/<round-id>-reply.md` — the same file for a patch round from any other source, with `<round-id>` from `run.rounds`. Writer and consumer as above; the send that closes it is `crew:delivered-window`'s "Send the reply file"
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts

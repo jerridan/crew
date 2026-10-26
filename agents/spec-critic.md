@@ -59,7 +59,7 @@ lead a re-spec it did not need.
 ## Over-specification is a finding too
 
 A spec that dictates function names, file layouts, or an implementation an IC
-should choose is a `[Concern]`, not a strength. Name the line that
+should choose is a finding at most [Concern], not a strength. Name the line that
 over-specifies, and say what it should state instead — the requirement, not the
 solution.
 
@@ -79,6 +79,12 @@ Report each finding against the check it fails — one of the seven, or
 over-specification. Quote the exact spec line, or the exact charter
 requirement, in every finding. `[Critical]` here means the spec cannot be split
 until the finding is fixed.
+
+**Only a finding under check 1, 2 or 3 may be `[Critical]`**: falsifiable
+acceptance, charter coverage, or a contradiction. A finding under checks 4 to
+7, or under over-specification, is at most [Concern]. `re-spec needed` needs
+at least one `[Critical]` finding. With none, the verdict is `ready to split`,
+and the project lead fixes the wording itself.
 
 Your two verdict strings are `ready to split` and `re-spec needed`.
 

@@ -8256,7 +8256,9 @@ Deliberately different:
      declined with a reason stays declined unless the reviewer names new
      evidence. "Run one more review" past the cap is `crew-record.py
      arm-review --head <sha> --past-cap`, and the project lead never
-     hand-edits `review_pending`. No run has exercised these changes.
+     hand-edits `review_pending`. A review run arms every head, its own
+     assist push included. The accepted-verdict stop is a goal run's rule.
+     No run has exercised these changes.
 
 118. **The spec critic is capped at two rounds — 2026-10-25, T79.** Issue
      #112. The spec critic ran 44 rounds over 18 spec-path records, about 2.9
@@ -8343,3 +8345,40 @@ Deliberately different:
      Launch check 1 and the IC contract's worktree rule, which forbids `cd
      <path> && git`, both need a correction. T79 changes neither file. T80
      owns the correction, and no run has exercised it.
+
+122. **The principal's code review of PR #118 caught what three crew rounds
+     did not — 2026-10-26, T79.** Crew reviewed PR #118 in three rounds.
+     `reviews/skeptical-r1.md` found 0 critical, 4 concerns and 10 nits.
+     `skeptical-r2.md` found 2 concerns and 2 nits. `skeptical-r3.md`
+     accepted the diff with 1 nit. The principal then ran `/code-review
+     medium 118`. It found ten more, and nine were real.
+     `reviews/principal-r1-reply.md` holds the ledger.
+
+     Five were edge cases in the script and its record shape. `fdb4d8a`
+     fixed four. A `decision` title with a newline is now refused.
+     `--pending` with `--answer`, `--citation` or `--confidence` exits 2.
+     `decision` on a mistyped path exits 2 and no longer creates a stray
+     record directory. `decision update` keeps the pending `Timestamp:` and
+     writes `Updated:` after it. The fifth, `--opened-at` rejecting other
+     ISO-8601 forms, was fixed in the rule: the ledger header's `Opened at:`
+     now takes the script's own `YYYY-MM-DDTHH:MM:SSZ` shape, written from
+     the clock.
+
+     Four were holes in the rules, closed by `8776d62..e7e2a43`. The
+     sibling-record scan matched `UTF-8` and review records, so a sibling now
+     counts only when its `goal_slug` starts with the lowercased token and
+     its `run.kind` is not `review`. The baseline was measured once while a
+     review run's base moves, so it is now written again at each new base.
+     The accepted-verdict stop applied to a review run's assist push, so a
+     review run now arms every head, and `arm_review` exits 2 on a review
+     run (§15.117). An ungated no-wait round was told to run `round
+     go-ahead`, so it now writes none.
+
+     The tenth finding was declined. It said a superseded pending head is
+     recorded nowhere. The ordinary supersession path records it nowhere
+     either, and the new head holds the old head's scope as its ancestor.
+
+     The three crew rounds were resumed sessions that read the delta. The
+     principal's reviewer was fresh and used a different recipe. Whether that
+     difference found the nine is a question for a later finding, not a
+     conclusion here. No run has exercised the fixes.

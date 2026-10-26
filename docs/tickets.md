@@ -3345,6 +3345,9 @@ Scope, one line per issue:
     greps for its pattern, and a weak-test finding gets a mutation check.
 11. #117: `crew-record.py` writes every `decisions.md` entry and every round
     stamp from the clock, with `decision` and `round`.
+12. The principal's `/code-review medium 118` round: nine fixes to the script
+    (`fdb4d8a`) and to the rules (`8776d62..e7e2a43`), one finding declined
+    (design §15.122).
 
 Out of scope: the Codex sandbox flags that #115 asked for. Nothing in the
 repo or in the run could test them.

@@ -333,9 +333,9 @@ In order:
    rounds" says. Run its "Verify before you believe", which greps for the
    pattern each finding named, run its "Fix rounds" where a check fails, then
    run its "Integrate" in full, with the substitution "A change request"
-   names. A package that answers an `accepted` skeptical report integrates
-   with `--no-review accepted-round` (`skeptical-review.md`'s "When the review
-   runs"). One checkout holds one writer, and a group that finishes before the
+   names. On a goal run, a package that answers an `accepted` skeptical
+   report integrates with `--no-review accepted-round`. A review run arms
+   every head instead (`skeptical-review.md`'s "When the review runs"). One checkout holds one writer, and a group that finishes before the
    next one starts is a group a resume can tell apart. **Then complete every
    accepted item line that names this group's package**, in the reply file:
    the commit sha, one line on what changed, and what your verification found.
@@ -387,8 +387,8 @@ that reservation at the new head, which the integration does for you. A round
 that declines everything moves no head, so the reserved review runs on the
 head it already named.
 
-**When a source stops.** The skeptical review stops on an `accepted` verdict,
-as `skeptical-review.md` says, and CI is quiet on a green run. A quiet source
+**When a source stops.** On a goal run, the skeptical review stops on an
+`accepted` verdict, as `skeptical-review.md` says, and CI is quiet on a green run. A quiet source
 ends its rounds. **A source a person drives is never quiet.** Nothing the
 principal or a bot sends says it is finished, so the window stays open.
 

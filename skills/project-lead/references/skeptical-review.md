@@ -114,6 +114,11 @@ reason `accepted-round`, so a resume owes nothing for it. A later head that
 carries new scope, such as a change request or a finding from another
 source, is armed as above.
 
+**A review run arms every head.** On a `run.kind: review` run, an accepted
+verdict stops nothing, and `--no-review accepted-round` exits 2. Crew's own
+assist push is a head like any other: its integration takes
+`--review-head`, and the next round reviews it.
+
 **One more round past the cap is a command.** When the principal says "run
 one more review", run `crew-record.py <record-dir> arm-review --head <branch
 head> --past-cap`. It arms the head although `review_rounds` equals the cap,

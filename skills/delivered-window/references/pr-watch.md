@@ -4,10 +4,8 @@ The exact command lines and arming steps for `SKILL.md`'s "Watch the PR" and
 "Send the reply file". That file owns when each one runs.
 
 Fill `<owner>`, `<repo>` and `<n>` from the deliverable's `pr_url`, which is
-`https://github.com/<owner>/<repo>/pull/<n>`. Fill `<since>`, `<seen ids>`,
-`<draft>` and `<head>` from `run.watch`: `last_polled_at`, `seen_ids` joined
-by spaces, `draft` and `head`. Every command runs as the principal's own
-`gh` account.
+`https://github.com/<owner>/<repo>/pull/<n>`. Every command runs as the
+principal's own `gh` account.
 
 When `run.watch` has no `head`, the record is from before the key. Take
 `head` from the `Reviewed:` line of the latest `reviews/skeptical-r<n>.md`,
@@ -17,74 +15,23 @@ lead already knows.
 
 ## The poll
 
-This block defines the poll, and runs nothing. Each read that fails prints
-nothing, so a network error costs one quiet poll.
+The poll is the script `pr-watch.sh`, in `scripts/` beside this file's
+`references/` directory. `<watch-script>` below is its absolute path. Take
+the path from the base directory of the `crew:delivered-window` invocation
+that you read last.
 
-```bash
-export SINCE='<since>'
-R='<owner>/<repo>'; N=<n>; PR='<pr_url>'
-seen=' <seen ids> '; draft=<draft>; head=<head>; merged=''
-poll() {
-  d=$(gh pr view "$PR" --json isDraft -q .isDraft 2>/dev/null) || true
-  if [ "$d" = true ]; then draft=true
-  elif [ "$d" = false ] && [ "$draft" = true ]; then
-    draft=false
-    echo "ready $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) the PR left draft"
-  fi
-  h=$(gh pr view "$PR" --json headRefOid -q .headRefOid 2>/dev/null) || true
-  if [ -n "$h" ] && [ "$h" != "$head" ]; then
-    head=$h
-    u=$(gh api "repos/$R/commits/$h" --jq '.author.login // empty' 2>/dev/null) || u=''
-    echo "push $h ${u:--} $(date -u +%Y-%m-%dT%H:%M:%SZ) new head"
-  fi
-  revs=$(gh api --paginate "repos/$R/pulls/$N/reviews" --jq '.[]
-    | if .state == "PENDING" then "pending \(.id)"
-      elif ((.body // "") != "" or .state == "APPROVED") and .submitted_at >= $ENV.SINCE
-        and ((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
-      then "review \(.id) \(.user.login) \(.submitted_at) \(.state) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"
-      else empty end' 2>/dev/null) || revs=''
-  export PEND=" $(printf '%s\n' "$revs" | sed -n 's/^pending //p' | tr '\n' ' ')"
-  out=$( {
-    printf '%s\n' "$revs" | grep '^review '
-    gh api --paginate "repos/$R/pulls/$N/comments" --jq '.[]
-      | (.pull_request_review_id // 0) as $r | select($ENV.PEND | contains(" \($r) ") | not)
-      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
-      | "review-comment \(.id) \(.user.login) \(.created_at) \(.path):\(.line // .original_line // 0) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
-    gh api --paginate "repos/$R/issues/$N/comments" --jq '.[]
-      | select(.created_at >= $ENV.SINCE)
-      | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
-      | "comment \(.id) \(.user.login) \(.created_at) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
-    gh pr checks "$PR" --json name,bucket,link,startedAt --jq '.[]
-      | select(.bucket == "fail")
-      | "check \(if (.link // "") == "" then .name else .link end | gsub(" "; "_"))@\(.startedAt) - \(.startedAt) \(.name) failed"'
-  } 2>/dev/null ) || true
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    id=${line#* }; id=${id%% *}
-    case "$seen" in *" $id "*) continue ;; esac
-    seen="$seen$id "
-    printf '%s\n' "$line"
-  done <<< "$out"
-  m=$(gh pr view "$PR" --json state,mergedAt -q '"\(.state) \(.mergedAt)"' 2>/dev/null) || true
-  q=$(gh api graphql -f owner="${R%/*}" -f repo="${R#*/}" -F n="$N" -f query='
-    query($owner: String!, $repo: String!, $n: Int!) {
-      repository(owner: $owner, name: $repo) {
-        pullRequest(number: $n) { isInMergeQueue mergeQueueEntry { enqueuedAt } }
-      }
-    }' --jq '.data.repository.pullRequest | select(.isInMergeQueue) | .mergeQueueEntry.enqueuedAt // "-"' 2>/dev/null) || q=''
-  if [ "${m%% *}" = MERGED ]; then
-    merged=1
-    echo "merged $N - ${m#* } the PR merged"
-  elif [ "${m%% *}" = CLOSED ]; then
-    merged=1
-    echo "closed $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) the PR closed"
-  elif [ -n "$q" ]; then
-    [ "$q" != - ] || q=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-    merged=1
-    echo "queued $N - $q the PR entered the merge queue"
-  fi
-}
-```
+**Run the script from the plugin every time. Never copy it, and never write
+the poll into the record or a scratch file.** A copy keeps the poll of the
+plugin version that wrote it, and a later fix never reaches it (design
+§15.123).
+
+The script reads its start state from `<record-dir>/state.json` at each start.
+The PR is the one deliverable with a `pr_url`. The cursor is `run.watch`:
+`last_polled_at`, `seen_ids`, `draft` and `head`. A `head` of 7 characters or
+more that starts the PR's head sha is the same head. The script exits 2 with
+a message on stderr when the record has no `state.json`, has no single
+`pr_url`, or has no `run.watch.last_polled_at` and `head`. Each `gh` read that
+fails prints nothing, so a network error costs one quiet poll.
 
 The `submitted_at` and `created_at` filters use `>=`. GitHub times have
 one-second resolution, and `seen_ids` prevents a repeat.
@@ -174,17 +121,19 @@ gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'
 3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
    and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
    watch.draft true`.
-4. Fill "The monitor command" below from `run.watch`, and call
-   `Monitor` with it and `timeout_ms: 1800000`, so one cache read lands inside
-   the one-hour cache. Pass `persistent: false` when the tool offers that key.
+4. Call `Monitor` with "The monitor command" below and `timeout_ms:
+   1800000`, so one cache read lands inside the one-hour cache. Pass
+   `persistent: false` when the tool offers that key.
+5. When the monitor ends at once with a `pr-watch.sh:` message, the record
+   is not ready. Do what the message says, then arm it again.
 
 ## The monitor command
 
-The poll block, then this loop. Pass the whole text as the `Monitor`
-command.
+The script with no mode polls every 60 seconds. It stops after a `merged`,
+`closed` or `queued` line.
 
 ```bash
-while [ -z "$merged" ]; do poll; sleep 60; done
+bash <watch-script> <record-dir>
 ```
 
 ## Arm the keep-alive job
@@ -212,10 +161,11 @@ step 1 is for: a second job would double the reads.
 
 ## The fallback poll
 
-The poll block, then this line, in one Bash call per keep-alive fire.
+The script with the mode `once`, in one Bash call per keep-alive fire. It
+polls one time and prints `isDraft=<true|false>` last.
 
 ```bash
-poll; echo "isDraft=$d"
+bash <watch-script> <record-dir> once
 ```
 
 A fire that prints `isDraft=true` while `run.watch.draft` is false runs

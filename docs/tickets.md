@@ -3394,3 +3394,26 @@ refused.
 
 Read first: design §15.121; `full-path.md` "Check the launch conditions";
 `ic-contract.md` "The worktree rule".
+
+## T81 — Ship the PR watch poll as a plugin script
+
+Status: done
+Depends on: T72
+Stage: 8 (design §15.123)
+
+Scope. A project lead saved the filled poll to a file in the record and ran
+that file at each arming, so a fix to the poll never reached the run. Move
+the poll to `skills/delivered-window/scripts/pr-watch.sh`. The script reads
+the PR and `run.watch` from `state.json`. Point `pr-watch.md`'s monitor
+command and fallback poll at the script, and forbid a copy.
+
+Files: `skills/delivered-window/scripts/pr-watch.sh`,
+`skills/delivered-window/references/pr-watch.md`,
+`skills/delivered-window/SKILL.md`, `CLAUDE.md`, `docs/design.md`,
+`docs/tickets.md`, and the version in both manifests.
+
+Done when: the script, run against a seeded record, prints an empty-body
+approval, stops on a merged PR and exits 2 on a malformed record; and no
+step in `pr-watch.md` tells the project lead to fill in or save the poll.
+
+Read first: design §15.123; `pr-watch.md` "The poll" and "Arm the monitor".

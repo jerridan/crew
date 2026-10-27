@@ -6,8 +6,9 @@ The repo root is the plugin root.
 
 Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
-two hooks and the three scripts under `skills/project-lead/scripts/`: they are
-code, run against a seeded record (design §15.38, §15.50).
+two hooks, the three scripts under `skills/project-lead/scripts/` and
+`skills/delivered-window/scripts/pr-watch.sh`: they are code, run against a
+seeded record (design §15.38, §15.50, §15.123).
 
 ## Layout
 
@@ -18,6 +19,7 @@ code, run against a seeded record (design §15.38, §15.50).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
+| `skills/delivered-window/scripts/pr-watch.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item | the project lead's `Monitor` call and keep-alive fire, from the plugin directory |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md` | what a review run puts on GitHub: the sanitizing, the effect rule, the shapes and the post command | the project lead, in a review run |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |

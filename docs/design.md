@@ -8382,3 +8382,29 @@ Deliberately different:
      principal's reviewer was fresh and used a different recipe. Whether that
      difference found the nine is a question for a later finding, not a
      conclusion here. No run has exercised the fixes.
+
+123. **A saved copy of the poll hid an approval — 2026-10-27, T81.** On PR
+     #9157 the principal had to tell the project lead about an approval. The
+     watch did not report it. The approval was `APPROVED` with an empty body.
+     Crew 0.1.88 (#108) reports that review, but the run's watch did not use
+     0.1.88's poll.
+
+     The run started on 0.1.87. At its first arming, the project lead wrote
+     the filled poll to `pr-watch.sh` in the record, and each later arming
+     ran that file. `pr-watch.md` said to pass the whole text as the
+     `Monitor` command, and it did not forbid a file. The session moved to
+     0.1.88 and read the new skill files, but the file kept the 0.1.87 poll.
+     The project lead then copied the file with `sed` to the record of its
+     next goal. Two review records from before #108 had the same kind of
+     copy. The principal reported the defect in both kinds of run.
+
+     The poll is now a plugin script, `skills/delivered-window/scripts/
+     pr-watch.sh`. It reads the PR and the cursor from `state.json` at each
+     start, so an arming always runs the poll of the loaded plugin version.
+     `pr-watch.md` forbids a copy. The script also takes a short `head` sha
+     as the same head, because that record held a 10-character sha, and
+     the first poll from it printed a false `push`.
+
+     The script ran against a seed of the #9157 record. It printed the
+     approval, ended on the merge, and exited 2 on each malformed record. No
+     crew run has armed the watch from the script yet.

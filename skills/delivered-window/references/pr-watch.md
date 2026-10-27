@@ -15,10 +15,9 @@ lead already knows.
 
 ## The poll
 
-The poll is the script `pr-watch.sh`, in `scripts/` beside this file's
-`references/` directory. `<watch-script>` below is its absolute path. Take
-the path from the base directory of the `crew:delivered-window` invocation
-that you read last.
+The poll is the script `scripts/pr-watch.sh` in this skill's directory.
+`<watch-script>` below is its absolute path. Make the path from the base
+directory of the last `crew:delivered-window` invocation that you read.
 
 **Run the script from the plugin every time. Never copy it, and never write
 the poll into the record or a scratch file.** A copy keeps the poll of the

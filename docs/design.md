@@ -8518,3 +8518,51 @@ Deliberately different:
      #115 also asked for Codex sandbox flags. They stay out of scope:
      Codex is not installed on this machine, so nothing could test them, as
      T79 found.
+
+125. **The severity rubric on goal runs — 2026-10-30.** The spec critic, the
+     split critic and the skeptical review tagged findings `[Critical]`,
+     `[Concern]` or `[Nit]`, while `/crew:review` already used
+     `skills/review/references/severity-rubric.md` (item 124, R3). A goal run
+     now uses that rubric too, and the three tags are gone from `agents/`
+     and `skills/`. This item supersedes the tag rules that earlier items
+     state. No run has exercised the change.
+
+     Every finding carries a required `Severity:` line: `blocking`,
+     `suggestion`, `nit` or `unsure`. `review-output.md` owns the shape. The
+     four-line return reads `Findings: <n> blocking, <n> suggestion, <n> nit,
+     <n> unsure` and `Blocking count: <n>`, and a report file ends with three
+     closing lines: `Findings:`, `Verdict:` and `Blocking count:`. Every
+     goal-run review dispatch, the skeptical review's instructions file and a
+     replacement spec critic's prompt carry the rubric whole. The rubric
+     speaks of merging code, so each critic says what `blocking` means for
+     its own artifact: for the spec, it cannot be split as written; for the
+     split, it is not dispatchable.
+
+     The project lead labels each finding again, and its label alone decides
+     the action. `skills/project-lead/SKILL.md` holds the goal-run map beside
+     its adjudication rule: `blocking` is a fix round, a re-spec, a re-split
+     or a patch-round package; `suggestion` and `nit` are applied inline or
+     declined; `don't post` and `not real` go to the ledger only; `unsure` is
+     one question to the principal. On the skeptical review, an accepted
+     suggestion or nit is a patch-round package, because the project lead
+     edits the target repo only at Integrate. The label decides first, and
+     `skeptical-review.md`'s dispositions then decide what a finding
+     becomes. `github-review.md` stays the owner on a review run.
+
+     A round with no finding the project lead labels `blocking` is the last
+     of its kind. A spec-critic round goes on to the sweep, and a
+     split-critic round to dispatch. A skeptical verdict is `accepted`
+     exactly when no finding is blocking, and the project lead's labels
+     override the reviewer's verdict in both directions, with a
+     `decisions.md` entry. An accepted round's patch packages integrate with
+     `--no-review accepted-round`. The caps and a review run's rules do not
+     change.
+
+     `record-format.md` names the label in a report, in the skeptical reply
+     file and in a `decisions.md` entry for a critic finding the project lead
+     does not apply. `crew-stats.py` reports label totals per review kind
+     from the `Findings:` line, in its table and under `labels` in `--json`.
+     A report written before this item has no such line, so the script counts
+     its tagged finding headings, with Critical as blocking, Concern as
+     suggestion and Nit as nit. A seeded record with one report of each shape
+     printed the expected totals and exited 0.

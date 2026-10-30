@@ -97,7 +97,7 @@ read it" takes that to the failure path.
 **The default runner gets a cap, and a replacement gets an alarm.**
 `claude -p --output-format json` prints nothing until it exits, so a
 no-output alarm would kill a healthy default run. A replacement streams its
-progress, so its run script kills it after 180 seconds with no output.
+progress, so its run script kills it after 600 seconds with no output.
 `substitution.md`'s "Running it" holds that script.
 
 ## The default command
@@ -151,7 +151,8 @@ and does not inspect the whole PR again. Resume when all three hold:
 
 Otherwise launch as round 1 does. Take the session id from the record, never
 from a runner's `--last`. A fresh launch at a later round takes the base that
-`/crew:review`'s "Find the base of a later round" sets for it.
+"Find the base of a later round" sets for it, in
+`skills/review/references/later-round.md`.
 
 **Write the resume prompt** to `<record-dir>/reviews/skeptical-r<n>-resume.md`.
 Write the instructions file as well, as every round does. Fill this block:
@@ -229,7 +230,7 @@ write `fresh_reason: "resume exited <status>"`, and launch as round 1 does.
 That launch is not the failure path's retry. A resume that exits 0 and fails
 a check below takes the failure path, and its retry launches fresh. Before
 either fresh launch, replace the previous-head base the resume used. First,
-recompute the merge base, as `/crew:review`'s "Find the base of a later
+recompute the merge base, as `later-round.md`'s "Find the base of a later
 round" does for a round that is not resumed. Then write it to
 `deliverable.base`. Then write the round's instructions file again, with the
 whole-PR range `git diff <merge base>..HEAD`.
@@ -524,7 +525,7 @@ All four pass, or this is the failure path below:
 - After the default command, `-result.exit` reads 124: the `timeout 2700`
   cap stopped it.
 - After a replacement, `-result.exit` reads 124 and `-result.stderr` ends
-  with `watchdog: no output for 180 seconds`: the alarm killed it.
+  with `watchdog: no output for 600 seconds`: the alarm killed it.
 
 Take the failure path below for either one.
 

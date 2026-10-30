@@ -218,8 +218,9 @@ It prints three sections, each `none` when it is empty:
 3. The last 60 lines of the log of the first failed job of the most recent
    of those runs whose conclusion is `failure`.
 
-Then `== mergeable` and the PR's `mergeable` value. A missing argument exits
-2. `SKILL.md`'s "Watch the PR" says how the output sorts the item.
+Then `== mergeable` and the PR's `mergeable` value. A missing argument
+exits with status 2. `SKILL.md`'s "Watch the PR" says how the output sorts
+the item.
 
 ## Post a reply
 

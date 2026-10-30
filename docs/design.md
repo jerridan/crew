@@ -8474,9 +8474,9 @@ Deliberately different:
      `crew:delivered-window` sorts a `dequeued` item as a `ci` round when a
      `merge_group` run failed, and as a notice otherwise. Two seeded runs are
      the evidence, in the record's `reports/scripts.md` and
-     `reports/patch-scripts.md`. `pr-watch.sh once`
-     ran on a seeded record against the fixture PR
-     jerridan/crew-fixture-string-kit#38, and printed `dequeued`.
+     `reports/patch-scripts.md`. `pr-watch.sh once` ran on a seeded record
+     against the fixture PR jerridan/crew-fixture-string-kit#38, and printed
+     `dequeued`.
      `dequeue-diagnosis.sh` ran on that PR, and printed three `none`
      sections and the `mergeable` value. No crew run has exercised either
      script.

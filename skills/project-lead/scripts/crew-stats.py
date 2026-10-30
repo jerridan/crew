@@ -16,12 +16,12 @@ principal approved as they stood: over the escalations that carry `draft`, the
 count with `draft_changed: false` divided by the count with `draft_changed` not
 `null`, as a whole percentage, or `-` when no draft was answered. It prints per
 run and in the totals, and `--json` carries it under `untouched_draft_rate`.
-An escalation answered `"Gate: off"` or `"auto: findings answered"` is no ask
-the principal saw. The script leaves both out of the `escalations` count, and
-`read_drafts` skips them because the skill writes their `draft_changed` as
-`null`. The second is a skeptical round that posted with no wait
-(`crew:delivered-window`'s "The go-ahead gate"); the script counts those as
-`auto_posts`, per run and in the totals.
+An escalation answered `"Gate: off"`, `"auto: findings answered"` or
+`"auto: no findings"` is no ask the principal saw. The script leaves all three
+out of the `escalations` count, and `read_drafts` skips them because the skill
+writes their `draft_changed` as `null`. The last two are a skeptical round that
+posted with no wait (`crew:delivered-window`'s "The go-ahead gate"); the script
+counts those as `auto_posts`, per run and in the totals.
 A replaced step is not a Claude session, so `spend.py` cannot price it: its
 cost prints as `unmeasured` unless the record's `usage` object carries a
 dollar figure, and a `usage.tokens` count with no dollar figure prints in its
@@ -577,7 +577,8 @@ def read_decisions(record: Path, skips: list) -> tuple[int, int, int, dict]:
 
 # Two escalation answers mark a go-ahead no principal saw (`record-format.md`).
 AUTO_POST = "auto: findings answered"
-UNSEEN_ANSWERS = ("Gate: off", AUTO_POST)
+AUTO_NO_FINDINGS = "auto: no findings"
+UNSEEN_ANSWERS = ("Gate: off", AUTO_POST, AUTO_NO_FINDINGS)
 
 
 def read_drafts(run: dict) -> dict:
@@ -651,7 +652,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "escalations": len([e for e in as_list(run.get("escalations"))
                             if not (isinstance(e, dict) and e.get("answer") in UNSEEN_ANSWERS)]),
         "auto_posts": len([e for e in as_list(run.get("escalations"))
-                           if isinstance(e, dict) and e.get("answer") == AUTO_POST]),
+                           if isinstance(e, dict) and e.get("answer") in (AUTO_POST, AUTO_NO_FINDINGS)]),
         "compactions": len(as_list(run.get("compactions"))),
         "steps_skipped": read_steps_skipped(record.name, run, skips),
         "steps_substituted": read_steps_substituted(record.name, run, skips),

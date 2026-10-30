@@ -2,8 +2,9 @@
 
 This file owns what a review run puts on GitHub, and how.
 `skills/review/SKILL.md` says when each part runs. `<owner>`, `<repo>` and
-`<n>` come from `run.pr`. Every command runs as the principal's own `gh`
-account. `severity-rubric.md` is beside this file. `pr-watch.md` is in
+`<n>` come from `run.pr`, and `<pr_url>` is the deliverable's `pr_url`.
+`<plugin-dir>` is the plugin's root, as `skills/review/SKILL.md`'s "Paths"
+says. Every command runs as the principal's own `gh` account. `severity-rubric.md` is beside this file. `pr-watch.md` is in
 `skills/delivered-window/references/`, and every other file this one names is
 in `skills/project-lead/references/`.
 
@@ -201,7 +202,7 @@ decides:
 | The round | `event` |
 |---|---|
 | an open posted finding is `blocking` | `REQUEST_CHANGES` |
-| on the assist path, the round still owes a fix on this head; or the round posts an `unsure` question | `COMMENT` |
+| the round posts an `unsure` question | `COMMENT` |
 | anything else | `APPROVE` |
 
 On the principal's own PR the event is `COMMENT`, whatever the findings are.
@@ -242,7 +243,7 @@ review with `gh pr review`.
 **Before an `APPROVE` post, re-read the head:**
 
 ```bash
-gh pr view <n> --json headRefOid,reviewDecision,mergeable
+gh pr view <pr_url> --json headRefOid,reviewDecision,mergeable
 ```
 
 Post the approval only when `headRefOid` is the head the round reviewed, or
@@ -252,13 +253,21 @@ that head. When `mergeable` reads `CONFLICTING`, after this re-read or after
 any head move, post nothing. Report the conflict to the principal in your next
 message, and take no further action on it.
 
+**`mergeable` reads `UNKNOWN` for a while after a push.** When it reads
+`UNKNOWN`, read again after ten seconds, up to three times, before an
+approval posts. When it still reads `UNKNOWN`, report that to the principal.
+The approval then waits for the next wake.
+
+**`reviewDecision` does not stop the approval.** When it reads
+`CHANGES_REQUESTED` from a reviewer other than crew, name that reviewer in
+your next message to the principal. The approval still posts.
+
 **Build the JSON with `review-json.py`, and write it outside the repo.** It
 is the one way to build the JSON. Never retype the body or a comment: a
-retyped text can lose its marker. Run it from the plugin directory, the one
-that holds `skills/`:
+retyped text can lose its marker. Run it by its absolute path:
 
 ```bash
-python3 skills/review/scripts/review-json.py <draft path> --commit <sha> --event <EVENT> > <json file>
+python3 <plugin-dir>/skills/review/scripts/review-json.py <draft path> --commit <sha> --event <EVENT> > <json file>
 ```
 
 It takes every section of the draft except `--- summary`, which never posts.

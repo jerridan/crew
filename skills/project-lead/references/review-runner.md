@@ -313,9 +313,9 @@ suite fails there for a reason that has nothing to do with the diff. On a
 review run with a `Gates` section, the command is the `Setup` section's
 (`SKILL.md`, "Standing instructions"). Otherwise the scout records it beside
 the suite command (`SKILL.md`, "Scout"). `/crew:review`'s "Review" says when
-a review run runs it again. Run it as the project lead, in the worktree, before the launch — never by
-granting the child a rule for it, which would let the review install
-whatever it liked. A setup that ran adds the line "Dependencies are
+a review run runs it again. Run it as the project lead, in the worktree,
+before the launch. Never grant the child a rule for it, because that rule
+would let the review install whatever it liked. A setup that ran adds the line "Dependencies are
 installed. Do not install." to the instructions ("Reviewer instructions").
 
 **Before the deliverable's first round, the baseline runs here.**

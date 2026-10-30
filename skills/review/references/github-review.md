@@ -160,16 +160,20 @@ GitHub labels the event itself.
 In this order:
 
 1. A count of the findings, in plain words: "One finding, inline.", "Two
-   findings: one inline, one below." or "No findings." On the principal's
-   own PR, add this sentence: "GitHub does not let an author approve or
-   request changes on their own pull request, so this review posts as a
-   comment."
+   findings: one inline, one below." or "No findings." On a later round
+   that raises no new finding, the count reads "No new findings." One line
+   per earlier finding that stays open follows it, with its round and its
+   first words, such as "Round 1: The loop stops one row early." On the
+   principal's own PR, add this sentence: "GitHub does not let an author
+   approve or request changes on their own pull request, so this review
+   posts as a comment."
 2. The list of findings that are not inline, each in the comment shape
    without its marker.
 3. On the assist path, one line that names the pushed commits, such as
    "Commits 3f9c2a7 and 8b1d4e0 on this branch fix the blocking findings."
-   At the `Rounds:` cap, a note follows it that names each blocking finding
-   that remains.
+   At the `Rounds:` cap, one more line follows it that names each blocking
+   finding that remains. `/crew:review`'s "The assist path" says how those
+   findings post.
 4. The marker `<!-- pr-review: skeptical-r<n> -->`, last.
 
 The body holds no summary of the PR. The author already knows what the PR
@@ -206,6 +210,9 @@ decides:
 | an open posted finding is `blocking` | `REQUEST_CHANGES` |
 | the round posts an `unsure` question | `COMMENT` |
 | anything else | `APPROVE` |
+
+At the assist path's `Rounds:` cap, the blocking findings that remain are
+posted findings too, so the first row holds.
 
 On the principal's own PR the event is `COMMENT`, whatever the findings are.
 GitHub refuses `APPROVE` and `REQUEST_CHANGES` there. Compare the login with
@@ -250,8 +257,12 @@ gh pr view <pr_url> --json headRefOid,reviewDecision,mergeable
 
 Post the approval only when `headRefOid` is the head the round reviewed, or
 crew's own push that the charter's `Re-review:` line let skip its re-review.
-Any other head is a head move: post no approval, and the next round reviews
-that head. When `mergeable` reads `CONFLICTING`, after this re-read or after
+Any other head is a head move. On a head move, post the round's review with
+the event `COMMENT`, its body and its comments, and no approval. Its
+`commit_id` stays the head the round reviewed, and GitHub accepts a review on
+an earlier commit of the PR. The next round reviews the new head, and
+approves there when it is clean. Only the approval waits for that round.
+When `mergeable` reads `CONFLICTING`, after this re-read or after
 any head move, post nothing. Report the conflict to the principal in your next
 message, and take no further action on it.
 

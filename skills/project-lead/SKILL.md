@@ -27,6 +27,7 @@ agent is absolute: its cwd is not yours.
 | `record-format.md` | the record: every file, field and state transition, and how `crew-record.py` writes `state.json` | before you create the record |
 | `band-rubric.md` | the band: the model it buys, and which review steps it skips | at the split, and again before you skip a step |
 | `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
+| `../review/references/severity-rubric.md` | the labels a reviewer proposes, and you give each finding again | inject it whole beside `review-output.md`; read it before you label |
 | `skeptical-review.md` | the review of the finished diff, and when it runs | at the hand-over, and on each later branch head |
 | `review-runner.md` | the mechanics of a headless review: the detached worktree, the instructions file, the runner, the checks and the session id | when `skeptical-review.md` sends you to it |
 | `substitution.md` | a review step the principal named another reviewer for | before you dispatch that step |
@@ -374,27 +375,23 @@ listing names for this role: the report and the reservation file itself.
 That write is what reserves the round.
 
 Then dispatch `crew:spec-critic`, named `spec-critic-r<n>` for the same
-round, with `spec.md`, `charter.md`, the repo path, `review-output.md`
-whole, the standing instructions as "Standing instructions" above says, and
-the absolute path it writes its findings to:
+round, with `spec.md`, `charter.md`, the repo path, `review-output.md` and
+`severity-rubric.md` whole, the standing instructions as "Standing
+instructions" above says, and the absolute path it writes its findings to:
 `reviews/spec-critic-r<n>.md`. Every review dispatch in this run reserves
 and names its round the same way, and returns the short result
 `review-output.md` defines, read as "Every dispatch is named" above says;
-open the file only when the count says there is something to adjudicate.
+open the file only when its `Findings:` line counts a finding.
 
-`Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
-`spec-writer-r<n>` again for the next round. The critic's next round reads
-the whole spec. **Two rounds is the cap.** At the cap, apply every open
+A round with a finding you label `blocking` means: revise `spec.md`, and
+dispatch `spec-writer-r<n>` again for the next round. The critic's next round
+reads the whole spec. **Two rounds is the cap.** At the cap, apply every open
 finding you accept to `spec.md` yourself, log the rest in `decisions.md` as
 declined with reasons, and go on to the split. Do not ask.
 
-**A `[Concern]` or `[Nit]` on the spec is a wording fix.** Apply each one you
-accept to `spec.md` yourself, and dispatch no spec writer and no critic round
-for it.
-**A spec-critic or split-critic round with no `[Critical]` finding is
-finished when the project lead applies the findings it accepts inline.** No
-writer and no critic round follows it. A `ready to split` round with
-findings ends this way.
+**A round with no finding you label `blocking` is the last.** Your labels
+decide, not the critic's verdict. Apply each finding you accept to `spec.md`
+yourself, and go on to the sweep. No spec writer and no critic round follows.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,
@@ -407,6 +404,23 @@ different thing and the same file states it.
 **Every review in this run is adjudicated the same way**, at every stage:
 restate each finding in your own words, verify it against the repo, and push
 back in writing where it is wrong here. **A finding is a claim, not a verdict.**
+
+**Then label each finding again yourself**, by `severity-rubric.md`, with the
+artifact or the code open. A critic's own definition of `blocking` holds for
+its artifact. You can also give `don't post` or `not real`. Your label is
+final, and it alone decides whether the finding takes action:
+
+| Your label | The action |
+|---|---|
+| `blocking` | a fix round: a re-spec, a re-split, or a patch-round package on the skeptical review |
+| `suggestion`, `nit` | apply it inline, or decline it. No writer or IC round runs for one alone. On the skeptical review, an accepted one is a patch-round package, because you edit the target repo only at "Integrate" ("Choose the shape") |
+| `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
+| `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |
+
+When your label differs from the reviewer's, the ledger names both. On the
+skeptical review, the label decides only whether a finding takes action, and
+`skeptical-review.md`'s dispositions then decide what it becomes. A review run
+(`run.kind: review`) uses `github-review.md`'s label rule instead.
 
 ## A step the principal replaced
 

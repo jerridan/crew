@@ -8460,9 +8460,12 @@ Deliberately different:
      R5, two launch words and a default. `Rounds: <n>` caps the assist
      path's fix rounds, 3 by default. `Re-review: skip when prose-only or
      under 20 lines` skips the re-review of crew's own push. Both are
-     charter lines in `record-format.md`. A round whose ledger posts nothing
-     takes no gate, round 1 included, and records the answer
-     `auto: no findings`, which `crew-stats.py` counts as an auto post.
+     charter lines in `record-format.md`. A round takes no gate, round 1
+     included, when its suite ran and its report states no finding. It
+     records the answer `auto: no findings`, which `crew-stats.py` counts as
+     an auto post. The principal's review of the PR narrowed this rule. It
+     first read "a round whose ledger posts nothing", which let a round with
+     no suite, or with every finding held back, post with no gate.
 
      R6, the watch past the queue. Two queue drops and a merge conflict went
      unwatched in the trial, because the window ended at `queued`.
@@ -8499,11 +8502,14 @@ Deliberately different:
      three times before it escalates. The default runner gets a 2700-second
      cap, because `claude -p --output-format json` prints nothing until it
      exits. The replacement streams progress, so `substitution.md`'s run
-     script kills it after 180 seconds with no output. The alarm is a kill,
+     script kills it after 600 seconds with no output. The alarm is a kill,
      not a warning: the script kills the runner and its children, and
      writes exit 124. The failure path's one retry then runs, and a second
      failure escalates. The reason: a runner that streams progress and then
-     stays silent for 180 seconds is the hang the issue named.
+     stays silent for 600 seconds is the hang the issue named. The
+     principal's review of the PR raised the limit from 180 seconds. Codex
+     prints nothing while a suite command runs, so a four-minute suite would
+     be killed at 180 seconds. A 21-minute hang is still caught at 600.
 
      #115 also asked for Codex sandbox flags. They stay out of scope:
      Codex is not installed on this machine, so nothing could test them, as

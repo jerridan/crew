@@ -258,11 +258,21 @@ message, and take no further action on it.
 **`mergeable` reads `UNKNOWN` for a while after a push.** When it reads
 `UNKNOWN`, read again after ten seconds, up to three times, before an
 approval posts. When it still reads `UNKNOWN`, report that to the principal.
-The approval then waits for the next wake.
+The approval then waits for the next wake. The re-read and the post run
+again at the next wake of any kind, or at the principal's reply to that
+report, whichever comes first.
 
 **`reviewDecision` does not stop the approval.** When it reads
-`CHANGES_REQUESTED` from a reviewer other than crew, name that reviewer in
-your next message to the principal. The approval still posts.
+`CHANGES_REQUESTED`, it names no reviewer, because it is one value for the
+whole PR. Find the reviewers with this command:
+
+```bash
+gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews --jq '.[] | select(.state == "CHANGES_REQUESTED") | .user.login'
+```
+
+Leave out the principal's own login, which `gh api user --jq .login` gives
+and "The event rule" already reads. Name each other reviewer in your next
+message to the principal. The approval still posts.
 
 **Build the JSON with `review-json.py`, and write it outside the repo.** It
 is the one way to build the JSON. Never retype the body or a comment: a

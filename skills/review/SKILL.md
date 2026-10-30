@@ -17,7 +17,8 @@ it applies, posts replies, and merges on the principal's word. This
 file holds only what a review run does differently.
 
 **Paths.** `<project-lead-dir>` is the `skills/project-lead` directory beside
-this skill's base directory, which the invocation names. A file this skill
+this skill's base directory, which the invocation names. `<plugin-dir>` is
+the plugin's root, the grandparent of `<project-lead-dir>`. A file this skill
 names with no directory is in `<project-lead-dir>/references/`, except
 `github-review.md`, `severity-rubric.md` and `later-round.md`, which are in
 `references/` beside this file, and `pr-watch.md`, which is in
@@ -239,7 +240,8 @@ gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[] | select(.pu
 An issue comment by the bot is not a review, and you do not read it.
 Compare the review's `commit_id` with `run.review_pending.head`. **A review
 on an older head is stale**: the ledger header's `Auto-review:` line says
-so, and no claim comes from it. On the current head, a claim is a finding the bot marked blocking.
+so, and no claim comes from it. On the current head, a claim is a finding
+the bot marked blocking.
 When the review's `state` is `CHANGES_REQUESTED`, every finding in its body
 and every inline comment is a claim. Otherwise only an item whose text holds
 `[blocking]` is a claim. Each claim is one ledger line with source `bot`.
@@ -268,8 +270,7 @@ python3 <project-lead-dir>/scripts/crew-record.py <record-dir> round open skepti
 ```
 
 Leave out `--gated` when the round takes no gate. `crew:delivered-window`'s
-"The go-ahead gate" says which rounds take it. A round whose ledger posts
-nothing takes no gate, round 1 included.
+"The go-ahead gate" says which rounds take it.
 
 ## Report and wait at the gate
 
@@ -282,10 +283,10 @@ go-ahead gate" says when. Then send no message and no ask. Write the entry as
 below, with the answer `"auto: findings answered"` and `draft_changed` `null`,
 then go to "Post the review".
 
-**A round whose ledger posts nothing posts with no wait**, round 1 included.
-Write the entry the same way, with the answer `"auto: no findings"`. Its
-review is the body "No findings." and the event that `github-review.md`'s
-"The event rule" gives.
+**A round whose ledger posts nothing posts with no wait**, as
+`crew:delivered-window`'s "The go-ahead gate" says. Write the entry the
+same way, with the answer `"auto: no findings"`. Its review is the body "No
+findings." and the event that `github-review.md`'s "The event rule" gives.
 A round of the assist path that opens a fix round is not this case: "The
 assist path" says why.
 
@@ -404,8 +405,9 @@ fix, push, re-review, approve, so an approval never lands before a fix:
 2. **When no accepted finding is `blocking`**, post the review as the review
    path does. The sequence ends.
 3. **Otherwise post nothing on this head.** Open the fix round for the
-   `blocking` findings. A `suggestion` whose fix is one line joins it. Open
-   this skeptical round without `--gated`. Run
+   `blocking` findings. `github-review.md`'s "The label rule" says which
+   `suggestion` findings join it. Open this skeptical round without
+   `--gated`. Run
    `crew:delivered-window`'s "Findings from a review" steps 3 to 11 as they
    stand, on the deliverable branch in `run.checkout`, as a `principal`
    round: the principal asked for the fix at launch. Its ledger names one
@@ -429,18 +431,16 @@ fix, push, re-review, approve, so an approval never lands before a fix:
    `round replied` for this round too. When it was skipped, post it now,
    under this round's id, after the re-read. Its
    comments are the `suggestion`, `nit` and `unsure` findings that post. Its
-   body names the fix commits. Its event is `github-review.md`'s "The event
-   rule": `APPROVE` when no `blocking` finding remains and no `unsure`
-   question posts, and `REQUEST_CHANGES` when a `blocking` finding remains at
-   the `Rounds:` cap.
+   body names the fix commits. `github-review.md`'s "The event rule" gives
+   its event.
 
 A round that reaches step 3 posts no empty `COMMENT`. Its gate is the fix
 round's gate, and not the no-findings rule of "Report and wait at the gate".
 
 **The fix-round cap is the charter's `Rounds:` line**, which
-`record-format.md` defines. At the cap, open no further fix round. The open `blocking` findings post in the
-review body as a note that they remain, as `github-review.md`'s "The body
-shape" says.
+`record-format.md` defines. At the cap, open no further fix round. The open
+`blocking` findings post in the review body as a note that they remain, as
+`github-review.md`'s "The body shape" says.
 
 A merge is the window's "A merge request" as it stands.
 

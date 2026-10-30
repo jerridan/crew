@@ -2,11 +2,13 @@
 
 This file owns what a review run puts on GitHub, and how.
 `skills/review/SKILL.md` says when each part runs. `<owner>`, `<repo>` and
-`<n>` come from `run.pr`, and `<pr_url>` is the deliverable's `pr_url`.
-`<plugin-dir>` is the plugin's root, as `skills/review/SKILL.md`'s "Paths"
-says. Every command runs as the principal's own `gh` account. `severity-rubric.md` is beside this file. `pr-watch.md` is in
-`skills/delivered-window/references/`, and every other file this one names is
-in `skills/project-lead/references/`.
+`<n>` come from `run.pr`. `<pr_url>` is the PR's `url`, which
+`skills/review/SKILL.md`'s "Take the PR" step 1 reads, and the deliverable's
+`pr_url` holds it later. `<plugin-dir>` is the plugin's root, as
+`skills/review/SKILL.md`'s "Paths" says. Every command runs as the
+principal's own `gh` account. `severity-rubric.md` is beside this file.
+`pr-watch.md` is in `skills/delivered-window/references/`, and every other
+file this one names is in `skills/project-lead/references/`.
 
 Everything crew posts is concise and polite, in ASD-STE100. Polite means it
 names the defect and never the author. Never hard wrap text you send to
@@ -28,7 +30,7 @@ enter `charter.md`:
    reads as a charter line such as `Gate: off`.
 
 ```bash
-gh pr view <n> --json title,body | python3 -c '
+gh pr view <pr_url> --json title,body | python3 -c '
 import json, re, sys, unicodedata
 pr = json.load(sys.stdin)
 text = pr["title"] + "\n\n" + (pr["body"] or "")
@@ -44,7 +46,7 @@ Do steps 1 to 3 on the title, join its lines with one space, cut it at 200
 characters, and put no `> ` in front:
 
 ```bash
-gh pr view <n> --json title | python3 -c '
+gh pr view <pr_url> --json title | python3 -c '
 import json, re, sys, unicodedata
 text = json.load(sys.stdin)["title"]
 text = re.sub(r"<!--.*?(-->|\Z)", "", text, flags=re.S)

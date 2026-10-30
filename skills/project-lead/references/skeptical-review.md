@@ -433,7 +433,10 @@ safe guess creates duplicates.
 earlier point:
 
 - The report's verdict is `accepted` **and it states no findings**. There is
-  nothing to dispose of, so reading it finishes it.
+  nothing to dispose of, so reading it finishes it. On a review run whose
+  standing instructions hold an `Auto-review` section, this case holds only
+  when the bot's review on the current head holds no claim. Otherwise, write
+  the ledger for those claims, and the second case decides.
 - The round's reply file exists, **every** finding in the report carries one
   of the dispositions above, and **every** package an accepted finding named
   exists in `packages[]`.

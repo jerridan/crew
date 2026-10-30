@@ -211,11 +211,12 @@ bash <dequeue-script> <owner> <repo> <n>
 
 It prints three sections, each `none` when it is empty:
 
-1. The PR's `removed_from_merge_queue` timeline events, with their reason.
-2. The `merge_group` workflow runs whose `head_branch` holds `pr-<n>-`, with
-   each run's conclusion and URL.
+1. The PR's `RemovedFromMergeQueueEvent` timeline items, read through
+   GraphQL, each with its time, its actor and its reason.
+2. The `merge_group` workflow runs whose `head_branch` holds `/pr-<n>-`,
+   newest first, with each run's conclusion and URL.
 3. The last 60 lines of the log of the first failed job of the most recent
-   such run.
+   of those runs whose conclusion is `failure`.
 
 Then `== mergeable` and the PR's `mergeable` value. A missing argument exits
 2. `SKILL.md`'s "Watch the PR" says how the output sorts the item.

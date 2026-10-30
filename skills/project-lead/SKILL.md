@@ -387,7 +387,7 @@ A round with a finding you label `blocking` means: revise `spec.md`, and
 dispatch `spec-writer-r<n>` again for the next round. The critic's next round
 reads the whole spec. **Two rounds is the cap.** At the cap, apply every open
 finding you accept to `spec.md` yourself, log the rest in `decisions.md` as
-declined with reasons, and go on to the split. Do not ask.
+declined with reasons, and go on to the sweep. Do not ask.
 
 **A round with no finding you label `blocking` is the last.** Your labels
 decide, not the critic's verdict. Apply each finding you accept to `spec.md`

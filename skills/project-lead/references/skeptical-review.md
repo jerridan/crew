@@ -599,8 +599,11 @@ needed`. When the reviewer wrote `patch round needed` and no finding is
 `decisions.md`. Then write the verdict that results as the last line of the
 reply file: `Verdict after labels: accepted` or `Verdict after labels: patch
 round needed`. That line, not the report, is the verdict of the round. A
-session that resumes reads it there. A round with no reply file holds no
-finding, and its verdict is `accepted`. A review run (`run.kind: review`)
+session that resumes reads it there. An `unsure` finding does not count as
+`blocking` when you write the line. When the principal answers that it is
+`blocking`, rewrite the line to `patch round needed` before the package for
+that finding integrates. A round with no reply file holds no finding, and its
+verdict is `accepted`. A review run (`run.kind: review`)
 keeps its own rules, and an accepted verdict stops nothing there.
 
 `patch round needed` opens a round of the delivered window, never a fix round

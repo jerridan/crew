@@ -163,11 +163,14 @@ This working directory is now a detached checkout at <pending head sha>.
 
 <part 5 of "Reviewer instructions", the later-round block, filled in>
 
-Follow your first instructions on the suite. Use the same report shape and
-the same two verdict strings as before. Open the report with this line, and
-nothing before it:
+Follow your first instructions on the suite. Use the same two verdict
+strings as before. Open the report with this line, and nothing before it:
 
 Reviewed: <pending head sha>
+
+Give every finding a `Severity:` line. End the report with the three closing
+lines: `Findings:`, `Verdict:` and `Blocking count:`. Your first instructions
+may name an older count line. Write `Blocking count:` instead.
 
 <the output sentence>
 
@@ -409,13 +412,14 @@ That is `git rev-parse HEAD` in this working directory, and it is how the
 reader knows which tree your findings describe.
 
 Then the findings, in the shape those rules give. Give every finding a
-`Severity:` line. End the report with the three closing lines: `Findings:`,
+`Severity:` line. Add one section, titled "Checked and found nothing",
+listing what you looked for and did not find. A check you never ran does not
+go in it.
+
+End the report with the three closing lines, after that section: `Findings:`,
 `Verdict:` and `Blocking count:`. Your two verdict strings are `accepted` and
 `patch round needed`. Use "accepted" exactly when no finding is blocking, and
 "patch round needed" exactly when at least one finding is blocking.
-
-Add one section, titled "Checked and found nothing", listing what you looked
-for and did not find. A check you never ran does not go in it.
 ```
 
 **Fill the suite paragraph with one of these two literal blocks, verbatim

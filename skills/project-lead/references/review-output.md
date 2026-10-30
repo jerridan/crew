@@ -13,38 +13,39 @@ This file owns the format and nothing else. What a reviewer looks for, and
 the stance it takes, belong to its own agent definition or to
 `skeptical-review.md`.
 
-## Severity tags
+## Severity labels
 
-Tag each finding with one of:
-
-- `[Critical]` — blocks the project lead's next step. Each agent states what
-  that step is. The artifact cannot be used as written: a requirement is
-  wrong or missing, an invariant is broken, a check fails. A gap the next
-  step can absorb — an enumeration that misses an item, a wording that a
-  reader would still act on correctly — is not blocking. Tag it `[Concern]`.
-  Each `[Critical]` costs a full round of the artifact's author and of you
-  (design §15.50).
-- `[Concern]` — likely to cause a problem; should be addressed.
-- `[Nit]` — minor, take it or leave it.
-
-A check that passes needs no severity tag. Tag only `[Critical]`, `[Concern]`
-and `[Nit]` findings — the ones that need attention.
-
-### Two optional lines a dispatch can require
-
-When your dispatch asks for them, put these two lines after each finding's
-title, each on its own line:
+Put this line after the title of every finding, on its own line:
 
 ```
 Severity: blocking | suggestion | nit | unsure
+```
+
+`Severity:` is the label you propose for the finding. `severity-rubric.md`
+defines the four labels, and your dispatch carries its definitions. When
+your own definition says what `blocking` means for your artifact, that
+meaning wins. Each `blocking` finding costs a full round of the
+artifact's author and of the project lead (design §15.50). A gap the next
+step can absorb is not blocking.
+
+A check that passes is not a finding, so it gets no label.
+
+The project lead labels each finding again, and its label decides the
+action. `skills/review/references/github-review.md` owns the rule that maps a
+label to its action on a review run, and `skills/project-lead/SKILL.md` owns
+it on a goal run.
+
+### One optional line a dispatch can require
+
+When your dispatch asks for it, put this line after the `Severity:` line:
+
+```
 Pre-existing: yes | no
 ```
 
-`Severity:` is the label you propose for the finding. Your dispatch defines
-the four labels. `Pre-existing:` says whether the defect sits in code that the
-change did not add, change or aggravate. A dispatch that does not ask for
-them gets reports without them. `skills/review/references/github-review.md`
-owns the rule that maps a label to its action.
+`Pre-existing:` says whether the defect sits in code that the change did not
+add, change or aggravate. A dispatch that does not ask for it gets reports
+without it.
 
 ## Cannot verify
 
@@ -70,9 +71,9 @@ where the project lead reads it from:
 
 ```
 Wrote: <the absolute path>
-Findings: <n> critical, <n> concern, <n> nit
+Findings: <n> blocking, <n> suggestion, <n> nit, <n> unsure
 Verdict: <one of your two verdict strings>
-Critical count: <n>
+Blocking count: <n>
 ```
 
 The project lead's context is the most expensive place in the run, and a
@@ -99,15 +100,18 @@ and which is what a denied report write falls back to there
 You carry no `SendMessage`, so a finding you leave out of the report reaches
 nobody.
 
-## The two verdict lines
+## The three closing lines
 
-End your report file with the same two lines that end your final message:
+End your report file with these three lines. The skeptical review has no
+four-line return, and it ends its report with them too:
 
 ```
+Findings: <n> blocking, <n> suggestion, <n> nit, <n> unsure
 Verdict: <one of your two verdict strings>
-Critical count: <n>
+Blocking count: <n>
 ```
 
-Your own agent definition names your two verdict strings, and
-`skeptical-review.md` names the skeptical review's. Use one of those two word
-for word. Always include the critical count, even when it is zero.
+The last two of the three lines are the verdict pair: `Verdict:` and
+`Blocking count:`. Your own agent definition names your two verdict
+strings, and `skeptical-review.md` names the skeptical review's. Use one of
+those two word for word. Always include every count, even when it is zero.

@@ -163,11 +163,14 @@ This working directory is now a detached checkout at <pending head sha>.
 
 <part 5 of "Reviewer instructions", the later-round block, filled in>
 
-Follow your first instructions on the suite. Use the same report shape and
-the same two verdict strings as before. Open the report with this line, and
-nothing before it:
+Follow your first instructions on the suite. Use the same two verdict
+strings as before. Open the report with this line, and nothing before it:
 
 Reviewed: <pending head sha>
+
+Give every finding a `Severity:` line. End the report with the three closing
+lines: `Findings:`, `Verdict:` and `Blocking count:`. Your first instructions
+may name an older count line. Write `Blocking count:` instead.
 
 <the output sentence>
 
@@ -351,10 +354,13 @@ edit. The findings come back to you, and you decide what each one earns.
 shape.** It has four parts, and a fifth for any round after the first, in
 this order:
 
-1. **`review-output.md`, verbatim.** It owns the severity tags, the
-   `Cannot verify` rule, the report-never-fix rule and the two closing lines,
-   and it is the same text every review dispatch injects. The child process
-   reads no file of this plugin, so a reference by name would not resolve.
+1. **`review-output.md`, verbatim.** It owns the `Severity:` line, the
+   `Cannot verify` rule, the report-never-fix rule and the three closing
+   lines, and it is the same text every review dispatch injects. The child
+   process reads no file of this plugin, so a reference by name would not
+   resolve. On a goal run, `skills/review/references/severity-rubric.md`
+   follows it, verbatim. A review run carries the rubric's paragraphs in
+   `github-review.md`'s reviewer paragraph instead.
 2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
    says.
 3. **`reviews/baseline.md`, whole**, then this sentence, verbatim: "A test
@@ -405,15 +411,15 @@ Reviewed: <pending head sha>
 That is `git rev-parse HEAD` in this working directory, and it is how the
 reader knows which tree your findings describe.
 
-Then the findings, in the shape those rules give, ending with their two
-closing lines. Your two verdict strings are `accepted` and
-`patch round needed`. Use "accepted" when you found nothing that must change
-before this ships, and "patch round needed" when you found at least one
-[Critical], or a [Concern] serious enough that shipping without a fix would
-be wrong.
+Then the findings, in the shape those rules give. Give every finding a
+`Severity:` line. Add one section, titled "Checked and found nothing",
+listing what you looked for and did not find. A check you never ran does not
+go in it.
 
-Add one section, titled "Checked and found nothing", listing what you looked
-for and did not find. A check you never ran does not go in it.
+End the report with the three closing lines, after that section: `Findings:`,
+`Verdict:` and `Blocking count:`. Your two verdict strings are `accepted` and
+`patch round needed`. Use "accepted" exactly when no finding is blocking, and
+"patch round needed" exactly when at least one finding is blocking.
 ```
 
 **Fill the suite paragraph with one of these two literal blocks, verbatim
@@ -492,7 +498,7 @@ only when the write is denied. That sentence is the only addition:
 ```
 For a replacement runner: write the complete report to <absolute output
 path>, and also return it whole as your output, `Reviewed: <sha>` first and
-the two verdict lines last, whether or not the write succeeded.
+the three closing lines last, whether or not the write succeeded.
 ```
 
 ## Check the review before you read it
@@ -534,7 +540,7 @@ retire the attempt and rerun it. A resumed round that fails this way reruns
 fresh, as "Resume the reviewer" says. When the previous round's report opens
 with another sha, the resumed reviewer overwrote it. Restore it from the
 `result` field of `skeptical-r<n-1>-result.json` when that text ends with
-the two verdict lines. Use the fallback layout below, with the previous
+the verdict pair. Use the fallback layout below, with the previous
 head sha on the `Reviewed:` line. Otherwise, record the loss in
 `decisions.md` with the round number, and go on. The current round still
 fails and reruns fresh.
@@ -550,7 +556,7 @@ unverified.
 
 **When the report file is missing, read `result` in the saved JSON.** A
 reviewer denied its report write prints the report there. When that text ends
-with the two verdict lines, it is the report. Write the file yourself, in
+with the verdict pair, it is the report. Write the file yourself, in
 this layout, so every report on disk opens the same way:
 
 ```

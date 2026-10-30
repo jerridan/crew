@@ -24,8 +24,8 @@ Five rules. A review that drops one is not this step.
 - **Assume the diff is wrong, and look for how.** A pass is a finding you
   failed to make, not a result.
 - **Run the suite.** A pass an IC reported is a claim about another tree.
-- **Report every finding by severity.** `review-output.md` owns the three
-  tags and the shape of the two closing lines.
+- **Label every finding.** `review-output.md` owns the `Severity:` line and
+  the three closing lines, and `severity-rubric.md` defines the labels.
 - **Say what you looked for and did not find.** A check that found nothing
   is evidence; a check you never ran is not, and the report must let the
   reader tell them apart.
@@ -98,12 +98,14 @@ can record a head it will never review and forget it. **Name every head in
 that list in your next message to the principal**, as work that shipped
 unreviewed. A silent cap is worse than no cap.
 
-**An accepted verdict stops the review too**, on a goal run. When a skeptical
-round's verdict is `accepted`, every package of the patch round that answers
-its findings integrates with `crew-record.py integrate <package-id>
---review-head <sha> --no-review accepted-round`. That write arms nothing. It
-leaves `review_pending` `null` and appends `{head, reason: "accepted-round",
-at}` to `run.unreviewed_heads`. Your next message to the principal says the
+**An accepted verdict stops the review too**, on a goal run. The verdict is
+the one after your own labels ("The verdict pair" below). An `accepted`
+round holds no `blocking` finding, so every package of its patch round
+answers a suggestion or a nit. Each one integrates with
+`crew-record.py integrate <package-id> --review-head <sha> --no-review
+accepted-round`. That write arms nothing. It leaves `review_pending` `null`
+and appends `{head, reason: "accepted-round", at}` to
+`run.unreviewed_heads`. Your next message to the principal says the
 review stopped on an accepted verdict, and names the head. When
 `review_pending` already names another head, two cases apply. If that round is
 not entered (`review_rounds` is below `review_pending.round`),
@@ -382,10 +384,11 @@ of them is recoverable. A round from any other source follows
 those rounds.
 
 1. **Write the reply file**, `reviews/skeptical-r<round>-reply.md`, opening
-   with `record-format.md`'s header. It gives every finding in the report one
-   of the dispositions below. It is also the hand-off the next round reads:
-   the resume prompt carries it to the reviewer (`review-runner.md`'s "Resume
-   the reviewer").
+   with `record-format.md`'s header. It gives every finding in the report
+   your label and one of the dispositions below. It ends with the line
+   `Verdict after labels:` ("The verdict pair" below). It is also the
+   hand-off the next round reads: the resume prompt carries it to the
+   reviewer (`review-runner.md`'s "Resume the reviewer").
 2. **Open the round.** Run `round open` from the header you just wrote,
    right after it, as that skill's "Open the round" says.
 3. **Create those packages** in `packages[]`, with the ids the reply named.
@@ -408,6 +411,13 @@ source:
 **Every line of a skeptical round's ledger names its source.** The source is
 `review` for a finding from the skeptical report, and `bot` for a claim from
 the auto-review bot that a review run reads (`/crew:review`'s "Adjudicate").
+
+**On a goal run, the label decides first.** Label each finding of every
+round, whatever its source, as `SKILL.md`'s "Every review in this run is
+adjudicated the same way" says. Its map decides whether the finding takes
+action, and each ledger line names the label. For one that does, the rubric
+below decides the disposition. So a `blocking` finding on pre-existing code
+can still go out of scope. A question gets no label.
 
 **The rubric decides between the dispositions**, for every round of every
 source:
@@ -438,8 +448,9 @@ earlier point:
   when the bot's review on the current head holds no claim. Otherwise, write
   the ledger for those claims, and the second case decides.
 - The round's reply file exists, **every** finding in the report carries one
-  of the dispositions above, and **every** package an accepted finding named
-  exists in `packages[]`.
+  of the dispositions above, **every** package an accepted finding named
+  exists in `packages[]`, and, on a goal run, the file ends with its
+  `Verdict after labels:` line.
 
 A round that declines every finding is complete by the second rule, and so is
 one that sends every finding out of scope. Both reached the same end.
@@ -572,12 +583,28 @@ somewhere else.
 | **Hold**, a round's reply sent, its held items not yet a round | 1b, `run.watch.held` with no open round of that kind | the held items open their round |
 | **Ready 1**, the loop idle, the PR still a draft | 9, owe nothing | "Mark the PR ready" runs, and the PR leaves draft |
 
-## The two verdict lines
+## The verdict pair
 
 Your two verdict strings are `accepted` and `patch round needed`. The
-block in `review-runner.md`'s "Reviewer instructions" is where the reviewer is
-told both, and when each applies. `review-output.md` owns the shape of the
-two closing lines, and it leaves the strings to each producer.
+verdict is `accepted` exactly when the report holds no `blocking` finding,
+and `patch round needed` exactly when it holds one or more. The block in
+`review-runner.md`'s "Reviewer instructions" is where the reviewer is told
+both, and that rule. `review-output.md` owns the shape of the three closing
+lines, and it leaves the strings to each producer.
+
+**On a goal run, your labels decide the verdict.** When the reviewer wrote
+`accepted` and you label a finding `blocking`, the verdict is `patch round
+needed`. When the reviewer wrote `patch round needed` and no finding is
+`blocking` after your labels, the verdict is `accepted`. Log each change in
+`decisions.md`. Then write the verdict that results as the last line of the
+reply file: `Verdict after labels: accepted` or `Verdict after labels: patch
+round needed`. That line, not the report, is the verdict of the round. A
+session that resumes reads it there. An `unsure` finding does not count as
+`blocking` when you write the line. When the principal answers that it is
+`blocking`, rewrite the line to `patch round needed` before the package for
+that finding integrates. A round with no reply file holds no finding, and its
+verdict is `accepted`. A review run (`run.kind: review`)
+keeps its own rules, and an accepted verdict stops nothing there.
 
 `patch round needed` opens a round of the delivered window, never a fix round
 on a package: the packages are integrated and the work is handed over.

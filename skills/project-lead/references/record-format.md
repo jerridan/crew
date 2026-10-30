@@ -215,6 +215,9 @@ naming convention. Do not mix their contents.
   reservation file together to find the highest `<n>` on disk — a report
   alone is not enough, because a critic whose write was denied leaves no
   report at all, only its reservation file.
+  Every report gives each finding a `Severity:` label, and ends with the
+  three closing lines `Findings:`, `Verdict:` and `Blocking count:`
+  (`review-output.md`).
   Five files per skeptical review round under the default runner, always,
   and six under a replacement runner, always. Either runner adds the
   conditional reply file, and a later round that resumes its reviewer adds
@@ -260,13 +263,19 @@ naming convention. Do not mix their contents.
   report holds at least one finding to dispose of: `reviews/skeptical-r<n>-reply.md`,
   the project lead's adjudication of that report, one line per item it
   adjudicated — a finding, here, since the skeptical review reports only
-  findings — with its disposition — accepted with the package id it became,
-  declined with its reason, or out of scope with the goal proposed for it. A
-  report whose verdict is `accepted` and which states no findings needs no
-  disposing of, so `skeptical-review.md`'s "Adjudication is a ledger" writes
-  none. On a review run, a claim in the auto-review bot's review on the
-  current head is also an item to dispose of, so a round with one writes the
-  file. `skeptical-review.md`'s "The adjudication is complete" owns this.
+  findings — with the project lead's label and its disposition — accepted
+  with the package id it became, declined with its reason, or out of scope
+  with the goal proposed for it. When the project lead's label differs from
+  the reviewer's, the line names both. The file ends with one closing line,
+  `Verdict after labels: <accepted | patch round needed>`, the verdict of
+  the round once the project lead's labels apply (`skeptical-review.md`'s
+  "The verdict pair"). A resumed session reads the verdict there, never from
+  the report. A report whose verdict is `accepted` and which states no
+  findings needs no disposing of, so `skeptical-review.md`'s "Adjudication
+  is a ledger" writes none. On a review run, a claim in the auto-review
+  bot's review on the current head is also an item to dispose of, so a round
+  with one writes the file. `skeptical-review.md`'s "The adjudication is
+  complete" owns this.
 
   **`reviews/baseline.md` is one file per deliverable**, written by the
   project lead before the first skeptical round at each of the
@@ -639,7 +648,7 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. It is also what prices the run: `spend.py` reads each id's transcript subtree (Spend below). |
 | `review_rounds` | an integer: how many skeptical review rounds this run has entered. Starts at 0, and absent means 0. It names the round whose files are `reviews/skeptical-r<n>.*`. `skeptical-review.md` owns when it moves, what caps it, and why a retry leaves it where it is. |
 | `review_pending` | `{head, round}` — the branch head sha a skeptical review is owed on, and the round reserved for it — or `null` when none is owed. One object, not two fields, so the sha and the round it names cannot disagree. Every arming goes through `crew-record.py`'s `arm_review`, reached by `deliver --review-head` at the hand-over, by `integrate --review-head` when a delivered-window package integrates, and by `arm-review --head` on its own. `arm-review --head <sha> --past-cap` arms a head although `review_rounds` equals the cap, when the principal asks for one more round, and writes no `unreviewed_heads` entry. `run set review_pending null` is for clearing it and nothing else. `skeptical-review.md` owns every transition and what a set value means to a resumed run. |
-| `unreviewed_heads` | a list of `{head, reason, at}`, one per branch head that was handed over or pushed with no review armed for it. `reason` is `cap` when the review cap stopped the head, or `accepted-round` when the head is the patch round that answered an `accepted` skeptical report, written by `integrate` or `deliver` with `--no-review accepted-round`. Appended by `arm_review` in the same write that would have armed the head. Absent until the first one. No entry is a silent gap: the project lead names each one in its next message to the principal, a `cap` entry as work that shipped unreviewed and an `accepted-round` entry as a review that stopped on an accepted verdict (`skeptical-review.md`). |
+| `unreviewed_heads` | a list of `{head, reason, at}`, one per branch head that was handed over or pushed with no review armed for it. `reason` is `cap` when the review cap stopped the head, or `accepted-round` when the head is the patch round that answered a skeptical round whose verdict after the project lead's labels is `accepted` (the reply file's `Verdict after labels:` line, `skeptical-review.md`'s "The verdict pair"), written by `integrate` or `deliver` with `--no-review accepted-round`. Appended by `arm_review` in the same write that would have armed the head. Absent until the first one. No entry is a silent gap: the project lead names each one in its next message to the principal, a `cap` entry as work that shipped unreviewed and an `accepted-round` entry as a review that stopped on an accepted verdict (`skeptical-review.md`). |
 | `review_results` | an object keyed by round number, each value `{exit, denials_ok, report_ok, denied, at}`: the outcome of the four checks the project lead runs over a finished review. `denials_ok` is the outcome of check 2. `denied` is a list of the `tool_input` strings of every denial the review hit, `[]` when it hit none, and `"not applicable: <runner>"` for a replacement, which reports no denials. Adjudication reads `denied`. An entry written before T79 has none. A round with no entry has not been checked, whatever sits in `reviews/`. Absent until the first check. `review-runner.md`'s "Check the review before you read it" owns the checks and what a passing entry permits. |
 | `review_session_ids` | a list of session ids, one per skeptical review this run started. The project lead generates each id itself and appends it **before** it launches that review, then passes it to the review as `--session-id`, so a review that dies halfway is still priced (`review-runner.md` owns the procedure). `spend.py` prices these transcripts into the run and `crew-stats.py` reports them. **Both hooks ignore this field.** An id here is a foreign session, so it never goes in `run.session_ids`, whose ending marks the whole run `interrupted` (`hooks/session-end.py`, design §15.90h). Absent until the first review. |
 | `review_sessions` | an object keyed by round id (`skeptical-r<n>`). Each value is `{runner: "claude" \| "codex", session_id, resumed_from: <round id> \| null, fresh_reason: null \| <string>}`: the reviewer session that round ran in, the round whose session it resumed, and, for a later round that launched fresh, why. A round finds its predecessor's session here. Codex ids go only here, never in `review_session_ids`, which `spend.py` prices as Claude sessions. `review-runner.md`'s "Resume the reviewer" owns every write. Absent on a record from before T76, so its next round launches fresh. |
@@ -971,6 +980,14 @@ Timestamp: 2026-08-24T14:32:00Z
 ```
 
 An entry with high confidence and no citation is a defect.
+
+### A critic finding the project lead does not apply as labelled
+
+A spec-critic or split-critic finding that the project lead declines,
+labels `don't post` or `not real`, or labels differently from the critic,
+whether or not it applies it, gets one entry. Its `Answer:` names the label,
+and both labels when the project lead's differs from the critic's
+(`SKILL.md`'s "Every review in this run is adjudicated the same way").
 
 ### A preference-sweep entry
 

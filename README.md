@@ -410,8 +410,9 @@ To see what runs cost, from a checkout of this repo:
 python3 skills/project-lead/scripts/crew-stats.py
 ```
 
-It prints cost per band, fix rounds, promotions, councils, reviews and the
-review catch rate, over every record.
+It prints cost per band, fix rounds, promotions, councils, reviews, the
+review catch rate and the finding labels the reviewers proposed for each
+review kind, over every record.
 
 ## Roles
 

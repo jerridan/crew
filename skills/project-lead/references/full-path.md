@@ -101,14 +101,17 @@ Then dispatch `crew:split-critic`, named `split-critic-<deliverable-id>-r<n>`
 for the same round — `record-format.md`'s `reviews/` section scopes `<n>` to
 one deliverable, so the deliverable id in the name is what keeps two
 deliverables' first rounds from sharing `split-critic-r1` — with `split.md`,
-`spec.md`, the repo path, `review-output.md` whole, the standing instructions
-as `SKILL.md`'s "Standing instructions" says, and the absolute path it writes
-its findings to: `reviews/<deliverable-id>-split-critic-r<n>.md`.
+`spec.md`, the repo path, `review-output.md` and `severity-rubric.md` whole,
+the standing instructions as `SKILL.md`'s "Standing instructions" says, and
+the absolute path it writes its findings to:
+`reviews/<deliverable-id>-split-critic-r<n>.md`.
 
-Adjudicate as `SKILL.md`'s "Have the spec reviewed" says, and end a round
-with no `[Critical]` finding as it says. A failed invariant is not a style
-note — fix the split and dispatch again. Three re-splits is the cap; escalate
-at it.
+Adjudicate and label each finding as `SKILL.md`'s "Every review in this run
+is adjudicated the same way" says. Its map decides the action. A finding you
+label `blocking` is a failed invariant, not a style note — fix the split and
+dispatch again. Three re-splits is the cap; escalate at it. **A round with
+no finding you label `blocking` is the last.** Apply each finding you accept
+to `split.md` yourself, and the split goes to dispatch.
 
 ## Create the branch and the worktrees
 

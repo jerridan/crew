@@ -71,12 +71,13 @@ never the quoted block.
 
 `severity-rubric.md` defines the six labels. The reviewer proposes one of
 four on its `Severity:` line. When you adjudicate, label every finding again
-yourself, by the rubric, with the code open. You can also give a finding
-`don't post` or `not real`. When your label differs from the reviewer's, the
-ledger line holds both.
+yourself, by the rubric, with the code open. This holds for every round,
+whatever the source: the reviewer, a bot claim or a PR comment. A finding
+with no proposed label gets yours alone. A question or a notice gets no
+label. You can also give a finding `don't post` or `not real`. When your
+label differs from the reviewer's, the ledger line holds both.
 
-The label alone decides the post. The `[Critical]`, `[Concern]` and `[Nit]`
-tags decide nothing on a review run. Only a `blocking` finding earns a fix
+The label alone decides the post. Only a `blocking` finding earns a fix
 round.
 
 | Label | review path | assist path |
@@ -87,6 +88,11 @@ round.
 | don't post | ledger only | ledger only |
 | not real | ledger only | ledger only |
 | unsure | posts as a question | posts as a question |
+
+The table decides whether a finding that crew raises itself posts. It never
+removes the reply that an item from the PR or CI gets by
+`crew:delivered-window`'s "Send the reply file", unless the principal marked
+the item `no reply`.
 
 A `nit` that no one-line suggestion block fixes stays on the ledger. An
 `unsure` comment asks the author the question the repository does not

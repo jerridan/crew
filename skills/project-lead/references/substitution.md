@@ -71,9 +71,9 @@ while kill -0 "$pid" 2>/dev/null; do
   sleep 10
   now=$(cat "$r-result.txt" "$r-result.stderr" | wc -c)
   if [ "$now" = "$last" ]; then idle=$((idle + 10)); else idle=0; last=$now; fi
-  if [ "$idle" -ge 180 ]; then
+  if [ "$idle" -ge 600 ]; then
     pkill -P "$pid"; kill "$pid"; sleep 5; kill -9 "$pid" 2>/dev/null
-    echo "watchdog: no output for 180 seconds" >> "$r-result.stderr"
+    echo "watchdog: no output for 600 seconds" >> "$r-result.stderr"
     echo 124 > "$r-result.exit"
     kill "$tail_pid"; exit 124
   fi
@@ -89,7 +89,7 @@ progress in a pane. A later skeptical round changes only the `codex exec`
 line, as `review-runner.md`'s "Resume the reviewer" says.
 
 **The watchdog stops a hung runner.** When `-result.txt` and `-result.stderr`
-both stay unchanged for 180 seconds, the script kills the runner and its
+both stay unchanged for 600 seconds, the script kills the runner and its
 child processes. It writes the watchdog line to `-result.stderr` and 124 to
 `-result.exit`. Check 1 of `review-runner.md`'s "Check the review before you
 read it" reads that exit as a failed run.

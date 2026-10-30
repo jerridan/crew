@@ -359,7 +359,7 @@ one interruption; a run built in the wrong direction costs a day.
 5. The fix-round breaker fired at the top band.
 6. One of the three launch checks in `full-path.md`'s "Check the launch
    conditions" fails: the goal needs the full path and agent teams are off or
-   the session is worktree-isolated, or — on any goal — the checkout has no
+   no worktree root is reachable, or — on any goal — the checkout has no
    remote to push to. None can be fixed mid-run.
 7. The goal needs more than one **deliverable**. `full-path.md` runs one
    deliverable's packages; nothing loops over deliverables or reads

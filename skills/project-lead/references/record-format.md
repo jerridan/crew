@@ -56,6 +56,10 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> round replied <round-id>
 python3 <skill-dir>/scripts/crew-record.py <record-dir> round drop <round-id>
 ```
 
+Write every path in these commands as a literal. A worktree-isolated session
+refuses a command that it cannot parse, such as one that builds a path from
+a shell variable or loops over files (design §15.126).
+
 `decision` writes `decisions.md`, and "`decisions.md`" below owns its three
 forms. `round` writes `run.rounds`, and the `rounds` row below owns its
 fields.
@@ -878,7 +882,11 @@ The goal slug carries the run's random suffix, so the path is unique per run
 (design §15.34, §15.90). The root sits outside
 the target repo: a test runner that globs collects every worktree's tests as
 well as the repo's own, so a repo-local root makes the suite measure the wrong
-tree (design §15.35b, §15.37f).
+tree (design §15.35b, §15.37f). The one exception is a territory worktree in a
+worktree-isolated session whose guard refuses that root:
+`<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`.
+`full-path.md`'s launch check 1 owns that choice. The `worktree` field holds
+whichever path the run used (design §15.126).
 
 An IC writes its plan and its report into the record root, not into its
 worktree, so a worktree holds only the package's own work. That keeps
@@ -1274,7 +1282,7 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-dir>/worktrees/<territory-slug>`
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-dir>/worktrees/<territory-slug>`, or the isolated fallback "The path convention" names
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); crew's `SessionEnd` hook (matches a worktree to the ending session)
 - `orphaned` — consumer: crew's `SessionEnd` hook (writer); stage 5 `--resume` (prunes on it, design §10.1)

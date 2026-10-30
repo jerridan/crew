@@ -3374,7 +3374,7 @@ instructions"; `record-format.md` "`decisions.md`".
 
 ## T80 — Correct launch check 1 and the IC contract's worktree rule
 
-Status: open
+Status: done 2026-10-30
 Depends on: T79
 Stage: 8 (design §15.121)
 
@@ -3385,8 +3385,10 @@ session refuses that form and still runs the full path. `ic-contract.md`'s
 session allows. Correct both, as design §15.121 records.
 
 Files: `skills/project-lead/references/full-path.md`,
-`skills/project-lead/references/ic-contract.md`, `docs/design.md`,
-`docs/tickets.md`, and the version in both manifests.
+`skills/project-lead/references/ic-contract.md`,
+`skills/project-lead/references/record-format.md`,
+`skills/project-lead/references/autonomy-contract.md`, `docs/design.md`,
+`docs/tickets.md`, and the version in both manifests. GitHub issue #120.
 
 Done when: a worktree-isolated session runs the full path with no
 escalation, and an IC's `cd <worktree> && git` form is allowed where `-C` is

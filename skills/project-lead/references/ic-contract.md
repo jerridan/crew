@@ -56,9 +56,10 @@ it against your worktree.
 The shell working directory resets after EVERY Bash call. `cd` holds only
 within one invocation. Two forms keep every command on the right checkout:
 
-- git commands: always `git -C <your-worktree> <subcommand> ...`. Never
-  `cd <path> && git ...` — the harness denies any command that changes
-  directory before running git, even when an allow rule covers both parts.
+- git commands: `git -C <your-worktree> <subcommand> ...`. If the harness
+  refuses that form, use `cd <your-worktree> && git <subcommand> ...`
+  instead. Use the `cd` form only after a refusal: some harnesses deny it
+  even when an allow rule covers both parts.
 - every other command: carry its own `cd <your-worktree> &&` prefix.
 
 A command that follows neither form runs against the wrong checkout and

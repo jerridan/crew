@@ -34,10 +34,23 @@ Two checks bear on launch, on top of the teams-flag check `SKILL.md`'s
 "Every dispatch is named" owns — run that one first here. Escalate on any
 that fails — none can be fixed mid-run.
 
-1. **This session is not worktree-isolated.** `git -C <repo> status` from a
-   worktree other than your own: an isolated session is refused outright, and
-   the refusal names the reason. That command is the whole verification
-   (design §15.10, §15.23f).
+1. **The worktree root is reachable.** Probe `<record-dir>/worktrees`, the
+   default root, with three commands:
+
+   ```
+   git -C <repo> worktree add --detach <worktree-root>/probe HEAD
+   git -C <worktree-root>/probe status
+   git -C <repo> worktree remove <worktree-root>/probe
+   ```
+
+   If all three pass, that root is `<worktree-root>`. A worktree-isolated
+   session that refuses one of them uses
+   `<repo>/.claude/worktrees/crew/<goal-slug>` instead. Probe that root the
+   same way. Then `git -C <repo> check-ignore
+   -v <worktree-root>` must print a line. Record the root and the refusal in
+   `decisions.md`. The check fails only when both roots fail. A refused
+   `git -C` into a checkout the run never writes, such as the shared
+   checkout, is not a failure (design §15.121, §15.126).
 2. **This run can push and open a PR.** `git -C <repo> remote` prints at
    least one line. A checkout with no remote cannot push or open a PR (design
    §15.53).
@@ -132,12 +145,12 @@ remote:
 git -C <run.checkout> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
-Put `<worktree-root>` at `<record-dir>/worktrees`, inside this run's own
-record directory and outside the target repo (`record-format.md`).
-A repo-local root looks tidy and breaks the suite: a test runner that globs
-collects every worktree's tests as well as the repo's own, so the run measures
-the wrong tree (design §15.35b). Put the root inside the repo only with a
-reason, and record it.
+`<worktree-root>` is the root launch check 1 chose (`record-format.md`).
+A repo-local root breaks the suite: a test runner that globs collects every
+worktree's tests as well as the repo's own, so the run measures the wrong
+tree (design §15.35b). The isolated fallback is the one repo-local root
+allowed. Before you cut its first worktree, confirm that no package of the
+repo contains it, such as one under `apps/` or `packages/`.
 
 Write `worktrees.json` now: the IC's name, the absolute worktree path, its
 branch, this session's id, and `orphaned: false`. A deliverable checkout cut
@@ -248,9 +261,8 @@ territory works its packages in sequence in one worktree, so a range from the
 deliverable base carries the previous packages' files too, and every package
 after the first would be failed for scope drift it did not cause.
 
-Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
-denies any command that changes directory before it runs git, allow rule or not
-(design §15.23b).
+Run git in the IC's worktree in the form `ic-contract.md`'s "The worktree
+rule" gives (design §15.23b, §15.126).
 
 **You are the only reader of this package.** No review agent runs over it
 (design §15.94d), so this section and the suite run at "Integrate" are the

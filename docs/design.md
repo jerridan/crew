@@ -8555,8 +8555,10 @@ Deliberately different:
      exactly when no finding is blocking, and the project lead's labels
      override the reviewer's verdict in both directions, with a
      `decisions.md` entry. An accepted round's patch packages integrate with
-     `--no-review accepted-round`. The caps and a review run's rules do not
-     change.
+     `--no-review accepted-round`. The reply file ends with
+     `Verdict after labels:`, and a resumed session and the delivered window
+     read the verdict there, never from the report. The caps and a review
+     run's rules do not change.
 
      `record-format.md` names the label in a report, in the skeptical reply
      file and in a `decisions.md` entry for a critic finding the project lead

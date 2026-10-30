@@ -89,10 +89,9 @@ whole context (design §15.101).
 
 **The watch stops at the ship word, and when the principal asks.** To stop
 it, `TaskStop` the monitor, or delete the cron job as `pr-watch.md`'s "Arm
-the keep-alive job" step 1 says.
-Write a `decision` entry that the principal stopped the watch. When the
-principal asks for it again, write one that the principal started it again,
-then arm it.
+the keep-alive job" step 1 says. Write a `decision` entry that the principal
+stopped the watch. When the principal asks for it again, write one that the
+principal started it again, then arm it.
 
 ### The fallback
 
@@ -120,9 +119,8 @@ None of these is one of the five kinds of message below:
 - **The expiry notice** re-arms the monitor, as "Watch the PR" says.
 - **A keep-alive fire with no PR** takes the reply "ok". Run no tool, and
   sort nothing.
-- **A keep-alive fire with a PR** runs the fallback poll. Sort what it
-  prints like a monitor event, or reply "ok" when it prints only the draft
-  state.
+- **A keep-alive fire with a PR** runs the fallback poll. Sort what it prints
+  like a monitor event, or reply "ok" when it prints only the draft state.
 
 ## Sort what reaches you
 
@@ -406,8 +404,7 @@ quiet.** Nothing the principal or a bot sends says it is finished, so the
 window stays open.
 
 **At the review cap.** `skeptical-review.md` owns the cap, what it clears and
-what you tell the principal. Reaching it ends the reviews and never the
-window.
+what you tell the principal. Reaching it ends the reviews, never the window.
 
 ## The go-ahead gate
 
@@ -422,15 +419,19 @@ after a resume. A `principal` round takes the gate. A `ci` round and a
 
 **A `run.kind: review` run uses the same author rule**, so a bot-only
 `pr-comments` round and a `ci` round post with no wait there too. Its
-skeptical rounds differ: round 1 takes the gate. **A round whose ledger posts
-nothing takes no gate, round 1 included**, and its escalation records the
-answer `auto: no findings`. A later skeptical round posts with no wait when
-its report raises no new finding: every finding in it re-verifies one already
-posted. A round with a new finding takes the gate. A round that posts with no
-wait takes no gate: open it without `--gated`, and write no `round go-ahead`
-for it. Record its escalation as `/crew:review`'s "Report and wait at the
-gate" says. That entry, with the answer `auto: findings answered`, is the
-record of the post. Name the post in your next message to the principal.
+skeptical rounds differ: round 1 takes the gate. **A round takes no gate,
+round 1 included, when its suite ran and its report states no finding**: the
+first case of `skeptical-review.md`'s "The adjudication is complete". Its
+escalation records the answer `auto: no findings`. A fork PR's round with no
+`Suite: on fork` runs no suite, so it takes the gate. So does a round where
+you held any finding back as `don't post`, `not real` or `out of scope`. A
+later skeptical round posts with no wait when its report raises no new
+finding: every finding in it re-verifies one already posted. A round with a
+new finding takes the gate. Open a round that posts with no wait without
+`--gated`, and write no `round go-ahead` for it. Record its escalation as
+`/crew:review`'s "Report and wait at the gate" says. That entry, with the
+answer `auto: findings answered`, is the record of the post. Name the post in
+your next message to the principal.
 
 **The gate holds only the push and the replies.** It sits between "Take one
 group all the way through" and "Push once", in both procedures above. Push

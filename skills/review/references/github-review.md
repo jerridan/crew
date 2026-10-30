@@ -89,6 +89,11 @@ round.
 | not real | ledger only | ledger only |
 | unsure | posts as a question | posts as a question |
 
+The table decides whether a finding that crew raises itself posts. It never
+removes the reply that an item from the PR or CI gets by
+`crew:delivered-window`'s "Send the reply file", unless the principal marked
+the item `no reply`.
+
 A `nit` that no one-line suggestion block fixes stays on the ledger. An
 `unsure` comment asks the author the question the repository does not
 settle.

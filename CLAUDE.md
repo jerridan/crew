@@ -78,9 +78,9 @@ line and pane rule are unexercised (T77). T78 cut its pre-review steps to
 one scout and a charter template (§15.109). T82 reads the suite from the
 standing instructions, labels findings by the severity rubric, approves last,
 and keeps the watch past the merge queue (§15.124). No run has exercised T78
-or T82. The severity rubric on goal runs is built: the critics and the
-skeptical review label findings by it, and a round with no blocking finding
-is the last (§15.125). No run has exercised it.
+or T82. The severity rubric on goal runs is built: the project lead labels
+every review finding by it, whatever its source, and a round with no
+blocking finding is the last (§15.125). No run has exercised it.
 
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline

@@ -416,10 +416,15 @@ is final, and it alone decides whether the finding takes action:
 
 | Your label | The action |
 |---|---|
-| `blocking` | a fix round: a re-spec, a re-split, or a patch-round package on the skeptical review |
-| `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The skeptical review's: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there. When the verdict after your labels is `accepted`, that package integrates with `--no-review accepted-round` |
+| `blocking` | a fix round: a re-spec, a re-split, or a patch-round package on the skeptical review's, or on any finding after the hand-over |
+| `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The skeptical review's, or any finding after the hand-over: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there. When the verdict after your labels is `accepted`, that package integrates with `--no-review accepted-round` |
 | `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
 | `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |
+
+The label decides whether a finding takes action, as a package. It never
+removes the reply that an item from the PR or CI gets by
+`crew:delivered-window`'s "Send the reply file", unless the principal marked
+the item `no reply`.
 
 When your label differs from the reviewer's, the ledger names both. Each
 ledger line names the label. After the hand-over, the label decides only

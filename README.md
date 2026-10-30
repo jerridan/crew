@@ -162,10 +162,24 @@ Or give its number, with plain words to ask for more:
 The PR must be open. "Fix the blockers yourself" lets crew push fixes to the
 PR's branch, and it does not work on a PR from a fork.
 
-In a review run, crew waits for your go-ahead before it posts its first
-review. It shows you the draft first. You can change any finding or the
-text, or mark a finding "no reply". A later review that raises nothing new
-posts with no wait. A later review with a new finding waits for you again.
+With "fix the blockers yourself", two more phrases set how crew works. The
+first sets how many fix rounds crew runs before it stops and lists what is
+left. The default is 3. The second skips the review of crew's own push when
+that push changes only prose files, or fewer than 20 lines:
+
+```
+/crew:review 123 fix the blockers yourself, 2 fix rounds
+/crew:review 123 fix the blockers yourself, skip the re-review when prose-only or under 20 lines
+```
+
+In a review run, crew waits for your go-ahead before it posts a review with a
+finding. It shows you the draft first. You can change any finding or the
+text, or mark a finding "no reply". A review with no findings posts with no
+wait. A later review that raises nothing new posts with no wait. A later
+review with a new finding waits for you again.
+
+Put the test and setup commands in `.claude/crew.md`, under `Gates` and
+`Setup`. Crew then runs them with no scout.
 
 Replies and pushes in a review run follow the same rule as in a goal run.
 Crew waits when another person commented. A comment from a bot, a failed
@@ -175,24 +189,28 @@ every wait off, say `post without asking` with the command.
 Crew does not run a fork's tests or setup unless you say
 `run the suite on this fork`.
 
-Each finding has one of three effects:
+Crew gives each finding one label:
 
-| Effect | What crew posts |
-|---|---|
-| `incident` | A review that requests changes. |
-| `bug` | A review with comments only. |
-| `non-blocking` | A comment on something worth raising but not essential, such as a gap in test coverage. The review approves when only these are left. |
+| Label | What it means | What crew posts |
+|---|---|---|
+| `blocking` | Merging as it is harms a user, a customer or the business. | A comment, and a review that requests changes. With "fix the blockers yourself", crew fixes it first. |
+| `suggestion` | Real and worth a comment. The author decides. | A comment. |
+| `nit` | Correct but minor. | A comment, only when a one-line suggestion fixes it. |
+| `unsure` | The repo cannot settle it. | A question. The review stays a comment. |
 
-A nit never posts. A defect that the PR did not add stays out of the review.
-Crew lists it for you as a possible new goal. On your own PR, the review
-posts as a comment.
+A finding that is true but not worth the author's time, or not real, does not
+post. A defect that the PR did not add stays out of the review. Crew lists it
+for you as a possible new goal. On your own PR, the review posts as a
+comment.
 
 A new review that approves or comments clears an earlier "changes
 requested" that crew posted.
 
 Crew reviews each new push on the PR the same way. It leaves the merge to the
-PR's author. With "fix the blockers yourself", it merges when you tell it to.
-The run ends when the PR enters the merge queue, merges or closes.
+PR's author. With "fix the blockers yourself", it approves only after its
+fixes are pushed, and it merges when you tell it to. The run ends when the PR
+merges or closes. When the PR leaves the merge queue without a merge, crew
+tells you, with the reason.
 To use another reviewer, say so in plain words, as for a goal:
 `use Codex for the review`.
 
@@ -224,6 +242,8 @@ under a `##` heading with one of these names:
 | `Reviewers` | the reviewer to use in place of a review step, in plain words |
 | `Known red tests` | the tests that already fail on the main branch, and why |
 | `Gates` | the exact commands CI runs: tests, types, lint and build |
+| `Setup` | the one command that installs what the tests need in a fresh clone |
+| `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run checks that bot's blocking findings too |
 | `Hook workarounds` | what to do when a git hook stops a push or a merge |
 | `Ticket defaults` | where a new ticket goes, such as its team |
 | `PR readiness` | `ready` or `draft` |
@@ -327,15 +347,15 @@ A review run takes these steps:
 | Step | What happens |
 |---|---|
 | Take the PR | Reads the PR, refuses one that is not open, and opens the record. |
-| Scout | Finds the test command and the instruction files. |
+| Read the test commands from `.claude/crew.md`, or scout when it has none | Finds the test and setup commands. |
 | Review | A separate session reads the diff against the PR's description and the repo. |
-| Adjudicate | Crew checks each finding and its effect, and drops nits and defects that were already there. |
+| Adjudicate | Crew checks each finding and gives it a label, and drops findings that do not post and defects that were already there. |
 | Report and wait | Crew sends you the draft and waits for your go-ahead. |
 | Post | Crew posts the review on the PR, with one inline comment per finding. |
 | Watch | Crew watches the PR for a new push and for the merge. |
 | Later rounds | Each new push is reviewed again. A finding whose code is gone is marked resolved. A review that raises nothing new posts with no wait. |
-| The assist path | With "fix the blockers yourself", crew fixes the `incident` and `bug` findings and pushes them to the PR's branch, after your go-ahead. |
-| The end | The run closes when the PR merges. A PR that is closed without a merge also ends the run. |
+| The assist path | With "fix the blockers yourself", crew fixes the `blocking` findings and pushes them to the PR's branch, after your go-ahead. It approves only after the fix. |
+| The end | The run closes when the PR merges. A PR that is closed without a merge also ends the run. A PR that leaves the merge queue is reported, with the reason. |
 
 ## Models
 

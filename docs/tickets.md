@@ -3417,3 +3417,57 @@ approval, stops on a merged PR and exits 2 on a malformed record; and no
 step in `pr-watch.md` tells the project lead to fill in or save the poll.
 
 Read first: design §15.123; `pr-watch.md` "The poll" and "Arm the monitor".
+
+## T82 — Harden `crew:review` for many runs at once
+
+Status: done 2026-10-30
+Depends on: T78, T79, T81
+Stage: 8 (design §15.124)
+
+Issues #121 and #115. The review-queue trial ran 18 PRs through
+`/crew:review` and filed #121. #115 asked that a resumed runner never lose a
+round. This ticket closes both in one PR.
+
+Scope, one line per requirement:
+
+1. The suite, the gates and the setup command come from the `Gates` and
+   `Setup` standing-instructions sections. With `Gates`, a review run
+   dispatches no scout. The setup command runs once per review worktree,
+   and again only on a lockfile change.
+2. An `Auto-review` section names the repo's review bot. Its blocking
+   findings on the current head are claims on the ledger, with source
+   `bot`.
+3. The severity rubric, `skills/review/references/severity-rubric.md`,
+   labels every finding. The label alone decides the post. `Effect:` is
+   gone.
+4. The assist path runs fix, push, re-review, approve. The project lead
+   re-reads the head before every approval.
+5. The launch words "<n> fix rounds" and "skip the re-review when
+   prose-only or under 20 lines" write `Rounds:` and `Re-review:`. A round
+   that posts nothing takes no gate and records `auto: no findings`.
+6. The PR watch runs past `queued`, prints `dequeued`, and
+   `dequeue-diagnosis.sh` says why the PR left the queue.
+7. `skills/review/scripts/review-json.py` builds the post JSON from the
+   draft file's bytes.
+8. The review runner has a startup check, a 2700-second cap on the default
+   runner and a 180-second no-output watchdog on a replacement.
+
+Out of scope: the Codex sandbox flags that #115 asked for. Codex is not
+installed on this machine, so nothing could test them, as T79 found.
+
+Files: `skills/review/SKILL.md`, `github-review.md`, `severity-rubric.md`,
+`later-round.md`, `review-json.py`, `skills/project-lead/SKILL.md`,
+`review-output.md`, `skeptical-review.md`, `record-format.md`,
+`review-runner.md`, `substitution.md`, `crew-stats.py`,
+`skills/delivered-window/SKILL.md`, `pr-watch.md`, `pr-watch.sh`,
+`dequeue-diagnosis.sh`, `docs/design.md`, `docs/tickets.md`, `README.md` and
+`CLAUDE.md`. The version goes to 0.1.91 in both manifests.
+
+Done when: the spec's acceptance lines for R1 to R9 pass, the three scripts
+pass their seeded tests, and the version is bumped.
+
+Unexercised: no run has read any of these rules. The first review run on
+0.1.91 is the first evidence.
+
+Read first: design §15.124; `skills/review/SKILL.md`; `github-review.md`;
+`review-runner.md` "The startup check and the cap".

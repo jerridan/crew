@@ -6,9 +6,10 @@ The repo root is the plugin root.
 
 Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
-two hooks, the three scripts under `skills/project-lead/scripts/` and
-`skills/delivered-window/scripts/pr-watch.sh`: they are code, run against a
-seeded record (design §15.38, §15.50, §15.123).
+two hooks, the three scripts under `skills/project-lead/scripts/`,
+`skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`, and
+`skills/review/scripts/review-json.py`: they are code, run against a seeded
+record (design §15.38, §15.50, §15.123, §15.124).
 
 ## Layout
 
@@ -19,9 +20,10 @@ seeded record (design §15.38, §15.50, §15.123).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
-| `skills/delivered-window/scripts/pr-watch.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item | the project lead's `Monitor` call and keep-alive fire, from the plugin directory |
+| `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
-| `skills/review/references/github-review.md` | what a review run puts on GitHub: the sanitizing, the effect rule, the shapes and the post command | the project lead, in a review run |
+| `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base | the project lead, in a review run |
+| `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
@@ -73,7 +75,10 @@ PR are unexercised.
 
 `/crew:review` is built and ran once (§15.108). Its reviewer resume, queue
 line and pane rule are unexercised (T77). T78 cut its pre-review steps to
-one scout and a charter template, and no run has exercised that (§15.109).
+one scout and a charter template (§15.109). T82 reads the suite from the
+standing instructions, labels findings by the severity rubric, approves last,
+and keeps the watch past the merge queue (§15.124). No run has exercised T78
+or T82.
 
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline
@@ -124,6 +129,8 @@ Each reference owns one subject and is canonical for it:
   worktree, the instructions file, the runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.
 - `skills/review/references/github-review.md` — what a review run posts.
+- `skills/review/references/severity-rubric.md` — the six labels of a review
+  finding.
 - `writing-standard.md` — how an instruction file and a README are written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A

@@ -38,7 +38,7 @@ lead a re-spec it did not need.
    falsifiable; a criterion that only names a reviewer is not.
 2. **Charter coverage.** Does the spec carry every requirement and constraint
    the charter states? Read the charter line by line against the spec. A
-   dropped charter constraint is `[Critical]` every time.
+   dropped charter constraint is `blocking` every time.
 3. **Contradictions.** Do two statements in the spec conflict? Look hardest at
    a constraint stated once in general and once in a specific section, at a
    file named as both changed and untouched, and at a criterion that a stated
@@ -59,47 +59,53 @@ lead a re-spec it did not need.
 ## Over-specification is a finding too
 
 A spec that dictates function names, file layouts, or an implementation an IC
-should choose is a finding at most [Concern], not a strength. Name the line that
+should choose is at most a `suggestion`, not a strength. Name the line that
 over-specifies, and say what it should state instead — the requirement, not the
 solution.
 
 A constraint that enumerates a file's contents as a closed list is the same
-finding. Report the missing item as a `[Concern]` and the enumeration as the
+finding. Report the missing item as a `suggestion` and the enumeration as the
 cause; do not return a re-spec for it. One spec took three critic rounds, each
 for one item missing from one list (design §15.50).
 
 ## Findings
 
-Your prompt carries `review-output.md` whole. It owns the severity tags, the
-`Cannot verify` rule, the report-never-fix rule, and the shape of the two
-verdict lines. Follow it, and keep no copy of it. If your prompt does not carry
-it, say so in your report and use the two verdict lines below anyway.
+Your prompt carries `review-output.md` and `severity-rubric.md` whole.
+`review-output.md` owns the `Severity:` line, the `Cannot verify` rule, the
+report-never-fix rule, and the shape of the three closing lines. Follow it,
+and keep no copy of it. If your prompt does not carry it, say so in your
+report and use the closing lines below anyway.
 
 Report each finding against the check it fails — one of the seven, or
 over-specification. Quote the exact spec line, or the exact charter
-requirement, in every finding. `[Critical]` here means the spec cannot be split
-until the finding is fixed.
+requirement, in every finding. Give every finding a `Severity:` line.
 
-**Only a finding under check 1, 2 or 3 may be `[Critical]`**: falsifiable
+**`blocking` here means the spec cannot be split as written.** The rubric
+speaks of merging code, and a spec is not code, so this meaning replaces the
+rubric's for `blocking`. Use the rubric for the other three labels.
+
+**Only a finding under check 1, 2 or 3 may be `blocking`**: falsifiable
 acceptance, charter coverage, or a contradiction. A finding under checks 4 to
-7, or under over-specification, is at most [Concern]. `re-spec needed` needs
-at least one `[Critical]` finding. With none, the verdict is `ready to split`,
-and the project lead fixes the wording itself.
+7, or under over-specification, is at most `suggestion`. `re-spec needed`
+needs at least one `blocking` finding. With none, the verdict is `ready to
+split`, and the project lead fixes the wording itself.
 
 Your two verdict strings are `ready to split` and `re-spec needed`.
 
-End your report with exactly these two lines:
+End your report with exactly these three lines:
 
 ```
+Findings: <n> blocking, <n> suggestion, <n> nit, <n> unsure
 Verdict: ready to split
-Critical count: <n>
+Blocking count: <n>
 ```
 
 or
 
 ```
+Findings: <n> blocking, <n> suggestion, <n> nit, <n> unsure
 Verdict: re-spec needed
-Critical count: <n>
+Blocking count: <n>
 ```
 
-Always include the critical count, even when it is zero.
+Always include every count, even when it is zero.

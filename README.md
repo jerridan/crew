@@ -411,8 +411,8 @@ python3 skills/project-lead/scripts/crew-stats.py
 ```
 
 It prints cost per band, fix rounds, promotions, councils, reviews, the
-review catch rate and the finding labels of each review kind, over every
-record.
+review catch rate and the finding labels the reviewers proposed for each
+review kind, over every record.
 
 ## Roles
 

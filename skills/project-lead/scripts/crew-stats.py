@@ -8,9 +8,10 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
-counts, the finding labels per review kind, the review catch rate, the steps a band or the light path let a run
-skip, a `kind` column (`review` for a run of `/crew:review`, `goal` otherwise),
-the untouched-draft rate, and the review steps the principal replaced with a runner of their own.
+counts, the finding labels the reviewers proposed per review kind, the review
+catch rate, the steps a band or the light path let a run skip, a `kind` column
+(`review` for a run of `/crew:review`, `goal` otherwise), the untouched-draft
+rate, and the review steps the principal replaced with a runner of their own.
 The untouched-draft rate is the share of the answered go-ahead drafts that the
 principal approved as they stood: over the escalations that carry `draft`, the
 count with `draft_changed: false` divided by the count with `draft_changed` not
@@ -48,10 +49,13 @@ anything. The record carries no per-finding adjudication, so a review that was
 accepted and still produced a commit counts as no catch here (§15.57).
 
 The finding labels are four totals per review kind: blocking, suggestion, nit
-and unsure. A report's `Findings:` closing line gives them (`review-output.md`).
+and unsure. They are the labels the reviewers proposed, read from the review
+reports. They are not the project lead's final labels. A report's `Findings:` closing line gives them (`review-output.md`).
 A report written before that line existed has none, so the script counts its
 finding tags instead: the Critical tag as blocking, the Concern tag as
-suggestion and the Nit tag as nit. A report with neither shape counts nothing.
+suggestion and the Nit tag as nit. A new report that lacks the `Findings:`
+line is counted from its `Severity:` lines. A report with none of these
+shapes counts nothing.
 `--json` carries the totals under `labels`.
 
 Dollars come from `spend.py`, which this script imports. It never holds a
@@ -161,6 +165,10 @@ FINDINGS = re.compile(r"Findings:\s*" + r",\s*".join(rf"(\d+)\s+{label}" for lab
 # a tag quoted in prose is not a finding. Each old tag maps to one label.
 OLD_TAGS = {"Critical": "blocking", "Concern": "suggestion", "Nit": "nit"}
 OLD_TAG = re.compile(r"^[\s#>*\-\d.)]*\[(" + "|".join(OLD_TAGS) + r")\]", re.M)
+
+# A new report that lacks the `Findings:` line still gives each finding a
+# `Severity:` line.
+SEVERITY = re.compile(r"^Severity:\s*(" + "|".join(LABELS) + r")\b", re.M)
 
 # `record-format.md`'s terminal deliverable states.
 TERMINAL_DELIVERABLE = ("draft-pr-opened", "work-complete", "under-review", "abandoned")
@@ -363,13 +371,17 @@ def blank_labels() -> dict:
 
 
 def count_labels(text: str) -> dict:
-    """The label totals of one report: its last `Findings:` line, or else its old tags."""
+    """The label totals of one report: its last `Findings:` line, else its old tags,
+    else its `Severity:` lines."""
     found = FINDINGS.findall(text)
     if found:
         return dict(zip(LABELS, (int(n) for n in found[-1])))
     totals = blank_labels()
     for tag in OLD_TAG.findall(text):
         totals[OLD_TAGS[tag]] += 1
+    if not any(totals.values()):
+        for label in SEVERITY.findall(text):
+            totals[label] += 1
     return totals
 
 
@@ -385,7 +397,8 @@ def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
 
 
 def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, dict, dict]:
-    """Return the review counts, the catch counts by kind, the same by band, and the label totals by kind.
+    """Return the review counts, the catch counts by kind, the same by band,
+    and the label totals by kind.
 
     A review "acted" when its `Verdict:` line is one of `ACTION_VERDICTS` —
     the record's only machine-readable statement that the review sent the
@@ -786,7 +799,7 @@ def report(records: list[dict], skips: list[str]) -> None:
 
     # The label totals sit beside each kind's count. An "other" file is no
     # review kind, so its labels are not read, and its cells print `-`.
-    print("\nReviews, with the finding labels each kind reported\n")
+    print("\nReviews, with the finding labels the reviewers proposed for each kind\n")
     kinds = [name for name, _ in REVIEW_KINDS] + ["other"]
     rows = []
     for kind in kinds:

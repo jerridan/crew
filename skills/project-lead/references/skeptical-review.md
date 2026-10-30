@@ -447,8 +447,9 @@ earlier point:
   when the bot's review on the current head holds no claim. Otherwise, write
   the ledger for those claims, and the second case decides.
 - The round's reply file exists, **every** finding in the report carries one
-  of the dispositions above, and **every** package an accepted finding named
-  exists in `packages[]`.
+  of the dispositions above, **every** package an accepted finding named
+  exists in `packages[]`, and, on a goal run, the file ends with its
+  `Verdict after labels:` line.
 
 A round that declines every finding is complete by the second rule, and so is
 one that sends every finding out of scope. Both reached the same end.

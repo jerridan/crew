@@ -215,6 +215,9 @@ naming convention. Do not mix their contents.
   reservation file together to find the highest `<n>` on disk — a report
   alone is not enough, because a critic whose write was denied leaves no
   report at all, only its reservation file.
+  Every report gives each finding a `Severity:` label, and ends with the
+  three closing lines `Findings:`, `Verdict:` and `Blocking count:`
+  (`review-output.md`).
   Five files per skeptical review round under the default runner, always,
   and six under a replacement runner, always. Either runner adds the
   conditional reply file, and a later round that resumes its reviewer adds
@@ -260,8 +263,10 @@ naming convention. Do not mix their contents.
   report holds at least one finding to dispose of: `reviews/skeptical-r<n>-reply.md`,
   the project lead's adjudication of that report, one line per item it
   adjudicated — a finding, here, since the skeptical review reports only
-  findings — with its disposition — accepted with the package id it became,
-  declined with its reason, or out of scope with the goal proposed for it. A
+  findings — with the project lead's label and its disposition — accepted
+  with the package id it became, declined with its reason, or out of scope
+  with the goal proposed for it. When the project lead's label differs from
+  the reviewer's, the line names both. A
   report whose verdict is `accepted` and which states no findings needs no
   disposing of, so `skeptical-review.md`'s "Adjudication is a ledger" writes
   none. On a review run, a claim in the auto-review bot's review on the
@@ -971,6 +976,13 @@ Timestamp: 2026-08-24T14:32:00Z
 ```
 
 An entry with high confidence and no citation is a defect.
+
+### A critic finding the project lead does not apply
+
+A spec-critic or split-critic finding that the project lead declines, or
+labels `don't post` or `not real`, gets one entry. Its `Answer:` names the
+label, and both labels when the project lead's differs from the critic's
+(`SKILL.md`'s "Every review in this run is adjudicated the same way").
 
 ### A preference-sweep entry
 

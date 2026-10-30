@@ -75,8 +75,7 @@ yourself, by the rubric, with the code open. You can also give a finding
 `don't post` or `not real`. When your label differs from the reviewer's, the
 ledger line holds both.
 
-The label alone decides the post. The `[Critical]`, `[Concern]` and `[Nit]`
-tags decide nothing on a review run. Only a `blocking` finding earns a fix
+The label alone decides the post. Only a `blocking` finding earns a fix
 round.
 
 | Label | review path | assist path |

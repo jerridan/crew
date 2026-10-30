@@ -22,9 +22,9 @@ Severity: blocking | suggestion | nit | unsure
 ```
 
 `Severity:` is the label you propose for the finding. `severity-rubric.md`
-defines the four labels, and your dispatch carries it whole. When your own
-definition says what `blocking` means for your artifact, that meaning wins.
-Each `blocking` finding costs a full round of the artifact's author and of
+defines the four labels, and your dispatch carries its definitions. When
+your own definition says what `blocking` means for your artifact, that
+meaning wins. Each `blocking` finding costs a full round of the artifact's author and of
 the project lead (design §15.50). A gap the next step can absorb is not
 blocking.
 
@@ -111,6 +111,7 @@ Verdict: <one of your two verdict strings>
 Blocking count: <n>
 ```
 
-Your own agent definition names your two verdict strings, and
-`skeptical-review.md` names the skeptical review's. Use one of those two word
-for word. Always include every count, even when it is zero.
+The last two of the three lines are the verdict pair: `Verdict:` and
+`Blocking count:`. Your own agent definition names your two verdict
+strings, and `skeptical-review.md` names the skeptical review's. Use one of
+those two word for word. Always include every count, even when it is zero.

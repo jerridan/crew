@@ -27,7 +27,7 @@ agent is absolute: its cwd is not yours.
 | `record-format.md` | the record: every file, field and state transition, and how `crew-record.py` writes `state.json` | before you create the record |
 | `band-rubric.md` | the band: the model it buys, and which review steps it skips | at the split, and again before you skip a step |
 | `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
-| `../review/references/severity-rubric.md` | the labels a reviewer proposes, and you give each finding again | inject it whole beside `review-output.md`; read it before you label |
+| `skills/review/references/severity-rubric.md` | the labels a reviewer proposes, and you give each finding again | inject it whole beside `review-output.md`; read it before you label |
 | `skeptical-review.md` | the review of the finished diff, and when it runs | at the hand-over, and on each later branch head |
 | `review-runner.md` | the mechanics of a headless review: the detached worktree, the instructions file, the runner, the checks and the session id | when `skeptical-review.md` sends you to it |
 | `substitution.md` | a review step the principal named another reviewer for | before you dispatch that step |
@@ -413,7 +413,7 @@ final, and it alone decides whether the finding takes action:
 | Your label | The action |
 |---|---|
 | `blocking` | a fix round: a re-spec, a re-split, or a patch-round package on the skeptical review |
-| `suggestion`, `nit` | apply it inline, or decline it. No writer or IC round runs for one alone. On the skeptical review, an accepted one is a patch-round package, because you edit the target repo only at "Integrate" ("Choose the shape") |
+| `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The skeptical review's: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there. When the verdict after your labels is `accepted`, that package integrates with `--no-review accepted-round` |
 | `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
 | `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |
 

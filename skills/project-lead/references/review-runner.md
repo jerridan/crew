@@ -494,7 +494,7 @@ only when the write is denied. That sentence is the only addition:
 ```
 For a replacement runner: write the complete report to <absolute output
 path>, and also return it whole as your output, `Reviewed: <sha>` first and
-the two verdict lines last, whether or not the write succeeded.
+the three closing lines last, whether or not the write succeeded.
 ```
 
 ## Check the review before you read it
@@ -536,7 +536,7 @@ retire the attempt and rerun it. A resumed round that fails this way reruns
 fresh, as "Resume the reviewer" says. When the previous round's report opens
 with another sha, the resumed reviewer overwrote it. Restore it from the
 `result` field of `skeptical-r<n-1>-result.json` when that text ends with
-the two verdict lines. Use the fallback layout below, with the previous
+the verdict pair. Use the fallback layout below, with the previous
 head sha on the `Reviewed:` line. Otherwise, record the loss in
 `decisions.md` with the round number, and go on. The current round still
 fails and reruns fresh.
@@ -552,7 +552,7 @@ unverified.
 
 **When the report file is missing, read `result` in the saved JSON.** A
 reviewer denied its report write prints the report there. When that text ends
-with the two verdict lines, it is the report. Write the file yourself, in
+with the verdict pair, it is the report. Write the file yourself, in
 this layout, so every report on disk opens the same way:
 
 ```

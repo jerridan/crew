@@ -345,8 +345,11 @@ In order:
    rounds" says. Run its "Verify before you believe", which greps for the
    pattern each finding named, run its "Fix rounds" where a check fails, then
    run its "Integrate" in full, with the substitution "A change request"
-   names. On a goal run, a package that answers an `accepted` skeptical report
-   integrates with `--no-review accepted-round`. A review run arms every head
+   names. On a goal run, a package that answers a skeptical round whose verdict
+   after your labels is `accepted` integrates with `--no-review
+   accepted-round`. Read that verdict from the reply file's `Verdict after
+   labels:` line (`skeptical-review.md`'s "The verdict pair"). A round with
+   no reply file is `accepted`. A review run arms every head
    instead (`skeptical-review.md`'s "When the review runs"). One checkout
    holds one writer, and a group that finishes before the next one starts is a
    group a resume can tell apart. **Then complete every accepted item line

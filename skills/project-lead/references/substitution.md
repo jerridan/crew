@@ -194,7 +194,7 @@ and retry the round.
 `skeptical-review.md` owns that step whole, and `review-runner.md` owns its
 mechanics. A replacement changes none of it: the detached worktree, the
 pending head, the round reserved before the review starts, the `Reviewed:`
-first line, the two verdict lines, the one retry on a failure, and the
+first line, the three closing lines, the one retry on a failure, and the
 adjudication that clears `review_pending`. Three of the four checks in
 `review-runner.md`'s "Check the review before you read it" are the Claude
 runner's own. Map them:

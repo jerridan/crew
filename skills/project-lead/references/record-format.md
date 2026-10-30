@@ -274,7 +274,8 @@ naming convention. Do not mix their contents.
   findings needs no disposing of, so `skeptical-review.md`'s "Adjudication
   is a ledger" writes none. On a review run, a claim in the auto-review
   bot's review on the current head is also an item to dispose of, so a round
-  with one writes the file. `skeptical-review.md`'s "The adjudication is complete" owns this.
+  with one writes the file. `skeptical-review.md`'s "The adjudication is
+  complete" owns this.
 
   **`reviews/baseline.md` is one file per deliverable**, written by the
   project lead before the first skeptical round at each of the
@@ -986,7 +987,8 @@ A spec-critic or split-critic finding that the project lead declines,
 labels `don't post` or `not real`, or labels differently from the critic,
 gets one entry. An applied finding whose label changed gets one too. Its
 `Answer:` names the label, and both labels when the project lead's
-differs from the critic's (`SKILL.md`'s "Every review in this run is adjudicated the same way").
+differs from the critic's (`SKILL.md`'s "Every review in this run is
+adjudicated the same way").
 
 ### A preference-sweep entry
 

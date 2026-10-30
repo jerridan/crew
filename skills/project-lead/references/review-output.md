@@ -24,9 +24,9 @@ Severity: blocking | suggestion | nit | unsure
 `Severity:` is the label you propose for the finding. `severity-rubric.md`
 defines the four labels, and your dispatch carries its definitions. When
 your own definition says what `blocking` means for your artifact, that
-meaning wins. Each `blocking` finding costs a full round of the artifact's author and of
-the project lead (design §15.50). A gap the next step can absorb is not
-blocking.
+meaning wins. Each `blocking` finding costs a full round of the
+artifact's author and of the project lead (design §15.50). A gap the next
+step can absorb is not blocking.
 
 A check that passes is not a finding, so it gets no label.
 

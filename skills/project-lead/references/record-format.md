@@ -264,7 +264,9 @@ naming convention. Do not mix their contents.
   declined with its reason, or out of scope with the goal proposed for it. A
   report whose verdict is `accepted` and which states no findings needs no
   disposing of, so `skeptical-review.md`'s "Adjudication is a ledger" writes
-  none.
+  none. On a review run, a claim in the auto-review bot's review on the
+  current head is also an item to dispose of, so a round with one writes the
+  file. `skeptical-review.md`'s "The adjudication is complete" owns this.
 
   **`reviews/baseline.md` is one file per deliverable**, written by the
   project lead before the first skeptical round at each of the

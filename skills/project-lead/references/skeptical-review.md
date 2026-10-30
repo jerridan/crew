@@ -40,7 +40,7 @@ these.
 | the goal text | `charter.md`: the goal as the principal wrote it, and every constraint the principal stated there. Its acceptance criteria go in as supplementary, never on their own |
 | the branch and its pending head | the deliverable's `branch`, at `run.review_pending.head` |
 | the base ref | the deliverable's `base` |
-| the suite | the invocation the scout recorded and the directory it runs in, or the recorded no-suite outcome (`SKILL.md`, "Scout") |
+| the suite | the standing instructions' `Gates` section (`SKILL.md`, "Standing instructions"). With no `Gates` section, the invocation the scout recorded and the directory it runs in, or the recorded no-suite outcome (`SKILL.md`, "Scout") |
 | the output path | `<record-dir>/reviews/skeptical-r<n>.md` |
 | the instructions file | `<record-dir>/reviews/skeptical-r<n>-instructions.md`, which you assemble before you launch |
 
@@ -145,8 +145,10 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    this step when `reviews/baseline.md` exists and its first line names the
    deliverable's `base`. A file with another sha there, or with no `Base:`
    line, was measured at an old base: write it again. Move the worktree to
-   the deliverable's `base`, run every gate the scout recorded there, then
-   move it back to the pending head. Write `reviews/baseline.md` in one
+   the deliverable's `base`, and run every gate there. The gates are the
+   standing instructions' `Gates` section, or the scout's record when there
+   is none (`SKILL.md`, "Standing instructions"). Then move the worktree
+   back to the pending head. Write `reviews/baseline.md` in one
    write, after every gate ran, so a file on disk is a finished baseline.
    Its first line is `Base: <sha>`, the base it was measured at. Then one
    line per test or gate that fails at the base, with its cause when known.
@@ -155,8 +157,9 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    instructions"). Under the no-suite outcome, the file holds the `Base:`
    line and the line `No suite.` A run holds one deliverable
    (`autonomy-contract.md`, trigger 7), so it holds one baseline file. A
-   review run's base moves when the PR's base moves, and `/crew:review`'s
-   "Find the base of a later round" writes the new one.
+   review run's base moves when the PR's base moves, and "Find the base of
+   a later round", in `skills/review/references/later-round.md`, writes the
+   new one.
 5. **Write the instructions file**, and the resume prompt on a later round
    (`review-runner.md`).
 6. **Launch, or resume the reviewer of the round before** (`review-runner.md`'s

@@ -90,13 +90,14 @@ poll() {
     seen="$seen$id "
     printf '%s\n' "$line"
   done <<< "$out"
-  m=$(gh pr view "$PR" --json state,mergedAt -q '"\(.state) \(.mergedAt)"' 2>/dev/null) || true
+  # Read the queue first: a merge between the two reads then shows as MERGED, which wins.
   q=$(gh api graphql -f owner="${R%/*}" -f repo="${R#*/}" -F n="$N" -f query='
     query($owner: String!, $repo: String!, $n: Int!) {
       repository(owner: $owner, name: $repo) {
         pullRequest(number: $n) { isInMergeQueue mergeQueueEntry { enqueuedAt } }
       }
     }' --jq '.data.repository.pullRequest | if .isInMergeQueue then .mergeQueueEntry.enqueuedAt // "-" else "out" end' 2>/dev/null) || q=''
+  m=$(gh pr view "$PR" --json state,mergedAt -q '"\(.state) \(.mergedAt)"' 2>/dev/null) || true
   if [ "${m%% *}" = MERGED ]; then
     merged=1
     echo "merged $N - ${m#* } the PR merged"

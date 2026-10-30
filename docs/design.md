@@ -8465,7 +8465,11 @@ Deliberately different:
      records the answer `auto: no findings`, which `crew-stats.py` counts as
      an auto post. The principal's review of the PR narrowed this rule. It
      first read "a round whose ledger posts nothing", which let a round with
-     no suite, or with every finding held back, post with no gate.
+     no suite, or with every finding held back, post with no gate. The
+     third skeptical round of the branch added a third condition: the
+     ledger holds no `bot` claim that posts. The rule read the skeptical
+     report alone, so a blocking claim from the auto-review bot could post
+     with no gate.
 
      R6, the watch past the queue. Two queue drops and a merge conflict went
      unwatched in the trial, because the window ended at `queued`.

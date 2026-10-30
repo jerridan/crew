@@ -191,10 +191,11 @@ shared install per repo is not this skill's work. The lockfiles are
 `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `uv.lock`,
 `poetry.lock`, `Pipfile.lock`, `Gemfile.lock`, `Cargo.lock` and `go.sum`. A
 `Lockfile: <path>` line in `Setup` names the one file to compare instead.
-This command exits 1 when one of them changed:
+This command exits 1 when one of them changed. Write each lockfile name as a
+`:(glob)**/<name>` pathspec, so the glob reaches every directory of a monorepo:
 
 ```bash
-git -C <run.checkout> diff --quiet <previous head> <new head> -- <the lockfiles>
+git -C <run.checkout> diff --quiet <previous head> <new head> -- ':(glob)**/package-lock.json' ':(glob)**/yarn.lock' ':(glob)**/pnpm-lock.yaml' ':(glob)**/bun.lockb' ':(glob)**/uv.lock' ':(glob)**/poetry.lock' ':(glob)**/Pipfile.lock' ':(glob)**/Gemfile.lock' ':(glob)**/Cargo.lock' ':(glob)**/go.sum'
 ```
 
 With a `Gates` section and no `Setup` section, no setup command runs. A suite
@@ -283,10 +284,10 @@ go-ahead gate" says when. Then send no message and no ask. Write the entry as
 below, with the answer `"auto: findings answered"` and `draft_changed` `null`,
 then go to "Post the review".
 
-**A round whose ledger posts nothing posts with no wait**, as
-`crew:delivered-window`'s "The go-ahead gate" says. Write the entry the
-same way, with the answer `"auto: no findings"`. Its review is the body "No
-findings." and the event that `github-review.md`'s "The event rule" gives.
+**A round with no findings can post with no wait.** `crew:delivered-window`'s
+"The go-ahead gate" says when. Write the entry the same way, with the answer
+`"auto: no findings"`. Its body is the count line of `github-review.md`'s
+"The body shape" item 1, and its event is the one "The event rule" gives.
 A round of the assist path that opens a fix round is not this case: "The
 assist path" says why.
 
@@ -439,8 +440,9 @@ round's gate, and not the no-findings rule of "Report and wait at the gate".
 
 **The fix-round cap is the charter's `Rounds:` line**, which
 `record-format.md` defines. At the cap, open no further fix round. The open
-`blocking` findings post in the review body as a note that they remain, as
-`github-review.md`'s "The body shape" says.
+`blocking` findings post as inline comments, and the body names them, as
+`github-review.md`'s "The body shape" item 3 says. Its "The event rule" gives
+the event.
 
 A merge is the window's "A merge request" as it stands.
 

@@ -209,18 +209,24 @@ Run this on every `dequeued` line. `<dequeue-script>` is
 bash <dequeue-script> <owner> <repo> <n>
 ```
 
-It prints three sections, each `none` when it is empty:
+It prints three sections, each under a `==` heading line:
 
 1. The PR's `RemovedFromMergeQueueEvent` timeline items, read through
    GraphQL, each with its time, its actor and its reason.
 2. The `merge_group` workflow runs whose `head_branch` holds `/pr-<n>-`,
-   newest first, with each run's conclusion and URL.
+   newest first, with each run's conclusion and URL. The section lists only
+   the runs created at or after the PR's latest `AddedToMergeQueueEvent`. A
+   run older than that belongs to an earlier try. When the script cannot
+   read that event, it prints `no enqueue event; all runs shown` or
+   `enqueue read failed: <status>; all runs shown`, then every run.
 3. The last 60 lines of the log of the first failed job of the most recent
-   of those runs whose conclusion is `failure`.
+   run in section 2 whose conclusion is `failure`, `timed_out` or
+   `startup_failure`.
 
-Then `== mergeable` and the PR's `mergeable` value. A missing argument
-exits with status 2. `SKILL.md`'s "Watch the PR" says how the output sorts
-the item.
+Then `== mergeable` and the PR's `mergeable` value. A section with nothing
+in it prints `none`. A section whose `gh` read exits non-zero prints
+`read failed: <status>`, with the exit status. A missing argument exits with
+status 2. `SKILL.md`'s "Watch the PR" says how the output sorts the item.
 
 ## Post a reply
 

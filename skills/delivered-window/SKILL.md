@@ -14,8 +14,8 @@ change, and every later change to the PR, come to you (design §15.92).
 **Paths.** `<project-lead-dir>` is the `skills/project-lead` directory
 beside this skill's base directory, which the invocation names. A file this
 skill names with no directory is in `<project-lead-dir>/references/`, except
-`pr-watch.md`, which is in `references/` beside this file. Its script,
-`pr-watch.sh`, is in `scripts/` beside this file. `SKILL.md` is
+`pr-watch.md`, which is in `references/` beside this file. Its scripts,
+`pr-watch.sh` and `dequeue-diagnosis.sh`, are in `scripts/` beside this file. `SKILL.md` is
 always `<project-lead-dir>/SKILL.md`. `crew-record.py` and `spend.py` are in
 `<project-lead-dir>/scripts/`, and a `<skill-dir>` in a command those files
 give is `<project-lead-dir>`. Read every file by its absolute path: a
@@ -30,10 +30,11 @@ seconds, with eight `gh` reads: `isDraft`, the head sha, reviews, review
 comments, issue comments, `gh pr checks`, the PR state and the merge queue.
 
 The command prints one line per new item, and nothing otherwise. A line names
-the item's kind, id, author, time and a one-line summary. The nine kinds are
+the item's kind, id, author, time and a one-line summary. The ten kinds are
 `ready`, `review`, `review-comment`, `comment`, `check`, `push`, `merged`,
-`queued` and `closed`. `pr-watch.md` holds the command, and lists what the
-poll leaves out. Any other account is reported, the principal's own included.
+`queued`, `dequeued` and `closed`. `pr-watch.md` holds the command, and lists
+what the poll leaves out. Any other account is reported, the principal's own
+included.
 
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
 state is true. The command starts from `run.watch.draft`. A poll that reads
@@ -53,11 +54,19 @@ review runs on it, as `skeptical-review.md`'s "When the review runs" says for
 a head that moves in the delivered window. Then write `run.watch.head` with
 `crew-record.py <record-dir> run set watch.head '"<sha>"'`. A `merged` item
 is a notice in a goal run, and the ship word is still asked for. In a
-`run.kind: review` run it is the ship word (see "The word that the work
-shipped"). A `queued` item, the PR in the merge queue, is the same as a
-`merged` item: a notice in a goal run, and the ship word in a review run. A
-`closed` item ends a review run the same way. In a goal run it
-is a notice that asks the principal for the ship word or for a new goal.
+`run.kind: review` run, `merged` and `closed` are the ship word (see "The
+word that the work shipped"). In a goal run, a `closed` item is a notice that
+asks the principal for the ship word or for a new goal.
+
+**A `queued` item is a notice on every run**, and the watch goes on. Write
+`run.watch.queued` `true` with the cursor.
+
+**A `dequeued` item runs the diagnosis first**, as `pr-watch.md`'s "Diagnose a
+dequeue" says. When it finds a failed `merge_group` run, sort the item like a
+`check` item: it opens a `ci` round whose `ref` is that run's URL. When it
+finds none, the item is a notice, and no round opens. Either way, your report
+to the principal holds the diagnosis output, and the cursor write sets
+`run.watch.queued` `false`.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
 each key holds. After every wake that reported something, and never before
@@ -270,7 +279,8 @@ never patched. The author makes every change.
 `comment`. A `review` is one item only when its body carries text of its
 own. One failed `check` is one item. One wake opens at most one
 `pr-comments` round, for its `review`, `review-comment` and `comment` items
-that are not notices, and at most one `ci` round, for its `check` items.
+that are not notices, and at most one `ci` round, for its `check` items and a
+`dequeued` item sorted like one.
 `record-format.md`'s `rounds[].source` and `rounds[].reply_to` rows say what
 each round's `ref` and reply hold.
 
@@ -412,14 +422,15 @@ after a resume. A `principal` round takes the gate. A `ci` round and a
 
 **A `run.kind: review` run uses the same author rule**, so a bot-only
 `pr-comments` round and a `ci` round post with no wait there too. Its
-skeptical rounds differ: round 1 takes the gate. A later skeptical round
-posts with no wait when its report raises no new finding: every finding in
-it re-verifies one already posted. A round with a new finding takes the
-gate. A round that posts with no wait takes no gate: open it without
-`--gated`, and write no `round go-ahead` for it. Record its escalation as
-`/crew:review`'s "Report and wait at the gate" says. That entry, with the
-answer `auto: findings answered`, is the record of the post. Name the post in
-your next message to the principal.
+skeptical rounds differ: round 1 takes the gate. **A round whose ledger posts
+nothing takes no gate, round 1 included**, and its escalation records the
+answer `auto: no findings`. A later skeptical round posts with no wait when
+its report raises no new finding: every finding in it re-verifies one already
+posted. A round with a new finding takes the gate. A round that posts with no
+wait takes no gate: open it without `--gated`, and write no `round go-ahead`
+for it. Record its escalation as `/crew:review`'s "Report and wait at the
+gate" says. That entry, with the answer `auto: findings answered`, is the
+record of the post. Name the post in your next message to the principal.
 
 **The gate holds only the push and the replies.** It sits between "Take one
 group all the way through" and "Push once", in both procedures above. Push
@@ -468,12 +479,11 @@ package left `pending` or `in-flight` by a kill.
 It comes from the principal, on either channel, and it alone ends this
 window. Never decide it yourself: shipped means merged and deployed, and no
 `gh` command sees a deploy. In a `run.kind: review` run, the watch's
-`merged`, `queued` or `closed` item is that word by default. There, a `Done:
-rolled out` standing-instructions section (`<project-lead-dir>/SKILL.md`)
-makes a `merged` or `queued` item a notice, and the word waits for the
-principal's word that the change is live. In a goal run, a `merged` or
-`queued` item is a notice and the word is always the principal's, so `Done`
-changes nothing there. On the word:
+`merged` or `closed` item is that word by default. There, a `Done: rolled
+out` standing-instructions section (`<project-lead-dir>/SKILL.md`) makes a
+`merged` item a notice, and the word waits for the principal's word that the
+change is live. In a goal run, a `merged` item is a notice and the word is
+always the principal's, so `Done` changes nothing there. On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.

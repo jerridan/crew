@@ -26,11 +26,12 @@ plugin version that wrote it, and a later fix never reaches it (design
 
 The script reads its start state from `<record-dir>/state.json` at each start.
 The PR is the one deliverable with a `pr_url`. The cursor is `run.watch`:
-`last_polled_at`, `seen_ids`, `draft` and `head`. A `head` of 7 characters or
-more that starts the PR's head sha is the same head. The script exits 2 with
-a message on stderr when the record has no `state.json`, has no single
-`pr_url`, or has no `run.watch.last_polled_at` and `head`. Each `gh` read that
-fails prints nothing, so a network error costs one quiet poll.
+`last_polled_at`, `seen_ids`, `draft`, `head` and `queued`. An absent `queued`
+reads as `false`. A `head` of 7 characters or more that starts the PR's head
+sha is the same head. The script exits 2 with a message on stderr when the
+record has no `state.json`, has no single `pr_url`, or has no
+`run.watch.last_polled_at` and `head`. Each `gh` read that fails prints
+nothing, so a network error costs one quiet poll.
 
 The `submitted_at` and `created_at` filters use `>=`. GitHub times have
 one-second resolution, and `seen_ids` prevents a repeat.
@@ -64,12 +65,27 @@ so the items of that poll are reported first. A `closed` line is the same for
 a PR closed without a merge: the PR number as its id, the time of the poll, no
 author, and the loop stops on it.
 
-A `queued` line is the same for a PR that entered the merge queue: the PR
-number as its id, the `enqueuedAt` time, no author, and the loop stops on it.
+A `queued` line is for a PR that entered the merge queue: the PR number as
+its id, the `enqueuedAt` time and no author. The loop does not stop on it. It
+prints once per entry into the queue. The script starts from
+`run.watch.queued`, and remembers the queued state from poll to poll. So a PR
+already queued at the start prints no second `queued` line.
 `gh pr view --json` has no merge-queue field, so the poll reads
 `isInMergeQueue` through `gh api graphql`. A `merged` or `closed` state wins
-over the queue. The watch does not see a PR that leaves the queue later, such
-as on a failed queue check.
+over the queue.
+
+A `dequeued` line is for a PR that left the merge queue and is still open. It
+prints once, when the start state or an earlier poll of this loop was
+queued, and the PR now reads `isInMergeQueue` false and state `OPEN`. A merge
+or a close is not a dequeue. The line has this form, with the poll's time and
+`-` for the author:
+
+```
+dequeued <pr-number> - <poll time> left the merge queue
+```
+
+Like `ready`, a `queued` or `dequeued` id never goes into `seen_ids`: the
+queued state is what stops a repeat.
 
 ## What the poll leaves out
 
@@ -128,8 +144,8 @@ gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'
 
 ## The monitor command
 
-The script with no mode polls every 60 seconds. It stops after a `merged`,
-`closed` or `queued` line.
+The script with no mode polls every 60 seconds. It stops after a `merged` or
+`closed` line, and on no other.
 
 ```bash
 bash <watch-script> <record-dir>
@@ -173,7 +189,8 @@ state between fires, so this write is what lets a PR returned to draft fire
 `ready` again. A fire after the merge prints the `merged` line again, a fire
 after a close prints the `closed` line again, and a fire while the PR is in
 the merge queue prints the `queued` line again. Sort each as a notice already
-reported.
+reported. A fire reads `run.watch.queued` at its start, so it prints
+`dequeued` when that reads `true` and the PR has left the queue.
 
 ## Verify a failed check
 
@@ -182,6 +199,26 @@ The run id is in the check's link, `.../actions/runs/<run-id>/job/<job-id>`.
 ```bash
 gh run view <run-id> --repo <owner>/<repo> --log-failed
 ```
+
+## Diagnose a dequeue
+
+Run this on every `dequeued` line. `<dequeue-script>` is
+`scripts/dequeue-diagnosis.sh` beside `<watch-script>`, by its absolute path:
+
+```bash
+bash <dequeue-script> <owner> <repo> <n>
+```
+
+It prints three sections, each `none` when it is empty:
+
+1. The PR's `removed_from_merge_queue` timeline events, with their reason.
+2. The `merge_group` workflow runs whose `head_branch` holds `pr-<n>-`, with
+   each run's conclusion and URL.
+3. The last 60 lines of the log of the first failed job of the most recent
+   such run.
+
+Then `== mergeable` and the PR's `mergeable` value. A missing argument exits
+2. `SKILL.md`'s "Watch the PR" says how the output sorts the item.
 
 ## Post a reply
 

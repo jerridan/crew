@@ -68,12 +68,46 @@ the review produced is in the record. The rule that protects an IC worktree
 (`simple-path.md`'s "End the run") is protecting something this tree never
 has. Ignore a removal that fails because the path is already gone.
 
-## The default command
+## The startup check and the cap
 
-Write the instructions file first, then launch, from the review worktree:
+**Check that the runner starts, before every round.** `timeout` is GNU
+coreutils. On macOS it comes from Homebrew, as `timeout` or `gtimeout`. Use
+whichever `command -v` finds, and read every `timeout` in this file as that
+one. For the default runner, run:
 
 ```
-cd <record-dir>/review-worktrees/<deliverable-id> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<gate part> *),<one more such rule per gate part>,Bash(npm view *),Bash(npm ls *),Bash(pnpm ls *),Bash(pnpm why *),Bash(yarn why *),Bash(pip show *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
+timeout 15 claude --version
+```
+
+A replacement runs its own check, as `substitution.md`'s "Running it" says.
+A non-zero exit or a timeout is an environment fault. Retry it three times
+at one-minute intervals, then escalate, as `autonomy-contract.md`'s "Retry
+an environment fault" says. A round that never launched is no failed review,
+so the failure path below does not count it.
+
+**With neither tool**, print one sentence that names the missing tool, such
+as "GNU timeout is not installed, so this round runs with no cap." Then run
+`claude --version` with no cap, and launch the round without the
+`timeout 2700` prefix.
+
+**Both `claude -p` commands run under `timeout 2700`**, a cap of 45 minutes
+of wall clock. A capped process exits 124, and "Check the review before you
+read it" takes that to the failure path.
+
+**The default runner gets a cap, and a replacement gets an alarm.**
+`claude -p --output-format json` prints nothing until it exits, so a
+no-output alarm would kill a healthy default run. A replacement streams its
+progress, so its run script kills it after 180 seconds with no output.
+`substitution.md`'s "Running it" holds that script.
+
+## The default command
+
+Write the instructions file first, then launch, from the review worktree.
+The round `<n>` comes reserved in `run.review_pending.round`, and
+`skeptical-review.md` owns the reservation:
+
+```
+cd <record-dir>/review-worktrees/<deliverable-id> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | timeout 2700 claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<gate part> *),<one more such rule per gate part>,Bash(npm view *),Bash(npm ls *),Bash(pnpm ls *),Bash(pnpm why *),Bash(yarn why *),Bash(pip show *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
 ```
 
 **The prompt rides on stdin, never as a positional argument.**
@@ -161,16 +195,15 @@ two changes: `--resume <session id>` in place of `--session-id <uuid>`, and
 the resume prompt on stdin in place of the `printf` line:
 
 ```
-cd <record-dir>/review-worktrees/<deliverable-id> && claude -p --resume <session id> --model opus --effort high --output-format json --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "<the same list>" < <record-dir>/reviews/skeptical-r<n>-resume.md > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
+cd <record-dir>/review-worktrees/<deliverable-id> && timeout 2700 claude -p --resume <session id> --model opus --effort high --output-format json --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "<the same list>" < <record-dir>/reviews/skeptical-r<n>-resume.md > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
 ```
 
 A replacement keeps `substitution.md`'s run script, with this `codex exec`
 line. The resumed session keeps the directory it started in:
 
 ```
-  codex exec resume -c sandbox_mode=read-only <session id> - \
-    < <record-dir>/reviews/skeptical-r<n>-resume.md \
-    2>&1 > <record-dir>/reviews/skeptical-r<n>-result.txt
+codex exec resume -c sandbox_mode=read-only <session id> - \
+  < "$r-resume.md" > "$r-result.txt" 2> "$r-result.stderr" &
 ```
 
 **Record the round's session** in `run.review_sessions[skeptical-r<n>]`,
@@ -218,8 +251,8 @@ Each rule buys one thing the review cannot work without:
 | `Read`, `Glob`, `Grep` | reading the tree the review is about |
 | `Bash(git diff *)`, `Bash(git log *)`, `Bash(git show *)` | the history and the diff |
 | `Bash(git rev-parse *)` | the sha the reviewer opens its report with (`git rev-parse HEAD`) |
-| `Bash(<gate part> *)`, one rule per part of each gate | every verification gate the scout recorded, not the suite alone: tests, types, lint and build. The suite run is the one `skeptical-review.md`'s stance requires. Under the no-suite outcome, leave every gate rule out |
-| `Bash(npm view *)`, `Bash(npm ls *)`, `Bash(pnpm ls *)`, `Bash(pnpm why *)`, `Bash(yarn why *)`, `Bash(pip show *)` | read-only package probes: which version is installed, and why. When the scout's setup command uses another package manager, add its read-only equivalent |
+| `Bash(<gate part> *)`, one rule per part of each gate | every verification gate that a review run's `Gates` section names, or that the scout recorded when there is none, not the suite alone: tests, types, lint and build. The suite run is the one `skeptical-review.md`'s stance requires. Under the no-suite outcome, leave every gate rule out |
+| `Bash(npm view *)`, `Bash(npm ls *)`, `Bash(pnpm ls *)`, `Bash(pnpm why *)`, `Bash(yarn why *)`, `Bash(pip show *)` | read-only package probes: which version is installed, and why. When the setup command, from `Setup` or from the scout, uses another package manager, add its read-only equivalent |
 | `Edit(//<record-dir>/reviews/**)` | the report file, which sits in the record and not in the worktree |
 
 **The list adds capabilities and removes none.** Headless mode already allows
@@ -276,9 +309,11 @@ where it goes.
 
 **Run the repo's setup command yourself, in the review worktree.** A fresh
 worktree has the repo's files and none of its installed dependencies, so the
-suite fails there for a reason that has nothing to do with the diff. The
-scout records that command beside the suite command (`SKILL.md`, "Scout").
-Run it as the project lead, in the worktree, before the launch — never by
+suite fails there for a reason that has nothing to do with the diff. On a
+review run with a `Gates` section, the command is the `Setup` section's
+(`SKILL.md`, "Standing instructions"). Otherwise the scout records it beside
+the suite command (`SKILL.md`, "Scout"). `/crew:review`'s "Review" says when
+a review run runs it again. Run it as the project lead, in the worktree, before the launch — never by
 granting the child a rule for it, which would let the review install
 whatever it liked. A setup that ran adds the line "Dependencies are
 installed. Do not install." to the instructions ("Reviewer instructions").
@@ -482,6 +517,15 @@ All four pass, or this is the failure path below:
    `Reviewed: <sha>`, matching `run.review_pending.head`. On a resumed
    round, the previous round's report must also still open with its own
    `Reviewed:` sha, the previous head sha that the resume prompt names.
+
+**A hung runner fails the round, by check 1.** It has two signs:
+
+- After the default command, `-result.exit` reads 124: the `timeout 2700`
+  cap stopped it.
+- After a replacement, `-result.exit` reads 124 and `-result.stderr` ends
+  with `watchdog: no output for 180 seconds`: the alarm killed it.
+
+Take the failure path below for either one.
 
 **A `Reviewed:` mismatch fails the round.** Take the failure path below:
 retire the attempt and rerun it. A resumed round that fails this way reruns

@@ -16,10 +16,10 @@ beside this skill's base directory, which the invocation names. A file this
 skill names with no directory is in `<project-lead-dir>/references/`, except
 `pr-watch.md`, which is in `references/` beside this file. Its scripts,
 `pr-watch.sh` and `dequeue-diagnosis.sh`, are in `scripts/` beside this
-file. `SKILL.md` is always `<project-lead-dir>/SKILL.md`. `crew-record.py` and `spend.py` are in
-`<project-lead-dir>/scripts/`, and a `<skill-dir>` in a command those files
-give is `<project-lead-dir>`. Read every file by its absolute path: a
-relative path resolves against the target repo.
+file. `SKILL.md` is always `<project-lead-dir>/SKILL.md`. `crew-record.py`
+and `spend.py` are in `<project-lead-dir>/scripts/`, and a `<skill-dir>` in a
+command those files give is `<project-lead-dir>`. Read every file by its
+absolute path: a relative path resolves against the target repo.
 
 ## Watch the PR
 

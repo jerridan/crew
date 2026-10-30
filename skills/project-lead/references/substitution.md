@@ -12,8 +12,8 @@ Give the replacement what the step's own reviewer would have had:
 
 | The step | What the replacement gets |
 |---|---|
-| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
-| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
+| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` and `skills/review/references/severity-rubric.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
+| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, `severity-rubric.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
 
 **The spec critic's whole body, never the seven checks alone.** The scope
 limit, the over-specification checks, the rule against a re-spec for one
@@ -227,8 +227,9 @@ does not end with the step's verdict pair, transcribe the output in
 `Reviewed: <sha>` when the runner did not. Put `Source: <runner> file` or
 `Source: <runner> output` on the next line, for the source you used. A spec
 review reads no sha, so it carries the source line alone. End the report with
-the step's own verdict pair — `ready to split` or `re-spec needed` for the
-spec critic, `accepted` or `patch round needed` for the skeptical review.
+the three closing lines `review-output.md` gives, with the step's own verdict
+— `ready to split` or `re-spec needed` for the spec critic, `accepted` or
+`patch round needed` for the skeptical review.
 Adjudicate the findings as you adjudicate any review's. Nothing else in the
 run changes.
 

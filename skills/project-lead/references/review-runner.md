@@ -351,10 +351,13 @@ edit. The findings come back to you, and you decide what each one earns.
 shape.** It has four parts, and a fifth for any round after the first, in
 this order:
 
-1. **`review-output.md`, verbatim.** It owns the severity tags, the
-   `Cannot verify` rule, the report-never-fix rule and the two closing lines,
-   and it is the same text every review dispatch injects. The child process
-   reads no file of this plugin, so a reference by name would not resolve.
+1. **`review-output.md`, verbatim.** It owns the `Severity:` line, the
+   `Cannot verify` rule, the report-never-fix rule and the three closing
+   lines, and it is the same text every review dispatch injects. The child
+   process reads no file of this plugin, so a reference by name would not
+   resolve. On a goal run, `skills/review/references/severity-rubric.md`
+   follows it, verbatim. A review run carries the rubric's paragraphs in
+   `github-review.md`'s reviewer paragraph instead.
 2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
    says.
 3. **`reviews/baseline.md`, whole**, then this sentence, verbatim: "A test
@@ -405,12 +408,11 @@ Reviewed: <pending head sha>
 That is `git rev-parse HEAD` in this working directory, and it is how the
 reader knows which tree your findings describe.
 
-Then the findings, in the shape those rules give, ending with their two
-closing lines. Your two verdict strings are `accepted` and
-`patch round needed`. Use "accepted" when you found nothing that must change
-before this ships, and "patch round needed" when you found at least one
-[Critical], or a [Concern] serious enough that shipping without a fix would
-be wrong.
+Then the findings, in the shape those rules give. Give every finding a
+`Severity:` line. End the report with the three closing lines: `Findings:`,
+`Verdict:` and `Blocking count:`. Your two verdict strings are `accepted` and
+`patch round needed`. Use "accepted" exactly when no finding is blocking, and
+"patch round needed" exactly when at least one finding is blocking.
 
 Add one section, titled "Checked and found nothing", listing what you looked
 for and did not find. A check you never ran does not go in it.

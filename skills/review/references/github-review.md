@@ -81,7 +81,7 @@ round.
 
 | Label | review path | assist path |
 |---|---|---|
-| blocking | posts | fixed in a fix round, then named in the body as the fix's note |
+| blocking | posts | fixed in a fix round, then named in the body as the fix's note; at the `Rounds:` cap, one still open posts |
 | suggestion | posts | posts; when a fix round is already open for a blocking finding, a suggestion with a one-line fix joins that round |
 | nit | posts only when a one-line suggestion block fixes it | same |
 | don't post | ledger only | ledger only |

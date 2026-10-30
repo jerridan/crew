@@ -3426,7 +3426,9 @@ Stage: 8 (design §15.124)
 
 Issues #121 and #115. The review-queue trial ran 18 PRs through
 `/crew:review` and filed #121. #115 asked that a resumed runner never lose a
-round. This ticket closes both in one PR.
+round. This ticket addresses both in one PR. #121 item 1's cadence, one
+install per repo per day, stays open with #122. #115's sandbox flags stay
+out of scope, for the reason below.
 
 Scope, one line per requirement:
 
@@ -3463,8 +3465,9 @@ Files: `skills/review/SKILL.md`, `github-review.md`, `severity-rubric.md`,
 `dequeue-diagnosis.sh`, `docs/design.md`, `docs/tickets.md`, `README.md` and
 `CLAUDE.md`. The version goes to 0.1.91 in both manifests.
 
-Done when: the spec's acceptance lines for R1 to R9 pass, the three scripts
-pass their seeded tests, and the version is bumped.
+Done when: the spec's acceptance lines for R1 to R9 pass, the seeded runs of
+the three scripts are in the record's `reports/scripts.md` and
+`reports/patch-scripts.md`, and the version is bumped.
 
 Unexercised: no run has read any of these rules. The first review run on
 0.1.91 is the first evidence.

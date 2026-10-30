@@ -8415,7 +8415,7 @@ Deliberately different:
      Codex session that wrote its round 2 report over round 1. The round
      number reserved before the dispatch, the prompt on stdin, check 4's
      head comparison and a report path per round already closed #115's
-     failure. This goal verified them and changed none. No run has
+     failure. This goal verified them and changed none. No crew run has
      exercised any change below.
 
      R1, the suite from the standing instructions. A review run dispatched
@@ -8430,7 +8430,8 @@ Deliberately different:
      reason: a review run cuts one worktree per deliverable under its own
      record directory, so an install cannot carry across runs. A shared
      install per repo is #122's queue session. `skills/review/SKILL.md`'s
-     "Review" holds the cadence and the lockfile list.
+     "Review" holds the cadence and the lockfile list. #121 item 1's form,
+     one install per repo per day, stays open with #122.
 
      R2, the auto-review bot. A new `Auto-review` section names the bot's
      login. "Adjudicate" reads the bot's latest review and its inline
@@ -8471,13 +8472,25 @@ Deliberately different:
      `skills/delivered-window/scripts/dequeue-diagnosis.sh` prints the
      removal reason, the `merge_group` runs and the failed job's log.
      `crew:delivered-window` sorts a `dequeued` item as a `ci` round when a
-     `merge_group` run failed, and as a notice otherwise.
+     `merge_group` run failed, and as a notice otherwise. Two seeded runs are
+     the evidence, in the record's `reports/scripts.md` and
+     `reports/patch-scripts.md`. `pr-watch.sh once`
+     ran on a seeded record against the fixture PR
+     jerridan/crew-fixture-string-kit#38, and printed `dequeued`.
+     `dequeue-diagnosis.sh` ran on that PR, and printed three `none`
+     sections and the `mergeable` value. No crew run has exercised either
+     script.
 
      R7, the draft's bytes. Two posts lost their marker because the body was
      retyped. `skills/review/scripts/review-json.py` builds the post JSON
      from the draft file, and exits 2 when the body or a comment does not
      end with a marker. `github-review.md`'s "The post command" makes it the
-     one way to build the JSON.
+     one way to build the JSON. Seeded runs are the evidence, in the
+     record's `reports/scripts.md` and `reports/patch-scripts.md`. On a
+     seeded draft, the JSON's body and comments came out byte-equal to the
+     draft, each with its marker. A draft with a missing marker exited with
+     status 2. `crew-record.py --help` exited 0. No crew run has exercised
+     the change.
 
      R8, a startup check and a hang alarm. On 2026-10-29 a Codex self-update
      hung the command-line tool for 21 minutes with no output.
@@ -8486,7 +8499,11 @@ Deliberately different:
      three times before it escalates. The default runner gets a 2700-second
      cap, because `claude -p --output-format json` prints nothing until it
      exits. The replacement streams progress, so `substitution.md`'s run
-     script kills it after 180 seconds with no output.
+     script kills it after 180 seconds with no output. The alarm is a kill,
+     not a warning: the script kills the runner and its children, and
+     writes exit 124. The failure path's one retry then runs, and a second
+     failure escalates. The reason: a runner that streams progress and then
+     stays silent for 180 seconds is the hang the issue named.
 
      #115 also asked for Codex sandbox flags. They stay out of scope:
      Codex is not installed on this machine, so nothing could test them, as

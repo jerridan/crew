@@ -40,7 +40,7 @@ these.
 | the goal text | `charter.md`: the goal as the principal wrote it, and every constraint the principal stated there. Its acceptance criteria go in as supplementary, never on their own |
 | the branch and its pending head | the deliverable's `branch`, at `run.review_pending.head` |
 | the base ref | the deliverable's `base` |
-| the suite | the invocation the scout recorded and the directory it runs in, or the recorded no-suite outcome (`SKILL.md`, "Scout") |
+| the suite | the standing instructions' `Gates` section (`SKILL.md`, "Standing instructions"). With no `Gates` section, the invocation the scout recorded and the directory it runs in, or the recorded no-suite outcome (`SKILL.md`, "Scout") |
 | the output path | `<record-dir>/reviews/skeptical-r<n>.md` |
 | the instructions file | `<record-dir>/reviews/skeptical-r<n>-instructions.md`, which you assemble before you launch |
 
@@ -145,8 +145,10 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    this step when `reviews/baseline.md` exists and its first line names the
    deliverable's `base`. A file with another sha there, or with no `Base:`
    line, was measured at an old base: write it again. Move the worktree to
-   the deliverable's `base`, run every gate the scout recorded there, then
-   move it back to the pending head. Write `reviews/baseline.md` in one
+   the deliverable's `base`, and run every gate there. The gates are the
+   standing instructions' `Gates` section, or the scout's record when there
+   is none (`SKILL.md`, "Standing instructions"). Then move the worktree
+   back to the pending head. Write `reviews/baseline.md` in one
    write, after every gate ran, so a file on disk is a finished baseline.
    Its first line is `Base: <sha>`, the base it was measured at. Then one
    line per test or gate that fails at the base, with its cause when known.
@@ -155,8 +157,9 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    instructions"). Under the no-suite outcome, the file holds the `Base:`
    line and the line `No suite.` A run holds one deliverable
    (`autonomy-contract.md`, trigger 7), so it holds one baseline file. A
-   review run's base moves when the PR's base moves, and `/crew:review`'s
-   "Find the base of a later round" writes the new one.
+   review run's base moves when the PR's base moves, and "Find the base of
+   a later round", in `skills/review/references/later-round.md`, writes the
+   new one.
 5. **Write the instructions file**, and the resume prompt on a later round
    (`review-runner.md`).
 6. **Launch, or resume the reviewer of the round before** (`review-runner.md`'s
@@ -239,7 +242,7 @@ Arm the watch once too, by that skill's "Watch the PR".
 1a. **A round has `go_ahead_at: null`, every package its ledger names
    exists and is terminal, and every accepted line in its ledger is
    complete.** An accepted line that names no package is complete when it
-   carries the finding's effect and its comment text, as in a review run's
+   carries the finding's label and its comment text, as in a review run's
    skeptical ledger. Only a round the gate covers carries the field, and
    `crew:delivered-window`'s "The go-ahead gate" says which rounds those are.
    Find the escalation whose trigger names the round, such as `go-ahead
@@ -402,6 +405,10 @@ source:
 - **answered**, for a question the PR watch found, with the answer and no
   package.
 
+**Every line of a skeptical round's ledger names its source.** The source is
+`review` for a finding from the skeptical report, and `bot` for a claim from
+the auto-review bot that a review run reads (`/crew:review`'s "Adjudicate").
+
 **The rubric decides between the dispositions**, for every round of every
 source:
 
@@ -426,7 +433,10 @@ safe guess creates duplicates.
 earlier point:
 
 - The report's verdict is `accepted` **and it states no findings**. There is
-  nothing to dispose of, so reading it finishes it.
+  nothing to dispose of, so reading it finishes it. On a review run whose
+  standing instructions hold an `Auto-review` section, this case holds only
+  when the bot's review on the current head holds no claim. Otherwise, write
+  the ledger for those claims, and the second case decides.
 - The round's reply file exists, **every** finding in the report carries one
   of the dispositions above, and **every** package an accepted finding named
   exists in `packages[]`.

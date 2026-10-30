@@ -472,6 +472,9 @@ def round_cmd(run: dict, rest: list[str]) -> None:
 
 
 def main(argv: list[str]) -> None:
+    if argv and argv[0] in ("--help", "-h"):
+        print(__doc__)
+        sys.exit(0)
     if len(argv) < 2:
         usage()
     record = Path(argv[0])

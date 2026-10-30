@@ -159,13 +159,15 @@ path and on a review run. A missing file holds nothing. Then write
 null>}'`, with `null` for a missing file. A resumed session reads the files
 at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these nine:
+**Each file holds optional `##` sections.** You act on these eleven:
 
 | Section | What you do with it |
 |---|---|
 | `Reviewers` | the plain words that name a replacement for a review step, read as below |
 | `Known red tests` | it seeds `reviews/baseline.md` |
-| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it |
+| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads the suite and the gates from it in place of the scout (`/crew:review`'s "Take the PR" step 6) |
+| `Setup` | one install command that makes the suite runnable in a fresh worktree, and an optional line `Lockfile: <path>`. A review run reads it in place of the scout, and its "Review" says when the command runs |
+| `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run reads that bot's review as claims (`/crew:review`'s "Adjudicate"). With no section, nothing reads a bot's review |
 | `Hook workarounds` | read it before every push and every merge |
 | `Ticket defaults` | read it before you create or name a ticket. It answers that question without an escalation (`autonomy-contract.md`, "How to escalate") |
 | `PR readiness` | `ready` or `draft`. `draft` adds `PR: draft` to `charter.md` |

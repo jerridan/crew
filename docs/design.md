@@ -8408,3 +8408,113 @@ Deliberately different:
      The script ran against a seed of the #9157 record. It printed the
      approval, ended on the merge, and exited 2 on each malformed record. No
      crew run has armed the watch from the script yet.
+
+124. **Harden `crew:review` for many runs at once — 2026-10-30, T82.** Issues
+     #121 and #115. The review-queue trial of 2026-10-27 and 2026-10-28 ran 18
+     PRs through `/crew:review`, and its lessons are #121. #115 is a resumed
+     Codex session that wrote its round 2 report over round 1. The round
+     number reserved before the dispatch, the prompt on stdin, check 4's
+     head comparison and a report path per round already closed #115's
+     failure. This goal verified them and changed none. No crew run has
+     exercised any change below.
+
+     R1, the suite from the standing instructions. A review run dispatched
+     `scout-1` on every PR, at 3 to 5 minutes each, and the answer never
+     changed for a known repo. `skills/project-lead/SKILL.md`'s
+     "Standing instructions" table now defines `Setup`, one install command
+     with an optional `Lockfile: <path>` line. With a `Gates` section, a
+     review run dispatches no scout (`skills/review/SKILL.md`, "Take the
+     PR" step 6). The issue asked for an install once per repo per day.
+     The setup command now runs once per review worktree, and again on a
+     later round only when a lockfile changed between the two heads. The
+     reason: a review run cuts one worktree per deliverable under its own
+     record directory, so an install cannot carry across runs. A shared
+     install per repo is #122's queue session. `skills/review/SKILL.md`'s
+     "Review" holds the cadence and the lockfile list. #121 item 1's form,
+     one install per repo per day, stays open with #122.
+
+     R2, the auto-review bot. A new `Auto-review` section names the bot's
+     login. "Adjudicate" reads the bot's latest review and its inline
+     comments, and takes each blocking item on the current head as a claim
+     on the ledger. A review on an older head is stale, and no claim comes
+     from it. `skeptical-review.md`'s "Adjudication is a ledger" names the
+     source of every line, `review` or `bot`, and `record-format.md` gives
+     the ledger header an `Auto-review:` line.
+
+     R3, the severity rubric. The trial showed that Codex's own labels spent
+     5 rounds on one lint-ratchet regex. `skills/review/references/
+     severity-rubric.md` holds the v1 rubric from #121 word for word. The
+     reviewer proposes a `Severity:` label (`review-output.md`), the project
+     lead labels each finding again, and the label alone decides the post.
+     `github-review.md`'s label rule holds the six-row table, and its event
+     rule has three rows. The `Effect:` line and its three values are gone.
+
+     R4, approve last. On PR 9223 an approval put the PR in the merge queue,
+     and the queue then refused crew's fix. The assist path now runs fix,
+     push, re-review, approve (`skills/review/SKILL.md`, "The assist path").
+     `github-review.md`'s "The post command" re-reads `headRefOid`,
+     `reviewDecision` and `mergeable` before every approval and after every
+     head move, and the approval's `commit_id` is that re-read head. A
+     `CONFLICTING` PR goes to the principal, and crew takes no action on it.
+
+     R5, two launch words and a default. `Rounds: <n>` caps the assist
+     path's fix rounds, 3 by default. `Re-review: skip when prose-only or
+     under 20 lines` skips the re-review of crew's own push. Both are
+     charter lines in `record-format.md`. A round takes no gate, round 1
+     included, when its suite ran and its report states no finding. It
+     records the answer `auto: no findings`, which `crew-stats.py` counts as
+     an auto post. The principal's review of the PR narrowed this rule. It
+     first read "a round whose ledger posts nothing", which let a round with
+     no suite, or with every finding held back, post with no gate. The
+     third skeptical round of the branch added a third condition: the
+     ledger holds no `bot` claim that posts. The rule read the skeptical
+     report alone, so a blocking claim from the auto-review bot could post
+     with no gate.
+
+     R6, the watch past the queue. Two queue drops and a merge conflict went
+     unwatched in the trial, because the window ended at `queued`.
+     `pr-watch.sh` now stops on `merged` and `closed` only. It prints
+     `queued` once per entry into the queue, from `run.watch.queued`, and a
+     `dequeued` line when a queued PR leaves the queue still open.
+     `skills/delivered-window/scripts/dequeue-diagnosis.sh` prints the
+     removal reason, the `merge_group` runs and the failed job's log.
+     `crew:delivered-window` sorts a `dequeued` item as a `ci` round when a
+     `merge_group` run failed, and as a notice otherwise. Two seeded runs are
+     the evidence, in the record's `reports/scripts.md` and
+     `reports/patch-scripts.md`. `pr-watch.sh once` ran on a seeded record
+     against the fixture PR jerridan/crew-fixture-string-kit#38, and printed
+     `dequeued`.
+     `dequeue-diagnosis.sh` ran on that PR, and printed three `none`
+     sections and the `mergeable` value. No crew run has exercised either
+     script.
+
+     R7, the draft's bytes. Two posts lost their marker because the body was
+     retyped. `skills/review/scripts/review-json.py` builds the post JSON
+     from the draft file, and exits 2 when the body or a comment does not
+     end with a marker. `github-review.md`'s "The post command" makes it the
+     one way to build the JSON. Seeded runs are the evidence, in the
+     record's `reports/scripts.md` and `reports/patch-scripts.md`. On a
+     seeded draft, the JSON's body and comments came out byte-equal to the
+     draft, each with its marker. A draft with a missing marker exited with
+     status 2. `crew-record.py --help` exited 0. No crew run has exercised
+     the change.
+
+     R8, a startup check and a hang alarm. On 2026-10-29 a Codex self-update
+     hung the command-line tool for 21 minutes with no output.
+     `review-runner.md`'s "The startup check and the cap" runs
+     `timeout 15 claude --version` before every round, and retries a failure
+     three times before it escalates. The default runner gets a 2700-second
+     cap, because `claude -p --output-format json` prints nothing until it
+     exits. The replacement streams progress, so `substitution.md`'s run
+     script kills it after 600 seconds with no output. The alarm is a kill,
+     not a warning: the script kills the runner and its children, and
+     writes exit 124. The failure path's one retry then runs, and a second
+     failure escalates. The reason: a runner that streams progress and then
+     stays silent for 600 seconds is the hang the issue named. The
+     principal's review of the PR raised the limit from 180 seconds. Codex
+     prints nothing while a suite command runs, so a four-minute suite would
+     be killed at 180 seconds. A 21-minute hang is still caught at 600.
+
+     #115 also asked for Codex sandbox flags. They stay out of scope:
+     Codex is not installed on this machine, so nothing could test them, as
+     T79 found.

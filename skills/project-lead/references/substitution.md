@@ -42,24 +42,57 @@ review writes the same names the rest of the run already looks for
 ## Running it
 
 The runner is a separate program. The prompt goes in on stdin, and the output
-comes back on stdout. Write this script to
-`<record-dir>/reviews/<prefix>-r<n>-run.sh`, with `<dir>` set to `run.repo`
-for a spec review and to the review worktree `review-runner.md` names for a
-skeptical review:
+comes back on stdout.
+
+**Check that the runner starts, before every run of the script:**
 
 ```
-cd <dir> && {
-  codex exec --sandbox read-only -C <dir> - \
-    < <record-dir>/reviews/<prefix>-r<n>-instructions.md \
-    2>&1 > <record-dir>/reviews/<prefix>-r<n>-result.txt
-  echo $? > <record-dir>/reviews/<prefix>-r<n>-result.exit
-} | tee <record-dir>/reviews/<prefix>-r<n>-result.stderr
+timeout 15 codex --version
 ```
 
-`2>&1 >` sends the runner's progress to `tee` and its output to the file.
-`tee` shows the progress in a pane and keeps it in `-result.stderr`, where
-the runner prints its session id. A later skeptical round changes only the
-`codex exec` line, as `review-runner.md`'s "Resume the reviewer" says.
+`review-runner.md`'s "The startup check and the cap" owns the timeout tool,
+the retries and the escalation for this check.
+
+Write this script to `<record-dir>/reviews/<prefix>-r<n>-run.sh`, with
+`<dir>` set to `run.repo` for a spec review and to the review worktree
+`review-runner.md` names for a skeptical review:
+
+```
+cd <dir> || exit 1
+r=<record-dir>/reviews/<prefix>-r<n>
+: > "$r-result.txt"; : > "$r-result.stderr"
+codex exec --sandbox read-only -C <dir> - \
+  < "$r-instructions.md" > "$r-result.txt" 2> "$r-result.stderr" &
+pid=$!
+tail -f "$r-result.stderr" &
+tail_pid=$!
+last=; idle=0
+while kill -0 "$pid" 2>/dev/null; do
+  sleep 10
+  now=$(cat "$r-result.txt" "$r-result.stderr" | wc -c)
+  if [ "$now" = "$last" ]; then idle=$((idle + 10)); else idle=0; last=$now; fi
+  if [ "$idle" -ge 600 ]; then
+    pkill -P "$pid"; kill "$pid"; sleep 5; kill -9 "$pid" 2>/dev/null
+    echo "watchdog: no output for 600 seconds" >> "$r-result.stderr"
+    echo 124 > "$r-result.exit"
+    kill "$tail_pid"; exit 124
+  fi
+done
+wait "$pid"
+echo $? > "$r-result.exit"
+kill "$tail_pid"
+```
+
+The runner writes its output to `-result.txt` and its progress to
+`-result.stderr`, where it prints its session id. `tail -f` shows the
+progress in a pane. A later skeptical round changes only the `codex exec`
+line, as `review-runner.md`'s "Resume the reviewer" says.
+
+**The watchdog stops a hung runner.** When `-result.txt` and `-result.stderr`
+both stay unchanged for 600 seconds, the script kills the runner and its
+child processes. It writes the watchdog line to `-result.stderr` and 124 to
+`-result.exit`. Check 1 of `review-runner.md`'s "Check the review before you
+read it" reads that exit as a failed run.
 
 **The exit file goes in the same script as the command.** `$?` holds the
 runner's status only until the next command runs, and a status you keep in

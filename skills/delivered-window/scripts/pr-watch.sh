@@ -4,7 +4,9 @@
 # usage: pr-watch.sh <record-dir> [once]
 #
 # With no second argument, the script polls every 60 seconds until the PR
-# merges, closes or enters the merge queue. That is the `Monitor` command.
+# merges or closes. That is the `Monitor` command. A PR in the merge queue
+# does not stop it: the script prints `queued` once per entry into the queue,
+# and `dequeued` once when the PR leaves the queue and stays open.
 # With `once`, it polls one time and prints `isDraft=<d>` last. That is the
 # fallback poll of a keep-alive fire.
 #
@@ -41,6 +43,8 @@ SINCE=$(jq -r '.run.watch.last_polled_at' "$state")
 seen=" $(jq -r '(.run.watch.seen_ids // []) | join(" ")' "$state") "
 draft=$(jq -r 'if .run.watch.draft == true then "true" else "false" end' "$state")
 head=$(jq -r '.run.watch.head' "$state")
+# Whether the PR is in the merge queue, as far as this watch knows.
+queued=$(jq -r 'if .run.watch.queued == true then "true" else "false" end' "$state")
 merged=''
 
 poll() {
@@ -86,23 +90,30 @@ poll() {
     seen="$seen$id "
     printf '%s\n' "$line"
   done <<< "$out"
-  m=$(gh pr view "$PR" --json state,mergedAt -q '"\(.state) \(.mergedAt)"' 2>/dev/null) || true
+  # Read the queue first: a merge between the two reads then shows as MERGED, which wins.
   q=$(gh api graphql -f owner="${R%/*}" -f repo="${R#*/}" -F n="$N" -f query='
     query($owner: String!, $repo: String!, $n: Int!) {
       repository(owner: $owner, name: $repo) {
         pullRequest(number: $n) { isInMergeQueue mergeQueueEntry { enqueuedAt } }
       }
-    }' --jq '.data.repository.pullRequest | select(.isInMergeQueue) | .mergeQueueEntry.enqueuedAt // "-"' 2>/dev/null) || q=''
+    }' --jq '.data.repository.pullRequest | if .isInMergeQueue then .mergeQueueEntry.enqueuedAt // "-" else "out" end' 2>/dev/null) || q=''
+  m=$(gh pr view "$PR" --json state,mergedAt -q '"\(.state) \(.mergedAt)"' 2>/dev/null) || true
   if [ "${m%% *}" = MERGED ]; then
     merged=1
     echo "merged $N - ${m#* } the PR merged"
   elif [ "${m%% *}" = CLOSED ]; then
     merged=1
     echo "closed $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) the PR closed"
-  elif [ -n "$q" ]; then
-    [ "$q" != - ] || q=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-    merged=1
-    echo "queued $N - $q the PR entered the merge queue"
+  elif [ -n "$q" ] && [ "$q" != out ]; then
+    # Loop mode prints once per entry; once mode prints on every fire.
+    if [ "$queued" != true ] || [ "$mode" = once ]; then
+      [ "$q" != - ] || q=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      echo "queued $N - $q the PR entered the merge queue"
+    fi
+    queued=true
+  elif [ "$q" = out ] && [ "$queued" = true ] && [ "${m%% *}" = OPEN ]; then
+    queued=false
+    echo "dequeued $N - $(date -u +%Y-%m-%dT%H:%M:%SZ) left the merge queue"
   fi
 }
 

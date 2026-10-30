@@ -36,15 +36,15 @@ When your dispatch asks for them, put these two lines after each finding's
 title, each on its own line:
 
 ```
-Effect: incident | bug | non-blocking
+Severity: blocking | suggestion | nit | unsure
 Pre-existing: yes | no
 ```
 
-`Effect:` says what the change does when it runs, if it merges as it is.
-`Pre-existing:` says whether the defect sits in code that the change did not
-add, change or aggravate. A dispatch that does not ask for them gets reports
-without them. `skills/review/references/github-review.md` owns the rule that
-maps the values to a review event.
+`Severity:` is the label you propose for the finding. Your dispatch defines
+the four labels. `Pre-existing:` says whether the defect sits in code that the
+change did not add, change or aggravate. A dispatch that does not ask for
+them gets reports without them. `skills/review/references/github-review.md`
+owns the rule that maps a label to its action.
 
 ## Cannot verify
 

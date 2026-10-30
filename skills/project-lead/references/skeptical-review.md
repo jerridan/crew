@@ -239,7 +239,7 @@ Arm the watch once too, by that skill's "Watch the PR".
 1a. **A round has `go_ahead_at: null`, every package its ledger names
    exists and is terminal, and every accepted line in its ledger is
    complete.** An accepted line that names no package is complete when it
-   carries the finding's effect and its comment text, as in a review run's
+   carries the finding's label and its comment text, as in a review run's
    skeptical ledger. Only a round the gate covers carries the field, and
    `crew:delivered-window`'s "The go-ahead gate" says which rounds those are.
    Find the escalation whose trigger names the round, such as `go-ahead
@@ -401,6 +401,10 @@ source:
   it reaches the principal instead of being dropped;
 - **answered**, for a question the PR watch found, with the answer and no
   package.
+
+**Every line of a skeptical round's ledger names its source.** The source is
+`review` for a finding from the skeptical report, and `bot` for a claim from
+the auto-review bot that a review run reads (`/crew:review`'s "Adjudicate").
 
 **The rubric decides between the dispositions**, for every round of every
 source:

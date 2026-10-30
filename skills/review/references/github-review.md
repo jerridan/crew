@@ -3,8 +3,9 @@
 This file owns what a review run puts on GitHub, and how.
 `skills/review/SKILL.md` says when each part runs. `<owner>`, `<repo>` and
 `<n>` come from `run.pr`. Every command runs as the principal's own `gh`
-account. `pr-watch.md` is in `skills/delivered-window/references/`, and every
-other file this one names is in `skills/project-lead/references/`.
+account. `severity-rubric.md` is beside this file. `pr-watch.md` is in
+`skills/delivered-window/references/`, and every other file this one names is
+in `skills/project-lead/references/`.
 
 Everything crew posts is concise and polite, in ASD-STE100. Polite means it
 names the defect and never the author. Never hard wrap text you send to
@@ -63,21 +64,30 @@ command it gives. It names no reviewer and sets no charter line. The five
 sources of a replacement read the launch words and the charter's own lines,
 never the quoted block.
 
-## The effect rule
+## The label rule
 
-The reviewer paragraph below defines the three `Effect:` values, in the words
-the reviewer reads. This table says what each one does to the review:
+`severity-rubric.md` defines the six labels. The reviewer proposes one of
+four on its `Severity:` line. When you adjudicate, label every finding again
+yourself, by the rubric, with the code open. You can also give a finding
+`don't post` or `not real`. When your label differs from the reviewer's, the
+ledger line holds both.
 
-| `Effect:` | Posts | The review it earns |
+The label alone decides the post. The `[Critical]`, `[Concern]` and `[Nit]`
+tags decide nothing on a review run. Only a `blocking` finding earns a fix
+round.
+
+| Label | review path | assist path |
 |---|---|---|
-| `incident` | yes | changes requested |
-| `bug` | yes | comment only |
-| `non-blocking` | yes, when it is worth raising | approval |
+| blocking | posts | fixed in a fix round, then named in the body as the fix's note |
+| suggestion | posts | posts; when a fix round is already open for a blocking finding, a suggestion with a one-line fix joins that round |
+| nit | posts only when a one-line suggestion block fixes it | same |
+| don't post | ledger only | ledger only |
+| not real | ledger only | ledger only |
+| unsure | posts as a question | posts as a question |
 
-A finding that is not worth raising does not post. A slightly stale PR
-description is the example. A `[Nit]` never posts, whatever its effect.
-
-Check each effect yourself, by this rule, before the finding posts.
+A `nit` that no one-line suggestion block fixes stays on the ledger. An
+`unsure` comment asks the author the question the repository does not
+settle.
 
 ## The pre-existing rule
 
@@ -89,21 +99,19 @@ the record as a proposed new goal.
 ## The reviewer paragraph
 
 On a review run, append this paragraph to the instructions file, after the
-block `review-runner.md` gives:
+block `review-runner.md` gives. Replace the line in angle brackets with
+those five paragraphs of `severity-rubric.md`, in that order, copied from the
+file as it stands:
 
 ```
 This change is a colleague's pull request. Read the diff against this
 repository and against what the pull request says it does.
 
-Under the title of every finding, write the two lines `Effect:` and
-`Pre-existing:` that your report rules describe. The three effect values
+Under the title of every finding, write the two lines `Severity:` and
+`Pre-existing:` that your report rules describe. The four severity labels
 mean this, for the change merged as it is:
 
-- incident: it causes an incident when it runs.
-- bug: it is a real bug, short of an incident.
-- non-blocking: it is worth raising and not essential to the merge, such as
-  a gap in test coverage. A slightly stale pull request description is not
-  worth raising, so do not report it.
+<severity-rubric.md: Blocking, Suggestion, Nit, Unsure, Open lines>
 
 `Pre-existing: yes` means the defect is in code this change did not add,
 change or aggravate. Put a pre-existing defect only under "Checked and found
@@ -141,7 +149,7 @@ any other line goes in the body's list instead.
 
 ## The body shape
 
-The body is for the author. The author never sees the effect rule, the
+The body is for the author. The author never sees the label rule, the
 event rule, the ledger or the round, so the body names none of them, and no
 sentence says why the review is a comment and not a request for changes.
 GitHub labels the event itself.
@@ -157,6 +165,8 @@ In this order:
    without its marker.
 3. On the assist path, one line that names the pushed commits, such as
    "Commits 3f9c2a7 and 8b1d4e0 on this branch fix the blocking findings."
+   At the `Rounds:` cap, a note follows it that names each blocking finding
+   that remains.
 4. The marker `<!-- pr-review: skeptical-r<n> -->`, last.
 
 The body holds no summary of the PR. The author already knows what the PR
@@ -185,13 +195,14 @@ side: RIGHT
 ## The event rule
 
 The event reads every open posted finding: the ones this round posts, and the
-ones earlier rounds posted that are still open.
+ones earlier rounds posted that are still open. The first row that holds
+decides:
 
-| The open posted findings | `event` |
+| The round | `event` |
 |---|---|
-| at least one `incident` | `REQUEST_CHANGES` |
-| at least one `bug`, and no `incident` | `COMMENT` |
-| only `non-blocking`, or none | `APPROVE` |
+| an open posted finding is `blocking` | `REQUEST_CHANGES` |
+| on the assist path, the round still owes a fix on this head; or the round posts an `unsure` question | `COMMENT` |
+| anything else | `APPROVE` |
 
 On the principal's own PR the event is `COMMENT`, whatever the findings are.
 GitHub refuses `APPROVE` and `REQUEST_CHANGES` there. Compare the login with
@@ -225,16 +236,43 @@ changes stays in force.
 
 ## The post command
 
-Build a JSON file from the draft, and write it outside the repo. It takes
-every section of the draft except `--- summary`, which never posts.
-`commit_id` is the head the round reviewed. Each comment takes `side:
-"RIGHT"`.
+Every review posts through this command, an approval included. Never post a
+review with `gh pr review`.
+
+**Before an `APPROVE` post, re-read the head:**
+
+```bash
+gh pr view <n> --json headRefOid,reviewDecision,mergeable
+```
+
+Post the approval only when `headRefOid` is the head the round reviewed, or
+crew's own push that the charter's `Re-review:` line let skip its re-review.
+Any other head is a head move: post no approval, and the next round reviews
+that head. When `mergeable` reads `CONFLICTING`, after this re-read or after
+any head move, post nothing. Report the conflict to the principal in your next
+message, and take no further action on it.
+
+**Build the JSON with `review-json.py`, and write it outside the repo.** It
+is the one way to build the JSON. Never retype the body or a comment: a
+retyped text can lose its marker. Run it from the plugin directory, the one
+that holds `skills/`:
+
+```bash
+python3 skills/review/scripts/review-json.py <draft path> --commit <sha> --event <EVENT> > <json file>
+```
+
+It takes every section of the draft except `--- summary`, which never posts.
+`<sha>` is the head the round reviewed, and for an approval it is the
+`headRefOid` the re-read just returned. The JSON's `commit_id` is that
+commit, so an approval approves exactly the commit you re-read. The script
+exits 2 when the body's last line or a comment's last line is not a marker.
+Then fix the draft file, and run it again. The JSON has this shape:
 
 ```json
 {
   "commit_id": "3f9c2a7d1e4b8f6a0c5d2e9b7a1f4c8d6e3b0a92",
   "event": "COMMENT",
-  "body": "The findings earn a comment: one bug.\n\n<!-- pr-review: skeptical-r1 -->",
+  "body": "One finding, inline.\n\n<!-- pr-review: skeptical-r1 -->",
   "comments": [
     {
       "path": "src/export.py",

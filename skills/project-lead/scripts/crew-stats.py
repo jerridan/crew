@@ -43,14 +43,17 @@ many the advocate overturned. Design §6.1 puts the adversary on probation
 until ten such entries exist; T34 in `docs/tickets.md` owns the count.
 
 The catch rate is one number per review kind: the share of that kind's reviews
-that returned an action verdict. A review file's `Verdict:` line is the only
-machine-readable statement the record holds about whether a review changed
-anything. The record carries no per-finding adjudication, so a review that was
-accepted and still produced a commit counts as no catch here (§15.57).
+that returned an action verdict. A review file's `Verdict:` line gives the
+verdict. On a skeptical round whose reply file holds a `Verdict after labels:`
+line, that line gives it instead, because the project lead's labels decide the
+round (`skeptical-review.md`'s "The verdict pair"). The record carries no
+per-finding adjudication beyond that line, so a review that was accepted and
+still produced a commit counts as no catch here (§15.57).
 
 The finding labels are four totals per review kind: blocking, suggestion, nit
 and unsure. They are the labels the reviewers proposed, read from the review
-reports. They are not the project lead's final labels. A report's `Findings:` closing line gives them (`review-output.md`).
+reports. They are not the project lead's final labels. A report's `Findings:`
+closing line gives them (`review-output.md`).
 A report written before that line existed has none, so the script counts its
 finding tags instead: the Critical tag as blocking, the Concern tag as
 suggestion and the Nit tag as nit. A new report that lacks the `Findings:`
@@ -161,14 +164,20 @@ LABELS = ("blocking", "suggestion", "nit", "unsure")
 FINDINGS = re.compile(r"Findings:\s*" + r",\s*".join(rf"(\d+)\s+{label}" for label in LABELS))
 # A report written before the `Findings:` closing line tagged each finding's
 # heading with the Critical, Concern or Nit tag in square brackets. A tag
-# counts only where it opens a line, after any heading, list or bold marks, so
-# a tag quoted in prose is not a finding. Each old tag maps to one label.
+# counts only where it opens a line, after any heading, list or bold marks, an
+# optional short id such as `C1.` and an optional backtick, so a tag quoted in
+# prose is not a finding. Each old tag maps to one label.
 OLD_TAGS = {"Critical": "blocking", "Concern": "suggestion", "Nit": "nit"}
-OLD_TAG = re.compile(r"^[\s#>*\-\d.)]*\[(" + "|".join(OLD_TAGS) + r")\]", re.M)
+OLD_TAG = re.compile(r"^[\s#>*\-\d.)]*(?:[A-Z]\d+[.)]?\s+)?[*`]*\[(" + "|".join(OLD_TAGS) + r")\]", re.M)
 
 # A new report that lacks the `Findings:` line still gives each finding a
-# `Severity:` line.
-SEVERITY = re.compile(r"^Severity:\s*(" + "|".join(LABELS) + r")\b", re.M)
+# `Severity:` line. The template line `Severity: blocking | suggestion | nit |
+# unsure` that a transcribed output can quote is no finding, so a label
+# followed by `|` does not count.
+SEVERITY = re.compile(r"^Severity:\s*(" + "|".join(LABELS) + r")\b(?!\s*\|)", re.M)
+# The reply file's closing line (`skeptical-review.md`'s "The verdict pair").
+AFTER_LABELS = re.compile(r"Verdict after labels:\s*([^\n.]+)")
+SKEPTICAL_REPORT = re.compile(r"^skeptical-r(\d+)\.md$")
 
 # `record-format.md`'s terminal deliverable states.
 TERMINAL_DELIVERABLE = ("draft-pr-opened", "work-complete", "under-review", "abandoned")
@@ -371,8 +380,8 @@ def blank_labels() -> dict:
 
 
 def count_labels(text: str) -> dict:
-    """The label totals of one report: its last `Findings:` line, else its old tags,
-    else its `Severity:` lines."""
+    """The label totals of one report: its last `Findings:` line, else its old
+    tags, else its `Severity:` lines."""
     found = FINDINGS.findall(text)
     if found:
         return dict(zip(LABELS, (int(n) for n in found[-1])))
@@ -400,9 +409,11 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
     """Return the review counts, the catch counts by kind, the same by band,
     and the label totals by kind.
 
-    A review "acted" when its `Verdict:` line is one of `ACTION_VERDICTS` —
-    the record's only machine-readable statement that the review sent the
-    artifact back. A file with no verdict, or with a verdict outside the ones
+    A review "acted" when its verdict is one of `ACTION_VERDICTS`. The verdict
+    is the report's `Verdict:` line. For a skeptical round it is the reply
+    file's `Verdict after labels:` line instead, when that file holds one with
+    a verdict the reviews name, because the project lead's labels decide the
+    round. A file with no verdict, or with a verdict outside the ones
     the reviews name, is counted as a review and as `unverdicted`, never as a
     catch, and it gets a skip line that says which of the two it is.
 
@@ -447,6 +458,17 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         found_verdicts = VERDICT.findall(text)
         verdict = found_verdicts[-1].strip().lower() if found_verdicts else None
         acted, known = classify_verdict(verdict)
+        round_match = SKEPTICAL_REPORT.match(name)
+        if round_match:
+            reply = directory / f"skeptical-r{round_match.group(1)}-reply.md"
+            try:
+                after = AFTER_LABELS.findall(reply.read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                after = []
+            if after:
+                after_acted, after_known = classify_verdict(after[-1].strip().lower())
+                if after_known:
+                    verdict, acted, known = after[-1].strip().lower(), after_acted, True
         if reason is None and verdict is None:
             reason = "the file states no Verdict: line"
         elif reason is None and not known:

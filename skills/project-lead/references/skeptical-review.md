@@ -412,11 +412,12 @@ source:
 `review` for a finding from the skeptical report, and `bot` for a claim from
 the auto-review bot that a review run reads (`/crew:review`'s "Adjudicate").
 
-**On a goal run, the label decides first.** Label each finding of a skeptical
-round as `SKILL.md`'s "Every review in this run is adjudicated the same way"
-says. Its map decides whether the finding takes action. For one that does,
-the rubric below decides the disposition. So a `blocking` finding on
-pre-existing code can still go out of scope.
+**On a goal run, the label decides first.** Label each finding of every
+round, whatever its source, as `SKILL.md`'s "Every review in this run is
+adjudicated the same way" says. Its map decides whether the finding takes
+action, and each ledger line names the label. For one that does, the rubric
+below decides the disposition. So a `blocking` finding on pre-existing code
+can still go out of scope. A question gets no label.
 
 **The rubric decides between the dispositions**, for every round of every
 source:

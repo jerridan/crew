@@ -8558,7 +8558,9 @@ Deliberately different:
      `--no-review accepted-round`. The reply file ends with
      `Verdict after labels:`, and a resumed session and the delivered window
      read the verdict there, never from the report. The caps and a review
-     run's rules do not change.
+     run's rules do not change. The principal asked that every finding be
+     read through the rubric, so the project lead labels every finding of
+     every round, whatever its source, and one scale holds for all of them.
 
      `record-format.md` names the label in a report, in the skeptical reply
      file and in a `decisions.md` entry for a critic finding the project lead

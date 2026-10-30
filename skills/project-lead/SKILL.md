@@ -406,9 +406,13 @@ restate each finding in your own words, verify it against the repo, and push
 back in writing where it is wrong here. **A finding is a claim, not a verdict.**
 
 **Then label each finding again yourself**, by `severity-rubric.md`, with the
-artifact or the code open. A critic's own definition of `blocking` holds for
-its artifact. You can also give `don't post` or `not real`. Your label is
-final, and it alone decides whether the finding takes action:
+artifact or the code open. This holds for every round of every source: a
+critic, the skeptical review, CI, a bot, a PR comment or review, the
+principal's reading of the diff, a `/code-review` run, or any other reviewer.
+A finding with no proposed label gets yours alone. A critic's own definition
+of `blocking` holds for its artifact. A question or a notice is not a finding
+and gets no label. You can also give `don't post` or `not real`. Your label
+is final, and it alone decides whether the finding takes action:
 
 | Your label | The action |
 |---|---|
@@ -417,9 +421,10 @@ final, and it alone decides whether the finding takes action:
 | `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
 | `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |
 
-When your label differs from the reviewer's, the ledger names both. On the
-skeptical review, the label decides only whether a finding takes action, and
-`skeptical-review.md`'s dispositions then decide what it becomes. A review run
+When your label differs from the reviewer's, the ledger names both. Each
+ledger line names the label. After the hand-over, the label decides only
+whether a finding takes action, and `skeptical-review.md`'s dispositions then
+decide what it becomes. A review run
 (`run.kind: review`) uses `github-review.md`'s label rule instead.
 
 ## A step the principal replaced

@@ -71,9 +71,11 @@ never the quoted block.
 
 `severity-rubric.md` defines the six labels. The reviewer proposes one of
 four on its `Severity:` line. When you adjudicate, label every finding again
-yourself, by the rubric, with the code open. You can also give a finding
-`don't post` or `not real`. When your label differs from the reviewer's, the
-ledger line holds both.
+yourself, by the rubric, with the code open. This holds for every round,
+whatever the source: the reviewer, a bot claim or a PR comment. A finding
+with no proposed label gets yours alone. A question or a notice gets no
+label. You can also give a finding `don't post` or `not real`. When your
+label differs from the reviewer's, the ledger line holds both.
 
 The label alone decides the post. Only a `blocking` finding earns a fix
 round.

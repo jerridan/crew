@@ -257,7 +257,7 @@ post:
    `git blame`. A finding that fails this check is `out of scope` in the
    ledger. Name it to the principal as a possible new goal.
 2. **The label is yours.** Label every finding again by `github-review.md`'s
-   "The label rule".
+   "The label rule". That includes each bot claim.
    The label alone decides whether it posts.
 
 A `don't post` or `not real` finding is declined, with its label as the
@@ -393,7 +393,9 @@ at the gate names each reply, and "Post the review" posts them after the
 review.
 
 A `review-comment` in which the author argues an open finding is adjudicated
-as the window says. Its reply is the ledger line, with the marker.
+as the window says, and a finding in a `pr-comments` round gets a label by
+`github-review.md`'s "The label rule" like any other. Its reply is the ledger
+line, with the marker.
 
 Then "Report and wait at the gate" and "Post the review" again.
 `github-review.md`'s "The event rule" decides when the approval posts. Every

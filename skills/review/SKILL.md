@@ -224,8 +224,10 @@ and run the four checks as `review-runner.md` says. `skeptical-review.md`'s
 The ledger is `skeptical-review.md`'s "Adjudication is a ledger".
 
 **Read the auto-review first**, when a standing-instructions file holds an
-`Auto-review` section. Its login is the bot's. This prints one line per
-review the bot posted on the PR, and the last line is its most recent:
+`Auto-review` section. Do this read, and write the ledger, on every round,
+also when the skeptical report states no finding. Its login is the bot's.
+This prints one line per review the bot posted on the PR, and the last line
+is its most recent:
 
 ```bash
 gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews --jq '.[] | select(.user.login == "<login>") | [.id, .state, .commit_id] | @tsv'

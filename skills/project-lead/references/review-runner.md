@@ -315,8 +315,9 @@ review run with a `Gates` section, the command is the `Setup` section's
 the suite command (`SKILL.md`, "Scout"). `/crew:review`'s "Review" says when
 a review run runs it again. Run it as the project lead, in the worktree,
 before the launch. Never grant the child a rule for it, because that rule
-would let the review install whatever it liked. A setup that ran adds the line "Dependencies are
-installed. Do not install." to the instructions ("Reviewer instructions").
+would let the review install whatever it liked. A setup that ran adds the
+line "Dependencies are installed. Do not install." to the instructions
+("Reviewer instructions").
 
 **Before the deliverable's first round, the baseline runs here.**
 `skeptical-review.md`'s "When the review runs" owns that step. It moves the

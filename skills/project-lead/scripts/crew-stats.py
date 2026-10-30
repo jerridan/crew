@@ -575,7 +575,7 @@ def read_decisions(record: Path, skips: list) -> tuple[int, int, int, dict]:
     return len(entries), councils, tokens, adversary
 
 
-# Two escalation answers mark a go-ahead no principal saw (`record-format.md`).
+# Three escalation answers mark a go-ahead no principal saw (`record-format.md`).
 AUTO_POST = "auto: findings answered"
 AUTO_NO_FINDINGS = "auto: no findings"
 UNSEEN_ANSWERS = ("Gate: off", AUTO_POST, AUTO_NO_FINDINGS)

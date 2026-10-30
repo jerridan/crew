@@ -33,8 +33,7 @@ The command prints one line per new item, and nothing otherwise. A line names
 the item's kind, id, author, time and a one-line summary. The ten kinds are
 `ready`, `review`, `review-comment`, `comment`, `check`, `push`, `merged`,
 `queued`, `dequeued` and `closed`. `pr-watch.md` holds the command, and lists
-what the poll leaves out. Any other account is reported, the principal's own
-included.
+what the poll leaves out. It reports every other account, the principal's too.
 
 **`ready` fires** when a poll reads `isDraft` false and the command's draft
 state is true. The command starts from `run.watch.draft`. A poll that reads
@@ -66,7 +65,9 @@ dequeue" says. When it finds a failed `merge_group` run, sort the item like a
 `check` item: it opens a `ci` round whose `ref` is that run's URL. When it
 finds none, the item is a notice, and no round opens. Either way, your report
 to the principal holds the diagnosis output, and the cursor write sets
-`run.watch.queued` `false`.
+`run.watch.queued` `false`. When a section reads `read failed`, run the
+diagnosis once more. When it fails again, report the dequeue to the principal
+as a `ci` item, with the output.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
 each key holds. After every wake that reported something, and never before
@@ -100,8 +101,8 @@ deliverable has no `pr_url`, or the `Monitor` tool is absent. The tool is
 absent on Bedrock, Vertex and Foundry, and when `DISABLE_TELEMETRY` or
 `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` is set. It is absent when neither
 your tool list nor `ToolSearch` offers it. With a PR and no `Monitor`, your
-first message to the principal in this window says that the watch runs on
-the 30-minute fallback.
+first message to the principal in this window says the watch runs on the
+30-minute fallback.
 
 The job fires every 30 minutes, at most 3 minutes late (design §15.103).
 
@@ -278,9 +279,8 @@ never patched. The author makes every change.
 own. One failed `check` is one item. One wake opens at most one
 `pr-comments` round, for its `review`, `review-comment` and `comment` items
 that are not notices, and at most one `ci` round, for its `check` items and a
-`dequeued` item sorted like one.
-`record-format.md`'s `rounds[].source` and `rounds[].reply_to` rows say what
-each round's `ref` and reply hold.
+`dequeued` item sorted like one. `record-format.md`'s `rounds[].source` and
+`rounds[].reply_to` rows say what each round's `ref` and reply hold.
 
 **Skip an item whose id is in a ledger already.** Search every
 `reviews/*-reply.md`, open or replied. A kill between a report and the
@@ -400,8 +400,7 @@ head it already named.
 **When a source stops.** On a goal run, the skeptical review stops on an
 `accepted` verdict, as `skeptical-review.md` says, and CI is quiet on a green
 run. A quiet source ends its rounds. **A source a person drives is never
-quiet.** Nothing the principal or a bot sends says it is finished, so the
-window stays open.
+quiet.** Nothing the principal or a bot sends ends it: the window stays open.
 
 **At the review cap.** `skeptical-review.md` owns the cap, what it clears and
 what you tell the principal. Reaching it ends the reviews, never the window.
@@ -420,18 +419,19 @@ after a resume. A `principal` round takes the gate. A `ci` round and a
 **A `run.kind: review` run uses the same author rule**, so a bot-only
 `pr-comments` round and a `ci` round post with no wait there too. Its
 skeptical rounds differ: round 1 takes the gate. **A round takes no gate,
-round 1 included, when its suite ran and its report states no finding**: the
-first case of `skeptical-review.md`'s "The adjudication is complete". Its
-escalation records the answer `auto: no findings`. A fork PR's round with no
+round 1 included, when its suite ran, its report states no finding and its
+ledger holds no `bot` claim that posts**: the first case of
+`skeptical-review.md`'s "The adjudication is complete". Its escalation
+records the answer `auto: no findings`. A fork PR's round with no
 `Suite: on fork` runs no suite, so it takes the gate. So does a round where
 you held any finding back as `don't post`, `not real` or `out of scope`. A
 later skeptical round posts with no wait when its report raises no new
-finding: every finding in it re-verifies one already posted. A round with a
-new finding takes the gate. Open a round that posts with no wait without
-`--gated`, and write no `round go-ahead` for it. Record its escalation as
-`/crew:review`'s "Report and wait at the gate" says. That entry, with the
-answer `auto: findings answered`, is the record of the post. Name the post in
-your next message to the principal.
+finding and its ledger holds no `bot` claim that posts: every finding in it
+re-verifies one already posted. A round with a new finding takes the gate. Open
+a round that posts with no wait without `--gated`, and write no `round go-ahead`
+for it. Record its escalation as `/crew:review`'s "Report and wait at the gate"
+says. That entry, with the answer `auto: findings answered`, is the record of
+the post. Name the post in your next message to the principal.
 
 **The gate holds only the push and the replies.** It sits between "Take one
 group all the way through" and "Push once", in both procedures above. Push

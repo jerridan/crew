@@ -68,14 +68,18 @@ This file copies none of their rules.
 Each fire, each `ready:` message, and each "Crew review-queue ask:" prompt
 from the review-board mod runs this loop:
 
-1. **With a token**, read `asks.json` in place of a poll. Take each
+1. **With a token**, read `asks.json` first. Take each
    untaken entry, as `references/board.md` defines it. Treat it as
    "Triage" treats an ask: a new PR gets a row, and a PR with a row gets
    the Slack message, or a re-triage at `next: author`. Set `asks_through` to the
    `found_at` of the newest entry you took. Write those rows and
    `asks_through` in one board write. Copy each watch's `last_checked` and
-   `found` from `asks.json`. **With no token**, poll each active watch, as
-   "Sources" says. Set its `last_checked`, and add each new ask to `found`.
+   `found` from `asks.json`, except for a stale watch. Poll each stale
+   watch yourself, as "Sources" says, and each active watch **with no
+   token**. `references/board.md` defines a stale watch. Set the polled
+   watch's `last_checked`, and add each new ask to `found`. Tell the
+   principal once per outage which watch the mod does not poll, and that
+   this session polls it until the mod's `last_checked` is fresh again.
 2. Triage each new ask.
 3. Read the `state.json` of each child that has sent no `ready:` message.
    A package `in-flight` sets `stage: fixing`. A
@@ -145,9 +149,10 @@ A fork PR always takes `review`, as "Triage" says.
 ## Sources
 
 With a token, the review-board mod reads each Slack and GitHub source, and
-this session reads `asks.json`. The polls below run only with no token.
+this session reads `asks.json`. The polls below run with no token, and for
+a stale watch.
 
-**Slack.** With no token, read a channel through this session's Slack MCP
+**Slack.** For a poll below, read a channel through this session's Slack MCP
 connector. Always set a reaction through the connector, because the token
 has read scopes only. Find the connector at run time with `ToolSearch`:
 one tool that reads a channel's history, and one that adds a reaction.
@@ -160,7 +165,7 @@ One message can carry two PRs, and each PR is an ask.
 **GitHub review requests.** Each poll runs:
 
 ```bash
-gh search prs --review-requested=@me --state=open --json number,repository,url,title,author
+gh search prs --review-requested=@me --state=open --limit 100 --json number,repository,url,title,author
 ```
 
 Each PR that has no row is an ask.

@@ -109,6 +109,11 @@ When a watch's `last_checked` in the asks file is later than its
 `last_checked` in the board file, the pane shows the asks file's
 `last_checked` and `found`.
 
+The mod moves a watch's `last_checked` in the asks file only after a good
+poll of that watch. A watch is **stale** when its `last_checked` in the asks
+file is missing or more than 5 minutes before now. A stale watch means the
+mod does not poll it. The queue session polls a stale watch itself.
+
 **With no token**, the mod polls no source and writes no `asks.json`. The
 queue session polls every source in its wakeup loop. The pane shows
 `no token: the queue session polls` under Watching.

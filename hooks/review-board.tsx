@@ -89,15 +89,60 @@ const EMPTY: ReviewBoardFile = {
   rows: [],
 }
 
+const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback)
+
+// A row or watch the file holds in part is made safe here, once, so no other
+// code reads a field that may be missing. A row with no known stage or no
+// number is dropped: the board cannot place it.
+const cleanRow = (raw: unknown): ReviewBoardRow | undefined => {
+  if (typeof raw !== 'object' || raw === null) return undefined
+  const r = raw as Record<string, unknown>
+  if (typeof r.pr !== 'number') return undefined
+  if (!STAGES.includes(r.stage as ReviewBoardStage)) return undefined
+  const last = (typeof r.last === 'object' && r.last) || {}
+  const at = (last as Record<string, unknown>).at
+  const text = (last as Record<string, unknown>).text
+  return {
+    repo: str(r.repo),
+    pr: r.pr,
+    title: str(r.title),
+    author: str(r.author),
+    stage: r.stage as ReviewBoardStage,
+    next: str(r.next, '-') as ReviewBoardRow['next'],
+    head: typeof r.head === 'string' ? r.head : null,
+    last: { at: str(at), text: str(text) },
+    url: str(r.url),
+    watch: typeof r.watch === 'string' ? r.watch : null,
+    policy: r.policy === 'assist' ? 'assist' : 'review',
+  }
+}
+
+const cleanWatch = (raw: unknown): ReviewBoardWatch | undefined => {
+  if (typeof raw !== 'object' || raw === null) return undefined
+  const w = raw as Record<string, unknown>
+  if (typeof w.id !== 'string') return undefined
+  return {
+    id: w.id,
+    source: str(w.source),
+    policy: w.policy === 'assist' ? 'assist' : 'review',
+    status: w.status === 'active' ? 'active' : 'stopped',
+    since: str(w.since),
+    last_checked: typeof w.last_checked === 'string' ? w.last_checked : null,
+    found: typeof w.found === 'number' ? w.found : 0,
+  }
+}
+
 export const parseBoard = (text: string | undefined): ReviewBoardFile => {
   if (!text) return EMPTY
   try {
-    const raw = JSON.parse(text) as Partial<ReviewBoardFile>
+    const raw = JSON.parse(text) as Partial<ReviewBoardFile> | null
+    if (typeof raw !== 'object' || raw === null) return EMPTY
+    const list = (v: unknown) => (Array.isArray(v) ? v : [])
     return {
       ...EMPTY,
       ...raw,
-      watches: Array.isArray(raw.watches) ? raw.watches : [],
-      rows: Array.isArray(raw.rows) ? raw.rows : [],
+      watches: list(raw.watches).flatMap(x => cleanWatch(x) ?? []),
+      rows: list(raw.rows).flatMap(x => cleanRow(x) ?? []),
     }
   } catch {
     return EMPTY
@@ -167,6 +212,8 @@ export const textTable = (board: ReviewBoardFile, columns = 120) => {
 // What the poll last saw and whether it opened the pane: both start afresh
 // at a reload, and the next tick draws again.
 let last: string | undefined
+// The board the last tick parsed: the pane of an armed session draws from it.
+let current: ReviewBoardFile | undefined
 let opened = false
 let timer: { cancel: () => void } | undefined
 
@@ -187,6 +234,7 @@ const tick = async ($: Engine) => {
   if (text === last) return
   last = text
   const board = parseBoard(text)
+  current = board
   const open = board.rows.filter(r => !isDone(r))
   $.ui.status(open.length === 0 ? undefined : statusLine(board))
   if (!opened && open.length > 0) {
@@ -234,8 +282,12 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
-    if (await read($, armed)) await poll($)
-    const board = parseBoard(await load($))
+    // Only the timer and the skill prompt run `tick`; a render never does. An
+    // armed session draws from the last tick, so a render reads no file. A
+    // session that is not armed reads the file once per render.
+    const isArmed = await read($, armed)
+    if (isArmed && !timer) timer = $.clock.every(POLL_MS, () => void tick($))
+    const board = (isArmed && current) || parseBoard(await load($))
     const s = sections(board)
     const shown = await read($, showDone)
     const w = widths(e.props.bodyColumns)

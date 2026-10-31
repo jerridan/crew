@@ -40,7 +40,7 @@ const row = (
   ...extra,
 })
 
-const board = (rows: object[]) =>
+const board = (rows: unknown[]) =>
   JSON.stringify({
     version: 1,
     owner: { session_id: 's1', since: '2026-01-01T00:00:00Z' },
@@ -300,4 +300,40 @@ test('a pane row is exactly bodyColumns wide: cells plus gaps', async ($, on) =>
     expect(total).toBe(columns)
     await ui.unmount()
   }
+})
+
+test('a malformed row is dropped or made safe, and the good row still draws', async ($, on) => {
+  const bad = [
+    { ...row(20, 'triage', 'crew', '2026-01-01T10:00:00Z'), last: undefined },
+    { ...row(21, 'triage', 'crew', '2026-01-01T10:00:00Z'), last: null },
+    { ...row(22, 'triage', 'crew', '2026-01-01T10:00:00Z'), stage: undefined },
+    null,
+    'text',
+  ]
+  const w = world(on, () =>
+    board([...bad, row(30, 'reviewing', 'crew', '2026-01-01T11:00:00Z')]),
+  )
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(order(words(await ui.drawn()))).toContain(30)
+  await ui.unmount()
+  const out = await $.command.run(command(80))
+  expect(order(out.text ?? '')).toContain(30)
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.settle()
+  expect(w.seen.status.at(-1)).toContain('review board')
+})
+
+test('a mounted armed pane costs one board read per change, and a render reads none', async ($, on) => {
+  let rows: object[] = ROWS
+  const w = world(on, () => board(rows))
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  rows = ROWS.filter(r => r.pr !== 7)
+  const before = w.seen.reads
+  await w.clock.advance(3000)
+  // The timer's tick reads once. The render it causes draws from that read.
+  expect(w.seen.reads - before).toBe(1)
+  expect(order(words(await ui.drawn()))).not.toContain(7)
+  await ui.unmount()
 })

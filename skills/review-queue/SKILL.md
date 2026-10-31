@@ -73,7 +73,7 @@ from the review-board mod runs this loop:
    "Triage" treats an ask: a new PR gets a row, and a PR with a row gets
    the Slack message, or a re-triage at `next: author`. Set `asks_through` to the
    `found_at` of the newest entry you took. Write those rows and
-   `asks_through` in one board write. Copy each watch's `last_checked` and
+   `asks_through` in one board write. Copy each active watch's `last_checked` and
    `found` from `asks.json`, except for a stale watch. Poll each stale
    watch yourself, as "Sources" says, and each active watch **with no
    token**. `references/board.md` defines a stale watch. Set the polled
@@ -149,8 +149,8 @@ A fork PR always takes `review`, as "Triage" says.
 ## Sources
 
 With a token, the review-board mod reads each Slack and GitHub source, and
-this session reads `asks.json`. The polls below run with no token, and for
-a stale watch.
+this session reads `asks.json`. The polls below run for an active watch
+with no token, and for a stale watch.
 
 **Slack.** For a poll below, read a channel through this session's Slack MCP
 connector. Always set a reaction through the connector, because the token

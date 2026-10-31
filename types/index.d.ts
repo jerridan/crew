@@ -43,8 +43,30 @@ export type ReviewBoardFile = {
   version: number
   owner: { session_id: string; since: string }
   updated_at: string
+  // The found_at of the newest asks.json entry the queue session took.
+  asks_through: string | null
   watches: ReviewBoardWatch[]
   rows: ReviewBoardRow[]
+}
+
+// One PR in one Slack message, or one GitHub review request.
+export type ReviewBoardAsk = {
+  repo: string
+  pr: number
+  url: string
+  title: string | null
+  author: string | null
+  watch: string
+  slack: { channel: string; ts: string } | null
+  found_at: string
+}
+
+// The asks file the mod writes and the queue session reads.
+export type ReviewBoardAsksFile = {
+  version: number
+  updated_at: string
+  watches: Record<string, { last_checked: string; found: number }>
+  asks: ReviewBoardAsk[]
 }
 
 declare module 'claude-code' {

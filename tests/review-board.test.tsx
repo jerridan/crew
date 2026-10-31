@@ -1207,6 +1207,39 @@ test('A33: a board last_checked earlier than since does not move the start befor
   expect(w.seen.history[0].oldest).toBe((Date.parse(SINCE) / 1000).toFixed(6))
 })
 
+// The board's last_checked, as an ISO time, at the second of ts(i).
+const checkedAt = (i: number) => new Date((1767230000 + i) * 1000).toISOString()
+
+test('A36: a kept cursor earlier than the board last_checked reads from the board last_checked, with no page', async ($, on) => {
+  const w = watcher(on, {
+    board: () => watchBoard({ watches: [{ ...SLACK_WATCH, last_checked: checkedAt(5) }] }),
+    store: {
+      'slack-channel:dev': 'C1',
+      'slack-cursor:#dev': { since: SINCE, oldest: ts(3), page: '4', newest: ts(9) },
+    },
+  })
+  // The queue session took ts(4) during the outage.
+  w.slack.history = [msg(ts(4), [41]), msg(ts(6), [42])]
+  await arm($, w)
+  expect(w.seen.history[0]).toEqual({ oldest: '1767230005.000000', cursor: null })
+  expect(w.asks().asks.map(a => a.pr)).toEqual([42])
+  // The last page is read, so the next poll starts after the newest ts seen.
+  await w.clock.advance(MINUTE)
+  expect(w.seen.history[1]).toEqual({ oldest: ts(6), cursor: null })
+})
+
+test('A36: a kept cursor later than the board last_checked keeps its own oldest and page', async ($, on) => {
+  const w = watcher(on, {
+    board: () => watchBoard({ watches: [{ ...SLACK_WATCH, last_checked: checkedAt(2) }] }),
+    store: {
+      'slack-channel:dev': 'C1',
+      'slack-cursor:#dev': { since: SINCE, oldest: ts(3), page: '4', newest: ts(9) },
+    },
+  })
+  await arm($, w)
+  expect(w.seen.history[0]).toEqual({ oldest: ts(3), cursor: '4' })
+})
+
 test('A34: two equal Watching notes both draw', async ($, on) => {
   const w = watcher(on, {
     board: () =>

@@ -3476,3 +3476,61 @@ Unexercised: no run has read any of these rules. The first review run on
 
 Read first: design §15.124; `skills/review/SKILL.md`; `github-review.md`;
 `review-runner.md` "The startup check and the cap".
+
+## T83 — Add `crew:review-queue`
+
+Status: done 2026-10-31
+Depends on: T82
+Stage: 8 (design §15.127)
+
+Issue #122. One queue session watches sources, triages each ask, launches a
+`/crew:review` child per PR, and does every post, approval, enqueue and Slack
+reaction itself. A child cannot act on a go-ahead the queue relays, so the
+queue holds the principal's word.
+
+Scope, one line per requirement:
+
+1. Watches: three sources, two policies, three phrases.
+2. Triage: six reads per ask, dedupe by repo and PR number, an inline read
+   for a PR of fewer than 150 changed lines with green CI and no prior
+   findings, a child for every other PR.
+3. Children: one clone per repo, one tmux session per child, launched with
+   "Report to the queue session <name>". `crew:review`'s child mode posts
+   nothing, writes the ready file and sends one `ready:` message.
+4. The gate: one batch ask; no findings needs no ask.
+5. Post, approve, enqueue: a `mergeable` check and the `Pre-enqueue checks`
+   standing-instructions section before every enqueue; a merge agent on
+   `CONFLICTING` under `assist`; a merged-or-dequeued watch per PR through
+   `pr-watch.sh`.
+6. The board file, its owner session and its one-day prune.
+7. The self-approval fallback, and the clean-up of children.
+
+Out of scope: #124, the mod as the watcher.
+
+Unexercised: no queue session and no child has run.
+
+Read first: design §15.127; `skills/review-queue/SKILL.md`;
+`skills/review-queue/references/ready-file.md`; `skills/review/SKILL.md`
+"Child mode".
+
+## T84 — Ship the review-board mod
+
+Status: done 2026-10-31
+Depends on: T83 (the board file)
+Stage: 8 (design §15.127)
+
+Issue #123. A hooks module in the plugin draws a pane and a status line from
+the board file. It arms only on the `review-queue` skill prompt. `/review-board`
+opens the pane in any session, or prints the board as text when the pane
+cannot seat.
+
+Scope: the pane's four sections, the sort, the bounded In flight list, the
+Done toggle kept across reloads, the status line and its clear, and ten tests
+under `claude plugin test`.
+
+Out of scope: #124.
+
+Unexercised: no session has loaded the mod from the installed plugin.
+
+Read first: design §15.127; `hooks/review-board.tsx`;
+`skills/review-queue/references/board.md`.

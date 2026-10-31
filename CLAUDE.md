@@ -9,7 +9,9 @@ running — there is no build, no test suite and no CI. The exceptions are the
 two hooks, the three scripts under `skills/project-lead/scripts/`,
 `skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`, and
 `skills/review/scripts/review-json.py`: they are code, run against a seeded
-record (design §15.38, §15.50, §15.123, §15.124).
+record (design §15.38, §15.50, §15.123, §15.124). The review-board mod,
+`hooks/review-board.tsx`, is TypeScript: `claude plugin test <repo>` runs its
+tests, and `claude plugin validate <repo>` checks its module (§15.127).
 
 ## Layout
 
@@ -26,7 +28,9 @@ record (design §15.38, §15.50, §15.123, §15.124).
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/review-queue/SKILL.md`, `skills/review-queue/references/board.md`, `ready-file.md` | the `/crew:review-queue` entry point: watches, triage, children, the gate, every post, approval and enqueue, the board; the board file's schema; a child's ready file | its skill trigger; `/crew:review` in child mode reads `ready-file.md` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
+| `hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` | the review-board mod: a pane and a status line that read the board file; its `$.state` contract; its tests | the plugin loader, as the hooks module `hooks.json` names; `claude plugin test` |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
@@ -82,6 +86,12 @@ or T82. The severity rubric on goal runs is built: the project lead labels
 every review finding by it, whatever its source, and a round with no
 blocking finding is the last (§15.125). No run has exercised it.
 
+`/crew:review-queue` and the review-board mod are built (T83, T84,
+§15.127). One queue session launches `/crew:review` children in child mode,
+reads each child's ready file, and does every post, approval, enqueue and
+Slack reaction itself. The mod's tests pass under `claude plugin test`. No
+queue session and no child has run yet.
+
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline
 per deliverable, a gate decided by each item's author, a review that stops on
@@ -134,6 +144,10 @@ Each reference owns one subject and is canonical for it:
   worktree, the instructions file, the runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.
 - `skills/review/references/github-review.md` — what a review run posts.
+- `skills/review-queue/references/board.md` — the board file the queue
+  session writes and the review-board mod reads.
+- `skills/review-queue/references/ready-file.md` — a queue child's ready
+  file and its message to the queue session.
 - `skills/review/references/severity-rubric.md` — the six labels of a review
   finding.
 - `writing-standard.md` — how an instruction file and a README are written.

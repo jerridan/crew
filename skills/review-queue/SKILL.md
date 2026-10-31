@@ -135,8 +135,8 @@ to that row, and opens no second review.
 For a new ask, write a row with `stage: new` and `next: crew`. Its `watch`
 is the id of the watch that found it, and its `policy` is the one the order
 in "Watches" gives. Fill `title`, `author`, `url` and `head` from read 1
-below. Until then, `head` is `null`. Set `head` again at each head move. Set `stage: triage` when you start to
-read it. Make the PR's directory,
+below. Until then, `head` is `null`. Set `head` again at each head move.
+Set `stage: triage` when you start to read it. Make the PR's directory,
 `<pr-dir>`, at `<queue-dir>/prs/<owner>-<repo>-<n>/`.
 
 At the repo's first ask, make its clone, as "Children" says. Read the

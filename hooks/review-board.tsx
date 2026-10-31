@@ -113,7 +113,7 @@ const EMPTY: ReviewBoardFile = {
   rows: [],
 }
 
-const str =(v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback)
+const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback)
 
 // A row or watch the file holds in part is made safe here, once, so no other
 // code reads a field that may be missing. A row with no known stage or no
@@ -477,8 +477,14 @@ const channelId = async ($: Engine, token: string, channel: string) => {
 }
 
 // The history cursor of a watch: `oldest` moves only after a poll reads the
-// last page. `page` is where a poll the page cap stopped goes on.
-type SlackCursor = { oldest: string; page: string | null; newest: string | null }
+// last page. `page` is where a poll the page cap stopped goes on. `since` is
+// the watch's since: a watch added again with a new since starts afresh.
+type SlackCursor = {
+  since: string
+  oldest: string
+  page: string | null
+  newest: string | null
+}
 
 // One Slack watch: its PR messages, or undefined when the poll is skipped.
 const pollSlack = async (
@@ -497,7 +503,8 @@ const pollSlack = async (
     return undefined
   }
   const key = `slack-cursor:${w.id}`
-  const saved = obj(await $.store.get(key))
+  const kept = obj(await $.store.get(key))
+  const saved = kept.since === w.since ? kept : {}
   const oldest = typeof saved.oldest === 'string' ? saved.oldest : unixTs(w.since)
   let page = typeof saved.page === 'string' ? saved.page : ''
   let newest = typeof saved.newest === 'string' ? saved.newest : null
@@ -538,8 +545,8 @@ const pollSlack = async (
     if (!page) break
   }
   const cursor: SlackCursor = page
-    ? { oldest, page, newest }
-    : { oldest: newest ?? oldest, page: null, newest: null }
+    ? { since: w.since, oldest, page, newest }
+    : { since: w.since, oldest: newest ?? oldest, page: null, newest: null }
   await $.store.set(key, cursor)
   return got
 }
@@ -654,9 +661,13 @@ const sweep = async ($: Engine) => {
   }
   if (fresh.length === 0) return
   const named = fresh.map(a => `${prKey(a)} from ${a.watch}`).join(', ')
-  void $.prompt.submit({
-    text: `Crew review-queue ask: ${named}. Run the wakeup loop of crew:review-queue.`,
-  })
+  // The poll does not wait for the session's turn. A refused submit leaves
+  // the entries in the asks file, and the next wakeup takes them.
+  $.prompt
+    .submit({
+      text: `Crew review-queue ask: ${named}. Run the wakeup loop of crew:review-queue.`,
+    })
+    .catch(() => undefined)
 }
 
 // A throw must not end the interval, so each poll catches its own.
@@ -670,7 +681,11 @@ const watch = async ($: Engine) => {
   } finally {
     watching = false
   }
-  await tick($)
+  try {
+    await tick($)
+  } catch {
+    // The next tick draws again.
+  }
 }
 
 const poll = async ($: Engine) => {

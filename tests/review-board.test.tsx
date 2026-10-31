@@ -835,7 +835,7 @@ test('A21: after a reload the mod reads the channel id and the cursor from the s
     board: () => watchBoard(),
     store: {
       'slack-channel:dev': 'C1',
-      'slack-cursor:#dev': { oldest: ts(3), page: null, newest: null },
+      'slack-cursor:#dev': { since: SINCE, oldest: ts(3), page: null, newest: null },
     },
   })
   await arm($, w)

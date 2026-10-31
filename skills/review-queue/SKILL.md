@@ -195,10 +195,11 @@ child. Set the Slack `:eyes:` reaction when the read or the child starts.
    "The label rule".
 3. Write the draft at `<pr-dir>/reviews/github-r<k>.md`, in
    `github-review.md`'s "The draft file" shape, with the marker
-   `skeptical-r<k>`. `<k>` is one more than the count of drafts already in
-   `<pr-dir>/reviews/`, so a re-triage never reuses a path or a marker. The
-   draft reviews the `headRefOid` of triage read 1. Its event is the one
-   "The event rule" gives.
+   `skeptical-r<k>`. `<k>` is one more than the count of `github-r*.md`
+   files already in `<pr-dir>/reviews/`, so a re-triage never reuses the
+   path. "Post and approve" gives the post its own marker. The draft
+   reviews the `headRefOid` of triage read 1. Its event is the one "The
+   event rule" gives.
 4. Under `assist`, a `blocking` finding needs a fix: launch a child, as
    "Children" says. Otherwise run "The gate".
 
@@ -261,23 +262,45 @@ this session. Its re-read before an approval holds: approve only the head
 the draft reviewed. That head is the ready file's `head` for a child, and
 the head of triage read 1 for an inline read.
 
+**A covered head** is a head that a review on the row covered. It is one of
+three shas: the `head` of the ready file of the row's current child, the
+head that the row's newest inline draft reviewed, or the sha in
+`<pr-dir>/approved-head`. Every rule below that compares a head with a
+reviewed head uses this term.
+
+**Give each post a marker unique on the PR.** A child's first round and an
+inline read's first draft both carry `skeptical-r1`, on any head. So before
+a draft's first post, copy it once to `<pr-dir>/reviews/queue-r<k>.md`.
+`<k>` is one more than the count of `queue-r*.md` files already there. In
+the copy, rewrite the last line of the `--- body` section to this marker
+line:
+
+```
+<!-- pr-review: queue-r<k> -->
+```
+
+Leave each comment's marker as it is. Post from
+the copy, and retry from the same copy. The child's draft keeps its own
+`skeptical-r<n>` marker in the child's record. Write a gate answer into the
+draft before you make the copy.
+
 **Look for the review on the PR before every post and every retry.** This
-check replaces the marker-only search in "The post command", for the queue
-only. Everything else in that command holds. A review counts as posted only
-when its last line is `<marker line>` and its `commit_id` is the head the
-draft reviewed. `<marker line>` is the last line of the draft's `--- body`
-section, such as `<!-- pr-review: skeptical-r2 -->`. Each child's first
-round carries `skeptical-r1`, so the marker alone cannot tell two children
-apart:
+search replaces the one in "The post command", for the queue only.
+Everything else in that command holds. A review counts as posted only when
+its last line is the copy's marker line. No other review on the PR carries
+it:
 
 ```bash
 gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews --jq '.[]
-  | select(.commit_id == "<head the draft reviewed>")
-  | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") == "<marker line>")
+  | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") == "<!-- pr-review: queue-r<k> -->")
   | .id'
 ```
 
 An id this prints is the posted review, so do not post again.
+
+**Record the approved head.** After a post with the event `APPROVE`, write
+its `commit_id` to `<pr-dir>/approved-head`, one sha on one line. "Enqueue"
+reads it.
 
 **A failed approval can be self-approval.** The permission classifier can
 refuse the approve call when the head commit is the principal's. Then give
@@ -287,7 +310,8 @@ the principal the exact command, filled in for that PR, to run with `!`:
 gh api repos/<owner>/<repo>/pulls/<n>/reviews -f event=APPROVE -f commit_id=<sha>
 ```
 
-Read the PR's reviews after the principal runs it, and go on.
+Read the PR's reviews after the principal runs it. Write `<sha>` to
+`<pr-dir>/approved-head`, and go on.
 
 **Prefer standalone `gh` commands.** A standalone command passes the allow
 rules. A chain with `cd` or a test run gets classified. Give `gh` the PR URL
@@ -299,18 +323,21 @@ Slack `:done:` reaction. "Watch each PR" keeps the row until it is done.
 Under `assist`, go on to "Enqueue". After any other event, set `next:
 author`.
 
-**Each time a post sets `next: author`, compare the row's `head` with the
-head the post reviewed.** A push can land while a review runs, and "Watch
-each PR" then only records it. When the two heads differ, re-triage the row
-at once, as "Triage" says.
+**Each time a post sets `next: author`, read the row's `head`.** A push can
+land while a review runs, and "Watch each PR" then only records it. When
+the row's `head` is not a covered head, re-triage the row at once, as
+"Triage" says.
 
 ## Enqueue
 
 Before every enqueue:
 
-1. **Read `mergeable`**: `gh pr view <url> --json mergeable,headRefOid`.
-   `MERGEABLE` goes on. Treat `UNKNOWN` as `github-review.md`'s "The post
-   command" says.
+1. **Read `mergeable` and the head**: `gh pr view <url> --json
+   mergeable,headRefOid`. **Enqueue only the sha in
+   `<pr-dir>/approved-head`**, the one covered head that an approval
+   covered. When `headRefOid` is any other head, do not enqueue. Re-triage
+   the row, as "Triage" says. `MERGEABLE` goes on. Treat `UNKNOWN`
+   as `github-review.md`'s "The post command" says.
 2. **On `CONFLICTING`, dispatch a merge agent at once.** In this session,
    that replaces the report that "The post command" asks for. It is a
    `general-purpose` subagent named `merge-<repo>-<n>-r<k>`. It merges
@@ -325,7 +352,8 @@ Before every enqueue:
    the enqueue. Set `stage: blocked`, `next: you`, and tell the principal
    which command failed. On the principal's answer, run "Enqueue" again.
 
-Then enqueue:
+Then enqueue. `<sha>` is the sha in `<pr-dir>/approved-head`, the head the
+approval approved:
 
 ```bash
 gh pr merge <url> --match-head-commit <sha>
@@ -335,8 +363,8 @@ gh pr merge <url> --match-head-commit <sha>
 non-zero with `--merge, --rebase, or --squash required when not running
 interactively`. Do not choose a method. Set `stage: blocked`, `next: you`,
 and tell the principal that the base branch has no merge queue. When the
-principal names a method, run the command again with `--merge`,
-`--squash` or `--rebase`.
+principal names a method, run "Enqueue" again from step 1, and add
+`--merge`, `--squash` or `--rebase` to the command.
 
 After the enqueue, set `stage: queued`, `next: queue`. When `gh` says it
 enabled auto-merge, the required checks still run: set `next: ci` until a
@@ -365,9 +393,16 @@ bash <plugin-dir>/skills/delivered-window/scripts/pr-watch.sh <pr-dir> once
 Act on five lines, and on no other:
 
 - **`push`**: run `crew-record.py <pr-dir> run set watch.head '"<sha>"'`
-  with the line's sha, and set the row's `head`. On a row at `next:
-  author`, re-triage the row, as "Triage" says. On any other row, the push
-  is a child's push or this session's own.
+  with the line's sha, and set the row's `head`. **A push to a covered
+  head is a notice**, and you do nothing more. A child's own fix is one: its
+  `ready:` message can arrive before the poll prints its push. **A push to
+  any other head re-triages a row with no live child**, as "Triage" says,
+  at any stage. A live child has sent no `ready:` message, and the push is
+  its own fix. A merge agent's push re-triages too, as "Enqueue" step 2
+  says. When the gate
+  holds an ask for that row, tell the principal the ask is withdrawn. When
+  this poll re-triaged the row, a `dequeued` line only writes
+  `watch.queued false`.
 - **`queued`**: run `crew-record.py <pr-dir> run set watch.queued true`,
   once. Set `next: queue`.
 - **`merged`**: set `stage: merged`, `next: -`. Run "Clean up" for the PR.

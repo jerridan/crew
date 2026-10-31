@@ -22,6 +22,8 @@ const PANE = 'review-board'
 const SKILL = 'review-queue'
 const POLL_MS = 3000
 const WATCH_MS = 60_000
+// A Slack call that has not answered by then fails, so the poll ends.
+const FETCH_MS = 30_000
 const TITLE_CAP = 60
 const LAST_MIN = 20
 const MIN_PANE_COLUMNS = 110
@@ -422,6 +424,24 @@ const tsAfter = (a: string, b: string) => {
 }
 const unixTs = (iso: string) => ((Date.parse(iso) || 0) / 1000).toFixed(6)
 
+// The fetch, or a rejection when it has not answered in FETCH_MS.
+const bounded = <T,>($: Engine, work: Promise<T>) =>
+  new Promise<T>((resolve, reject) => {
+    const timer = $.clock.after(FETCH_MS, () =>
+      reject(new Error('no answer in time')),
+    )
+    work.then(
+      v => {
+        timer.cancel()
+        resolve(v)
+      },
+      (err: unknown) => {
+        timer.cancel()
+        reject(err)
+      },
+    )
+  })
+
 const slackGet = async (
   $: Engine,
   token: string,
@@ -432,10 +452,13 @@ const slackGet = async (
     .filter(([, v]) => v !== '')
     .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
     .join('&')
-  const res = await $.http.fetch(`${SLACK_API}/${method}?${query}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const res = await bounded(
+    $,
+    $.http.fetch(`${SLACK_API}/${method}?${query}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
   if (!res.ok) return { error: `HTTP ${res.status}` }
   let body: Record<string, unknown>
   try {
@@ -486,12 +509,16 @@ type SlackCursor = {
   newest: string | null
 }
 
-// One Slack watch: its PR messages, or undefined when the poll is skipped.
+// A store value the sweep writes only after the asks file is in place.
+type Kept = { key: string; value: unknown }
+
+// One Slack watch: its PR messages and its new cursor, or undefined when the
+// poll is skipped.
 const pollSlack = async (
   $: Engine,
   token: string,
   w: ReviewBoardWatch,
-): Promise<Candidate[] | undefined> => {
+): Promise<{ got: Candidate[]; cursor: Kept } | undefined> => {
   const channel = w.source.slice('slack:#'.length)
   const id = await channelId($, token, channel)
   if (id === undefined) {
@@ -547,8 +574,7 @@ const pollSlack = async (
   const cursor: SlackCursor = page
     ? { since: w.since, oldest, page, newest }
     : { since: w.since, oldest: newest ?? oldest, page: null, newest: null }
-  await $.store.set(key, cursor)
-  return got
+  return { got, cursor: { key, value: cursor } }
 }
 
 // The GitHub review requests: each open PR, or undefined when gh failed.
@@ -599,6 +625,10 @@ const sweep = async ($: Engine) => {
   const dir = await queueDir($)
   const file = parseAsks(await loadAsks($))
   const rows = new Set(board.rows.map(prKey))
+  // A Slack message for a row at next: author re-triages it, so it prompts.
+  const author = new Set(
+    board.rows.filter(r => r.next === 'author').map(prKey),
+  )
   const kept = file.asks.filter(a => untaken(board, a))
   const added: ReviewBoardAsk[] = []
   const fresh: ReviewBoardAsk[] = []
@@ -616,12 +646,25 @@ const sweep = async ($: Engine) => {
   }
   const slackKey = (a: Candidate) =>
     `${prKey(a)}@${a.slack?.channel ?? ''}/${a.slack?.ts ?? ''}`
+  // The cursors and found counts: written only after the asks file is in
+  // place, so a failed write reads the same messages again at the next poll.
+  const later: Kept[] = []
   for (const w of board.watches) {
     if (w.status !== 'active') continue
     let got: Candidate[] | undefined
-    if (w.source.startsWith('slack:#')) got = await pollSlack($, token, w)
-    else if (w.source === 'github:review-requests') got = await pollGithub($, w)
-    else continue
+    // A watch whose source throws is skipped, and the others still poll.
+    try {
+      if (w.source.startsWith('slack:#')) {
+        const r = await pollSlack($, token, w)
+        if (r) later.push(r.cursor)
+        got = r?.got
+      } else if (w.source === 'github:review-requests') {
+        got = await pollGithub($, w)
+      } else continue
+    } catch {
+      notes.push(`${w.id}: poll failed`)
+      continue
+    }
     if (got === undefined) continue
     const foundKey = `found:${w.id}`
     const count = obj(await $.store.get(foundKey))
@@ -635,13 +678,12 @@ const sweep = async ($: Engine) => {
         continue
       }
       const entry = { ...c, found_at: stamp() }
-      if (!rows.has(prKey(c)) && !all.some(a => prKey(a) === prKey(c))) {
-        fresh.push(entry)
-      }
+      const isNew = !rows.has(prKey(c)) || author.has(prKey(c))
+      if (isNew && !all.some(a => prKey(a) === prKey(c))) fresh.push(entry)
       added.push(entry)
       found += 1
     }
-    await $.store.set(foundKey, { since: w.since, count: found })
+    later.push({ key: foundKey, value: { since: w.since, count: found } })
     watches[w.id] = { last_checked: new Date(now).toISOString(), found }
   }
   const out: ReviewBoardAsksFile = {
@@ -653,12 +695,18 @@ const sweep = async ($: Engine) => {
   // A reader never sees half a file: write a temp file, then move it.
   const path = `${dir}/asks.json`
   const tmp = `${path}.tmp`
-  await $.fs.write(tmp, `${JSON.stringify(out, null, 2)}\n`)
+  try {
+    await $.fs.write(tmp, `${JSON.stringify(out, null, 2)}\n`)
+  } catch {
+    notes.push('asks.json: the write failed')
+    return
+  }
   const moved = await $.process.run(['mv', tmp, path])
   if (moved.exitCode !== 0) {
     notes.push('asks.json: the move failed')
     return
   }
+  for (const k of later) await $.store.set(k.key, k.value)
   if (fresh.length === 0) return
   const named = fresh.map(a => `${prKey(a)} from ${a.watch}`).join(', ')
   // The poll does not wait for the session's turn. A refused submit leaves
@@ -692,7 +740,8 @@ const poll = async ($: Engine) => {
   if (!timer) timer = $.clock.every(POLL_MS, () => void tick($))
   if (!watcher) {
     watcher = $.clock.every(WATCH_MS, () => void watch($))
-    await watch($)
+    // The first poll may take as long as a fetch, so arming does not wait.
+    void watch($)
   }
   await tick($)
 }

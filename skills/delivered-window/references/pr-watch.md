@@ -151,6 +151,60 @@ The script with no mode polls every 60 seconds. It stops after a `merged` or
 bash <watch-script> <record-dir>
 ```
 
+## Arm the deploy watch
+
+`SKILL.md`'s "The deploy watch" says when this runs. The script reads
+`run.deploy` from `state.json`. It needs no `run.watch`. It exits 2 with a
+message on stderr when `run.deploy` is absent, or when its `timeout_minutes` is
+not a positive integer. It exits 0 and prints nothing when `run.deploy.ended`
+is set.
+
+1. Stop the monitor you armed before, with `TaskStop`. **One monitor at a
+   time.**
+2. Call `Monitor` with the command below, `timeout_ms: 1800000` and
+   `persistent: false` when the tool offers that key.
+3. When the monitor ends at once with a `pr-watch.sh:` message, the record is
+   not ready. Do what the message says, then arm it again.
+
+```bash
+bash <watch-script> <record-dir> deploy
+```
+
+The script polls every 60 seconds. Each poll reads the PR state, the merge
+commit and the merge time with one `gh pr view`. A poll whose read fails uses
+the last good values. A PR that is not merged prints nothing. After the merge
+it reads the deploy signal that `run.deploy` names:
+
+- `environment` set: the newest GitHub deployment of the merge commit to that
+  environment, with its newest status.
+- `workflow` set: the newest GitHub Actions run of that workflow, by name,
+  with `head_sha` equal to the merge commit. Only `success` and the
+  conclusions `failure`, `timed_out` and `startup_failure` are results. Any
+  other run state is no result, and a newer run replaces it.
+- both `null`: the repo's GitHub deployments are read. With some, the script
+  reads the newest deployment of the merge commit whose
+  `production_environment` is true or whose environment is named `production`
+  or `prod`, in any case. Name the environment in a `Deploy` section for a
+  repo whose production environment has another name. With none, the script
+  reads the newest Actions run on the merge commit whose name holds `deploy` or
+  `release`, in any case, like a named workflow. When there is no such run, it
+  waits until 10 minutes after the merge, because the run may not exist yet,
+  and then prints `no-deploy`.
+
+The script prints one line and exits. The kinds are:
+
+| Line | Meaning |
+|---|---|
+| `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run conclusion is `success` |
+| `no-deploy <n> - <mergedAt> the repo has no GitHub deployments or deploy runs` | only with both `null`: the repo has no deployment and no deploy run 10 minutes after the merge. The repo has no deploy, and the line is the ship word. A failed read prints nothing |
+| `deploy-failed <id> - <time> <environment or workflow> <state>` | the newest deployment state is `failure` or `error`, or the newest run conclusion is `failure`, `timed_out` or `startup_failure`. A deployment that still runs holds this line back |
+| `deploy-timeout <n> - <time> no deploy seen <timeout> minutes after the watch started` | no result by `timeout_minutes` after `run.deploy.since`, or after `mergedAt` when the record has no `since`. When a deploy was seen but is still pending, the text says `no deploy finished` |
+| `closed <n> - <time> the PR closed` | the PR closed with no merge |
+
+`<n>` is the PR number, and `<id>` is the deployment or the run. A deployment
+that a newer deploy made `inactive` counts as `success` when an earlier status
+was `success`. An empty deploy read costs one quiet poll.
+
 ## Arm the keep-alive job
 
 1. Call `CronList`. It lists the jobs this process holds, and a job ends
@@ -181,6 +235,15 @@ polls one time and prints `isDraft=<true|false>` last.
 
 ```bash
 bash <watch-script> <record-dir> once
+```
+
+When `run.deploy` is in the record, the fire runs the mode `deploy-once`
+instead. It polls one time and prints a line from "Arm the deploy watch" only
+when one is due, and no draft line. A record with `run.deploy.ended` set prints
+nothing.
+
+```bash
+bash <watch-script> <record-dir> deploy-once
 ```
 
 A fire that prints `isDraft=true` while `run.watch.draft` is false runs

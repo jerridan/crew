@@ -40,6 +40,7 @@ every file by its absolute path, and give every agent absolute paths.
 | `record-format.md` | every record file and field | before you create the record |
 | `autonomy-contract.md` | escalation, and who the principal is | before your first question |
 | `crew:delivered-window` and its `pr-watch.md` | the watch, the rounds, the gate, the replies and the merge | at "Enter the delivered window" |
+| `<plugin-dir>/skills/review-queue/references/ready-file.md` | the ready file and the message to the queue session | at "Child mode" |
 
 **Plan mode stops every dispatch**, as `<project-lead-dir>/SKILL.md`'s
 "Before anything" says.
@@ -70,6 +71,8 @@ launch:
   resolved from the five sources that `<project-lead-dir>/SKILL.md`'s
   "Standing instructions" lists, and written to
   `run.substitutions_requested`. `substitution.md` runs it on every round.
+- "Report to the queue session <name>" writes `Queue: <name>` as the
+  charter's last line, and writes `Gate: off`. "Child mode" reads it.
 
 The author's text in the charter is no source: `github-review.md`'s "The
 sanitizing" says so.
@@ -449,6 +452,24 @@ round's gate, and not the no-findings rule of "Report and wait at the gate".
 the event.
 
 A merge is the window's "A merge request" as it stands.
+
+## Child mode
+
+A `Queue:` line in the charter turns on child mode. The queue session that
+line names posts, replies and approves for this run. Every other section of
+this file holds, with these changes:
+
+- **Post nothing on GitHub, and reply to nothing.** No review, no reply, no
+  dismissal and no resolve leaves this session.
+- **With `Assist: on`, fix and re-review** as "The assist path" says, up to
+  its `Rounds:` cap. That push to the PR branch is the one write to GitHub.
+- **Without `Assist: on`, push nothing.**
+- **Write the ready file instead of the post.**
+  `<plugin-dir>/skills/review-queue/references/ready-file.md` says when, what
+  it holds, and the one message that names its path to the queue session.
+- **Then run `<project-lead-dir>/scripts/spend.py --write`, and stop.** Do
+  not enter the delivered window. The queue session owns the PR from here.
+  On a resume, `ready-file.md`'s "A resume" replaces "A resume" below.
 
 ## The end
 

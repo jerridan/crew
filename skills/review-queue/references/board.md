@@ -1,9 +1,10 @@
 # The board file
 
 The queue session writes the board file, and the review-board mod reads it.
-This file owns the board's path, its schema and the terms both readers
-derive from it. `crew:review-queue`'s "The board" owns when the queue
-session writes it.
+The mod writes the asks file, and the queue session reads it. This file owns
+the path and schema of both files, and the terms their readers derive from
+them. `crew:review-queue`'s "The board" owns when the queue session writes
+the board file.
 
 ## The path
 
@@ -19,6 +20,7 @@ One JSON object:
   "version": 1,
   "owner": { "session_id": "<string>", "since": "<ISO-8601 UTC>" },
   "updated_at": "<ISO-8601 UTC>",
+  "asks_through": "<ISO-8601 UTC>" | null,
   "watches": [
     { "id": "<string>", "source": "slack:#<channel>" | "github:review-requests" | "direct",
       "policy": "assist" | "review", "status": "active" | "stopped",
@@ -35,9 +37,12 @@ One JSON object:
 ```
 
 `owner.session_id` is the session id of the queue session that owns the
-file. `found` counts the asks the watch found since `since`. `last` is the
-row's latest event. `watch` is the id of the watch that found the row. A
-direct ask belongs to the watch with the id `direct`.
+file. `asks_through` is the `found_at` of the newest asks-file entry that
+the queue session took. The queue session writes it. A board with no
+`asks_through` field reads as `null`. `found` counts the asks the watch
+found since `since`. `last` is the row's latest event. `watch` is the id
+of the watch that found the row. A direct ask belongs to the watch with the
+id `direct`.
 
 ## Derived terms
 
@@ -49,3 +54,70 @@ direct ask belongs to the watch with the id `direct`.
 - "Newest" orders by `last.at`, latest first.
 - Stage order is the order of the `stage` list above.
 - A row's identity is `repo` plus `pr`.
+
+## The asks file
+
+`<record-root>/queue/asks.json`. The review-board mod writes it, in the
+queue session that owns the board, when `~/.claude/secrets/slack-token`
+holds a Slack token. The queue session reads it, and never writes it.
+
+```
+{
+  "version": 1,
+  "updated_at": "<ISO-8601 UTC>",
+  "watches": { "<watch id>": { "last_checked": "<ISO-8601 UTC>", "found": <integer> } },
+  "asks": [
+    { "repo": "<owner>/<name>", "pr": <integer>, "url": "<string>",
+      "title": "<string>" | null, "author": "<login>" | null,
+      "watch": "<watch id>",
+      "slack": { "channel": "<id>", "ts": "<string>" } | null,
+      "found_at": "<ISO-8601 UTC>" }
+  ]
+}
+```
+
+An entry is one PR in one Slack message, or one GitHub review request. A
+Slack message with two PR links gives two entries. A GitHub entry has
+`slack: null`. Each new `found_at` is later than every `found_at` the file
+held, to the millisecond. `found` counts the entries the mod wrote for that
+watch since the watch's `since`. The mod writes the whole file to a temp
+file in the same directory, then moves it over `asks.json`.
+
+- An entry is **untaken** when its `found_at` is later than the board's
+  `asks_through`, or when `asks_through` is `null`.
+- **The prune rule.** At each poll, the mod removes every entry with a
+  `found_at` at or before `asks_through`.
+- The queue session takes each untaken entry. It writes the rows these
+  entries made and `asks_through` in one board write.
+
+The pane draws an untaken entry whose PR has no row as a **derived row**.
+Two or more such entries for one PR draw one derived row, from the earliest
+entry. A derived row counts as an open row, in the pane and in the status
+line:
+
+| Field | Value |
+|---|---|
+| `repo`, `pr`, `url`, `watch` | from the entry |
+| `title` | the entry's `title`, or `""` when it is `null` |
+| `author` | the entry's `author`, or `-` when it is `null` |
+| `stage`, `next` | `new`, `crew` |
+| `head` | `null` |
+| `last` | `at`: the entry's `found_at`; `text`: `new ask from <watch id>` |
+| `policy` | the policy of the watch named by `watch`, or `review` when no such watch exists |
+
+When a watch's `last_checked` in the asks file is later than its
+`last_checked` in the board file, the pane shows the asks file's
+`last_checked` and `found`.
+
+The mod moves a watch's `last_checked` in the asks file only after a good
+poll of that watch. Take the later of three times: the watch's `last_checked`
+in the asks file (a missing one counts as no time), the watch's `since`, and
+the board's `owner.since`. A watch is **stale** when it has `status: active`
+and that later time is more than 5 minutes before now. A stopped watch is
+never stale. A new watch, or a new owner, has up to 5 minutes for the mod's
+first good poll. A stale watch means the mod does not poll it. The queue
+session polls a stale watch itself.
+
+**With no token**, the mod polls no source and writes no `asks.json`. The
+queue session polls every active watch in its wakeup loop. The pane shows
+`no token: the queue session polls` under Watching.

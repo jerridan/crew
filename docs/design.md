@@ -8726,3 +8726,42 @@ Deliberately different:
      on the minimal record the queue builds for a queued PR, against merged
      PR #128: it printed `merged` and exited 0. No queue session, no child
      and no installed copy of the mod has run.
+
+129. **The review board as the queue's watcher — 2026-10-31, T86, #124.**
+     The queue's wakeup loop costs a model turn for each check, also when
+     nothing is new. The mod's `$.clock.every` and `$.http.fetch` cost none.
+     So, with a token, the mod polls the sources and the queue session only
+     takes what the mod found.
+
+     The issue asked for the token in `userConfig`. The principal put it in
+     a file, `~/.claude/secrets/slack-token`, and the plugin-authoring docs
+     do not say how a `userConfig` field holds a secret. The queue skill
+     tests the file with `grep -q`, so the token never enters a transcript.
+
+     The issue also asked the mod to write `new` rows to `board.json`. The
+     queue session replaces that file whole at each write, so a second
+     writer loses updates. The mod writes `asks.json` instead, and the
+     queue session marks what it took with `asks_through` in `board.json`.
+     Each file keeps one writer. The pane draws an untaken entry as a `new`
+     row. A Slack message about a PR that already has a row is an entry too,
+     because the queue adds the message to the row, or re-triages a row at
+     `next: author`.
+
+     The hand-off is `$.prompt.submit` in the queue session, where the mod
+     runs. `$.session.send` only queues a peer message and starts no turn.
+     A stopped watch is not polled. With no token, the mod polls no source
+     at all, so the two pollers never overlap. The wakeup loop stays at 15
+     minutes with a token, for the stall check and the child reads.
+
+     The spec critic's round 1 found that a later Slack message on a known
+     PR had nowhere to go; round 2 found that a GitHub poll with no token
+     made a second poller. Both changed the design before any code. 61 tests
+     pass under `claude plugin test`. No live Slack poll has run: the build
+     machine had no token.
+
+     The principal's /code-review found that, with a token, a mod that
+     cannot poll left nothing polling and told nobody. So a watch whose
+     `last_checked` in `asks.json` is more than 5 minutes old is stale, and the
+     queue session polls it itself and tells the principal. The mod moves
+     `last_checked` only after a good poll, so a revoked token, a signed-out
+     `gh` or a mod that never loaded all show as a stale watch.

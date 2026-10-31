@@ -3583,7 +3583,7 @@ the queue session polls every source every 5 minutes, as before.
 
 Scope: the poll, the asks file and its prune rule, the derived `new` row in
 the pane, the queue skill's token test and 15-minute cron, the README row,
-and 41 new tests under `claude plugin test`.
+and 46 new tests under `claude plugin test`.
 
 Out of scope: a Slack write from the mod, private channels, `userConfig`.
 

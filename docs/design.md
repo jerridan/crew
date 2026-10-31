@@ -8755,7 +8755,7 @@ Deliberately different:
 
      The spec critic's round 1 found that a later Slack message on a known
      PR had nowhere to go; round 2 found that a GitHub poll with no token
-     made a second poller. Both changed the design before any code. 56 tests
+     made a second poller. Both changed the design before any code. 61 tests
      pass under `claude plugin test`. No live Slack poll has run: the build
      machine had no token.
 

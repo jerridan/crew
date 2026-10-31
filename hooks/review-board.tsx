@@ -514,12 +514,14 @@ type SlackCursor = {
 type Kept = { key: string; value: unknown }
 
 // One Slack watch: its PR messages and its new cursor, or undefined when the
-// poll is skipped. `now` is the time of this poll.
+// poll is skipped. `now` is the time of this poll. `outage` is true when the
+// board's last_checked is the queue session's own poll, not the mod's.
 const pollSlack = async (
   $: Engine,
   token: string,
   w: ReviewBoardWatch,
   now: number,
+  outage: boolean,
 ): Promise<{ got: Candidate[]; cursor: Kept } | undefined> => {
   const channel = w.source.slice('slack:#'.length)
   const id = await channelId($, token, channel)
@@ -533,11 +535,12 @@ const pollSlack = async (
   }
   const key = `slack-cursor:${w.id}`
   const kept = obj(await $.store.get(key))
-  // A board last_checked later than the kept oldest is the queue session's
-  // own poll during an outage: the poll starts there, and the kept page and
-  // newest, which belong to the old oldest, go.
+  // After an outage, a board last_checked later than the kept oldest is
+  // where the queue session's own poll stopped: the poll starts there, and
+  // the kept page and newest, which belong to the old oldest, go.
   const checked = at(w.last_checked ?? '')
   const behind =
+    outage &&
     typeof kept.oldest === 'string' &&
     checked > 0 &&
     tsAfter(unixTs(checked), kept.oldest)
@@ -669,10 +672,15 @@ const sweep = async ($: Engine) => {
   for (const w of board.watches) {
     if (w.status !== 'active') continue
     let got: Candidate[] | undefined
+    // The wakeup loop copies the mod's last_checked to the board, so only a
+    // board last_checked later than the asks file's is the queue session's
+    // own poll, during an outage.
+    const outage =
+      at(w.last_checked ?? '') > at(file.watches[w.id]?.last_checked ?? '')
     // A watch whose source throws is skipped, and the others still poll.
     try {
       if (w.source.startsWith('slack:#')) {
-        const r = await pollSlack($, token, w, now)
+        const r = await pollSlack($, token, w, now, outage)
         if (r) later.push(r.cursor)
         got = r?.got
       } else if (w.source === 'github:review-requests') {
@@ -685,10 +693,10 @@ const sweep = async ($: Engine) => {
     if (got === undefined) continue
     const foundKey = `found:${w.id}`
     const count = obj(await $.store.get(foundKey))
-    // With no count for this since, the count goes on from the board's, which
-    // the queue session's own poll kept.
+    // After an outage, or with no count for this since, the count goes on
+    // from the board's, which the queue session's own poll kept.
     let found =
-      count.since === w.since && typeof count.count === 'number'
+      !outage && count.since === w.since && typeof count.count === 'number'
         ? count.count
         : w.found
     for (const c of got) {

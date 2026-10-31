@@ -160,7 +160,7 @@ path and on a review run. A missing file holds nothing. Then write
 null>}'`, with `null` for a missing file. A resumed session reads the files
 at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these twelve:
+**Each file holds optional `##` sections.** You act on these thirteen:
 
 | Section | What you do with it |
 |---|---|
@@ -175,6 +175,7 @@ at those paths again before its first dispatch.
 | `Done` | `merged` or `rolled out`. `crew:delivered-window`'s "The word that the work shipped" reads it |
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
+| `Pre-enqueue checks` | shell commands, one per line, that the queue session runs before every enqueue. A non-zero exit stops the enqueue (`crew:review-queue`'s "Enqueue") |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
 
 **`Deploy` names the signal that the work is live.** Its lines are:

@@ -8684,3 +8684,45 @@ Deliberately different:
      stub `gh`, which applies the script's own filters to canned JSON, ran the
      failure, cancelled, newest-deployment, grace, `since`, `ended` and
      cached-read cases. No crew run has armed the deploy watch yet.
+
+128. **The review queue and the review board — 2026-10-31, T84, T85, #122,
+     #123.** The review-queue trial of 2026-10-27 and 2026-10-28 found that a
+     `/crew:review` child refuses a go-ahead, a standing rule or a "skip the
+     re-review" that another session relays. That refusal is correct. So a
+     queue cannot work by relay. One queue session holds the principal's
+     word and does every outward action itself, and each child only reviews
+     and fixes. The trial log and the demo mod that #122 and #123 name were
+     not on the build machine, so the issue text was the only source.
+
+     A child is a separate interactive `claude` session in tmux, because a
+     teammate cannot invoke a skill. The launch words "Report to the queue
+     session <name>" write `Queue:` and `Gate: off` in its charter. In child
+     mode, `/crew:review` posts nothing, writes `ready.json` in its record,
+     sends one `ready:` message, and stops before the delivered window.
+     `skills/review-queue/references/ready-file.md` owns the file, and
+     `skills/review-queue/references/board.md` owns the board file both the
+     queue and the mod read. #122's repo-specific version check before an
+     enqueue became a standing-instructions section, `Pre-enqueue checks`,
+     decided at the sweep on the project lead's recommendation. Under
+     `review`, a `CONFLICTING` PR gets no merge agent, because that policy
+     pushes nothing.
+
+     The mod is crew's first TypeScript. `hooks/hooks.json` names it under
+     `modules` beside the two command hooks, and `claude plugin validate`
+     accepts both. It arms on the skill prompt in either form,
+     `crew:review-queue` or `review-queue`, because the types file does not
+     say which one a plugin skill reports. Ten tests passed under `claude
+     plugin test`, and the test run failed at the red commit.
+
+     The skeptical review's round 1 found two blocking defects that every
+     earlier check missed. First, the `/review-board` text fallback first
+     printed when `$.ui.open` reported the pane not placed. The engine places
+     a pane that the person's command opens at any width, so that answer
+     never comes, and the test mocked it. The hook now reads the command's
+     `presentation.columns` and prints the text table under 110 columns. The
+     test kit sets that width. Second, the queue polled only queued rows, so
+     a `review`-policy PR left at `next: author` was never read again. The
+     round also kept the queue's files out of `crew-stats.py`'s record walk. A probe ran `pr-watch.sh once`
+     on the minimal record the queue builds for a queued PR, against merged
+     PR #128: it printed `merged` and exited 0. No queue session, no child
+     and no installed copy of the mod has run.

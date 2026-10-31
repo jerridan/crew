@@ -92,7 +92,7 @@ parse and writes nothing.
 ## `charter.md`
 
 The goal and its falsifiable acceptance criteria, as the principal wrote
-them or as the project lead expanded a goal string. Eight optional lines,
+them or as the project lead expanded a goal string. Nine optional lines,
 each on its own, anywhere in the file:
 
 - `Favour: time` or `Favour: spend` — what the split optimises. `time`
@@ -127,6 +127,9 @@ each on its own, anywhere in the file:
   `git diff --shortstat` prints total fewer than 20. Either half can stand
   alone: `Re-review: skip when prose-only` or `Re-review: skip when under 20
   lines`. With no line, the re-review always runs.
+- `Queue: <queue session name>` — a review run's charter only. It turns on
+  child mode, and names the session the child messages (`/crew:review`'s
+  "Child mode").
 
 `SKILL.md`'s "Take the goal" writes `PR: draft` and `Gate: off` when the
 principal asks for them in the goal or at launch, and "Standing

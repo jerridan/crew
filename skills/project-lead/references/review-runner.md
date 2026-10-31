@@ -18,21 +18,25 @@ able to move the run's branch. So cut a worktree of its own, detached at the
 pending sha, once per deliverable:
 
 ```
-git -C <run.repo> worktree add --detach <record-dir>/review-worktrees/<deliverable-id> <review_pending.head>
+git -C <run.repo> worktree add --detach <review-worktree> <review_pending.head>
 ```
+
+`<review-worktree>` is `<run.worktree_base>/review-worktrees/<deliverable-id>`.
+A record with no `run.worktree_base` uses `<record-dir>` as the base
+(`record-format.md`).
 
 **Every later round moves the same worktree to its pending head**, in place.
 A resumed reviewer works in the directory its session started in ("Resume
 the reviewer" below), so the path never changes:
 
 ```
-git -C <record-dir>/review-worktrees/<deliverable-id> switch --detach --discard-changes <review_pending.head>
+git -C <review-worktree> switch --detach --discard-changes <review_pending.head>
 ```
 
 Remove it at the ship word, never after a round:
 
 ```
-git -C <run.repo> worktree remove --force <record-dir>/review-worktrees/<deliverable-id>
+git -C <run.repo> worktree remove --force <review-worktree>
 git -C <run.repo> worktree prune
 ```
 
@@ -55,7 +59,7 @@ directory. Before you move the worktree, run:
 
 ```
 git -C <run.repo> worktree prune
-git -C <record-dir>/review-worktrees/<deliverable-id> rev-parse --git-dir
+git -C <review-worktree> rev-parse --git-dir
 ```
 
 When the second command fails, run the removal above, delete what is left at
@@ -104,10 +108,18 @@ progress, so its run script kills it after 600 seconds with no output.
 
 Write the instructions file first, then launch, from the review worktree.
 The round `<n>` comes reserved in `run.review_pending.round`, and
-`skeptical-review.md` owns the reservation:
+`skeptical-review.md` owns the reservation.
+
+**Launch from a script file.** Write the command below, with every
+placeholder filled as a literal path, to
+`<record-dir>/reviews/skeptical-r<n>-run.sh`. Then run `bash
+<record-dir>/reviews/skeptical-r<n>-run.sh`. A worktree-isolated session
+refuses the command typed whole, because it names git in a compound form,
+and it allows the script (design §15.126). The resume command below launches
+the same way.
 
 ```
-cd <record-dir>/review-worktrees/<deliverable-id> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | timeout 2700 claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<gate part> *),<one more such rule per gate part>,Bash(npm view *),Bash(npm ls *),Bash(pnpm ls *),Bash(pnpm why *),Bash(yarn why *),Bash(pip show *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
+cd <review-worktree> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | timeout 2700 claude -p --model opus --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(<gate part> *),<one more such rule per gate part>,Bash(npm view *),Bash(npm ls *),Bash(pnpm ls *),Bash(pnpm why *),Bash(yarn why *),Bash(pip show *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
 ```
 
 **The prompt rides on stdin, never as a positional argument.**
@@ -196,10 +208,11 @@ the context, not a dialogue.
 
 **The resume commands.** The default runner keeps "The default command" with
 two changes: `--resume <session id>` in place of `--session-id <uuid>`, and
-the resume prompt on stdin in place of the `printf` line:
+the resume prompt on stdin in place of the `printf` line. It launches from
+its round's `-run.sh` script, as "The default command" says:
 
 ```
-cd <record-dir>/review-worktrees/<deliverable-id> && timeout 2700 claude -p --resume <session id> --model opus --effort high --output-format json --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "<the same list>" < <record-dir>/reviews/skeptical-r<n>-resume.md > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
+cd <review-worktree> && timeout 2700 claude -p --resume <session id> --model opus --effort high --output-format json --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "<the same list>" < <record-dir>/reviews/skeptical-r<n>-resume.md > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
 ```
 
 A replacement keeps `substitution.md`'s run script, with this `codex exec`

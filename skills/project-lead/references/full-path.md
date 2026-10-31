@@ -34,21 +34,42 @@ Two checks bear on launch, on top of the teams-flag check `SKILL.md`'s
 "Every dispatch is named" owns — run that one first here. Escalate on any
 that fails — none can be fixed mid-run.
 
-1. **This session is not worktree-isolated.** `git -C <repo> status` from a
-   worktree other than your own: an isolated session is refused outright, and
-   the refusal names the reason. That command is the whole verification
-   (design §15.10, §15.23f).
+1. **A worktree base is reachable.** Every worktree this run cuts lives under
+   one base: its territory worktrees, a held checkout, and the review
+   worktree. The default base is `<record-dir>`. Probe it with three
+   commands:
+
+   ```
+   git -C <repo> worktree add --detach <base>/worktrees/probe HEAD
+   git -C <base>/worktrees/probe status
+   git -C <repo> worktree remove --force <base>/worktrees/probe
+   ```
+
+   Run the third command after every `add` that passed, even when the
+   second was refused, so no probe stays registered. If all three pass,
+   that is the base. A worktree-isolated session that refuses one of them
+   probes `<repo>/.claude/worktrees/crew/<goal-slug>` the same way. That
+   fallback base must also pass two more checks:
+
+   - `git -C <repo> check-ignore -v <base>` prints a line. No line is a
+     failure.
+   - The repo's test command does not collect files under `.claude/`. The
+     command's config excludes it, or its runner skips dot directories.
+     pytest skips them. vitest, for example, does not by default.
+
+   Write the base that passed with `run set worktree_base
+   '"<absolute path>"'`, and record it and any refusal in `decisions.md`.
+   The check fails only when both bases fail. A refused `git -C` into a
+   checkout the run never writes, such as the shared checkout, is not a
+   failure (design §15.121, §15.126).
 2. **This run can push and open a PR.** `git -C <repo> remote` prints at
    least one line. A checkout with no remote cannot push or open a PR (design
    §15.53).
 
-Run check 1 here, before you write the split, and state which one failed.
-Do not start the run and discover it later.
-
-**Check 2 already ran, at the preference sweep, before you reached this rule —
-`autonomy-contract.md` says why. Do not run it again here.** Its outcome is
-settled: either the sweep escalated it and the principal answered, or the
-checkout had a remote and there was nothing to ask.
+**Both checks already ran, at the preference sweep, before you reached this
+rule — `autonomy-contract.md` says why. Do not run them again here.** Their
+outcome is settled: either the sweep escalated a failure and the principal
+answered, or there was nothing to ask.
 
 One more condition cannot be checked in advance: nothing in the run may stop
 for a human. A display mode is not a condition — in-process is the default and
@@ -129,15 +150,14 @@ The territory branches keep crew's names, because they never reach the
 remote:
 
 ```
-git -C <run.checkout> worktree add <worktree-root>/<territory-slug> -b crew/<goal-slug>/<territory-slug>
+git -C <run.checkout> worktree add <run.worktree_base>/worktrees/<territory-slug> -b crew/<goal-slug>/<territory-slug>
 ```
 
-Put `<worktree-root>` at `<record-dir>/worktrees`, inside this run's own
-record directory and outside the target repo (`record-format.md`).
-A repo-local root looks tidy and breaks the suite: a test runner that globs
-collects every worktree's tests as well as the repo's own, so the run measures
-the wrong tree (design §15.35b). Put the root inside the repo only with a
-reason, and record it.
+`run.worktree_base` is the base launch check 1 chose (`record-format.md`).
+A repo-local base breaks the suite: a test runner that globs collects every
+worktree's tests as well as the repo's own, so the run measures the wrong
+tree (design §15.35b). The isolated fallback is the one repo-local base
+allowed, and check 1 confirmed that the suite skips it.
 
 Write `worktrees.json` now: the IC's name, the absolute worktree path, its
 branch, this session's id, and `orphaned: false`. A deliverable checkout cut
@@ -248,9 +268,8 @@ territory works its packages in sequence in one worktree, so a range from the
 deliverable base carries the previous packages' files too, and every package
 after the first would be failed for scope drift it did not cause.
 
-Always `git -C <worktree>`. Never `cd <worktree> && git ...` — the harness
-denies any command that changes directory before it runs git, allow rule or not
-(design §15.23b).
+Run git in the IC's worktree in the form `ic-contract.md`'s "The worktree
+rule" gives (design §15.23b, §15.126).
 
 **You are the only reader of this package.** No review agent runs over it
 (design §15.94d), so this section and the suite run at "Integrate" are the

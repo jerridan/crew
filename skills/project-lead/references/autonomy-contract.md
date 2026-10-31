@@ -142,11 +142,14 @@ Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
 have nothing to say about any other kind of question.
 
-**Run launch check 3 of `full-path.md`'s "Check the launch conditions" here,
-every time, and put its failure in the same batch.** It is trigger 6, does not
-depend on an answer, and cannot be fixed mid-run. Checks 1 and 2 there stay
-where they are — they only ever matter once the goal has already been sent to
-the full path, so that rule runs them, not the sweep. A run that asks the
+**Run two of `full-path.md`'s "Check the launch conditions" here, every
+time, and put a failure in the same batch:** "A worktree base is reachable"
+and "This run can push and open a PR", which the trigger text below calls
+launch check 3. Each is trigger 6, does not depend on an answer, and cannot be
+fixed mid-run. Every path needs both: every path cuts a review worktree under
+the base, and every path pushes. The teams-flag check stays where it is — it
+only matters once the goal has been sent to the full path, so that rule runs
+it, not the sweep. A run that asks the
 preference questions first and fails a launch check afterwards has
 interrupted the principal twice.
 
@@ -358,8 +361,8 @@ one interruption; a run built in the wrong direction costs a day.
    trigger: `crew:delivered-window`'s "A merge request" runs it.
 5. The fix-round breaker fired at the top band.
 6. One of the three launch checks in `full-path.md`'s "Check the launch
-   conditions" fails: the goal needs the full path and agent teams are off or
-   the session is worktree-isolated, or — on any goal — the checkout has no
+   conditions" fails: the goal needs the full path and agent teams are off,
+   or — on any goal — no worktree base is reachable or the checkout has no
    remote to push to. None can be fixed mid-run.
 7. The goal needs more than one **deliverable**. `full-path.md` runs one
    deliverable's packages; nothing loops over deliverables or reads

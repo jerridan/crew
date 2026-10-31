@@ -48,8 +48,7 @@ report for the round — never overwrite your report.
 - Diff your worktree against your declared file set. Every changed file
   must be in it.
 - Re-read every command you ran. Confirm each one followed the contract's
-  worktree rule: `git -C <worktree>` for git, its own `cd <worktree> &&`
-  prefix for everything else.
+  worktree rule.
 
 Fix anything you find before you report. Do not report a status your own
 review contradicts.

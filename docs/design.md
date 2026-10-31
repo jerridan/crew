@@ -8570,3 +8570,55 @@ Deliberately different:
      its tagged finding headings, with Critical as blocking, Concern as
      suggestion and Nit as nit. A seeded record with one report of each shape
      printed the expected totals and exited 0.
+
+126. **Launch check 1 probes the worktree root — 2026-10-30, T80, #120.**
+     Item 121 found that launch check 1 blocks a full path that can run. Run
+     `pp-34-convert-pages-0c34` (crew 0.1.89, 2026-10-29) asked the
+     principal the same question again. That run cut, read and removed a
+     probe worktree under `<repo>/.claude/worktrees/crew/` from an isolated
+     session, with `git -C`.
+
+     A probe from the isolated session that wrote this item, on 2026-10-30,
+     found the guard narrower than either report says. It refused `git -C`
+     into the shared checkout. It also refused two commands it could not
+     parse: a `cd` chained with `git fetch`, a pipe and a shell variable, and
+     a Python heredoc whose text named git. It allowed `git worktree add` to
+     three roots: the session's scratchpad, `~/.claude/crew/`, and
+     `.claude/worktrees/crew/` inside the session's worktree. In each
+     worktree it allowed `git -C <path> status`, and `cd <path> && git ...`
+     worked in the two outside roots. `git -C <path> commit` worked under
+     `~/.claude/crew/`. Item 121's run saw a refusal of every `git -C` into a
+     foreign path. The guard's behavior may differ between Claude Code
+     versions, so the check probes instead of assuming.
+
+     Launch check 1 is now "The worktree root is reachable". It probes the
+     default root `<record-dir>/worktrees` with `worktree add`, `status` and
+     `worktree remove`. A worktree-isolated session that refuses the default
+     uses `<repo>/.claude/worktrees/crew/<goal-slug>`, which must be
+     gitignored and inside no package. `decisions.md` records the choice.
+     Escalation trigger 6 no longer names isolation. `ic-contract.md`'s
+     worktree rule keeps `git -C` and allows `cd <worktree> && git` after a
+     refusal. `full-path.md`'s own copy of that rule became a pointer.
+     `record-format.md` names the fallback path and tells the project lead
+     to write each `crew-record.py` path as a literal. No run has exercised
+     the change.
+
+     A `/code-review medium` of PR #128 found seven real gaps, and the
+     principal had six of them fixed. First, the fallback covered only the
+     territory worktrees, while the review worktree and a held checkout
+     still lived under `<record-dir>`. Check 1 now chooses one base,
+     `run.worktree_base`, for every worktree of the run. It runs at the
+     preference sweep on every path, because every path cuts a review
+     worktree. Second, the skeptical-review launch command names git in a
+     compound form. A probe of that shape was refused in this isolated
+     session, and the same command from a script file ran. The project lead
+     now writes the command to `reviews/skeptical-r<n>-run.sh` and runs it
+     with `bash`. Third, the probe removes its worktree after every `add`
+     that passed. Fourth, the fallback base must pass a suite check, because
+     vitest collects `.claude/` by default. Fifth, the agents' self-review
+     points at the IC contract's worktree rule instead of a copy of it.
+     Sixth, the README no longer requires an ordinary clone. The principal
+     set aside one more finding: Claude Code can remove the session's
+     worktree at exit, and a fallback base inside it goes too. The ICs
+     commit after every green step, so only uncommitted work is at risk.
+     `/crew:review` still cuts its review worktree under `<record-dir>`.

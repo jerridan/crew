@@ -3521,12 +3521,12 @@ Stage: 8 (design §15.127)
 
 Issue #123. A hooks module in the plugin draws a pane and a status line from
 the board file. It arms only on the `review-queue` skill prompt. `/review-board`
-opens the pane in any session, or prints the board as text when the pane
-cannot seat.
+opens the pane in any session, or prints the board as text in a terminal
+under 110 columns.
 
 Scope: the pane's four sections, the sort, the bounded In flight list, the
-Done toggle kept across reloads, the status line and its clear, and ten tests
-under `claude plugin test`.
+Done toggle kept across reloads, the status line and its clear, and thirteen
+tests under `claude plugin test`.
 
 Out of scope: #124.
 

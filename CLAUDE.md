@@ -92,6 +92,12 @@ reads each child's ready file, and does every post, approval, enqueue and
 Slack reaction itself. The mod's tests pass under `claude plugin test`. No
 queue session and no child has run yet.
 
+T86 makes the review-board mod the queue's watcher when
+`~/.claude/secrets/slack-token` holds a token: it polls Slack and the
+review requests with no model turn, writes `queue/asks.json`, and prompts
+the queue session (§15.129). No Slack token was on the build machine, so
+no live Slack poll has run.
+
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline
 per deliverable, a gate decided by each item's author, a review that stops on

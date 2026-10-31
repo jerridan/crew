@@ -3556,7 +3556,7 @@ opens the pane in any session, or prints the board as text in a terminal
 under 110 columns.
 
 Scope: the pane's four sections, the sort, the bounded In flight list, the
-Done toggle kept across reloads, the status line and its clear, and thirteen
+Done toggle kept across reloads, the status line and its clear, and fifteen
 tests under `claude plugin test`.
 
 Out of scope: #124.
@@ -3564,4 +3564,31 @@ Out of scope: #124.
 Unexercised: no session has loaded the mod from the installed plugin.
 
 Read first: design §15.128; `hooks/review-board.tsx`;
+`skills/review-queue/references/board.md`.
+
+## T86 — Make the review-board mod the queue's watcher
+
+Status: done 2026-10-31
+Depends on: T84, T85
+Stage: 8 (design §15.129)
+
+Issue #124. With a Slack user token in `~/.claude/secrets/slack-token`, the
+review-board mod polls each active watch every 60 seconds in the queue
+session that owns the board. It reads Slack's `conversations.history` and
+`gh search prs --review-requested=@me`, writes each ask to
+`queue/asks.json`, and submits one prompt to the queue session per poll
+that finds a new PR. The queue session takes the entries and writes
+`asks_through` in `board.json`. With no token, the mod polls nothing, and
+the queue session polls every source every 5 minutes, as before.
+
+Scope: the poll, the asks file and its prune rule, the derived `new` row in
+the pane, the queue skill's token test and 15-minute cron, the README row,
+and 32 new tests under `claude plugin test`.
+
+Out of scope: a Slack write from the mod, private channels, `userConfig`.
+
+Unexercised: no live Slack poll has run, because the build machine had no
+token. No queue session has loaded the mod.
+
+Read first: design §15.129; `hooks/review-board.tsx`;
 `skills/review-queue/references/board.md`.

@@ -272,6 +272,7 @@ it. In a terminal under 110 columns, the command prints the board as text.
 | A clone of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the clone | every `/crew:review` run |
 | A named session, tmux, and `gh` signed in as you | `claude -n review-queue`, with `tmux` installed | every `/crew:review-queue` run |
 | A Slack connector | A Slack MCP connector that reads channel history and adds reactions | a queue that watches a Slack channel |
+| A Slack user token | Put a token with the scopes `channels:history`, `channels:read` and `reactions:read` in `~/.claude/secrets/slack-token`. The review board then polls Slack and your review requests. Without the file, the queue session polls, and reads Slack through the Slack MCP connector | optional, every `/crew:review-queue` run |
 | Claude Code 2.1.314 or later | `claude --version` | the review board |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 | Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |

@@ -30,7 +30,7 @@ installed.
 
 | File | What it owns | When you read it |
 |---|---|---|
-| `references/board.md`, beside this file | the board file's path, schema and derived terms | before "Start" |
+| `references/board.md`, beside this file | the path, schema and derived terms of the board file and of `asks.json` | before "Start" |
 | `references/ready-file.md`, beside this file | a child's ready file and its `ready:` message | before "Children" |
 | `<plugin-dir>/skills/review/references/github-review.md` | the sanitizing, the label rule, the draft and body shapes, the event rule, the re-read before an approval, and the post command | before "Triage" |
 | `<plugin-dir>/skills/review/references/severity-rubric.md` | the six labels of a finding | at "The inline read" |
@@ -49,18 +49,33 @@ This file copies none of their rules.
    When the board does not exist, write it with no watch and no row.
 2. **Take the watches and rows from the board.** A watch with `status:
    active` runs again. A row that is not done resumes at its `stage`.
-3. **Arm the wakeup loop.** Call `CronCreate` with `recurring: true`, the
-   cron `*/5 * * * *`, and the prompt "Crew review-queue poll: run the
-   wakeup loop of crew:review-queue." Delete an older job with that prompt
-   first, with `CronList` and `CronDelete`. No mod or other watcher polls for
-   this session.
+3. **Arm the wakeup loop.** First look for a Slack token. This command
+   prints nothing. It exits 0 when the file holds a token:
+   ```bash
+   grep -q '[^[:space:]]' ~/.claude/secrets/slack-token
+   ```
+   Never print the file, and never read it into this session. A file of
+   only whitespace is no token. With a token, the review-board mod polls the
+   sources. Use the cron `*/15 * * * *`, because the stall check and the
+   child reads still need the loop. With no token, use the cron
+   `*/5 * * * *`. Call `CronCreate` with `recurring: true`, that cron, and
+   the prompt "Crew review-queue poll: run the wakeup loop of
+   crew:review-queue." Delete an older job with that prompt first, with
+   `CronList` and `CronDelete`.
 
 ## The wakeup loop
 
-Each fire, and each `ready:` message, runs this loop:
+Each fire, each `ready:` message, and each "Crew review-queue ask:" prompt
+from the review-board mod runs this loop:
 
-1. Poll each active watch, as "Sources" says. Set its `last_checked`, and
-   add each new ask to `found`.
+1. **With a token**, read `asks.json` in place of a poll. Take each
+   untaken entry, as `references/board.md` defines it. Treat it as
+   "Triage" treats an ask: a new PR gets a row, and a PR with a row gets
+   the Slack message, or a re-triage at `next: author`. Set `asks_through` to the
+   `found_at` of the newest entry you took. Write those rows and
+   `asks_through` in one board write. Copy each watch's `last_checked` and
+   `found` from `asks.json`. **With no token**, poll each active watch, as
+   "Sources" says. Set its `last_checked`, and add each new ask to `found`.
 2. Triage each new ask.
 3. Read the `state.json` of each child that has sent no `ready:` message.
    A package `in-flight` sets `stage: fixing`. A
@@ -112,8 +127,8 @@ The principal's three phrases:
   `slack:#x`, `status: active`, with that policy. "watch my review requests
   with review" adds the watch `review-requests`, source
   `github:review-requests`. With no policy word, the policy is `review`.
-- **"stop watching #x"** sets that watch to `status: stopped`. Its rows
-  stay.
+- **"stop watching #x"** sets that watch to `status: stopped`.
+  A stopped watch is not polled. Its rows stay.
 - **"what are you watching"** gets one table: each watch's id, source,
   policy, status, since, last checked and found.
 
@@ -129,13 +144,18 @@ A fork PR always takes `review`, as "Triage" says.
 
 ## Sources
 
-**Slack.** Read a channel and set a reaction through this session's Slack
-MCP connector. Find it at run time with `ToolSearch`: one tool that reads a
-channel's history, and one that adds a reaction. **With no such connector, a
-`slack:` watch cannot start.** Tell the principal so, and add no watch. Each
-poll reads the messages after `last_checked`. Each message that holds a PR
-URL is an ask. Keep the channel and the message timestamp on the ask, for
-its reactions. One message can carry two PRs, and each PR is an ask.
+With a token, the review-board mod reads each Slack and GitHub source, and
+this session reads `asks.json`. The polls below run only with no token.
+
+**Slack.** With no token, read a channel through this session's Slack MCP
+connector. Always set a reaction through the connector, because the token
+has read scopes only. Find the connector at run time with `ToolSearch`:
+one tool that reads a channel's history, and one that adds a reaction.
+**With no such connector, a `slack:` watch cannot start**, with a token or
+without one. Tell the principal so, and add no watch. Each poll reads the
+messages after `last_checked`. Each message that holds a PR URL is an ask.
+Keep the channel and the message timestamp on the ask, for its reactions.
+One message can carry two PRs, and each PR is an ask.
 
 **GitHub review requests.** Each poll runs:
 

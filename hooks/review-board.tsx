@@ -1,10 +1,15 @@
-// The review board: a pane and a status line for the review queue session.
-// The board file's schema is owned by skills/review-queue/references/board.md.
-// This module only reads the file. The queue session writes it.
+// The review board: a pane and a status line for the review queue session,
+// and the watcher of the queue's sources.
+// skills/review-queue/references/board.md owns the schema of the board file
+// and of the asks file.
+// This module only reads the board file. The queue session writes it. This
+// module writes the asks file, and the queue session reads it.
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type {
+  ReviewBoardAsk,
+  ReviewBoardAsksFile,
   ReviewBoardFile,
   ReviewBoardRow,
   ReviewBoardStage,
@@ -16,9 +21,29 @@ type Engine = EngineInterface
 const PANE = 'review-board'
 const SKILL = 'review-queue'
 const POLL_MS = 3000
+const WATCH_MS = 60_000
+// A Slack call that has not answered by then fails, so the poll ends.
+const FETCH_MS = 30_000
 const TITLE_CAP = 60
 const LAST_MIN = 20
 const MIN_PANE_COLUMNS = 110
+
+const SLACK_API = 'https://slack.com/api'
+// One poll reads at most this many history pages, and goes on at the next.
+const HISTORY_PAGES = 5
+// The channel lookup follows pages to the name. This only stops a loop.
+const LIST_PAGES = 100
+const NO_TOKEN = 'no token: the queue session polls'
+const GH_SEARCH = [
+  'gh',
+  'search',
+  'prs',
+  '--review-requested=@me',
+  '--state=open',
+  '--json',
+  'number,repository,url,title,author',
+]
+const PR_LINK = /https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/g
 
 const STAGES: ReviewBoardStage[] = [
   'new',
@@ -85,6 +110,7 @@ const EMPTY: ReviewBoardFile = {
   version: 1,
   owner: { session_id: '', since: '' },
   updated_at: '',
+  asks_through: null,
   watches: [],
   rows: [],
 }
@@ -141,12 +167,119 @@ export const parseBoard = (text: string | undefined): ReviewBoardFile => {
     return {
       ...EMPTY,
       ...raw,
+      asks_through:
+        typeof raw.asks_through === 'string' ? raw.asks_through : null,
       watches: list(raw.watches).flatMap(x => cleanWatch(x) ?? []),
       rows: list(raw.rows).flatMap(x => cleanRow(x) ?? []),
     }
   } catch {
     return EMPTY
   }
+}
+
+const EMPTY_ASKS: ReviewBoardAsksFile = {
+  version: 1,
+  updated_at: '',
+  watches: {},
+  asks: [],
+}
+
+const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+const obj = (v: unknown): Record<string, unknown> =>
+  typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {}
+const at = (iso: string) => Date.parse(iso) || 0
+const prKey = (x: { repo: string; pr: number }) => `${x.repo}#${x.pr}`
+
+const cleanAsk = (raw: unknown): ReviewBoardAsk | undefined => {
+  const a = obj(raw)
+  if (typeof a.pr !== 'number' || typeof a.repo !== 'string') return undefined
+  if (typeof a.watch !== 'string' || typeof a.found_at !== 'string') {
+    return undefined
+  }
+  const s = obj(a.slack)
+  return {
+    repo: a.repo,
+    pr: a.pr,
+    url: str(a.url),
+    title: typeof a.title === 'string' ? a.title : null,
+    author: typeof a.author === 'string' ? a.author : null,
+    watch: a.watch,
+    slack:
+      typeof s.channel === 'string' && typeof s.ts === 'string'
+        ? { channel: s.channel, ts: s.ts }
+        : null,
+    found_at: a.found_at,
+  }
+}
+
+export const parseAsks = (text: string | undefined): ReviewBoardAsksFile => {
+  if (!text) return EMPTY_ASKS
+  try {
+    const raw = obj(JSON.parse(text))
+    const watches: ReviewBoardAsksFile['watches'] = {}
+    for (const [id, v] of Object.entries(obj(raw.watches))) {
+      const w = obj(v)
+      if (typeof w.last_checked !== 'string') continue
+      watches[id] = {
+        last_checked: w.last_checked,
+        found: typeof w.found === 'number' ? w.found : 0,
+      }
+    }
+    return {
+      version: 1,
+      updated_at: str(raw.updated_at),
+      watches,
+      asks: list(raw.asks).flatMap(x => cleanAsk(x) ?? []),
+    }
+  } catch {
+    return EMPTY_ASKS
+  }
+}
+
+// An entry is untaken until the queue session's asks_through reaches it.
+const untaken = (board: ReviewBoardFile, a: ReviewBoardAsk) =>
+  board.asks_through === null || at(a.found_at) > at(board.asks_through)
+
+// The board as the pane shows it: each untaken entry whose PR has no row
+// draws as a `new` row, one per PR from its earliest entry. A watch takes
+// its last_checked and found from the asks file when the file is newer.
+export const view = (
+  board: ReviewBoardFile,
+  asks: ReviewBoardAsksFile,
+): ReviewBoardFile => {
+  const rows = new Set(board.rows.map(prKey))
+  const first = new Map<string, ReviewBoardAsk>()
+  for (const a of asks.asks) {
+    if (!untaken(board, a) || rows.has(prKey(a))) continue
+    const had = first.get(prKey(a))
+    if (!had || at(a.found_at) < at(had.found_at)) first.set(prKey(a), a)
+  }
+  const policy = (id: string) =>
+    board.watches.find(w => w.id === id)?.policy ?? 'review'
+  const derived = [...first.values()].map(
+    (a): ReviewBoardRow => ({
+      repo: a.repo,
+      pr: a.pr,
+      title: a.title ?? '',
+      author: a.author ?? '-',
+      stage: 'new',
+      next: 'crew',
+      head: null,
+      last: { at: a.found_at, text: `new ask from ${a.watch}` },
+      url: a.url,
+      watch: a.watch,
+      policy: policy(a.watch),
+    }),
+  )
+  const watches = board.watches.map(w => {
+    const x = asks.watches[w.id]
+    if (!x) return w
+    if (w.last_checked !== null && at(x.last_checked) <= at(w.last_checked)) {
+      return w
+    }
+    return { ...w, last_checked: x.last_checked, found: x.found }
+  })
+  return { ...board, watches, rows: [...board.rows, ...derived] }
 }
 
 const fit = (text: string, width: number) =>
@@ -184,7 +317,11 @@ const watchLine = (x: ReviewBoardWatch) =>
     `found ${x.found}`,
   ].join(' · ')
 
-export const textTable = (board: ReviewBoardFile, columns = 120) => {
+export const textTable = (
+  board: ReviewBoardFile,
+  columns = 120,
+  notes: readonly string[] = [],
+) => {
   const w = widths(columns, 2)
   const line = (r: ReviewBoardRow) =>
     [
@@ -199,6 +336,7 @@ export const textTable = (board: ReviewBoardFile, columns = 120) => {
   const out = [statusLine(board), '', 'Watching']
   if (board.watches.length === 0) out.push('  none')
   for (const x of board.watches) out.push(`  ${fit(watchLine(x), columns - 2)}`)
+  for (const n of notes) out.push(`  ${fit(n, columns - 2)}`)
   out.push('', 'Needs you')
   if (s.needsYou.length === 0) out.push('  none')
   for (const r of s.needsYou) out.push(`  ${line(r)}`)
@@ -215,25 +353,45 @@ let last: string | undefined
 // The board the last tick parsed: the pane of an armed session draws from it.
 let current: ReviewBoardFile | undefined
 let opened = false
-let timer: { cancel: () => void } | undefined
+let timer: unknown
+// The source poll's timer, whether a poll runs now, and the lines it shows
+// in Watching. A reload starts them afresh, and the next arm polls again.
+let watcher: unknown
+let watching = false
+let notes: string[] = []
 
-const load = async ($: Engine) => {
+const queueDir = async ($: Engine) => {
   const root = await $.env.get('CREW_RECORD_ROOT')
   const home = await $.env.get('HOME')
+  return `${root || `${home ?? ''}/.claude/crew`}/queue`
+}
+
+const readText = async ($: Engine, path: string) => {
   try {
-    return await $.fs.read(
-      `${root || `${home ?? ''}/.claude/crew`}/queue/board.json`,
-    )
+    const text = await $.fs.read(path)
+    return typeof text === 'string' ? text : undefined
   } catch {
     return undefined
   }
 }
 
+const load = async ($: Engine) =>
+  readText($, `${await queueDir($)}/board.json`)
+
+const loadAsks = async ($: Engine) =>
+  readText($, `${await queueDir($)}/asks.json`)
+
+// The board the pane shows: the board file and the asks file together.
+const loadView = async ($: Engine) =>
+  view(parseBoard(await load($)), parseAsks(await loadAsks($)))
+
 const tick = async ($: Engine) => {
   const text = (await load($)) ?? ''
-  if (text === last) return
-  last = text
-  const board = parseBoard(text)
+  const asks = (await loadAsks($)) ?? ''
+  const seen = [text, asks, ...notes].join('\n')
+  if (seen === last) return
+  last = seen
+  const board = view(parseBoard(text), parseAsks(asks))
   current = board
   const open = board.rows.filter(r => !isDone(r))
   $.ui.status(open.length === 0 ? undefined : statusLine(board))
@@ -244,8 +402,347 @@ const tick = async ($: Engine) => {
   $.ui.invalidate('ui.render')
 }
 
+// The token never leaves this function's callers: no file, prompt, pane,
+// log or store value holds it.
+const readToken = async ($: Engine) => {
+  const home = await $.env.get('HOME')
+  const text = await readText($, `${home ?? ''}/.claude/secrets/slack-token`)
+  return (text ?? '').trim() || undefined
+}
+
+type Candidate = Omit<ReviewBoardAsk, 'found_at'>
+
+// A Slack ts as seconds and microseconds, so two compare exactly.
+const tsParts = (ts: string) => {
+  const [s = '0', f = ''] = ts.split('.')
+  return [Number(s), Number(f.padEnd(6, '0').slice(0, 6))] as const
+}
+const tsAfter = (a: string, b: string) => {
+  const [as, af] = tsParts(a)
+  const [bs, bf] = tsParts(b)
+  return as > bs || (as === bs && af > bf)
+}
+const unixTs = (iso: string) => ((Date.parse(iso) || 0) / 1000).toFixed(6)
+
+// The fetch, or a rejection when it has not answered in FETCH_MS.
+const bounded = <T,>($: Engine, work: Promise<T>) =>
+  new Promise<T>((resolve, reject) => {
+    const timer = $.clock.after(FETCH_MS, () =>
+      reject(new Error('no answer in time')),
+    )
+    work.then(
+      v => {
+        timer.cancel()
+        resolve(v)
+      },
+      (err: unknown) => {
+        timer.cancel()
+        reject(err)
+      },
+    )
+  })
+
+const slackGet = async (
+  $: Engine,
+  token: string,
+  method: string,
+  params: Record<string, string>,
+): Promise<{ body: Record<string, unknown> } | { error: string }> => {
+  const query = Object.entries(params)
+    .filter(([, v]) => v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join('&')
+  const res = await bounded(
+    $,
+    $.http.fetch(`${SLACK_API}/${method}?${query}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  )
+  if (!res.ok) return { error: `HTTP ${res.status}` }
+  let body: Record<string, unknown>
+  try {
+    body = obj(JSON.parse(res.text))
+  } catch {
+    return { error: 'an answer that is not JSON' }
+  }
+  if (body.ok !== true) return { error: str(body.error, 'not ok') }
+  return { body }
+}
+
+const nextCursor = (body: Record<string, unknown>) =>
+  str(obj(body.response_metadata).next_cursor)
+
+const channelId = async ($: Engine, token: string, channel: string) => {
+  const key = `slack-channel:${channel}`
+  const kept = await $.store.get(key)
+  if (typeof kept === 'string') return kept
+  let cursor = ''
+  for (let page = 0; page < LIST_PAGES; page++) {
+    const r = await slackGet($, token, 'conversations.list', {
+      types: 'public_channel',
+      exclude_archived: 'true',
+      limit: '1000',
+      cursor,
+    })
+    if ('error' in r) return r
+    const hit = list(r.body.channels)
+      .map(obj)
+      .find(c => c.name === channel)
+    if (hit && typeof hit.id === 'string') {
+      await $.store.set(key, hit.id)
+      return hit.id
+    }
+    cursor = nextCursor(r.body)
+    if (!cursor) break
+  }
+  return undefined
+}
+
+// The history cursor of a watch: `oldest` moves only after a poll reads the
+// last page. `page` is where a poll the page cap stopped goes on. `since` is
+// the watch's since: a watch added again with a new since starts afresh.
+type SlackCursor = {
+  since: string
+  oldest: string
+  page: string | null
+  newest: string | null
+}
+
+// A store value the sweep writes only after the asks file is in place.
+type Kept = { key: string; value: unknown }
+
+// One Slack watch: its PR messages and its new cursor, or undefined when the
+// poll is skipped.
+const pollSlack = async (
+  $: Engine,
+  token: string,
+  w: ReviewBoardWatch,
+): Promise<{ got: Candidate[]; cursor: Kept } | undefined> => {
+  const channel = w.source.slice('slack:#'.length)
+  const id = await channelId($, token, channel)
+  if (id === undefined) {
+    notes.push(`#${channel}: not found`)
+    return undefined
+  }
+  if (typeof id !== 'string') {
+    notes.push(`#${channel}: Slack error ${id.error}`)
+    return undefined
+  }
+  const key = `slack-cursor:${w.id}`
+  const kept = obj(await $.store.get(key))
+  const saved = kept.since === w.since ? kept : {}
+  const oldest = typeof saved.oldest === 'string' ? saved.oldest : unixTs(w.since)
+  let page = typeof saved.page === 'string' ? saved.page : ''
+  let newest = typeof saved.newest === 'string' ? saved.newest : null
+  const got: Candidate[] = []
+  for (let i = 0; i < HISTORY_PAGES; i++) {
+    const r = await slackGet($, token, 'conversations.history', {
+      channel: id,
+      oldest,
+      limit: '200',
+      cursor: page,
+    })
+    if ('error' in r) {
+      notes.push(`#${channel}: Slack error ${r.error}`)
+      return undefined
+    }
+    for (const m of list(r.body.messages).map(obj)) {
+      const ts = str(m.ts)
+      if (!ts) continue
+      if (newest === null || tsAfter(ts, newest)) newest = ts
+      if (list(m.reactions).some(x => obj(x).name === 'done')) continue
+      const prs = new Set<string>()
+      for (const [, owner, repo, n] of str(m.text).matchAll(PR_LINK)) {
+        const key = `${owner}/${repo}#${n}`
+        if (prs.has(key)) continue
+        prs.add(key)
+        got.push({
+          repo: `${owner}/${repo}`,
+          pr: Number(n),
+          url: `https://github.com/${owner}/${repo}/pull/${n}`,
+          title: null,
+          author: null,
+          watch: w.id,
+          slack: { channel: id, ts },
+        })
+      }
+    }
+    page = nextCursor(r.body)
+    if (!page) break
+  }
+  const cursor: SlackCursor = page
+    ? { since: w.since, oldest, page, newest }
+    : { since: w.since, oldest: newest ?? oldest, page: null, newest: null }
+  return { got, cursor: { key, value: cursor } }
+}
+
+// The GitHub review requests: each open PR, or undefined when gh failed.
+const pollGithub = async (
+  $: Engine,
+  w: ReviewBoardWatch,
+): Promise<Candidate[] | undefined> => {
+  const run = await $.process.run(GH_SEARCH)
+  let prs: unknown[] | undefined
+  try {
+    prs = run.exitCode === 0 ? list(JSON.parse(run.stdout)) : undefined
+  } catch {
+    prs = undefined
+  }
+  if (prs === undefined) {
+    notes.push(`${w.id}: gh search failed`)
+    return undefined
+  }
+  return prs.map(obj).flatMap(p => {
+    const repo = str(obj(p.repository).nameWithOwner)
+    if (!repo || typeof p.number !== 'number') return []
+    return [
+      {
+        repo,
+        pr: p.number,
+        url: str(p.url),
+        title: typeof p.title === 'string' ? p.title : null,
+        author: str(obj(p.author).login) || null,
+        watch: w.id,
+        slack: null,
+      },
+    ]
+  })
+}
+
+// One poll of every active watch: write the asks file, then hand each new
+// ask to this session with one prompt.
+const sweep = async ($: Engine) => {
+  notes = []
+  const token = await readToken($)
+  if (!token) {
+    notes = [NO_TOKEN]
+    return
+  }
+  const board = parseBoard(await load($))
+  const owner = str(obj(board.owner).session_id)
+  if (!owner || owner !== (await $.session.id())) return
+  const dir = await queueDir($)
+  const file = parseAsks(await loadAsks($))
+  const rows = new Set(board.rows.map(prKey))
+  // A Slack message for a row at next: author re-triages it, so it prompts.
+  const author = new Set(
+    board.rows.filter(r => r.next === 'author').map(prKey),
+  )
+  const kept = file.asks.filter(a => untaken(board, a))
+  const added: ReviewBoardAsk[] = []
+  const fresh: ReviewBoardAsk[] = []
+  const watches = { ...file.watches }
+  const now = await $.clock.now()
+  // Each new found_at is later than every found_at the file held.
+  let latest = Math.max(
+    0,
+    ...file.asks.map(a => at(a.found_at)),
+    board.asks_through === null ? 0 : at(board.asks_through),
+  )
+  const stamp = () => {
+    latest = Math.max(now, latest + 1)
+    return new Date(latest).toISOString()
+  }
+  const slackKey = (a: Candidate) =>
+    `${prKey(a)}@${a.slack?.channel ?? ''}/${a.slack?.ts ?? ''}`
+  // The cursors and found counts: written only after the asks file is in
+  // place, so a failed write reads the same messages again at the next poll.
+  const later: Kept[] = []
+  for (const w of board.watches) {
+    if (w.status !== 'active') continue
+    let got: Candidate[] | undefined
+    // A watch whose source throws is skipped, and the others still poll.
+    try {
+      if (w.source.startsWith('slack:#')) {
+        const r = await pollSlack($, token, w)
+        if (r) later.push(r.cursor)
+        got = r?.got
+      } else if (w.source === 'github:review-requests') {
+        got = await pollGithub($, w)
+      } else continue
+    } catch {
+      notes.push(`${w.id}: poll failed`)
+      continue
+    }
+    if (got === undefined) continue
+    const foundKey = `found:${w.id}`
+    const count = obj(await $.store.get(foundKey))
+    let found =
+      count.since === w.since && typeof count.count === 'number' ? count.count : 0
+    for (const c of got) {
+      const all = [...kept, ...added]
+      if (c.slack) {
+        if (all.some(a => a.slack && slackKey(a) === slackKey(c))) continue
+      } else if (rows.has(prKey(c)) || all.some(a => prKey(a) === prKey(c))) {
+        continue
+      }
+      const entry = { ...c, found_at: stamp() }
+      const isNew = !rows.has(prKey(c)) || author.has(prKey(c))
+      if (isNew && !all.some(a => prKey(a) === prKey(c))) fresh.push(entry)
+      added.push(entry)
+      found += 1
+    }
+    later.push({ key: foundKey, value: { since: w.since, count: found } })
+    watches[w.id] = { last_checked: new Date(now).toISOString(), found }
+  }
+  const out: ReviewBoardAsksFile = {
+    version: 1,
+    updated_at: new Date(now).toISOString(),
+    watches,
+    asks: [...kept, ...added],
+  }
+  // A reader never sees half a file: write a temp file, then move it.
+  const path = `${dir}/asks.json`
+  const tmp = `${path}.tmp`
+  try {
+    await $.fs.write(tmp, `${JSON.stringify(out, null, 2)}\n`)
+  } catch {
+    notes.push('asks.json: the write failed')
+    return
+  }
+  const moved = await $.process.run(['mv', tmp, path])
+  if (moved.exitCode !== 0) {
+    notes.push('asks.json: the move failed')
+    return
+  }
+  for (const k of later) await $.store.set(k.key, k.value)
+  if (fresh.length === 0) return
+  const named = fresh.map(a => `${prKey(a)} from ${a.watch}`).join(', ')
+  // The poll does not wait for the session's turn. A refused submit leaves
+  // the entries in the asks file, and the next wakeup takes them.
+  $.prompt
+    .submit({
+      text: `Crew review-queue ask: ${named}. Run the wakeup loop of crew:review-queue.`,
+    })
+    .catch(() => undefined)
+}
+
+// A throw must not end the interval, so each poll catches its own.
+const watch = async ($: Engine) => {
+  if (watching) return
+  watching = true
+  try {
+    await sweep($)
+  } catch {
+    // The next period polls again.
+  } finally {
+    watching = false
+  }
+  try {
+    await tick($)
+  } catch {
+    // The next tick draws again.
+  }
+}
+
 const poll = async ($: Engine) => {
   if (!timer) timer = $.clock.every(POLL_MS, () => void tick($))
+  if (!watcher) {
+    watcher = $.clock.every(WATCH_MS, () => void watch($))
+    // The first poll may take as long as a fetch, so arming does not wait.
+    void watch($)
+  }
   await tick($)
 }
 
@@ -271,7 +768,7 @@ export const register: Register = on => {
     // A pane a command opens is placed at any width, so the width decides.
     const columns = e.presentation.columns
     if (columns < MIN_PANE_COLUMNS) {
-      return { text: textTable(parseBoard(await load($)), columns) }
+      return { text: textTable(await loadView($), columns, notes) }
     }
     const placed = await $.ui.open({ id: PANE, title: 'Review board' })
     if (placed.isPlaced) return { text: 'Review board pane opened.' }
@@ -287,7 +784,7 @@ export const register: Register = on => {
     // session that is not armed reads the file once per render.
     const isArmed = await read($, armed)
     if (isArmed && !timer) timer = $.clock.every(POLL_MS, () => void tick($))
-    const board = (isArmed && current) || parseBoard(await load($))
+    const board = (isArmed && current) || (await loadView($))
     const s = sections(board)
     const shown = await read($, showDone)
     const w = widths(e.props.bodyColumns)
@@ -313,11 +810,12 @@ export const register: Register = on => {
 
     // In flight takes what is left of the window. Every other line counts:
     // four headings, the Watching and Needs you rows (or their one empty
-    // line), the Done button, the Done rows when shown, and the "+N more"
-    // line when In flight overflows.
+    // line), the watcher's notes, the Done button, the Done rows when shown,
+    // and the "+N more" line when In flight overflows.
     const used =
       4 +
       Math.max(1, board.watches.length) +
+      notes.length +
       Math.max(1, s.needsYou.length) +
       1 +
       (shown ? s.done.length : 0)
@@ -337,6 +835,11 @@ export const register: Register = on => {
             wrap="truncate"
           >
             {fit(watchLine(x), e.props.bodyColumns)}
+          </Text>
+        ))}
+        {notes.map(n => (
+          <Text key={`note:${n}`} dimColor wrap="truncate">
+            {fit(n, e.props.bodyColumns)}
           </Text>
         ))}
         <Text bold>Needs you</Text>

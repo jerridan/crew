@@ -116,5 +116,5 @@ A stopped watch is never stale. A stale watch means the mod does not poll it.
 The queue session polls a stale watch itself.
 
 **With no token**, the mod polls no source and writes no `asks.json`. The
-queue session polls every source in its wakeup loop. The pane shows
+queue session polls every active watch in its wakeup loop. The pane shows
 `no token: the queue session polls` under Watching.

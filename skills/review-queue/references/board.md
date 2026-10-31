@@ -110,10 +110,13 @@ When a watch's `last_checked` in the asks file is later than its
 `last_checked` and `found`.
 
 The mod moves a watch's `last_checked` in the asks file only after a good
-poll of that watch. A watch is **stale** when it has `status: active` and its
-`last_checked` in the asks file is missing or more than 5 minutes before now.
-A stopped watch is never stale. A stale watch means the mod does not poll it.
-The queue session polls a stale watch itself.
+poll of that watch. Take the later of three times: the watch's `last_checked`
+in the asks file (a missing one counts as no time), the watch's `since`, and
+the board's `owner.since`. A watch is **stale** when it has `status: active`
+and that later time is more than 5 minutes before now. A stopped watch is
+never stale. A new watch, or a new owner, has up to 5 minutes for the mod's
+first good poll. A stale watch means the mod does not poll it. The queue
+session polls a stale watch itself.
 
 **With no token**, the mod polls no source and writes no `asks.json`. The
 queue session polls every active watch in its wakeup loop. The pane shows

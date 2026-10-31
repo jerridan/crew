@@ -120,7 +120,9 @@ const GAP = 1
 // A row is the fixed cells, one gap between each of the six cells, then the
 // title and the last event. `indent` is what a caller puts before the row.
 const widths = (columns: number, indent = 0) => {
-  const fixed = CELLS.reduce((a, b) => a + b, 0) + GAP * CELLS.length
+  // The four fixed cells, the title and the last event: six cells, five gaps.
+  const gaps = GAP * (CELLS.length + 2 - 1)
+  const fixed = CELLS.reduce((a, b) => a + b, 0) + gaps
   const left = Math.max(LAST_MIN + 10, columns - indent - fixed)
   const title = Math.min(TITLE_CAP, Math.max(10, left - LAST_MIN))
   return { title, last: left - title }

@@ -257,3 +257,47 @@ test('the status line clears when every row is done, and the pane stays open', a
   expect(w.seen.status.at(-1)).toBeUndefined()
   expect(w.seen.closes).toBe(0)
 })
+
+const LONG = 'y'.repeat(200)
+const LONG_ROW = () =>
+  board([
+    row(8, 'triage', 'crew', '2026-01-01T10:00:00Z', {
+      title: LONG,
+      last: { at: '2026-01-01T10:00:00Z', text: LONG },
+    }),
+  ])
+
+test('a text row is exactly the width given, with no second ellipsis', async ($, on) => {
+  world(on, LONG_ROW)
+  const out = await $.command.run(command(80))
+  const line = (out.text ?? '').split('\n').find(l => l.includes('#8')) ?? ''
+  // The row is built from the widths alone: the final fit must not cut it.
+  expect(line.length).toBe(80)
+  expect(line).not.toContain('……')
+  // Title 23, last 20 (80 - indent 2 - 30 fixed - 5 gaps = 43 to share): the
+  // last cell keeps all of its 19 letters and one ellipsis.
+  expect(line.endsWith(`${'y'.repeat(19)}…`)).toBe(true)
+})
+
+test('a pane row is exactly bodyColumns wide: cells plus gaps', async ($, on) => {
+  world(on, LONG_ROW)
+  type Node = {
+    props?: { key?: string; gap?: number; width?: number }
+    children?: Node[]
+  }
+  for (const columns of [100, 120]) {
+    const ui = await $.ui.mount({
+      ...PANE,
+      props: { ...PANE.props, bodyColumns: columns },
+      surface: 'terminal',
+    })
+    const root = (await ui.drawn()) as Node
+    const line = (root.children ?? []).find(c => c.props?.key === 'o/r#8')
+    const cells = line?.children ?? []
+    const gaps = (line?.props?.gap ?? 0) * (cells.length - 1)
+    const total = cells.reduce((sum, c) => sum + (c.props?.width ?? 0), 0) + gaps
+    expect(cells.length).toBe(6)
+    expect(total).toBe(columns)
+    await ui.unmount()
+  }
+})

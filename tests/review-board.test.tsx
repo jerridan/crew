@@ -456,8 +456,9 @@ const watcher = (
     hang: 0,
   }
   const gh = { prs: [] as object[], fail: false, throws: false }
-  // The next `mv` runs that exit 1, and temp-file writes the engine refuses.
-  const faults = { mv: 0, write: 0 }
+  // The next `mv` runs that exit 1, temp-file writes the engine refuses, and
+  // prompts the engine refuses.
+  const faults = { mv: 0, write: 0, submit: 0 }
   const seen = {
     fetches: [] as string[],
     lists: [] as string[],
@@ -465,6 +466,7 @@ const watcher = (
     runs: [] as string[][],
     writes: [] as { path: string; text: string }[],
     prompts: [] as string[],
+    refused: [] as string[],
     status: [] as unknown[],
     opens: 0,
   }
@@ -561,6 +563,11 @@ const watcher = (
     return reply({ ok: false, error: 'unknown_method' }, 404)
   })
   on('prompt.submit', (_, e) => {
+    if (faults.submit > 0) {
+      faults.submit -= 1
+      seen.refused.push(e.text)
+      return { drop: 'the session is busy' }
+    }
     seen.prompts.push(e.text)
     return { text: e.text }
   })
@@ -626,7 +633,7 @@ test('A2: the gh review-request poll gives an entry with slack null', async ($, 
   w.gh.prs = [ghPr(5)]
   await arm($, w)
   expect(w.ghRuns()).toEqual([
-    ['gh', 'search', 'prs', '--review-requested=@me', '--state=open', '--json', 'number,repository,url,title,author'],
+    ['gh', 'search', 'prs', '--review-requested=@me', '--state=open', '--limit', '100', '--json', 'number,repository,url,title,author'],
   ])
   const [entry] = w.asks().asks
   expect(entry).toMatchObject({
@@ -1115,4 +1122,98 @@ test('A30: a Slack fetch that never resolves times out at 30 seconds, and the ne
   await w.clock.advance(MINUTE - 30_000)
   expect(w.seen.history.length).toBe(2)
   expect(w.asks().asks.map(a => a.pr)).toEqual([11])
+})
+
+test('A31: a refused prompt names its PR again at the next poll, until the PR has a row', async ($, on) => {
+  let rows: object[] = []
+  const w = watcher(on, { board: () => watchBoard({ rows }) })
+  w.slack.history = [msg(ts(1), [11]), msg(ts(2), [12])]
+  w.faults.submit = 1
+  await arm($, w)
+  expect(w.seen.refused.length).toBe(1)
+  expect(w.seen.refused[0]).toContain('o/r#11 from #dev')
+  expect(w.seen.refused[0]).toContain('o/r#12 from #dev')
+  expect(w.seen.prompts).toEqual([])
+  // PR 12 now has a row, so only PR 11 is named again, with the new PR 13.
+  rows = [row(12, 'triage', 'crew', '2026-01-01T10:00:00Z')]
+  w.slack.history.push(msg(ts(3), [13]))
+  await w.clock.advance(MINUTE)
+  expect(w.seen.prompts).toEqual([PROMPT('o/r#11 from #dev, o/r#13 from #dev')])
+  // A prompt the engine took is not sent again.
+  await w.clock.advance(MINUTE)
+  expect(w.seen.prompts.length).toBe(1)
+})
+
+test('A31: a refused prompt whose PR the queue session took is not sent again', async ($, on) => {
+  let through: string | null = null
+  const w = watcher(on, { board: () => watchBoard({ asks_through: through }) })
+  w.slack.history = [msg(ts(1), [11])]
+  w.faults.submit = 1
+  await arm($, w)
+  expect(w.seen.refused.length).toBe(1)
+  through = w.asks().asks[0].found_at
+  await w.clock.advance(MINUTE)
+  expect(w.seen.prompts).toEqual([])
+})
+
+for (const since of ['', 'not a date']) {
+  test(`A32: a watch with since ${JSON.stringify(since)} reads from its first poll, and the next poll keeps that start`, async ($, on) => {
+    const w = watcher(on, { board: () => watchBoard({ watches: [{ ...SLACK_WATCH, since }] }) })
+    await arm($, w)
+    const start = (T0 / 1000).toFixed(6)
+    expect(w.seen.history[0].oldest).toBe(start)
+    await w.clock.advance(MINUTE)
+    expect(w.seen.history[1].oldest).toBe(start)
+  })
+}
+
+test('A33: a watch with no cursor starts at the board last_checked when it is later than since', async ($, on) => {
+  const checked = '2026-01-01T20:00:00.000Z'
+  const w = watcher(on, {
+    board: () => watchBoard({ watches: [{ ...SLACK_WATCH, last_checked: checked }] }),
+  })
+  const late = `${Date.parse(checked) / 1000 + 60}.000100`
+  w.slack.history = [msg(ts(1), [11]), msg(late, [12])]
+  await arm($, w)
+  expect(w.seen.history[0].oldest).toBe((Date.parse(checked) / 1000).toFixed(6))
+  expect(w.asks().asks.map(a => a.pr)).toEqual([12])
+})
+
+test('A33: with no stored count for the current since, found starts from the board watch found', async ($, on) => {
+  const w = watcher(on, {
+    board: () => watchBoard({ watches: [{ ...SLACK_WATCH, found: 4 }] }),
+    // A count kept for an earlier since is not this since's count.
+    store: { 'found:#dev': { since: '2025-12-01T00:00:00Z', count: 30 } },
+  })
+  w.slack.history = [msg(ts(1), [11])]
+  await arm($, w)
+  expect(w.asks().watches['#dev'].found).toBe(5)
+  // From then on the stored count is this since's count.
+  w.slack.history.push(msg(ts(2), [12]))
+  await w.clock.advance(MINUTE)
+  expect(w.asks().watches['#dev'].found).toBe(6)
+})
+
+test('A33: a board last_checked earlier than since does not move the start before since', async ($, on) => {
+  const w = watcher(on, {
+    board: () =>
+      watchBoard({ watches: [{ ...SLACK_WATCH, last_checked: '2025-12-31T00:00:00.000Z' }] }),
+  })
+  await arm($, w)
+  expect(w.seen.history[0].oldest).toBe((Date.parse(SINCE) / 1000).toFixed(6))
+})
+
+test('A34: two equal Watching notes both draw', async ($, on) => {
+  const w = watcher(on, {
+    board: () =>
+      watchBoard({
+        watches: [
+          { ...SLACK_WATCH, source: 'slack:#ops' },
+          { ...SLACK_WATCH, id: '#ops-2', source: 'slack:#ops' },
+        ],
+      }),
+  })
+  await arm($, w)
+  const pane = await drawn($)
+  expect(pane.split('#ops: not found').length - 1).toBe(2)
 })

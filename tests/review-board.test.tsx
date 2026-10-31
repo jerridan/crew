@@ -1240,6 +1240,50 @@ test('A36: a kept cursor later than the board last_checked keeps its own oldest 
   expect(w.seen.history[0]).toEqual({ oldest: ts(3), cursor: '4' })
 })
 
+test('A37: a capped poll goes on from its page cursor after a wakeup loop copied the mod last_checked to the board', async ($, on) => {
+  let watch: object = SLACK_WATCH
+  const w = watcher(on, { board: () => watchBoard({ watches: [watch] }) })
+  w.slack.pageSize = 2
+  w.slack.history = Array.from({ length: 12 }, (_, i) => msg(ts(i + 1), [200 + i]))
+  await arm($, w)
+  expect(w.seen.history.length).toBe(5)
+  // The wakeup loop copies the watch's last_checked and found to the board.
+  watch = { ...SLACK_WATCH, ...w.asks().watches['#dev'] }
+  await w.clock.advance(MINUTE)
+  expect(w.seen.history[5]).toEqual({ oldest: w.seen.history[0].oldest, cursor: '10' })
+  expect(w.asks().asks.map(a => a.pr).sort((a, b) => a - b)).toEqual(
+    Array.from({ length: 12 }, (_, i) => 200 + i),
+  )
+})
+
+const keptCount = (checked: string) => ({
+  board: () =>
+    watchBoard({ watches: [{ ...SLACK_WATCH, last_checked: checked, found: 7 }] }),
+  store: { 'found:#dev': { since: SINCE, count: 3 } },
+  files: {
+    [ASKS]: JSON.stringify({
+      version: 1,
+      updated_at: checkedAt(5),
+      watches: { '#dev': { last_checked: checkedAt(5), found: 3 } },
+      asks: [],
+    }),
+  },
+})
+
+test('A37: a board last_checked later than the asks-file last_checked gives found from the board', async ($, on) => {
+  const w = watcher(on, keptCount(checkedAt(8)))
+  w.slack.history = [msg(ts(9), [11])]
+  await arm($, w)
+  expect(w.asks().watches['#dev'].found).toBe(8)
+})
+
+test('A37: a board last_checked equal to the asks-file last_checked gives found from the kept count', async ($, on) => {
+  const w = watcher(on, keptCount(checkedAt(5)))
+  w.slack.history = [msg(ts(9), [11])]
+  await arm($, w)
+  expect(w.asks().watches['#dev'].found).toBe(4)
+})
+
 test('A34: two equal Watching notes both draw', async ($, on) => {
   const w = watcher(on, {
     board: () =>

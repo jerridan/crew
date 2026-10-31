@@ -117,9 +117,11 @@ const when = (iso: string | null) =>
 const CELLS = [6, 10, 7, 7] as const
 const GAP = 1
 
-const widths = (columns: number) => {
+// A row is the fixed cells, one gap between each of the six cells, then the
+// title and the last event. `indent` is what a caller puts before the row.
+const widths = (columns: number, indent = 0) => {
   const fixed = CELLS.reduce((a, b) => a + b, 0) + GAP * CELLS.length
-  const left = Math.max(LAST_MIN + 10, columns - fixed - 2)
+  const left = Math.max(LAST_MIN + 10, columns - indent - fixed)
   const title = Math.min(TITLE_CAP, Math.max(10, left - LAST_MIN))
   return { title, last: left - title }
 }
@@ -136,7 +138,7 @@ const watchLine = (x: ReviewBoardWatch) =>
   ].join(' · ')
 
 export const textTable = (board: ReviewBoardFile, columns = 120) => {
-  const w = widths(columns)
+  const w = widths(columns, 2)
   const line = (r: ReviewBoardRow) =>
     [
       pad(`#${r.pr}`, CELLS[0]),
@@ -149,7 +151,7 @@ export const textTable = (board: ReviewBoardFile, columns = 120) => {
   const s = sections(board)
   const out = [statusLine(board), '', 'Watching']
   if (board.watches.length === 0) out.push('  none')
-  for (const x of board.watches) out.push(`  ${watchLine(x)}`)
+  for (const x of board.watches) out.push(`  ${fit(watchLine(x), columns - 2)}`)
   out.push('', 'Needs you')
   if (s.needsYou.length === 0) out.push('  none')
   for (const r of s.needsYou) out.push(`  ${line(r)}`)
@@ -157,7 +159,7 @@ export const textTable = (board: ReviewBoardFile, columns = 120) => {
   if (s.inFlight.length === 0) out.push('  none')
   for (const r of s.inFlight) out.push(`  ${line(r)}`)
   out.push('', `Done (${s.done.length}, hidden)`)
-  return out.join('\n')
+  return out.map(l => fit(l, columns)).join('\n')
 }
 
 // What the poll last saw and whether it opened the pane: both start afresh
@@ -215,13 +217,17 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'review-board' }, async $ => {
+  on('command.run', { command: 'review-board' }, async ($, e) => {
+    // A pane a command opens is placed at any width, so the width decides.
+    const columns = e.presentation.columns
+    if (columns < MIN_PANE_COLUMNS) {
+      return { text: textTable(parseBoard(await load($)), columns) }
+    }
     const placed = await $.ui.open({ id: PANE, title: 'Review board' })
     if (placed.isPlaced) return { text: 'Review board pane opened.' }
-    const board = parseBoard(await load($))
-    const why =
-      placed.reason || `The pane needs ${MIN_PANE_COLUMNS} columns.`
-    return { text: `${why}\n\n${textTable(board, 100)}` }
+    return {
+      text: placed.reason || 'The review board pane did not open.',
+    }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
@@ -251,11 +257,18 @@ export const register: Register = on => {
       </Box>
     )
 
-    // In flight takes what is left of the window after the watches, the
-    // Needs you rows, five fixed lines and the Done rows when shown.
+    // In flight takes what is left of the window. Every other line counts:
+    // four headings, the Watching and Needs you rows (or their one empty
+    // line), the Done button, the Done rows when shown, and the "+N more"
+    // line when In flight overflows.
     const used =
-      board.watches.length + s.needsYou.length + 5 + (shown ? s.done.length : 0)
-    const room = Math.max(1, e.props.scroll.bodyRows - used)
+      4 +
+      Math.max(1, board.watches.length) +
+      Math.max(1, s.needsYou.length) +
+      1 +
+      (shown ? s.done.length : 0)
+    let room = Math.max(1, e.props.scroll.bodyRows - used)
+    if (s.inFlight.length > room) room = Math.max(1, room - 1)
     const flight = s.inFlight.slice(0, room)
     const hidden = s.inFlight.length - flight.length
 
@@ -264,8 +277,12 @@ export const register: Register = on => {
         <Text bold>Watching</Text>
         {board.watches.length === 0 && <Text dimColor>No watches.</Text>}
         {board.watches.map(x => (
-          <Text color={x.policy === 'assist' ? 'yellow' : undefined}>
-            {watchLine(x)}
+          <Text
+            key={x.id}
+            color={x.policy === 'assist' ? 'yellow' : undefined}
+            wrap="truncate"
+          >
+            {fit(watchLine(x), e.props.bodyColumns)}
           </Text>
         ))}
         <Text bold>Needs you</Text>

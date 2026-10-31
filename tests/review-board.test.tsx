@@ -122,6 +122,12 @@ const world = (
   return { seen, clock }
 }
 
+const command = (columns: number) =>
+  ({
+    command: 'review-board',
+    presentation: { isFullscreen: true, columns },
+  }) as never
+
 const STATUS =
   'review board · watching 1 · 2 need you · 1 blocked · 5 active · 1 merged'
 
@@ -173,6 +179,12 @@ test('In flight shows +N more when it exceeds the room', async ($, on) => {
   })
   const drawn = words(await ui.drawn())
   expect(drawn).toMatch(/\+\d+ more/)
+  // Every line the pane draws counts: the Done button stays inside bodyRows.
+  const root = (await ui.drawn()) as { children?: { props?: { key?: string } }[] }
+  const lines = root.children ?? []
+  const at = lines.findIndex(c => c.props?.key === 'toggle-done')
+  expect(at).toBeGreaterThanOrEqual(0)
+  expect(at + 1).toBeLessThanOrEqual(12)
   await ui.unmount()
 })
 
@@ -213,18 +225,26 @@ test('a skill that is not the queue leaves the board unarmed', async ($, on) => 
   expect(w.seen.opens).toBe(0)
   expect(w.seen.status).toEqual([])
   // The command still opens the pane by hand.
-  await $.command.run({ command: 'review-board' } as never)
+  await $.command.run(command(120))
   expect(w.seen.opens).toBe(1)
 })
 
-test('/review-board prints the table as text when the pane cannot seat', async ($, on) => {
-  world(on, () => board(ROWS), () => ({
-    isPlaced: false,
-    reason: 'terminal is 80 columns, under 110',
-  }))
-  const out = await $.command.run({ command: 'review-board' } as never)
+test('/review-board prints the table as text, fitted to the width, under 110 columns', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  const out = await $.command.run(command(80))
+  expect(w.seen.opens).toBe(0)
   expect(out.text).toContain('Needs you')
   expect(order(out.text ?? '')).toEqual([4, 1, 3, 5, 2, 6])
+  for (const line of (out.text ?? '').split('\n')) {
+    expect(line.length).toBeLessThanOrEqual(80)
+  }
+})
+
+test('/review-board opens the pane from 110 columns', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  const out = await $.command.run(command(120))
+  expect(w.seen.opens).toBe(1)
+  expect(out.text).not.toContain('Needs you')
 })
 
 test('the status line clears when every row is done, and the pane stays open', async ($, on) => {

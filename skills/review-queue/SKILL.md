@@ -66,7 +66,10 @@ Each fire, and each `ready:` message, runs this loop:
    A package `in-flight` sets `stage: fixing`. A
    `run.review_pending.round` above 1 sets `stage: rereview`. Then run "The
    stall check" on that child.
-4. Read each new ready file. Run "The gate" on every child that is ready.
+4. Read each new ready file. Look also for `ready.json` in the record
+   directory of each child that has sent no `ready:` message. A file there
+   counts as its `ready:` message: a child whose send failed twice stops
+   without one. Run "The gate" on every child that is ready.
 5. Run "Watch each PR" on each row that is not done.
 6. Write the board.
 
@@ -122,6 +125,7 @@ word. With none, its policy is `review`. The first direct ask adds the watch
 principal's ask, then the policy of the watch that found it, then `review`.
 Store no policy per author. The principal states the policy per watch or per
 ask.
+A fork PR always takes `review`, as "Triage" says.
 
 ## Sources
 
@@ -150,9 +154,10 @@ its PR number. An ask for a PR that already has a row adds its Slack message
 to that row, and opens no second review. **The one exception is a row at
 `next: author`**: the ask re-triages it on its current head.
 
-**A re-triage** first ends the row's child, as "Clean up" says. It keeps the
-row and `<pr-dir>`. Then it runs the reads below again, and sets `stage:
-triage`, `next: crew`.
+**A re-triage** first ends the row's child and removes the row's worktrees,
+as "Clean up" says. It deletes `<pr-dir>/approved-head`, so an old approval
+is no longer a covered head. It keeps the row and the rest of `<pr-dir>`.
+Then it runs the reads below again, and sets `stage: triage`, `next: crew`.
 
 For a new ask, write a row with `stage: new` and `next: crew`. Its `watch`
 is the id of the watch that found it, and its `policy` is the one the order
@@ -168,7 +173,7 @@ repo's standing instructions in the clone, as
 
 Then read these six things, and write each one in the row's `last.text`:
 
-1. **State** and **size**: `gh pr view <url> --json state,isDraft,additions,deletions,headRefOid,baseRefName,mergeable,statusCheckRollup,author,title`.
+1. **State** and **size**: `gh pr view <url> --json state,isDraft,additions,deletions,headRefOid,baseRefName,isCrossRepository,mergeable,statusCheckRollup,author,title`.
    The size is `additions` plus `deletions`. A PR that is not `OPEN` goes to
    `closed`.
 2. **CI**: green when every entry of `statusCheckRollup` concluded
@@ -182,6 +187,15 @@ Then read these six things, and write each one in the row's `last.text`:
 5. **`mergeable`**, from the read in 1.
 6. **Prior findings**: an open thread, a bot claim on the current head, or a
    `CHANGES_REQUESTED` review.
+
+**A fork PR takes `review`.** When read 1 gives `isCrossRepository: true`,
+set the row's `policy` to `review`, whatever the ask or the watch says.
+When the ask was `assist`, tell the principal it was changed. Crew cannot
+push to a fork's branch, so a fork PR gets no fix push, no merge agent and
+no enqueue: each is `assist`-only. **No step of the queue runs a fork
+head's code**, and `/crew:review`'s "A fork's code never runs unasked" owns
+that rule for a child. Add "Run the suite on this fork." to the child's
+launch words only when the principal said it for that PR.
 
 **A diff of fewer than 150 lines changed, with green CI and no prior
 findings, gets an inline read** by this session. Every other ask gets a
@@ -218,7 +232,7 @@ tmux session:
    git -C <clone> fetch origin
    git -C <clone> worktree add --detach <queue-dir>/worktrees/<owner>-<repo>-<n> origin/<baseRefName>
    ```
-2. Start the session. `<child>` is `review-<repo>-<n>`:
+2. Start the session. `<child>` is `review-<owner>-<repo>-<n>`:
    ```bash
    tmux new-session -d -s <child> -c <worktree> "claude --plugin-dir <plugin-dir> -n <child> '/crew:review <PR URL> <launch words>'"
    ```
@@ -340,15 +354,18 @@ Before every enqueue:
    as `github-review.md`'s "The post command" says.
 2. **On `CONFLICTING`, dispatch a merge agent at once.** In this session,
    that replaces the report that "The post command" asks for. It is a
-   `general-purpose` subagent named `merge-<repo>-<n>-r<k>`. It merges
-   `origin/<baseRefName>` into the head branch in the child's worktree. With
-   no child, cut a worktree on the head branch from the clone. It resolves
+   `general-purpose` subagent named `merge-<owner>-<repo>-<n>-r<k>`. It
+   merges `origin/<baseRefName>` into the head branch in the child's
+   worktree. With no child, cut a worktree on the head branch from the
+   clone, at `<queue-dir>/worktrees/<owner>-<repo>-<n>-merge`. It resolves
    the conflict, runs the suite and commits. This session pushes its
    commit. The new head goes back to "Triage". Under `review`, push
    nothing: set `next: author`, and tell the principal.
 3. **Run each command in the `Pre-enqueue checks` section** of the repo's
    standing instructions, in the child's worktree. With no child, cut a
-   worktree from the clone, detached at the head. A non-zero exit stops
+   worktree from the clone, detached at the head, at
+   `<queue-dir>/worktrees/<owner>-<repo>-<n>-check`. Remove an old one at
+   that path first, as "Clean up" says. A non-zero exit stops
    the enqueue. Set `stage: blocked`, `next: you`, and tell the principal
    which command failed. On the principal's answer, run "Enqueue" again.
 
@@ -426,19 +443,28 @@ owns the board**, as "Start" says.
 
 Write the whole file to `board.json.tmp` beside it, then move it over
 `board.json`, so a reader never sees half a file. Set `last` at each event.
-**Prune each merged row whose `last.at` is older than one day.**
+**Prune each merged or closed row whose `last.at` is older than one day.**
 
 ## Clean up
 
-**When a row is done**, end its child. Send `/exit` with `tmux send-keys
--t =<child> '/exit' Enter`. Kill its tmux session with `tmux kill-session -t
-=<child>`. Remove its worktree with `git -C <clone> worktree remove
-<worktree>`.
+**Clean up a row when it is done, and at a re-triage.** End its child.
+Send `/exit` with `tmux send-keys -t =<child> '/exit' Enter`. Kill its tmux
+session with `tmux kill-session -t =<child>`. Then remove each of the row's
+worktrees that exists: `<queue-dir>/worktrees/<owner>-<repo>-<n>`, and the
+same path with `-merge` and with `-check` added:
+
+```bash
+git -C <clone> worktree remove --force <worktree>
+```
+
+Use `--force`. A plain remove refuses a tree with changed or untracked
+files, and the next `worktree add` at that path then fails. A worktree the
+queue cut holds nothing that is not on the PR branch or in the child's
+record.
 
 **When the principal closes the queue**, also:
 
 1. Stop each subagent this session dispatched, such as a merge agent.
-2. End every child, and remove every child's worktree and tmux session, as
-   above.
+2. Clean up every row that is not done, as above.
 3. Delete the wakeup loop's job with `CronDelete`.
 4. Write the board one last time, with each watch `stopped`.

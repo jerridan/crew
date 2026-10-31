@@ -40,6 +40,8 @@ const GH_SEARCH = [
   'prs',
   '--review-requested=@me',
   '--state=open',
+  '--limit',
+  '100',
   '--json',
   'number,repository,url,title,author',
 ]
@@ -116,18 +118,18 @@ const EMPTY: ReviewBoardFile = {
 }
 
 const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback)
+const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
+const obj = (v: unknown): Record<string, unknown> =>
+  typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {}
 
 // A row or watch the file holds in part is made safe here, once, so no other
 // code reads a field that may be missing. A row with no known stage or no
 // number is dropped: the board cannot place it.
 const cleanRow = (raw: unknown): ReviewBoardRow | undefined => {
-  if (typeof raw !== 'object' || raw === null) return undefined
-  const r = raw as Record<string, unknown>
+  const r = obj(raw)
   if (typeof r.pr !== 'number') return undefined
   if (!STAGES.includes(r.stage as ReviewBoardStage)) return undefined
-  const last = (typeof r.last === 'object' && r.last) || {}
-  const at = (last as Record<string, unknown>).at
-  const text = (last as Record<string, unknown>).text
+  const last = obj(r.last)
   return {
     repo: str(r.repo),
     pr: r.pr,
@@ -136,7 +138,7 @@ const cleanRow = (raw: unknown): ReviewBoardRow | undefined => {
     stage: r.stage as ReviewBoardStage,
     next: str(r.next, '-') as ReviewBoardRow['next'],
     head: typeof r.head === 'string' ? r.head : null,
-    last: { at: str(at), text: str(text) },
+    last: { at: str(last.at), text: str(last.text) },
     url: str(r.url),
     watch: typeof r.watch === 'string' ? r.watch : null,
     policy: r.policy === 'assist' ? 'assist' : 'review',
@@ -144,8 +146,7 @@ const cleanRow = (raw: unknown): ReviewBoardRow | undefined => {
 }
 
 const cleanWatch = (raw: unknown): ReviewBoardWatch | undefined => {
-  if (typeof raw !== 'object' || raw === null) return undefined
-  const w = raw as Record<string, unknown>
+  const w = obj(raw)
   if (typeof w.id !== 'string') return undefined
   return {
     id: w.id,
@@ -163,7 +164,6 @@ export const parseBoard = (text: string | undefined): ReviewBoardFile => {
   try {
     const raw = JSON.parse(text) as Partial<ReviewBoardFile> | null
     if (typeof raw !== 'object' || raw === null) return EMPTY
-    const list = (v: unknown) => (Array.isArray(v) ? v : [])
     return {
       ...EMPTY,
       ...raw,
@@ -184,9 +184,6 @@ const EMPTY_ASKS: ReviewBoardAsksFile = {
   asks: [],
 }
 
-const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
-const obj = (v: unknown): Record<string, unknown> =>
-  typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {}
 const at = (iso: string) => Date.parse(iso) || 0
 const prKey = (x: { repo: string; pr: number }) => `${x.repo}#${x.pr}`
 
@@ -359,6 +356,10 @@ let timer: unknown
 let watcher: unknown
 let watching = false
 let notes: string[] = []
+// The PRs of a prompt the engine refused, each with its words in the prompt.
+// The next poll names each one again while it has an untaken entry and no
+// row, or a row at next: author.
+let unsent = new Map<string, string>()
 
 const queueDir = async ($: Engine) => {
   const root = await $.env.get('CREW_RECORD_ROOT')
@@ -422,21 +423,21 @@ const tsAfter = (a: string, b: string) => {
   const [bs, bf] = tsParts(b)
   return as > bs || (as === bs && af > bf)
 }
-const unixTs = (iso: string) => ((Date.parse(iso) || 0) / 1000).toFixed(6)
+const unixTs = (ms: number) => (ms / 1000).toFixed(6)
 
 // The fetch, or a rejection when it has not answered in FETCH_MS.
 const bounded = <T,>($: Engine, work: Promise<T>) =>
   new Promise<T>((resolve, reject) => {
-    const timer = $.clock.after(FETCH_MS, () =>
+    const alarm = $.clock.after(FETCH_MS, () =>
       reject(new Error('no answer in time')),
     )
     work.then(
       v => {
-        timer.cancel()
+        alarm.cancel()
         resolve(v)
       },
       (err: unknown) => {
-        timer.cancel()
+        alarm.cancel()
         reject(err)
       },
     )
@@ -513,11 +514,12 @@ type SlackCursor = {
 type Kept = { key: string; value: unknown }
 
 // One Slack watch: its PR messages and its new cursor, or undefined when the
-// poll is skipped.
+// poll is skipped. `now` is the time of this poll.
 const pollSlack = async (
   $: Engine,
   token: string,
   w: ReviewBoardWatch,
+  now: number,
 ): Promise<{ got: Candidate[]; cursor: Kept } | undefined> => {
   const channel = w.source.slice('slack:#'.length)
   const id = await channelId($, token, channel)
@@ -532,7 +534,11 @@ const pollSlack = async (
   const key = `slack-cursor:${w.id}`
   const kept = obj(await $.store.get(key))
   const saved = kept.since === w.since ? kept : {}
-  const oldest = typeof saved.oldest === 'string' ? saved.oldest : unixTs(w.since)
+  // With no cursor, the poll starts at the later of since and the board's
+  // last_checked, which the queue session's own poll moved. With neither a
+  // time, it starts now, so it never reads the channel's whole history.
+  const start = Math.max(at(w.since), at(w.last_checked ?? '')) || now
+  const oldest = typeof saved.oldest === 'string' ? saved.oldest : unixTs(start)
   let page = typeof saved.page === 'string' ? saved.page : ''
   let newest = typeof saved.newest === 'string' ? saved.newest : null
   const got: Candidate[] = []
@@ -630,6 +636,11 @@ const sweep = async ($: Engine) => {
     board.rows.filter(r => r.next === 'author').map(prKey),
   )
   const kept = file.asks.filter(a => untaken(board, a))
+  const slackKey = (a: Candidate) =>
+    `${prKey(a)}@${a.slack?.channel ?? ''}/${a.slack?.ts ?? ''}`
+  // The PRs and the Slack messages the asks file holds an entry for.
+  const keys = new Set(kept.map(prKey))
+  const slackKeys = new Set(kept.filter(a => a.slack).map(slackKey))
   const added: ReviewBoardAsk[] = []
   const fresh: ReviewBoardAsk[] = []
   const watches = { ...file.watches }
@@ -644,8 +655,6 @@ const sweep = async ($: Engine) => {
     latest = Math.max(now, latest + 1)
     return new Date(latest).toISOString()
   }
-  const slackKey = (a: Candidate) =>
-    `${prKey(a)}@${a.slack?.channel ?? ''}/${a.slack?.ts ?? ''}`
   // The cursors and found counts: written only after the asks file is in
   // place, so a failed write reads the same messages again at the next poll.
   const later: Kept[] = []
@@ -655,7 +664,7 @@ const sweep = async ($: Engine) => {
     // A watch whose source throws is skipped, and the others still poll.
     try {
       if (w.source.startsWith('slack:#')) {
-        const r = await pollSlack($, token, w)
+        const r = await pollSlack($, token, w, now)
         if (r) later.push(r.cursor)
         got = r?.got
       } else if (w.source === 'github:review-requests') {
@@ -668,19 +677,25 @@ const sweep = async ($: Engine) => {
     if (got === undefined) continue
     const foundKey = `found:${w.id}`
     const count = obj(await $.store.get(foundKey))
+    // With no count for this since, the count goes on from the board's, which
+    // the queue session's own poll kept.
     let found =
-      count.since === w.since && typeof count.count === 'number' ? count.count : 0
+      count.since === w.since && typeof count.count === 'number'
+        ? count.count
+        : w.found
     for (const c of got) {
-      const all = [...kept, ...added]
+      const key = prKey(c)
       if (c.slack) {
-        if (all.some(a => a.slack && slackKey(a) === slackKey(c))) continue
-      } else if (rows.has(prKey(c)) || all.some(a => prKey(a) === prKey(c))) {
+        if (slackKeys.has(slackKey(c))) continue
+      } else if (rows.has(key) || keys.has(key)) {
         continue
       }
       const entry = { ...c, found_at: stamp() }
-      const isNew = !rows.has(prKey(c)) || author.has(prKey(c))
-      if (isNew && !all.some(a => prKey(a) === prKey(c))) fresh.push(entry)
+      const isNew = !rows.has(key) || author.has(key)
+      if (isNew && !keys.has(key)) fresh.push(entry)
       added.push(entry)
+      keys.add(key)
+      if (c.slack) slackKeys.add(slackKey(c))
       found += 1
     }
     later.push({ key: foundKey, value: { since: w.since, count: found } })
@@ -706,16 +721,35 @@ const sweep = async ($: Engine) => {
     notes.push('asks.json: the move failed')
     return
   }
-  for (const k of later) await $.store.set(k.key, k.value)
-  if (fresh.length === 0) return
-  const named = fresh.map(a => `${prKey(a)} from ${a.watch}`).join(', ')
-  // The poll does not wait for the session's turn. A refused submit leaves
-  // the entries in the asks file, and the next wakeup takes them.
+  // A failed store write reads the same messages again at the next poll, and
+  // the dedupe drops them. The prompt still goes.
+  try {
+    for (const k of later) await $.store.set(k.key, k.value)
+  } catch {
+    notes.push('store: a cursor write failed')
+  }
+  // A refused PR that was taken or has a row now is not named again.
+  const named = new Map<string, string>()
+  for (const [k, words] of unsent) {
+    if (keys.has(k) && (!rows.has(k) || author.has(k))) named.set(k, words)
+  }
+  for (const a of fresh) {
+    if (!named.has(prKey(a))) named.set(prKey(a), `${prKey(a)} from ${a.watch}`)
+  }
+  unsent = new Map()
+  if (named.size === 0) return
+  const refused = () => {
+    for (const [k, words] of named) unsent.set(k, words)
+  }
+  // The poll does not wait for the session's turn. A refused submit, as a
+  // drop or a rejection, names its PRs again at the next poll.
   $.prompt
     .submit({
-      text: `Crew review-queue ask: ${named}. Run the wakeup loop of crew:review-queue.`,
+      text: `Crew review-queue ask: ${[...named.values()].join(', ')}. Run the wakeup loop of crew:review-queue.`,
     })
-    .catch(() => undefined)
+    .then(r => {
+      if (r.drop !== undefined) refused()
+    }, refused)
 }
 
 // A throw must not end the interval, so each poll catches its own.
@@ -837,8 +871,8 @@ export const register: Register = on => {
             {fit(watchLine(x), e.props.bodyColumns)}
           </Text>
         ))}
-        {notes.map(n => (
-          <Text key={`note:${n}`} dimColor wrap="truncate">
+        {notes.map((n, i) => (
+          <Text key={`note:${i}`} dimColor wrap="truncate">
             {fit(n, e.props.bodyColumns)}
           </Text>
         ))}

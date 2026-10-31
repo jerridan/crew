@@ -456,9 +456,9 @@ const watcher = (
     hang: 0,
   }
   const gh = { prs: [] as object[], fail: false, throws: false }
-  // The next `mv` runs that exit 1, temp-file writes the engine refuses, and
-  // prompts the engine refuses.
-  const faults = { mv: 0, write: 0, submit: 0 }
+  // The next `mv` runs that exit 1, temp-file writes the engine refuses,
+  // prompts the engine refuses, and cursor or count writes the store refuses.
+  const faults = { mv: 0, write: 0, submit: 0, store: 0 }
   const seen = {
     fetches: [] as string[],
     lists: [] as string[],
@@ -475,6 +475,10 @@ const watcher = (
   on('session.id', () => ({ value: opts.session ?? 's1' }))
   on('store.get', (_, e) => ({ value: store[e.key] }))
   on('store.set', (_, e) => {
+    if (!e.key.startsWith('slack-channel:') && faults.store > 0) {
+      faults.store -= 1
+      return { deny: 'store full' }
+    }
     store[e.key] = e.value
     return { value: undefined }
   })
@@ -1216,4 +1220,16 @@ test('A34: two equal Watching notes both draw', async ($, on) => {
   await arm($, w)
   const pane = await drawn($)
   expect(pane.split('#ops: not found').length - 1).toBe(2)
+})
+
+test('A35: a refused cursor write still prompts, and the next poll gives no second entry', async ($, on) => {
+  const w = watcher(on, { board: () => watchBoard() })
+  w.slack.history = [msg(ts(1), [11])]
+  w.faults.store = 1
+  await arm($, w)
+  expect(w.asks().asks.map(a => a.pr)).toEqual([11])
+  expect(w.seen.prompts).toEqual([PROMPT('o/r#11 from #dev')])
+  await w.clock.advance(MINUTE)
+  expect(w.asks().asks.map(a => a.pr)).toEqual([11])
+  expect(w.seen.prompts.length).toBe(1)
 })

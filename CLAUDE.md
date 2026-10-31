@@ -30,7 +30,7 @@ tests, and `claude plugin validate <repo>` checks its module (§15.128).
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `skills/review-queue/SKILL.md`, `skills/review-queue/references/board.md`, `ready-file.md` | the `/crew:review-queue` entry point: watches, triage, children, the gate, every post, approval and enqueue, the board; the board file's schema; a child's ready file | its skill trigger; `/crew:review` in child mode reads `ready-file.md` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
-| `hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` | the review-board mod: a pane and a status line that read the board file; its `$.state` contract; its tests | the plugin loader, as the hooks module `hooks.json` names; `claude plugin test` |
+| `hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` | the review-board mod: a pane and a status line that read the board file, and, with a Slack token, the watcher that polls the queue's sources and writes `asks.json`; its `$.state` contract; its tests | the plugin loader, as the hooks module `hooks.json` names; `claude plugin test` |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
@@ -156,7 +156,8 @@ Each reference owns one subject and is canonical for it:
 - `substitution.md` — how a review step the principal replaced runs.
 - `skills/review/references/github-review.md` — what a review run posts.
 - `skills/review-queue/references/board.md` — the board file the queue
-  session writes and the review-board mod reads.
+  session writes and the review-board mod reads, and the asks file the mod
+  writes and the queue session reads.
 - `skills/review-queue/references/ready-file.md` — a queue child's ready
   file and its message to the queue session.
 - `skills/review/references/severity-rubric.md` — the six labels of a review

@@ -8755,6 +8755,13 @@ Deliberately different:
 
      The spec critic's round 1 found that a later Slack message on a known
      PR had nowhere to go; round 2 found that a GitHub poll with no token
-     made a second poller. Both changed the design before any code. 47 tests
+     made a second poller. Both changed the design before any code. 56 tests
      pass under `claude plugin test`. No live Slack poll has run: the build
      machine had no token.
+
+     The principal's /code-review found that, with a token, a mod that
+     cannot poll left nothing polling and told nobody. So a watch whose
+     `last_checked` in `asks.json` is more than 5 minutes old is stale, and the
+     queue session polls it itself and tells the principal. The mod moves
+     `last_checked` only after a good poll, so a revoked token, a signed-out
+     `gh` or a mod that never loaded all show as a stale watch.

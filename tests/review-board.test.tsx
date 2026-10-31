@@ -843,6 +843,22 @@ test('A21: after a reload the mod reads the channel id and the cursor from the s
   expect(w.seen.history[0].oldest).toBe(ts(3))
 })
 
+test('A21: a watch added again with a new since reads from the new since, not the old cursor', async ($, on) => {
+  const since = '2026-01-01T18:00:00Z'
+  const w = watcher(on, {
+    board: () => watchBoard({ watches: [{ ...SLACK_WATCH, since }] }),
+    store: {
+      'slack-channel:dev': 'C1',
+      'slack-cursor:#dev': { since: SINCE, oldest: ts(3), page: '4', newest: ts(9) },
+    },
+  })
+  await arm($, w)
+  expect(w.seen.history[0]).toEqual({
+    oldest: (Date.parse(since) / 1000).toFixed(6),
+    cursor: null,
+  })
+})
+
 test('A21: with no cursor, oldest is the watch since as a Unix ts', async ($, on) => {
   const w = watcher(on, { board: () => watchBoard() })
   await arm($, w)

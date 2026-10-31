@@ -533,11 +533,19 @@ const pollSlack = async (
   }
   const key = `slack-cursor:${w.id}`
   const kept = obj(await $.store.get(key))
-  const saved = kept.since === w.since ? kept : {}
+  // A board last_checked later than the kept oldest is the queue session's
+  // own poll during an outage: the poll starts there, and the kept page and
+  // newest, which belong to the old oldest, go.
+  const checked = at(w.last_checked ?? '')
+  const behind =
+    typeof kept.oldest === 'string' &&
+    checked > 0 &&
+    tsAfter(unixTs(checked), kept.oldest)
+  const saved = kept.since === w.since && !behind ? kept : {}
   // With no cursor, the poll starts at the later of since and the board's
   // last_checked, which the queue session's own poll moved. With neither a
   // time, it starts now, so it never reads the channel's whole history.
-  const start = Math.max(at(w.since), at(w.last_checked ?? '')) || now
+  const start = Math.max(at(w.since), checked) || now
   const oldest = typeof saved.oldest === 'string' ? saved.oldest : unixTs(start)
   let page = typeof saved.page === 'string' ? saved.page : ''
   let newest = typeof saved.newest === 'string' ? saved.newest : null

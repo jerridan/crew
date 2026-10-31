@@ -35,7 +35,7 @@ installed.
 | `<plugin-dir>/skills/review/references/github-review.md` | the sanitizing, the label rule, the draft and body shapes, the event rule, the re-read before an approval, and the post command | before "Triage" |
 | `<plugin-dir>/skills/review/references/severity-rubric.md` | the six labels of a finding | at "The inline read" |
 | `<plugin-dir>/skills/delivered-window/SKILL.md` | "The go-ahead gate": what the principal approves and how an answer lands | at "The gate" |
-| `<plugin-dir>/skills/delivered-window/references/pr-watch.md` | what each `pr-watch.sh` line means, and "Diagnose a dequeue" | at "Watch a queued PR" |
+| `<plugin-dir>/skills/delivered-window/references/pr-watch.md` | what each `pr-watch.sh` line means, and "Diagnose a dequeue" | at "Watch each PR" |
 | `<plugin-dir>/skills/project-lead/SKILL.md` | "Standing instructions": the files and their sections | at "Triage", once per repo |
 
 This file copies none of their rules.
@@ -62,12 +62,29 @@ Each fire, and each `ready:` message, runs this loop:
 1. Poll each active watch, as "Sources" says. Set its `last_checked`, and
    add each new ask to `found`.
 2. Triage each new ask.
-3. Read the `state.json` of each child still at work. A package
-   `in-flight` sets `stage: fixing`. A `run.review_pending.round` above 1
-   sets `stage: rereview`.
+3. Read the `state.json` of each child that has sent no `ready:` message.
+   A package `in-flight` sets `stage: fixing`. A
+   `run.review_pending.round` above 1 sets `stage: rereview`. Then run "The
+   stall check" on that child.
 4. Read each new ready file. Run "The gate" on every child that is ready.
-5. Run "Watch a queued PR" on each row with `stage: queued`.
+5. Run "Watch each PR" on each row that is not done.
 6. Write the board.
+
+**The stall check.** A child's record directory is
+`<record-root>/pr-<owner>-<repo>-<n>-<hex>/`, the newest one made after
+the launch. Read the child's pane when no file in it changed for 30
+minutes, or when it has no record directory 30 minutes after its launch:
+
+```bash
+tmux capture-pane -p -t =<child>
+```
+
+When the pane shows a prompt that waits for an answer, such as a permission
+ask, set `stage: blocked`, `next: you`. Tell the principal which child it
+is, what it asks, and that `tmux attach -t =<child>` reaches it. Crew never
+widens a child's permissions itself, so add no permission flag to the
+launch line. When its record changes again, set the
+row back to `stage: reviewing`, `next: crew`.
 
 ## Watches
 
@@ -130,14 +147,20 @@ Each PR that has no row is an ask.
 
 **Dedupe by PR number across sources.** A row's identity is its repo plus
 its PR number. An ask for a PR that already has a row adds its Slack message
-to that row, and opens no second review.
+to that row, and opens no second review. **The one exception is a row at
+`next: author`**: the ask re-triages it on its current head.
+
+**A re-triage** first ends the row's child, as "Clean up" says. It keeps the
+row and `<pr-dir>`. Then it runs the reads below again, and sets `stage:
+triage`, `next: crew`.
 
 For a new ask, write a row with `stage: new` and `next: crew`. Its `watch`
 is the id of the watch that found it, and its `policy` is the one the order
 in "Watches" gives. Fill `title`, `author`, `url` and `head` from read 1
 below. Until then, `head` is `null`. Set `head` again at each head move.
 Set `stage: triage` when you start to read it. Make the PR's directory,
-`<pr-dir>`, at `<queue-dir>/prs/<owner>-<repo>-<n>/`.
+`<pr-dir>`, at `<queue-dir>/prs/<owner>-<repo>-<n>/`, and its watch record
+after read 1, as "Watch each PR" says.
 
 At the repo's first ask, make its clone, as "Children" says. Read the
 repo's standing instructions in the clone, as
@@ -249,9 +272,10 @@ rules. A chain with `cd` or a test run gets classified. Give `gh` the PR URL
 or `--repo`, and give `git` the `-C` flag.
 
 After a post with the event `APPROVE`, set `stage: approve`. Under
-`review`, the approval ends the queue's work: set `next: author`, and set
-the Slack `:done:` reaction. Under `assist`, go on to "Enqueue". After any
-other event, set `next: author`.
+`review`, the approval ends the review: set `next: author`, and set the
+Slack `:done:` reaction. "Watch each PR" keeps the row until it is done.
+Under `assist`, go on to "Enqueue". After any other event, set `next:
+author`.
 
 ## Enqueue
 
@@ -265,15 +289,14 @@ Before every enqueue:
    `general-purpose` subagent named `merge-<repo>-<n>-r<k>`. It merges
    `origin/<baseRefName>` into the head branch in the child's worktree. With
    no child, cut a worktree on the head branch from the clone. It resolves
-   the conflict,
-   runs the suite and commits. This session pushes its commit. The new head
-   goes back to "Triage". Under `review`, push nothing: set `next: author`,
+   the conflict, runs the suite and commits. This session pushes its
+   commit. The new head goes back to "Triage". Under `review`, push nothing: set `next: author`,
    and tell the principal.
 3. **Run each command in the `Pre-enqueue checks` section** of the repo's
    standing instructions, in the child's worktree. With no child, cut a
    worktree from the clone, detached at the head. A non-zero exit stops
    the enqueue. Set `stage: blocked`, `next: you`, and tell the principal
-   which command failed.
+   which command failed. On the principal's answer, run "Enqueue" again.
 
 Then enqueue:
 
@@ -281,16 +304,24 @@ Then enqueue:
 gh pr merge <url> --match-head-commit <sha>
 ```
 
-Set `stage: queued`, `next: queue`. When `gh` says it enabled auto-merge,
-the required checks still run: set `next: ci` until a poll prints
-`queued`. When the PR is approved and queued, set
-the Slack `:done:` reaction. A message that carries two PRs gets `:done:`
+**A branch with no merge queue needs a merge method.** There `gh` exits
+non-zero with `--merge, --rebase, or --squash required when not running
+interactively`. Do not choose a method. Set `stage: blocked`, `next: you`,
+and tell the principal that the base branch has no merge queue. When the
+principal names a method, run the command again with `--merge`,
+`--squash` or `--rebase`.
+
+After the enqueue, set `stage: queued`, `next: queue`. When `gh` says it
+enabled auto-merge, the required checks still run: set `next: ci` until a
+poll prints `queued`. When the PR is approved and queued, set the Slack
+`:done:` reaction. A message that carries two PRs gets `:done:`
 when both are.
 
-## Watch a queued PR
+## Watch each PR
 
-Keep one merged-or-dequeued watch per PR. Give the PR's directory a
-`state.json` that `pr-watch.sh` can read, once, at the enqueue:
+Keep one merged-or-dequeued watch per PR, from triage to done. Give the
+PR's directory a `state.json` that `pr-watch.sh` can read, once, after
+triage read 1. `<sha>` is that read's `headRefOid`:
 
 ```bash
 python3 <plugin-dir>/skills/project-lead/scripts/crew-record.py <pr-dir> init "<owner>/<repo>#<n>" <owner>-<repo>-<n> $CLAUDE_CODE_SESSION_ID
@@ -298,14 +329,18 @@ python3 <plugin-dir>/skills/project-lead/scripts/crew-record.py <pr-dir> deliver
 python3 <plugin-dir>/skills/project-lead/scripts/crew-record.py <pr-dir> run set watch '{"draft": false, "head": "<sha>", "last_polled_at": "<now>", "seen_ids": [], "held": [], "queued": false}'
 ```
 
-Each wakeup loop runs one poll per queued row:
+Each wakeup loop runs one poll per row that is not done:
 
 ```bash
 bash <plugin-dir>/skills/delivered-window/scripts/pr-watch.sh <pr-dir> once
 ```
 
-Act on four lines, and on no other:
+Act on five lines, and on no other:
 
+- **`push`**: run `crew-record.py <pr-dir> run set watch.head '"<sha>"'`
+  with the line's sha, and set the row's `head`. On a row at `next:
+  author`, re-triage the row, as "Triage" says. On any other row, the push
+  is a child's push or this session's own.
 - **`queued`**: run `crew-record.py <pr-dir> run set watch.queued true`,
   once. Set `next: queue`.
 - **`merged`**: set `stage: merged`, `next: -`. Run "Clean up" for the PR.
@@ -313,7 +348,11 @@ Act on four lines, and on no other:
 - **`dequeued`**: run the dequeue diagnosis, as `pr-watch.md`'s "Diagnose a
   dequeue" says. Write `watch.queued false` the same way. Set `stage: blocked`,
   `next: you`, and give the principal the diagnosis. `CONFLICTING` goes to
-  a merge agent, as "Enqueue" says.
+  a merge agent, as "Enqueue" says. On the principal's answer, run
+  "Enqueue" again.
+
+A `merged` or `closed` line ends the row at every stage, with or without a
+child.
 
 ## The board
 

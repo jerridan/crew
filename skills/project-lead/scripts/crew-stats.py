@@ -930,6 +930,12 @@ def report(records: list[dict], skips: list[str]) -> None:
 # `state.json` anywhere inside one would otherwise read as a run.
 NOT_A_RECORD = ("checkout", "worktrees", "review-worktrees", ".git")
 
+# The review queue keeps its own files in `<record-root>/queue/`: a small
+# record per queued PR and the full clones of the repos it reads. None is a
+# goal run. Only the top-level `queue/` is skipped, so a goal that has its own
+# `queue` directory deeper down is still read.
+QUEUE_DIR = "queue"
+
 
 def is_record(state_path: Path) -> bool:
     """`True` when this `state.json` is a run record, not some other file.
@@ -961,8 +967,8 @@ def candidates(root: Path) -> list[Path]:
 
     Two rules keep a file that is not a record out. The walk never descends
     into a directory `NOT_A_RECORD` names, so nothing inside a checkout or a
-    worktree is read at all. `is_record` then checks the shape of each
-    `state.json` the walk does reach.
+    worktree is read at all, and neither is `<root>/queue/`. `is_record` then
+    checks the shape of each `state.json` the walk does reach.
     """
     found = []
     stack = [root]
@@ -974,8 +980,11 @@ def candidates(root: Path) -> list[Path]:
             continue
         for child in children:
             if child.is_dir():
-                if child.name not in NOT_A_RECORD:
-                    stack.append(child)
+                if child.name in NOT_A_RECORD:
+                    continue
+                if directory == root and child.name == QUEUE_DIR:
+                    continue
+                stack.append(child)
             elif child.name == "state.json" and is_record(child):
                 found.append(directory)
     return sorted(found)

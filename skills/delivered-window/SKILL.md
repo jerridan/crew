@@ -1,6 +1,6 @@
 ---
 name: delivered-window
-description: The crew project lead's session after the hand-over — watch the PR and CI, sort every message and PR comment, run patch rounds behind the go-ahead gate, reply on the PR, and close on the ship word. The project lead invokes it at the end of a run and on a resume of a delivered run. A person does not invoke it.
+description: The crew project lead's session after the hand-over — watch the PR and CI, sort every message and PR comment, run patch rounds behind the go-ahead gate, reply on the PR, watch the deploy of the merge, and close on the ship word. The project lead invokes it at the end of a run and on a resume of a delivered run. A person does not invoke it.
 user-invocable: false
 ---
 
@@ -8,8 +8,9 @@ user-invocable: false
 
 This window opens at the hand-over, when `run_state` goes `delivered`.
 `simple-path.md`'s "The skeptical review" is its first round. Stay in this
-session until the principal says the work shipped: a question about the
-change, and every later change to the PR, come to you (design §15.92).
+session until the work shipped. The principal says so, or the deploy watch
+sees the deploy. A question about the change, and every later change to the
+PR, come to you (design §15.92).
 
 **Paths.** `<project-lead-dir>` is the `skills/project-lead` directory
 beside this skill's base directory, which the invocation names. A file this
@@ -52,10 +53,11 @@ the latest `reviews/skeptical-r<n>.md`. Any other `push` is a head move. Run
 review runs on it, as `skeptical-review.md`'s "When the review runs" says for
 a head that moves in the delivered window. Then write `run.watch.head` with
 `crew-record.py <record-dir> run set watch.head '"<sha>"'`. A `merged` item
-is a notice in a goal run, and the ship word is still asked for. In a
-`run.kind: review` run, `merged` and `closed` are the ship word (see "The
-word that the work shipped"). In a goal run, a `closed` item is a notice that
-asks the principal for the ship word or for a new goal.
+in a goal run arms the deploy watch, or is the ship word under `Deploy: none`
+(see "The deploy watch"). In a `run.kind: review` run, `merged` and `closed`
+are the ship word, and `Done: rolled out` changes `merged` (see "The word that
+the work shipped"). In a goal run, a `closed` item is a notice that asks the
+principal for the ship word or for a new goal.
 
 **A `queued` item is a notice on every run**, and the watch goes on. Write
 `run.watch.queued` `true` with the cursor.
@@ -80,7 +82,9 @@ your report to the principal lands, write the whole object with
 resume, and on every return from `blocked` to `delivered`. Do not arm it when
 the newer of the watch entries in `decisions.md` says the principal stopped
 it. A keep-alive line from an older run counts as a watch entry. Arm it by
-`pr-watch.md`'s "Arm the monitor".
+`pr-watch.md`'s "Arm the monitor". A resumed run whose PR state is `MERGED`
+and whose record holds `run.deploy` arms the deploy watch instead, as "The
+deploy watch" says. It arms no watch when `run.deploy.ended` is set.
 
 **The expiry notice re-arms it.** At 30 minutes the monitor ends, and
 Claude Code sends you one notice. Arm it again by the same steps, and reply
@@ -93,6 +97,37 @@ it, `TaskStop` the monitor, or delete the cron job as `pr-watch.md`'s "Arm
 the keep-alive job" step 1 says. Write a `decision` entry that the principal
 stopped the watch. When the principal asks for it again, write one that the
 principal started it again, then arm it.
+
+### The deploy watch
+
+**A `merged` item arms the deploy watch** in a goal run, and in a review run
+whose `Done` is `rolled out`. It arms nothing when the winning `Deploy` is
+`none` or `manual` (`<project-lead-dir>/SKILL.md`, "Standing instructions").
+The deploy watch is a second `Monitor`. It replaces the PR watch, which ended
+on that item. In order:
+
+1. Decide the winning `Deploy` by the one order in "Standing instructions".
+   Read the two files again at the paths in `run.standing_instructions`.
+2. Write `run.deploy` with `crew-record.py <record-dir> run set deploy
+   '<json>'`. The object is `{environment, workflow, timeout_minutes, source,
+   since, ended}`. `environment` and `workflow` are `null` when unused, and
+   both are `null` with no `Deploy` section. `source` is the winning source's
+   name, or `default`. `since` is the time now, and `ended` is `null`.
+3. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch".
+4. Report the merge to the principal in one sentence that says the deploy
+   watch runs. Never say the work shipped.
+
+With `none`, the `merged` item is the ship word, and you write no
+`run.deploy`. With `manual`, write no `run.deploy`. The item is a notice:
+report the merge, and ask for the ship word.
+
+The watch prints one line and ends: `deployed`, `no-deploy`, `deploy-failed`,
+`deploy-timeout` or `closed`. "The word that the work shipped" says what each
+one does. After you report a `deploy-failed` or `deploy-timeout` line, write
+`run.deploy.ended` as that kind. When the principal asks for the watch again,
+write `since` as the time now and `ended` as `null`, then arm it by step 3.
+The watch touches no `run.watch` cursor. The expiry notice re-arms it by
+step 3, while `ended` is `null`.
 
 ### The fallback
 
@@ -120,8 +155,10 @@ None of these is one of the five kinds of message below:
 - **The expiry notice** re-arms the monitor, as "Watch the PR" says.
 - **A keep-alive fire with no PR** takes the reply "ok". Run no tool, and
   sort nothing.
-- **A keep-alive fire with a PR** runs the fallback poll. Sort what it prints
-  like a monitor event, or reply "ok" when it prints only the draft state.
+- **A keep-alive fire with a PR** runs the fallback poll. Sort what it
+  prints like a monitor event, or reply "ok" when it prints only the draft
+  state. With `run.deploy` in the record, the poll is the deploy poll, and
+  "ok" is the reply when it prints nothing, or when `ended` is set.
 
 ## Sort what reaches you
 
@@ -259,7 +296,8 @@ path the run took: an IC makes the edit, and you verify it yourself (design
 
 Only the principal can tell you to merge the PR. Then run `gh pr merge
 <pr_url> --squash --delete-branch`, or the repo's own merge method, and write
-a `decision` entry. A merge is not the ship word, so ask for it.
+a `decision` entry. The watch then reports the `merged` item, and "The deploy
+watch" says what it does.
 
 ### Findings from a review
 
@@ -487,26 +525,42 @@ package left `pending` or `in-flight` by a kill.
 
 ## The word that the work shipped
 
-It comes from the principal, on either channel, and it alone ends this
-window. Never decide it yourself: shipped means merged and deployed, and no
-`gh` command sees a deploy. In a `run.kind: review` run, the watch's
-`merged` or `closed` item is that word by default. There, a `Done: rolled
-out` standing-instructions section (`<project-lead-dir>/SKILL.md`) makes a
-`merged` item a notice, and the word waits for the principal's word that the
-change is live. In a goal run, a `merged` item is a notice and the word is
-always the principal's, so `Done` changes nothing there. On the word:
+It ends this window. It comes from the principal, on either channel, or from
+the deploy. Decide it on no other evidence. These are the deploy's words:
+
+- a `deployed` or `no-deploy` item of the deploy watch;
+- a `merged` item when the winning `Deploy` is `none`.
+
+In a goal run, `Deploy: manual` makes the word the principal's. `Done` changes
+nothing there. In a `run.kind: review` run, the watch's `merged` or `closed`
+item is the word by default. Where `Done` is `rolled out`, a `merged` item
+follows the rule above instead: the deploy's words end the window, and under
+`manual` the word is the principal's word that the change is live. A `closed`
+item is always the word there.
+
+**A `deploy-failed` or `deploy-timeout` item is a notice.** Tell the
+principal, with the item's id. Keep the window open. The word stays the
+principal's. A failed deploy of a merged PR is a finding for patch mode only
+when the principal says so. Write `run.deploy.ended`, as "The deploy watch"
+says.
+
+On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.
-2. Stop the watch: `TaskStop` the monitor, then `CronList`, then
-   `CronDelete` each job whose prompt starts "Crew keep-alive".
+2. Stop the watch: `TaskStop` the monitor, the deploy monitor included, then
+   `CronList`, then `CronDelete` each job whose prompt starts "Crew
+   keep-alive".
 3. Remove each deliverable's review worktree, as `review-runner.md`'s "Never
    review in the run's own checkout" says.
 4. `<project-lead-dir>/scripts/spend.py --write`, so the figure covers this
    window.
 5. Stop every process the run left listening, as `simple-path.md`'s "End the
    run" says.
-6. Say the run is closed and this session can be. The principal closes the
+6. Say the run is closed and this session can be. After a `deployed` item,
+   first say that the deploy succeeded. Name the environment or the workflow
+   and the item's id. After a `no-deploy` item or a merge under `none`, first
+   say that the PR merged and the repo has no deploy. The principal closes the
    pane or the window.
 
 A session that dies in this window is resumed like any other: `SessionEnd`

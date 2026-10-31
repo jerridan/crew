@@ -160,7 +160,7 @@ path and on a review run. A missing file holds nothing. Then write
 null>}'`, with `null` for a missing file. A resumed session reads the files
 at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these eleven:
+**Each file holds optional `##` sections.** You act on these twelve:
 
 | Section | What you do with it |
 |---|---|
@@ -175,6 +175,28 @@ at those paths again before its first dispatch.
 | `Done` | `merged` or `rolled out`. `crew:delivered-window`'s "The word that the work shipped" reads it |
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
+| `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
+
+**`Deploy` names the signal that the work is live.** Its lines are:
+
+- `environment: <name>`: a GitHub deployment of the merge commit to that
+  environment, whose latest status is `success`.
+- `workflow: <name>`: a GitHub Actions run of that workflow, by name, with
+  `head_sha` equal to the merge commit and the conclusion `success`.
+- `none`: the repo has no deploy process. The merge is the ship word.
+- `manual`: the repo deploys where `gh` cannot see, such as a deploy tool
+  outside GitHub. After the merge, the ship word stays the principal's.
+- `timeout: <minutes>`: a positive integer, how long the watch waits after it
+  arms. The default is 180.
+
+With no `Deploy` section in any source, the deploy watch reads the repo's
+GitHub deployments. With some, the signal is the newest deployment of the
+merge commit whose `production_environment` is true, or whose environment is
+named `production` or `prod`, with the latest status `success`. With none, the
+signal is the newest Actions run on the merge commit whose name holds `deploy`
+or `release`. With neither, 10 minutes after the merge, the repo has no deploy,
+and the merge is the ship word. The delivered window arms the deploy watch
+from the winning source (`crew:delivered-window`'s "The deploy watch").
 
 A file with no `##` heading is one `Reviewers` section. Act on no other
 section yourself, and pass it through to ICs and reviewers unread.

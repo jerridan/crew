@@ -8623,7 +8623,69 @@ Deliberately different:
      commit after every green step, so only uncommitted work is at risk.
      `/crew:review` still cuts its review worktree under `<record-dir>`.
 
-127. **The review queue and the review board — 2026-10-31, T83, T84, #122,
+127. **A merge's deploy marks the run shipped — 2026-10-30, T83.** The principal
+     asked never to type the ship word again. Before this,
+     `crew:delivered-window` said that shipped means merged and deployed, and
+     that no `gh` command sees a deploy. So a merge was only a notice in a goal
+     run, and the principal had to type the word.
+
+     `gh` sees two kinds of deploy: a GitHub deployment of the merge commit,
+     and a GitHub Actions run on it. The project lead now arms a deploy watch
+     on a `merged` item in a goal run. A `queued` item stays the notice that
+     §15.124 made it, because the queue can still reject the PR. The watch is
+     `pr-watch.sh` in its `deploy` mode. A `deployed` line is the ship word,
+     and the project lead runs the ship steps itself. A new `Deploy` standing
+     instruction names the signal: `environment: <name>`, `workflow: <name>`,
+     `none` or `manual`, with an optional `timeout: <minutes>`, 180 by default.
+     A review run with `Done: rolled out` arms the same watch. The project
+     lead writes `run.deploy` when it arms the watch, and a resumed run reads
+     it.
+
+     With no `Deploy` section, the script reads the repo's GitHub deployments.
+     A repo with deployments is matched on the merge commit: a deployment
+     whose `production_environment` is true or whose environment is named
+     `production` or `prod`, because many deploy tools leave the flag false.
+     Only the newest matching deployment counts, so an older success never
+     hides a newer failure. A repo with no deployment objects may still deploy
+     from Actions, so the script then looks for a run on the merge commit whose
+     name holds `deploy` or `release`, and judges it as a named workflow. Only
+     with neither does it print `no-deploy`, and that line is the ship word.
+     It waits 10 minutes after the merge first, because the run may not exist
+     yet. A failed read prints nothing, and the next poll tries again.
+
+     `none` says the repo has no deploy process, so the merge itself is the
+     ship word and no watch arms. `manual` says the repo deploys where `gh`
+     cannot see, such as a deploy tool outside GitHub. Only there does the
+     word stay the principal's after a merge, which was the rule before this
+     finding. The two exist because the default cannot tell a repo with no
+     deploy from a repo that deploys out of sight, and a wrong guess either
+     closes a run early or asks for the word again.
+
+     A `deploy-failed` line and a `deploy-timeout` line stay notices, and the
+     ship word stays the principal's. Each is a real problem: the merge is
+     live in no known way, or the deploy broke. A failed deploy of a merged
+     PR is not a finding about the diff the project lead delivered, so patch
+     mode does not take it unless the principal says so. In workflow mode only
+     `failure`, `timed_out` and `startup_failure` fail. A cancelled or skipped
+     run is no result, and a newer run replaces it.
+
+     A review of the PR found four more defects, and the script now handles
+     them. The timeout counted from the merge, so a re-armed watch timed out
+     at once: `run.deploy.since` holds the arming time, and the count starts
+     there. A reported failure or timeout printed again on every fallback fire
+     and every resume: `run.deploy.ended` holds the kind, and a watch with it
+     set prints nothing until a re-arm clears it. A poll whose `gh pr view`
+     failed after the merge lost the timeout check, so the script keeps the
+     merge commit and time from the last good read. A `timeout_minutes` that
+     is not a positive integer now stops the script with exit 2.
+
+     The script ran against a seeded record on a public PR with a successful
+     deployment and workflow run, and on a PR in a repo with no deployments. A
+     stub `gh`, which applies the script's own filters to canned JSON, ran the
+     failure, cancelled, newest-deployment, grace, `since`, `ended` and
+     cached-read cases. No crew run has armed the deploy watch yet.
+
+128. **The review queue and the review board — 2026-10-31, T84, T85, #122,
      #123.** The review-queue trial of 2026-10-27 and 2026-10-28 found that a
      `/crew:review` child refuses a go-ahead, a standing rule or a "skip the
      re-review" that another session relays. That refusal is correct. So a

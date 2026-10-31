@@ -11,7 +11,7 @@ two hooks, the three scripts under `skills/project-lead/scripts/`,
 `skills/review/scripts/review-json.py`: they are code, run against a seeded
 record (design §15.38, §15.50, §15.123, §15.124). The review-board mod,
 `hooks/review-board.tsx`, is TypeScript: `claude plugin test <repo>` runs its
-tests, and `claude plugin validate <repo>` checks its module (§15.127).
+tests, and `claude plugin validate <repo>` checks its module (§15.128).
 
 ## Layout
 
@@ -86,8 +86,8 @@ or T82. The severity rubric on goal runs is built: the project lead labels
 every review finding by it, whatever its source, and a round with no
 blocking finding is the last (§15.125). No run has exercised it.
 
-`/crew:review-queue` and the review-board mod are built (T83, T84,
-§15.127). One queue session launches `/crew:review` children in child mode,
+`/crew:review-queue` and the review-board mod are built (T84, T85,
+§15.128). One queue session launches `/crew:review` children in child mode,
 reads each child's ready file, and does every post, approval, enqueue and
 Slack reaction itself. The mod's tests pass under `claude plugin test`. No
 queue session and no child has run yet.
@@ -101,6 +101,11 @@ has read any of it yet. T80 lets a worktree-isolated session run the full
 path: launch check 1 probes one worktree base for every worktree of a run
 (§15.126). No run has
 exercised it.
+
+T83 is built: after a merge, the project lead arms a deploy watch, and a
+successful deploy of the merge commit is the ship word. A repo with no deploy
+ships at the merge. The watch ran only against a seeded record, and no crew
+run has used it (§15.127).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

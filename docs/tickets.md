@@ -3477,11 +3477,42 @@ Unexercised: no run has read any of these rules. The first review run on
 Read first: design §15.124; `skills/review/SKILL.md`; `github-review.md`;
 `review-runner.md` "The startup check and the cap".
 
-## T83 — Add `crew:review-queue`
+## T83 — Watch the deploy of a merged PR, and ship on its success
+
+Status: done
+Depends on: T72, T81
+Stage: 8 (design §15.127)
+
+Scope. A merge was only a notice in a goal run, and the principal typed the
+ship word after the deploy. Add a deploy mode to `pr-watch.sh`. After a merge,
+the project lead arms it from a new `run.deploy` object, and a successful
+deploy is the ship word. A new `Deploy` standing instruction names the signal:
+`environment`, `workflow`, `none` (the merge is the word) or `manual` (the word
+stays the principal's). With no section, a repo with no GitHub deployments and
+no deploy run ships at the merge. A failed or late deploy is a notice.
+
+Files: `skills/delivered-window/scripts/pr-watch.sh`,
+`skills/delivered-window/references/pr-watch.md`,
+`skills/delivered-window/SKILL.md`, `skills/project-lead/SKILL.md`,
+`skills/project-lead/references/record-format.md`, `skills/review/SKILL.md`,
+`README.md`, `CLAUDE.md`, `docs/design.md`, `docs/tickets.md`, and the version
+in both manifests.
+
+Done when: the script, run against a seeded record, prints `deployed` for an
+environment and for a workflow, prints `no-deploy` for a repo with no
+deployments and no deploy run, prints `deploy-timeout` for a deploy that never
+came, prints nothing for a record with `run.deploy.ended`, and exits 2 when
+`run.deploy` is absent or its timeout is not a positive integer; and the old
+`once` and loop modes are unchanged.
+
+Read first: design §15.127; `pr-watch.md` "Arm the deploy watch";
+`SKILL.md`'s "The deploy watch" and "The word that the work shipped".
+
+## T84 — Add `crew:review-queue`
 
 Status: done 2026-10-31
 Depends on: T82
-Stage: 8 (design §15.127)
+Stage: 8 (design §15.128)
 
 Issue #122. One queue session watches sources, triages each ask, launches a
 `/crew:review` child per PR, and does every post, approval, enqueue and Slack
@@ -3509,15 +3540,15 @@ Out of scope: #124, the mod as the watcher.
 
 Unexercised: no queue session and no child has run.
 
-Read first: design §15.127; `skills/review-queue/SKILL.md`;
+Read first: design §15.128; `skills/review-queue/SKILL.md`;
 `skills/review-queue/references/ready-file.md`; `skills/review/SKILL.md`
 "Child mode".
 
-## T84 — Ship the review-board mod
+## T85 — Ship the review-board mod
 
 Status: done 2026-10-31
-Depends on: T83 (the board file)
-Stage: 8 (design §15.127)
+Depends on: T84 (the board file)
+Stage: 8 (design §15.128)
 
 Issue #123. A hooks module in the plugin draws a pane and a status line from
 the board file. It arms only on the `review-queue` skill prompt. `/review-board`
@@ -3532,5 +3563,5 @@ Out of scope: #124.
 
 Unexercised: no session has loaded the mod from the installed plugin.
 
-Read first: design §15.127; `hooks/review-board.tsx`;
+Read first: design §15.128; `hooks/review-board.tsx`;
 `skills/review-queue/references/board.md`.

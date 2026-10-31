@@ -12,8 +12,9 @@ is the whole diff reviewed. A separate session reads it against your goal and
 assumes it is wrong. What that session finds comes back as patch rounds on the
 same PR. When that review is done, the PR leaves draft. Merge it when you
 are ready, or tell the project lead to merge it. The project lead stays until
-you say its work shipped, so you can ask it about the change before the
-merge, or ask for a change to the PR after.
+its work ships, so you can ask it about the change before the merge, or ask
+for a change to the PR after. The work ships when its deploy succeeds, or soon
+after the merge when the repo has no deploy.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
 you what it fixed or declined and why. When another person commented, it
@@ -127,7 +128,11 @@ go-ahead, then pushes and replies to each one on the PR. A comment from a
 bot, a failed check and a comment from your own GitHub account are pushed and
 answered with no go-ahead. You can still send findings from anywhere else,
 and they wait for your go-ahead too.
-When the work is merged and deployed, say so, and the run closes. Closing the
+After a merge, crew watches GitHub for the deploy of the merge commit. When
+that deploy succeeds, the run closes with no word from you. A repo with no
+deploy closes 10 minutes after the merge, or at the merge with `Deploy: none`. If the deploy fails or does not finish in time,
+crew tells you, and the run stays open until you say the work shipped. With
+`Deploy: manual`, the run also waits for your word. Closing the
 session instead leaves the run recorded as interrupted, which is fine for a
 run you merged yourself.
 
@@ -291,10 +296,11 @@ under a `##` heading with one of these names:
 | `Hook workarounds` | what to do when a git hook stops a push or a merge |
 | `Ticket defaults` | where a new ticket goes, such as its team |
 | `PR readiness` | `ready` or `draft` |
-| `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for your word that the change is live, not for the merge |
+| `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for the deploy of the merge, or for your word under `Deploy: manual`, not for the merge alone |
 | `Branch names` | your rule for a branch name |
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
 | `Pre-enqueue checks` | shell commands, one per line, that the review queue runs before it puts a PR in the merge queue. A failed command stops that PR |
+| `Deploy` | how crew sees that a merge is live: `environment: <name>`, `workflow: <name>`, `none` (the repo has no deploy, so the run closes at the merge) or `manual` (the repo deploys where GitHub cannot see, so crew waits for your word), and an optional `timeout: <minutes>` (default 180). With no section, crew looks for a successful production deployment, or a deploy or release workflow run, on GitHub. It closes 10 minutes after the merge when it finds neither |
 
 ```
 ## Known red tests

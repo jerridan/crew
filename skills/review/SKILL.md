@@ -356,8 +356,9 @@ and it already carries the sentences for a `run.kind: review` run:
 - only the assist round of "The assist path" below creates packages and
   pushes, and every other round is answered and never patched: its
   "Findings from a review";
-- the `merged` and `closed` items are each the ship word: its "Watch the
-  PR" and "The word that the work shipped";
+- the `merged` and `closed` items are each the ship word, except that under
+  `Done: rolled out` a `merged` item follows the deploy rule: its "Watch the
+  PR", "The deploy watch" and "The word that the work shipped";
 - an item that neither answers a crew-posted finding nor addresses the
   principal is a notice, so other people's conversations open no round: its
   "Sort what reaches you";
@@ -474,7 +475,8 @@ this file holds, with these changes:
 ## The end
 
 The `merged` or `closed` item is the ship word, and the window owns the
-steps. Before its closing message, restore the checkout as
+steps. Under `Done: rolled out`, that window's "The word that the work
+shipped" names the word instead of a `merged` item. Before its closing message, restore the checkout as
 `simple-path.md`'s "Restore the checkout at every end" says, with the
 deliverable's `checkout_branch`. On a cross-repository PR, that switch also
 leaves the detached head. The closing message says whether the PR merged or

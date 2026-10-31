@@ -452,8 +452,12 @@ const watcher = (
     history: [] as Msg[],
     pageSize: 100,
     fail: 0,
+    // History fetches that never resolve.
+    hang: 0,
   }
-  const gh = { prs: [] as object[], fail: false }
+  const gh = { prs: [] as object[], fail: false, throws: false }
+  // The next `mv` runs that exit 1, and temp-file writes the engine refuses.
+  const faults = { mv: 0, write: 0 }
   const seen = {
     fetches: [] as string[],
     lists: [] as string[],
@@ -483,6 +487,10 @@ const watcher = (
   })
   on('fs.exists', (_, e) => ({ value: e.path === BOARD || files.has(e.path) }))
   on('fs.write', (_, e) => {
+    if (e.path !== ASKS && faults.write > 0) {
+      faults.write -= 1
+      return { deny: 'disk full' }
+    }
     seen.writes.push({ path: e.path, text: e.text })
     files.set(e.path, e.text)
     return { value: undefined }
@@ -494,12 +502,17 @@ const watcher = (
     const argv = [...e.argv]
     seen.runs.push(argv)
     if (argv[0] === 'mv') {
+      if (faults.mv > 0) {
+        faults.mv -= 1
+        return ran(1)
+      }
       const text = files.get(argv[1])
       if (text === undefined) return ran(1)
       files.set(argv[2], text)
       files.delete(argv[1])
       return ran(0)
     }
+    if (argv[0] === 'gh' && gh.throws) return { deny: 'gh: command not found' }
     if (argv[0] === 'gh') return gh.fail ? ran(1) : ran(0, JSON.stringify(gh.prs))
     return ran(127)
   })
@@ -524,6 +537,10 @@ const watcher = (
     if (base.endsWith('/conversations.history')) {
       const oldest = params.get('oldest')
       seen.history.push({ oldest, cursor })
+      if (slack.hang > 0) {
+        slack.hang -= 1
+        return new Promise<never>(() => undefined)
+      }
       if (slack.fail > 0) {
         slack.fail -= 1
         return reply({ ok: false, error: 'ratelimited' })
@@ -568,7 +585,7 @@ const watcher = (
   const asksWrites = () =>
     seen.runs.filter(a => a[0] === 'mv' && a[2] === ASKS).length +
     seen.writes.filter(x => x.path === ASKS).length
-  return { seen, clock, files, store, slack, gh, asks, ghRuns, asksWrites }
+  return { seen, clock, files, store, slack, gh, faults, asks, ghRuns, asksWrites }
 }
 
 type Kit = Parameters<Parameters<typeof test>[1]>[0]
@@ -805,14 +822,24 @@ test('A18: two polls with one new ask each give two prompts', async ($, on) => {
   expect(w.seen.prompts).toEqual([PROMPT('o/r#61 from #dev'), PROMPT('o/r#62 from #dev')])
 })
 
-test('A19: a later Slack message for a PR with a row gives an entry and no prompt', async ($, on) => {
+test('A19: a later Slack message for a PR with a row gives an entry; a prompt only at next: author', async ($, on) => {
   const w = watcher(on, {
-    board: () => watchBoard({ rows: [row(60, 'reviewing', 'author', '2026-01-01T10:00:00Z')] }),
+    board: () =>
+      watchBoard({
+        rows: [
+          row(60, 'reviewing', 'crew', '2026-01-01T10:00:00Z'),
+          row(61, 'reviewing', 'author', '2026-01-01T10:00:00Z'),
+        ],
+      }),
   })
-  w.slack.history = [msg(ts(5), [60])]
+  w.slack.history = [msg(ts(5), [60]), msg(ts(6), [61])]
   await arm($, w)
-  expect(w.asks().asks.map(a => [a.pr, a.slack?.ts])).toEqual([[60, ts(5)]])
-  expect(w.seen.prompts).toEqual([])
+  expect(w.asks().asks.map(a => [a.pr, a.slack?.ts]).sort()).toEqual([
+    [60, ts(5)],
+    [61, ts(6)],
+  ])
+  // A row at next: author is a re-triage the queue session must see now.
+  expect(w.seen.prompts).toEqual([PROMPT('o/r#61 from #dev')])
 })
 
 test('A20: a poll prunes every entry at or before asks_through and keeps the later ones', async ($, on) => {
@@ -1046,4 +1073,46 @@ test('R8: a later last_checked in asks.json shows in Watching', async ($, on) =>
   const pane = await drawn($)
   expect(pane).toContain('checked 2026-01-01 20:00')
   expect(pane).toContain('found 9')
+})
+
+for (const fault of ['mv', 'write'] as const) {
+  test(`A28: a Slack ask read in a poll whose ${fault} of asks.json failed reaches asks.json at the next poll`, async ($, on) => {
+    const w = watcher(on, { board: () => watchBoard() })
+    w.slack.history = [msg(ts(1), [11])]
+    w.faults[fault] = 1
+    await arm($, w)
+    expect(w.asks().asks).toEqual([])
+    expect(w.seen.prompts).toEqual([])
+    await w.clock.advance(MINUTE)
+    expect(w.asks().asks.map(a => a.pr)).toEqual([11])
+    expect(w.asks().watches['#dev'].found).toBe(1)
+    expect(w.seen.prompts).toEqual([PROMPT('o/r#11 from #dev')])
+  })
+}
+
+test('A29: a gh run that rejects skips its watch with a note, and the Slack watch still writes', async ($, on) => {
+  const w = watcher(on, { board: () => watchBoard({ watches: [SLACK_WATCH, GH_WATCH] }) })
+  w.slack.history = [msg(ts(1), [11])]
+  w.gh.throws = true
+  await arm($, w)
+  expect(w.asks().asks.map(a => a.pr)).toEqual([11])
+  expect(w.seen.prompts).toEqual([PROMPT('o/r#11 from #dev')])
+  expect(await drawn($)).toContain('review-requests: poll failed')
+  w.gh.throws = false
+  w.gh.prs = [ghPr(5)]
+  await w.clock.advance(MINUTE)
+  expect(w.asks().asks.map(a => a.pr)).toEqual([11, 5])
+})
+
+test('A30: a Slack fetch that never resolves times out at 30 seconds, and the next poll polls again', async ($, on) => {
+  const w = watcher(on, { board: () => watchBoard() })
+  w.slack.history = [msg(ts(1), [11])]
+  w.slack.hang = 1
+  await arm($, w)
+  expect(w.seen.history.length).toBe(1)
+  await w.clock.advance(30_000)
+  expect(await drawn($)).toContain('#dev: poll failed')
+  await w.clock.advance(MINUTE - 30_000)
+  expect(w.seen.history.length).toBe(2)
+  expect(w.asks().asks.map(a => a.pr)).toEqual([11])
 })

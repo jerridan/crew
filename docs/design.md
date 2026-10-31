@@ -8649,10 +8649,18 @@ Deliberately different:
      `modules` beside the two command hooks, and `claude plugin validate`
      accepts both. It arms on the skill prompt in either form,
      `crew:review-queue` or `review-queue`, because the types file does not
-     say which one a plugin skill reports. Its `/review-board` text fallback
-     prints when `$.ui.open` reports the pane not placed, since the test kit
-     cannot set a column count. Ten tests pass under `claude plugin test`,
-     and the test run fails at the red commit. A probe ran `pr-watch.sh once`
+     say which one a plugin skill reports. Ten tests passed under `claude
+     plugin test`, and the test run failed at the red commit.
+
+     The skeptical review's round 1 found two blocking defects that every
+     earlier check missed. First, the `/review-board` text fallback first
+     printed when `$.ui.open` reported the pane not placed. The engine places
+     a pane that the person's command opens at any width, so that answer
+     never comes, and the test mocked it. The hook now reads the command's
+     `presentation.columns` and prints the text table under 110 columns. The
+     test kit sets that width. Second, the queue polled only queued rows, so
+     a `review`-policy PR left at `next: author` was never read again. The
+     round also kept the queue's files out of `crew-stats.py`'s record walk. A probe ran `pr-watch.sh once`
      on the minimal record the queue builds for a queued PR, against merged
      PR #128: it printed `merged` and exited 0. No queue session, no child
      and no installed copy of the mod has run.

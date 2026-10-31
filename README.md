@@ -246,12 +246,15 @@ batch of reviews that have findings. A review with no findings posts with no
 wait.
 
 The review board shows the queue in a pane beside the chat, and a count in
-the status line. It opens by itself in a queue session. Open it in any
-session with:
+the status line. It opens by itself in a queue session, and updates there.
+Open it in any session with:
 
 ```
 /review-board
 ```
+
+Outside a queue session, the pane shows the board as it was when you opened
+it. In a terminal under 110 columns, the command prints the board as text.
 
 ## What a run needs
 

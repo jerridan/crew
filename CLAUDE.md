@@ -88,7 +88,8 @@ per deliverable, a gate decided by each item's author, a review that stops on
 an accepted verdict, a delta re-review, a two-round spec critic, whole-class
 fix rounds, and `crew-record.py`'s `decision` and `round` subcommands. No run
 has read any of it yet. T80 lets a worktree-isolated session run the full
-path: launch check 1 probes the worktree root (§15.126). No run has
+path: launch check 1 probes one worktree base for every worktree of a run
+(§15.126). No run has
 exercised it.
 
 Two items in one repo take a checkout each: the project lead cuts its own when

@@ -40,7 +40,7 @@ changes often. `/crew:review` has not run yet.
 
 ## Run one goal in your session
 
-Start Claude Code in an ordinary clone of the target repo, not a worktree:
+Start Claude Code in a clone of the target repo, or in a worktree of one:
 
 ```
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto
@@ -220,7 +220,6 @@ To use another reviewer, say so in plain words, as for a goal:
 |---|---|---|
 | Permissions that never stop for a human | `--permission-mode auto`, or your own allow rules | every run |
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for the full path; required for a pane per dispatched agent on any path; optional otherwise |
-| An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
 | A clone of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the clone | every `/crew:review` run |

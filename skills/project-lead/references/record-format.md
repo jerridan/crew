@@ -18,7 +18,7 @@ One directory per goal, outside the target repo (design §4):
 ├── plans/            one plan per package, written by its IC
 ├── diffs/            one diff per deliverable, written by the project lead
 ├── evidence/         investigation path only: one file per evidence dispatch
-├── review-worktrees/ one checkout per deliverable for its skeptical reviews, removed at ship
+├── review-worktrees/ one checkout per deliverable for its skeptical reviews, removed at ship (here when `run.worktree_base` is this directory)
 └── reviews/          raw critic and reviewer output
 ```
 
@@ -58,7 +58,9 @@ python3 <skill-dir>/scripts/crew-record.py <record-dir> round drop <round-id>
 
 Write every path in these commands as a literal. A worktree-isolated session
 refuses a command that it cannot parse, such as one that builds a path from
-a shell variable or loops over files (design §15.126).
+a shell variable or loops over files. A long command that names git goes in
+a script file in the record, run with `bash <file>`, as `review-runner.md`'s
+"The default command" does (design §15.126).
 
 `decision` writes `decisions.md`, and "`decisions.md`" below owns its three
 forms. `round` writes `run.rounds`, and the `rounds` row below owns its
@@ -663,6 +665,7 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `rounds[].reply_to` | where this round's reply is sent, decided by `kind` and written when the round opens. **`pr-comments` and `ci` are the PR.** Each item gets its own reply there, placed by the kind and id on its ledger line: a `review-comment` in its own thread, a `review` or a `comment` as a PR comment that quotes its first line, and a `check` as a PR comment that links the failing run. **Every comment the project lead posts on the PR ends with the marker line `<!-- pr-review: <round-id> <item id> -->`**, the id of the item it answers, whatever the round's kind (`crew:delivered-window`'s "Send the reply file"). `principal` is the channel the message arrived on. `skeptical` is the record alone — the reply file is the reply, and the next status message to the principal names its path. On a `run.kind: review` run, a `skeptical` round's `reply_to` is the PR URL, and the reply is the review posted there. |
 | `watch` | `{last_polled_at, seen_ids, head, draft, held, queued}`, the cursor of the PR watch. `last_polled_at` is the ISO-8601 UTC time a re-armed monitor polls from: a `review` or `comment` older than it is not reported. `seen_ids` lists every item id the project lead has reported to the principal, a check's `<link>@<startedAt>` id included and the id of a `ready`, `merged`, `queued`, `dequeued` or `closed` line excluded. `head` is a sha, the last PR head the project lead knows. It joins the first write, and a `push` wake updates it after the item is sorted. The project lead also writes it after every push it makes itself. `draft` is the last draft state the project lead itself knows. `held` lists the items, each `{kind, id, author, at, summary}`, that arrived while a round of the same kind was open, until their own round opens. `queued` is a boolean, `true` while the PR is in the merge queue as far as the project lead knows. The project lead writes it `true` on a `queued` item, and writes it back to `false` with the cursor after a `dequeued` item. `pr-watch.sh` reads it at start, and an absent key reads as `false`. Each write has one owner, which says when it runs and with which command. The first write is written by `crew:delivered-window`'s `pr-watch.md`, "The first write's cursor". The write after a wake is written by that skill's "Watch the PR", and `held` by its "Findings from a review". `draft` alone is also written by `pr-watch.md`'s "Arm the monitor" step 3, by `pr-watch.md`'s "The fallback poll" and by `skeptical-review.md`'s "Mark the PR ready". Absent on a run that never had a PR. |
 | `checkout` | the absolute path this run does its git work in, written at `simple-path.md`'s "Create the branch". It is the target repo the charter named, unless another run already held that checkout — then it is the worktree this run cut, registered in `worktrees.json`. Every git command, the test suite and the push run against it. It is not where the run's transcripts live: those follow the session's own working directory, which the launch fixed (design §15.90). Absent on an investigation run that ends in a report, which creates no branch. |
+| `worktree_base` | the absolute path every worktree of this run lives under: territory worktrees and a held checkout under `worktrees/`, the review worktree under `review-worktrees/`. Written at the preference sweep by `full-path.md`'s launch check 1, with `run set worktree_base '"<path>"'`. It is `<record-dir>`, or `<repo>/.claude/worktrees/crew/<goal-slug>` in a worktree-isolated session whose guard refuses `<record-dir>` (design §15.126). Absent on a record written before T80 and on a review run: read `<record-dir>` then. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
 | `created_at` | ISO-8601 UTC timestamp written by `crew-record.py init`. `spend.py` counts transcripts from it when it has to price from a checkout. |
 | `delivered_at` | ISO-8601 UTC timestamp `crew-record.py` stamps once, on the first write that sets `run_state` to `delivered` — the `deliver` command, `run state delivered`, or `run set run_state delivered`. It is when the work was handed over: the PR opened, or the report ended. A later `blocked → delivered` or `interrupted → delivered` never moves it, and a run that goes `delivered → complete` keeps it, so the two stamps bound the whole delivered window. |
@@ -862,7 +865,7 @@ per territory, keyed by the IC's name. Either path cuts one for the
 deliverable when another run already held the checkout, and that entry is
 keyed by the deliverable id, because no IC owns it (`simple-path.md`, "Create
 the branch"). A run that cut none writes no file. **A review worktree is not one of these.**
-It lives under `<record-dir>/review-worktrees/<deliverable-id>`, the project
+It lives under `<run.worktree_base>/review-worktrees/<deliverable-id>`, the project
 lead alone makes it and removes it at the ship word, and nothing registers it
 here (`review-runner.md`).
 
@@ -872,21 +875,20 @@ the entry is what proves a worktree is this run's to remove, and a removed
 worktree needs no proof. A run that removed every worktree it cut leaves the
 file holding `{}` (design §15.90g).
 
-**The path convention** is `<record-dir>/worktrees/<territory-slug>`, or
-`<record-dir>/worktrees/<deliverable-id>` for a deliverable checkout. The IC
-that works the worktree is named as `SKILL.md`'s "Every dispatch is named"
-says, not from the territory slug. `<record-dir>` is the
-goal directory this file opens with — `<record-root>/<goal-slug>/` — and not
-the record root itself, whose goal directories two runs of one charter share.
-The goal slug carries the run's random suffix, so the path is unique per run
-(design §15.34, §15.90). The root sits outside
-the target repo: a test runner that globs collects every worktree's tests as
-well as the repo's own, so a repo-local root makes the suite measure the wrong
-tree (design §15.35b, §15.37f). The one exception is a territory worktree in a
-worktree-isolated session whose guard refuses that root:
-`<repo>/.claude/worktrees/crew/<goal-slug>/<territory-slug>`.
-`full-path.md`'s launch check 1 owns that choice. The `worktree` field holds
-whichever path the run used (design §15.126).
+**The path convention** is `<run.worktree_base>/worktrees/<territory-slug>`,
+or `<run.worktree_base>/worktrees/<deliverable-id>` for a deliverable
+checkout. The IC that works the worktree is named as `SKILL.md`'s "Every
+dispatch is named" says, not from the territory slug. The base is normally
+`<record-dir>`, the goal directory this file opens with —
+`<record-root>/<goal-slug>/` — and not the record root itself, whose goal
+directories two runs of one charter share. The goal slug carries the run's
+random suffix, so the path is unique per run (design §15.34, §15.90). That
+base sits outside the target repo: a test runner that globs collects every
+worktree's tests as well as the repo's own, so a repo-local base makes the
+suite measure the wrong tree (design §15.35b, §15.37f). The one exception is
+a worktree-isolated session whose guard refuses `<record-dir>`: its base is
+`<repo>/.claude/worktrees/crew/<goal-slug>`. `full-path.md`'s launch check 1
+owns that choice (design §15.126).
 
 An IC writes its plan and its report into the record root, not into its
 worktree, so a worktree holds only the package's own work. That keeps
@@ -1166,6 +1168,7 @@ Every name this file defines, with what consumes it.
 - `charter.md` `Assist: on` line — writer: the principal, or `/crew:review` when the principal asks. Consumer: `crew:delivered-window`'s "Findings from a review"
 - `charter.md` `Suite: on fork` line — writer: the principal at launch, or the project lead when the principal lifts the block at the gate. Consumer: `/crew:review`'s "Review"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
+- `run.worktree_base` — writer: the project lead, at `full-path.md`'s launch check 1, run at the preference sweep. Consumer: `full-path.md`'s territory worktrees; `simple-path.md`'s held checkout; `review-runner.md` (every review worktree)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
 - `run.repo` — writer: the project lead, at `SKILL.md`'s "Take the goal". Consumer: a replacement for the spec review, which runs from it (`substitution.md`); `simple-path.md`'s "End the run" (the worktree it removes); `review-runner.md` (every review worktree)
 - `run.review_rounds` — writer: the project lead, on first entry into a round (`skeptical-review.md`). Consumer: `skeptical-review.md` (the cap, and the round's file names)
@@ -1282,7 +1285,7 @@ Every name this file defines, with what consumes it.
 - `at` — consumer: a human auditing the record's timeline; stage 6
 
 **`worktrees.json` fields**
-- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<record-dir>/worktrees/<territory-slug>`, or the isolated fallback "The path convention" names
+- `worktree` (path) — consumer: stage 5 (project lead verifies an IC against this path, design §7); `<run.worktree_base>/worktrees/<territory-slug>`
 - `branch` — consumer: stage 5 (merge step, design §9.3)
 - `session_ids` (per IC) — consumer: stage 5 (ownership matching, design §13.1); crew's `SessionEnd` hook (matches a worktree to the ending session)
 - `orphaned` — consumer: crew's `SessionEnd` hook (writer); stage 5 `--resume` (prunes on it, design §10.1)

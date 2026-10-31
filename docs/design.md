@@ -8602,3 +8602,23 @@ Deliberately different:
      `record-format.md` names the fallback path and tells the project lead
      to write each `crew-record.py` path as a literal. No run has exercised
      the change.
+
+     A `/code-review medium` of PR #128 found seven real gaps, and the
+     principal had six of them fixed. First, the fallback covered only the
+     territory worktrees, while the review worktree and a held checkout
+     still lived under `<record-dir>`. Check 1 now chooses one base,
+     `run.worktree_base`, for every worktree of the run. It runs at the
+     preference sweep on every path, because every path cuts a review
+     worktree. Second, the skeptical-review launch command names git in a
+     compound form. A probe of that shape was refused in this isolated
+     session, and the same command from a script file ran. The project lead
+     now writes the command to `reviews/skeptical-r<n>-run.sh` and runs it
+     with `bash`. Third, the probe removes its worktree after every `add`
+     that passed. Fourth, the fallback base must pass a suite check, because
+     vitest collects `.claude/` by default. Fifth, the agents' self-review
+     points at the IC contract's worktree rule instead of a copy of it.
+     Sixth, the README no longer requires an ordinary clone. The principal
+     set aside one more finding: Claude Code can remove the session's
+     worktree at exit, and a fallback base inside it goes too. The ICs
+     commit after every green step, so only uncommitted work is at risk.
+     `/crew:review` still cuts its review worktree under `<record-dir>`.

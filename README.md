@@ -53,6 +53,14 @@ lead dispatches its own pane:
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto --teammate-mode tmux
 ```
 
+To run every agent as a background subagent instead, start without the
+variable. Subagent mode is on trial. If your settings set the variable,
+turn it off for this session:
+
+```
+claude --model fable --effort high --permission-mode auto --settings '{"env":{"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS":"0"}}'
+```
+
 Then hand over the goal:
 
 ```
@@ -201,7 +209,7 @@ To use another reviewer, say so in plain words, as for a goal:
 | Requirement | How | Which runs |
 |---|---|---|
 | Permissions that never stop for a human | `--permission-mode auto`, or your own allow rules | every run |
-| Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for the full path; required for a pane per dispatched agent on any path; optional otherwise |
+| Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for a pane per dispatched agent; optional otherwise |
 | An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
@@ -209,11 +217,10 @@ To use another reviewer, say so in plain words, as for a goal:
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 | Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |
 
-Crew never widens your permissions itself. Without the teams variable, the
-light, simple and investigation paths still work: every named agent launches
-as an ordinary subagent, so you keep the per-package model and the isolated
-context, and you lose the messaging between agents and the shared task list.
-The full path requires the variable.
+Crew never widens your permissions itself. Without the teams variable, every
+path still works: every agent runs as a background subagent. You keep the
+per-package model, the isolated context and the messages between agents. You
+lose the panes and the shared task list.
 
 Crew reads both standing-instruction files whole at launch, and gives their
 text to every agent it dispatches. Each file holds optional sections, each

@@ -330,8 +330,8 @@ The project lead never has to parse a review to find a report or a plan. It read
 
 **The IC writes both files, on either path.** When a sandbox denies the
 write, the IC returns the contents as its final message and the project lead
-transcribes them — as a tool result from a subagent, or in the idle
-notification from a teammate. A transcribed file says so, so an audit can
+transcribes them from the IC's result, wherever `SKILL.md`'s "Every
+dispatch is named" says it arrives. A transcribed file says so, so an audit can
 tell a first-hand file from a copy.
 
 ## Goal-slug uniqueness
@@ -613,6 +613,7 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 |---|---|
 | `run_state` | one of `active`, `blocked`, `delivered`, `interrupted`, `complete`. See `run_state` transitions below. `delivered` means every deliverable holds a terminal state and the session stays up for questions, changes to the PR, a review's findings and the principal's word that the work shipped (`crew:delivered-window`). `complete` means that word came. |
 | `kind` | a string. `"review"` on a review run, written by `/crew:review` with `run set kind` at the record's creation. Absent on a goal run, which means `goal`. A review run has no review cap: `crew-record.py`'s `arm_review` arms every head and appends nothing to `unreviewed_heads`. |
+| `dispatch_mode` | `"teammate"` or `"subagent"`: the mode `SKILL.md`'s "Every dispatch is named" read from `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` before the first dispatch, written with `run set dispatch_mode`. A resumed session reads the flag again and overwrites the field when the mode changed. Absent on a run from before design §15.124. |
 | `pr` | an object, written once by `/crew:review` at the record's creation, and absent on a goal run. It holds at least `owner`, `repo`, `url`, `author`, `base_ref`, `head_ref` and `merge_base` (strings), `number` (an integer) and `cross_repository` (a boolean). |
 | `session_ids` | a list, not a single id. The project lead's own session id, read from `$CLAUDE_CODE_SESSION_ID` (see below), appended to on every `--resume`, for the same reason as `worktrees.json`'s `session_ids` below. It is also what prices the run: `spend.py` reads each id's transcript subtree (Spend below). |
 | `review_rounds` | an integer: how many skeptical review rounds this run has entered. Starts at 0, and absent means 0. It names the round whose files are `reviews/skeptical-r<n>.*`. `skeptical-review.md` owns when it moves, what caps it, and why a retry leaves it where it is. |
@@ -685,7 +686,7 @@ at `ship` adds the delivered window, and it is the one that stands.
 
 Spend is measured from the transcripts, not from agent notifications, because
 the transcripts are the only count that includes the project lead's own
-session and the teammates (design §8, §15.50).
+session, the teammates and the subagents (design §8, §15.50).
 
 No figure gates a run. `spend` is a report the closing summary states and
 `crew-stats.py` totals, and nothing stops on it (design §8, §15.76).

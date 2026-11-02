@@ -52,14 +52,18 @@ checkout had a remote and there was nothing to ask.
 
 One more condition cannot be checked in advance: nothing in the run may stop
 for a human. A display mode is not a condition — in-process is the default and
-needs no setup (design §15.20c, §15.89d). A launch that passes you
+needs no setup (design §15.20c, §15.89d). The dispatch mode is not a
+condition either: both modes run this path (`SKILL.md`'s "Every dispatch is
+named"). In teammate mode, a launch that passes you
 `--teammate-mode tmux` gives each IC its own pane (design §15.93). A
 split-pane IC is its own session, and `spend.py` and the `PreCompact` hook
 find it by its team name (design §15.102). A pane needs room: a dispatch that
 fails with `create pane failed: pane too small` is an `environment` block, and
 it escalates the same way a stalled one does, below. A teammate's permission
 prompts surface in your session (design §15.12, §15.20), so one un-granted
-command stalls the whole run. A session cannot read its own permission mode, so
+command stalls the whole run. No run has shown what a background subagent
+does with an un-granted command (design §15.124): treat a stall or a
+denial there the same way. A session cannot read its own permission mode, so
 the README names this as a launch requirement and the principal owns it. You
 may not widen it yourself either, because settings are configuration.
 
@@ -145,7 +149,7 @@ verify it.
 
 ## Spawn the ICs
 
-One teammate per territory, named as `SKILL.md`'s "Every dispatch is named"
+One IC per territory, named as `SKILL.md`'s "Every dispatch is named"
 says for the package it starts on, at the band of that package: `crew:ic`
 for code, `crew:ic-instructions` for a `CLAUDE.md`, a `.claude/rules/`
 file, a `SKILL.md`, an agent definition, or reader-facing prose such as a
@@ -157,20 +161,21 @@ not change until the IC itself is respawned.
 Pass the band's model at spawn time, as `band-rubric.md` says. Pass it for an
 IC and never for a critic or a reviewer.
 
-A teammate inherits no conversation history, so the spawn prompt carries all
-of: `ic-contract.md`'s full text, the brief, the file set, **the absolute
-worktree path**, the interface contract, the acceptance criterion, the global
-constraints section, the package id, and **that it is a teammate** —
-`ic-contract.md`'s report rules branch on it, and an IC cannot tell on its own.
+An IC inherits no conversation history in either mode, so the spawn prompt
+carries all of: `ic-contract.md`'s full text, the brief, the file set, **the
+absolute worktree path**, the interface contract, the acceptance criterion,
+the global constraints section, the package id, and **the dispatch mode** —
+`ic-contract.md`'s "Questions" names your address by mode, and an IC cannot
+tell its mode on its own.
 The standing instructions go in after the contract and before the brief, as
 `SKILL.md`'s "Standing instructions" says.
 
 It also carries the record root, as an absolute path. An interactive teammate
 can write there (design §15.31b), so a full-path IC writes `plans/<id>.md` and
-`reports/<id>.md` itself. If a write is denied anyway, `ic-contract.md` makes
-the IC's final message its plan or its report, and that message reaches you in
-its idle notification. Transcribe it, and say in the file that you transcribed
-it.
+`reports/<id>.md` itself. No run has tested that write from a background
+subagent yet (design §15.124). If a write is denied, `ic-contract.md` makes
+the IC's final message its plan or its report, and that message reaches you
+as its result. Transcribe it, and say in the file that you transcribed it.
 
 Inject the contract as text. A teammate applies no `skills:` key and reads an
 agent body differently in each display mode (design §15.20d), so a link is not
@@ -195,7 +200,8 @@ a failure when a single package moved.
 
 ## The idle nudge
 
-An IC's idle notification is what tells you it stopped. Read the record before
+An IC's result — its idle notification, or its hand-back in subagent mode —
+is what tells you it stopped. This section calls both an idle. Read the record before
 you answer one, and sort the idle into one of three kinds. No hook does
 this — a message does (design §13.1, §15.29).
 
@@ -213,7 +219,7 @@ would verify a range whose HEAD never moved. So from the first fix round on,
 the report counts only when it carries a `## Fix round <n>` heading for the
 round now running ("Fix rounds" tells the IC to append one).
 
-An idle notification carries the IC's final message. When that message is the
+An idle carries the IC's final message. When that message is the
 report itself — `ic-contract.md` makes it the report when the record write was
 denied — transcribe it to `reports/<id>.md`, say in the file that you
 transcribed it, and go to "Verify before you believe". That is a report, not an
@@ -287,8 +293,8 @@ before you believe", or a red suite at "Integrate". Five is the cap. Every
 round's message or prompt asks for the whole defect class, as
 `simple-path.md`'s "Fix rounds" says.
 
-- **Rounds 1 to 3** message the same IC. It keeps its context, which is the
-  point of a teammate. Tell it to append a `## Fix round <n>` section to
+- **Rounds 1 to 3** message the same IC. It keeps its context in both dispatch
+  modes, which is the point of messaging it. Tell it to append a `## Fix round <n>` section to
   `reports/<id>.md` rather than write a new file — "The idle nudge" reads that
   heading to tell this round's report from the last one's.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
@@ -447,8 +453,8 @@ findings are a patch round on it. Neither is a new split.
 
 ## Resume after a kill
 
-Teammates are in-process, so a crash, a closed terminal or a reboot takes the
-whole team down at once. What survives is every worktree on disk: its commits
+In-process teammates and background subagents live in your session, so a
+crash, a closed terminal or a reboot takes every IC down at once. What survives is every worktree on disk: its commits
 **and its uncommitted edits**. What is lost is each IC's live context.
 
 `/crew:project-lead --resume <goal-slug>` reconciles. Append this

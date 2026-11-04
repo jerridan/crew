@@ -26,8 +26,12 @@ A record with no `run.worktree_base` uses `<record-dir>` as the base
 (`record-format.md`).
 
 **On a review run** (`run.kind: review`), the one worktree is
-`<run.repo>/.claude/worktrees/crew-pr-<n>`, with `<n>` the PR number. Cut it
-with the command above, detached at the pending head. It is `run.checkout`.
+`<run.repo>/.claude/worktrees/crew-pr-<n>`, with `<n>` the PR number. Before
+the cut, `git -C <run.repo> worktree list --porcelain` must not list that
+path. When it does, another run reviews this PR in this checkout. Stop, and
+escalate to the principal with the path. Do not cut, and do not remove the
+other run's tree. Otherwise cut it with the command above, detached at the
+pending head. It is `run.checkout`.
 A goal run keeps the path above. This is the exception to the rule of this
 section: on a review run, the run's checkout is this worktree. The
 reviewer's allow list has no `git switch` or `git checkout` rule, so the
@@ -71,9 +75,20 @@ git -C <run.repo> worktree remove --force <review-worktree>
 git -C <run.repo> worktree prune
 ```
 
-**A direct review run removes its worktree at "The end"** of
-`skills/review/SKILL.md`, with the same pair of commands, then deletes the
-local branch. Ignore the failure of the last command when the branch does not
+**A direct review run checks for unpushed commits, then removes its worktree
+at "The end"** of `skills/review/SKILL.md`. An assist fix round commits on
+`crew/pr-<n>`, and a refused or declined push leaves those commits there.
+Run this check first:
+
+```
+git -C <run.repo> merge-base --is-ancestor crew/pr-<n> origin/<headRefName>
+```
+
+When it exits 1, the branch holds commits the PR does not. Keep the branch
+and the worktree, and tell the principal the path and the branch. When the
+branch does not exist, the check has nothing to protect: go on. Otherwise
+remove the worktree with the same pair of commands, then delete the local
+branch. Ignore the failure of the last command when the branch does not
 exist:
 
 ```
@@ -115,7 +130,8 @@ git -C <review-worktree> rev-parse --git-dir
 ```
 
 When the second command fails, run the removal above, delete what is left at
-the path, and cut the worktree again at the same path.
+the path, and cut the worktree again at the same path. This check acts only
+on a path this run cut. A path that another run cut is not yours to remove.
 
 `--force` and `--discard-changes` are right on a review worktree and nowhere
 else in this run. The tree is detached at a sha the branch already holds, it
@@ -387,8 +403,8 @@ a review run runs it again. Run it as the project lead, in the worktree,
 before the launch. Never grant the child a rule for it, because that rule
 would let the review install whatever it liked. A setup that ran adds the
 line "Dependencies are installed. Do not install." to the instructions
-("Reviewer instructions"). Under `Gates: ci`, no setup command runs, and the
-instructions do not get that line.
+("Reviewer instructions"). `Gates: ci` runs no setup command, so the
+instructions do not get that line (`/crew:review`'s "Review").
 
 **Before the deliverable's first round, the baseline runs here.**
 `skeptical-review.md`'s "When the review runs" owns that step. It moves the
@@ -462,7 +478,7 @@ what this change owed.
 Assume the change is wrong, and look for how. A clean pass is a finding you
 failed to make, not a result.
 
-<the suite paragraph, one of the three literal blocks below>
+<the suite paragraph, one of the literal blocks below>
 
 Write your whole report to <absolute output path> before you finish. This
 process has no caller reading its output, so anything you print to the
@@ -490,7 +506,7 @@ End the report with the three closing lines, after that section: `Findings:`,
 "patch round needed" exactly when at least one finding is blocking.
 ```
 
-**Fill the suite paragraph with one of these three literal blocks, verbatim
+**Fill the suite paragraph with one of these literal blocks, verbatim
 except their own brackets.** With a suite:
 
 ```
@@ -512,15 +528,25 @@ Under the no-suite outcome, this replaces the whole paragraph — never a
 This repository has no suite. Read the diff without running one.
 ```
 
-Under `Gates: ci`, the paragraph is this block. The project lead writes one
-line per check into the brackets, as `skills/review/SKILL.md`'s "Review"
-says:
+Under `Gates: ci`, the paragraph is one of two blocks. The project lead
+writes one line per check into the brackets, as `skills/review/SKILL.md`'s
+"Review" says. It picks the first block when at least one check concluded on
+the head, and the second block otherwise:
 
 ```
 CI ran the suite on this head. These are the checks and their conclusions:
 <one line per check: its name, then its conclusion>. Do not run the suite,
 and do not install anything. You may spot-check the diff against the code
 with read-only commands, such as a grep or a read of a call site.
+```
+
+```
+No check concluded on this head. These are the checks and their statuses:
+<one line per check: its name, then its status, or "none" when no check
+exists>. CI did not verify this head. Do not run the suite, and do not
+install anything. You may spot-check the diff against the code with
+read-only commands, such as a grep or a read of a call site. Say in your
+report that CI gave no signal on this head.
 ```
 
 **Part 5, the later-round block, for any round `n > 1`.** `<previous head
@@ -590,10 +616,12 @@ All four pass, or this is the failure path below:
    three cases:
    - No report came back, from the file or from the `result` field.
    - The suite did not run. A denied suite component is this case. So is a
-     report with no suite output when the review had a suite. A `Gates: ci`
-     round had no suite (`skills/review/SKILL.md`, "Review").
+     report with no suite output when the review had a suite.
    - The report marks a check `Cannot verify`, and that check bears on the
      verdict.
+
+   Under `Gates: ci`, a report with no suite output passes the second case,
+   because the round had no suite (`skills/review/SKILL.md`, "Review").
 
    Every other denial passes this check. Write the `tool_input` of each
    denial in `permission_denials` to `denied`, below. Read the entries by

@@ -203,24 +203,25 @@ gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | 
 
 A check is still running when a check run has `status` `queued` or
 `in_progress`, or a commit status is `pending`. Wait for it with a `Monitor`
-call, or with a background `until` loop, over the two reads. Cap the wait at
-thirty minutes: set `timeout_ms` to `1800000`, or bound the loop. Never run a
-foreground `sleep`, because Claude Code refuses it. The command exits
-when nothing is running:
+call, or a background `until` loop, over the two reads. Cap the wait at thirty
+minutes: set `timeout_ms` to `1800000`, or bound the loop. Never run a
+foreground `sleep`, because Claude Code refuses it. The command exits when
+nothing is running:
 
 ```bash
-until ! { gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.status == "queued" or .status == "in_progress") | .name'; gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | select(.state == "pending") | .context'; } | grep -q .; do sleep 120; done
+until a=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.status == "queued" or .status == "in_progress") | .name') || exit 2; b=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | select(.state == "pending") | .context') || exit 2; [ -z "$a$b" ]; do sleep 120; done
 ```
 
-Then launch, and list each check still running as `pending`.
-Write one line per check with its conclusion into the reviewer instructions,
-in the `ci` block of `review-runner.md`'s "Reviewer instructions". A failed
-check is evidence in the reviewer's hands. Do not re-run it locally.
+An exit of 2 means a read failed, not a pending check, so the project lead
+reads the error before launch. List each running check as `pending`. Write
+one line per check with its conclusion into the `ci` block of
+`review-runner.md`'s "Reviewer instructions". Never re-run a failed check.
 
 **Under `Gates: ci`, no step runs a local suite.** The merge agent and an
-assist fix round take `review-runner.md`'s no-suite outcome. The push's CI is
-their verification. A `ci` round is a no-suite round for check 2 of
-`review-runner.md`'s "Check the review before you read it".
+assist fix round take the no-suite outcome, and the push's CI verifies.
+`simple-path.md`'s "Verify before you believe" defines that outcome. A `ci`
+round is a no-suite round for check 2 of `review-runner.md`'s "Check the review
+before you read it".
 
 **The setup command runs once per review worktree.** On a later round it runs
 again only when a lockfile changed between the previous reviewed head and the

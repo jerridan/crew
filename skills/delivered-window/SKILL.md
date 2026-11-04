@@ -264,13 +264,13 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    only when the switch changes branches. A held one, or a run that cut its
    own worktree the first time, cuts the worktree again at the same path from
    the existing branch — no `-b` — and registers it. On a `run.kind: review`
-   run, `run.checkout` is the review worktree. Run these inside it. On a fresh
-   round, run `git switch -C crew/pr-<n>` with no start point, from the
-   worktree's own detached `HEAD`. On a resume where `crew/pr-<n>` exists,
-   run `git switch crew/pr-<n>` with no `-C`, so the commits of a killed IC
-   stay. Write no `checkout_branch`. `review-runner.md`'s "Never
-   review in the run's own checkout" says why the worktree never holds
-   `<headRefName>`.
+   run, `run.checkout` is the review worktree. Run these inside it. When
+   `git -C <run.checkout> branch --show-current` prints `crew/pr-<n>`, the
+   round already switched: stay on it, so the commits of a killed IC stay.
+   Otherwise run `git switch -C crew/pr-<n>` with no start point, from the
+   worktree's own detached `HEAD`. Write no `checkout_branch`.
+   `review-runner.md`'s "Never review in the run's own checkout" says why the
+   worktree never holds `<headRefName>`.
 4. **Run `simple-path.md`'s "Dispatch the IC" through "Integrate"** on that
    package. Every rule of those sections holds, including the package's own
    `base` and the deliverable's terminal state: one with a PR stays

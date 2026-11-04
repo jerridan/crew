@@ -159,8 +159,7 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    instructions"). Under the no-suite outcome, the file holds the `Base:`
    line and the line `No suite.` Under `Gates: ci`, which only a review run
    reads, the file holds the `Base:` line, the `Known red tests` lines and the
-   line `Gates: ci`, and no gate runs at the base (`review-runner.md` owns
-   this). A run holds one deliverable
+   line `Gates: ci`, and no gate runs at the base. A run holds one deliverable
    (`autonomy-contract.md`, trigger 7), so it holds one baseline file. A
    review run's base moves when the PR's base moves, and "Find the base of
    a later round", in `skills/review/references/later-round.md`, writes the

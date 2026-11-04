@@ -39,7 +39,7 @@ tree.
 before the first cut under `<checkout>/.claude/worktrees/` in a checkout:
 
 ```
-git -C <checkout> check-ignore -q .claude/worktrees
+git -C <checkout> check-ignore -q .claude/worktrees/
 ```
 
 When it exits non-zero, tell the principal once, and go on. Two reviews of
@@ -590,7 +590,8 @@ All four pass, or this is the failure path below:
    three cases:
    - No report came back, from the file or from the `result` field.
    - The suite did not run. A denied suite component is this case. So is a
-     report with no suite output when the review had a suite.
+     report with no suite output when the review had a suite. A `Gates: ci`
+     round had no suite (`skills/review/SKILL.md`, "Review").
    - The report marks a check `Cannot verify`, and that check bears on the
      verdict.
 

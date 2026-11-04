@@ -104,19 +104,16 @@ sanitizing" says so.
    - `pr`, with the fields `record-format.md`'s `pr` row names;
    - `principal`, when the goal arrived by message, as "Take the goal" says.
 
-   Then read the standing instructions, as `<project-lead-dir>/SKILL.md`'s
-   "Standing instructions" says.
+   Then read the standing instructions, the repo file from the base branch,
+   as `<project-lead-dir>/SKILL.md`'s "Standing instructions" says.
 5. **Cut the review worktree, detached at `headRefOid`.** Cut it and run the
    ignore check as `review-runner.md`'s "Never review in the run's own
    checkout" says. `checkout_branch` is `null`. The main working tree is
    never switched, so a dirty main tree is no blocker.
 6. **Read the suite from the standing instructions.** When either file holds
    a `Gates` section, dispatch no scout. "Review" reads the suite, the gates
-   and the setup command from `Gates` and `Setup`. **Under `Gates: ci`**, a
-   section whose only line is `ci`, the PR's checks stand in for the suite.
-   No setup command runs. No local suite or gate runs, at the base or at the
-   head. The lockfile comparison and the setup rule do not apply. "Review"
-   reads the check runs. **When neither file holds
+   and the setup command from `Gates` and `Setup`, and it owns the `ci` value
+   of `Gates`. **When neither file holds
    `Gates`, dispatch the scout, and do not wait for it.** One `crew:scout`
    subagent at `haiku`, named `scout-1` as `<project-lead-dir>/SKILL.md`'s
    "Every dispatch is named" says. Its "Scout" gives the dispatch shape. The
@@ -201,21 +198,24 @@ gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_run
 gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | [.context, .state] | @tsv'
 ```
 
-A check is still running when a check run has `status` `queued` or
-`in_progress`, or a commit status is `pending`. Wait for it with a `Monitor`
-call, or a background `until` loop, over the two reads. Cap the wait at thirty
-minutes: set `timeout_ms` to `1800000`, or bound the loop. Never run a
-foreground `sleep`, because Claude Code refuses it. The command exits when
-nothing is running:
+A check is still running when a check run has `status` `queued`,
+`in_progress`, `waiting`, `requested` or `pending`, or a commit status is
+`pending`. A push registers its checks a few seconds late, so the head can
+have none yet. Wait with a `Monitor` call, or a background `until` loop, over
+the reads, until at least one check run or commit status exists and none is
+running. Cap the wait at thirty minutes: set `timeout_ms` to `1800000`, or
+bound the loop. Never run a foreground `sleep`, because Claude Code refuses
+it:
 
 ```bash
-until a=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.status == "queued" or .status == "in_progress") | .name') || exit 2; b=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | select(.state == "pending") | .context') || exit 2; [ -z "$a$b" ]; do sleep 120; done
+until a=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "requested" or .status == "pending") | .name') || exit 2; b=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | select(.state == "pending") | .context') || exit 2; c=$(gh api repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.total_count') || exit 2; d=$(gh api repos/<owner>/<repo>/commits/<sha>/status --jq '.total_count') || exit 2; [ -z "$a$b" ] && [ $((c + d)) -gt 0 ]; do sleep 120; done
 ```
 
 An exit of 2 means a read failed, not a pending check, so the project lead
 reads the error before launch. List each running check as `pending`. Write
-one line per check with its conclusion into the `ci` block of
-`review-runner.md`'s "Reviewer instructions". Never re-run a failed check.
+one line per check into the `ci` block of `review-runner.md`'s "Reviewer
+instructions". That file says which of its two blocks to use. Never re-run a
+failed check.
 
 **Under `Gates: ci`, no step runs a local suite.** The merge agent and an
 assist fix round take the no-suite outcome, and the push's CI verifies.
@@ -487,7 +487,8 @@ The `merged` or `closed` item is the ship word, and the window owns the
 steps. Under `Done: rolled out`, that window's "The word that the work
 shipped" names the word instead of a `merged` item. Before its closing
 message, remove the review worktree as `review-runner.md`'s "Never review in
-the run's own checkout" says. Restore nothing: the main working tree was never
+the run's own checkout" says. It keeps the worktree when the branch holds
+unpushed commits. Restore nothing: the main working tree was never
 switched. The closing message says whether the PR merged or closed, and names
 the record.
 

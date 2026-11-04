@@ -192,7 +192,7 @@ the first match. `<checkout>` is the path it gives:
 3. Otherwise stop. Set the row to `next: you`, and ask the principal for a
    `Checkouts` line. Go on when the principal gives one.
 
-Read the repo's standing instructions in `<checkout>`, as
+Read the repo's standing instructions from the base branch, as
 `<plugin-dir>/skills/project-lead/SKILL.md`'s "Standing instructions" says.
 
 Then read these six things, and write each one in the row's `last.text`:
@@ -376,21 +376,23 @@ Before every enqueue:
    `general-purpose` subagent named `merge-<owner>-<repo>-<n>-r<k>`. It
    merges `origin/<baseRefName>` into the PR's head. With a child, it works
    in the child's worktree, `<checkout>/.claude/worktrees/crew-pr-<n>`. With
-   no child, cut `<checkout>/.claude/worktrees/crew-pr-<n>-merge`, detached at
-   the head. In either worktree it works on the local branch `crew/pr-<n>`,
-   never on `<headRefName>`, and this session pushes its commit by the
-   refspec. `crew:delivered-window`'s "A change request" steps 3 and 5 give
-   the branch command and the push. The merge agent resolves the conflict,
-   runs the suite, or under `Gates: ci` takes the no-suite outcome
-   (`/crew:review`'s "Review"), and commits. The new head goes back to
-   "Triage". Under `review`, push nothing: set `next: author`, and tell the
-   principal.
+   no child, first run `git -C <checkout> fetch origin <baseRefName>
+   <headRefName>`, because the checkout may never have seen that head. Then
+   cut `<checkout>/.claude/worktrees/crew-pr-<n>-merge`, detached at the
+   head. In either worktree it works on the local branch `crew/pr-<n>`,
+   never on `<headRefName>`. This session pushes by the refspec:
+   `crew:delivered-window`'s "A change request" steps 3 and 5 give both
+   commands. The merge agent resolves the conflict, runs the suite (or, under
+   `Gates: ci`, takes `/crew:review`'s no-suite outcome), and commits. The
+   new head goes back to "Triage". Under `review`, push nothing: set
+   `next: author`, and tell the principal.
 3. **Run each command in the `Pre-enqueue checks` section** of the repo's
-   standing instructions, in the child's worktree. With no child, cut
-   `<checkout>/.claude/worktrees/crew-pr-<n>-check`, detached at the head.
-   Remove an old one at that path first, as "Clean up" says. A non-zero exit
-   stops the enqueue. Set `stage: blocked`, `next: you`, and tell the principal
-   which command failed. On the principal's answer, run "Enqueue" again.
+   standing instructions, in the child's worktree. With no child, fetch as
+   step 2 says, remove an old tree at
+   `<checkout>/.claude/worktrees/crew-pr-<n>-check` as "Clean up" says, and
+   cut it again, detached at the head. A non-zero exit stops the enqueue. Set
+   `stage: blocked`, `next: you`, and tell the principal which command
+   failed. On the principal's answer, run "Enqueue" again.
 
 Then enqueue. `<sha>` is the sha in `<pr-dir>/approved-head`, the head the
 approval approved:
@@ -474,7 +476,9 @@ Write the whole file to `board.json.tmp` beside it, then move it over
 Send `/exit` with `tmux send-keys -t =<child> '/exit' Enter`. Kill its tmux
 session with `tmux kill-session -t =<child>`. Then remove each of the row's
 worktrees that exists. All are under `<checkout>/.claude/worktrees/`:
-`crew-pr-<n>`, `crew-pr-<n>-merge` and `crew-pr-<n>-check`:
+`crew-pr-<n>`, `crew-pr-<n>-merge` and `crew-pr-<n>-check`. Run
+`review-runner.md`'s unpushed-commit check first, and keep the branch and
+worktree it fails for:
 
 ```bash
 git -C <checkout> worktree remove --force <path>
@@ -485,12 +489,9 @@ git -C <checkout> branch -D crew/pr-<n>
 Run the prune and the branch delete once, after the last remove. Ignore the
 failure of the branch delete when the branch does not exist.
 
-Use `--force`. A plain remove refuses a tree with changed or untracked
-files, and the next `worktree add` at that path then fails. A review
-worktree holds nothing that is not on the PR branch or in the child's
-record. A local branch is shared by every worktree of the checkout, so the
-removal alone would leave one branch per assisted or merged PR in the
-principal's repo.
+Use `--force`: a plain remove refuses a tree with untracked files, and the
+next `worktree add` there then fails. The tree holds nothing the PR branch
+or the record lacks. The branch delete stops local branches piling up.
 
 **No step of the queue runs `checkout`, `switch`, `reset` or `clean` in the
 main working tree.**

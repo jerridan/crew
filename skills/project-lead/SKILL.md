@@ -155,7 +155,10 @@ chosen rather than fallen into.
 Two files tell every run what the principal wants it to know about a repo:
 `.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path
 whatever the record root is. Read both whole at "Take the goal", on every
-path and on a review run. A missing file holds nothing. Then write
+path and on a review run. A missing file holds nothing. **A review run, and
+the queue at triage, read the repo file from the PR's base branch**, with
+`git -C <checkout> show origin/<baseRefName>:.claude/crew.md`, because the main
+working tree can hold any branch. A file missing there holds nothing. Then write
 `run set standing_instructions '{"repo": <path or null>, "machine": <path or
 null>}'`, with `null` for a missing file. A resumed session reads the files
 at those paths again before its first dispatch.
@@ -166,7 +169,7 @@ at those paths again before its first dispatch.
 |---|---|
 | `Reviewers` | the plain words that name a replacement for a review step, read as below |
 | `Known red tests` | it seeds `reviews/baseline.md` |
-| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads the suite and the gates from it in place of the scout (`/crew:review`'s "Take the PR" step 6). The value `ci` makes a review run read the PR's check runs in place of a local suite: no setup command, suite or gate runs. A goal run ignores `Gates: ci`: a `Gates` section whose only line is `ci` reads as no `Gates` section on a goal run, so the scout's suite and gates stand for your verification and for the skeptical review |
+| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads the suite and the gates from it in place of the scout (`/crew:review`'s "Take the PR" step 6). The value `ci` makes a review run read the PR's check runs in place of a local suite (`/crew:review`'s "Review" owns it). A goal run ignores `Gates: ci`: a `Gates` section whose only line is `ci` reads as no `Gates` section on a goal run, so the scout's suite and gates stand for your verification and for the skeptical review |
 | `Setup` | one install command that makes the suite runnable in a fresh worktree, and an optional line `Lockfile: <path>`. A review run reads it in place of the scout, and its "Review" says when the command runs |
 | `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run reads that bot's review as claims (`/crew:review`'s "Adjudicate"). With no section, nothing reads a bot's review |
 | `Hook workarounds` | read it before every push and every merge |

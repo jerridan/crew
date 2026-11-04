@@ -21,8 +21,8 @@ this skill's base directory, which the invocation names. `<plugin-dir>` is
 the plugin's root, the grandparent of `<project-lead-dir>`. A file this skill
 names with no directory is in `<project-lead-dir>/references/`, except
 `github-review.md`, `severity-rubric.md`, `auto-review.md` and
-`later-round.md`, which are in `references/` beside this file, and `pr-watch.md`, which is in
-`skills/delivered-window/references/`.
+`later-round.md`, which are in `references/` beside this file, and
+`pr-watch.md`, which is in `skills/delivered-window/references/`.
 `crew-record.py` and `spend.py` are in `<project-lead-dir>/scripts/`. Read
 every file by its absolute path, and give every agent absolute paths.
 
@@ -468,10 +468,11 @@ this file holds, with these changes:
 
 The `merged` or `closed` item is the ship word, and the window owns the
 steps. Under `Done: rolled out`, that window's "The word that the work
-shipped" names the word instead of a `merged` item. Before its closing message, remove the review worktree as
-`review-runner.md`'s "Never review in the run's own checkout" says. Restore
-nothing: the main working tree was never switched. The closing message says whether the PR merged or
-closed, and names the record.
+shipped" names the word instead of a `merged` item. Before its closing
+message, remove the review worktree as `review-runner.md`'s "Never review in
+the run's own checkout" says. Restore nothing: the main working tree was never
+switched. The closing message says whether the PR merged or closed, and names
+the record.
 
 ## A resume
 

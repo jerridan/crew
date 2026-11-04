@@ -121,9 +121,9 @@ the path, and cut the worktree again at the same path.
 else in this run. The tree is detached at a sha the branch already holds, it
 holds no work except the setup command's output, and every piece of evidence
 the review produced is in the record. On a review run, the commits of a fix
-round are on the PR branch once the push lands. The rule that protects an IC worktree
-(`simple-path.md`'s "End the run") is protecting something this tree never
-has. Ignore a removal that fails because the path is already gone.
+round are on the PR branch once the push lands. The rule that protects an IC
+worktree (`simple-path.md`'s "End the run") is protecting something this tree
+never has. Ignore a removal that fails because the path is already gone.
 
 ## The startup check and the cap
 

@@ -43,8 +43,9 @@ installed.
 This file copies none of their rules.
 
 **Only this session reads the `Checkouts` section** of
-`~/.claude/crew/config.md`. A project lead and a direct `/crew:review` run use the checkout they were
-launched in. The ignore check is `review-runner.md`'s, and the queue runs none.
+`~/.claude/crew/config.md`. A project lead and a direct `/crew:review` run use
+their launch checkout. The queue runs the ignore check, as `review-runner.md`
+says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 
 ## Start
 

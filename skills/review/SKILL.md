@@ -123,8 +123,9 @@ sanitizing" says so.
    one question is that section's third, and its answer carries the setup
    command too:
    "What runs the suite, and what other gates does CI run: types, lint, build?"
-   The scout reads the checkout while you write the next four steps, and
-   "Review" reads its answer. A review run asks no other question. The
+   Tell it to read `run.checkout`, the PR head's worktree. It reads that
+   directory while you write the next four steps, and "Review" reads its
+   answer. A review run asks no other question. The
    reviewer reads the repo's instruction files itself, and a review has no
    work to size.
 7. **Write `charter.md`** in the record directory, in this shape:
@@ -196,15 +197,30 @@ head. The lockfile comparison and the setup rule do not apply. Read the check
 runs and the commit statuses of the reviewed head sha:
 
 ```bash
-gh api repos/<owner>/<repo>/commits/<sha>/check-runs
-gh api repos/<owner>/<repo>/commits/<sha>/status
+gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | [.context, .state] | @tsv'
 ```
 
-Wait while a check is still running. Poll every two minutes, for at most
-thirty minutes. Then launch, and list each check still running as `pending`.
+A check is still running when a check run has `status` `queued` or
+`in_progress`, or a commit status is `pending`. Wait for it with a `Monitor`
+call, or with a background `until` loop, over the two reads. Cap the wait at
+thirty minutes: set `timeout_ms` to `1800000`, or bound the loop. Never run a
+foreground `sleep`, because Claude Code refuses it. The command exits
+when nothing is running:
+
+```bash
+until ! { gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.status == "queued" or .status == "in_progress") | .name'; gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | select(.state == "pending") | .context'; } | grep -q .; do sleep 120; done
+```
+
+Then launch, and list each check still running as `pending`.
 Write one line per check with its conclusion into the reviewer instructions,
 in the `ci` block of `review-runner.md`'s "Reviewer instructions". A failed
 check is evidence in the reviewer's hands. Do not re-run it locally.
+
+**Under `Gates: ci`, no step runs a local suite.** The merge agent and an
+assist fix round take `review-runner.md`'s no-suite outcome. The push's CI is
+their verification. A `ci` round is a no-suite round for check 2 of
+`review-runner.md`'s "Check the review before you read it".
 
 **The setup command runs once per review worktree.** On a later round it runs
 again only when a lockfile changed between the previous reviewed head and the

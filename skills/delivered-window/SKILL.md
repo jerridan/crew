@@ -265,12 +265,13 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    own worktree the first time, cuts the worktree again at the same path from
    the existing branch — no `-b` — and registers it. On a `run.kind: review`
    run, skip the above: `run.checkout` is the review worktree. Run these
-   inside it. Stay on `crew/pr-<n>` only when `git -C <run.checkout> branch
-   --show-current` prints it **and** `git -C <run.checkout> merge-base
-   --is-ancestor <pending head> crew/pr-<n>` exits 0. That keeps the commits
-   of a killed IC, and the pending head is the head this round reviews.
-   Otherwise run `git switch -C crew/pr-<n>` with no start point, from the
-   worktree's own detached `HEAD`. Write no `checkout_branch`.
+   inside it. `<head>` is the head this round reviews: the `Head:` line of
+   the round's reply file, or `run.watch.head`. Stay on `crew/pr-<n>` only
+   when `git -C <run.checkout> branch --show-current` prints it **and** `git
+   -C <run.checkout> merge-base --is-ancestor <head> crew/pr-<n>` exits 0.
+   That keeps the commits of a killed IC. Otherwise run `git switch -C
+   crew/pr-<n> <head>`, which resets a stale branch to that head. Write no
+   `checkout_branch`.
    `review-runner.md`'s "Never review in the run's own checkout" says why the
    worktree never holds `<headRefName>`.
 4. **Run `simple-path.md`'s "Dispatch the IC" through "Integrate"** on that

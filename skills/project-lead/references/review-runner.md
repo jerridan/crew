@@ -84,12 +84,13 @@ Run this check first:
 git -C <run.repo> merge-base --is-ancestor crew/pr-<n> origin/<headRefName>
 ```
 
-When it exits 1, the branch holds commits the PR does not. Keep the branch
-and the worktree, and tell the principal the path and the branch. When the
-branch does not exist, the check has nothing to protect: go on. Otherwise
-remove the worktree with the same pair of commands, then delete the local
-branch. Ignore the failure of the last command when the branch does not
-exist:
+When the branch does not exist, the check has nothing to protect: go on.
+When the branch exists and the check exits with any status but 0, keep the
+branch and the worktree, and tell the principal the path and the branch.
+Exit 1 means the branch holds commits the PR does not. Exit 128 means
+`origin/<headRefName>` is gone. Remove the tree and delete the branch only
+when the check exits 0. Ignore the failure of the last command when the
+branch does not exist:
 
 ```
 git -C <run.repo> worktree remove --force <run.checkout>

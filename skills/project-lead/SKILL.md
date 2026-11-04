@@ -161,8 +161,12 @@ the queue at triage, read the repo file from the PR's base branch**. Run `git
 origin/<baseRefName>:.claude/crew.md`, because the main working tree can hold
 any branch. A file missing there holds nothing. Then write
 `run set standing_instructions '{"repo": <path or null>, "machine": <path or
-null>}'`, with `null` for a missing file. A resumed session reads the files
-at those paths again before its first dispatch.
+null>}'`, with `null` for a missing file. A review run writes `repo` as the
+string `origin/<baseRefName>:.claude/crew.md`, and a resumed review run reads
+it with the same fetch and show. When the working tree's `.claude/crew.md`
+differs from the base branch's, or exists where the base branch has none, tell
+the principal once that the review reads the committed file. A resumed
+session reads the files at those paths again before its first dispatch.
 
 **Each file holds optional `##` sections.** You act on these fourteen:
 

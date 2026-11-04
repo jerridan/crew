@@ -170,7 +170,8 @@ to that row, and opens no second review. **The one exception is a row at
 **A re-triage** first ends the row's child and removes the row's worktrees,
 as "Clean up" says. It deletes `<pr-dir>/approved-head`, so an old approval
 is no longer a covered head. It keeps the row and the rest of `<pr-dir>`.
-Then it runs the reads below again, and sets `stage: triage`, `next: crew`.
+Then it runs the reads below again, and sets `stage: triage`, `next: crew`,
+unless "Clean up" kept a tree: that row stays at `next: you`.
 
 For a new ask, write a row with `stage: new` and `next: crew`. Its `watch`
 is the id of the watch that found it, and its `policy` is the one the order
@@ -477,8 +478,8 @@ Send `/exit` with `tmux send-keys -t =<child> '/exit' Enter`. Kill its tmux
 session with `tmux kill-session -t =<child>`. Then remove each of the row's
 worktrees that exists. All are under `<checkout>/.claude/worktrees/`:
 `crew-pr-<n>`, `crew-pr-<n>-merge` and `crew-pr-<n>-check`. Run
-`review-runner.md`'s unpushed-commit check first, and keep the branch and
-worktree it fails for:
+`review-runner.md`'s unpushed-commit check first. Run these commands for a
+tree whose check exits 0, and keep every other tree and branch:
 
 ```bash
 git -C <checkout> worktree remove --force <path>
@@ -486,12 +487,11 @@ git -C <checkout> worktree prune
 git -C <checkout> branch -D crew/pr-<n>
 ```
 
-Run the prune and the branch delete once, after the last remove. Ignore the
-failure of the branch delete when the branch does not exist.
+Prune and delete the branch once, after the last remove. Ignore a delete
+that fails on a missing branch. `--force` removes untracked files.
 
-Use `--force`: a plain remove refuses a tree with untracked files, and the
-next `worktree add` there then fails. The tree holds nothing the PR branch
-or the record lacks. The branch delete stops local branches piling up.
+**When a re-triage keeps a tree**, set the row to `next: you`, tell the
+principal, and launch no child for that row until the principal answers.
 
 **No step of the queue runs `checkout`, `switch`, `reset` or `clean` in the
 main working tree.**

@@ -186,9 +186,9 @@ the first match. `<checkout>` is the path it gives:
 1. A `## Checkouts` section in `~/.claude/crew/config.md`, with a line
    `<owner>/<repo>: <absolute path>`.
 2. This session's own checkout, when `git remote get-url origin` names the
-   PR's repo. In a linked worktree, `git rev-parse --git-common-dir` gives the
-   `.git` directory of the main checkout. The directory above it is
-   `<checkout>`.
+   PR's repo. `git rev-parse --path-format=absolute --git-common-dir` gives
+   the `.git` directory of the main checkout, also from a linked worktree. Its
+   parent is `<checkout>`.
 3. Otherwise stop. Set the row to `next: you`, and ask the principal for a
    `Checkouts` line. Go on when the principal gives one.
 
@@ -381,8 +381,10 @@ Before every enqueue:
    never on `<headRefName>`, and this session pushes its commit by the
    refspec. `crew:delivered-window`'s "A change request" steps 3 and 5 give
    the branch command and the push. The merge agent resolves the conflict,
-   runs the suite and commits. The new head goes back to "Triage". Under
-   `review`, push nothing: set `next: author`, and tell the principal.
+   runs the suite, or under `Gates: ci` takes the no-suite outcome
+   (`/crew:review`'s "Review"), and commits. The new head goes back to
+   "Triage". Under `review`, push nothing: set `next: author`, and tell the
+   principal.
 3. **Run each command in the `Pre-enqueue checks` section** of the repo's
    standing instructions, in the child's worktree. With no child, cut
    `<checkout>/.claude/worktrees/crew-pr-<n>-check`, detached at the head.
@@ -476,15 +478,12 @@ worktrees that exists. All are under `<checkout>/.claude/worktrees/`:
 
 ```bash
 git -C <checkout> worktree remove --force <path>
-```
-
-Then prune, and delete the local branch. Ignore the failure of the last
-command when the branch does not exist:
-
-```bash
 git -C <checkout> worktree prune
 git -C <checkout> branch -D crew/pr-<n>
 ```
+
+Run the prune and the branch delete once, after the last remove. Ignore the
+failure of the branch delete when the branch does not exist.
 
 Use `--force`. A plain remove refuses a tree with changed or untracked
 files, and the next `worktree add` at that path then fails. A review

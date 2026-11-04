@@ -25,33 +25,85 @@ git -C <run.repo> worktree add --detach <review-worktree> <review_pending.head>
 A record with no `run.worktree_base` uses `<record-dir>` as the base
 (`record-format.md`).
 
-**Every later round moves the same worktree to its pending head**, in place.
-A resumed reviewer works in the directory its session started in ("Resume
-the reviewer" below), so the path never changes:
+**On a review run** (`run.kind: review`), the one worktree is
+`<run.repo>/.claude/worktrees/crew-pr-<n>`, with `<n>` the PR number. Cut it
+with the command above, detached at the pending head. It is `run.checkout`.
+A goal run keeps the path above. This is the exception to the rule of this
+section: on a review run, the run's checkout is this worktree. The
+reviewer's allow list has no `git switch` or `git checkout` rule, so the
+branch of the principal's main working tree stays out of its reach. A review
+run runs no `checkout`, `switch`, `reset` or `clean` in the main working
+tree.
+
+**Check that the repo ignores the folder, once per checkout.** Run this
+before the first cut under `<checkout>/.claude/worktrees/` in a checkout:
+
+```
+git -C <checkout> check-ignore -q .claude/worktrees
+```
+
+When it exits non-zero, tell the principal once, and go on. Two reviews of
+two PRs in one checkout cut two worktrees, one per PR number.
+
+**One worktree serves the review and the assist fix.** A review round
+detaches it at the pending head. A fix round puts it on a local branch named
+`crew/pr-<n>` at the pending head, the IC commits on that branch, and the
+push updates `<headRefName>` from it. `crew:delivered-window`'s "A change
+request" steps 3 and 5 own the two commands. The worktree never checks out
+`<headRefName>` itself, because the principal's main working tree can hold
+that branch, and git refuses a branch that another worktree holds.
+`deliverables[].branch` stays `<headRefName>`: it names the PR's ref, which
+the push updates.
+
+**Every later round moves the same worktree to its pending head**, in place,
+and detaches it again after a fix round. A resumed reviewer works in the
+directory its session started in ("Resume the reviewer" below), so the path
+never changes:
 
 ```
 git -C <review-worktree> switch --detach --discard-changes <review_pending.head>
 ```
 
-Remove it at the ship word, never after a round:
+On a goal run, remove it at the ship word, never after a round:
 
 ```
 git -C <run.repo> worktree remove --force <review-worktree>
 git -C <run.repo> worktree prune
 ```
 
+**A direct review run removes its worktree at "The end"** of
+`skills/review/SKILL.md`, with the same pair of commands, then deletes the
+local branch. Ignore the failure of the last command when the branch does not
+exist:
+
+```
+git -C <run.repo> worktree remove --force <run.checkout>
+git -C <run.repo> worktree prune
+git -C <run.repo> branch -D crew/pr-<n>
+```
+
+**A child in child mode removes nothing.** It stops after its ready file, and
+the queue's "Clean up" removes the worktree.
+
 **`run.repo`, never `run.checkout`.** "End the run" removes a checkout the
 run cut for itself, and a review that runs after that would have no repo to
 work from. `run.repo` is the target-repo clone, and it outlives the run
-(`record-format.md`).
+(`record-format.md`). On a review run, `run.checkout` is the review worktree,
+so every command that removes it runs against `run.repo`.
 
 **Detached, and at the pending sha.** A named branch in a second worktree is
 a branch two trees can move. The sha is what the review was asked about, and
-detaching it keeps the run's own branch out of reach.
+detaching it keeps the run's own branch out of reach. Only a fix round of a
+review run puts the worktree on `crew/pr-<n>`.
 
-**You alone make and remove these worktrees.** No IC and no review agent
-touches `review-worktrees/`, and nothing registers there in `worktrees.json`,
-which holds the run's own worktrees only (`record-format.md`).
+**You alone make and remove these worktrees.** No review agent touches them.
+On a goal run, no IC touches `review-worktrees/` either. On a review run, the
+assist IC commits in the worktree during a fix round, and nowhere else.
+Nothing registers a review worktree in `worktrees.json`, which holds the
+run's own worktrees only (`record-format.md`). So the "End the run" cleanup
+that the delivered window runs after a fix round leaves it in place. The
+deliverable's `checkout_branch` stays `null`, so the restore step there does
+nothing.
 
 **Check the worktree before every round.** A killed session can leave the
 directory without its registration, or the registration without the
@@ -68,7 +120,8 @@ the path, and cut the worktree again at the same path.
 `--force` and `--discard-changes` are right on a review worktree and nowhere
 else in this run. The tree is detached at a sha the branch already holds, it
 holds no work except the setup command's output, and every piece of evidence
-the review produced is in the record. The rule that protects an IC worktree
+the review produced is in the record. On a review run, the commits of a fix
+round are on the PR branch once the push lands. The rule that protects an IC worktree
 (`simple-path.md`'s "End the run") is protecting something this tree never
 has. Ignore a removal that fails because the path is already gone.
 
@@ -268,7 +321,7 @@ Each rule buys one thing the review cannot work without:
 | `Read`, `Glob`, `Grep` | reading the tree the review is about |
 | `Bash(git diff *)`, `Bash(git log *)`, `Bash(git show *)` | the history and the diff |
 | `Bash(git rev-parse *)` | the sha the reviewer opens its report with (`git rev-parse HEAD`) |
-| `Bash(<gate part> *)`, one rule per part of each gate | every verification gate that a review run's `Gates` section names, or that the scout recorded when there is none, not the suite alone: tests, types, lint and build. The suite run is the one `skeptical-review.md`'s stance requires. Under the no-suite outcome, leave every gate rule out |
+| `Bash(<gate part> *)`, one rule per part of each gate | every verification gate that a review run's `Gates` section names, or that the scout recorded when there is none, not the suite alone: tests, types, lint and build. The suite run is the one `skeptical-review.md`'s stance requires. Under the no-suite outcome and under `Gates: ci`, leave every gate rule out |
 | `Bash(npm view *)`, `Bash(npm ls *)`, `Bash(pnpm ls *)`, `Bash(pnpm why *)`, `Bash(yarn why *)`, `Bash(pip show *)` | read-only package probes: which version is installed, and why. When the setup command, from `Setup` or from the scout, uses another package manager, add its read-only equivalent |
 | `Edit(//<record-dir>/reviews/**)` | the report file, which sits in the record and not in the worktree |
 
@@ -334,7 +387,8 @@ a review run runs it again. Run it as the project lead, in the worktree,
 before the launch. Never grant the child a rule for it, because that rule
 would let the review install whatever it liked. A setup that ran adds the
 line "Dependencies are installed. Do not install." to the instructions
-("Reviewer instructions").
+("Reviewer instructions"). Under `Gates: ci`, no setup command runs, and the
+instructions do not get that line.
 
 **Before the deliverable's first round, the baseline runs here.**
 `skeptical-review.md`'s "When the review runs" owns that step. It moves the
@@ -381,7 +435,8 @@ this order:
 4. **The block below**, with its bracketed values filled in. It holds what is
    this review's own and nothing that parts 1 to 3 already state: the goal
    text, the diff range, the suite and the line that says the dependencies
-   are installed (or the no-suite sentence), the output path, and the
+   are installed (or the no-suite sentence, or the `ci` block that lists the
+   checks), the output path, and the
    pending head.
 5. **For a round `n > 1`, the later-round block** after the block below. A
    fresh launch and a resume both get it, whatever made the round launch
@@ -407,7 +462,7 @@ what this change owed.
 Assume the change is wrong, and look for how. A clean pass is a finding you
 failed to make, not a result.
 
-<the suite paragraph, one of the two literal blocks below>
+<the suite paragraph, one of the three literal blocks below>
 
 Write your whole report to <absolute output path> before you finish. This
 process has no caller reading its output, so anything you print to the
@@ -435,7 +490,7 @@ End the report with the three closing lines, after that section: `Findings:`,
 "patch round needed" exactly when at least one finding is blocking.
 ```
 
-**Fill the suite paragraph with one of these two literal blocks, verbatim
+**Fill the suite paragraph with one of these three literal blocks, verbatim
 except their own brackets.** With a suite:
 
 ```
@@ -455,6 +510,17 @@ Under the no-suite outcome, this replaces the whole paragraph — never a
 
 ```
 This repository has no suite. Read the diff without running one.
+```
+
+Under `Gates: ci`, the paragraph is this block. The project lead writes one
+line per check into the brackets, as `skills/review/SKILL.md`'s "Review"
+says:
+
+```
+CI ran the suite on this head. These are the checks and their conclusions:
+<one line per check: its name, then its conclusion>. Do not run the suite,
+and do not install anything. You may spot-check the diff against the code
+with read-only commands, such as a grep or a read of a call site.
 ```
 
 **Part 5, the later-round block, for any round `n > 1`.** `<previous head

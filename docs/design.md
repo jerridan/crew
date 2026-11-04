@@ -8765,3 +8765,71 @@ Deliberately different:
      queue session polls it itself and tells the principal. The mod moves
      `last_checked` only after a good poll, so a revoked token, a signed-out
      `gh` or a mod that never loaded all show as a stale watch.
+
+130. **A review in a worktree of the principal's checkout, and CI for the
+     local suite — 2026-11-04, T87, #132.** A queue review of one 140-line
+     Python PR on a large monorepo took about 40 minutes, and the code
+     review took about 4. The queue cloned the repo, cut a worktree for the
+     child outside any folder Claude Code trusts, and the runner cut a second
+     worktree and installed from scratch. The review then ran the suite at
+     the base and at the head, while CI ran the same suite on every head.
+
+     The measurements, round 1 then round 2 on a 49-line follow-up push:
+     the trust prompt cost about 4 minutes and then 0. The dependency
+     install cost about 10 minutes both times. The suite at the base took 8
+     minutes and then 24, and at the head 15 and then 24. The review took 4
+     minutes both times. Both CI runs passed before the local runs ended,
+     and the local runs found nothing that CI did not. The clone also failed
+     twice on the first run: HTTPS had no credentials, and `git clone
+     --reference` failed with `fatal: pack has 1 unresolved delta`.
+
+     Five design points, each with its reason.
+
+     First, find the checkout and never clone. The principal already has
+     one, and a clone is the step that failed. The order is a `Checkouts`
+     line in `~/.claude/crew/config.md`, then the queue session's own
+     checkout, found with `git rev-parse --git-common-dir` from a linked
+     worktree, then a question to the principal. A guess would put a review
+     in a repo the principal never named.
+
+     Second, one worktree per review, and `crew:review` owns it. The queue
+     cut a worktree and the runner cut another, so one PR paid for two
+     trees and two installs. Now the queue launches the child with the
+     checkout as its directory, and `review-runner.md` cuts the one tree at
+     `<checkout>/.claude/worktrees/crew-pr-<n>`. That tree serves the review
+     and the assist fix, so `run.checkout` is the tree and `checkout_branch`
+     is `null`. The main working tree is never switched, and a dirty main
+     tree is no blocker. A fix round puts the tree on a local branch,
+     `crew/pr-<n>`, and pushes it by refspec, because the principal's main
+     tree can hold `<headRefName>`, and git refuses a branch that two
+     worktrees hold. A goal run keeps its own review worktree under the
+     record.
+
+     Third, put the worktree inside the repo. A folder inside the checkout
+     is already trusted, so the trust prompt goes. Claude Code's own
+     `EnterWorktree` uses the same `.claude/worktrees/` folder. The runner
+     checks once per checkout that the repo ignores the folder, and tells the
+     principal once when it does not.
+
+     Fourth, add the `Gates` value `ci`. With it, a review reads the check
+     runs and commit statuses of the reviewed head in place of a local suite
+     and local gates, and no setup command runs. The project lead waits up
+     to 30 minutes for a running check, and lists one still running as
+     `pending`. The reviewer is told that CI ran the suite and may spot-check
+     the diff against the code. A fork head runs no code, as before. A goal
+     run ignores the value, because its verification is the project lead's
+     own and the scout's answer stands.
+
+     Fifth, update the cleanup. "Clean up" removes each worktree of the row
+     with `git worktree remove --force`, prunes, and deletes the local
+     `crew/pr-<n>` branch. A branch is shared by every worktree of a
+     checkout, so the removal alone would leave one branch per assisted PR
+     in the principal's repo. No step of the queue runs `checkout`,
+     `switch`, `reset` or `clean` in the main working tree.
+
+     The issue lists five related problems from the same run: the board pane
+     that did not open, the shared `Reviewers` section, repeated
+     `review-comment` lines from `pr-watch.sh`, a late `ready:` message from
+     an old round, and a cancelled check that made CI read as not green.
+     They are separate fixes, and this change does not touch them. No run
+     has exercised this change.

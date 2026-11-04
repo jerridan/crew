@@ -61,8 +61,9 @@ previous reviewed head and the new head. `Gates: ci` has its own rule in
 `Pipfile.lock`, `Gemfile.lock`, `Cargo.lock` and `go.sum`. A `Lockfile:
 <path>` line in `Setup` names the one file to compare instead. This command
 exits 1 when one of them changed. Run the setup command on exit 1, and on
-any other non-zero exit, because the check then could not tell. Write each lockfile name as a `:(glob)**/<name>` pathspec,
-so the glob reaches every directory of a monorepo:
+any other non-zero exit, because the check then could not tell. Write each
+lockfile name as a `:(glob)**/<name>` pathspec, so the glob reaches every
+directory of a monorepo:
 
 ```bash
 git -C <run.checkout> diff --quiet <previous head> <new head> -- ':(glob)**/package-lock.json' ':(glob)**/yarn.lock' ':(glob)**/pnpm-lock.yaml' ':(glob)**/bun.lockb' ':(glob)**/uv.lock' ':(glob)**/poetry.lock' ':(glob)**/Pipfile.lock' ':(glob)**/Gemfile.lock' ':(glob)**/Cargo.lock' ':(glob)**/go.sum'

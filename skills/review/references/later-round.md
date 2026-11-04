@@ -4,24 +4,23 @@
 before the launch. Every file this one names is in
 `skills/project-lead/references/`.
 
-**Get the head first.** On every round after the first, bring `run.checkout`
-to the new head. Run every command with `git -C <run.checkout>`. On a
-same-repository PR:
+**Get the head first.** On every round after the first, move `run.checkout`,
+the review worktree, to the new head, detached. Run every command with `git
+-C <run.checkout>`. `--discard-changes` is right on this worktree
+(`review-runner.md`'s "Never review in the run's own checkout" says why), so
+a dirty tree is no reason to escalate. On a same-repository PR:
 
 ```bash
 git fetch origin <headRefName> <baseRefName>
-git switch <headRefName>
-git reset --hard origin/<headRefName>
+git switch --detach --discard-changes origin/<headRefName>
 ```
 
-Run the reset only in `run.checkout`, and only after the switch put it on
-`<headRefName>`. Git refuses the switch on a dirty tree: escalate. On a
-cross-repository PR:
+On a cross-repository PR:
 
 ```bash
 git fetch origin <baseRefName>
 git fetch origin pull/<n>/head
-git switch --detach FETCH_HEAD
+git switch --detach --discard-changes FETCH_HEAD
 ```
 
 **Find the base of a later round.** It is the head the previous round

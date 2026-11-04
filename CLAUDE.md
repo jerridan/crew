@@ -98,6 +98,11 @@ review requests with no model turn, writes `queue/asks.json`, and prompts
 the queue session (§15.129). No Slack token was on the build machine, so
 no live Slack poll has run.
 
+T87 is built: the queue finds the principal's checkout in place of a clone,
+a review run cuts its one worktree under that checkout's
+`.claude/worktrees/`, and `Gates: ci` lets the PR's checks stand in for the
+local suite (§15.130). No queue session and no review run has used it.
+
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline
 per deliverable, a gate decided by each item's author, a review that stops on

@@ -264,9 +264,11 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    only when the switch changes branches. A held one, or a run that cut its
    own worktree the first time, cuts the worktree again at the same path from
    the existing branch — no `-b` — and registers it. On a `run.kind: review`
-   run, `run.checkout` is the review worktree. Run these inside it. When
-   `git -C <run.checkout> branch --show-current` prints `crew/pr-<n>`, the
-   round already switched: stay on it, so the commits of a killed IC stay.
+   run, skip the above: `run.checkout` is the review worktree. Run these
+   inside it. Stay on `crew/pr-<n>` only when `git -C <run.checkout> branch
+   --show-current` prints it **and** `git -C <run.checkout> merge-base
+   --is-ancestor <pending head> crew/pr-<n>` exits 0. That keeps the commits
+   of a killed IC, and the pending head is the head this round reviews.
    Otherwise run `git switch -C crew/pr-<n>` with no start point, from the
    worktree's own detached `HEAD`. Write no `checkout_branch`.
    `review-runner.md`'s "Never review in the run's own checkout" says why the

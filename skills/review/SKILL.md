@@ -213,9 +213,8 @@ until a=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '
 
 An exit of 2 means a read failed, not a pending check, so the project lead
 reads the error before launch. List each running check as `pending`. Write
-one line per check into the `ci` block of `review-runner.md`'s "Reviewer
-instructions". That file says which of its two blocks to use. Never re-run a
-failed check.
+one line per check into a `ci` block of `review-runner.md`'s "Reviewer
+instructions", which says which to use. Never re-run a failed check.
 
 **Under `Gates: ci`, no step runs a local suite.** The merge agent and an
 assist fix round take the no-suite outcome, and the push's CI verifies.

@@ -402,6 +402,8 @@ export const textTable = (
 // What the poll last saw and whether it opened the pane: both start afresh
 // at a reload, and the next tick draws again.
 let last: string | undefined
+// The minute of the last redraw: the clock alone redraws the pane each minute.
+let lastMinute = -1
 // The board the last tick parsed: the pane of an armed session draws from it.
 let current: ReviewBoardFile | undefined
 let opened = false
@@ -491,8 +493,17 @@ const tick = async ($: Engine) => {
   }
   const asks = (await loadAsks($)) ?? ''
   const seen = [text, asks, ...notes].join('\n')
-  if (seen === last) return
+  // Every age in the pane is read at render time, so a new minute redraws the
+  // pane when no file moved. The status line holds no age: it sets on a change.
+  const minute = Math.floor((await $.clock.now()) / 60_000)
+  if (seen === last) {
+    if (minute === lastMinute) return
+    lastMinute = minute
+    $.ui.invalidate('ui.render')
+    return
+  }
   last = seen
+  lastMinute = minute
   const board = view(parsed, parseAsks(asks))
   current = board
   if (isArmed) {

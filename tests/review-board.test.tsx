@@ -270,6 +270,29 @@ test('R7: a session the board names as owner disarms when a later owner takes th
   expect(w.seen.status.at(-1)).toBeUndefined()
 })
 
+test('R7: the takeover race: the old session arms from its board since and the new owner disarms it again', async ($, on) => {
+  const S1 = { session_id: 's1', since: '2026-01-01T00:00:00Z' }
+  const S2 = { session_id: 's2', since: '2026-03-01T00:00:00Z' }
+  let file = board(ROWS, S1)
+  const w = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, S2)
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+  // The race write: s1 puts its old owner back, and s1 arms again.
+  file = board(ROWS, S1)
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  // The new owner takes the board again with its same since: s1 stays out.
+  file = board(ROWS, S2)
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
 test('R7: /review-board opens the pane in an unarmed session', async ($, on) => {
   const w = world(on, () => board(ROWS))
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })

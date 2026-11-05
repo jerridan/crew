@@ -455,10 +455,12 @@ const superseded = async ($: Engine, board: ReviewBoardFile) => {
   return at(str(obj(board.owner).since)) > (await read($, armedAt))
 }
 
-const arm = async ($: Engine) => {
-  const now = await $.clock.now()
+// The skill path arms at the clock. The owner path arms at the board's
+// owner.since, so the mod orders owners by the value the skill orders by.
+const arm = async ($: Engine, since?: number) => {
+  const armTime = since ?? (await $.clock.now())
   await update($, armed, () => true)
-  await update($, armedAt, () => now)
+  await update($, armedAt, () => armTime)
   last = undefined
   await poll($)
 }
@@ -486,7 +488,7 @@ const tick = async ($: Engine) => {
   if (!isArmed) {
     const owner = str(obj(parsed.owner).session_id)
     if (owner && owner === (await $.session.id())) {
-      await arm($)
+      await arm($, at(str(obj(parsed.owner).since)))
       return
     }
     if (!paneShown) return

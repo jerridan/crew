@@ -36,9 +36,10 @@ One JSON object:
 }
 ```
 
-`owner.session_id` is the session id of the queue session that owns the
-file. `asks_through` is the `found_at` of the newest asks-file entry that
-the queue session took. The queue session writes it. A board with no
+`owner.session_id` is the session id of the queue session that last took
+the board, and `owner.since` is when it took it. `SKILL.md` owns the
+takeover and the re-read before each write. `asks_through` is the `found_at`
+of the newest asks-file entry that the queue session took. The queue session writes it. A board with no
 `asks_through` field reads as `null`. `found` counts the asks the watch
 found since `since`. `last` is the row's latest event. `watch` is the id
 of the watch that found the row. A direct ask belongs to the watch with the

@@ -8907,3 +8907,44 @@ Deliberately different:
         dispatch's result, because only the harness knows it. The record
         keeps one mode per session, so a run that changes mode on a resume
         keeps both.
+
+132. **The review board follows its owner, and its pane matches the mockup —
+     2026-11-05.** On 2026-11-05 a pane froze. Another plugin's hook took
+     the `skill.prompt` event first and passed it on past crew's handler, so
+     the session never armed. The principal opened the pane with
+     `/review-board`, and it showed the rows as they were at 20:44. The
+     board file had moved on. GitHub issues #134 and #135 hold the two
+     changes.
+
+     a. **Arming and reload (#134).** A session now arms in two cases: the
+        `review-queue` skill prompt, or a `board.json` whose
+        `owner.session_id` names this session. The owner path needs no
+        `skill.prompt`. One timer reads the board once each `POLL_MS`. An
+        open pane reloads and redraws on every tick, armed or not. A session
+        that is not the owner sets no status line and opens no pane. An
+        armed session disarms when the board names another non-empty owner
+        whose `since` is later than the time this session armed. That
+        `since` test keeps a session that the skill just armed from
+        disarming before its own Start writes the owner.
+
+     b. **The queue takes the board every time (#134).** "Start" now sets
+        `owner` to the new session with no question, and says in one line
+        which session it took the board from. Before each later write, a
+        queue session reads `owner.session_id` again. When another session
+        owns the board, it does not write and it deletes its wakeup cron
+        job. `SKILL.md` owns the rule, and `board.md` says only what
+        `owner` means.
+
+     c. **The layout (#135).** The pane and the text table now match the
+        mockup that the principal approved on 2026-10-29: a top line with
+        the sources and the age of the board, the Watching block with a
+        count, one column header row, a count after each section name, a
+        blank line between sections, an `author` cell and an `age` cell,
+        one colour for each stage, and the done rows inline in grey. The
+        `policy` cell is gone. A row shows its policy only when it differs
+        from its watch's. The "Show done" button and the `showDone` atom are
+        gone. Needs you is never cut, and In flight and Done shrink to
+        "+N more" lines.
+
+     d. **Not run.** The tests pass under `claude plugin test`. No live
+        session has shown the new pane.

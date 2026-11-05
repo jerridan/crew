@@ -49,11 +49,12 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 
 ## Start
 
-1. **Read the board** at `references/board.md`'s path. When it exists and
-   `owner.session_id` is not `$CLAUDE_CODE_SESSION_ID`, another queue session
-   owns it. **Warn the principal, and do not write the board.** Write it only
-   when the principal says to take it over. Then set `owner` to this session.
-   When the board does not exist, write it with no watch and no row.
+1. **Read the board** at `references/board.md`'s path. **Always take it.**
+   Set `owner.session_id` to `$CLAUDE_CODE_SESSION_ID` and `owner.since` to
+   the current time. Keep the existing watches and rows. When the board
+   named another non-empty session id, tell the principal in one line which
+   session id you took the board from. Ask nothing. When the board does not
+   exist, write it with no watch and no row.
 2. **Take the watches and rows from the board.** A watch with `status:
    active` runs again. A row that is not done resumes at its `stage`.
 3. **Arm the wakeup loop.** First look for a Slack token. This command
@@ -464,8 +465,13 @@ child.
 Write the board at every transition: a new watch or row, a change of
 `stage` or `next`, and each wakeup loop. `references/board.md` owns its path
 and schema. Write this session's id, `$CLAUDE_CODE_SESSION_ID`, as the
-owning session id in `owner.session_id`. **Do not write when another session
-owns the board**, as "Start" says.
+owning session id in `owner.session_id`.
+
+**Before each board write after your own "Start", read `owner.session_id`
+again.** When another session owns the board, do not write. Delete the cron
+job of your wakeup loop, the job that "Start" step 3 arms, with `CronList`
+and `CronDelete`. Tell the principal in one line. A new queue session took
+the board, and this one is the old session.
 
 Write the whole file to `board.json.tmp` beside it, then move it over
 `board.json`, so a reader never sees half a file. Set `last` at each event.

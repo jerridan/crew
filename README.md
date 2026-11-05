@@ -153,7 +153,7 @@ session and the run continues.
 
 ### Review a colleague's PR
 
-Start Claude Code in a clone of the PR's repo, with `gh` signed in as you.
+Start Claude Code in a checkout of the PR's repo, with `gh` signed in as you.
 Then give the PR's URL:
 
 ```
@@ -185,8 +185,14 @@ text, or mark a finding "no reply". A review with no findings posts with no
 wait. A later review that raises nothing new posts with no wait. A later
 review with a new finding waits for you again.
 
+Crew reviews in a worktree it cuts under `.claude/worktrees/` in your
+checkout. Add that folder to the repo's `.gitignore`. Crew tells you once when
+the repo does not ignore it.
+
 Put the test and setup commands in `.claude/crew.md`, under `Gates` and
-`Setup`. Crew then runs them with no scout.
+`Setup`. Crew then runs them with no scout. To let the PR's CI checks stand in
+for a local test run, write `ci` alone under `Gates`. Crew then installs
+nothing and runs no tests, and it gives the reviewer the result of each check.
 
 Replies and pushes in a review run follow the same rule as in a goal run.
 Crew waits when another person commented. A comment from a bot, a failed
@@ -245,10 +251,10 @@ stop watching #frontend-reviews
 nothing.
 
 The queue reads a small PR with green CI itself. Every other PR gets its own
-`/crew:review` session in tmux. Those sessions never post. The queue session
-posts every review, approval and Slack reaction, and it asks you once for a
-batch of reviews that have findings. A review with no findings posts with no
-wait.
+`/crew:review` session in tmux, in a checkout you already have. Those
+sessions never post. The queue session posts every review, approval and Slack
+reaction, and it asks you once for a batch of reviews that have findings. A
+review with no findings posts with no wait.
 
 The review board shows the queue in a pane beside the chat, and a count in
 the status line. It opens by itself in a queue session, and updates there.
@@ -269,7 +275,8 @@ it. In a terminal under 110 columns, the command prints the board as text.
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for the full path; required for a pane per dispatched agent on any path; optional otherwise |
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
-| A clone of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the clone | every `/crew:review` run |
+| A checkout of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the checkout | every `/crew:review` run |
+| Your checkout of each repo you review | Start the queue inside one, or list each under `Checkouts` in `~/.claude/crew/config.md`. The queue asks when it finds none | every `/crew:review-queue` run |
 | A named session, tmux, and `gh` signed in as you | `claude -n review-queue`, with `tmux` installed | every `/crew:review-queue` run |
 | A Slack connector | A Slack MCP connector that reads channel history and adds reactions | a queue that watches a Slack channel |
 | A Slack user token | Put a token with the scopes `channels:history`, `channels:read` and `reactions:read` in `~/.claude/secrets/slack-token`. The review board then polls Slack and your review requests. Without the file, the queue session polls, and reads Slack through the Slack MCP connector | optional, every `/crew:review-queue` run |
@@ -291,8 +298,9 @@ under a `##` heading with one of these names:
 |---|---|
 | `Reviewers` | the reviewer to use in place of a review step, in plain words |
 | `Known red tests` | the tests that already fail on the main branch, and why |
-| `Gates` | the exact commands CI runs: tests, types, lint and build |
-| `Setup` | the one command that installs what the tests need in a fresh clone |
+| `Gates` | the exact commands CI runs: tests, types, lint and build. Write `ci` alone to let a review read the PR's CI checks in place of a local run |
+| `Setup` | the one command that installs what the tests need in a fresh checkout |
+| `Checkouts` | the path of your checkout of each repo, one line each, as `<owner>/<repo>: <absolute path>`. Only the review queue reads it |
 | `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run checks that bot's blocking findings too |
 | `Hook workarounds` | what to do when a git hook stops a push or a merge |
 | `Ticket defaults` | where a new ticket goes, such as its team |

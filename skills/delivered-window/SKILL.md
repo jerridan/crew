@@ -264,10 +264,16 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    only when the switch changes branches. A held one, or a run that cut its
    own worktree the first time, cuts the worktree again at the same path from
    the existing branch — no `-b` — and registers it. On a `run.kind: review`
-   run, the deliverable branch is the PR's head
-   ref (`deliverables[].branch`, which `/crew:review` set to
-   `<headRefName>`), so the switch targets that branch, or the detached head
-   on a cross-repository PR.
+   run, skip the above: `run.checkout` is the review worktree. Run these
+   inside it. `<head>` is the head this round reviews: the `Head:` line of
+   the round's reply file, or `run.watch.head`. Stay on `crew/pr-<n>` only
+   when `git -C <run.checkout> branch --show-current` prints it **and** `git
+   -C <run.checkout> merge-base --is-ancestor <head> crew/pr-<n>` exits 0.
+   That keeps the commits of a killed IC. Otherwise run
+   `git switch -C crew/pr-<n> <head>`, which resets a stale branch to that
+   head. Write no `checkout_branch`.
+   `review-runner.md`'s "Never review in the run's own checkout" says why the
+   worktree never holds `<headRefName>`.
 4. **Run `simple-path.md`'s "Dispatch the IC" through "Integrate"** on that
    package. Every rule of those sections holds, including the package's own
    `base` and the deliverable's terminal state: one with a PR stays
@@ -285,7 +291,9 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    local head: the review reads a sha and needs no remote
    (`skeptical-review.md`). **Set `pushed_at` only after a push that
    succeeded.** A refusal here leaves the field `null`, and you say so to the
-   principal, whose request this answers. After a push that succeeded, write
+   principal, whose request this answers. On a `run.kind: review` run, the
+   push is `git push origin crew/pr-<n>:<headRefName>`. After a push that
+   succeeded, write
    `run.watch.head` to the pushed sha with `crew-record.py <record-dir> run
    set watch.head '"<sha>"'`. Then finish the cleanup
    `simple-path.md`'s "End the run" lists: remove a worktree you cut, restore

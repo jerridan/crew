@@ -31,14 +31,21 @@ installed.
 | File | What it owns | When you read it |
 |---|---|---|
 | `references/board.md`, beside this file | the path, schema and derived terms of the board file and of `asks.json` | before "Start" |
+| `references/sources.md`, beside this file | the Slack poll, the GitHub review-request poll and the direct ask | at "Sources" |
 | `references/ready-file.md`, beside this file | a child's ready file and its `ready:` message | before "Children" |
 | `<plugin-dir>/skills/review/references/github-review.md` | the sanitizing, the label rule, the draft and body shapes, the event rule, the re-read before an approval, and the post command | before "Triage" |
 | `<plugin-dir>/skills/review/references/severity-rubric.md` | the six labels of a finding | at "The inline read" |
 | `<plugin-dir>/skills/delivered-window/SKILL.md` | "The go-ahead gate": what the principal approves and how an answer lands | at "The gate" |
 | `<plugin-dir>/skills/delivered-window/references/pr-watch.md` | what each `pr-watch.sh` line means, and "Diagnose a dequeue" | at "Watch each PR" |
 | `<plugin-dir>/skills/project-lead/SKILL.md` | "Standing instructions": the files and their sections | at "Triage", once per repo |
+| `<plugin-dir>/skills/project-lead/references/review-runner.md` | "Never review in the run's own checkout": the review worktree, its cut and the check that the repo ignores `.claude/worktrees` | at "Children" |
 
 This file copies none of their rules.
+
+**Only this session reads the `Checkouts` section** of
+`~/.claude/crew/config.md`. A project lead and a direct `/crew:review` run use
+their launch checkout. The queue runs the ignore check, as `review-runner.md`
+says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 
 ## Start
 
@@ -149,28 +156,9 @@ A fork PR always takes `review`, as "Triage" says.
 ## Sources
 
 With a token, the review-board mod reads each Slack and GitHub source, and
-this session reads `asks.json`. The polls below run for an active watch
-with no token, and for a stale watch.
-
-**Slack.** For a poll below, read a channel through this session's Slack MCP
-connector. Always set a reaction through the connector, because the token
-has read scopes only. Find the connector at run time with `ToolSearch`:
-one tool that reads a channel's history, and one that adds a reaction.
-**With no such connector, a `slack:` watch cannot start**, with a token or
-without one. Tell the principal so, and add no watch. Each poll reads the
-messages after `last_checked`. Each message that holds a PR URL is an ask.
-Keep the channel and the message timestamp on the ask, for its reactions.
-One message can carry two PRs, and each PR is an ask.
-
-**GitHub review requests.** Each poll runs:
-
-```bash
-gh search prs --review-requested=@me --state=open --limit 100 --json number,repository,url,title,author
-```
-
-Each PR that has no row is an ask.
-
-**Direct.** The principal's message is the ask. It needs no poll.
+this session reads `asks.json`. For an active watch with no token, and for a
+stale watch, this session polls: `references/sources.md`, beside this file,
+gives the Slack poll, the GitHub review-request poll and the direct ask.
 
 ## Triage
 
@@ -182,7 +170,8 @@ to that row, and opens no second review. **The one exception is a row at
 **A re-triage** first ends the row's child and removes the row's worktrees,
 as "Clean up" says. It deletes `<pr-dir>/approved-head`, so an old approval
 is no longer a covered head. It keeps the row and the rest of `<pr-dir>`.
-Then it runs the reads below again, and sets `stage: triage`, `next: crew`.
+Then it runs the reads below again, and sets `stage: triage`, `next: crew`,
+unless "Clean up" kept a tree: that row stays at `next: you`.
 
 For a new ask, write a row with `stage: new` and `next: crew`. Its `watch`
 is the id of the watch that found it, and its `policy` is the one the order
@@ -192,8 +181,19 @@ Set `stage: triage` when you start to read it. Make the PR's directory,
 `<pr-dir>`, at `<queue-dir>/prs/<owner>-<repo>-<n>/`, and its watch record
 after read 1, as "Watch each PR" says.
 
-At the repo's first ask, make its clone, as "Children" says. Read the
-repo's standing instructions in the clone, as
+**Find the checkout of the PR's repo, once per repo, and never clone.** Take
+the first match. `<checkout>` is the path it gives:
+
+1. A `## Checkouts` section in `~/.claude/crew/config.md`, with a line
+   `<owner>/<repo>: <absolute path>`.
+2. This session's own checkout, when `git remote get-url origin` names the
+   PR's repo. `git rev-parse --path-format=absolute --git-common-dir` gives
+   the `.git` directory of the main checkout, also from a linked worktree. Its
+   parent is `<checkout>`.
+3. Otherwise stop. Set the row to `next: you`, and ask the principal for a
+   `Checkouts` line. Go on when the principal gives one.
+
+Read the repo's standing instructions from the base branch, as
 `<plugin-dir>/skills/project-lead/SKILL.md`'s "Standing instructions" says.
 
 Then read these six things, and write each one in the row's `last.text`:
@@ -244,31 +244,26 @@ child. Set the Slack `:eyes:` reaction when the read or the child starts.
 
 ## Children
 
-**One shared install per repo.** Keep one clone per repo at
-`<queue-dir>/repos/<owner>-<repo>/`. Clone it at the repo's first ask.
-Run the repo's `Setup` command there once, when the standing instructions
-hold one.
+**Cut no worktree for a child.** Launch it with `<checkout>` as its
+directory, as step 1 shows. The child's `review-runner.md` cuts its one
+worktree, at `<checkout>/.claude/worktrees/crew-pr-<n>`. Clone nothing.
 
 **Launch each child** as a separate interactive `claude` session in its own
 tmux session:
 
-1. Cut its worktree from the clone, at the base:
+1. Start the session. `<child>` is `review-<owner>-<repo>-<n>`:
    ```bash
-   git -C <clone> fetch origin
-   git -C <clone> worktree add --detach <queue-dir>/worktrees/<owner>-<repo>-<n> origin/<baseRefName>
+   tmux new-session -d -s <child> -c <checkout> "claude --plugin-dir <plugin-dir> -n <child> '/crew:review <PR URL> <launch words>'"
    ```
-2. Start the session. `<child>` is `review-<owner>-<repo>-<n>`:
-   ```bash
-   tmux new-session -d -s <child> -c <worktree> "claude --plugin-dir <plugin-dir> -n <child> '/crew:review <PR URL> <launch words>'"
-   ```
-3. The launch words are always "Report to the queue session <this
+2. The launch words are always "Report to the queue session <this
    session's name>." They write `Queue:` and `Gate: off` in the child's
    charter. Under `assist`, add "Fix the blockers yourself. 3 fix rounds.
    Skip the re-review when prose-only or under 20 lines."
-4. Set the row to `stage: reviewing`, `next: crew`.
+3. Set the row to `stage: reviewing`, `next: crew`.
 
 Under `assist`, a child fixes and re-reviews up to 3 fix rounds, and pushes
-its fixes. Under `review`, a child pushes nothing. A child never posts.
+its fixes from its worktree. Under `review`, a child pushes nothing. A child
+never posts.
 
 **A child reports with one `ready:` message** that names its ready file.
 Read the file as `references/ready-file.md` says. Its `draft_path` is the
@@ -380,19 +375,25 @@ Before every enqueue:
 2. **On `CONFLICTING`, dispatch a merge agent at once.** In this session,
    that replaces the report that "The post command" asks for. It is a
    `general-purpose` subagent named `merge-<owner>-<repo>-<n>-r<k>`. It
-   merges `origin/<baseRefName>` into the head branch in the child's
-   worktree. With no child, cut a worktree on the head branch from the
-   clone, at `<queue-dir>/worktrees/<owner>-<repo>-<n>-merge`. It resolves
-   the conflict, runs the suite and commits. This session pushes its
-   commit. The new head goes back to "Triage". Under `review`, push
-   nothing: set `next: author`, and tell the principal.
+   merges `origin/<baseRefName>` into the PR's head. With a child, it works
+   in the child's worktree, `<checkout>/.claude/worktrees/crew-pr-<n>`. With
+   no child, first run `git -C <checkout> fetch origin <baseRefName>
+   <headRefName>`, because the checkout may never have seen that head. Then
+   cut `<checkout>/.claude/worktrees/crew-pr-<n>-merge`, detached at the
+   head. In either worktree it works on the local branch `crew/pr-<n>`,
+   never on `<headRefName>`. This session pushes by the refspec:
+   `crew:delivered-window`'s "A change request" steps 3 and 5 give both
+   commands. The merge agent resolves the conflict, runs the suite (or, under
+   `Gates: ci`, takes `/crew:review`'s no-suite outcome), and commits. The
+   new head goes back to "Triage". Under `review`, push nothing: set
+   `next: author`, and tell the principal.
 3. **Run each command in the `Pre-enqueue checks` section** of the repo's
-   standing instructions, in the child's worktree. With no child, cut a
-   worktree from the clone, detached at the head, at
-   `<queue-dir>/worktrees/<owner>-<repo>-<n>-check`. Remove an old one at
-   that path first, as "Clean up" says. A non-zero exit stops
-   the enqueue. Set `stage: blocked`, `next: you`, and tell the principal
-   which command failed. On the principal's answer, run "Enqueue" again.
+   standing instructions, in the child's worktree. With no child, fetch as
+   step 2 says, remove an old tree at
+   `<checkout>/.claude/worktrees/crew-pr-<n>-check` as "Clean up" says, and
+   cut it again, detached at the head. A non-zero exit stops the enqueue. Set
+   `stage: blocked`, `next: you`, and tell the principal which command
+   failed. On the principal's answer, run "Enqueue" again.
 
 Then enqueue. `<sha>` is the sha in `<pr-dir>/approved-head`, the head the
 approval approved:
@@ -475,17 +476,25 @@ Write the whole file to `board.json.tmp` beside it, then move it over
 **Clean up a row when it is done, and at a re-triage.** End its child.
 Send `/exit` with `tmux send-keys -t =<child> '/exit' Enter`. Kill its tmux
 session with `tmux kill-session -t =<child>`. Then remove each of the row's
-worktrees that exists: `<queue-dir>/worktrees/<owner>-<repo>-<n>`, and the
-same path with `-merge` and with `-check` added:
+worktrees that exists. All are under `<checkout>/.claude/worktrees/`:
+`crew-pr-<n>`, `crew-pr-<n>-merge` and `crew-pr-<n>-check`. Run
+`review-runner.md`'s unpushed-commit check first. Run these commands for a
+tree whose check exits 0, and keep every other tree and branch:
 
 ```bash
-git -C <clone> worktree remove --force <worktree>
+git -C <checkout> worktree remove --force <path>
+git -C <checkout> worktree prune
+git -C <checkout> branch -D crew/pr-<n>
 ```
 
-Use `--force`. A plain remove refuses a tree with changed or untracked
-files, and the next `worktree add` at that path then fails. A worktree the
-queue cut holds nothing that is not on the PR branch or in the child's
-record.
+Prune and delete the branch once, after the last remove. Ignore a delete
+that fails on a missing branch. `--force` removes untracked files.
+
+**When a re-triage keeps a tree**, set the row to `next: you`, tell the
+principal, and launch no child for that row until the principal answers.
+
+**No step of the queue runs `checkout`, `switch`, `reset` or `clean` in the
+main working tree.**
 
 **When the principal closes the queue**, also:
 

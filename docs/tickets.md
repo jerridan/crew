@@ -3592,3 +3592,35 @@ token. No queue session has loaded the mod.
 
 Read first: design §15.129; `hooks/review-board.tsx`;
 `skills/review-queue/references/board.md`.
+
+## T87 — Review in a worktree of the principal's checkout, and let CI stand in for the suite
+
+Status: done 2026-11-04
+Depends on: T82, T84
+Stage: 8 (design §15.130)
+
+Issue #132. The queue finds the checkout of the PR's repo and never clones.
+It reads a `Checkouts` section in `~/.claude/crew/config.md`, then its own
+checkout, and otherwise asks the principal. It cuts no worktree for a child.
+It launches the child with the checkout as its directory. A review run cuts
+one worktree at `<checkout>/.claude/worktrees/crew-pr-<n>`, detached at the
+pending head, and that tree is `run.checkout`. A fix round puts it on the
+local branch `crew/pr-<n>` and pushes by refspec. "Clean up" removes the
+worktree and the branch. With `Gates: ci`, a review reads the PR's check runs
+and commit statuses in place of a local suite, and runs no setup command.
+
+Scope: `skills/review-queue/SKILL.md` and its new `references/sources.md`;
+`skills/review/SKILL.md`, `references/later-round.md` and the new
+`references/auto-review.md`; `review-runner.md`; `skeptical-review.md`;
+`skills/delivered-window/SKILL.md`; `skills/project-lead/SKILL.md`; the
+README.
+
+Out of scope: a goal run's review worktree, the shared `Reviewers` section,
+the `review-comment` lines that `pr-watch.sh` repeats, a late `ready:`
+message from an old round, and a cancelled check that reads as not green.
+
+Unexercised: no queue session and no review run has used the new path. Only
+a read of the files has checked it.
+
+Read first: design §15.130; `skills/project-lead/references/review-runner.md`;
+`skills/review-queue/SKILL.md`.

@@ -20,9 +20,9 @@ file holds only what a review run does differently.
 this skill's base directory, which the invocation names. `<plugin-dir>` is
 the plugin's root, the grandparent of `<project-lead-dir>`. A file this skill
 names with no directory is in `<project-lead-dir>/references/`, except
-`github-review.md`, `severity-rubric.md` and `later-round.md`, which are in
-`references/` beside this file, and `pr-watch.md`, which is in
-`skills/delivered-window/references/`.
+`github-review.md`, `severity-rubric.md`, `auto-review.md` and
+`later-round.md`, which are in `references/` beside this file, and
+`pr-watch.md`, which is in `skills/delivered-window/references/`.
 `crew-record.py` and `spend.py` are in `<project-lead-dir>/scripts/`. Read
 every file by its absolute path, and give every agent absolute paths.
 
@@ -32,7 +32,8 @@ every file by its absolute path, and give every agent absolute paths.
 |---|---|---|
 | `github-review.md` | the sanitizing, the label and pre-existing rules, the reviewer paragraph, the comment, body and draft shapes, the event rule, the re-read before an approval, and the post and resolve commands | before "Take the PR" |
 | `severity-rubric.md` | the six severity labels | at "Adjudicate" |
-| `later-round.md` | a later round's head and base | at "Review", from round 2 |
+| `auto-review.md` | the read of the repo's review bot, and which of its findings are claims | at "Adjudicate", when a standing-instructions file holds `Auto-review` |
+| `later-round.md` | a later round's head and base, and whether the setup command runs again | at "Review", from round 2 |
 | `review-runner.md` | the mechanics of the headless review | at "Review" |
 | `substitution.md` | a review the principal named another reviewer for | at "Review", when `run.substitutions_requested` names one |
 | `review-output.md` | the shape the reviewer reports in | inject it whole into the instructions file |
@@ -47,7 +48,7 @@ every file by its absolute path, and give every agent absolute paths.
 
 ## The launch requirement
 
-Run inside a clone of the PR's repo, with `gh` logged in as the principal.
+Run inside a checkout of the PR's repo, with `gh` logged in as the principal.
 The record root is `record-format.md`'s.
 
 ## The argument
@@ -98,30 +99,30 @@ sanitizing" says so.
    sanitizing" gives. `init` creates the directory. Then, with `run set`:
    - `kind '"review"'`;
    - `repo`, from `git rev-parse --show-toplevel`;
-   - `checkout`, the same path;
+   - `checkout`, the review worktree path
+     `<run.repo>/.claude/worktrees/crew-pr-<n>`;
    - `pr`, with the fields `record-format.md`'s `pr` row names;
    - `principal`, when the goal arrived by message, as "Take the goal" says.
 
-   Then read the standing instructions, as `<project-lead-dir>/SKILL.md`'s
-   "Standing instructions" says.
-5. **Read `checkout_branch`, then check out the head.** The branch to put
-   back at the end is the one the checkout is on now, before the switch:
-   `git branch --show-current`, or `null` on a detached head. Keep it for
-   step 8. Then, on a same-repository PR, switch to
-   `<headRefName>` tracking `origin/<headRefName>`. On a cross-repository PR,
-   check out `headRefOid` detached. Git refuses the switch on a dirty tree:
-   escalate, and never stash.
+   Then read the standing instructions, the repo file from the base branch,
+   as `<project-lead-dir>/SKILL.md`'s "Standing instructions" says.
+5. **Cut the review worktree, detached at `headRefOid`.** Cut it and run the
+   ignore check as `review-runner.md`'s "Never review in the run's own
+   checkout" says. `checkout_branch` is `null`. The main working tree is
+   never switched, so a dirty main tree is no blocker.
 6. **Read the suite from the standing instructions.** When either file holds
    a `Gates` section, dispatch no scout. "Review" reads the suite, the gates
-   and the setup command from `Gates` and `Setup`. **When neither file holds
+   and the setup command from `Gates` and `Setup`, and it owns the `ci` value
+   of `Gates`. **When neither file holds
    `Gates`, dispatch the scout, and do not wait for it.** One `crew:scout`
    subagent at `haiku`, named `scout-1` as `<project-lead-dir>/SKILL.md`'s
    "Every dispatch is named" says. Its "Scout" gives the dispatch shape. The
    one question is that section's third, and its answer carries the setup
    command too:
    "What runs the suite, and what other gates does CI run: types, lint, build?"
-   The scout reads the checkout while you write the next four steps, and
-   "Review" reads its answer. A review run asks no other question. The
+   Tell it to read `run.checkout`, the PR head's worktree. It reads that
+   directory while you write the next four steps, and "Review" reads its
+   answer. A review run asks no other question. The
    reviewer reads the repo's instruction files itself, and a review has no
    work to size.
 7. **Write `charter.md`** in the record directory, in this shape:
@@ -145,11 +146,11 @@ sanitizing" says so.
    section did. Do not write `PR: draft`: the PR's draft state is the
    author's. This block is the whole shape, so open no earlier record to
    learn it.
-8. **Add the one deliverable, and deliver it in the same turn**, with the
-   `checkout_branch` step 5 read:
+8. **Add the one deliverable, and deliver it in the same turn**, with
+   `"checkout_branch": null`:
 
    ```bash
-   python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable add '{"id": "d1", "branch": "<headRefName>", "base": "<merge base>", "pr_url": "<url>", "checkout_branch": "<branch>", "checkout_restored": null}'
+   python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable add '{"id": "d1", "branch": "<headRefName>", "base": "<merge base>", "pr_url": "<url>", "checkout_branch": null, "checkout_restored": null}'
    python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliver d1 under-review --pr-url <url> --review-head <headRefOid>
    ```
 
@@ -178,7 +179,8 @@ the launch, as `later-round.md`, beside this file, says.
 `Suite: on fork` line, run no setup command, and take `review-runner.md`'s
 no-suite outcome. The setup and the suite run the fork's code on the
 principal's machine. The principal can lift this at the launch or at the
-gate. When it comes at the gate, add the line to the charter.
+gate. When it comes at the gate, add the line to the charter. Under
+`Gates: ci`, nothing runs locally, so the `ci` block stands for a fork too.
 
 **Read the suite, the gates and the setup command** before the first
 launch. With a `Gates` section, they are the commands in `Gates` and in
@@ -186,20 +188,44 @@ launch. With a `Gates` section, they are the commands in `Gates` and in
 `<project-lead-dir>/SKILL.md`'s "Every dispatch is named" says. These are the
 commands `review-runner.md` runs.
 
-**The setup command runs once per review worktree.** On a later round it runs
-again only when a lockfile changed between the previous reviewed head and
-the new head. The reason: a review run cuts one worktree per deliverable
-under its own record directory, so an install never carries across runs. A
-shared install per repo is not this skill's work. The lockfiles are
-`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `uv.lock`,
-`poetry.lock`, `Pipfile.lock`, `Gemfile.lock`, `Cargo.lock` and `go.sum`. A
-`Lockfile: <path>` line in `Setup` names the one file to compare instead.
-This command exits 1 when one of them changed. Write each lockfile name as a
-`:(glob)**/<name>` pathspec, so the glob reaches every directory of a monorepo:
+**Under `Gates: ci`, read the checks in place of a suite.** Dispatch no
+scout, and run no setup command, local suite or gate, at the base or at the
+head. The lockfile comparison and the setup rule do not apply. Read the check
+runs and the commit statuses of the reviewed head sha:
 
 ```bash
-git -C <run.checkout> diff --quiet <previous head> <new head> -- ':(glob)**/package-lock.json' ':(glob)**/yarn.lock' ':(glob)**/pnpm-lock.yaml' ':(glob)**/bun.lockb' ':(glob)**/uv.lock' ':(glob)**/poetry.lock' ':(glob)**/Pipfile.lock' ':(glob)**/Gemfile.lock' ':(glob)**/Cargo.lock' ':(glob)**/go.sum'
+gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | [.context, .state] | @tsv'
 ```
+
+A check is still running when a check run has `status` `queued`,
+`in_progress`, `waiting`, `requested` or `pending`, or a commit status is
+`pending`. A push registers its checks a few seconds late, so the head can
+have none yet. Wait with a `Monitor` call, or a background `until` loop, over
+the reads, until at least one check run or commit status exists and none is
+running. Cap the wait at thirty minutes: set `timeout_ms` to `1800000`, or
+bound the loop. Never run a foreground `sleep`, because Claude Code refuses
+it:
+
+```bash
+until a=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.check_runs[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "requested" or .status == "pending") | .name') || exit 2; b=$(gh api --paginate repos/<owner>/<repo>/commits/<sha>/status --jq '.statuses[] | select(.state == "pending") | .context') || exit 2; c=$(gh api repos/<owner>/<repo>/commits/<sha>/check-runs --jq '.total_count') || exit 2; d=$(gh api repos/<owner>/<repo>/commits/<sha>/status --jq '.total_count') || exit 2; [ -z "$a$b" ] && [ $((c + d)) -gt 0 ]; do sleep 120; done
+```
+
+An exit of 2 means a read failed, not a pending check, so the project lead
+reads the error before launch. List each running check as `pending`. Write
+one line per check into a `ci` block of `review-runner.md`'s "Reviewer
+instructions", which says which to use. Never re-run a failed check.
+
+**Under `Gates: ci`, no step runs a local suite.** The merge agent and an
+assist fix round take the no-suite outcome, and the push's CI verifies.
+`simple-path.md`'s "Verify before you believe" defines that outcome. A `ci`
+round is a no-suite round for check 2 of `review-runner.md`'s "Check the review
+before you read it".
+
+**The setup command runs once per review worktree.** On a later round it runs
+again only when a lockfile changed between the previous reviewed head and the
+new head. `later-round.md` owns that test. A review run cuts one worktree per
+PR, so an install never carries across runs.
 
 With a `Gates` section and no `Setup` section, no setup command runs. A suite
 that then fails for a missing dependency is the setup failure that
@@ -228,30 +254,9 @@ The ledger is `skeptical-review.md`'s "Adjudication is a ledger".
 
 **Read the auto-review first**, when a standing-instructions file holds an
 `Auto-review` section. Do this read, and write the ledger, on every round,
-also when the skeptical report states no finding. Its login is the bot's.
-This prints one line per review the bot posted on the PR, and the last line
-is its most recent:
-
-```bash
-gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews --jq '.[] | select(.user.login == "<login>") | [.id, .state, .commit_id] | @tsv'
-```
-
-Read that review's body, then its inline comments:
-
-```bash
-gh api repos/<owner>/<repo>/pulls/<n>/reviews/<id> --jq .body
-gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[] | select(.pull_request_review_id == <id>) | {id, path, line, body}'
-```
-
-An issue comment by the bot is not a review, and you do not read it.
-Compare the review's `commit_id` with `run.review_pending.head`. **A review
-on an older head is stale**: the ledger header's `Auto-review:` line says
-so, and no claim comes from it. On the current head, a claim is a finding
-the bot marked blocking.
-When the review's `state` is `CHANGES_REQUESTED`, every finding in its body
-and every inline comment is a claim. Otherwise only an item whose text holds
-`[blocking]` is a claim. Each claim is one ledger line with source `bot`.
-Verify it against the diff like any other finding.
+also when the skeptical report states no finding. `auto-review.md`, beside
+this file, gives the commands and the claim rules. Each claim is one ledger
+line with source `bot`. Verify it against the diff like any other finding.
 
 A finding must pass two checks that `github-review.md` owns before it may
 post:
@@ -418,11 +423,14 @@ fix, push, re-review, approve, so an approval never lands before a fix:
    `suggestion` findings join it. Open this skeptical round without
    `--gated`. Run
    `crew:delivered-window`'s "Findings from a review" steps 3 to 11 as they
-   stand, on the deliverable branch in `run.checkout`, as a `principal`
-   round: the principal asked for the fix at launch. Its ledger names one
+   stand, in `run.checkout`, as a `principal` round: the principal asked for
+   the fix at launch. The window's "A change request" step 3 puts the
+   worktree on its branch. Its ledger names one
    package per group, it takes the gate as the window says, and a resume
    recovers it through `skeptical-review.md`'s resume entries 1a to 7.
-4. **Push** to `origin <headRefName>`, behind the gate. The window's step 10
+4. **Push** to the PR's branch behind the gate, with the command that the
+   window's "A change request" step 5 gives for a review run. The window's
+   step 10
    writes `run.watch.head` after the push, so your own push returns as a
    notice. Then re-read the head, as "Later rounds" says.
 5. **Run the re-review.** The integration write arms the new head, and
@@ -476,11 +484,12 @@ this file holds, with these changes:
 
 The `merged` or `closed` item is the ship word, and the window owns the
 steps. Under `Done: rolled out`, that window's "The word that the work
-shipped" names the word instead of a `merged` item. Before its closing message, restore the checkout as
-`simple-path.md`'s "Restore the checkout at every end" says, with the
-deliverable's `checkout_branch`. On a cross-repository PR, that switch also
-leaves the detached head. The closing message says whether the PR merged or
-closed, and names the record.
+shipped" names the word instead of a `merged` item. Before its closing
+message, remove the review worktree as `review-runner.md`'s "Never review in
+the run's own checkout" says. It keeps the worktree when the branch holds
+unpushed commits. Restore nothing: the main working tree was never
+switched. The closing message says whether the PR merged or closed, and names
+the record.
 
 ## A resume
 

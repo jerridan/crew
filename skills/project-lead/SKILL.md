@@ -155,18 +155,26 @@ chosen rather than fallen into.
 Two files tell every run what the principal wants it to know about a repo:
 `.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path
 whatever the record root is. Read both whole at "Take the goal", on every
-path and on a review run. A missing file holds nothing. Then write
+path and on a review run. A missing file holds nothing. **A review run, and
+the queue at triage, read the repo file from the PR's base branch**. Run `git
+-C <checkout> fetch origin <baseRefName>` first, then `git -C <checkout> show
+origin/<baseRefName>:.claude/crew.md`, because the main working tree can hold
+any branch. A file missing there holds nothing. Then write
 `run set standing_instructions '{"repo": <path or null>, "machine": <path or
-null>}'`, with `null` for a missing file. A resumed session reads the files
-at those paths again before its first dispatch.
+null>}'`, with `null` for a missing file. A review run writes `repo` as the
+string `origin/<baseRefName>:.claude/crew.md`, and a resumed review run reads
+it with the same fetch and show. When the working tree's `.claude/crew.md`
+differs from the base branch's, or exists where the base branch has none, tell
+the principal once that the review reads the committed file. A resumed
+session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these thirteen:
+**Each file holds optional `##` sections.** You act on these fourteen:
 
 | Section | What you do with it |
 |---|---|
 | `Reviewers` | the plain words that name a replacement for a review step, read as below |
 | `Known red tests` | it seeds `reviews/baseline.md` |
-| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads the suite and the gates from it in place of the scout (`/crew:review`'s "Take the PR" step 6) |
+| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads the suite and the gates from it in place of the scout (`/crew:review`'s "Take the PR" step 6). The value `ci` makes a review run read the PR's check runs in place of a local suite (`/crew:review`'s "Review" owns it). A goal run ignores `Gates: ci`: a `Gates` section whose only line is `ci` reads as no `Gates` section on a goal run, so the scout's suite and gates stand for your verification and for the skeptical review |
 | `Setup` | one install command that makes the suite runnable in a fresh worktree, and an optional line `Lockfile: <path>`. A review run reads it in place of the scout, and its "Review" says when the command runs |
 | `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run reads that bot's review as claims (`/crew:review`'s "Adjudicate"). With no section, nothing reads a bot's review |
 | `Hook workarounds` | read it before every push and every merge |
@@ -176,6 +184,7 @@ at those paths again before its first dispatch.
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
 | `Pre-enqueue checks` | shell commands, one per line, that the queue session runs before every enqueue. A non-zero exit stops the enqueue (`crew:review-queue`'s "Enqueue") |
+| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, the principal's checkout of each repo. Only `crew:review-queue` reads it. With no matching line, the queue stops and asks for one (`crew:review-queue`'s "Triage") |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
 
 **`Deploy` names the signal that the work is live.** Its lines are:

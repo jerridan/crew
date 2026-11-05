@@ -4,24 +4,23 @@
 before the launch. Every file this one names is in
 `skills/project-lead/references/`.
 
-**Get the head first.** On every round after the first, bring `run.checkout`
-to the new head. Run every command with `git -C <run.checkout>`. On a
-same-repository PR:
+**Get the head first.** On every round after the first, move `run.checkout`,
+the review worktree, to the new head, detached. Run every command with `git
+-C <run.checkout>`. `--discard-changes` is right on this worktree
+(`review-runner.md`'s "Never review in the run's own checkout" says why), so
+a dirty tree is no reason to escalate. On a same-repository PR:
 
 ```bash
 git fetch origin <headRefName> <baseRefName>
-git switch <headRefName>
-git reset --hard origin/<headRefName>
+git switch --detach --discard-changes origin/<headRefName>
 ```
 
-Run the reset only in `run.checkout`, and only after the switch put it on
-`<headRefName>`. Git refuses the switch on a dirty tree: escalate. On a
-cross-repository PR:
+On a cross-repository PR:
 
 ```bash
 git fetch origin <baseRefName>
 git fetch origin pull/<n>/head
-git switch --detach FETCH_HEAD
+git switch --detach --discard-changes FETCH_HEAD
 ```
 
 **Find the base of a later round.** It is the head the previous round
@@ -54,3 +53,18 @@ does the recompute that `review-runner.md`'s "Resume the reviewer" names.
 
 These two checks cover the two cases a fast-forward cannot: a force-push
 fails the first, and an "Update branch" merge fails the second.
+
+**Run the setup command again only when a lockfile changed** between the
+previous reviewed head and the new head. `Gates: ci` has its own rule in
+`skills/review/SKILL.md`'s "Review". The lockfiles are `package-lock.json`,
+`yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `uv.lock`, `poetry.lock`,
+`Pipfile.lock`, `Gemfile.lock`, `Cargo.lock` and `go.sum`. A `Lockfile:
+<path>` line in `Setup` names the one file to compare instead. This command
+exits 1 when one of them changed. Run the setup command on exit 1, and on
+any other non-zero exit, because the check then could not tell. Write each
+lockfile name as a `:(glob)**/<name>` pathspec, so the glob reaches every
+directory of a monorepo:
+
+```bash
+git -C <run.checkout> diff --quiet <previous head> <new head> -- ':(glob)**/package-lock.json' ':(glob)**/yarn.lock' ':(glob)**/pnpm-lock.yaml' ':(glob)**/bun.lockb' ':(glob)**/uv.lock' ':(glob)**/poetry.lock' ':(glob)**/Pipfile.lock' ':(glob)**/Gemfile.lock' ':(glob)**/Cargo.lock' ':(glob)**/go.sum'
+```

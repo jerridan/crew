@@ -248,7 +248,7 @@ you then do with it.
 lookup subagents — a researcher's `Explore` hops, an IC's `Explore` check —
 stay unnamed: a teammate cannot spawn a teammate, so a name gives one of
 them nothing, and its result returns to its parent as an ordinary tool
-result regardless of the flag.
+result in both dispatch modes.
 
 Every agent you dispatch, on every path, gets a `name`, unique among the
 agents of the current session. A resumed run is a new session — the
@@ -256,11 +256,35 @@ previous session's agents ended with it, so a counter that restarts from 1
 here collides with nothing. The critics' and ICs' round numbers keep
 advancing across a resume because they are read from the record, which
 survives; a scout, a spec writer or a lookup keeps no such counter, and
-needs none. Whether a name makes the agent a teammate follows from
-`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` alone, never from the path or the
-role: set, a named agent launches as a teammate, in its own pane under a
-display mode (`--teammate-mode tmux` or `iterm2`); unset, it launches as a
-plain subagent and the name changes nothing.
+needs none.
+
+**The dispatch mode.** Whether the harness has agent teams on sets it,
+never the path or the role. Do not read the flag with `echo`: the Bash
+shell loads your profile, so it can disagree with the harness. Read the mode
+from your first dispatch in each session, a resumed one included:
+
+1. Dispatch it without `run_in_background`, and alone.
+2. A result that says `Spawned successfully` means teammate mode. Any other
+   result means subagent mode.
+3. Write the mode with `crew-record.py <record-dir> run set
+   dispatch_modes.<session id> '"<mode>"'`.
+
+In subagent mode, that first dispatch runs in the foreground and blocks
+you until it ends. Make it a scout when you can. Name the mode in every
+spawn prompt after it.
+
+| | Teammate mode | Subagent mode |
+|---|---|---|
+| A named dispatch | a teammate, in its own pane under a display mode (`--teammate-mode tmux` or `iterm2`), else in-process | a background subagent: always pass `run_in_background: true` |
+| `run_in_background` | never: a teammate does not support it | always, after the first dispatch |
+| Its result | the final message in its idle notification | its hand-back, an `<agent-message>` turn. The harness tells every background subagent to hand back with `SubagentHandback`. A task notification follows it and carries no text. |
+| Your later message to it | `SendMessage` to its name reaches its mailbox | `SendMessage` to its name resumes it, with its context kept |
+| Its question to you | a message in this session, sent to your name | a new turn, sent to `main` |
+| Its own lookups | run in the foreground, one at a time | not yet observed (design §15.131) |
+
+Subagent mode is on trial (design §15.131). Nothing else in a path changes
+between the modes. Where a reference says idle notification, read the
+hand-back in subagent mode.
 
 **A compaction resets your own count, not the record's.** A scout, a spec
 writer, a lookup, a researcher or an advocate keeps its counter only in your
@@ -299,33 +323,20 @@ numbers are the one exception: reading them from the record, not counting
 in-session, is what lets them keep advancing across the resume described
 above.
 
-**Read the result from the idle notification's final message, when the name
-made a teammate.** A named agent's answer arrives there, not as a tool
-result. With the flag unset, the same agent is a plain subagent and its
-result returns as an ordinary tool result instead — read it from there.
-Where an agent also writes a record file — a critic, an IC, a review — that
-file stays the durable copy either way; read the idle notification or the
-tool result for the answer, and the file for the evidence.
+**Read the answer from the result, and the evidence from the file.** The
+table above says where the result arrives. Where an agent also writes a
+record file — a critic, an IC, a review — that file stays the durable copy
+in both modes.
 
-**A teammate cannot spawn a teammate.** An in-process teammate's own
-subagents run in the foreground, so a researcher's own lookups run one at a
-time.
+**Permission prompts surface here in teammate mode.** A teammate's prompt
+reaches this session, for you to approve. Pre-approve what the run needs, or
+a no-prompt run stalls on the first one. No run has shown what a background
+subagent does with an un-granted command (design §15.131). Treat its stall or
+its denial as a stall here.
 
-**Never request `run_in_background` for a dispatch.** It is unsupported for
-a teammate.
-
-**Permission prompts surface here.** Any dispatch's prompt reaches this
-session, for you to approve. Pre-approve what the run needs, or a
-no-prompt run stalls on the first one.
-
-**Check the flag before your first dispatch.** `echo
-$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` must print `1` on the full path,
-always — `full-path.md` sends an IC its next package, a fix round and a
-nudge by `SendMessage`, which only a teammate can receive. On every other
-path the check is needed only when the launch is meant to run under a
-display mode; with the flag unset there, every dispatch still runs — as a
-plain subagent, with no pane and no messaging between agents.
-`full-path.md`'s "Check the launch conditions" points here for this check;
+**Both modes run every path.** `full-path.md` sends an IC its next
+package, a fix round and a nudge by `SendMessage`, and both modes deliver
+it. `full-path.md`'s "Check the launch conditions" points here for the mode;
 its other conditions are its own.
 
 Every reference and agent description below points at this section rather

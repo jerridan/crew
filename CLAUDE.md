@@ -122,6 +122,10 @@ Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
 sessions rather than from the checkout (§15.90).
 
+Subagent mode is built and on trial: with the teams flag unset, every
+dispatch is a background subagent. One probe passed its four checks, and no
+crew run has used the mode yet (§15.131).
+
 T57 removed the tier above the project lead: the principal hands each goal
 over itself (§15.95). Its own kill and forced-compaction probes have run
 (§15.98f).

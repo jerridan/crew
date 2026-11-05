@@ -182,8 +182,9 @@ at the package's band model: `crew:ic` for code, `crew:ic-instructions` for
 an instruction file. It inherits no
 history, so the spawn prompt carries all of: `ic-contract.md`'s full text,
 the brief, the file set, `run.checkout`, the interface contract, the
-acceptance criterion, the global constraints section, the record root, and
-the package id. The standing instructions go in after the contract and
+acceptance criterion, the global constraints section, the record root, the
+package id, and the dispatch mode (`SKILL.md`'s "Every dispatch is named").
+The standing instructions go in after the contract and
 before the brief, as `SKILL.md`'s "Standing instructions" says.
 
 **One dispatch carries the package.** The IC writes `plans/<id>.md`, then

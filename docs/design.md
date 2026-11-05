@@ -8833,3 +8833,77 @@ Deliberately different:
      an old round, and a cancelled check that made CI read as not green.
      They are separate fixes, and this change does not touch them. No run
      has exercised this change.
+
+131. **Subagent mode, on trial — 2026-11-02.** The principal wants to try
+     crew with no teammates. With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
+     unset, every dispatch is now a background subagent. With the flag set,
+     nothing changes. `SKILL.md`'s "Every dispatch is named" owns the two
+     modes, and `run.dispatch_modes` records which one each session of a run used.
+
+     a. **Why.** The principal keeps `remoteControlAtStartup: true` in the
+        user settings. Each split-pane teammate is its own `claude` process,
+        so it starts its own Remote Control session. Crew cannot stop that.
+        The Agent tool takes no settings and no working directory. A teammate
+        gets only the project lead's `--settings` flag and the project
+        settings of the project lead's directory. `--remote-control` is never
+        passed to a teammate. A subagent runs inside the project lead's
+        process, so it has no Remote Control session.
+
+     b. **The record held no subagent run.** Every crew transcript still on
+        this machine, from 2026-10-03 on, dispatched each named agent as a
+        teammate: `status: "teammate_spawned"`. Of the last three days' 160
+        dispatches, 159 were in-process (`is_splitpane: false`), and one
+        could not be classified. An in-process teammate looks like a
+        subagent in the agents sidebar, but it uses the mailbox, the idle
+        notification and the teams flag. Before T66, the simple path's
+        unnamed ICs were plain subagents (§15.97a), but their transcripts
+        are gone.
+
+     c. **The probe.** On Claude Code 2.1.316, one Sonnet session started
+        with the flag set to `0` dispatched two background `crew:ic`
+        subagents on Haiku. The probe cost $0.46, and four checks passed:
+
+        - The two ICs ran in parallel.
+        - `SendMessage` to `main` reached the project lead as a new turn
+          while the IC still ran.
+        - The final report arrived as a `SubagentHandback` `<agent-message>`
+          turn, and a task notification with no text followed it.
+        - `SendMessage` to the IC's name resumed each finished IC. Each IC
+          then wrote a token that it got only in its first prompt.
+
+        A background subagent's report reaches its caller only through
+        `SubagentHandback`. After a resume, an IC that ended with plain text
+        got a `[handback-send-enforce]` notice, then called the tool. Each
+        IC saw no Claude Code default system prompt. Its prompt opened with
+        "You are a Claude agent, built on Anthropic's Claude Agent SDK.",
+        then the `# IC` body. Each IC had the repo `CLAUDE.md`, the user's
+        `CLAUDE.md` and the memory index. Neither IC had the parent's
+        conversation. `.meta.json` names the agent, so `spend.py` and the
+        `PreCompact` hook find a subagent the same way as an in-process
+        teammate.
+
+     d. **Still open.** No crew run has used subagent mode. Four questions
+        need a run:
+
+        - Does a background subagent commit in a worktree, or does it stall
+          or fail on a permission prompt?
+        - Can it write to the record root?
+        - Do its nested lookups run in the background?
+        - Does every role hand back? The harness's `SubagentHandback`
+          instruction is generic, but only `crew:ic` has received it.
+
+        The teammate ICs' first request was about 21,400 to 23,800 tokens.
+        The probe's was about 16,000, but its prompt held no contract, so
+        the two figures do not compare. To answer the cost question, price
+        the first runs in each mode with `spend.py`, and use
+        `run.dispatch_modes` to tell the modes apart. `crew-stats.py` does
+        not report the field yet.
+
+     e. **The review of PR #131 changed two rules.** The project lead first
+        read the mode with `echo`. That reading can be wrong in two ways:
+        the harness also takes `true` as on, and the Bash shell loads the
+        user's profile, which can export a value that `--settings`
+        overrides for the harness. The mode now comes from the first
+        dispatch's result, because only the harness knows it. The record
+        keeps one mode per session, so a run that changes mode on a resume
+        keeps both.

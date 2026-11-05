@@ -46,9 +46,10 @@ it against your worktree.
 
 - Do not spawn another implementer, and do not spawn a reviewer.
 - You may spawn `Explore` for a read-only lookup, and no other agent type.
-  It runs in the foreground, so it blocks you and costs wall-clock time. Use
-  it only when you need an answer you cannot find yourself. Your own lookups
-  stay unnamed; `SKILL.md` "Every dispatch is named" says why.
+  Run it in the foreground, and wait for its answer before you go on. It
+  blocks you and costs wall-clock time, so use it only when you need an
+  answer you cannot find yourself. Your own lookups stay unnamed; `SKILL.md`
+  "Every dispatch is named" says why.
 
 ## The worktree rule
 
@@ -144,7 +145,9 @@ run that uses that port.
 You will sometimes hit a question this contract and your brief do not
 answer. When you do:
 
-1. `SendMessage` the project lead. Never message the human — you have no
+1. `SendMessage` the project lead. Your spawn prompt names your dispatch
+   mode. In teammate mode, send to the project lead's name. In subagent
+   mode, send to `main`. Never message the human — you have no
    channel to the human, and the project lead is the one who decides whether
    to escalate. When the send fails, or no project lead is reachable, treat
    the question as unanswered and record it in your report.
@@ -217,6 +220,7 @@ final message is your report. Say so in its first line, include everything
 the report contract requires, and name the denied path. Never fabricate a
 file you could not write, and never stop silently.
 
-This holds whichever way you were dispatched. A subagent's final message
-returns to the project lead as a tool result, and a teammate's reaches it in
-the idle notification, so either way it is read.
+This holds whichever way you were dispatched. A teammate's final message
+reaches the project lead in the idle notification. A background subagent's
+reaches it only through `SubagentHandback`, so make that call your last step
+when your harness offers it. Either way the message is read.

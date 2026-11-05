@@ -230,7 +230,8 @@ test('a skill that is not the queue leaves the board unarmed', async ($, on) => 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   await $.skill.prompt({ skill: 'crew:project-lead', text: 'go' })
   await w.clock.advance(10000)
-  expect(w.seen.reads).toBe(0)
+  // The owner check reads the board no more than once each POLL_MS.
+  expect(w.seen.reads).toBeLessThanOrEqual(Math.ceil(10000 / 3000))
   expect(w.seen.opens).toBe(0)
   expect(w.seen.status).toEqual([])
   // The command still opens the pane by hand.
@@ -734,7 +735,10 @@ test('A3: a gh candidate with a row or an entry gives no second entry and no pro
 })
 
 test('A4: an unarmed session polls no source, writes nothing and prompts nothing', async ($, on) => {
-  const w = watcher(on, { board: () => watchBoard({ watches: [SLACK_WATCH, GH_WATCH] }) })
+  const w = watcher(on, {
+    board: () => watchBoard({ watches: [SLACK_WATCH, GH_WATCH] }),
+    session: 's9',
+  })
   w.slack.history = [msg(ts(1), [11])]
   w.gh.prs = [ghPr(5)]
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })

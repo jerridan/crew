@@ -65,8 +65,9 @@ const STAGES: ReviewBoardStage[] = [
 const armed = atom({ plugin: 'crew', key: 'armed' } as const, false, {
   shape: 'armed-1',
 })
-const showDone = atom({ plugin: 'crew', key: 'showDone' } as const, false, {
-  shape: 'show-done-1',
+// When this session armed, in ms. A later owner than that disarms it.
+const armedAt = atom({ plugin: 'crew', key: 'armedAt' } as const, 0, {
+  shape: 'armed-at-1',
 })
 
 const isDone = (r: ReviewBoardRow) => r.stage === 'merged' || r.stage === 'closed'
@@ -386,21 +387,73 @@ const loadAsks = async ($: Engine) =>
 const loadView = async ($: Engine) =>
   view(parseBoard(await load($)), parseAsks(await loadAsks($)))
 
+// True once a render drew the pane: its reload runs for any session.
+let paneShown = false
+
+// An armed session leaves when the board names another non-empty session
+// that took it after this session armed. A session the skill just armed has
+// an earlier armedAt than its own Start writes, so it stays.
+const superseded = async ($: Engine, board: ReviewBoardFile) => {
+  const owner = str(obj(board.owner).session_id)
+  if (!owner || owner === (await $.session.id())) return false
+  return at(str(obj(board.owner).since)) > (await read($, armedAt))
+}
+
+const arm = async ($: Engine) => {
+  const now = await $.clock.now()
+  await update($, armed, () => true)
+  await update($, armedAt, () => now)
+  last = undefined
+  await poll($)
+}
+
+const disarm = async ($: Engine) => {
+  await update($, armed, () => false)
+  if (watcher) (watcher as { cancel: () => void }).cancel()
+  watcher = undefined
+  opened = false
+  last = undefined
+  $.ui.status(undefined)
+}
+
+// One read of the board each POLL_MS. An armed session sets the status line
+// and opens the pane. A session the board names as owner arms. An open pane
+// of any session redraws on a change.
 const tick = async ($: Engine) => {
   const text = (await load($)) ?? ''
+  const parsed = parseBoard(text)
+  let isArmed = await read($, armed)
+  if (isArmed && (await superseded($, parsed))) {
+    await disarm($)
+    isArmed = false
+  }
+  if (!isArmed) {
+    const owner = str(obj(parsed.owner).session_id)
+    if (owner && owner === (await $.session.id())) {
+      await arm($)
+      return
+    }
+    if (!paneShown) return
+  }
   const asks = (await loadAsks($)) ?? ''
   const seen = [text, asks, ...notes].join('\n')
   if (seen === last) return
   last = seen
-  const board = view(parseBoard(text), parseAsks(asks))
+  const board = view(parsed, parseAsks(asks))
   current = board
-  const open = board.rows.filter(r => !isDone(r))
-  $.ui.status(open.length === 0 ? undefined : statusLine(board))
-  if (!opened && open.length > 0) {
-    opened = true
-    await $.ui.open({ id: PANE, title: 'Review board' })
+  if (isArmed) {
+    const open = board.rows.filter(r => !isDone(r))
+    $.ui.status(open.length === 0 ? undefined : statusLine(board))
+    if (!opened && open.length > 0) {
+      opened = true
+      await $.ui.open({ id: PANE, title: 'Review board' })
+    }
   }
   $.ui.invalidate('ui.render')
+}
+
+const ensureTimer = ($: Engine) => {
+  if (!timer) timer = $.clock.every(POLL_MS, () => void tick($))
 }
 
 // The token never leaves this function's callers: no file, prompt, pane,
@@ -787,7 +840,7 @@ const watch = async ($: Engine) => {
 }
 
 const poll = async ($: Engine) => {
-  if (!timer) timer = $.clock.every(POLL_MS, () => void tick($))
+  ensureTimer($)
   if (!watcher) {
     watcher = $.clock.every(WATCH_MS, () => void watch($))
     // The first poll may take as long as a fetch, so arming does not wait.
@@ -803,14 +856,12 @@ export const register: Register = on => {
       description: 'Open the review board pane, or print it as text',
     })
     if (await read($, armed)) await poll($)
+    else ensureTimer($)
     return next(e)
   })
 
   on('skill.prompt', async ($, e, next) => {
-    if (isQueueSkill(e.skill)) {
-      await update($, armed, () => true)
-      await poll($)
-    }
+    if (isQueueSkill(e.skill)) await arm($)
     return next(e)
   })
 
@@ -828,15 +879,15 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const { Box, Text } = $.ui.resolve(e)
     // Only the timer and the skill prompt run `tick`; a render never does. An
     // armed session draws from the last tick, so a render reads no file. A
     // session that is not armed reads the file once per render.
-    const isArmed = await read($, armed)
-    if (isArmed && !timer) timer = $.clock.every(POLL_MS, () => void tick($))
-    const board = (isArmed && current) || (await loadView($))
+    paneShown = true
+    ensureTimer($)
+    const board = current ?? (await loadView($))
     const s = sections(board)
-    const shown = await read($, showDone)
+    const shown = true
     const w = widths(e.props.bodyColumns)
 
     const cell = (width: number, text: string, color?: string) => (
@@ -867,7 +918,6 @@ export const register: Register = on => {
       Math.max(1, board.watches.length) +
       notes.length +
       Math.max(1, s.needsYou.length) +
-      1 +
       (shown ? s.done.length : 0)
     let room = Math.max(1, e.props.scroll.bodyRows - used)
     if (s.inFlight.length > room) room = Math.max(1, room - 1)
@@ -900,10 +950,7 @@ export const register: Register = on => {
         {flight.map(rowView)}
         {hidden > 0 && <Text dimColor>{`+${hidden} more`}</Text>}
         <Text bold>Done</Text>
-        <Button key="toggle-done" onPress={() => update($, showDone, v => !v)}>
-          {`${shown ? 'Hide' : 'Show'} done (${s.done.length})`}
-        </Button>
-        {shown && s.done.map(rowView)}
+        {s.done.map(rowView)}
       </Box>
     )
   })

@@ -223,17 +223,26 @@ advancing across a resume because they are read from the record, which
 survives; a scout, a spec writer or a lookup keeps no such counter, and
 needs none.
 
-**The dispatch mode.** `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` alone sets
-it, never the path or the role. Run `echo
-$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` before your first dispatch in each
-session, a resumed one included. Write the mode to `run.dispatch_mode` with
-`crew-record.py run set`. Name the mode in every spawn prompt.
+**The dispatch mode.** Whether the harness has agent teams on sets it,
+never the path or the role. Do not read the flag with `echo`: the Bash
+shell loads your profile, so it can disagree with the harness. Read the mode
+from your first dispatch in each session, a resumed one included:
 
-| | Teammate mode — the flag prints `1` | Subagent mode — anything else |
+1. Dispatch it without `run_in_background`, and alone.
+2. A result that says `Spawned successfully` means teammate mode. Any other
+   result means subagent mode.
+3. Write the mode with `crew-record.py <record-dir> run set
+   dispatch_modes.<session id> '"<mode>"'`.
+
+In subagent mode, that first dispatch runs in the foreground and blocks
+you until it ends. Make it a scout when you can. Name the mode in every
+spawn prompt after it.
+
+| | Teammate mode | Subagent mode |
 |---|---|---|
 | A named dispatch | a teammate, in its own pane under a display mode (`--teammate-mode tmux` or `iterm2`), else in-process | a background subagent: always pass `run_in_background: true` |
-| `run_in_background` | never: a teammate does not support it | always |
-| Its result | the final message in its idle notification | its hand-back, an `<agent-message>` turn. A task notification follows it and carries no text. |
+| `run_in_background` | never: a teammate does not support it | always, after the first dispatch |
+| Its result | the final message in its idle notification | its hand-back, an `<agent-message>` turn. The harness tells every background subagent to hand back with `SubagentHandback`. A task notification follows it and carries no text. |
 | Your later message to it | `SendMessage` to its name reaches its mailbox | `SendMessage` to its name resumes it, with its context kept |
 | Its question to you | a message in this session, sent to your name | a new turn, sent to `main` |
 | Its own lookups | run in the foreground, one at a time | not yet observed (design §15.124) |
@@ -284,9 +293,11 @@ table above says where the result arrives. Where an agent also writes a
 record file — a critic, an IC, a review — that file stays the durable copy
 in both modes.
 
-**Permission prompts surface here.** Any dispatch's prompt reaches this
-session, for you to approve. Pre-approve what the run needs, or a
-no-prompt run stalls on the first one.
+**Permission prompts surface here in teammate mode.** A teammate's prompt
+reaches this session, for you to approve. Pre-approve what the run needs, or
+a no-prompt run stalls on the first one. No run has shown what a background
+subagent does with an un-granted command (design §15.124). Treat its stall or
+its denial as a stall here.
 
 **Both modes run every path.** `full-path.md` sends an IC its next
 package, a fix round and a nudge by `SendMessage`, and both modes deliver

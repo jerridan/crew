@@ -54,8 +54,7 @@ CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --perm
 ```
 
 To run every agent as a background subagent instead, start without the
-variable. Subagent mode is on trial. If your settings set the variable,
-turn it off for this session:
+variable. If your settings set the variable, turn it off for this session:
 
 ```
 claude --model fable --effort high --permission-mode auto --settings '{"env":{"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS":"0"}}'

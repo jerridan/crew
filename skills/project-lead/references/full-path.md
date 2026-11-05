@@ -61,9 +61,8 @@ find it by its team name (design §15.102). A pane needs room: a dispatch that
 fails with `create pane failed: pane too small` is an `environment` block, and
 it escalates the same way a stalled one does, below. A teammate's permission
 prompts surface in your session (design §15.12, §15.20), so one un-granted
-command stalls the whole run. No run has shown what a background subagent
-does with an un-granted command (design §15.124): treat a stall or a
-denial there the same way. A session cannot read its own permission mode, so
+command stalls the whole run. `SKILL.md`'s "Every dispatch is named" says
+what holds in subagent mode. A session cannot read its own permission mode, so
 the README names this as a launch requirement and the principal owns it. You
 may not widen it yourself either, because settings are configuration.
 
@@ -454,7 +453,9 @@ findings are a patch round on it. Neither is a new split.
 ## Resume after a kill
 
 In-process teammates and background subagents live in your session, so a
-crash, a closed terminal or a reboot takes every IC down at once. What survives is every worktree on disk: its commits
+crash, a closed terminal or a reboot takes them all down at once. A
+split-pane IC is its own process and can outlive you. Before you respawn an
+IC over its worktree, check that no pane IC still runs there. What survives is every worktree on disk: its commits
 **and its uncommitted edits**. What is lost is each IC's live context.
 
 `/crew:project-lead --resume <goal-slug>` reconciles. Append this

@@ -8413,7 +8413,7 @@ Deliberately different:
      crew with no teammates. With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
      unset, every dispatch is now a background subagent. With the flag set,
      nothing changes. `SKILL.md`'s "Every dispatch is named" owns the two
-     modes, and `run.dispatch_mode` records which one a run used.
+     modes, and `run.dispatch_modes` records which one each session of a run used.
 
      a. **Why.** The principal keeps `remoteControlAtStartup: true` in the
         user settings. Each split-pane teammate is its own `claude` process,
@@ -8457,17 +8457,28 @@ Deliberately different:
         `PreCompact` hook find a subagent the same way as an in-process
         teammate.
 
-     d. **Still open.** No crew run has used subagent mode. Three questions
+     d. **Still open.** No crew run has used subagent mode. Four questions
         need a run:
 
         - Does a background subagent commit in a worktree, or does it stall
           or fail on a permission prompt?
         - Can it write to the record root?
         - Do its nested lookups run in the background?
+        - Does every role hand back? The harness's `SubagentHandback`
+          instruction is generic, but only `crew:ic` has received it.
 
         The teammate ICs' first request was about 21,400 to 23,800 tokens.
         The probe's was about 16,000, but its prompt held no contract, so
         the two figures do not compare. To answer the cost question, price
         the first runs in each mode with `spend.py`, and use
-        `run.dispatch_mode` to tell the modes apart. `crew-stats.py` does
+        `run.dispatch_modes` to tell the modes apart. `crew-stats.py` does
         not report the field yet.
+
+     e. **The review of PR #131 changed two rules.** The project lead first
+        read the mode with `echo`. That reading can be wrong in two ways:
+        the harness also takes `true` as on, and the Bash shell loads the
+        user's profile, which can export a value that `--settings`
+        overrides for the harness. The mode now comes from the first
+        dispatch's result, because only the harness knows it. The record
+        keeps one mode per session, so a run that changes mode on a resume
+        keeps both.

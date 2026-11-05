@@ -46,9 +46,10 @@ it against your worktree.
 
 - Do not spawn another implementer, and do not spawn a reviewer.
 - You may spawn `Explore` for a read-only lookup, and no other agent type.
-  It runs in the foreground, so it blocks you and costs wall-clock time. Use
-  it only when you need an answer you cannot find yourself. Your own lookups
-  stay unnamed; `SKILL.md` "Every dispatch is named" says why.
+  Run it in the foreground, and wait for its answer before you go on. It
+  blocks you and costs wall-clock time, so use it only when you need an
+  answer you cannot find yourself. Your own lookups stay unnamed; `SKILL.md`
+  "Every dispatch is named" says why.
 
 ## The worktree rule
 
@@ -219,7 +220,6 @@ the report contract requires, and name the denied path. Never fabricate a
 file you could not write, and never stop silently.
 
 This holds whichever way you were dispatched. A teammate's final message
-reaches the project lead in the idle notification. A foreground subagent's
-returns as a tool result. A background subagent's reaches it only through
-`SubagentHandback`, so make that call your last step when your harness
-offers it. Either way the message is read.
+reaches the project lead in the idle notification. A background subagent's
+reaches it only through `SubagentHandback`, so make that call your last step
+when your harness offers it. Either way the message is read.

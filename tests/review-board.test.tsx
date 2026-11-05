@@ -6,6 +6,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import * as mod from '../hooks/review-board'
 
 const BOARD = '/rec/queue/board.json'
+// The clock of the pane tests: later than the board's owner since.
+const NOW = Date.parse('2026-06-01T00:00:00Z')
 
 const PANE = {
   plugin: 'crew',
@@ -42,10 +44,13 @@ const row = (
   ...extra,
 })
 
-const board = (rows: unknown[]) =>
+const board = (
+  rows: unknown[],
+  owner = { session_id: 's1', since: '2026-01-01T00:00:00Z' },
+) =>
   JSON.stringify({
     version: 1,
-    owner: { session_id: 's1', since: '2026-01-01T00:00:00Z' },
+    owner,
     updated_at: '2026-01-01T00:00:00Z',
     watches: [
       {
@@ -96,10 +101,12 @@ const world = (
   on: On,
   file: () => string,
   open: () => UiOpenResult = () => ({ isPlaced: true }),
+  session = 'me',
 ) => {
   const seen = { reads: 0, opens: 0, closes: 0, status: [] as unknown[] }
   mock.env(on, { CREW_RECORD_ROOT: '/rec', HOME: '/home/me' })
-  const clock = mock.clock(on)
+  const clock = mock.clock(on, { now: NOW })
+  on('session.id', () => ({ value: session }))
   on('fs.read', (_, e) => {
     if (e.path !== BOARD) return { deny: `no ${e.path}` }
     seen.reads += 1
@@ -229,6 +236,60 @@ test('a skill that is not the queue leaves the board unarmed', async ($, on) => 
   // The command still opens the pane by hand.
   await $.command.run(command(120))
   expect(w.seen.opens).toBe(1)
+})
+
+// Arming and reload: a session arms from the board's owner field, an open
+// pane reloads armed or not, and a later owner disarms a session.
+
+test('R7: the board names this session as owner: it arms with no skill prompt', async ($, on) => {
+  const w = world(on, () => board(ROWS), undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  expect(w.seen.opens).toBe(1)
+})
+
+test('R7: an open pane that is not armed reloads the board every POLL_MS', async ($, on) => {
+  let rows: object[] = ROWS
+  const w = world(on, () => board(rows))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(order(words(await ui.drawn()))).toContain(2)
+  rows = ROWS.filter(r => r.pr !== 2)
+  await w.clock.advance(3000)
+  expect(order(words(await ui.drawn()))).not.toContain(2)
+  await ui.unmount()
+})
+
+test('R7: a session that is not the owner and had no skill prompt shows nothing', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(120_000)
+  expect(w.seen.status).toEqual([])
+  expect(w.seen.opens).toBe(0)
+})
+
+test('R7: a session the board names as owner disarms when a later owner takes the board', async ($, on) => {
+  let file = board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' })
+  const w = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's2', since: '2026-07-01T00:00:00Z' })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+  const reads = w.seen.reads
+  await w.clock.advance(60_000)
+  // The disarmed session reads for the owner check only, once per POLL_MS.
+  expect(w.seen.reads - reads).toBeLessThanOrEqual(20)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: /review-board opens the pane in an unarmed session', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.command.run(command(120))
+  expect(w.seen.opens).toBe(1)
+  expect(w.seen.status).toEqual([])
 })
 
 test('/review-board prints the table as text, fitted to the width, under 110 columns', async ($, on) => {

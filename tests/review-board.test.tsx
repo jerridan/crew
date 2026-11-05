@@ -1421,6 +1421,15 @@ test('R8: the top line names the watch sources and the age of the board', async 
   expect(flat(lines[0])).toBe('Review board  #x + review requests + direct asks  ·  updated 10m ago')
 })
 
+test('R8: an open pane redraws while only the clock moves, so the board age advances', async ($, on) => {
+  const w = world(on, () => lay(LROWS))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(flat(kids((await ui.drawn()) as N)[0])).toContain('updated 10m ago')
+  await w.clock.advance(2 * MIN + 3000)
+  expect(flat(kids((await ui.drawn()) as N)[0])).toContain('updated 12m ago')
+  await ui.unmount()
+})
+
 test('R8: with no active watch the top line has no sources', async ($, on) => {
   world(on, () => lay([], []))
   const lines = await drawPane($)

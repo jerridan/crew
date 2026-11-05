@@ -51,7 +51,8 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 
 1. **Read the board** at `references/board.md`'s path. **Always take it.**
    Set `owner.session_id` to `$CLAUDE_CODE_SESSION_ID` and `owner.since` to
-   the current time. Keep the existing watches and rows. When the board
+   the output of `date -u +%Y-%m-%dT%H:%M:%SZ`. Keep that value as your
+   takeover time. Keep the existing watches and rows. When the board
    named another non-empty session id, tell the principal in one line which
    session id you took the board from. Ask nothing. When the board does not
    exist, write it with no watch and no row.
@@ -76,6 +77,8 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 Each fire, each `ready:` message, and each "Crew review-queue ask:" prompt
 from the review-board mod runs this loop:
 
+0. **Run "The owner check".** When it says stop, stop here. Do no triage, no
+   child launch, no post, no approval, no enqueue and no Slack reaction.
 1. **With a token**, read `asks.json` first. Take each
    untaken entry, as `references/board.md` defines it. Treat it as
    "Triage" treats an ask: a new PR gets a row, and a PR with a row gets
@@ -467,11 +470,21 @@ Write the board at every transition: a new watch or row, a change of
 and schema. Write this session's id, `$CLAUDE_CODE_SESSION_ID`, as the
 owning session id in `owner.session_id`.
 
-**Before each board write after your own "Start", read `owner.session_id`
-again.** When another session owns the board, do not write. Delete the cron
-job of your wakeup loop, the job that "Start" step 3 arms, with `CronList`
-and `CronDelete`. Tell the principal in one line. A new queue session took
-the board, and this one is the old session.
+**The owner check.** Run it at step 0 of each wakeup-loop run, before a
+direct ask's triage, before each action that the principal's answer starts,
+and before each board write after your own "Start".
+Read `owner` from the board. Order owners by `owner.since`:
+
+- `owner.session_id` is yours, or empty: go on.
+- Another session owns the board and its `owner.since` is later than your
+  takeover time: a new queue session took the board, and this one is the old
+  session. Do not write. Delete the cron job of your wakeup loop, the job
+  that "Start" step 3 arms, with `CronList` and `CronDelete`. Tell the
+  principal in one line. Stop.
+- Another session owns the board and its `owner.since` is not later than your
+  takeover time: an earlier owner wrote over your takeover. Take the board
+  again. Set `owner.session_id` to yours and `owner.since` to your takeover
+  time, and keep the rows. Tell the principal in one line. Go on.
 
 Write the whole file to `board.json.tmp` beside it, then move it over
 `board.json`, so a reader never sees half a file. Set `last` at each event.

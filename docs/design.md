@@ -8920,7 +8920,8 @@ Deliberately different:
         `review-queue` skill prompt, or a `board.json` whose
         `owner.session_id` names this session. The owner path needs no
         `skill.prompt`. One timer reads the board once each `POLL_MS`. An
-        open pane reloads and redraws on every tick, armed or not. A session
+        open pane reloads on every tick, armed or not, and redraws when a file
+        changes or the clock enters a new minute, so each age moves. A session
         that is not the owner sets no status line and opens no pane. An
         armed session disarms when the board names another non-empty owner
         whose `since` is later than the time this session armed. That
@@ -8928,12 +8929,16 @@ Deliberately different:
         disarming before its own Start writes the owner.
 
      b. **The queue takes the board every time (#134).** "Start" now sets
-        `owner` to the new session with no question, and says in one line
-        which session it took the board from. Before each later write, a
-        queue session reads `owner.session_id` again. When another session
-        owns the board, it does not write and it deletes its wakeup cron
-        job. `SKILL.md` owns the rule, and `board.md` says only what
-        `owner` means.
+        `owner` to the new session with no question, with `owner.since` from
+        `date -u`, and says in one line which session it took the board from.
+        "The owner check" runs at step 0 of each wakeup-loop run, before a
+        direct ask's triage, before an action that the principal's answer
+        starts, and before each board write. It orders owners
+        by `owner.since`, as the mod does. A session whose takeover is
+        earlier than the board's `since` stops and deletes its wakeup cron
+        job. A session that an earlier owner wrote over takes the board
+        again and keeps the rows. `SKILL.md` owns the rule, and `board.md`
+        points at it.
 
      c. **The layout (#135).** The pane and the text table now match the
         mockup that the principal approved on 2026-10-29: a top line with

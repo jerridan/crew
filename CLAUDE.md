@@ -6,9 +6,12 @@ The repo root is the plugin root.
 
 Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
-two hooks, the three scripts under `skills/project-lead/scripts/` and
-`skills/delivered-window/scripts/pr-watch.sh`: they are code, run against a
-seeded record (design §15.38, §15.50, §15.123).
+two hooks, the three scripts under `skills/project-lead/scripts/`,
+`skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`, and
+`skills/review/scripts/review-json.py`: they are code, run against a seeded
+record (design §15.38, §15.50, §15.123, §15.124). The review-board mod,
+`hooks/review-board.tsx`, is TypeScript: `claude plugin test <repo>` runs its
+tests, and `claude plugin validate <repo>` checks its module (§15.128).
 
 ## Layout
 
@@ -19,12 +22,15 @@ seeded record (design §15.38, §15.50, §15.123).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
-| `skills/delivered-window/scripts/pr-watch.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item | the project lead's `Monitor` call and keep-alive fire, from the plugin directory |
+| `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
-| `skills/review/references/github-review.md` | what a review run puts on GitHub: the sanitizing, the effect rule, the shapes and the post command | the project lead, in a review run |
+| `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
+| `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/review-queue/SKILL.md`, `skills/review-queue/references/board.md`, `ready-file.md`, `sources.md` | the `/crew:review-queue` entry point: watches, triage, children, the gate, every post, approval and enqueue, the board; the board file's schema; a child's ready file; the polls of a Slack channel and of the review requests | its skill trigger; `/crew:review` in child mode reads `ready-file.md` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
+| `hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` | the review-board mod: a pane and a status line that read the board file, and, with a Slack token, the watcher that polls the queue's sources and writes `asks.json`; its `$.state` contract; its tests | the plugin loader, as the hooks module `hooks.json` names; `claude plugin test` |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
@@ -73,14 +79,44 @@ PR are unexercised.
 
 `/crew:review` is built and ran once (§15.108). Its reviewer resume, queue
 line and pane rule are unexercised (T77). T78 cut its pre-review steps to
-one scout and a charter template, and no run has exercised that (§15.109).
+one scout and a charter template (§15.109). T82 reads the suite from the
+standing instructions, labels findings by the severity rubric, approves last,
+and keeps the watch past the merge queue (§15.124). No run has exercised T78
+or T82. The severity rubric on goal runs is built: the project lead labels
+every review finding by it, whatever its source, and a round with no
+blocking finding is the last (§15.125). No run has exercised it.
+
+`/crew:review-queue` and the review-board mod are built (T84, T85,
+§15.128). One queue session launches `/crew:review` children in child mode,
+reads each child's ready file, and does every post, approval, enqueue and
+Slack reaction itself. The mod's tests pass under `claude plugin test`. No
+queue session and no child has run yet.
+
+T86 makes the review-board mod the queue's watcher when
+`~/.claude/secrets/slack-token` holds a token: it polls Slack and the
+review requests with no model turn, writes `queue/asks.json`, and prompts
+the queue session (§15.129). No Slack token was on the build machine, so
+no live Slack poll has run.
+
+T87 is built: the queue finds the principal's checkout in place of a clone,
+a review run cuts its one worktree under that checkout's
+`.claude/worktrees/`, and `Gates: ci` lets the PR's checks stand in for the
+local suite (§15.130). No queue session and no review run has used it.
 
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline
 per deliverable, a gate decided by each item's author, a review that stops on
 an accepted verdict, a delta re-review, a two-round spec critic, whole-class
 fix rounds, and `crew-record.py`'s `decision` and `round` subcommands. No run
-has read any of it yet.
+has read any of it yet. T80 lets a worktree-isolated session run the full
+path: launch check 1 probes one worktree base for every worktree of a run
+(§15.126). No run has
+exercised it.
+
+T83 is built: after a merge, the project lead arms a deploy watch, and a
+successful deploy of the merge commit is the ship word. A repo with no deploy
+ships at the merge. The watch ran only against a seeded record, and no crew
+run has used it (§15.127).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
@@ -88,7 +124,7 @@ sessions rather than from the checkout (§15.90).
 
 Subagent mode is built and on trial: with the teams flag unset, every
 dispatch is a background subagent. One probe passed its four checks, and no
-crew run has used the mode yet (§15.124).
+crew run has used the mode yet (§15.131).
 
 T57 removed the tier above the project lead: the principal hands each goal
 over itself (§15.95). Its own kill and forced-compaction probes have run
@@ -128,6 +164,13 @@ Each reference owns one subject and is canonical for it:
   worktree, the instructions file, the runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.
 - `skills/review/references/github-review.md` — what a review run posts.
+- `skills/review-queue/references/board.md` — the board file the queue
+  session writes and the review-board mod reads, and the asks file the mod
+  writes and the queue session reads.
+- `skills/review-queue/references/ready-file.md` — a queue child's ready
+  file and its message to the queue session.
+- `skills/review/references/severity-rubric.md` — the six labels of a review
+  finding.
 - `writing-standard.md` — how an instruction file and a README are written.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A

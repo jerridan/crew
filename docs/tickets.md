@@ -3374,7 +3374,7 @@ instructions"; `record-format.md` "`decisions.md`".
 
 ## T80 — Correct launch check 1 and the IC contract's worktree rule
 
-Status: open
+Status: done 2026-10-30
 Depends on: T79
 Stage: 8 (design §15.121)
 
@@ -3385,8 +3385,10 @@ session refuses that form and still runs the full path. `ic-contract.md`'s
 session allows. Correct both, as design §15.121 records.
 
 Files: `skills/project-lead/references/full-path.md`,
-`skills/project-lead/references/ic-contract.md`, `docs/design.md`,
-`docs/tickets.md`, and the version in both manifests.
+`skills/project-lead/references/ic-contract.md`,
+`skills/project-lead/references/record-format.md`,
+`skills/project-lead/references/autonomy-contract.md`, `docs/design.md`,
+`docs/tickets.md`, and the version in both manifests. GitHub issue #120.
 
 Done when: a worktree-isolated session runs the full path with no
 escalation, and an IC's `cd <worktree> && git` form is allowed where `-C` is
@@ -3417,3 +3419,208 @@ approval, stops on a merged PR and exits 2 on a malformed record; and no
 step in `pr-watch.md` tells the project lead to fill in or save the poll.
 
 Read first: design §15.123; `pr-watch.md` "The poll" and "Arm the monitor".
+
+## T82 — Harden `crew:review` for many runs at once
+
+Status: done 2026-10-30
+Depends on: T78, T79, T81
+Stage: 8 (design §15.124)
+
+Issues #121 and #115. The review-queue trial ran 18 PRs through
+`/crew:review` and filed #121. #115 asked that a resumed runner never lose a
+round. This ticket addresses both in one PR. #121 item 1's cadence, one
+install per repo per day, stays open with #122. #115's sandbox flags stay
+out of scope, for the reason below.
+
+Scope, one line per requirement:
+
+1. The suite, the gates and the setup command come from the `Gates` and
+   `Setup` standing-instructions sections. With `Gates`, a review run
+   dispatches no scout. The setup command runs once per review worktree,
+   and again only on a lockfile change.
+2. An `Auto-review` section names the repo's review bot. Its blocking
+   findings on the current head are claims on the ledger, with source
+   `bot`.
+3. The severity rubric, `skills/review/references/severity-rubric.md`,
+   labels every finding. The label alone decides the post. `Effect:` is
+   gone.
+4. The assist path runs fix, push, re-review, approve. The project lead
+   re-reads the head before every approval.
+5. The launch words "<n> fix rounds" and "skip the re-review when
+   prose-only or under 20 lines" write `Rounds:` and `Re-review:`. A round
+   that posts nothing takes no gate and records `auto: no findings`.
+6. The PR watch runs past `queued`, prints `dequeued`, and
+   `dequeue-diagnosis.sh` says why the PR left the queue.
+7. `skills/review/scripts/review-json.py` builds the post JSON from the
+   draft file's bytes.
+8. The review runner has a startup check, a 2700-second cap on the default
+   runner and a 180-second no-output watchdog on a replacement.
+
+Out of scope: the Codex sandbox flags that #115 asked for. Codex is not
+installed on this machine, so nothing could test them, as T79 found.
+
+Files: `skills/review/SKILL.md`, `github-review.md`, `severity-rubric.md`,
+`later-round.md`, `review-json.py`, `skills/project-lead/SKILL.md`,
+`review-output.md`, `skeptical-review.md`, `record-format.md`,
+`review-runner.md`, `substitution.md`, `crew-stats.py`,
+`skills/delivered-window/SKILL.md`, `pr-watch.md`, `pr-watch.sh`,
+`dequeue-diagnosis.sh`, `docs/design.md`, `docs/tickets.md`, `README.md` and
+`CLAUDE.md`. The version goes to 0.1.91 in both manifests.
+
+Done when: the spec's acceptance lines for R1 to R9 pass, the seeded runs of
+the three scripts are in the record's `reports/scripts.md` and
+`reports/patch-scripts.md`, and the version is bumped.
+
+Unexercised: no run has read any of these rules. The first review run on
+0.1.91 is the first evidence.
+
+Read first: design §15.124; `skills/review/SKILL.md`; `github-review.md`;
+`review-runner.md` "The startup check and the cap".
+
+## T83 — Watch the deploy of a merged PR, and ship on its success
+
+Status: done
+Depends on: T72, T81
+Stage: 8 (design §15.127)
+
+Scope. A merge was only a notice in a goal run, and the principal typed the
+ship word after the deploy. Add a deploy mode to `pr-watch.sh`. After a merge,
+the project lead arms it from a new `run.deploy` object, and a successful
+deploy is the ship word. A new `Deploy` standing instruction names the signal:
+`environment`, `workflow`, `none` (the merge is the word) or `manual` (the word
+stays the principal's). With no section, a repo with no GitHub deployments and
+no deploy run ships at the merge. A failed or late deploy is a notice.
+
+Files: `skills/delivered-window/scripts/pr-watch.sh`,
+`skills/delivered-window/references/pr-watch.md`,
+`skills/delivered-window/SKILL.md`, `skills/project-lead/SKILL.md`,
+`skills/project-lead/references/record-format.md`, `skills/review/SKILL.md`,
+`README.md`, `CLAUDE.md`, `docs/design.md`, `docs/tickets.md`, and the version
+in both manifests.
+
+Done when: the script, run against a seeded record, prints `deployed` for an
+environment and for a workflow, prints `no-deploy` for a repo with no
+deployments and no deploy run, prints `deploy-timeout` for a deploy that never
+came, prints nothing for a record with `run.deploy.ended`, and exits 2 when
+`run.deploy` is absent or its timeout is not a positive integer; and the old
+`once` and loop modes are unchanged.
+
+Read first: design §15.127; `pr-watch.md` "Arm the deploy watch";
+`SKILL.md`'s "The deploy watch" and "The word that the work shipped".
+
+## T84 — Add `crew:review-queue`
+
+Status: done 2026-10-31
+Depends on: T82
+Stage: 8 (design §15.128)
+
+Issue #122. One queue session watches sources, triages each ask, launches a
+`/crew:review` child per PR, and does every post, approval, enqueue and Slack
+reaction itself. A child cannot act on a go-ahead the queue relays, so the
+queue holds the principal's word.
+
+Scope, one line per requirement:
+
+1. Watches: three sources, two policies, three phrases.
+2. Triage: six reads per ask, dedupe by repo and PR number, an inline read
+   for a PR of fewer than 150 changed lines with green CI and no prior
+   findings, a child for every other PR.
+3. Children: one clone per repo, one tmux session per child, launched with
+   "Report to the queue session <name>". `crew:review`'s child mode posts
+   nothing, writes the ready file and sends one `ready:` message.
+4. The gate: one batch ask; no findings needs no ask.
+5. Post, approve, enqueue: a `mergeable` check and the `Pre-enqueue checks`
+   standing-instructions section before every enqueue; a merge agent on
+   `CONFLICTING` under `assist`; a merged-or-dequeued watch per PR through
+   `pr-watch.sh`.
+6. The board file, its owner session and its one-day prune.
+7. The self-approval fallback, and the clean-up of children.
+
+Out of scope: #124, the mod as the watcher.
+
+Unexercised: no queue session and no child has run.
+
+Read first: design §15.128; `skills/review-queue/SKILL.md`;
+`skills/review-queue/references/ready-file.md`; `skills/review/SKILL.md`
+"Child mode".
+
+## T85 — Ship the review-board mod
+
+Status: done 2026-10-31
+Depends on: T84 (the board file)
+Stage: 8 (design §15.128)
+
+Issue #123. A hooks module in the plugin draws a pane and a status line from
+the board file. It arms only on the `review-queue` skill prompt. `/review-board`
+opens the pane in any session, or prints the board as text in a terminal
+under 110 columns.
+
+Scope: the pane's four sections, the sort, the bounded In flight list, the
+Done toggle kept across reloads, the status line and its clear, and fifteen
+tests under `claude plugin test`.
+
+Out of scope: #124.
+
+Unexercised: no session has loaded the mod from the installed plugin.
+
+Read first: design §15.128; `hooks/review-board.tsx`;
+`skills/review-queue/references/board.md`.
+
+## T86 — Make the review-board mod the queue's watcher
+
+Status: done 2026-10-31
+Depends on: T84, T85
+Stage: 8 (design §15.129)
+
+Issue #124. With a Slack user token in `~/.claude/secrets/slack-token`, the
+review-board mod polls each active watch every 60 seconds in the queue
+session that owns the board. It reads Slack's `conversations.history` and
+`gh search prs --review-requested=@me`, writes each ask to
+`queue/asks.json`, and submits one prompt to the queue session per poll
+that finds a new PR. The queue session takes the entries and writes
+`asks_through` in `board.json`. With no token, the mod polls nothing, and
+the queue session polls every source every 5 minutes, as before.
+
+Scope: the poll, the asks file and its prune rule, the derived `new` row in
+the pane, the queue skill's token test and 15-minute cron, the README row,
+and 46 new tests under `claude plugin test`.
+
+Out of scope: a Slack write from the mod, private channels, `userConfig`.
+
+Unexercised: no live Slack poll has run, because the build machine had no
+token. No queue session has loaded the mod.
+
+Read first: design §15.129; `hooks/review-board.tsx`;
+`skills/review-queue/references/board.md`.
+
+## T87 — Review in a worktree of the principal's checkout, and let CI stand in for the suite
+
+Status: done 2026-11-04
+Depends on: T82, T84
+Stage: 8 (design §15.130)
+
+Issue #132. The queue finds the checkout of the PR's repo and never clones.
+It reads a `Checkouts` section in `~/.claude/crew/config.md`, then its own
+checkout, and otherwise asks the principal. It cuts no worktree for a child.
+It launches the child with the checkout as its directory. A review run cuts
+one worktree at `<checkout>/.claude/worktrees/crew-pr-<n>`, detached at the
+pending head, and that tree is `run.checkout`. A fix round puts it on the
+local branch `crew/pr-<n>` and pushes by refspec. "Clean up" removes the
+worktree and the branch. With `Gates: ci`, a review reads the PR's check runs
+and commit statuses in place of a local suite, and runs no setup command.
+
+Scope: `skills/review-queue/SKILL.md` and its new `references/sources.md`;
+`skills/review/SKILL.md`, `references/later-round.md` and the new
+`references/auto-review.md`; `review-runner.md`; `skeptical-review.md`;
+`skills/delivered-window/SKILL.md`; `skills/project-lead/SKILL.md`; the
+README.
+
+Out of scope: a goal run's review worktree, the shared `Reviewers` section,
+the `review-comment` lines that `pr-watch.sh` repeats, a late `ready:`
+message from an old round, and a cancelled check that reads as not green.
+
+Unexercised: no queue session and no review run has used the new path. Only
+a read of the files has checked it.
+
+Read first: design §15.130; `skills/project-lead/references/review-runner.md`;
+`skills/review-queue/SKILL.md`.

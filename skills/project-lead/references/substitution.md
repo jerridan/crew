@@ -12,8 +12,8 @@ Give the replacement what the step's own reviewer would have had:
 
 | The step | What the replacement gets |
 |---|---|
-| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
-| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
+| spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` and `skills/review/references/severity-rubric.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
+| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, `severity-rubric.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
 
 **The spec critic's whole body, never the seven checks alone.** The scope
 limit, the over-specification checks, the rule against a re-spec for one
@@ -42,24 +42,57 @@ review writes the same names the rest of the run already looks for
 ## Running it
 
 The runner is a separate program. The prompt goes in on stdin, and the output
-comes back on stdout. Write this script to
-`<record-dir>/reviews/<prefix>-r<n>-run.sh`, with `<dir>` set to `run.repo`
-for a spec review and to the review worktree `review-runner.md` names for a
-skeptical review:
+comes back on stdout.
+
+**Check that the runner starts, before every run of the script:**
 
 ```
-cd <dir> && {
-  codex exec --sandbox read-only -C <dir> - \
-    < <record-dir>/reviews/<prefix>-r<n>-instructions.md \
-    2>&1 > <record-dir>/reviews/<prefix>-r<n>-result.txt
-  echo $? > <record-dir>/reviews/<prefix>-r<n>-result.exit
-} | tee <record-dir>/reviews/<prefix>-r<n>-result.stderr
+timeout 15 codex --version
 ```
 
-`2>&1 >` sends the runner's progress to `tee` and its output to the file.
-`tee` shows the progress in a pane and keeps it in `-result.stderr`, where
-the runner prints its session id. A later skeptical round changes only the
-`codex exec` line, as `review-runner.md`'s "Resume the reviewer" says.
+`review-runner.md`'s "The startup check and the cap" owns the timeout tool,
+the retries and the escalation for this check.
+
+Write this script to `<record-dir>/reviews/<prefix>-r<n>-run.sh`, with
+`<dir>` set to `run.repo` for a spec review and to the review worktree
+`review-runner.md` names for a skeptical review:
+
+```
+cd <dir> || exit 1
+r=<record-dir>/reviews/<prefix>-r<n>
+: > "$r-result.txt"; : > "$r-result.stderr"
+codex exec --sandbox read-only -C <dir> - \
+  < "$r-instructions.md" > "$r-result.txt" 2> "$r-result.stderr" &
+pid=$!
+tail -f "$r-result.stderr" &
+tail_pid=$!
+last=; idle=0
+while kill -0 "$pid" 2>/dev/null; do
+  sleep 10
+  now=$(cat "$r-result.txt" "$r-result.stderr" | wc -c)
+  if [ "$now" = "$last" ]; then idle=$((idle + 10)); else idle=0; last=$now; fi
+  if [ "$idle" -ge 600 ]; then
+    pkill -P "$pid"; kill "$pid"; sleep 5; kill -9 "$pid" 2>/dev/null
+    echo "watchdog: no output for 600 seconds" >> "$r-result.stderr"
+    echo 124 > "$r-result.exit"
+    kill "$tail_pid"; exit 124
+  fi
+done
+wait "$pid"
+echo $? > "$r-result.exit"
+kill "$tail_pid"
+```
+
+The runner writes its output to `-result.txt` and its progress to
+`-result.stderr`, where it prints its session id. `tail -f` shows the
+progress in a pane. A later skeptical round changes only the `codex exec`
+line, as `review-runner.md`'s "Resume the reviewer" says.
+
+**The watchdog stops a hung runner.** When `-result.txt` and `-result.stderr`
+both stay unchanged for 600 seconds, the script kills the runner and its
+child processes. It writes the watchdog line to `-result.stderr` and 124 to
+`-result.exit`. Check 1 of `review-runner.md`'s "Check the review before you
+read it" reads that exit as a failed run.
 
 **The exit file goes in the same script as the command.** `$?` holds the
 runner's status only until the next command runs, and a status you keep in
@@ -161,7 +194,7 @@ and retry the round.
 `skeptical-review.md` owns that step whole, and `review-runner.md` owns its
 mechanics. A replacement changes none of it: the detached worktree, the
 pending head, the round reserved before the review starts, the `Reviewed:`
-first line, the two verdict lines, the one retry on a failure, and the
+first line, the three closing lines, the one retry on a failure, and the
 adjudication that clears `review_pending`. Three of the four checks in
 `review-runner.md`'s "Check the review before you read it" are the Claude
 runner's own. Map them:
@@ -194,8 +227,9 @@ does not end with the step's verdict pair, transcribe the output in
 `Reviewed: <sha>` when the runner did not. Put `Source: <runner> file` or
 `Source: <runner> output` on the next line, for the source you used. A spec
 review reads no sha, so it carries the source line alone. End the report with
-the step's own verdict pair — `ready to split` or `re-spec needed` for the
-spec critic, `accepted` or `patch round needed` for the skeptical review.
+the three closing lines `review-output.md` gives, with the step's own verdict
+— `ready to split` or `re-spec needed` for the spec critic, `accepted` or
+`patch round needed` for the skeptical review.
 Adjudicate the findings as you adjudicate any review's. Nothing else in the
 run changes.
 

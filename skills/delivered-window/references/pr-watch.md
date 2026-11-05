@@ -26,11 +26,12 @@ plugin version that wrote it, and a later fix never reaches it (design
 
 The script reads its start state from `<record-dir>/state.json` at each start.
 The PR is the one deliverable with a `pr_url`. The cursor is `run.watch`:
-`last_polled_at`, `seen_ids`, `draft` and `head`. A `head` of 7 characters or
-more that starts the PR's head sha is the same head. The script exits 2 with
-a message on stderr when the record has no `state.json`, has no single
-`pr_url`, or has no `run.watch.last_polled_at` and `head`. Each `gh` read that
-fails prints nothing, so a network error costs one quiet poll.
+`last_polled_at`, `seen_ids`, `draft`, `head` and `queued`. An absent `queued`
+reads as `false`. A `head` of 7 characters or more that starts the PR's head
+sha is the same head. The script exits 2 with a message on stderr when the
+record has no `state.json`, has no single `pr_url`, or has no
+`run.watch.last_polled_at` and `head`. Each `gh` read that fails prints
+nothing, so a network error costs one quiet poll.
 
 The `submitted_at` and `created_at` filters use `>=`. GitHub times have
 one-second resolution, and `seen_ids` prevents a repeat.
@@ -64,12 +65,27 @@ so the items of that poll are reported first. A `closed` line is the same for
 a PR closed without a merge: the PR number as its id, the time of the poll, no
 author, and the loop stops on it.
 
-A `queued` line is the same for a PR that entered the merge queue: the PR
-number as its id, the `enqueuedAt` time, no author, and the loop stops on it.
+A `queued` line is for a PR that entered the merge queue: the PR number as
+its id, the `enqueuedAt` time and no author. The loop does not stop on it. It
+prints once per entry into the queue. The script starts from
+`run.watch.queued`, and remembers the queued state from poll to poll. So a PR
+already queued at the start prints no second `queued` line.
 `gh pr view --json` has no merge-queue field, so the poll reads
 `isInMergeQueue` through `gh api graphql`. A `merged` or `closed` state wins
-over the queue. The watch does not see a PR that leaves the queue later, such
-as on a failed queue check.
+over the queue.
+
+A `dequeued` line is for a PR that left the merge queue and is still open. It
+prints once, when the start state or an earlier poll of this loop was
+queued, and the PR now reads `isInMergeQueue` false and state `OPEN`. A merge
+or a close is not a dequeue. The line has this form, with the poll's time and
+`-` for the author:
+
+```
+dequeued <pr-number> - <poll time> left the merge queue
+```
+
+Like `ready`, a `queued` or `dequeued` id never goes into `seen_ids`: the
+queued state is what stops a repeat.
 
 ## What the poll leaves out
 
@@ -128,12 +144,66 @@ gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'
 
 ## The monitor command
 
-The script with no mode polls every 60 seconds. It stops after a `merged`,
-`closed` or `queued` line.
+The script with no mode polls every 60 seconds. It stops after a `merged` or
+`closed` line, and on no other.
 
 ```bash
 bash <watch-script> <record-dir>
 ```
+
+## Arm the deploy watch
+
+`SKILL.md`'s "The deploy watch" says when this runs. The script reads
+`run.deploy` from `state.json`. It needs no `run.watch`. It exits 2 with a
+message on stderr when `run.deploy` is absent, or when its `timeout_minutes` is
+not a positive integer. It exits 0 and prints nothing when `run.deploy.ended`
+is set.
+
+1. Stop the monitor you armed before, with `TaskStop`. **One monitor at a
+   time.**
+2. Call `Monitor` with the command below, `timeout_ms: 1800000` and
+   `persistent: false` when the tool offers that key.
+3. When the monitor ends at once with a `pr-watch.sh:` message, the record is
+   not ready. Do what the message says, then arm it again.
+
+```bash
+bash <watch-script> <record-dir> deploy
+```
+
+The script polls every 60 seconds. Each poll reads the PR state, the merge
+commit and the merge time with one `gh pr view`. A poll whose read fails uses
+the last good values. A PR that is not merged prints nothing. After the merge
+it reads the deploy signal that `run.deploy` names:
+
+- `environment` set: the newest GitHub deployment of the merge commit to that
+  environment, with its newest status.
+- `workflow` set: the newest GitHub Actions run of that workflow, by name,
+  with `head_sha` equal to the merge commit. Only `success` and the
+  conclusions `failure`, `timed_out` and `startup_failure` are results. Any
+  other run state is no result, and a newer run replaces it.
+- both `null`: the repo's GitHub deployments are read. With some, the script
+  reads the newest deployment of the merge commit whose
+  `production_environment` is true or whose environment is named `production`
+  or `prod`, in any case. Name the environment in a `Deploy` section for a
+  repo whose production environment has another name. With none, the script
+  reads the newest Actions run on the merge commit whose name holds `deploy` or
+  `release`, in any case, like a named workflow. When there is no such run, it
+  waits until 10 minutes after the merge, because the run may not exist yet,
+  and then prints `no-deploy`.
+
+The script prints one line and exits. The kinds are:
+
+| Line | Meaning |
+|---|---|
+| `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run conclusion is `success` |
+| `no-deploy <n> - <mergedAt> the repo has no GitHub deployments or deploy runs` | only with both `null`: the repo has no deployment and no deploy run 10 minutes after the merge. The repo has no deploy, and the line is the ship word. A failed read prints nothing |
+| `deploy-failed <id> - <time> <environment or workflow> <state>` | the newest deployment state is `failure` or `error`, or the newest run conclusion is `failure`, `timed_out` or `startup_failure`. A deployment that still runs holds this line back |
+| `deploy-timeout <n> - <time> no deploy seen <timeout> minutes after the watch started` | no result by `timeout_minutes` after `run.deploy.since`, or after `mergedAt` when the record has no `since`. When a deploy was seen but is still pending, the text says `no deploy finished` |
+| `closed <n> - <time> the PR closed` | the PR closed with no merge |
+
+`<n>` is the PR number, and `<id>` is the deployment or the run. A deployment
+that a newer deploy made `inactive` counts as `success` when an earlier status
+was `success`. An empty deploy read costs one quiet poll.
 
 ## Arm the keep-alive job
 
@@ -167,13 +237,23 @@ polls one time and prints `isDraft=<true|false>` last.
 bash <watch-script> <record-dir> once
 ```
 
+When `run.deploy` is in the record, the fire runs the mode `deploy-once`
+instead. It polls one time and prints a line from "Arm the deploy watch" only
+when one is due, and no draft line. A record with `run.deploy.ended` set prints
+nothing.
+
+```bash
+bash <watch-script> <record-dir> deploy-once
+```
+
 A fire that prints `isDraft=true` while `run.watch.draft` is false runs
 `crew-record.py <record-dir> run set watch.draft true`. The fallback keeps no
 state between fires, so this write is what lets a PR returned to draft fire
 `ready` again. A fire after the merge prints the `merged` line again, a fire
 after a close prints the `closed` line again, and a fire while the PR is in
 the merge queue prints the `queued` line again. Sort each as a notice already
-reported.
+reported. A fire reads `run.watch.queued` at its start, so it prints
+`dequeued` when that reads `true` and the PR has left the queue.
 
 ## Verify a failed check
 
@@ -182,6 +262,34 @@ The run id is in the check's link, `.../actions/runs/<run-id>/job/<job-id>`.
 ```bash
 gh run view <run-id> --repo <owner>/<repo> --log-failed
 ```
+
+## Diagnose a dequeue
+
+Run this on every `dequeued` line. `<dequeue-script>` is
+`scripts/dequeue-diagnosis.sh` beside `<watch-script>`, by its absolute path:
+
+```bash
+bash <dequeue-script> <owner> <repo> <n>
+```
+
+It prints three sections, each under a `==` heading line:
+
+1. The PR's `RemovedFromMergeQueueEvent` timeline items, read through
+   GraphQL, each with its time, its actor and its reason.
+2. The `merge_group` workflow runs whose `head_branch` holds `/pr-<n>-`,
+   newest first, with each run's conclusion and URL. The section lists only
+   the runs created at or after the PR's latest `AddedToMergeQueueEvent`. A
+   run older than that belongs to an earlier try. When the script cannot
+   read that event, it prints `no enqueue event; all runs shown` or
+   `enqueue read failed: <status>; all runs shown`, then every run.
+3. The last 60 lines of the log of the first failed job of the most recent
+   run in section 2 whose conclusion is `failure`, `timed_out` or
+   `startup_failure`.
+
+Then `== mergeable` and the PR's `mergeable` value. A section with nothing
+in it prints `none`. A section whose `gh` read exits non-zero prints
+`read failed: <status>`, with the exit status. A missing argument exits with
+status 2. `SKILL.md`'s "Watch the PR" says how the output sorts the item.
 
 ## Post a reply
 

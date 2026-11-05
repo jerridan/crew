@@ -8409,7 +8409,432 @@ Deliberately different:
      approval, ended on the merge, and exited 2 on each malformed record. No
      crew run has armed the watch from the script yet.
 
-124. **Subagent mode, on trial — 2026-11-02.** The principal wants to try
+124. **Harden `crew:review` for many runs at once — 2026-10-30, T82.** Issues
+     #121 and #115. The review-queue trial of 2026-10-27 and 2026-10-28 ran 18
+     PRs through `/crew:review`, and its lessons are #121. #115 is a resumed
+     Codex session that wrote its round 2 report over round 1. The round
+     number reserved before the dispatch, the prompt on stdin, check 4's
+     head comparison and a report path per round already closed #115's
+     failure. This goal verified them and changed none. No crew run has
+     exercised any change below.
+
+     R1, the suite from the standing instructions. A review run dispatched
+     `scout-1` on every PR, at 3 to 5 minutes each, and the answer never
+     changed for a known repo. `skills/project-lead/SKILL.md`'s
+     "Standing instructions" table now defines `Setup`, one install command
+     with an optional `Lockfile: <path>` line. With a `Gates` section, a
+     review run dispatches no scout (`skills/review/SKILL.md`, "Take the
+     PR" step 6). The issue asked for an install once per repo per day.
+     The setup command now runs once per review worktree, and again on a
+     later round only when a lockfile changed between the two heads. The
+     reason: a review run cuts one worktree per deliverable under its own
+     record directory, so an install cannot carry across runs. A shared
+     install per repo is #122's queue session. `skills/review/SKILL.md`'s
+     "Review" holds the cadence and the lockfile list. #121 item 1's form,
+     one install per repo per day, stays open with #122.
+
+     R2, the auto-review bot. A new `Auto-review` section names the bot's
+     login. "Adjudicate" reads the bot's latest review and its inline
+     comments, and takes each blocking item on the current head as a claim
+     on the ledger. A review on an older head is stale, and no claim comes
+     from it. `skeptical-review.md`'s "Adjudication is a ledger" names the
+     source of every line, `review` or `bot`, and `record-format.md` gives
+     the ledger header an `Auto-review:` line.
+
+     R3, the severity rubric. The trial showed that Codex's own labels spent
+     5 rounds on one lint-ratchet regex. `skills/review/references/
+     severity-rubric.md` holds the v1 rubric from #121 word for word. The
+     reviewer proposes a `Severity:` label (`review-output.md`), the project
+     lead labels each finding again, and the label alone decides the post.
+     `github-review.md`'s label rule holds the six-row table, and its event
+     rule has three rows. The `Effect:` line and its three values are gone.
+
+     R4, approve last. On PR 9223 an approval put the PR in the merge queue,
+     and the queue then refused crew's fix. The assist path now runs fix,
+     push, re-review, approve (`skills/review/SKILL.md`, "The assist path").
+     `github-review.md`'s "The post command" re-reads `headRefOid`,
+     `reviewDecision` and `mergeable` before every approval and after every
+     head move, and the approval's `commit_id` is that re-read head. A
+     `CONFLICTING` PR goes to the principal, and crew takes no action on it.
+
+     R5, two launch words and a default. `Rounds: <n>` caps the assist
+     path's fix rounds, 3 by default. `Re-review: skip when prose-only or
+     under 20 lines` skips the re-review of crew's own push. Both are
+     charter lines in `record-format.md`. A round takes no gate, round 1
+     included, when its suite ran and its report states no finding. It
+     records the answer `auto: no findings`, which `crew-stats.py` counts as
+     an auto post. The principal's review of the PR narrowed this rule. It
+     first read "a round whose ledger posts nothing", which let a round with
+     no suite, or with every finding held back, post with no gate. The
+     third skeptical round of the branch added a third condition: the
+     ledger holds no `bot` claim that posts. The rule read the skeptical
+     report alone, so a blocking claim from the auto-review bot could post
+     with no gate.
+
+     R6, the watch past the queue. Two queue drops and a merge conflict went
+     unwatched in the trial, because the window ended at `queued`.
+     `pr-watch.sh` now stops on `merged` and `closed` only. It prints
+     `queued` once per entry into the queue, from `run.watch.queued`, and a
+     `dequeued` line when a queued PR leaves the queue still open.
+     `skills/delivered-window/scripts/dequeue-diagnosis.sh` prints the
+     removal reason, the `merge_group` runs and the failed job's log.
+     `crew:delivered-window` sorts a `dequeued` item as a `ci` round when a
+     `merge_group` run failed, and as a notice otherwise. Two seeded runs are
+     the evidence, in the record's `reports/scripts.md` and
+     `reports/patch-scripts.md`. `pr-watch.sh once` ran on a seeded record
+     against the fixture PR jerridan/crew-fixture-string-kit#38, and printed
+     `dequeued`.
+     `dequeue-diagnosis.sh` ran on that PR, and printed three `none`
+     sections and the `mergeable` value. No crew run has exercised either
+     script.
+
+     R7, the draft's bytes. Two posts lost their marker because the body was
+     retyped. `skills/review/scripts/review-json.py` builds the post JSON
+     from the draft file, and exits 2 when the body or a comment does not
+     end with a marker. `github-review.md`'s "The post command" makes it the
+     one way to build the JSON. Seeded runs are the evidence, in the
+     record's `reports/scripts.md` and `reports/patch-scripts.md`. On a
+     seeded draft, the JSON's body and comments came out byte-equal to the
+     draft, each with its marker. A draft with a missing marker exited with
+     status 2. `crew-record.py --help` exited 0. No crew run has exercised
+     the change.
+
+     R8, a startup check and a hang alarm. On 2026-10-29 a Codex self-update
+     hung the command-line tool for 21 minutes with no output.
+     `review-runner.md`'s "The startup check and the cap" runs
+     `timeout 15 claude --version` before every round, and retries a failure
+     three times before it escalates. The default runner gets a 2700-second
+     cap, because `claude -p --output-format json` prints nothing until it
+     exits. The replacement streams progress, so `substitution.md`'s run
+     script kills it after 600 seconds with no output. The alarm is a kill,
+     not a warning: the script kills the runner and its children, and
+     writes exit 124. The failure path's one retry then runs, and a second
+     failure escalates. The reason: a runner that streams progress and then
+     stays silent for 600 seconds is the hang the issue named. The
+     principal's review of the PR raised the limit from 180 seconds. Codex
+     prints nothing while a suite command runs, so a four-minute suite would
+     be killed at 180 seconds. A 21-minute hang is still caught at 600.
+
+     #115 also asked for Codex sandbox flags. They stay out of scope:
+     Codex is not installed on this machine, so nothing could test them, as
+     T79 found.
+
+125. **The severity rubric on goal runs — 2026-10-30.** The spec critic, the
+     split critic and the skeptical review tagged findings `[Critical]`,
+     `[Concern]` or `[Nit]`, while `/crew:review` already used
+     `skills/review/references/severity-rubric.md` (item 124, R3). A goal run
+     now uses that rubric too, and the three tags are gone from `agents/`
+     and `skills/`. This item supersedes the tag rules that earlier items
+     state. No run has exercised the change.
+
+     Every finding carries a required `Severity:` line: `blocking`,
+     `suggestion`, `nit` or `unsure`. `review-output.md` owns the shape. The
+     four-line return reads `Findings: <n> blocking, <n> suggestion, <n> nit,
+     <n> unsure` and `Blocking count: <n>`, and a report file ends with three
+     closing lines: `Findings:`, `Verdict:` and `Blocking count:`. Every
+     goal-run review dispatch, the skeptical review's instructions file and a
+     replacement spec critic's prompt carry the rubric whole. The rubric
+     speaks of merging code, so each critic says what `blocking` means for
+     its own artifact: for the spec, it cannot be split as written; for the
+     split, it is not dispatchable.
+
+     The project lead labels each finding again, and its label alone decides
+     the action. `skills/project-lead/SKILL.md` holds the goal-run map beside
+     its adjudication rule: `blocking` is a fix round, a re-spec, a re-split
+     or a patch-round package; `suggestion` and `nit` are applied inline or
+     declined; `don't post` and `not real` go to the ledger only; `unsure` is
+     one question to the principal. On the skeptical review, an accepted
+     suggestion or nit is a patch-round package, because the project lead
+     edits the target repo only at Integrate. The label decides first, and
+     `skeptical-review.md`'s dispositions then decide what a finding
+     becomes. `github-review.md` stays the owner on a review run.
+
+     A round with no finding the project lead labels `blocking` is the last
+     of its kind. A spec-critic round goes on to the sweep, and a
+     split-critic round to dispatch. A skeptical verdict is `accepted`
+     exactly when no finding is blocking, and the project lead's labels
+     override the reviewer's verdict in both directions, with a
+     `decisions.md` entry. An accepted round's patch packages integrate with
+     `--no-review accepted-round`. The reply file ends with
+     `Verdict after labels:`, and a resumed session and the delivered window
+     read the verdict there, never from the report. The caps and a review
+     run's rules do not change. The principal asked that every finding be
+     read through the rubric, so the project lead labels every finding of
+     every round, whatever its source, and one scale holds for all of them.
+
+     `record-format.md` names the label in a report, in the skeptical reply
+     file and in a `decisions.md` entry for a critic finding the project lead
+     does not apply. `crew-stats.py` reports label totals per review kind
+     from the `Findings:` line, in its table and under `labels` in `--json`.
+     A report written before this item has no such line, so the script counts
+     its tagged finding headings, with Critical as blocking, Concern as
+     suggestion and Nit as nit. A seeded record with one report of each shape
+     printed the expected totals and exited 0.
+
+126. **Launch check 1 probes the worktree root — 2026-10-30, T80, #120.**
+     Item 121 found that launch check 1 blocks a full path that can run. Run
+     `pp-34-convert-pages-0c34` (crew 0.1.89, 2026-10-29) asked the
+     principal the same question again. That run cut, read and removed a
+     probe worktree under `<repo>/.claude/worktrees/crew/` from an isolated
+     session, with `git -C`.
+
+     A probe from the isolated session that wrote this item, on 2026-10-30,
+     found the guard narrower than either report says. It refused `git -C`
+     into the shared checkout. It also refused two commands it could not
+     parse: a `cd` chained with `git fetch`, a pipe and a shell variable, and
+     a Python heredoc whose text named git. It allowed `git worktree add` to
+     three roots: the session's scratchpad, `~/.claude/crew/`, and
+     `.claude/worktrees/crew/` inside the session's worktree. In each
+     worktree it allowed `git -C <path> status`, and `cd <path> && git ...`
+     worked in the two outside roots. `git -C <path> commit` worked under
+     `~/.claude/crew/`. Item 121's run saw a refusal of every `git -C` into a
+     foreign path. The guard's behavior may differ between Claude Code
+     versions, so the check probes instead of assuming.
+
+     Launch check 1 is now "The worktree root is reachable". It probes the
+     default root `<record-dir>/worktrees` with `worktree add`, `status` and
+     `worktree remove`. A worktree-isolated session that refuses the default
+     uses `<repo>/.claude/worktrees/crew/<goal-slug>`, which must be
+     gitignored and inside no package. `decisions.md` records the choice.
+     Escalation trigger 6 no longer names isolation. `ic-contract.md`'s
+     worktree rule keeps `git -C` and allows `cd <worktree> && git` after a
+     refusal. `full-path.md`'s own copy of that rule became a pointer.
+     `record-format.md` names the fallback path and tells the project lead
+     to write each `crew-record.py` path as a literal. No run has exercised
+     the change.
+
+     A `/code-review medium` of PR #128 found seven real gaps, and the
+     principal had six of them fixed. First, the fallback covered only the
+     territory worktrees, while the review worktree and a held checkout
+     still lived under `<record-dir>`. Check 1 now chooses one base,
+     `run.worktree_base`, for every worktree of the run. It runs at the
+     preference sweep on every path, because every path cuts a review
+     worktree. Second, the skeptical-review launch command names git in a
+     compound form. A probe of that shape was refused in this isolated
+     session, and the same command from a script file ran. The project lead
+     now writes the command to `reviews/skeptical-r<n>-run.sh` and runs it
+     with `bash`. Third, the probe removes its worktree after every `add`
+     that passed. Fourth, the fallback base must pass a suite check, because
+     vitest collects `.claude/` by default. Fifth, the agents' self-review
+     points at the IC contract's worktree rule instead of a copy of it.
+     Sixth, the README no longer requires an ordinary clone. The principal
+     set aside one more finding: Claude Code can remove the session's
+     worktree at exit, and a fallback base inside it goes too. The ICs
+     commit after every green step, so only uncommitted work is at risk.
+     `/crew:review` still cuts its review worktree under `<record-dir>`.
+
+127. **A merge's deploy marks the run shipped — 2026-10-30, T83.** The principal
+     asked never to type the ship word again. Before this,
+     `crew:delivered-window` said that shipped means merged and deployed, and
+     that no `gh` command sees a deploy. So a merge was only a notice in a goal
+     run, and the principal had to type the word.
+
+     `gh` sees two kinds of deploy: a GitHub deployment of the merge commit,
+     and a GitHub Actions run on it. The project lead now arms a deploy watch
+     on a `merged` item in a goal run. A `queued` item stays the notice that
+     §15.124 made it, because the queue can still reject the PR. The watch is
+     `pr-watch.sh` in its `deploy` mode. A `deployed` line is the ship word,
+     and the project lead runs the ship steps itself. A new `Deploy` standing
+     instruction names the signal: `environment: <name>`, `workflow: <name>`,
+     `none` or `manual`, with an optional `timeout: <minutes>`, 180 by default.
+     A review run with `Done: rolled out` arms the same watch. The project
+     lead writes `run.deploy` when it arms the watch, and a resumed run reads
+     it.
+
+     With no `Deploy` section, the script reads the repo's GitHub deployments.
+     A repo with deployments is matched on the merge commit: a deployment
+     whose `production_environment` is true or whose environment is named
+     `production` or `prod`, because many deploy tools leave the flag false.
+     Only the newest matching deployment counts, so an older success never
+     hides a newer failure. A repo with no deployment objects may still deploy
+     from Actions, so the script then looks for a run on the merge commit whose
+     name holds `deploy` or `release`, and judges it as a named workflow. Only
+     with neither does it print `no-deploy`, and that line is the ship word.
+     It waits 10 minutes after the merge first, because the run may not exist
+     yet. A failed read prints nothing, and the next poll tries again.
+
+     `none` says the repo has no deploy process, so the merge itself is the
+     ship word and no watch arms. `manual` says the repo deploys where `gh`
+     cannot see, such as a deploy tool outside GitHub. Only there does the
+     word stay the principal's after a merge, which was the rule before this
+     finding. The two exist because the default cannot tell a repo with no
+     deploy from a repo that deploys out of sight, and a wrong guess either
+     closes a run early or asks for the word again.
+
+     A `deploy-failed` line and a `deploy-timeout` line stay notices, and the
+     ship word stays the principal's. Each is a real problem: the merge is
+     live in no known way, or the deploy broke. A failed deploy of a merged
+     PR is not a finding about the diff the project lead delivered, so patch
+     mode does not take it unless the principal says so. In workflow mode only
+     `failure`, `timed_out` and `startup_failure` fail. A cancelled or skipped
+     run is no result, and a newer run replaces it.
+
+     A review of the PR found four more defects, and the script now handles
+     them. The timeout counted from the merge, so a re-armed watch timed out
+     at once: `run.deploy.since` holds the arming time, and the count starts
+     there. A reported failure or timeout printed again on every fallback fire
+     and every resume: `run.deploy.ended` holds the kind, and a watch with it
+     set prints nothing until a re-arm clears it. A poll whose `gh pr view`
+     failed after the merge lost the timeout check, so the script keeps the
+     merge commit and time from the last good read. A `timeout_minutes` that
+     is not a positive integer now stops the script with exit 2.
+
+     The script ran against a seeded record on a public PR with a successful
+     deployment and workflow run, and on a PR in a repo with no deployments. A
+     stub `gh`, which applies the script's own filters to canned JSON, ran the
+     failure, cancelled, newest-deployment, grace, `since`, `ended` and
+     cached-read cases. No crew run has armed the deploy watch yet.
+
+128. **The review queue and the review board — 2026-10-31, T84, T85, #122,
+     #123.** The review-queue trial of 2026-10-27 and 2026-10-28 found that a
+     `/crew:review` child refuses a go-ahead, a standing rule or a "skip the
+     re-review" that another session relays. That refusal is correct. So a
+     queue cannot work by relay. One queue session holds the principal's
+     word and does every outward action itself, and each child only reviews
+     and fixes. The trial log and the demo mod that #122 and #123 name were
+     not on the build machine, so the issue text was the only source.
+
+     A child is a separate interactive `claude` session in tmux, because a
+     teammate cannot invoke a skill. The launch words "Report to the queue
+     session <name>" write `Queue:` and `Gate: off` in its charter. In child
+     mode, `/crew:review` posts nothing, writes `ready.json` in its record,
+     sends one `ready:` message, and stops before the delivered window.
+     `skills/review-queue/references/ready-file.md` owns the file, and
+     `skills/review-queue/references/board.md` owns the board file both the
+     queue and the mod read. #122's repo-specific version check before an
+     enqueue became a standing-instructions section, `Pre-enqueue checks`,
+     decided at the sweep on the project lead's recommendation. Under
+     `review`, a `CONFLICTING` PR gets no merge agent, because that policy
+     pushes nothing.
+
+     The mod is crew's first TypeScript. `hooks/hooks.json` names it under
+     `modules` beside the two command hooks, and `claude plugin validate`
+     accepts both. It arms on the skill prompt in either form,
+     `crew:review-queue` or `review-queue`, because the types file does not
+     say which one a plugin skill reports. Ten tests passed under `claude
+     plugin test`, and the test run failed at the red commit.
+
+     The skeptical review's round 1 found two blocking defects that every
+     earlier check missed. First, the `/review-board` text fallback first
+     printed when `$.ui.open` reported the pane not placed. The engine places
+     a pane that the person's command opens at any width, so that answer
+     never comes, and the test mocked it. The hook now reads the command's
+     `presentation.columns` and prints the text table under 110 columns. The
+     test kit sets that width. Second, the queue polled only queued rows, so
+     a `review`-policy PR left at `next: author` was never read again. The
+     round also kept the queue's files out of `crew-stats.py`'s record walk. A probe ran `pr-watch.sh once`
+     on the minimal record the queue builds for a queued PR, against merged
+     PR #128: it printed `merged` and exited 0. No queue session, no child
+     and no installed copy of the mod has run.
+
+129. **The review board as the queue's watcher — 2026-10-31, T86, #124.**
+     The queue's wakeup loop costs a model turn for each check, also when
+     nothing is new. The mod's `$.clock.every` and `$.http.fetch` cost none.
+     So, with a token, the mod polls the sources and the queue session only
+     takes what the mod found.
+
+     The issue asked for the token in `userConfig`. The principal put it in
+     a file, `~/.claude/secrets/slack-token`, and the plugin-authoring docs
+     do not say how a `userConfig` field holds a secret. The queue skill
+     tests the file with `grep -q`, so the token never enters a transcript.
+
+     The issue also asked the mod to write `new` rows to `board.json`. The
+     queue session replaces that file whole at each write, so a second
+     writer loses updates. The mod writes `asks.json` instead, and the
+     queue session marks what it took with `asks_through` in `board.json`.
+     Each file keeps one writer. The pane draws an untaken entry as a `new`
+     row. A Slack message about a PR that already has a row is an entry too,
+     because the queue adds the message to the row, or re-triages a row at
+     `next: author`.
+
+     The hand-off is `$.prompt.submit` in the queue session, where the mod
+     runs. `$.session.send` only queues a peer message and starts no turn.
+     A stopped watch is not polled. With no token, the mod polls no source
+     at all, so the two pollers never overlap. The wakeup loop stays at 15
+     minutes with a token, for the stall check and the child reads.
+
+     The spec critic's round 1 found that a later Slack message on a known
+     PR had nowhere to go; round 2 found that a GitHub poll with no token
+     made a second poller. Both changed the design before any code. 61 tests
+     pass under `claude plugin test`. No live Slack poll has run: the build
+     machine had no token.
+
+     The principal's /code-review found that, with a token, a mod that
+     cannot poll left nothing polling and told nobody. So a watch whose
+     `last_checked` in `asks.json` is more than 5 minutes old is stale, and the
+     queue session polls it itself and tells the principal. The mod moves
+     `last_checked` only after a good poll, so a revoked token, a signed-out
+     `gh` or a mod that never loaded all show as a stale watch.
+
+130. **A review in a worktree of the principal's checkout, and CI for the
+     local suite — 2026-11-04, T87, #132.** A queue review of one 140-line
+     Python PR on a large monorepo took about 40 minutes, and the code
+     review took about 4. The queue cloned the repo, cut a worktree for the
+     child outside any folder Claude Code trusts, and the runner cut a second
+     worktree and installed from scratch. The review then ran the suite at
+     the base and at the head, while CI ran the same suite on every head.
+
+     The measurements, round 1 then round 2 on a 49-line follow-up push:
+     the trust prompt cost about 4 minutes and then 0. The dependency
+     install cost about 10 minutes both times. The suite at the base took 8
+     minutes and then 24, and at the head 15 and then 24. The review took 4
+     minutes both times. Both CI runs passed before the local runs ended,
+     and the local runs found nothing that CI did not. The clone also failed
+     twice on the first run: HTTPS had no credentials, and `git clone
+     --reference` failed with `fatal: pack has 1 unresolved delta`.
+
+     Five design points, each with its reason.
+
+     First, find the checkout and never clone. The principal already has
+     one, and a clone is the step that failed. The order is a `Checkouts`
+     line in `~/.claude/crew/config.md`, then the queue session's own
+     checkout, found with `git rev-parse --git-common-dir` from a linked
+     worktree, then a question to the principal. A guess would put a review
+     in a repo the principal never named.
+
+     Second, one worktree per review, and `crew:review` owns it. The queue
+     cut a worktree and the runner cut another, so one PR paid for two
+     trees and two installs. Now the queue launches the child with the
+     checkout as its directory, and `review-runner.md` cuts the one tree at
+     `<checkout>/.claude/worktrees/crew-pr-<n>`. That tree serves the review
+     and the assist fix, so `run.checkout` is the tree and `checkout_branch`
+     is `null`. The main working tree is never switched, and a dirty main
+     tree is no blocker. A fix round puts the tree on a local branch,
+     `crew/pr-<n>`, and pushes it by refspec, because the principal's main
+     tree can hold `<headRefName>`, and git refuses a branch that two
+     worktrees hold. A goal run keeps its own review worktree under the
+     record.
+
+     Third, put the worktree inside the repo. A folder inside the checkout
+     is already trusted, so the trust prompt goes. Claude Code's own
+     `EnterWorktree` uses the same `.claude/worktrees/` folder. The runner
+     checks once per checkout that the repo ignores the folder, and tells the
+     principal once when it does not.
+
+     Fourth, add the `Gates` value `ci`. With it, a review reads the check
+     runs and commit statuses of the reviewed head in place of a local suite
+     and local gates, and no setup command runs. The project lead waits up
+     to 30 minutes for a running check, and lists one still running as
+     `pending`. The reviewer is told that CI ran the suite and may spot-check
+     the diff against the code. A fork head runs no code, as before. A goal
+     run ignores the value, because its verification is the project lead's
+     own and the scout's answer stands.
+
+     Fifth, update the cleanup. "Clean up" removes each worktree of the row
+     with `git worktree remove --force`, prunes, and deletes the local
+     `crew/pr-<n>` branch. A branch is shared by every worktree of a
+     checkout, so the removal alone would leave one branch per assisted PR
+     in the principal's repo. No step of the queue runs `checkout`,
+     `switch`, `reset` or `clean` in the main working tree.
+
+     The issue lists five related problems from the same run: the board pane
+     that did not open, the shared `Reviewers` section, repeated
+     `review-comment` lines from `pr-watch.sh`, a late `ready:` message from
+     an old round, and a cancelled check that made CI read as not green.
+     They are separate fixes, and this change does not touch them. No run
+     has exercised this change.
+
+131. **Subagent mode, on trial — 2026-11-02.** The principal wants to try
      crew with no teammates. With `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
      unset, every dispatch is now a background subagent. With the flag set,
      nothing changes. `SKILL.md`'s "Every dispatch is named" owns the two

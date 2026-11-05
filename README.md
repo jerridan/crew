@@ -12,8 +12,9 @@ is the whole diff reviewed. A separate session reads it against your goal and
 assumes it is wrong. What that session finds comes back as patch rounds on the
 same PR. When that review is done, the PR leaves draft. Merge it when you
 are ready, or tell the project lead to merge it. The project lead stays until
-you say its work shipped, so you can ask it about the change before the
-merge, or ask for a change to the PR after.
+its work ships, so you can ask it about the change before the merge, or ask
+for a change to the PR after. The work ships when its deploy succeeds, or soon
+after the merge when the repo has no deploy.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
 you what it fixed or declined and why. When another person commented, it
@@ -21,15 +22,17 @@ waits for your go-ahead before it pushes or replies on the PR. A comment from
 a bot, a failed check and a comment from your own GitHub account take no
 go-ahead.
 
-Two entry points:
+Three entry points:
 
 | Command | Use it for |
 |---|---|
 | `/crew:project-lead` | One goal, run in the session you are in. It sizes the work itself and brings you every question it cannot answer. |
 | `/crew:review` | One colleague's PR. It reviews the PR as a skeptical staff reviewer, posts the review on GitHub, and stays with the PR to the merge. |
+| `/crew:review-queue` | Many PRs at once. It watches a Slack channel, your GitHub review requests or your direct asks, runs a review per PR, and does every post, approval and merge-queue step from one session. |
 
 Crew is experimental. It has taken real goals to draft PRs, and the plugin
-changes often. `/crew:review` has not run yet.
+changes often. `/crew:review` has not run yet, and neither has
+`/crew:review-queue`.
 
 ## Install
 
@@ -40,7 +43,7 @@ changes often. `/crew:review` has not run yet.
 
 ## Run one goal in your session
 
-Start Claude Code in an ordinary clone of the target repo, not a worktree:
+Start Claude Code in a clone of the target repo, or in a worktree of one:
 
 ```
 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 claude --model fable --effort high --permission-mode auto
@@ -132,7 +135,11 @@ go-ahead, then pushes and replies to each one on the PR. A comment from a
 bot, a failed check and a comment from your own GitHub account are pushed and
 answered with no go-ahead. You can still send findings from anywhere else,
 and they wait for your go-ahead too.
-When the work is merged and deployed, say so, and the run closes. Closing the
+After a merge, crew watches GitHub for the deploy of the merge commit. When
+that deploy succeeds, the run closes with no word from you. A repo with no
+deploy closes 10 minutes after the merge, or at the merge with `Deploy: none`. If the deploy fails or does not finish in time,
+crew tells you, and the run stays open until you say the work shipped. With
+`Deploy: manual`, the run also waits for your word. Closing the
 session instead leaves the run recorded as interrupted, which is fine for a
 run you merged yourself.
 
@@ -153,7 +160,7 @@ session and the run continues.
 
 ### Review a colleague's PR
 
-Start Claude Code in a clone of the PR's repo, with `gh` signed in as you.
+Start Claude Code in a checkout of the PR's repo, with `gh` signed in as you.
 Then give the PR's URL:
 
 ```
@@ -169,10 +176,30 @@ Or give its number, with plain words to ask for more:
 The PR must be open. "Fix the blockers yourself" lets crew push fixes to the
 PR's branch, and it does not work on a PR from a fork.
 
-In a review run, crew waits for your go-ahead before it posts its first
-review. It shows you the draft first. You can change any finding or the
-text, or mark a finding "no reply". A later review that raises nothing new
-posts with no wait. A later review with a new finding waits for you again.
+With "fix the blockers yourself", two more phrases set how crew works. The
+first sets how many fix rounds crew runs before it stops and lists what is
+left. The default is 3. The second skips the review of crew's own push when
+that push changes only prose files, or fewer than 20 lines:
+
+```
+/crew:review 123 fix the blockers yourself, 2 fix rounds
+/crew:review 123 fix the blockers yourself, skip the re-review when prose-only or under 20 lines
+```
+
+In a review run, crew waits for your go-ahead before it posts a review with a
+finding. It shows you the draft first. You can change any finding or the
+text, or mark a finding "no reply". A review with no findings posts with no
+wait. A later review that raises nothing new posts with no wait. A later
+review with a new finding waits for you again.
+
+Crew reviews in a worktree it cuts under `.claude/worktrees/` in your
+checkout. Add that folder to the repo's `.gitignore`. Crew tells you once when
+the repo does not ignore it.
+
+Put the test and setup commands in `.claude/crew.md`, under `Gates` and
+`Setup`. Crew then runs them with no scout. To let the PR's CI checks stand in
+for a local test run, write `ci` alone under `Gates`. Crew then installs
+nothing and runs no tests, and it gives the reviewer the result of each check.
 
 Replies and pushes in a review run follow the same rule as in a goal run.
 Crew waits when another person commented. A comment from a bot, a failed
@@ -182,26 +209,70 @@ every wait off, say `post without asking` with the command.
 Crew does not run a fork's tests or setup unless you say
 `run the suite on this fork`.
 
-Each finding has one of three effects:
+Crew gives each finding one label:
 
-| Effect | What crew posts |
-|---|---|
-| `incident` | A review that requests changes. |
-| `bug` | A review with comments only. |
-| `non-blocking` | A comment on something worth raising but not essential, such as a gap in test coverage. The review approves when only these are left. |
+| Label | What it means | What crew posts |
+|---|---|---|
+| `blocking` | Merging as it is harms a user, a customer or the business. | A comment, and a review that requests changes. With "fix the blockers yourself", crew fixes it first. |
+| `suggestion` | Real and worth a comment. The author decides. | A comment. |
+| `nit` | Correct but minor. | A comment, only when a one-line suggestion fixes it. |
+| `unsure` | The repo cannot settle it. | A question. The review stays a comment. |
 
-A nit never posts. A defect that the PR did not add stays out of the review.
-Crew lists it for you as a possible new goal. On your own PR, the review
-posts as a comment.
+A finding that is true but not worth the author's time, or not real, does not
+post. A defect that the PR did not add stays out of the review. Crew lists it
+for you as a possible new goal. On your own PR, the review posts as a
+comment.
 
 A new review that approves or comments clears an earlier "changes
 requested" that crew posted.
 
 Crew reviews each new push on the PR the same way. It leaves the merge to the
-PR's author. With "fix the blockers yourself", it merges when you tell it to.
-The run ends when the PR enters the merge queue, merges or closes.
+PR's author. With "fix the blockers yourself", it approves only after its
+fixes are pushed, and it merges when you tell it to. The run ends when the PR
+merges or closes. When the PR leaves the merge queue without a merge, crew
+tells you, with the reason.
 To use another reviewer, say so in plain words, as for a goal:
 `use Codex for the review`.
+
+### Run a review queue
+
+Start a named Claude Code session, then start the queue:
+
+```
+claude -n review-queue
+/crew:review-queue
+```
+
+Tell it what to watch, in plain words:
+
+```
+watch #frontend-reviews with assist
+watch my review requests
+review https://github.com/<owner>/<repo>/pull/<n> with assist
+what are you watching
+stop watching #frontend-reviews
+```
+
+`assist` fixes the blockers, approves, and puts the PR in the merge queue.
+`review`, the default, posts the findings and approves a clean PR. It pushes
+nothing.
+
+The queue reads a small PR with green CI itself. Every other PR gets its own
+`/crew:review` session in tmux, in a checkout you already have. Those
+sessions never post. The queue session posts every review, approval and Slack
+reaction, and it asks you once for a batch of reviews that have findings. A
+review with no findings posts with no wait.
+
+The review board shows the queue in a pane beside the chat, and a count in
+the status line. It opens by itself in a queue session, and updates there.
+Open it in any session with:
+
+```
+/review-board
+```
+
+Outside a queue session, the pane shows the board as it was when you opened
+it. In a terminal under 110 columns, the command prints the board as text.
 
 ## What a run needs
 
@@ -209,10 +280,14 @@ To use another reviewer, say so in plain words, as for a goal:
 |---|---|---|
 | Permissions that never stop for a human | `--permission-mode auto`, or your own allow rules | every run |
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for a pane per dispatched agent; optional otherwise |
-| An ordinary clone | Start outside any worktree | the full path |
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
-| A clone of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the clone | every `/crew:review` run |
+| A checkout of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the checkout | every `/crew:review` run |
+| Your checkout of each repo you review | Start the queue inside one, or list each under `Checkouts` in `~/.claude/crew/config.md`. The queue asks when it finds none | every `/crew:review-queue` run |
+| A named session, tmux, and `gh` signed in as you | `claude -n review-queue`, with `tmux` installed | every `/crew:review-queue` run |
+| A Slack connector | A Slack MCP connector that reads channel history and adds reactions | a queue that watches a Slack channel |
+| A Slack user token | Put a token with the scopes `channels:history`, `channels:read` and `reactions:read` in `~/.claude/secrets/slack-token`. The review board then polls Slack and your review requests. Without the file, the queue session polls, and reads Slack through the Slack MCP connector | optional, every `/crew:review-queue` run |
+| Claude Code 2.1.314 or later | `claude --version` | the review board |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 | Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |
 
@@ -229,13 +304,18 @@ under a `##` heading with one of these names:
 |---|---|
 | `Reviewers` | the reviewer to use in place of a review step, in plain words |
 | `Known red tests` | the tests that already fail on the main branch, and why |
-| `Gates` | the exact commands CI runs: tests, types, lint and build |
+| `Gates` | the exact commands CI runs: tests, types, lint and build. Write `ci` alone to let a review read the PR's CI checks in place of a local run |
+| `Setup` | the one command that installs what the tests need in a fresh checkout |
+| `Checkouts` | the path of your checkout of each repo, one line each, as `<owner>/<repo>: <absolute path>`. Only the review queue reads it |
+| `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run checks that bot's blocking findings too |
 | `Hook workarounds` | what to do when a git hook stops a push or a merge |
 | `Ticket defaults` | where a new ticket goes, such as its team |
 | `PR readiness` | `ready` or `draft` |
-| `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for your word that the change is live, not for the merge |
+| `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for the deploy of the merge, or for your word under `Deploy: manual`, not for the merge alone |
 | `Branch names` | your rule for a branch name |
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
+| `Pre-enqueue checks` | shell commands, one per line, that the review queue runs before it puts a PR in the merge queue. A failed command stops that PR |
+| `Deploy` | how crew sees that a merge is live: `environment: <name>`, `workflow: <name>`, `none` (the repo has no deploy, so the run closes at the merge) or `manual` (the repo deploys where GitHub cannot see, so crew waits for your word), and an optional `timeout: <minutes>` (default 180). With no section, crew looks for a successful production deployment, or a deploy or release workflow run, on GitHub. It closes 10 minutes after the merge when it finds neither |
 
 ```
 ## Known red tests
@@ -333,15 +413,15 @@ A review run takes these steps:
 | Step | What happens |
 |---|---|
 | Take the PR | Reads the PR, refuses one that is not open, and opens the record. |
-| Scout | Finds the test command and the instruction files. |
+| Read the test commands from `.claude/crew.md`, or scout when it has none | Finds the test and setup commands. |
 | Review | A separate session reads the diff against the PR's description and the repo. |
-| Adjudicate | Crew checks each finding and its effect, and drops nits and defects that were already there. |
+| Adjudicate | Crew checks each finding and gives it a label, and drops findings that do not post and defects that were already there. |
 | Report and wait | Crew sends you the draft and waits for your go-ahead. |
 | Post | Crew posts the review on the PR, with one inline comment per finding. |
 | Watch | Crew watches the PR for a new push and for the merge. |
 | Later rounds | Each new push is reviewed again. A finding whose code is gone is marked resolved. A review that raises nothing new posts with no wait. |
-| The assist path | With "fix the blockers yourself", crew fixes the `incident` and `bug` findings and pushes them to the PR's branch, after your go-ahead. |
-| The end | The run closes when the PR merges. A PR that is closed without a merge also ends the run. |
+| The assist path | With "fix the blockers yourself", crew fixes the `blocking` findings and pushes them to the PR's branch, after your go-ahead. It approves only after the fix. |
+| The end | The run closes when the PR merges. A PR that is closed without a merge also ends the run. A PR that leaves the merge queue is reported, with the reason. |
 
 ## Models
 
@@ -360,6 +440,7 @@ else: every package takes the same steps.
 | Spec critic | opus | high |
 | Decomposition critic | opus | high |
 | Skeptical review | opus | high |
+| Queue session | your session's | your session's |
 
 The project lead, the ICs and the scouts take your session's effort, so set
 it before the run starts.
@@ -396,8 +477,9 @@ To see what runs cost, from a checkout of this repo:
 python3 skills/project-lead/scripts/crew-stats.py
 ```
 
-It prints cost per band, fix rounds, promotions, councils, reviews and the
-review catch rate, over every record.
+It prints cost per band, fix rounds, promotions, councils, reviews, the
+review catch rate and the finding labels the reviewers proposed for each
+review kind, over every record.
 
 ## Roles
 
@@ -412,6 +494,7 @@ review catch rate, over every record.
 | Researcher | Answers one open question across several hops, with citations. |
 | Scout | Answers one lookup for the project lead, then exits. |
 | Advocate | Argues one assigned position in a council. |
+| Queue session | Watches your sources for PRs, runs a review per PR, and does every post, approval, merge-queue step and Slack reaction itself. |
 
 ## Help and contributing
 

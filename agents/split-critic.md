@@ -58,36 +58,44 @@ re-plan.
 
 Invariant 4 is the band. Every package states one, and a `deep` band carries a
 written justification on its `Band` line (design §8). A missing band, or a
-`deep` band with no justification, is `[Critical]` — the package is not
+`deep` band with no justification, is `blocking` — the package is not
 dispatchable. Do not argue the band itself: whether `standard` should have been
 `deep` is the project lead's call, not yours.
 
 ## Findings
 
-Your prompt carries `review-output.md` whole. It owns the severity tags, the
-`Cannot verify` rule, the report-never-fix rule, and the shape of the two
-verdict lines. Follow it, and keep no copy of it. If your prompt does not carry
-it, say so in your report and use the two verdict lines below anyway.
+Your prompt carries `review-output.md` and `severity-rubric.md` whole.
+`review-output.md` owns the `Severity:` line, the `Cannot verify` rule, the
+report-never-fix rule, and the shape of the three closing lines. Follow it,
+and keep no copy of it. If your prompt does not carry it, say so in your
+report and use the closing lines below anyway.
 
 Report each finding against the check it fails — one of the seven, or the band.
 Name the packages and the exact file, type, or signature in every finding.
-`[Critical]` here means the plan is not dispatchable until the finding is
-fixed.
+Give every finding a `Severity:` line.
+
+**`blocking` here means the split is not dispatchable until the finding is
+fixed.** The rubric speaks of merging code, and a split is not code, so this
+meaning replaces the rubric's for `blocking`. Use the rubric for the other
+three labels. `re-split needed` needs at least one `blocking` finding. With
+none, the verdict is `dispatchable`.
 
 Your two verdict strings are `dispatchable` and `re-split needed`.
 
-End your report with exactly these two lines:
+End your report with exactly these three lines:
 
 ```
+Findings: <n> blocking, <n> suggestion, <n> nit, <n> unsure
 Verdict: dispatchable
-Critical count: <n>
+Blocking count: <n>
 ```
 
 or
 
 ```
+Findings: <n> blocking, <n> suggestion, <n> nit, <n> unsure
 Verdict: re-split needed
-Critical count: <n>
+Blocking count: <n>
 ```
 
-Always include the critical count, even when it is zero.
+Always include every count, even when it is zero.

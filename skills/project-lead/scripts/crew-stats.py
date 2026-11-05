@@ -8,20 +8,21 @@ The record root is `--record-root`, or `$CREW_RECORD_ROOT`, or `~/.claude/crew/`
 
 Prints cost per package by band, fix rounds by band, promotions from
 `band_history`, councils and their spend, escalations, compactions, review
-counts, the review catch rate, the steps a band or the light path let a run
-skip, a `kind` column (`review` for a run of `/crew:review`, `goal` otherwise),
-the untouched-draft rate, and the review steps the principal replaced with a runner of their own.
+counts, the finding labels the reviewers proposed per review kind, the review
+catch rate, the steps a band or the light path let a run skip, a `kind` column
+(`review` for a run of `/crew:review`, `goal` otherwise), the untouched-draft
+rate, and the review steps the principal replaced with a runner of their own.
 The untouched-draft rate is the share of the answered go-ahead drafts that the
 principal approved as they stood: over the escalations that carry `draft`, the
 count with `draft_changed: false` divided by the count with `draft_changed` not
 `null`, as a whole percentage, or `-` when no draft was answered. It prints per
 run and in the totals, and `--json` carries it under `untouched_draft_rate`.
-An escalation answered `"Gate: off"` or `"auto: findings answered"` is no ask
-the principal saw. The script leaves both out of the `escalations` count, and
-`read_drafts` skips them because the skill writes their `draft_changed` as
-`null`. The second is a skeptical round that posted with no wait
-(`crew:delivered-window`'s "The go-ahead gate"); the script counts those as
-`auto_posts`, per run and in the totals.
+An escalation answered `"Gate: off"`, `"auto: findings answered"` or
+`"auto: no findings"` is no ask the principal saw. The script leaves all three
+out of the `escalations` count, and `read_drafts` skips them because the skill
+writes their `draft_changed` as `null`. The last two are a skeptical round that
+posted with no wait (`crew:delivered-window`'s "The go-ahead gate"); the script
+counts those as `auto_posts`, per run and in the totals.
 A replaced step is not a Claude session, so `spend.py` cannot price it: its
 cost prints as `unmeasured` unless the record's `usage` object carries a
 dollar figure, and a `usage.tokens` count with no dollar figure prints in its
@@ -42,10 +43,23 @@ many the advocate overturned. Design §6.1 puts the adversary on probation
 until ten such entries exist; T34 in `docs/tickets.md` owns the count.
 
 The catch rate is one number per review kind: the share of that kind's reviews
-that returned an action verdict. A review file's `Verdict:` line is the only
-machine-readable statement the record holds about whether a review changed
-anything. The record carries no per-finding adjudication, so a review that was
-accepted and still produced a commit counts as no catch here (§15.57).
+that returned an action verdict. A review file's `Verdict:` line gives the
+verdict. On a skeptical round whose reply file holds a `Verdict after labels:`
+line, that line gives it instead, because the project lead's labels decide the
+round (`skeptical-review.md`'s "The verdict pair"). The record carries no
+per-finding adjudication beyond that line, so a review that was accepted and
+still produced a commit counts as no catch here (§15.57).
+
+The finding labels are four totals per review kind: blocking, suggestion, nit
+and unsure. They are the labels the reviewers proposed, read from the review
+reports. They are not the project lead's final labels. A report's `Findings:`
+closing line gives them (`review-output.md`).
+A report written before that line existed has none, so the script counts its
+finding tags instead: the Critical tag as blocking, the Concern tag as
+suggestion and the Nit tag as nit. A new report that lacks the `Findings:`
+line is counted from its `Severity:` lines. A report with none of these
+shapes counts nothing.
+`--json` carries the totals under `labels`.
 
 Dollars come from `spend.py`, which this script imports. It never holds a
 second price table. A run is priced in this order:
@@ -142,6 +156,28 @@ CLEAN_VERDICTS = ("accepted", "ready to split", "dispatchable")
 # lead transcribe a report whose write was denied, and a transcript can put the
 # verdict mid-line.
 VERDICT = re.compile(r"Verdict:\s*([^\n.]+)")
+
+# The four labels a report's `Findings:` closing line counts, in its order
+# (`review-output.md`). Not anchored, for the same reason as `VERDICT`, and the
+# last match wins, because the closing line comes last.
+LABELS = ("blocking", "suggestion", "nit", "unsure")
+FINDINGS = re.compile(r"Findings:\s*" + r",\s*".join(rf"(\d+)\s+{label}" for label in LABELS))
+# A report written before the `Findings:` closing line tagged each finding's
+# heading with the Critical, Concern or Nit tag in square brackets. A tag
+# counts only where it opens a line, after any heading, list or bold marks, an
+# optional short id such as `C1.` and an optional backtick, so a tag quoted in
+# prose is not a finding. Each old tag maps to one label.
+OLD_TAGS = {"Critical": "blocking", "Concern": "suggestion", "Nit": "nit"}
+OLD_TAG = re.compile(r"^[\s#>*\-\d.)]*(?:[A-Z]\d+[.)]?\s+)?[*`]*\[(" + "|".join(OLD_TAGS) + r")\]", re.M)
+
+# A new report that lacks the `Findings:` line still gives each finding a
+# `Severity:` line. The template line `Severity: blocking | suggestion | nit |
+# unsure` that a transcribed output can quote is no finding, so a label
+# followed by `|` does not count.
+SEVERITY = re.compile(r"^Severity:\s*(" + "|".join(LABELS) + r")\b(?!\s*\|)", re.M)
+# The reply file's closing line (`skeptical-review.md`'s "The verdict pair").
+AFTER_LABELS = re.compile(r"Verdict after labels:\s*([^\n.]+)")
+SKEPTICAL_REPORT = re.compile(r"^skeptical-r(\d+)\.md$")
 
 # `record-format.md`'s terminal deliverable states.
 TERMINAL_DELIVERABLE = ("draft-pr-opened", "work-complete", "under-review", "abandoned")
@@ -339,6 +375,25 @@ def fold_catch_by_band(sources: list[dict]) -> dict:
     return per_band
 
 
+def blank_labels() -> dict:
+    return {label: 0 for label in LABELS}
+
+
+def count_labels(text: str) -> dict:
+    """The label totals of one report: its last `Findings:` line, else its old
+    tags, else its `Severity:` lines."""
+    found = FINDINGS.findall(text)
+    if found:
+        return dict(zip(LABELS, (int(n) for n in found[-1])))
+    totals = blank_labels()
+    for tag in OLD_TAG.findall(text):
+        totals[OLD_TAGS[tag]] += 1
+    if not any(totals.values()):
+        for label in SEVERITY.findall(text):
+            totals[label] += 1
+    return totals
+
+
 def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
     """`(acted, known)` for one lowercased, stripped `Verdict:` value.
 
@@ -350,12 +405,15 @@ def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
     return acted, known
 
 
-def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, dict]:
-    """Return the review counts, the catch counts by kind, and the same by band.
+def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, dict, dict]:
+    """Return the review counts, the catch counts by kind, the same by band,
+    and the label totals by kind.
 
-    A review "acted" when its `Verdict:` line is one of `ACTION_VERDICTS` —
-    the record's only machine-readable statement that the review sent the
-    artifact back. A file with no verdict, or with a verdict outside the ones
+    A review "acted" when its verdict is one of `ACTION_VERDICTS`. The verdict
+    is the report's `Verdict:` line. For a skeptical round it is the reply
+    file's `Verdict after labels:` line instead, when that file holds one with
+    a verdict the reviews name, because the project lead's labels decide the
+    round. A file with no verdict, or with a verdict outside the ones
     the reviews name, is counted as a review and as `unverdicted`, never as a
     catch, and it gets a skip line that says which of the two it is.
 
@@ -367,10 +425,11 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
     counts["other"] = 0
     by_kind = {name: blank_catch() for name, _ in REVIEW_KINDS}
     by_band = {}
+    labels = {name: blank_labels() for name, _ in REVIEW_KINDS}
     directory = record / "reviews"
     if not directory.is_dir():
         skips.append(f"{label}: no reviews — the record has no reviews/ directory")
-        return counts, by_kind, by_band
+        return counts, by_kind, by_band, labels
     for name in sorted(os.listdir(directory)):
         # A skeptical review round leaves companions beside its report: the
         # instructions it was launched with, the child process's own JSON, and
@@ -399,11 +458,24 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
         found_verdicts = VERDICT.findall(text)
         verdict = found_verdicts[-1].strip().lower() if found_verdicts else None
         acted, known = classify_verdict(verdict)
+        round_match = SKEPTICAL_REPORT.match(name)
+        if round_match:
+            reply = directory / f"skeptical-r{round_match.group(1)}-reply.md"
+            try:
+                after = AFTER_LABELS.findall(reply.read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                after = []
+            if after:
+                after_acted, after_known = classify_verdict(after[-1].strip().lower())
+                if after_known:
+                    verdict, acted, known = after[-1].strip().lower(), after_acted, True
         if reason is None and verdict is None:
             reason = "the file states no Verdict: line"
         elif reason is None and not known:
             reason = f"its verdict {verdict!r} is none of the strings the reviews name"
         by_kind[kind]["reviews"] += 1
+        for severity, value in count_labels(text).items():
+            labels[kind][severity] += value
         if known:
             by_kind[kind]["acted"] += acted
         else:
@@ -421,7 +493,7 @@ def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, di
             counts_for["acted"] += acted
         else:
             counts_for["unverdicted"] += 1
-    return counts, by_kind, by_band
+    return counts, by_kind, by_band, labels
 
 
 # A field's value can wrap across several plain lines (`record-format.md`
@@ -575,9 +647,10 @@ def read_decisions(record: Path, skips: list) -> tuple[int, int, int, dict]:
     return len(entries), councils, tokens, adversary
 
 
-# Two escalation answers mark a go-ahead no principal saw (`record-format.md`).
+# Three escalation answers mark a go-ahead no principal saw (`record-format.md`).
 AUTO_POST = "auto: findings answered"
-UNSEEN_ANSWERS = ("Gate: off", AUTO_POST)
+AUTO_NO_FINDINGS = "auto: no findings"
+UNSEEN_ANSWERS = ("Gate: off", AUTO_POST, AUTO_NO_FINDINGS)
 
 
 def read_drafts(run: dict) -> dict:
@@ -633,7 +706,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
 
     decisions, councils, council_tokens, adversary = read_decisions(record, skips)
     bands = {p.get("id"): (p.get("band") if p.get("band") in BANDS else "unknown") for p in packages}
-    reviews, catch, catch_by_band = read_reviews(record, bands, skips)
+    reviews, catch, catch_by_band, labels = read_reviews(record, bands, skips)
     usd = price_run(record, state, checkout, forced, skips, reprice)
     drafts = read_drafts(run)
     return {
@@ -651,13 +724,14 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "escalations": len([e for e in as_list(run.get("escalations"))
                             if not (isinstance(e, dict) and e.get("answer") in UNSEEN_ANSWERS)]),
         "auto_posts": len([e for e in as_list(run.get("escalations"))
-                           if isinstance(e, dict) and e.get("answer") == AUTO_POST]),
+                           if isinstance(e, dict) and e.get("answer") in (AUTO_POST, AUTO_NO_FINDINGS)]),
         "compactions": len(as_list(run.get("compactions"))),
         "steps_skipped": read_steps_skipped(record.name, run, skips),
         "steps_substituted": read_steps_substituted(record.name, run, skips),
         "reviews": reviews,
         "catch": catch,
         "catch_by_band": catch_by_band,
+        "labels": labels,
         "usd": usd,
         "drafts": drafts,
         "untouched_draft_rate": percent(drafts["untouched"], drafts["answered"]),
@@ -745,12 +819,22 @@ def report(records: list[dict], skips: list[str]) -> None:
     ]
     print(table(["outcome", "count"], rows))
 
-    print("\nReviews\n")
+    # The label totals sit beside each kind's count. An "other" file is no
+    # review kind, so its labels are not read, and its cells print `-`.
+    print("\nReviews, with the finding labels the reviewers proposed for each kind\n")
     kinds = [name for name, _ in REVIEW_KINDS] + ["other"]
-    rows = [[kind, sum(r["reviews"][kind] for r in records)] for kind in kinds]
+    rows = []
+    for kind in kinds:
+        row = [kind, sum(r["reviews"][kind] for r in records)]
+        if kind == "other":
+            row += ["-"] * len(LABELS)
+        else:
+            row += [sum(r["labels"][kind][name] for r in records) for name in LABELS]
+        rows.append(row)
     rows = [row for row in rows if row[1] or row[0] not in RETIRED_KINDS]
-    rows.append(["total", sum(sum(r["reviews"].values()) for r in records)])
-    print(table(["kind", "count"], rows))
+    rows.append(["total", sum(sum(r["reviews"].values()) for r in records)]
+                + [sum(r["labels"][kind][name] for r in records for kind, _ in REVIEW_KINDS) for name in LABELS])
+    print(table(["kind", "count"] + list(LABELS), rows))
 
     # A review "acted" when its verdict sent the artifact back for another
     # round. That is the whole of what the record states. A review that was
@@ -846,6 +930,12 @@ def report(records: list[dict], skips: list[str]) -> None:
 # `state.json` anywhere inside one would otherwise read as a run.
 NOT_A_RECORD = ("checkout", "worktrees", "review-worktrees", ".git")
 
+# The review queue keeps its own files in `<record-root>/queue/`: a small
+# record per queued PR and the full clones of the repos it reads. None is a
+# goal run. Only the top-level `queue/` is skipped, so a goal that has its own
+# `queue` directory deeper down is still read.
+QUEUE_DIR = "queue"
+
 
 def is_record(state_path: Path) -> bool:
     """`True` when this `state.json` is a run record, not some other file.
@@ -877,8 +967,8 @@ def candidates(root: Path) -> list[Path]:
 
     Two rules keep a file that is not a record out. The walk never descends
     into a directory `NOT_A_RECORD` names, so nothing inside a checkout or a
-    worktree is read at all. `is_record` then checks the shape of each
-    `state.json` the walk does reach.
+    worktree is read at all, and neither is `<root>/queue/`. `is_record` then
+    checks the shape of each `state.json` the walk does reach.
     """
     found = []
     stack = [root]
@@ -890,8 +980,11 @@ def candidates(root: Path) -> list[Path]:
             continue
         for child in children:
             if child.is_dir():
-                if child.name not in NOT_A_RECORD:
-                    stack.append(child)
+                if child.name in NOT_A_RECORD:
+                    continue
+                if directory == root and child.name == QUEUE_DIR:
+                    continue
+                stack.append(child)
             elif child.name == "state.json" and is_record(child):
                 found.append(directory)
     return sorted(found)

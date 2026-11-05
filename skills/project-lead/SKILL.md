@@ -27,6 +27,7 @@ agent is absolute: its cwd is not yours.
 | `record-format.md` | the record: every file, field and state transition, and how `crew-record.py` writes `state.json` | before you create the record |
 | `band-rubric.md` | the band: the model it buys, and which review steps it skips | at the split, and again before you skip a step |
 | `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
+| `skills/review/references/severity-rubric.md` | the labels a reviewer proposes, and you give each finding again | inject it whole beside `review-output.md`; read it before you label |
 | `skeptical-review.md` | the review of the finished diff, and when it runs | at the hand-over, and on each later branch head |
 | `review-runner.md` | the mechanics of a headless review: the detached worktree, the instructions file, the runner, the checks and the session id | when `skeptical-review.md` sends you to it |
 | `substitution.md` | a review step the principal named another reviewer for | before you dispatch that step |
@@ -154,24 +155,58 @@ chosen rather than fallen into.
 Two files tell every run what the principal wants it to know about a repo:
 `.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path
 whatever the record root is. Read both whole at "Take the goal", on every
-path and on a review run. A missing file holds nothing. Then write
+path and on a review run. A missing file holds nothing. **A review run, and
+the queue at triage, read the repo file from the PR's base branch**. Run `git
+-C <checkout> fetch origin <baseRefName>` first, then `git -C <checkout> show
+origin/<baseRefName>:.claude/crew.md`, because the main working tree can hold
+any branch. A file missing there holds nothing. Then write
 `run set standing_instructions '{"repo": <path or null>, "machine": <path or
-null>}'`, with `null` for a missing file. A resumed session reads the files
-at those paths again before its first dispatch.
+null>}'`, with `null` for a missing file. A review run writes `repo` as the
+string `origin/<baseRefName>:.claude/crew.md`, and a resumed review run reads
+it with the same fetch and show. When the working tree's `.claude/crew.md`
+differs from the base branch's, or exists where the base branch has none, tell
+the principal once that the review reads the committed file. A resumed
+session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these nine:
+**Each file holds optional `##` sections.** You act on these fourteen:
 
 | Section | What you do with it |
 |---|---|
 | `Reviewers` | the plain words that name a replacement for a review step, read as below |
 | `Known red tests` | it seeds `reviews/baseline.md` |
-| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it |
+| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads the suite and the gates from it in place of the scout (`/crew:review`'s "Take the PR" step 6). The value `ci` makes a review run read the PR's check runs in place of a local suite (`/crew:review`'s "Review" owns it). A goal run ignores `Gates: ci`: a `Gates` section whose only line is `ci` reads as no `Gates` section on a goal run, so the scout's suite and gates stand for your verification and for the skeptical review |
+| `Setup` | one install command that makes the suite runnable in a fresh worktree, and an optional line `Lockfile: <path>`. A review run reads it in place of the scout, and its "Review" says when the command runs |
+| `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run reads that bot's review as claims (`/crew:review`'s "Adjudicate"). With no section, nothing reads a bot's review |
 | `Hook workarounds` | read it before every push and every merge |
 | `Ticket defaults` | read it before you create or name a ticket. It answers that question without an escalation (`autonomy-contract.md`, "How to escalate") |
 | `PR readiness` | `ready` or `draft`. `draft` adds `PR: draft` to `charter.md` |
 | `Done` | `merged` or `rolled out`. `crew:delivered-window`'s "The word that the work shipped" reads it |
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
+| `Pre-enqueue checks` | shell commands, one per line, that the queue session runs before every enqueue. A non-zero exit stops the enqueue (`crew:review-queue`'s "Enqueue") |
+| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, the principal's checkout of each repo. Only `crew:review-queue` reads it. With no matching line, the queue stops and asks for one (`crew:review-queue`'s "Triage") |
+| `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
+
+**`Deploy` names the signal that the work is live.** Its lines are:
+
+- `environment: <name>`: a GitHub deployment of the merge commit to that
+  environment, whose latest status is `success`.
+- `workflow: <name>`: a GitHub Actions run of that workflow, by name, with
+  `head_sha` equal to the merge commit and the conclusion `success`.
+- `none`: the repo has no deploy process. The merge is the ship word.
+- `manual`: the repo deploys where `gh` cannot see, such as a deploy tool
+  outside GitHub. After the merge, the ship word stays the principal's.
+- `timeout: <minutes>`: a positive integer, how long the watch waits after it
+  arms. The default is 180.
+
+With no `Deploy` section in any source, the deploy watch reads the repo's
+GitHub deployments. With some, the signal is the newest deployment of the
+merge commit whose `production_environment` is true, or whose environment is
+named `production` or `prod`, with the latest status `success`. With none, the
+signal is the newest Actions run on the merge commit whose name holds `deploy`
+or `release`. With neither, 10 minutes after the merge, the repo has no deploy,
+and the merge is the ship word. The delivered window arms the deploy watch
+from the winning source (`crew:delivered-window`'s "The deploy watch").
 
 A file with no `##` heading is one `Reviewers` section. Act on no other
 section yourself, and pass it through to ICs and reviewers unread.
@@ -245,9 +280,9 @@ spawn prompt after it.
 | Its result | the final message in its idle notification | its hand-back, an `<agent-message>` turn. The harness tells every background subagent to hand back with `SubagentHandback`. A task notification follows it and carries no text. |
 | Your later message to it | `SendMessage` to its name reaches its mailbox | `SendMessage` to its name resumes it, with its context kept |
 | Its question to you | a message in this session, sent to your name | a new turn, sent to `main` |
-| Its own lookups | run in the foreground, one at a time | not yet observed (design §15.124) |
+| Its own lookups | run in the foreground, one at a time | not yet observed (design §15.131) |
 
-Subagent mode is on trial (design §15.124). Nothing else in a path changes
+Subagent mode is on trial (design §15.131). Nothing else in a path changes
 between the modes. Where a reference says idle notification, read the
 hand-back in subagent mode.
 
@@ -296,7 +331,7 @@ in both modes.
 **Permission prompts surface here in teammate mode.** A teammate's prompt
 reaches this session, for you to approve. Pre-approve what the run needs, or
 a no-prompt run stalls on the first one. No run has shown what a background
-subagent does with an un-granted command (design §15.124). Treat its stall or
+subagent does with an un-granted command (design §15.131). Treat its stall or
 its denial as a stall here.
 
 **Both modes run every path.** `full-path.md` sends an IC its next
@@ -383,27 +418,23 @@ listing names for this role: the report and the reservation file itself.
 That write is what reserves the round.
 
 Then dispatch `crew:spec-critic`, named `spec-critic-r<n>` for the same
-round, with `spec.md`, `charter.md`, the repo path, `review-output.md`
-whole, the standing instructions as "Standing instructions" above says, and
-the absolute path it writes its findings to:
+round, with `spec.md`, `charter.md`, the repo path, `review-output.md` and
+`severity-rubric.md` whole, the standing instructions as "Standing
+instructions" above says, and the absolute path it writes its findings to:
 `reviews/spec-critic-r<n>.md`. Every review dispatch in this run reserves
 and names its round the same way, and returns the short result
 `review-output.md` defines, read as "Every dispatch is named" above says;
-open the file only when the count says there is something to adjudicate.
+open the file only when its `Findings:` line counts a finding.
 
-`Verdict: re-spec needed` means adjudicate, revise `spec.md`, and dispatch
-`spec-writer-r<n>` again for the next round. The critic's next round reads
-the whole spec. **Two rounds is the cap.** At the cap, apply every open
+A round with a finding you label `blocking` means: revise `spec.md`, and
+dispatch `spec-writer-r<n>` again for the next round. The critic's next round
+reads the whole spec. **Two rounds is the cap.** At the cap, apply every open
 finding you accept to `spec.md` yourself, log the rest in `decisions.md` as
-declined with reasons, and go on to the split. Do not ask.
+declined with reasons, and go on to the sweep. Do not ask.
 
-**A `[Concern]` or `[Nit]` on the spec is a wording fix.** Apply each one you
-accept to `spec.md` yourself, and dispatch no spec writer and no critic round
-for it.
-**A spec-critic or split-critic round with no `[Critical]` finding is
-finished when the project lead applies the findings it accepts inline.** No
-writer and no critic round follows it. A `ready to split` round with
-findings ends this way.
+**A round with no finding you label `blocking` is the last.** Your labels
+decide, not the critic's verdict. Apply each finding you accept to `spec.md`
+yourself, and go on to the sweep. No spec writer and no critic round follows.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,
@@ -416,6 +447,33 @@ different thing and the same file states it.
 **Every review in this run is adjudicated the same way**, at every stage:
 restate each finding in your own words, verify it against the repo, and push
 back in writing where it is wrong here. **A finding is a claim, not a verdict.**
+
+**Then label each finding again yourself**, by `severity-rubric.md`, with the
+artifact or the code open. This holds for every round of every source: a
+critic, the skeptical review, CI, a bot, a PR comment or review, the
+principal's reading of the diff, a `/code-review` run, or any other reviewer.
+A finding with no proposed label gets yours alone. A critic's own definition
+of `blocking` holds for its artifact. A question or a notice is not a finding
+and gets no label. You can also give `don't post` or `not real`. Your label
+is final, and it alone decides whether the finding takes action:
+
+| Your label | The action |
+|---|---|
+| `blocking` | a fix round: a re-spec, a re-split, or a patch-round package on the skeptical review's, or on any finding after the hand-over |
+| `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The skeptical review's, or any finding after the hand-over: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there. When the verdict after your labels is `accepted`, that package integrates with `--no-review accepted-round` |
+| `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
+| `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |
+
+The label decides whether a finding takes action, as a package. It never
+removes the reply that an item from the PR or CI gets by
+`crew:delivered-window`'s "Send the reply file", unless the principal marked
+the item `no reply`.
+
+When your label differs from the reviewer's, the ledger names both. Each
+ledger line names the label. After the hand-over, the label decides only
+whether a finding takes action, and `skeptical-review.md`'s dispositions then
+decide what it becomes. A review run
+(`run.kind: review`) uses `github-review.md`'s label rule instead.
 
 ## A step the principal replaced
 

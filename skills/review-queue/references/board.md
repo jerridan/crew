@@ -38,7 +38,10 @@ One JSON object:
 
 `owner.session_id` is the session id of the queue session that last took
 the board, and `owner.since` is when it took it. `SKILL.md` owns the
-takeover and "The owner check". `asks_through` is the `found_at` of the
+takeover and "The owner check". Each queue session keeps its own takeover
+time in the file `<record-root>/queue/owner-<session id>`: one line, the
+same value as `owner.since` at the takeover. `SKILL.md` owns who writes,
+reads and removes it. The mod never reads it. `asks_through` is the `found_at` of the
 newest asks-file entry that the queue session took. The queue session writes
 it. A board with no `asks_through` field reads as `null`. `found` counts the
 asks the watch found since `since`. `last` is the row's latest event. `watch`

@@ -8926,7 +8926,11 @@ Deliberately different:
         armed session disarms when the board names another non-empty owner
         whose `since` is later than the time this session armed. That
         `since` test keeps a session that the skill just armed from
-        disarming before its own Start writes the owner.
+        disarming before its own Start writes the owner. On the owner path
+        the armed time is the board's `owner.since`, not the clock, so the
+        mod orders owners by the value the skill uses. After a takeover
+        race, the old session arms again at its old `since` and the new
+        owner's later `since` disarms it. The skill path keeps the clock.
 
      b. **The queue takes the board every time (#134).** "Start" now sets
         `owner` to the new session with no question, with `owner.since` from
@@ -8937,8 +8941,12 @@ Deliberately different:
         by `owner.since`, as the mod does. A session whose takeover is
         earlier than the board's `since` stops and deletes its wakeup cron
         job. A session that an earlier owner wrote over takes the board
-        again and keeps the rows. `SKILL.md` owns the rule, and `board.md`
-        points at it.
+        again and keeps the rows. "Start" also writes the takeover time to
+        `<queue-dir>/owner-<session id>`, and "The owner check" reads it
+        there, so a compaction cannot lose it. A missing file makes the
+        session treat itself as the old session, which is the safe side. The
+        closing of the queue removes the file. `SKILL.md` owns the rule, and
+        `board.md` names the file.
 
      c. **The layout (#135).** The pane and the text table now match the
         mockup that the principal approved on 2026-10-29: a top line with

@@ -51,8 +51,10 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 
 1. **Read the board** at `references/board.md`'s path. **Always take it.**
    Set `owner.session_id` to `$CLAUDE_CODE_SESSION_ID` and `owner.since` to
-   the output of `date -u +%Y-%m-%dT%H:%M:%SZ`. Keep that value as your
-   takeover time. Keep the existing watches and rows. When the board
+   the output of `date -u +%Y-%m-%dT%H:%M:%SZ`. That value is your takeover
+   time. Write it, as one line, to `<queue-dir>/owner-$CLAUDE_CODE_SESSION_ID`,
+   because a compaction can lose a value that only your context holds.
+   Keep the existing watches and rows. When the board
    named another non-empty session id, tell the principal in one line which
    session id you took the board from. Ask nothing. When the board does not
    exist, write it with no watch and no row.
@@ -473,11 +475,14 @@ owning session id in `owner.session_id`.
 **The owner check.** Run it at step 0 of each wakeup-loop run, before a
 direct ask's triage, before each action that the principal's answer starts,
 and before each board write after your own "Start".
-Read `owner` from the board. Order owners by `owner.since`:
+Read `owner` from the board. Read your takeover time from
+`<queue-dir>/owner-$CLAUDE_CODE_SESSION_ID`. When that file is missing or
+empty, you cannot prove that you took the board last. Treat yourself as the
+old session. Order owners by `owner.since`:
 
 - `owner.session_id` is yours, or empty: go on.
 - Another session owns the board and its `owner.since` is later than your
-  takeover time: a new queue session took the board, and this one is the old
+  takeover time, or you have no takeover time: a new queue session took the board, and this one is the old
   session. Do not write. Delete the cron job of your wakeup loop, the job
   that "Start" step 3 arms, with `CronList` and `CronDelete`. Tell the
   principal in one line. Stop.
@@ -521,3 +526,6 @@ main working tree.**
 2. Clean up every row that is not done, as above.
 3. Delete the wakeup loop's job with `CronDelete`.
 4. Write the board one last time, with each watch `stopped`.
+5. Remove `<queue-dir>/owner-$CLAUDE_CODE_SESSION_ID`. A queue session that
+   is not closed leaves its file, as it leaves its other files in
+   `<queue-dir>`.

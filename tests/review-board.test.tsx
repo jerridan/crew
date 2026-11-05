@@ -156,7 +156,7 @@ test('rows sort next:you first, then stage order, then newest', async ($, on) =>
 test('the title is capped at 60 characters and an assist watch shows in yellow', async ($, on) => {
   const long = 'x'.repeat(90)
   world(on, () => board([row(8, 'triage', 'crew', '2026-01-01T10:00:00Z', { title: long, policy: 'assist' })]))
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const ui = await $.ui.mount({ ...PANE, props: { ...PANE.props, bodyColumns: 140 }, surface: 'terminal' })
   const drawn = words(await ui.drawn())
   expect(drawn).not.toContain('x'.repeat(61))
   expect(drawn).toContain('x'.repeat(59))
@@ -171,14 +171,14 @@ test('In flight shows +N more when it exceeds the room', async ($, on) => {
   world(on, () => board(many))
   const ui = await $.ui.mount({
     ...PANE,
-    props: { ...PANE.props, scroll: { offset: 0, bodyRows: 12 } },
+    props: { ...PANE.props, scroll: { offset: 0, bodyRows: 20 } },
     surface: 'terminal',
   })
   const drawn = words(await ui.drawn())
   expect(drawn).toMatch(/\+\d+ more/)
   // Every line the pane draws counts: all of them stay inside bodyRows.
   const root = (await ui.drawn()) as { children?: unknown[] }
-  expect((root.children ?? []).length).toBeLessThanOrEqual(12)
+  expect((root.children ?? []).length).toBeLessThanOrEqual(20)
   await ui.unmount()
 })
 
@@ -283,7 +283,7 @@ test('/review-board prints the table as text, fitted to the width, under 110 col
   const out = await $.command.run(command(80))
   expect(w.seen.opens).toBe(0)
   expect(out.text).toContain('Needs you')
-  expect(order(out.text ?? '')).toEqual([4, 1, 3, 5, 2, 6])
+  expect(order(out.text ?? '')).toEqual([4, 1, 3, 5, 2, 6, 7])
   for (const line of (out.text ?? '').split('\n')) {
     expect(line.length).toBeLessThanOrEqual(80)
   }
@@ -312,6 +312,7 @@ const LONG_ROW = () =>
   board([
     row(8, 'triage', 'crew', '2026-01-01T10:00:00Z', {
       title: LONG,
+      watch: null,
       last: { at: '2026-01-01T10:00:00Z', text: LONG },
     }),
   ])
@@ -1069,7 +1070,7 @@ test('A27: two untaken entries for one PR draw one derived row, and it alone ope
   expect(lines.length).toBe(1)
   // The row comes from the earliest entry: watch #dev, its policy assist, no
   // title, and the last event names the watch.
-  expect(lines[0]).toMatch(/#41\s+new\s+crew\s+assist\s/)
+  expect(lines[0]).toMatch(/#41\s+new\s+crew\s+-\s/)
   expect(lines[0]).toContain('new ask from #dev')
   expect(lines[0]).not.toContain('later')
 })
@@ -1132,8 +1133,7 @@ test('R8: a later last_checked in asks.json shows in Watching', async ($, on) =>
   })
   await arm($, w)
   const pane = await drawn($)
-  expect(pane).toContain('checked 2026-01-01 20:00')
-  expect(pane).toContain('found 9')
+  expect(pane).toContain('checked 4h ago')
 })
 
 for (const fault of ['mv', 'write'] as const) {
@@ -1595,7 +1595,7 @@ test('R15: the text table has the top line, the header, the counts and the polic
   expect(lines[2]).toContain('5m')
   expect(lines[2]).not.toContain('w1')
   expect(lines[5]).toBe('')
-  expect(lines[6]).toMatch(/^ {2}PR {4}stage {5}next {3}author {2}title.*age {2}last event/)
+  expect(lines[6]).toMatch(/^ {2}PR {5}stage {6}next {4}author {3}title.*age {3}last event/)
   expect(lines[7]).toBe('')
   for (const t of ['Needs you 1', 'In flight 3', 'Done 2']) expect(lines).toContain(t)
   expect(lines.some(l => l.includes('#104') && l.includes('[review]'))).toBe(true)

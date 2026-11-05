@@ -105,7 +105,9 @@ export const sections = (board: ReviewBoardFile) => {
   return {
     needsYou: sorted.filter(r => r.next === 'you' && !isDone(r)),
     inFlight: sorted.filter(r => r.next !== 'you' && !isDone(r)),
-    done: sorted.filter(isDone),
+    done: sorted
+      .filter(isDone)
+      .sort((a, b) => b.last.at.localeCompare(a.last.at)),
   }
 }
 
@@ -285,63 +287,115 @@ const fit = (text: string, width: number) =>
 
 const pad = (text: string, width: number) => fit(text, width).padEnd(width)
 
-const when = (iso: string | null) =>
-  iso ? iso.replace('T', ' ').slice(0, 16) : '-'
-
-// Fixed cells, in order: pr, stage, next, policy. Title and last event share
-// what is left.
-const CELLS = [6, 10, 7, 7] as const
+// Fixed cells, in order: pr, stage, next, author, then title, the age, and the
+// last event. Title and last event share what is left.
+const CELLS = [6, 10, 7, 8] as const
+const AGE = 5
 const GAP = 1
+const COUNT = CELLS.length + 3
+const HEAD = ['PR', 'stage', 'next', 'author', 'title', 'age', 'last event']
 
-// A row is the fixed cells, one gap between each of the six cells, then the
-// title and the last event. `indent` is what a caller puts before the row.
+// A row is the fixed cells, one gap between each of the seven cells, then the
+// title, the age and the last event. `indent` is what a caller puts before
+// the row.
 const widths = (columns: number, indent = 0) => {
-  // The four fixed cells, the title and the last event: six cells, five gaps.
-  const gaps = GAP * (CELLS.length + 2 - 1)
-  const fixed = CELLS.reduce((a, b) => a + b, 0) + gaps
+  const gaps = GAP * (COUNT - 1)
+  const fixed = CELLS.reduce((a, b) => a + b, 0) + AGE + gaps
   const left = Math.max(LAST_MIN + 10, columns - indent - fixed)
   const title = Math.min(TITLE_CAP, Math.max(10, left - LAST_MIN))
   return { title, last: left - title }
 }
 
-const watchLine = (x: ReviewBoardWatch) =>
-  [
-    x.id,
-    x.source,
-    x.policy,
-    x.status,
-    `since ${when(x.since)}`,
-    `checked ${when(x.last_checked)}`,
-    `found ${x.found}`,
-  ].join(' · ')
+// The short age of a time: 15m, 20h, 3d. A time that does not parse is `-`.
+export const ago = (iso: string | null, now: number) => {
+  const t = at(iso ?? '')
+  if (!t) return '-'
+  const min = Math.max(0, Math.floor((now - t) / 60_000))
+  if (min < 60) return `${min}m`
+  if (min < 24 * 60) return `${Math.floor(min / 60)}h`
+  return `${Math.floor(min / (24 * 60))}d`
+}
+
+const sourceName = (source: string) => {
+  if (source.startsWith('slack:')) return source.slice('slack:'.length)
+  if (source === 'github:review-requests') return 'review requests'
+  if (source === 'direct') return 'direct asks'
+  return source
+}
+
+const active = (board: ReviewBoardFile) =>
+  board.watches.filter(w => w.status === 'active')
+
+export const topLine = (board: ReviewBoardFile, now: number) => {
+  const sources = active(board).map(w => sourceName(w.source))
+  const where = sources.length === 0 ? '' : `${sources.join(' + ')}  `
+  const updated = board.updated_at
+    ? `updated ${ago(board.updated_at, now)} ago`
+    : 'updated -'
+  return `Review board  ${where}·  ${updated}`
+}
+
+const checkedText = (x: ReviewBoardWatch, now: number) =>
+  x.last_checked ? `checked ${ago(x.last_checked, now)} ago` : 'not checked yet'
+
+// The policy of a row, when it differs from the policy of its watch.
+const marker = (board: ReviewBoardFile, r: ReviewBoardRow) => {
+  const w = board.watches.find(x => x.id === r.watch)
+  return w && w.policy !== r.policy ? `[${r.policy}] ` : ''
+}
+
+const STAGE_COLOR: Partial<Record<ReviewBoardStage, string>> = {
+  approve: 'magenta',
+  blocked: 'red',
+  fixing: 'yellow',
+  reviewing: 'cyan',
+  rereview: 'cyan',
+  queued: 'blue',
+}
 
 export const textTable = (
   board: ReviewBoardFile,
   columns = 120,
   notes: readonly string[] = [],
+  now = Date.now(),
 ) => {
   const w = widths(columns, 2)
-  const line = (r: ReviewBoardRow) =>
+  const cells = (c: string[]) =>
     [
-      pad(`#${r.pr}`, CELLS[0]),
-      pad(r.stage, CELLS[1]),
-      pad(r.next, CELLS[2]),
-      pad(r.policy, CELLS[3]),
-      pad(r.title, w.title),
-      fit(r.last.text, w.last),
+      pad(c[0], CELLS[0]),
+      pad(c[1], CELLS[1]),
+      pad(c[2], CELLS[2]),
+      pad(c[3], CELLS[3]),
+      pad(c[4], w.title),
+      pad(c[5], AGE),
+      fit(c[6], w.last),
     ].join(' '.repeat(GAP))
+  const line = (r: ReviewBoardRow) =>
+    cells([
+      `#${r.pr}`,
+      r.stage,
+      r.next,
+      r.author || '-',
+      r.title,
+      ago(r.last.at, now),
+      `${marker(board, r)}${r.last.text}`,
+    ])
   const s = sections(board)
-  const out = [statusLine(board), '', 'Watching']
-  if (board.watches.length === 0) out.push('  none')
-  for (const x of board.watches) out.push(`  ${fit(watchLine(x), columns - 2)}`)
+  const out = [topLine(board, now), `Watching ${active(board).length}`]
+  for (const x of active(board)) {
+    out.push(
+      `  ${fit(`${sourceName(x.source)}  ${x.policy}  ${checkedText(x, now)}`, columns - 2)}`,
+    )
+  }
   for (const n of notes) out.push(`  ${fit(n, columns - 2)}`)
-  out.push('', 'Needs you')
-  if (s.needsYou.length === 0) out.push('  none')
+  out.push('', `  ${cells(HEAD)}`, '')
+  out.push(`Needs you ${s.needsYou.length}`)
+  if (s.needsYou.length === 0) out.push('  Nothing needs you.')
   for (const r of s.needsYou) out.push(`  ${line(r)}`)
-  out.push('', 'In flight')
-  if (s.inFlight.length === 0) out.push('  none')
+  out.push('', `In flight ${s.inFlight.length}`)
   for (const r of s.inFlight) out.push(`  ${line(r)}`)
-  out.push('', `Done (${s.done.length}, hidden)`)
+  out.push('', `Done ${s.done.length}`)
+  for (const r of s.done) out.push(`  ${line(r)}`)
   return out.map(l => fit(l, columns)).join('\n')
 }
 
@@ -869,7 +923,12 @@ export const register: Register = on => {
     // A pane a command opens is placed at any width, so the width decides.
     const columns = e.presentation.columns
     if (columns < MIN_PANE_COLUMNS) {
-      return { text: textTable(await loadView($), columns, notes) }
+      return { text: textTable(
+          await loadView($),
+          columns,
+          notes,
+          await $.clock.now(),
+        ) }
     }
     const placed = await $.ui.open({ id: PANE, title: 'Review board' })
     if (placed.isPlaced) return { text: 'Review board pane opened.' }
@@ -880,77 +939,135 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
-    // Only the timer and the skill prompt run `tick`; a render never does. An
-    // armed session draws from the last tick, so a render reads no file. A
-    // session that is not armed reads the file once per render.
+    // Only the timer and the skill prompt run `tick`; a render never does. The
+    // timer reloads the board for an open pane, armed or not, so a render
+    // draws from the last tick and reads a file only before the first tick.
     paneShown = true
     ensureTimer($)
     const board = current ?? (await loadView($))
+    const now = await $.clock.now()
     const s = sections(board)
-    const shown = true
     const w = widths(e.props.bodyColumns)
 
-    const cell = (width: number, text: string, color?: string) => (
+    type Style = { color?: string; dimColor?: boolean }
+    const cell = (width: number, text: string, style: Style = {}) => (
       <Box width={width} flexShrink={0}>
-        <Text color={color} wrap="truncate">
+        <Text color={style.color} dimColor={style.dimColor} wrap="truncate">
           {fit(text, width)}
         </Text>
       </Box>
     )
 
-    const rowView = (r: ReviewBoardRow) => (
-      <Box key={`${r.repo}#${r.pr}`} gap={GAP}>
-        {cell(CELLS[0], `#${r.pr}`)}
-        {cell(CELLS[1], r.stage)}
-        {cell(CELLS[2], r.next)}
-        {cell(CELLS[3], r.policy, r.policy === 'assist' ? 'yellow' : undefined)}
-        {cell(w.title, r.title)}
-        {cell(w.last, r.last.text)}
-      </Box>
+    const rowView = (r: ReviewBoardRow) => {
+      const done = isDone(r)
+      const grey: Style = { dimColor: true }
+      const stage: Style = done
+        ? grey
+        : STAGE_COLOR[r.stage]
+          ? { color: STAGE_COLOR[r.stage] }
+          : grey
+      const flag = marker(board, r)
+      return (
+        <Box key={`${r.repo}#${r.pr}`} gap={GAP}>
+          {cell(CELLS[0], `#${r.pr}`, done ? grey : {})}
+          {cell(CELLS[1], r.stage, stage)}
+          {cell(
+            CELLS[2],
+            r.next,
+            done ? grey : r.next === 'you' ? { color: 'magenta' } : {},
+          )}
+          {cell(CELLS[3], r.author || '-', done ? grey : {})}
+          {cell(w.title, r.title, done ? grey : {})}
+          {cell(AGE, ago(r.last.at, now), done ? grey : {})}
+          <Box width={w.last} flexShrink={0}>
+            {flag && (
+              <Text
+                color={!done && r.policy === 'assist' ? 'yellow' : undefined}
+                dimColor={done}
+              >
+                {flag}
+              </Text>
+            )}
+            <Text dimColor={done} wrap="truncate">
+              {fit(r.last.text, Math.max(1, w.last - flag.length))}
+            </Text>
+          </Box>
+        </Box>
+      )
+    }
+
+    const blank = (key: string) => <Text key={key}>{' '}</Text>
+    const more = (key: string, n: number) => (
+      <Text key={key} dimColor>{`+${n} more`}</Text>
     )
 
-    // In flight takes what is left of the window. Every other line counts:
-    // four headings, the Watching and Needs you rows (or their one empty
-    // line), the watcher's notes, the Done button, the Done rows when shown,
-    // and the "+N more" line when In flight overflows.
-    const used =
-      4 +
-      Math.max(1, board.watches.length) +
+    // The room for In flight and Done: the height less every line that is
+    // never cut. In flight takes what it needs first, and Done keeps one row
+    // (and its "+N more" line) when it has more than it can show. A list
+    // that does not fit shows the rows that fit, down to one, then "+N more".
+    const watches = active(board)
+    const fixed =
+      1 + // top line
+      1 + watches.length + // Watching
       notes.length +
-      Math.max(1, s.needsYou.length) +
-      (shown ? s.done.length : 0)
-    let room = Math.max(1, e.props.scroll.bodyRows - used)
-    if (s.inFlight.length > room) room = Math.max(1, room - 1)
-    const flight = s.inFlight.slice(0, room)
-    const hidden = s.inFlight.length - flight.length
+      3 + // blank, header, blank
+      1 + Math.max(1, s.needsYou.length) + // Needs you
+      1 + 1 + // blank, In flight heading
+      1 + 1 // blank, Done heading
+    const room = Math.max(2, e.props.scroll.bodyRows - fixed)
+    const f = s.inFlight.length
+    const d = s.done.length
+    const reserve = d === 0 ? 0 : d === 1 ? 1 : 2
+    const flightRoom = Math.max(1, room - reserve)
+    const flightRows = f <= flightRoom ? f : Math.max(1, flightRoom - 1)
+    const flightLines = flightRows + (f > flightRows ? 1 : 0)
+    const doneRoom = Math.max(1, room - flightLines)
+    const doneRows = d <= doneRoom ? d : Math.max(1, doneRoom - 1)
+    const flight = s.inFlight.slice(0, flightRows)
+    const doneShown = s.done.slice(0, doneRows)
 
     return (
       <Box flexDirection="column">
-        <Text bold>Watching</Text>
-        {board.watches.length === 0 && <Text dimColor>No watches.</Text>}
-        {board.watches.map(x => (
-          <Text
-            key={x.id}
-            color={x.policy === 'assist' ? 'yellow' : undefined}
-            wrap="truncate"
-          >
-            {fit(watchLine(x), e.props.bodyColumns)}
-          </Text>
+        <Text bold wrap="truncate">
+          {fit(topLine(board, now), e.props.bodyColumns)}
+        </Text>
+        <Text bold>{`Watching ${watches.length}`}</Text>
+        {watches.map(x => (
+          <Box key={x.id} gap={2}>
+            <Text>{sourceName(x.source)}</Text>
+            <Text color={x.policy === 'assist' ? 'yellow' : undefined}>
+              {x.policy}
+            </Text>
+            <Text dimColor>{checkedText(x, now)}</Text>
+          </Box>
         ))}
         {notes.map((n, i) => (
           <Text key={`note:${i}`} dimColor wrap="truncate">
             {fit(n, e.props.bodyColumns)}
           </Text>
         ))}
-        <Text bold>Needs you</Text>
+        {blank('b1')}
+        <Box gap={GAP}>
+          {cell(CELLS[0], HEAD[0], { dimColor: true })}
+          {cell(CELLS[1], HEAD[1], { dimColor: true })}
+          {cell(CELLS[2], HEAD[2], { dimColor: true })}
+          {cell(CELLS[3], HEAD[3], { dimColor: true })}
+          {cell(w.title, HEAD[4], { dimColor: true })}
+          {cell(AGE, HEAD[5], { dimColor: true })}
+          {cell(w.last, HEAD[6], { dimColor: true })}
+        </Box>
+        {blank('b2')}
+        <Text bold>{`Needs you ${s.needsYou.length}`}</Text>
         {s.needsYou.length === 0 && <Text dimColor>Nothing needs you.</Text>}
         {s.needsYou.map(rowView)}
-        <Text bold>In flight</Text>
-        {flight.length === 0 && <Text dimColor>Nothing in flight.</Text>}
+        {blank('b3')}
+        <Text bold>{`In flight ${f}`}</Text>
         {flight.map(rowView)}
-        {hidden > 0 && <Text dimColor>{`+${hidden} more`}</Text>}
-        <Text bold>Done</Text>
-        {s.done.map(rowView)}
+        {f > flightRows && more('more-flight', f - flightRows)}
+        {blank('b4')}
+        <Text bold>{`Done ${d}`}</Text>
+        {doneShown.map(rowView)}
+        {d > doneRows && more('more-done', d - doneRows)}
       </Box>
     )
   })

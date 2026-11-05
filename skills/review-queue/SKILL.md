@@ -482,10 +482,10 @@ old session. Order owners by `owner.since`:
 
 - `owner.session_id` is yours, or empty: go on.
 - Another session owns the board and its `owner.since` is later than your
-  takeover time, or you have no takeover time: a new queue session took the board, and this one is the old
-  session. Do not write. Delete the cron job of your wakeup loop, the job
-  that "Start" step 3 arms, with `CronList` and `CronDelete`. Tell the
-  principal in one line. Stop.
+  takeover time, or you have no takeover time: a new queue session took
+  the board, and this one is the old session. Do not write. Delete the
+  cron job of your wakeup loop, the job that "Start" step 3 arms, with
+  `CronList` and `CronDelete`. Tell the principal in one line. Stop.
 - Another session owns the board and its `owner.since` is not later than your
   takeover time: an earlier owner wrote over your takeover. Take the board
   again. Set `owner.session_id` to yours and `owner.since` to your takeover

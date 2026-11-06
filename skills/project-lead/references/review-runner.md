@@ -4,7 +4,7 @@ This file owns the mechanics of a headless review. It says how any caller
 cuts the detached worktree, writes the instructions file, launches the
 runner, checks the result and records the session. The caller supplies its
 round `<n>`, its goal text and where it reads that text, its base ref, its
-pending head, its suite command and its output path
+pending head, its suite command (a goal run's) and its output path
 (`<record-dir>/reviews/skeptical-r<n>.md`). `skeptical-review.md`, "The
 inputs", is the table that lists every value and where it is read from. The
 body names its files `skeptical-r<n>`. `skeptical-review.md` is the first
@@ -338,8 +338,8 @@ Each rule buys one thing the review cannot work without:
 | `Read`, `Glob`, `Grep` | reading the tree the review is about |
 | `Bash(git diff *)`, `Bash(git log *)`, `Bash(git show *)` | the history and the diff |
 | `Bash(git rev-parse *)` | the sha the reviewer opens its report with (`git rev-parse HEAD`) |
-| `Bash(<gate part> *)`, one rule per part of each gate | every verification gate that a review run's `Gates` section names, or that the scout recorded when there is none, not the suite alone: tests, types, lint and build. The suite run is the one `skeptical-review.md`'s stance requires. Under the no-suite outcome and under `Gates: ci`, leave every gate rule out |
-| `Bash(npm view *)`, `Bash(npm ls *)`, `Bash(pnpm ls *)`, `Bash(pnpm why *)`, `Bash(yarn why *)`, `Bash(pip show *)` | read-only package probes: which version is installed, and why. When the setup command, from `Setup` or from the scout, uses another package manager, add its read-only equivalent |
+| `Bash(<gate part> *)`, one rule per part of each gate | every verification gate that the scout recorded, not the suite alone: tests, types, lint and build. The suite run is the one `skeptical-review.md`'s stance requires. Under the no-suite outcome, leave every gate rule out. A review run's list has no gate rule |
+| `Bash(npm view *)`, `Bash(npm ls *)`, `Bash(pnpm ls *)`, `Bash(pnpm why *)`, `Bash(yarn why *)`, `Bash(pip show *)` | read-only package probes: which version is installed, and why. When the setup command, from the scout, uses another package manager, add its read-only equivalent |
 | `Edit(//<record-dir>/reviews/**)` | the report file, which sits in the record and not in the worktree |
 
 **The list adds capabilities and removes none.** Headless mode already allows
@@ -394,18 +394,18 @@ where it goes.
 
 ## Prepare the worktree before you launch
 
+**A review run skips this section.** It runs no setup command and no baseline,
+and the setup failure path below does not apply (`/crew:review`'s "Review").
+The rest of the section is for a goal run.
+
 **Run the repo's setup command yourself, in the review worktree.** A fresh
 worktree has the repo's files and none of its installed dependencies, so the
-suite fails there for a reason that has nothing to do with the diff. On a
-review run with a `Gates` section, the command is the `Setup` section's
-(`SKILL.md`, "Standing instructions"). Otherwise the scout records it beside
-the suite command (`SKILL.md`, "Scout"). `/crew:review`'s "Review" says when
-a review run runs it again. Run it as the project lead, in the worktree,
+suite fails there for a reason that has nothing to do with the diff. The
+scout records the command beside the suite command (`SKILL.md`, "Scout"). Run it as the project lead, in the worktree,
 before the launch. Never grant the child a rule for it, because that rule
 would let the review install whatever it liked. A setup that ran adds the
 line "Dependencies are installed. Do not install." to the instructions
-("Reviewer instructions"). `Gates: ci` runs no setup command, so the
-instructions do not get that line (`/crew:review`'s "Review").
+("Reviewer instructions").
 
 **Before the deliverable's first round, the baseline runs here.**
 `skeptical-review.md`'s "When the review runs" owns that step. It moves the
@@ -436,7 +436,7 @@ edit. The findings come back to you, and you decide what each one earns.
 
 **You assemble this file; you do not copy a second copy of the report
 shape.** It has four parts, and a fifth for any round after the first, in
-this order:
+this order. A review run has no part 3:
 
 1. **`review-output.md`, verbatim.** It owns the `Severity:` line, the
    `Cannot verify` rule, the report-never-fix rule and the three closing
@@ -447,13 +447,13 @@ this order:
    `github-review.md`'s reviewer paragraph instead.
 2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
    says.
-3. **`reviews/baseline.md`, whole**, then this sentence, verbatim: "A test
+3. **On a goal run, `reviews/baseline.md`, whole**, then this sentence, verbatim: "A test
    or gate on this list is red before the change. Do not raise it."
 4. **The block below**, with its bracketed values filled in. It holds what is
    this review's own and nothing that parts 1 to 3 already state: the goal
    text, the diff range, the suite and the line that says the dependencies
-   are installed (or the no-suite sentence, or the `ci` block that lists the
-   checks), the output path, and the
+   are installed (or the no-suite sentence, or a review run's block), the
+   output path, and the
    pending head.
 5. **For a round `n > 1`, the later-round block** after the block below. A
    fresh launch and a resume both get it, whatever made the round launch
@@ -508,7 +508,7 @@ End the report with the three closing lines, after that section: `Findings:`,
 ```
 
 **Fill the suite paragraph with one of these literal blocks, verbatim
-except their own brackets.** With a suite:
+except their own brackets.** On a goal run with a suite:
 
 ```
 Run the suite yourself, and report what you saw: <suite command>, run in
@@ -522,32 +522,19 @@ When you ran the setup command, add this line after that block, verbatim:
 Dependencies are installed. Do not install.
 ```
 
-Under the no-suite outcome, this replaces the whole paragraph — never a
+On a goal run under the no-suite outcome, this replaces the whole paragraph — never a
 "run the suite" sentence with nothing to run:
 
 ```
 This repository has no suite. Read the diff without running one.
 ```
 
-Under `Gates: ci`, the paragraph is one of two blocks. The project lead
-writes one line per check into the brackets, as `skills/review/SKILL.md`'s
-"Review" says. It picks the first block when at least one check concluded on
-the head, and the second block otherwise:
+On a review run, this block replaces the whole paragraph:
 
 ```
-CI ran the suite on this head. These are the checks and their conclusions:
-<one line per check: its name, then its conclusion>. Do not run the suite,
-and do not install anything. You may spot-check the diff against the code
-with read-only commands, such as a grep or a read of a call site.
-```
-
-```
-No check concluded on this head. These are the checks and their statuses:
-<one line per check: its name, then its status, or "none" when no check
-exists>. CI did not verify this head. Do not run the suite, and do not
-install anything. You may spot-check the diff against the code with
-read-only commands, such as a grep or a read of a call site. Say in your
-report that CI gave no signal on this head.
+Do not run the suite, a gate or an install. Spot-check the diff against the
+code with read-only commands, such as a grep or a read of a call site.
+Do not raise a finding about lint, format, types, a failing test or another CI check, because CI reports those to the author.
 ```
 
 **Part 5, the later-round block, for any round `n > 1`.** `<previous head
@@ -621,7 +608,7 @@ All four pass, or this is the failure path below:
    - The report marks a check `Cannot verify`, and that check bears on the
      verdict.
 
-   Under `Gates: ci`, a report with no suite output passes the second case,
+   On a review run, a report with no suite output passes the second case,
    because the round had no suite (`skills/review/SKILL.md`, "Review").
 
    Every other denial passes this check. Write the `tool_input` of each

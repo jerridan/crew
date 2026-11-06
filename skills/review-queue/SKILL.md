@@ -350,11 +350,12 @@ Read the PR's reviews after the principal runs it. Write `<sha>` to
 rules. A chain with `cd` or a test run gets classified. Give `gh` the PR URL
 or `--repo`, and give `git` the `-C` flag.
 
-After a post with the event `APPROVE`, set `stage: approve`. Under
-`review`, the approval ends the review: set `next: author`, and set the
-Slack `:done:` reaction. "Watch each PR" keeps the row until it is done.
-Under `assist`, go on to "Enqueue". After any other event, set `next:
-author`.
+After a post with the event `APPROVE`, set `stage: approve`, and set the
+Slack `:white_check_mark:` reaction (✅) on the row's message, when the row
+has one. A message that carries two PRs gets it when both are approved.
+Under `review`, the approval ends the review: set `next: author`. "Watch
+each PR" keeps the row until it is done. Under `assist`, go on to
+"Enqueue". After any other event, set `next: author`.
 
 **Each time a post sets `next: author`, read the row's `head`.** A push can
 land while a review runs, and "Watch each PR" then only records it. When
@@ -410,9 +411,7 @@ principal names a method, run "Enqueue" again from step 1, and add
 
 After the enqueue, set `stage: queued`, `next: queue`. When `gh` says it
 enabled auto-merge, the required checks still run: set `next: ci` until a
-poll prints `queued`. When the PR is approved and queued, set the Slack
-`:done:` reaction. A message that carries two PRs gets `:done:`
-when both are.
+poll prints `queued`.
 
 ## Watch each PR
 

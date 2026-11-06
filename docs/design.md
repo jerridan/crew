@@ -9056,3 +9056,19 @@ Deliberately different:
      its issues are the author's.
 
      No run has exercised this change.
+
+135. **The queue marks an approved PR with ✅ — 2026-11-06.** The queue set
+     the Slack `:done:` reaction when a `review` PR was approved, or when an
+     `assist` PR was approved and queued. The principal prefers ✅
+     (`:white_check_mark:`), set once the PR is approved. The queue now sets
+     ✅ at the `APPROVE` post under every policy, on the row's Slack message
+     when it has one, and no longer sets `:done:`. A message that carries two
+     PRs gets it when both are approved.
+
+     The review-board mod skipped a Slack message with the `done` reaction.
+     It now skips a message with ✅ or with `done`. Other people mark a
+     handled message with `done`, so that one still hides it. The mod's
+     tests cover both reactions, and a message with another reaction still
+     gives an ask.
+
+     No queue session has exercised this change.

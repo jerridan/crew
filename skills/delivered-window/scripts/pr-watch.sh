@@ -16,7 +16,8 @@
 # `deploy-once`, it polls one time and prints a line only when one is due.
 # With no `environment` and no `workflow`, a repo with no GitHub deployment
 # and no active workflow whose name or path holds `deploy` or `release` prints
-# `no-deploy` on the first poll after the merge.
+# `no-deploy` on the first poll after the merge, unless the merged PR changed a
+# file under `.github/workflows/`. Then the 10-minute wait holds.
 # The deploy modes read `run.deploy` from `state.json`, need no `run.watch`,
 # and print nothing when `run.deploy.ended` is set.
 #
@@ -75,7 +76,7 @@ wf_check() {
 }
 
 # What the last good read of the PR showed, kept for a poll whose read fails.
-oid=''; merged_at=''; dep_count=''; wf_has=''
+oid=''; merged_at=''; dep_count=''; wf_has=''; wf_changed=''
 
 deploy_poll() {
   v=$(gh pr view "$PR" --json state,mergeCommit,mergedAt \
@@ -107,9 +108,10 @@ deploy_poll() {
       [ -n "$dep_count" ] || return 0
       if [ "$dep_count" = 0 ]; then
         # No deployment objects. A deploy or release run on the merge commit
-        # is the signal. With none, a repo with no active deploy workflow has
+        # is the signal, matched by the run's name. With none, a repo with no
+        # active deploy workflow, whose merged PR changed no workflow file, has
         # no deploy at all. Otherwise wait 10 minutes for a run to appear.
-        wf_check '((.name // "") | test("deploy|release"; "i")) or ((.path // "") | test("deploy|release"; "i"))'
+        wf_check '(.name // "") | test("deploy|release"; "i")'
         [ -z "$finished" ] || return 0
         if [ -z "$seen_deploy" ]; then
           # Only a good read is kept. A failed read keeps the 10-minute wait.
@@ -119,7 +121,14 @@ deploy_poll() {
               | select(((.name // "") + " " + (.path // "")) | test("deploy|release"; "i"))
               | .id' 2>/dev/null) && wf_has=$(printf '%s\n' "$wfs" | grep -c .)
           fi
-          if [ "$wf_has" = 0 ]; then
+          if [ "$wf_has" = 0 ] && [ -z "$wf_changed" ]; then
+            # A merged PR that changed a workflow file can add the first deploy
+            # workflow. A failed read counts as changed: the safe side.
+            wf_changed=$(gh pr view "$PR" --json files --jq '[.files[].path
+              | select(startswith(".github/workflows/"))] | length' 2>/dev/null) || wf_changed=1
+            [ -n "$wf_changed" ] || wf_changed=1
+          fi
+          if [ "$wf_has" = 0 ] && [ "$wf_changed" = 0 ]; then
             echo "no-deploy $N - $merged_at the repo has no GitHub deployments and no deploy workflow"
             finished=1
             return 0

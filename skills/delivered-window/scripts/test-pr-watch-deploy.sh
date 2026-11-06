@@ -129,11 +129,11 @@ setup 1 "$NODEP" "$WF_RELEASE" "$RDRUN"; check 'release-drafter.yml run named CI
 NAMEDRUN='{"workflow_runs":[{"id":9,"name":"Deploy","path":".github/workflows/ci.yml","conclusion":"success","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:01:00Z"}]}'
 setup 1 "$NODEP" "$WF_PR" "$NAMEDRUN";    check 'a run named Deploy with success' deployed
 # The merged PR changed a workflow file: keep the wait.
-FILES='["README.md",".github/workflows/x.yml"]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+FILES='[{"path":"README.md"},{"path":".github/workflows/x.yml"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
 check 'PR changed a workflow file, 1 minute' none
-FILES='["README.md",".github/workflows/x.yml"]' setup 11 "$NODEP" "$WF_PR" "$NORUNS"
+FILES='[{"path":"README.md"},{"path":".github/workflows/x.yml"}]' setup 11 "$NODEP" "$WF_PR" "$NORUNS"
 check 'PR changed a workflow file, 11 minutes' no-deploy-wait
-FILES='["README.md"]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+FILES='[{"path":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
 check 'PR changed no workflow file, 1 minute' no-deploy-wf
 FILES=null setup 1 "$NODEP" "$WF_PR" "$NORUNS"
 check 'files read fails, 1 minute' none

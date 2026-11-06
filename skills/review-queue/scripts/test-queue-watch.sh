@@ -23,6 +23,8 @@ cat > "$T/bin/gh" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
 echo "$*" >> "$D/gh.log"
+# A hook: a test rewrites the board while a pass runs. It runs once.
+if [ -e "$D/on-gh" ]; then h=$D/on-gh; mv "$h" "$h.run"; bash "$h.run"; fi
 args="$*"
 n=''
 case "$args" in
@@ -77,6 +79,11 @@ while [ $# -gt 0 ]; do
   case "$1" in -t) name=${2#=}; shift ;; esac
   shift
 done
+# Real tmux reads a dot in a target as a pane separator, unless a colon ends it.
+case "$name" in
+  *:) name=${name%:} ;;
+  *.*) echo "can't find pane: ${name##*.}" >&2; exit 1 ;;
+esac
 case "$cmd" in
   has-session)
     [ -e "$D/alive-$name" ] && exit 0
@@ -393,6 +400,70 @@ expect_kinds 'item 2 a failed batch is silent' ''
 rm "$S/fail-batch"
 run_pass
 [ "$(runs 1)" = 5 ]; ok 'item 2 the change is read when the batch works again' $?
+
+# Patch round 2, item 1: a repo name with a dot. The stub tmux rejects the bare
+# target, as real tmux does.
+seed
+jq '.rows += [{"repo":"acme/next.js","pr":5,"title":"d","author":"x","stage":"reviewing","next":"crew","head":"x","last":{"at":"2026-01-01T00:00:00Z","text":"t"},"url":"u","watch":"review-requests","policy":"review"}]' "$Q/board.json" > "$T/b.json" && mv "$T/b.json" "$Q/board.json"
+CD=review-acme-next.js-5
+mkdir -p "$REC/pr-acme-next.js-5-aaaa/reviews"
+touch "$S/tmux/alive-$CD"
+echo 1700000000 > "$S/tmux/created-$CD"
+echo 'working... esc to interrupt' > "$S/tmux/pane-$CD"
+run_pass
+echo '{}' > "$REC/pr-acme-next.js-5-aaaa/ready.json"
+run_pass
+expect_kinds 'patch 2 item 1 a dotted repo name still gets its ready line' 'ready'
+printf '%s\n' "$OUT" | grep -q '^ready acme/next.js#5 '; ok 'patch 2 item 1 the ready line is for the dotted repo' $?
+# A child never seen alive gets no line, even with a dot.
+seed
+jq '.rows += [{"repo":"acme/next.js","pr":5,"title":"d","author":"x","stage":"reviewing","next":"crew","head":"x","last":{"at":"2026-01-01T00:00:00Z","text":"t"},"url":"u","watch":"review-requests","policy":"review"}]' "$Q/board.json" > "$T/b.json" && mv "$T/b.json" "$Q/board.json"
+rm -f "$S/tmux/alive-$CD"
+run_pass
+run_pass
+expect_kinds 'patch 2 item 1 a dotted child never seen gets no line' ''
+
+# Patch round 2, item 1: a ready line does not depend on tmux.
+seed
+run_pass
+touch "$S/tmux/error"
+echo '{}' > "$REC/pr-acme-widget-1-aaaa/ready.json"
+run_pass
+expect_kinds 'patch 2 item 1 ready prints while tmux fails' 'ready'
+
+# Patch round 2, item 2: the row leaves its stage during the pass, before its
+# child check. No child-gone prints.
+seed
+run_pass
+rm "$S/tmux/alive-$C1"
+printf '#!/bin/bash\njq ".rows[0].stage = \\"triage\\"" "%s" > "%s.t" && mv "%s.t" "%s"\n' "$Q/board.json" "$Q/board.json" "$Q/board.json" "$Q/board.json" > "$S/on-gh"
+run_pass
+expect_kinds 'patch 2 item 2 a re-triage inside the pass prints no child-gone' ''
+
+# Patch round 2, item 3: a held ask stays held across a fresh spell.
+seed
+echo 'xoxp-secret' > "$HOME/.claude/secrets/slack-token"
+run_pass
+echo '[{"number":9,"repository":{"nameWithOwner":"acme/widget"},"url":"https://github.com/acme/widget/pull/9","title":"n","author":{"login":"z"}}]' > "$S/search.json"
+run_pass
+expect_kinds 'patch 2 item 3 the stale watch prints the ask' 'ask'
+fresh_asks
+run_pass
+printf '{"version":1,"updated_at":"2026-01-01T00:00:00Z","watches":{"review-requests":{"last_checked":"2026-01-01T00:00:00Z","found":0}},"asks":[]}\n' > "$Q/asks.json"
+run_pass
+expect_kinds 'patch 2 item 3 the ask does not print again after a fresh spell' ''
+
+# Patch round 2, item 3: a paused review-requests watch keeps the held ask.
+seed
+run_pass
+echo '[{"number":9,"repository":{"nameWithOwner":"acme/widget"},"url":"https://github.com/acme/widget/pull/9","title":"n","author":{"login":"z"}}]' > "$S/search.json"
+run_pass
+expect_kinds 'patch 2 item 3 no token: the ask prints' 'ask'
+jq '.watches[0].status = "paused"' "$Q/board.json" > "$T/b.json" && mv "$T/b.json" "$Q/board.json"
+run_pass
+jq '.watches[0].status = "active"' "$Q/board.json" > "$T/b.json" && mv "$T/b.json" "$Q/board.json"
+run_pass
+expect_kinds 'patch 2 item 3 the ask does not print again after a paused watch' ''
 
 # AC3: not the owner.
 seed

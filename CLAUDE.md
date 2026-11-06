@@ -11,7 +11,9 @@ two hooks, the three scripts under `skills/project-lead/scripts/`,
 `skills/review/scripts/review-json.py`, and
 `skills/review-queue/scripts/queue-watch.sh`: they are code, run against a
 seeded record (design §15.38, §15.50, §15.123, §15.124, §15.136).
-`skills/review-queue/scripts/test-queue-watch.sh` tests the last one. The
+`skills/review-queue/scripts/test-queue-watch.sh` tests the last one, and
+`skills/delivered-window/scripts/test-pr-watch-deploy.sh` tests the default
+deploy signal of `pr-watch.sh`. The
 review-board mod,
 `hooks/review-board.tsx`, is TypeScript: `claude plugin test <repo>` runs its
 tests, and `claude plugin validate <repo>` checks its module (§15.128).
@@ -25,7 +27,7 @@ tests, and `claude plugin validate <repo>` checks its module (§15.128).
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
-| `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line |
+| `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line. `test-pr-watch-deploy.sh` beside them tests the default deploy signal |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |

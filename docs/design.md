@@ -9156,3 +9156,38 @@ Deliberately different:
      One suggestion is declined: the script keeps running `pr-watch.sh once`,
      because `pr-watch.sh` owns what each line means. The new checks fail
      before the fix.
+
+137. **A repo with no deploy workflow ships at the merge — 2026-11-06.** With
+     no `Deploy` section and no GitHub deployment, the deploy watch waited 10
+     minutes after the merge before it printed `no-deploy`. The issue-141 run
+     waited that long on a repo whose only workflow is `pr-review.yml`. No
+     run of a deploy workflow could ever appear, so the wait only delayed the
+     close (issue 144).
+
+     `pr-watch.sh` in the modes `deploy` and `deploy-once` now reads the
+     repo's workflows with `gh api --paginate` when it finds no deployment
+     and no deploy run. A workflow counts when its state is `active` and its
+     name or path holds `deploy` or `release`, in any case. With none, the
+     script prints `no-deploy` on the first poll after the merge. With one,
+     the 10-minute wait stays. A failed read keeps the wait, because a false
+     `no-deploy` is a false ship word. A good read holds for the life of the
+     process, like the deployment count. The default case also matches a run
+     by its workflow path, so `deploy.yml` named `CI` counts. The `workflow:`
+     case still matches by name only.
+
+     `crew:delivered-window`'s "The deploy watch" runs `deploy-once` once
+     before it arms the `Monitor`. A `no-deploy` line there makes the `merged`
+     item the ship word, as `Deploy: none` does, and no monitor runs. A kill
+     before the ship write leaves `ended` `null`, so a resume arms the watch,
+     and its first poll prints `no-deploy`.
+
+     `skills/delivered-window/scripts/test-pr-watch-deploy.sh` ran the script
+     against a seeded record with a stub `gh` first in `PATH`. It checks a
+     repo with only `pr-review.yml`, a `Deploy` workflow and a `release.yml`
+     workflow with no run at 1 and 11 minutes, a failed workflows read, a
+     deployment that exists, a successful production deployment, a disabled
+     `Deploy` workflow, and a `deploy.yml` run named `CI`. Seven of the
+     eleven checks failed before the change. `test-queue-watch.sh` still
+     passes.
+
+     No crew run has used this change.

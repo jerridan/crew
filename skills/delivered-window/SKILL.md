@@ -121,8 +121,9 @@ on that item. In order:
    `Deploy: none`: arm no monitor, write no `run.deploy.ended`, and go to
    "The word that the work shipped". A kill before the ship write leaves
    `ended` `null`, so a resume arms the watch. Its first poll prints
-   `no-deploy` when the workflows read succeeds, and otherwise after the
-   10-minute wait. With any other output, or none, go on to step 4. Do not act
+   `no-deploy` when the workflows read and the files read succeed. After a
+   failed read, it prints `no-deploy` on the first poll where both succeed, or
+   after the 10-minute wait. With any other output, or none, go on to step 4. Do not act
    on the check's own line: the watch prints it again.
 4. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch".
 5. Report the merge to the principal in one sentence that says the deploy

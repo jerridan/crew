@@ -138,8 +138,8 @@ and they wait for your go-ahead too.
 After a merge, crew watches GitHub for the deploy of the merge commit. When
 that deploy succeeds, the run closes with no word from you. With no deploy
 configured and no GitHub deployment, a repo with no deploy or release workflow
-closes at the merge, and one with such a workflow but no run closes 10 minutes
-after the merge. `Deploy: none` closes at the merge. If the deploy fails or
+closes at the merge, unless the merged PR changed a workflow file. One with
+such a workflow but no run closes 10 minutes after the merge. `Deploy: none` closes at the merge. If the deploy fails or
 does not finish in time,
 crew tells you, and the run stays open until you say the work shipped. With
 `Deploy: manual`, the run also waits for your word. Closing the

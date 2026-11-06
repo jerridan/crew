@@ -9195,10 +9195,13 @@ Deliberately different:
      Patch round 1 (PR comments on the PR). A merged PR that changes a file
      under `.github/workflows/` can add the repo's first deploy workflow, and
      a run of it may come after the first poll. So the script reads the files
-     of the merged PR with `gh pr view <pr> --json files` before it prints the
-     immediate `no-deploy`, and keeps the 10-minute wait when one is under
-     `.github/workflows/`. A failed files read counts as changed. The read is
-     kept like the others. A repo that deploys through an integration, such as
+     of the merged PR with `gh api --paginate repos/<owner>/<repo>/pulls/<n>/files
+     --jq '.[].filename'` before it prints the immediate `no-deploy`, and
+     keeps the 10-minute wait when one is under `.github/workflows/`.
+     `gh pr view --json files` may give only the first 100 files, and a
+     workflow file after them would be missed. A failed files read counts as
+     changed for that poll only. A good read is kept, like the workflows read,
+     so the next poll reads again after a failure. A repo that deploys through an integration, such as
      Vercel, has GitHub deployments from earlier merges, so only its first
      deploy ever is at risk, and `Deploy: environment: <name>` covers it. A
      workflow named `CD` at `cd.yml` is missed, as it was before this change.
@@ -9210,5 +9213,13 @@ Deliberately different:
      workflows read that fails once and then succeeds. The check "a
      `deploy.yml` run named `CI` with success prints `deployed`" now expects no
      `deployed`.
+
+     Patch round 2. The code kept a failed files read as `1` for the life of
+     the process, so it was never read again, and `pr-watch.md` said it was.
+     The script now keeps the files read only when it succeeds, and uses `1`
+     for that poll on a failure. A new check runs one `deploy` process whose
+     first files read fails: `no-deploy` prints on the next poll. The script
+     reads the files with `gh api --paginate`, which pages. The README line on
+     closing at the merge now states the workflow-file exception.
 
      No crew run has used this change.

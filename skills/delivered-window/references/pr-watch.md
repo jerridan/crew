@@ -205,13 +205,14 @@ it reads the deploy signal that `run.deploy` names:
   repos/<owner>/<repo>/actions/workflows`. A workflow counts when its state is
   `active` and its name or path holds `deploy` or `release`, in any case. With
   no such workflow, the script reads the files the merged PR changed with `gh
-  pr view <pr> --json files`. When none is under `.github/workflows/`, it
+  api --paginate repos/<owner>/<repo>/pulls/<n>/files --jq
+  '.[].filename'`. When none is under `.github/workflows/`, it
   prints `no-deploy` on the first poll after the merge. When the PR changed one,
   because it can add the first deploy workflow, the script keeps the wait that
   follows. With a counting workflow, it waits until 10 minutes after the merge,
   because the run may not exist yet, and then prints `no-deploy`. A failed
-  workflows read or a failed files read keeps that wait and is read again on
-  the next poll.
+  workflows read or a failed files read keeps that wait for that poll, and is
+  read again on the next poll.
 
 The script prints one line and exits. The kinds are:
 

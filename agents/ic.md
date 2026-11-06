@@ -39,13 +39,15 @@ shape. Do not write it yourself.
 ## Fix rounds
 
 A fix round arrives as a message after you already reported. Fix what it
-asks. Re-run the tests it covers. Append a new section to your existing
-report for the round — never overwrite your report.
+asks. Re-run the tests it covers, except on a review run: run none. Append a
+new section to your existing report for the round — never overwrite your
+report.
 
 ## Self-review, before you write your report
 
 - Re-read your acceptance criterion. Confirm it passes right now, on a
-  fresh run.
+  fresh run. On a review run, run nothing: read the criterion against your
+  diff.
 - Diff your worktree against your declared file set. Every changed file
   must be in it.
 - Re-read every command you ran. Confirm each one followed the contract's

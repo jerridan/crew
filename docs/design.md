@@ -9030,7 +9030,10 @@ Deliberately different:
      The drop covers a tool's own output only, never a behavior defect. The
      IC of a review run writes the test and runs none, and `ic-contract.md`
      owns that exception. The no-suite outcome has a review-run form. The
-     `dequeued` rule and the no-gate condition each have one owner.
+     project lead runs no test on a review run, the acceptance criterion
+     included, and `simple-path.md`'s "Verify before you believe" owns that
+     rule (round skeptical-r2). The `dequeued` rule and the no-gate
+     condition each have one owner.
 
      No run has exercised this change. The seeded-record check of
      `pr-watch.sh` printed a `check` line for a goal run and none for a

@@ -53,8 +53,8 @@ esac
 R=${PR#https://github.com/}; R=${R%/pull/*}; N=${PR##*/pull/}; N=${N%%[/?#]*}
 
 # Judge the newest Actions run on the merge commit that passes the jq test in
-# $1, a test on the run object. A success or a failure prints one line and sets `finished`. Any
-# other conclusion is no result yet, and the newest run still wins next poll.
+# $1, a test on the run object. A success or a failure prints one line and
+# sets `finished`. Any other conclusion is no result yet, and the newest run still wins next poll.
 wf_check() {
   r=$(gh api "repos/$R/actions/runs?head_sha=$oid&per_page=100" --jq '
     [.workflow_runs[] | select('"$1"')] | sort_by(.created_at) | last

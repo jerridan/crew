@@ -187,15 +187,35 @@ run_pass
 expect_kinds 'AC1 entering the queue again prints queued again' 'queued'
 ! grep -q 'pull/3' "$S/gh.log"; ok 'AC1 the done row is never polled' $?
 
-# AC1: a token. No ask line, no gh search call.
+# AC1: a token and a fresh review-requests watch. No ask line, no gh search call.
+fresh_asks() {
+  printf '{"version":1,"updated_at":"%s","watches":{"review-requests":{"last_checked":"%s","found":0}},"asks":[]}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$Q/asks.json"
+}
 seed
 echo 'xoxp-secret' > "$HOME/.claude/secrets/slack-token"
+fresh_asks
 run_pass
 echo '[{"number":9,"repository":{"nameWithOwner":"acme/widget"},"url":"https://github.com/acme/widget/pull/9","title":"n","author":{"login":"z"}}]' > "$S/search.json"
 run_pass
 expect_kinds 'AC1 token: no ask line' ''
 ! grep -q 'search' "$S/gh.log"; ok 'AC1 token: no gh search call' $?
 ! printf '%s%s' "$OUT" "$(cat "$T/stderr")" | grep -q 'xoxp-secret'; ok 'AC1 token is never printed' $?
+
+# Review item 5: a token and a stale review-requests watch. The script polls it.
+seed
+echo 'xoxp-secret' > "$HOME/.claude/secrets/slack-token"
+run_pass
+echo '[{"number":9,"repository":{"nameWithOwner":"acme/widget"},"url":"https://github.com/acme/widget/pull/9","title":"n","author":{"login":"z"}}]' > "$S/search.json"
+run_pass
+expect_kinds 'review 5 token, no asks file: the stale watch is polled' 'ask'
+seed
+echo 'xoxp-secret' > "$HOME/.claude/secrets/slack-token"
+printf '{"version":1,"updated_at":"2026-01-01T00:00:00Z","watches":{"review-requests":{"last_checked":"2026-01-01T00:00:00Z","found":0}},"asks":[]}\n' > "$Q/asks.json"
+run_pass
+echo '[{"number":9,"repository":{"nameWithOwner":"acme/widget"},"url":"https://github.com/acme/widget/pull/9","title":"n","author":{"login":"z"}}]' > "$S/search.json"
+run_pass
+expect_kinds 'review 5 token, old last_checked: the stale watch is polled' 'ask'
 
 # AC1: dequeued with queued true in the seed.
 seed
@@ -319,6 +339,30 @@ echo 'OPEN null' > "$S/state-2"
 run_pass
 expect_kinds 'item 1 a group that printed merged does not hold queued' 'queued'
 
+# Review item 1: a record directory of PR 12 is not the directory of PR 1.
+seed
+run_pass
+mkdir -p "$REC/pr-acme-widget-12-bbbb"
+echo '{}' > "$REC/pr-acme-widget-12-bbbb/ready.json"
+mkdir -p "$REC/pr-acme-widget-1-extra-cccc"
+echo '{}' > "$REC/pr-acme-widget-1-extra-cccc/ready.json"
+run_pass
+expect_kinds 'review 1 a longer PR number or a non-hex suffix is not the record directory' ''
+
+# Review item 4: a PR that leaves the queue and enters it again between two
+# passes prints queued again.
+seed
+echo 2026-02-01T00:00:00Z > "$S/queue-2"
+run_pass
+run_pass
+echo 2026-02-02T00:00:00Z > "$S/queue-2"
+run_pass
+expect_kinds 'review 4 a new enqueuedAt prints queued again' 'queued'
+printf '%s\n' "$OUT" | grep -q '^queued acme/widget#2 2 - 2026-02-02T00:00:00Z '; ok 'review 4 the new queued line shape' $?
+run_pass
+expect_kinds 'review 4 the new queued event prints once' ''
+jq -e '[.events[] | select(.g == "pr:acme-widget-2" and (.k | startswith("queued ")))] | length == 1' "$Q/watch-S.json" >/dev/null; ok 'review 4 the state holds one queued event' $?
+
 # Item 2: one batched read for each pass; pr-watch.sh runs only when due.
 runs() { local c; c=$(grep -c "pull/$1 --json isDraft" "$S/gh.log"); echo "${c:-0}"; }
 batches() { local c; c=$(grep -c 'api graphql.*owner: "' "$S/gh.log"); echo "${c:-0}"; }
@@ -353,13 +397,12 @@ run_pass
 # AC3: not the owner.
 seed
 run_pass
-before=$(cksum < "$Q/watch-S.json")
 write_board T
 echo "$SHA_B" > "$S/head-1"
 run_pass
 [ "$OUT" = 'not-owner - -' ]; ok 'AC3 prints not-owner - -' $?
 [ "$RC" = 0 ]; ok 'AC3 exits 0' $?
-[ "$(cksum < "$Q/watch-S.json")" = "$before" ]; ok 'AC3 leaves the state file alone' $?
+[ ! -e "$Q/watch-S.json" ]; ok 'review 6 not-owner removes the state file' $?
 
 if [ "$fails" -gt 0 ]; then
   printf '%s of %s checks failed\n' "$fails" "$total"

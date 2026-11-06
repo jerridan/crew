@@ -100,7 +100,11 @@ none re-enters at `investigation-path.md`'s first unfinished phase.
 string** you expand into `charter.md`: the goal, and one falsifiable acceptance
 criterion. In the goal or at launch, a principal who asks to keep the PR a
 draft gets the line `PR: draft` in `charter.md`, and one who asks to skip the
-go-ahead gets `Gate: off`. Add each to a charter from disk the same way.
+go-ahead gets `Gate: off`. A goal that names a GitHub issue the work
+resolves, as `#<n>`, `issue <n>` or an issue URL, gets one line
+`Issue: <owner>/<repo>#<n>` per issue. Take `<owner>/<repo>` from the URL,
+or else from `gh repo view --json nameWithOwner` in `run.repo`. Add each line
+to a charter from disk the same way.
 
 **Pick the path before you judge the criterion** (design §9.5), because the
 two paths need different things of it. The test is what the goal names. A

@@ -9038,3 +9038,21 @@ Deliberately different:
      No run has exercised this change. The seeded-record check of
      `pr-watch.sh` printed a `check` line for a goal run and none for a
      review run, with `gh` stubbed.
+
+134. **A shipped goal closes its GitHub issue — 2026-11-06.** The run for
+     #136 merged its PR, and the issue stayed open. The PR body linked the
+     issue with no closing keyword, and nothing in crew closed it. The
+     principal asked that a project lead close the issue that a shipped PR
+     resolves.
+
+     "Take the goal" now writes one `Issue: <owner>/<repo>#<n>` line to
+     `charter.md` for each GitHub issue the goal names. `simple-path.md`'s
+     "End the run", which the full path borrows, puts `Closes
+     <owner>/<repo>#<n>` in the PR body, so GitHub closes the issue on a
+     merge into the default branch. GitHub does not close it on a merge into
+     another branch, so "The word that the work shipped" closes each named
+     issue that is still open once the PR merged. A PR that closed with no
+     merge closes no issue. A review run writes no `Issue:` line: its PR and
+     its issues are the author's.
+
+     No run has exercised this change.

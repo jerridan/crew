@@ -98,8 +98,10 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 
 Each fire, each `ready:` message, each "Crew review-queue ask:" prompt from
 the review-board mod, each monitor line and the monitor's expiry notice runs
-this loop. After a fire or an expiry notice, arm the monitor again, as
-"Start" step 3 says. The loop does these steps:
+this loop. After an expiry notice, arm the monitor again, as "Start" step 3
+says. After a fire, arm it again only when this session holds no live queue
+monitor, for example after it ended with an error or in a resumed session.
+The loop does these steps:
 
 0. **Run "The owner check"** (`references/ownership.md`). When it says
    stop, do no triage, launch, post, approval, enqueue or Slack reaction.
@@ -153,7 +155,7 @@ minutes, and no skeptical review runs.
 **The stall check** stays in the loop as the slow check behind the monitor.
 A child's record directory is
 `<record-root>/pr-<owner>-<repo>-<n>-<hex>/`, the newest one made after
-the launch. Read the child's pane when no file in it changed for 30
+the launch. The suffix `<hex>` has lowercase hex digits only. Read the child's pane when no file in it changed for 30
 minutes, or when it has no record directory 30 minutes after its launch:
 
 ```bash
@@ -521,7 +523,9 @@ Write the whole file to `board.json.tmp` beside it, then move it over
 
 ## Clean up
 
-**Clean up a row when it is done, and at a re-triage.** End its child.
+**Clean up a row when it is done, and at a re-triage.** At a re-triage, write
+the row's new stage to the board first, so the monitor never sees a row at
+`reviewing` with no child. End its child.
 Send `/exit` with `tmux send-keys -t =<child> '/exit' Enter`. Kill its tmux
 session with `tmux kill-session -t =<child>`. Then remove each of the row's
 worktrees that exists. All are under `<checkout>/.claude/worktrees/`:
@@ -549,6 +553,7 @@ main working tree.**
 1. Stop each subagent this session dispatched, such as a merge agent.
 2. Clean up every row that is not done, as above.
 3. Delete the wakeup loop's job with `CronDelete`. Stop the queue monitor
-   with `TaskStop`, and remove `<queue-dir>/watch-<session-id>.json`.
+   with `TaskStop`, and remove `<queue-dir>/watch-<session-id>.json` when it
+   still exists.
 4. Write the board one last time, with each watch `stopped`.
 5. Remove the takeover-time file, as `references/ownership.md` says.

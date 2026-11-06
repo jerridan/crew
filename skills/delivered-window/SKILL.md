@@ -402,10 +402,10 @@ In order:
    gets both. A review run writes no baseline, so its IC gets neither the file
    nor the sentence. On a review run, its brief also says that dependencies
    are not installed, not to install them and not to run the suite: it
-   writes the test, and the PR's CI runs it on the push. Its brief asks for the whole defect class, as
-   `simple-path.md`'s "Fix rounds" says. Run its "Verify before you believe",
-   which greps for the pattern each finding named, run its "Fix rounds" where a
-   check fails, then run its "Integrate" in full, with the substitution "A
+   writes the test, and the PR's CI runs it on the push. Its brief
+   asks for the whole defect class, as `simple-path.md`'s "Fix rounds" says.
+   Run its "Verify before you believe", which greps for the pattern each
+   finding named, run its "Fix rounds" where a check fails, then run its "Integrate" in full, with the substitution "A
    change request" names. On a goal run, a package that answers a skeptical
    round whose verdict after your labels is `accepted` integrates with
    `--no-review accepted-round`. Read that verdict from the reply file's

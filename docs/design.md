@@ -9092,10 +9092,27 @@ Deliberately different:
      line only for an event that the last pass did not hold, so a PR that
      stays in the merge queue prints `queued` once, not each minute. The last
      pass is in `<queue-dir>/watch-<session-id>.json`. A pass with no such
-     file prints nothing, so a new session wakes on nothing that existed
-     before it. A check that fails keeps its events and prints nothing, so a
-     network error neither prints a held event again nor forgets it. A
-     session that lost the board gets `not-owner - -`, and the script exits.
+     file prints only `child-prompt` lines: a child that already waits at a
+     prompt gets a line, and the wakeup loop at the takeover reads every
+     other held event. A check that fails keeps its events and prints
+     nothing, so a network error neither prints a held event again nor
+     forgets it. A held `queued` event stays until its group prints
+     `dequeued`, `merged` or `closed`, or the batched read shows the PR
+     outside the queue, so a failed read inside `pr-watch.sh` does not drop
+     it. A session that lost the board gets `not-owner - -`, and the script
+     exits.
+
+     The first version ran `pr-watch.sh once` for every open row each minute.
+     One run is about 5 GraphQL queries and 3 REST reads, so each row cost
+     about 300 GraphQL points an hour against a 5,000-point budget that the
+     principal and every child share. Now each pass makes one `gh api
+     graphql` read of every open row (head, state and merge-queue entry) and
+     keeps the values in the state file. It runs `pr-watch.sh once` for a row
+     only on first sight, when the values changed, and on the 10th pass after
+     the row's last run. A quiet row costs a share of one query for each
+     pass, and about 6 runs of `pr-watch.sh` an hour as a floor. A batch read
+     that fails, or fails for one row, runs `pr-watch.sh` for no row it could
+     not read, and those rows keep their events.
      `SKILL.md` "Start" arms the monitor with or without a token. The cron
      job stays as a fallback every 30 minutes, and stays at 5 minutes only
      when a `slack:` watch has no token, because only the queue session can
@@ -9110,9 +9127,9 @@ Deliberately different:
 
      `skills/review-queue/scripts/test-queue-watch.sh` ran the script against
      a seeded queue directory with a stub `gh` and a stub `tmux`. It checks
-     the silent first pass, one line of each kind, no repeat of a held event,
-     `queued` again after a leave and a re-entry, `dequeued`, `merged`,
-     `closed`, a failed pass, the token case, `child-idle`, `child-gone` and
+     the first pass (only `child-prompt` prints), one line of each kind, no
+     repeat of a held event, `queued` again after a leave and a re-entry, the
+     run counts of `pr-watch.sh`, `dequeued`, `merged`, `closed`, a failed pass, the token case, `child-idle`, `child-gone` and
      `not-owner`. A first version of the test passed with the carry of a
      failed check removed, because the helper read `$?` after a command
      substitution. The helper was fixed, and the removal now fails the test.
@@ -9120,4 +9137,5 @@ Deliberately different:
      No run has exercised this change in a live queue session. A live
      permission prompt and the idle rule on a live child are unexercised. A
      failed `gh` read inside `pr-watch.sh` other than its first read goes
-     unseen: the script then sees a pass with no line for that event.
+     unseen: the script then sees a pass with no line for that event. Only
+     the held `queued` event survives it.

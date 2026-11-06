@@ -140,7 +140,11 @@ the event. The line's kind adds this:
   that `tmux attach -t =<child>` reaches it. Set `next: you`. Leave `stage`
   as it is.
 - **`not-owner`**: the monitor has stopped. Run "The owner check"
-  (`references/ownership.md`). Arm nothing.
+  (`references/ownership.md`). When it says go on, arm the monitor again, as
+  "Start" step 3 says. Otherwise arm nothing.
+
+When a monitor ends at once and its stderr has a `queue-watch.sh:` line, tell
+the principal that line, fix what it names, and arm the monitor again.
 
 `child-idle` means all of these hold: the pane shows no `esc to interrupt`
 on 3 passes in a row, no file in the child's record directory changed in 10

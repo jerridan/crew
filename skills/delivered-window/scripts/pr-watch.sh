@@ -121,14 +121,19 @@ deploy_poll() {
               | select(((.name // "") + " " + (.path // "")) | test("deploy|release"; "i"))
               | .id' 2>/dev/null) && wf_has=$(printf '%s\n' "$wfs" | grep -c .)
           fi
+          wf_now=$wf_changed
           if [ "$wf_has" = 0 ] && [ -z "$wf_changed" ]; then
             # A merged PR that changed a workflow file can add the first deploy
-            # workflow. A failed read counts as changed: the safe side.
-            wf_changed=$(gh pr view "$PR" --json files --jq '[.files[].path
-              | select(startswith(".github/workflows/"))] | length' 2>/dev/null) || wf_changed=1
-            [ -n "$wf_changed" ] || wf_changed=1
+            # workflow. Only a good read is kept. A failed read counts as
+            # changed for this poll only: the safe side.
+            wf_now=1
+            if files=$(gh api --paginate "repos/$R/pulls/$N/files" \
+                --jq '.[].filename' 2>/dev/null) && [ -n "$files" ]; then
+              wf_changed=$(printf '%s\n' "$files" | grep -c '^\.github/workflows/' || true)
+              wf_now=$wf_changed
+            fi
           fi
-          if [ "$wf_has" = 0 ] && [ "$wf_changed" = 0 ]; then
+          if [ "$wf_has" = 0 ] && [ "$wf_now" = 0 ]; then
             echo "no-deploy $N - $merged_at the repo has no GitHub deployments and no deploy workflow"
             finished=1
             return 0

@@ -69,8 +69,8 @@ principal for the ship word or for a new goal.
 whose `ref` is that run's URL. When it finds none, the item is a notice, and no
 round opens. Either way, your report to the principal holds the diagnosis
 output, and the cursor write sets `run.watch.queued` `false`. When a section
-reads `read failed`, run the diagnosis once more. When it fails again, report the dequeue to the principal
-as a `ci` item, with the output.
+reads `read failed`, run the diagnosis once more. When it fails again, report
+the dequeue to the principal as a `ci` item, with the output.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
 each key holds. After every wake that reported something, and never before
@@ -190,9 +190,8 @@ notice too. A notice gets one line in your next message to the principal, and
 its id still joins `seen_ids`. It opens no round, takes no gate and gets no
 reply. Every other item opens its round and gets its reply on the PR.
 
-A change
-request from the watch is adjudicated like a finding, because the principal
-did not ask for it. A question from the watch takes the disposition
+A change request from the watch is adjudicated like a finding, because the
+principal did not ask for it. A question from the watch takes the disposition
 `answered` (`skeptical-review.md`'s "Adjudication is a ledger").
 
 **A `run.kind: review` run reads no check.** Its watch prints no `check` line,
@@ -402,10 +401,10 @@ In order:
    "Reviewer instructions" gives them. Every IC a goal run's window dispatches
    gets both. A review run writes no baseline, so its IC gets neither the file
    nor the sentence. Its brief asks for the whole defect class, as
-   `simple-path.md`'s "Fix rounds" says. Run its "Verify before you believe", which greps for the
-   pattern each finding named, run its "Fix rounds" where a check fails, then
-   run its "Integrate" in full, with the substitution "A change request"
-   names. On a goal run, a package that answers a skeptical round whose verdict
+   `simple-path.md`'s "Fix rounds" says. Run its "Verify before you believe",
+   which greps for the pattern each finding named, run its "Fix rounds" where a
+   check fails, then run its "Integrate" in full, with the substitution "A
+   change request" names. On a goal run, a package that answers a skeptical round whose verdict
    after your labels is `accepted` integrates with `--no-review
    accepted-round`. Read that verdict from the reply file's `Verdict after
    labels:` line (`skeptical-review.md`'s "The verdict pair"). A round with

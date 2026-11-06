@@ -22,6 +22,8 @@ const PANE = 'review-board'
 const SKILL = 'review-queue'
 const POLL_MS = 3000
 const WATCH_MS = 60_000
+// A session the skill prompt armed has this long to see the board name it.
+const ARM_WINDOW_MS = 120_000
 // A Slack call that has not answered by then fails, so the poll ends.
 const FETCH_MS = 30_000
 const TITLE_CAP = 60
@@ -408,6 +410,13 @@ let lastMinute = -1
 let current: ReviewBoardFile | undefined
 let opened = false
 let timer: unknown
+// The slow timer of a session with no pane and no arm: it checks the owner.
+let idle: unknown
+// The clock at a skill prompt's arm, until the board names this session.
+let skillArmedAt: number | undefined
+// True from an invalidate until the next render: a render that does not come
+// means the pane is closed.
+let awaitingRender = false
 // The source poll's timer, whether a poll runs now, and the lines it shows
 // in Watching. A reload starts them afresh, and the next arm polls again.
 let watcher: unknown
@@ -447,18 +456,23 @@ const loadView = async ($: Engine) =>
 let paneShown = false
 
 // An armed session leaves when the board names another non-empty session
-// that took it after this session armed. A session the skill just armed has
-// an earlier armedAt than its own Start writes, so it stays.
+// that took it after this session armed. An equal time goes to the greater
+// session id, so exactly one of two sessions stays. A session the skill just
+// armed has an earlier armedAt than its own Start writes, so it stays.
 const superseded = async ($: Engine, board: ReviewBoardFile) => {
   const owner = str(obj(board.owner).session_id)
-  if (!owner || owner === (await $.session.id())) return false
-  return at(str(obj(board.owner).since)) > (await read($, armedAt))
+  const me = await $.session.id()
+  if (!owner || owner === me) return false
+  const since = at(str(obj(board.owner).since))
+  const armTime = await read($, armedAt)
+  return since > armTime || (since === armTime && owner > me)
 }
 
 // The skill path arms at the clock. The owner path arms at the board's
 // owner.since, so the mod orders owners by the value the skill orders by.
 const arm = async ($: Engine, since?: number) => {
   const armTime = since ?? (await $.clock.now())
+  skillArmedAt = since === undefined ? armTime : undefined
   await update($, armed, () => true)
   await update($, armedAt, () => armTime)
   last = undefined
@@ -471,6 +485,10 @@ const disarm = async ($: Engine) => {
   watcher = undefined
   opened = false
   last = undefined
+  skillArmedAt = undefined
+  notes = []
+  unsent = new Map()
+  current = undefined
   $.ui.status(undefined)
 }
 
@@ -480,18 +498,34 @@ const disarm = async ($: Engine) => {
 const tick = async ($: Engine) => {
   const text = (await load($)) ?? ''
   const parsed = parseBoard(text)
+  // A pane that was told to draw and did not is closed.
+  if (awaitingRender) {
+    paneShown = false
+    awaitingRender = false
+  }
   let isArmed = await read($, armed)
-  if (isArmed && (await superseded($, parsed))) {
+  const owner = str(obj(parsed.owner).session_id)
+  const me = await $.session.id()
+  if (isArmed && owner === me) skillArmedAt = undefined
+  if (
+    isArmed &&
+    ((await superseded($, parsed)) ||
+      (skillArmedAt !== undefined &&
+        (await $.clock.now()) - skillArmedAt > ARM_WINDOW_MS))
+  ) {
     await disarm($)
     isArmed = false
   }
   if (!isArmed) {
-    const owner = str(obj(parsed.owner).session_id)
-    if (owner && owner === (await $.session.id())) {
+    if (owner && owner === me) {
       await arm($, at(str(obj(parsed.owner).since)))
       return
     }
-    if (!paneShown) return
+    if (!paneShown) {
+      if (timer) (timer as { cancel: () => void }).cancel()
+      timer = undefined
+      return
+    }
   }
   const asks = (await loadAsks($)) ?? ''
   const seen = [text, asks, ...notes].join('\n')
@@ -501,6 +535,7 @@ const tick = async ($: Engine) => {
   if (seen === last) {
     if (minute === lastMinute) return
     lastMinute = minute
+    awaitingRender = true
     $.ui.invalidate('ui.render')
     return
   }
@@ -516,11 +551,18 @@ const tick = async ($: Engine) => {
       await $.ui.open({ id: PANE, title: 'Review board' })
     }
   }
+  awaitingRender = true
   $.ui.invalidate('ui.render')
 }
 
+// The 3 s timer runs for an armed session or an open pane. Any other session
+// checks the owner on the slow timer, within the 60 s arming bound.
 const ensureTimer = ($: Engine) => {
   if (!timer) timer = $.clock.every(POLL_MS, () => void tick($))
+}
+
+const ensureIdle = ($: Engine) => {
+  if (!idle) idle = $.clock.every(WATCH_MS, () => void tick($))
 }
 
 // The token never leaves this function's callers: no file, prompt, pane,
@@ -907,6 +949,7 @@ const watch = async ($: Engine) => {
 }
 
 const poll = async ($: Engine) => {
+  ensureIdle($)
   ensureTimer($)
   if (!watcher) {
     watcher = $.clock.every(WATCH_MS, () => void watch($))
@@ -922,8 +965,8 @@ export const register: Register = on => {
       name: 'review-board',
       description: 'Open the review board pane, or print it as text',
     })
+    ensureIdle($)
     if (await read($, armed)) await poll($)
-    else ensureTimer($)
     return next(e)
   })
 
@@ -956,6 +999,7 @@ export const register: Register = on => {
     // timer reloads the board for an open pane, armed or not, so a render
     // draws from the last tick and reads a file only before the first tick.
     paneShown = true
+    awaitingRender = false
     ensureTimer($)
     const board = current ?? (await loadView($))
     const now = await $.clock.now()
@@ -1015,9 +1059,11 @@ export const register: Register = on => {
     )
 
     // The room for In flight and Done: the height less every line that is
-    // never cut. In flight takes what it needs first, and Done keeps one row
-    // (and its "+N more" line) when it has more than it can show. A list
-    // that does not fit shows the rows that fit, down to one, then "+N more".
+    // never cut. In flight takes what it needs first, and Done keeps room for
+    // one row (and its "+N more" line) when it has more than it can show. A
+    // list that does not fit shows the rows that fit, down to none, then
+    // "+N more". With no room at all it shows neither: its heading has the
+    // count.
     const watches = active(board)
     const fixed =
       1 + // top line
@@ -1027,15 +1073,23 @@ export const register: Register = on => {
       1 + Math.max(1, s.needsYou.length) + // Needs you
       1 + 1 + // blank, In flight heading
       1 + 1 // blank, Done heading
-    const room = Math.max(2, e.props.scroll.bodyRows - fixed)
+    const room = Math.max(0, e.props.scroll.bodyRows - fixed)
     const f = s.inFlight.length
     const d = s.done.length
+    const share = (n: number, space: number) =>
+      n <= space
+        ? { rows: n, more: false }
+        : space <= 0
+          ? { rows: 0, more: false }
+          : { rows: space - 1, more: true }
     const reserve = d === 0 ? 0 : d === 1 ? 1 : 2
-    const flightRoom = Math.max(1, room - reserve)
-    const flightRows = f <= flightRoom ? f : Math.max(1, flightRoom - 1)
-    const flightLines = flightRows + (f > flightRows ? 1 : 0)
-    const doneRoom = Math.max(1, room - flightLines)
-    const doneRows = d <= doneRoom ? d : Math.max(1, doneRoom - 1)
+    const inFlight = share(f, Math.max(0, room - reserve))
+    const done = share(
+      d,
+      Math.max(0, room - inFlight.rows - (inFlight.more ? 1 : 0)),
+    )
+    const flightRows = inFlight.rows
+    const doneRows = done.rows
     const flight = s.inFlight.slice(0, flightRows)
     const doneShown = s.done.slice(0, doneRows)
 
@@ -1076,11 +1130,11 @@ export const register: Register = on => {
         {blank('b3')}
         <Text bold>{`In flight ${f}`}</Text>
         {flight.map(rowView)}
-        {f > flightRows && more('more-flight', f - flightRows)}
+        {inFlight.more && more('more-flight', f - flightRows)}
         {blank('b4')}
         <Text bold>{`Done ${d}`}</Text>
         {doneShown.map(rowView)}
-        {d > doneRows && more('more-done', d - doneRows)}
+        {done.more && more('more-done', d - doneRows)}
       </Box>
     )
   })

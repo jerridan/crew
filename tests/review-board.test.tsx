@@ -283,7 +283,7 @@ test('R7: the takeover race: the old session arms from its board since and the n
   expect(w.seen.status.at(-1)).toBeUndefined()
   // The race write: s1 puts its old owner back, and s1 arms again.
   file = board(ROWS, S1)
-  await w.clock.advance(6000)
+  await w.clock.advance(60_000)
   expect(w.seen.status.at(-1)).toBe(STATUS)
   // The new owner takes the board again with its same since: s1 stays out.
   file = board(ROWS, S2)

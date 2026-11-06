@@ -344,7 +344,8 @@ gh api repos/<owner>/<repo>/pulls/<n>/reviews -f event=APPROVE -f commit_id=<sha
 ```
 
 Read the PR's reviews after the principal runs it. Write `<sha>` to
-`<pr-dir>/approved-head`, and go on.
+`<pr-dir>/approved-head`, and go on. This approval is a post with the event
+`APPROVE`, as the paragraphs below read it.
 
 **Prefer standalone `gh` commands.** A standalone command passes the allow
 rules. A chain with `cd` or a test run gets classified. Give `gh` the PR URL

@@ -58,7 +58,7 @@ export PATH="$T/bin:$PATH"
 # Add `fail-workflows` to $STUB_DIR by setting FAIL_WF=1 before the call.
 setup() {
   rm -rf "$STUB_DIR"; mkdir -p "$STUB_DIR"
-  merged=$(date -u -v-"$1"M +%Y-%m-%dT%H:%M:%SZ)
+  merged=$(jq -nr --argjson m "$1" '(now - $m*60) | strftime("%Y-%m-%dT%H:%M:%SZ")')
   printf '{"state":"MERGED","mergeCommit":{"oid":"%s"},"mergedAt":"%s"}\n' "$OID" "$merged" > "$STUB_DIR/pr.json"
   printf '%s\n' "$2" > "$STUB_DIR/deployments.json"
   printf '%s\n' "$3" > "$STUB_DIR/workflows.json"

@@ -155,6 +155,15 @@ The script with no mode polls every 60 seconds. It stops after a `merged` or
 bash <watch-script> <record-dir>
 ```
 
+## The one-shot check
+
+`SKILL.md`'s "The deploy watch" step 3 says when this runs and what its line
+means.
+
+```bash
+bash <watch-script> <record-dir> deploy-once
+```
+
 ## Arm the deploy watch
 
 `SKILL.md`'s "The deploy watch" says when this runs. The script reads
@@ -165,16 +174,9 @@ is set.
 
 1. Stop the monitor you armed before, with `TaskStop`. **One monitor at a
    time.**
-2. Before the first arming of a run, run the check once. When it prints
-   `no-deploy`, arm no monitor (`SKILL.md`, "The deploy watch"):
-
-   ```bash
-   bash <watch-script> <record-dir> deploy-once
-   ```
-
-3. Call `Monitor` with the command below, `timeout_ms: 1800000` and
+2. Call `Monitor` with the command below, `timeout_ms: 1800000` and
    `persistent: false` when the tool offers that key.
-4. When the monitor ends at once with a `pr-watch.sh:` message, the record is
+3. When the monitor ends at once with a `pr-watch.sh:` message, the record is
    not ready. Do what the message says, then arm it again.
 
 ```bash

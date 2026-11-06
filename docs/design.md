@@ -9065,12 +9065,15 @@ Deliberately different:
      when it has one, and no longer sets `:done:`. A message that carries two
      PRs gets it when both are approved.
 
-     The review-board mod still skips a Slack message with the `done`
-     reaction, because other people mark a handled message with it. It does
-     not skip ✅. Its Slack cursor moves past each message after one read, so
-     the queue's own ✅, set later, never meets a skip. A skip on ✅ would
-     only drop an ask that someone else marked ✅ before the next poll. An
-     approval that the principal runs at the self-approval step counts as
-     the queue's `APPROVE` post, so it gets ✅ too.
+     The review-board mod skipped a Slack message with the `done` reaction.
+     It now skips a message with ✅ or with `done`. In the principal's
+     channels, a person who approved the PR marks its message with ✅, and a
+     person who handled it marks it with `done`, so neither message needs a
+     review. The skip is not what hides the queue's own ✅: the mod's Slack
+     cursor moves past each message after one read, and the queue sets ✅
+     later. A `/code-review` run first read ✅ as a "seen" mark, and a commit
+     removed the skip. The principal said ✅ means approved, and the skip came
+     back. An approval that the principal runs at the self-approval step
+     counts as the queue's `APPROVE` post, so it gets ✅ too.
 
      No queue session has exercised this change.

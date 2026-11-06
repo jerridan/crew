@@ -48,6 +48,9 @@ const GH_SEARCH = [
   'number,repository,url,title,author',
 ]
 const PR_LINK = /https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/g
+// A Slack message with one of these reactions holds no new ask: someone
+// already approved (✅) or handled (`done`) its PR.
+const DONE_REACTIONS = new Set(['white_check_mark', 'done'])
 
 const STAGES: ReviewBoardStage[] = [
   'new',
@@ -746,7 +749,9 @@ const pollSlack = async (
       const ts = str(m.ts)
       if (!ts) continue
       if (newest === null || tsAfter(ts, newest)) newest = ts
-      if (list(m.reactions).some(x => obj(x).name === 'done')) continue
+      // A person who approved the PR marks its message with ✅, and a person
+      // who handled it marks it with `done`. Either way it needs no review.
+      if (list(m.reactions).some(x => DONE_REACTIONS.has(str(obj(x).name)))) continue
       const prs = new Set<string>()
       for (const [, owner, repo, n] of str(m.text).matchAll(PR_LINK)) {
         const key = `${owner}/${repo}#${n}`

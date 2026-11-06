@@ -586,10 +586,10 @@ const watchBoard = (
 type Msg = { ts: string; text: string; reactions?: { name: string }[] }
 
 // A Slack message with one PR link per number given.
-const msg = (ts: string, prs: number[], done = false): Msg => ({
+const msg = (ts: string, prs: number[], reaction?: string): Msg => ({
   ts,
   text: prs.map(n => `see <https://github.com/o/r/pull/${n}>`).join(' and '),
-  ...(done ? { reactions: [{ name: 'done' }] } : {}),
+  ...(reaction ? { reactions: [{ name: reaction }] } : {}),
 })
 
 // A Slack ts after SINCE, in order of `i`.
@@ -823,10 +823,16 @@ test('A1: a Slack PR message gives an entry, a prompt and a new row; a done mess
   const pane = await drawn($)
   expect(order(pane)).toEqual([11])
   expect(pane).toContain('new ask from #dev')
-  // Two links give two entries. A message with the done reaction gives none.
-  w.slack.history.push(msg(ts(2), [12, 13]), msg(ts(3), [14], true))
+  // Two links give two entries. A message with ✅ (approved) or done
+  // (handled) gives none. Another reaction does not hide a message.
+  w.slack.history.push(
+    msg(ts(2), [12, 13]),
+    msg(ts(3), [14], 'white_check_mark'),
+    msg(ts(4), [15], 'done'),
+    msg(ts(5), [16], 'eyes'),
+  )
   await w.clock.advance(MINUTE)
-  expect(w.asks().asks.map(a => a.pr).sort()).toEqual([11, 12, 13])
+  expect(w.asks().asks.map(a => a.pr).sort()).toEqual([11, 12, 13, 16])
 })
 
 test('A2: the gh review-request poll gives an entry with slack null', async ($, on) => {

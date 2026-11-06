@@ -22,6 +22,8 @@ const PANE = 'review-board'
 const SKILL = 'review-queue'
 const POLL_MS = 3000
 const WATCH_MS = 60_000
+// A session the skill prompt armed has this long to see the board name it.
+const ARM_WINDOW_MS = 120_000
 // A Slack call that has not answered by then fails, so the poll ends.
 const FETCH_MS = 30_000
 const TITLE_CAP = 60
@@ -65,9 +67,18 @@ const STAGES: ReviewBoardStage[] = [
 const armed = atom({ plugin: 'crew', key: 'armed' } as const, false, {
   shape: 'armed-1',
 })
-const showDone = atom({ plugin: 'crew', key: 'showDone' } as const, false, {
-  shape: 'show-done-1',
+// When this session armed, in ms. A later owner than that disarms it.
+const armedAt = atom({ plugin: 'crew', key: 'armedAt' } as const, 0, {
+  shape: 'armed-at-1',
 })
+
+// When a skill prompt armed this session, in ms, until the board names it.
+// 0 holds no time. It is an atom so a reload keeps the arming window.
+const skillArmedAt = atom(
+  { plugin: 'crew', key: 'skillArmedAt' } as const,
+  0,
+  { shape: 'skill-armed-at-1' },
+)
 
 const isDone = (r: ReviewBoardRow) => r.stage === 'merged' || r.stage === 'closed'
 const isBlocked = (r: ReviewBoardRow) => r.stage === 'blocked'
@@ -104,7 +115,9 @@ export const sections = (board: ReviewBoardFile) => {
   return {
     needsYou: sorted.filter(r => r.next === 'you' && !isDone(r)),
     inFlight: sorted.filter(r => r.next !== 'you' && !isDone(r)),
-    done: sorted.filter(isDone),
+    done: sorted
+      .filter(isDone)
+      .sort((a, b) => b.last.at.localeCompare(a.last.at)),
   }
 }
 
@@ -284,73 +297,132 @@ const fit = (text: string, width: number) =>
 
 const pad = (text: string, width: number) => fit(text, width).padEnd(width)
 
-const when = (iso: string | null) =>
-  iso ? iso.replace('T', ' ').slice(0, 16) : '-'
-
-// Fixed cells, in order: pr, stage, next, policy. Title and last event share
-// what is left.
-const CELLS = [6, 10, 7, 7] as const
+// Fixed cells, in order: pr, stage, next, author, then title, the age, and the
+// last event. Title and last event share what is left.
+const CELLS = [6, 10, 7, 8] as const
+const AGE = 5
 const GAP = 1
+const COUNT = CELLS.length + 3
+const HEAD = ['PR', 'stage', 'next', 'author', 'title', 'age', 'last event']
 
-// A row is the fixed cells, one gap between each of the six cells, then the
-// title and the last event. `indent` is what a caller puts before the row.
+// A row is the fixed cells, one gap between each of the seven cells, then the
+// title, the age and the last event. `indent` is what a caller puts before
+// the row.
 const widths = (columns: number, indent = 0) => {
-  // The four fixed cells, the title and the last event: six cells, five gaps.
-  const gaps = GAP * (CELLS.length + 2 - 1)
-  const fixed = CELLS.reduce((a, b) => a + b, 0) + gaps
+  const gaps = GAP * (COUNT - 1)
+  const fixed = CELLS.reduce((a, b) => a + b, 0) + AGE + gaps
   const left = Math.max(LAST_MIN + 10, columns - indent - fixed)
   const title = Math.min(TITLE_CAP, Math.max(10, left - LAST_MIN))
   return { title, last: left - title }
 }
 
-const watchLine = (x: ReviewBoardWatch) =>
-  [
-    x.id,
-    x.source,
-    x.policy,
-    x.status,
-    `since ${when(x.since)}`,
-    `checked ${when(x.last_checked)}`,
-    `found ${x.found}`,
-  ].join(' · ')
+// The short age of a time: 15m, 20h, 3d. A time that does not parse is `-`.
+export const ago = (iso: string | null, now: number) => {
+  const t = at(iso ?? '')
+  if (!t) return '-'
+  const min = Math.max(0, Math.floor((now - t) / 60_000))
+  if (min < 60) return `${min}m`
+  if (min < 24 * 60) return `${Math.floor(min / 60)}h`
+  return `${Math.floor(min / (24 * 60))}d`
+}
+
+const sourceName = (source: string) => {
+  if (source.startsWith('slack:')) return source.slice('slack:'.length)
+  if (source === 'github:review-requests') return 'review requests'
+  if (source === 'direct') return 'direct asks'
+  return source
+}
+
+const active = (board: ReviewBoardFile) =>
+  board.watches.filter(w => w.status === 'active')
+
+export const topLine = (board: ReviewBoardFile, now: number) => {
+  const sources = active(board).map(w => sourceName(w.source))
+  const where = sources.length === 0 ? '' : `${sources.join(' + ')}  `
+  const updated = board.updated_at
+    ? `updated ${ago(board.updated_at, now)} ago`
+    : 'updated -'
+  return `Review board  ${where}·  ${updated}`
+}
+
+const checkedText = (x: ReviewBoardWatch, now: number) =>
+  x.last_checked ? `checked ${ago(x.last_checked, now)} ago` : 'not checked yet'
+
+// The policy of a row, when it differs from the policy of its watch.
+const marker = (board: ReviewBoardFile, r: ReviewBoardRow) => {
+  const w = board.watches.find(x => x.id === r.watch)
+  return w && w.policy !== r.policy ? `[${r.policy}] ` : ''
+}
+
+const STAGE_COLOR: Partial<Record<ReviewBoardStage, string>> = {
+  approve: 'magenta',
+  blocked: 'red',
+  fixing: 'yellow',
+  reviewing: 'cyan',
+  rereview: 'cyan',
+  queued: 'blue',
+}
 
 export const textTable = (
   board: ReviewBoardFile,
   columns = 120,
   notes: readonly string[] = [],
+  now = Date.now(),
 ) => {
   const w = widths(columns, 2)
-  const line = (r: ReviewBoardRow) =>
+  const cells = (c: string[]) =>
     [
-      pad(`#${r.pr}`, CELLS[0]),
-      pad(r.stage, CELLS[1]),
-      pad(r.next, CELLS[2]),
-      pad(r.policy, CELLS[3]),
-      pad(r.title, w.title),
-      fit(r.last.text, w.last),
+      pad(c[0], CELLS[0]),
+      pad(c[1], CELLS[1]),
+      pad(c[2], CELLS[2]),
+      pad(c[3], CELLS[3]),
+      pad(c[4], w.title),
+      pad(c[5], AGE),
+      fit(c[6], w.last),
     ].join(' '.repeat(GAP))
+  const line = (r: ReviewBoardRow) =>
+    cells([
+      `#${r.pr}`,
+      r.stage,
+      r.next,
+      r.author || '-',
+      r.title,
+      ago(r.last.at, now),
+      `${marker(board, r)}${r.last.text}`,
+    ])
   const s = sections(board)
-  const out = [statusLine(board), '', 'Watching']
-  if (board.watches.length === 0) out.push('  none')
-  for (const x of board.watches) out.push(`  ${fit(watchLine(x), columns - 2)}`)
+  const out = [topLine(board, now), `Watching ${active(board).length}`]
+  for (const x of active(board)) {
+    out.push(
+      `  ${fit(`${sourceName(x.source)}  ${x.policy}  ${checkedText(x, now)}`, columns - 2)}`,
+    )
+  }
   for (const n of notes) out.push(`  ${fit(n, columns - 2)}`)
-  out.push('', 'Needs you')
-  if (s.needsYou.length === 0) out.push('  none')
+  out.push('', `  ${cells(HEAD)}`, '')
+  out.push(`Needs you ${s.needsYou.length}`)
+  if (s.needsYou.length === 0) out.push('  Nothing needs you.')
   for (const r of s.needsYou) out.push(`  ${line(r)}`)
-  out.push('', 'In flight')
-  if (s.inFlight.length === 0) out.push('  none')
+  out.push('', `In flight ${s.inFlight.length}`)
   for (const r of s.inFlight) out.push(`  ${line(r)}`)
-  out.push('', `Done (${s.done.length}, hidden)`)
+  out.push('', `Done ${s.done.length}`)
+  for (const r of s.done) out.push(`  ${line(r)}`)
   return out.map(l => fit(l, columns)).join('\n')
 }
 
 // What the poll last saw and whether it opened the pane: both start afresh
 // at a reload, and the next tick draws again.
 let last: string | undefined
+// The minute of the last redraw: the clock alone redraws the pane each minute.
+let lastMinute = -1
 // The board the last tick parsed: the pane of an armed session draws from it.
 let current: ReviewBoardFile | undefined
 let opened = false
 let timer: unknown
+// The slow timer of a session with no pane and no arm: it checks the owner.
+let idle: unknown
+// True from an invalidate until the next render: a render that does not come
+// means the pane is closed.
+let awaitingRender = false
 // The source poll's timer, whether a poll runs now, and the lines it shows
 // in Watching. A reload starts them afresh, and the next arm polls again.
 let watcher: unknown
@@ -386,21 +458,127 @@ const loadAsks = async ($: Engine) =>
 const loadView = async ($: Engine) =>
   view(parseBoard(await load($)), parseAsks(await loadAsks($)))
 
+// True once a render drew the pane: its reload runs for any session.
+let paneShown = false
+
+// An armed session leaves when the board names another non-empty session
+// that took it after this session armed. An equal time goes to the greater
+// session id, so exactly one of two sessions stays. A session the skill just
+// armed has an earlier armedAt than its own Start writes, so it stays.
+const superseded = async ($: Engine, board: ReviewBoardFile) => {
+  const owner = str(obj(board.owner).session_id)
+  const me = await $.session.id()
+  if (!owner || owner === me) return false
+  const since = at(str(obj(board.owner).since))
+  const armTime = await read($, armedAt)
+  return since > armTime || (since === armTime && owner > me)
+}
+
+// The skill path arms at the clock. The owner path arms at the board's
+// owner.since, so the mod orders owners by the value the skill orders by.
+const arm = async ($: Engine, since?: number) => {
+  const armTime = since ?? (await $.clock.now())
+  await update($, skillArmedAt, () => (since === undefined ? armTime : 0))
+  await update($, armed, () => true)
+  await update($, armedAt, () => armTime)
+  last = undefined
+  await poll($)
+}
+
+const disarm = async ($: Engine) => {
+  await update($, armed, () => false)
+  if (watcher) (watcher as { cancel: () => void }).cancel()
+  watcher = undefined
+  opened = false
+  last = undefined
+  lastMinute = -1
+  await update($, skillArmedAt, () => 0)
+  notes = []
+  unsent = new Map()
+  current = undefined
+  $.ui.status(undefined)
+}
+
+// One read of the board each POLL_MS. An armed session sets the status line
+// and opens the pane. A session the board names as owner arms. An open pane
+// of any session redraws on a change.
 const tick = async ($: Engine) => {
   const text = (await load($)) ?? ''
+  const parsed = parseBoard(text)
+  // A pane that was told to draw and did not is closed.
+  if (awaitingRender) {
+    paneShown = false
+    awaitingRender = false
+    // A pane opened again draws from a fresh read, not from this one.
+    current = undefined
+    last = undefined
+  }
+  let isArmed = await read($, armed)
+  const owner = str(obj(parsed.owner).session_id)
+  const me = await $.session.id()
+  if (isArmed && owner === me) {
+    // The board names this session: its own since orders it from here on.
+    if ((await read($, skillArmedAt)) > 0) {
+      await update($, armedAt, () => at(str(obj(parsed.owner).since)))
+    }
+    await update($, skillArmedAt, () => 0)
+  }
+  const skillTime = isArmed ? await read($, skillArmedAt) : 0
+  if (
+    isArmed &&
+    ((await superseded($, parsed)) ||
+      (skillTime > 0 && (await $.clock.now()) - skillTime > ARM_WINDOW_MS))
+  ) {
+    await disarm($)
+    isArmed = false
+  }
+  if (!isArmed) {
+    if (owner && owner === me) {
+      await arm($, at(str(obj(parsed.owner).since)))
+      return
+    }
+    if (!paneShown) {
+      if (timer) (timer as { cancel: () => void }).cancel()
+      timer = undefined
+      return
+    }
+  }
   const asks = (await loadAsks($)) ?? ''
   const seen = [text, asks, ...notes].join('\n')
-  if (seen === last) return
-  last = seen
-  const board = view(parseBoard(text), parseAsks(asks))
-  current = board
-  const open = board.rows.filter(r => !isDone(r))
-  $.ui.status(open.length === 0 ? undefined : statusLine(board))
-  if (!opened && open.length > 0) {
-    opened = true
-    await $.ui.open({ id: PANE, title: 'Review board' })
+  // Every age in the pane is read at render time, so a new minute redraws the
+  // pane when no file moved. The status line holds no age: it sets on a change.
+  const minute = Math.floor((await $.clock.now()) / 60_000)
+  if (seen === last) {
+    if (minute === lastMinute) return
+    lastMinute = minute
+    awaitingRender = paneShown
+    $.ui.invalidate('ui.render')
+    return
   }
+  last = seen
+  lastMinute = minute
+  const board = view(parsed, parseAsks(asks))
+  current = board
+  if (isArmed) {
+    const open = board.rows.filter(r => !isDone(r))
+    $.ui.status(open.length === 0 ? undefined : statusLine(board))
+    if (!opened && open.length > 0) {
+      opened = true
+      await $.ui.open({ id: PANE, title: 'Review board' })
+    }
+  }
+  awaitingRender = paneShown
   $.ui.invalidate('ui.render')
+}
+
+// The 3 s timer runs for an armed session or an open pane. Any other session
+// checks the owner on the slow timer, within the 60 s arming bound.
+const ensureTimer = ($: Engine) => {
+  if (!timer) timer = $.clock.every(POLL_MS, () => void tick($))
+}
+
+const ensureIdle = ($: Engine) => {
+  if (!idle) idle = $.clock.every(WATCH_MS, () => void tick($))
 }
 
 // The token never leaves this function's callers: no file, prompt, pane,
@@ -787,7 +965,8 @@ const watch = async ($: Engine) => {
 }
 
 const poll = async ($: Engine) => {
-  if (!timer) timer = $.clock.every(POLL_MS, () => void tick($))
+  ensureIdle($)
+  ensureTimer($)
   if (!watcher) {
     watcher = $.clock.every(WATCH_MS, () => void watch($))
     // The first poll may take as long as a fetch, so arming does not wait.
@@ -802,15 +981,13 @@ export const register: Register = on => {
       name: 'review-board',
       description: 'Open the review board pane, or print it as text',
     })
+    ensureIdle($)
     if (await read($, armed)) await poll($)
     return next(e)
   })
 
   on('skill.prompt', async ($, e, next) => {
-    if (isQueueSkill(e.skill)) {
-      await update($, armed, () => true)
-      await poll($)
-    }
+    if (isQueueSkill(e.skill)) await arm($)
     return next(e)
   })
 
@@ -818,7 +995,12 @@ export const register: Register = on => {
     // A pane a command opens is placed at any width, so the width decides.
     const columns = e.presentation.columns
     if (columns < MIN_PANE_COLUMNS) {
-      return { text: textTable(await loadView($), columns, notes) }
+      return { text: textTable(
+          await loadView($),
+          columns,
+          notes,
+          await $.clock.now(),
+        ) }
     }
     const placed = await $.ui.open({ id: PANE, title: 'Review board' })
     if (placed.isPlaced) return { text: 'Review board pane opened.' }
@@ -828,82 +1010,147 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
-    // Only the timer and the skill prompt run `tick`; a render never does. An
-    // armed session draws from the last tick, so a render reads no file. A
-    // session that is not armed reads the file once per render.
-    const isArmed = await read($, armed)
-    if (isArmed && !timer) timer = $.clock.every(POLL_MS, () => void tick($))
-    const board = (isArmed && current) || (await loadView($))
+    const { Box, Text } = $.ui.resolve(e)
+    // Only the timer and the skill prompt run `tick`; a render never does. The
+    // timer reloads the board for an open pane, armed or not, so a render
+    // draws from the last tick and reads a file only before the first tick.
+    paneShown = true
+    awaitingRender = false
+    ensureTimer($)
+    const board = current ?? (await loadView($))
+    const now = await $.clock.now()
     const s = sections(board)
-    const shown = await read($, showDone)
     const w = widths(e.props.bodyColumns)
 
-    const cell = (width: number, text: string, color?: string) => (
+    type Style = { color?: string; dimColor?: boolean }
+    const cell = (width: number, text: string, style: Style = {}) => (
       <Box width={width} flexShrink={0}>
-        <Text color={color} wrap="truncate">
+        <Text color={style.color} dimColor={style.dimColor} wrap="truncate">
           {fit(text, width)}
         </Text>
       </Box>
     )
 
-    const rowView = (r: ReviewBoardRow) => (
-      <Box key={`${r.repo}#${r.pr}`} gap={GAP}>
-        {cell(CELLS[0], `#${r.pr}`)}
-        {cell(CELLS[1], r.stage)}
-        {cell(CELLS[2], r.next)}
-        {cell(CELLS[3], r.policy, r.policy === 'assist' ? 'yellow' : undefined)}
-        {cell(w.title, r.title)}
-        {cell(w.last, r.last.text)}
-      </Box>
+    const rowView = (r: ReviewBoardRow) => {
+      const done = isDone(r)
+      const grey: Style = { dimColor: true }
+      const stage: Style = done
+        ? grey
+        : STAGE_COLOR[r.stage]
+          ? { color: STAGE_COLOR[r.stage] }
+          : grey
+      const flag = marker(board, r)
+      return (
+        <Box key={`${r.repo}#${r.pr}`} gap={GAP}>
+          {cell(CELLS[0], `#${r.pr}`, done ? grey : {})}
+          {cell(CELLS[1], r.stage, stage)}
+          {cell(
+            CELLS[2],
+            r.next,
+            done ? grey : r.next === 'you' ? { color: 'magenta' } : {},
+          )}
+          {cell(CELLS[3], r.author || '-', done ? grey : {})}
+          {cell(w.title, r.title, done ? grey : {})}
+          {cell(AGE, ago(r.last.at, now), done ? grey : {})}
+          <Box width={w.last} flexShrink={0}>
+            {flag && (
+              <Text
+                color={!done && r.policy === 'assist' ? 'yellow' : undefined}
+                dimColor={done}
+              >
+                {flag}
+              </Text>
+            )}
+            <Text dimColor={done} wrap="truncate">
+              {fit(r.last.text, Math.max(1, w.last - flag.length))}
+            </Text>
+          </Box>
+        </Box>
+      )
+    }
+
+    const blank = (key: string) => <Text key={key}>{' '}</Text>
+    const more = (key: string, n: number) => (
+      <Text key={key} dimColor>{`+${n} more`}</Text>
     )
 
-    // In flight takes what is left of the window. Every other line counts:
-    // four headings, the Watching and Needs you rows (or their one empty
-    // line), the watcher's notes, the Done button, the Done rows when shown,
-    // and the "+N more" line when In flight overflows.
-    const used =
-      4 +
-      Math.max(1, board.watches.length) +
+    // The room for In flight and Done: the height less every line that is
+    // never cut. In flight takes what it needs first, and Done keeps room for
+    // one row (and its "+N more" line) when it has more than it can show. A
+    // list that does not fit shows the rows that fit, down to none, then
+    // "+N more". With no room at all it shows neither: its heading has the
+    // count.
+    const watches = active(board)
+    const fixed =
+      1 + // top line
+      1 + watches.length + // Watching
       notes.length +
-      Math.max(1, s.needsYou.length) +
-      1 +
-      (shown ? s.done.length : 0)
-    let room = Math.max(1, e.props.scroll.bodyRows - used)
-    if (s.inFlight.length > room) room = Math.max(1, room - 1)
-    const flight = s.inFlight.slice(0, room)
-    const hidden = s.inFlight.length - flight.length
+      3 + // blank, header, blank
+      1 + Math.max(1, s.needsYou.length) + // Needs you
+      1 + 1 + // blank, In flight heading
+      1 + 1 // blank, Done heading
+    const room = Math.max(0, e.props.scroll.bodyRows - fixed)
+    const f = s.inFlight.length
+    const d = s.done.length
+    const share = (n: number, space: number) =>
+      n <= space
+        ? { rows: n, more: false }
+        : space <= 0
+          ? { rows: 0, more: false }
+          : { rows: space - 1, more: true }
+    const reserve = d === 0 ? 0 : d === 1 ? 1 : 2
+    const inFlight = share(f, Math.max(0, room - reserve))
+    const done = share(
+      d,
+      Math.max(0, room - inFlight.rows - (inFlight.more ? 1 : 0)),
+    )
+    const flightRows = inFlight.rows
+    const doneRows = done.rows
+    const flight = s.inFlight.slice(0, flightRows)
+    const doneShown = s.done.slice(0, doneRows)
 
     return (
       <Box flexDirection="column">
-        <Text bold>Watching</Text>
-        {board.watches.length === 0 && <Text dimColor>No watches.</Text>}
-        {board.watches.map(x => (
-          <Text
-            key={x.id}
-            color={x.policy === 'assist' ? 'yellow' : undefined}
-            wrap="truncate"
-          >
-            {fit(watchLine(x), e.props.bodyColumns)}
-          </Text>
+        <Text bold wrap="truncate">
+          {fit(topLine(board, now), e.props.bodyColumns)}
+        </Text>
+        <Text bold>{`Watching ${watches.length}`}</Text>
+        {watches.map(x => (
+          <Box key={x.id} gap={2}>
+            <Text>{sourceName(x.source)}</Text>
+            <Text color={x.policy === 'assist' ? 'yellow' : undefined}>
+              {x.policy}
+            </Text>
+            <Text dimColor>{checkedText(x, now)}</Text>
+          </Box>
         ))}
         {notes.map((n, i) => (
           <Text key={`note:${i}`} dimColor wrap="truncate">
             {fit(n, e.props.bodyColumns)}
           </Text>
         ))}
-        <Text bold>Needs you</Text>
+        {blank('b1')}
+        <Box gap={GAP}>
+          {cell(CELLS[0], HEAD[0], { dimColor: true })}
+          {cell(CELLS[1], HEAD[1], { dimColor: true })}
+          {cell(CELLS[2], HEAD[2], { dimColor: true })}
+          {cell(CELLS[3], HEAD[3], { dimColor: true })}
+          {cell(w.title, HEAD[4], { dimColor: true })}
+          {cell(AGE, HEAD[5], { dimColor: true })}
+          {cell(w.last, HEAD[6], { dimColor: true })}
+        </Box>
+        {blank('b2')}
+        <Text bold>{`Needs you ${s.needsYou.length}`}</Text>
         {s.needsYou.length === 0 && <Text dimColor>Nothing needs you.</Text>}
         {s.needsYou.map(rowView)}
-        <Text bold>In flight</Text>
-        {flight.length === 0 && <Text dimColor>Nothing in flight.</Text>}
+        {blank('b3')}
+        <Text bold>{`In flight ${f}`}</Text>
         {flight.map(rowView)}
-        {hidden > 0 && <Text dimColor>{`+${hidden} more`}</Text>}
-        <Text bold>Done</Text>
-        <Button key="toggle-done" onPress={() => update($, showDone, v => !v)}>
-          {`${shown ? 'Hide' : 'Show'} done (${s.done.length})`}
-        </Button>
-        {shown && s.done.map(rowView)}
+        {inFlight.more && more('more-flight', f - flightRows)}
+        {blank('b4')}
+        <Text bold>{`Done ${d}`}</Text>
+        {doneShown.map(rowView)}
+        {done.more && more('more-done', d - doneRows)}
       </Box>
     )
   })

@@ -6,6 +6,8 @@ import { expect, mock, test } from 'claude-code/testing'
 import * as mod from '../hooks/review-board'
 
 const BOARD = '/rec/queue/board.json'
+// The clock of the pane tests: later than the board's owner since.
+const NOW = Date.parse('2026-06-01T00:00:00Z')
 
 const PANE = {
   plugin: 'crew',
@@ -42,10 +44,13 @@ const row = (
   ...extra,
 })
 
-const board = (rows: unknown[]) =>
+const board = (
+  rows: unknown[],
+  owner = { session_id: 's1', since: '2026-01-01T00:00:00Z' },
+) =>
   JSON.stringify({
     version: 1,
-    owner: { session_id: 's1', since: '2026-01-01T00:00:00Z' },
+    owner,
     updated_at: '2026-01-01T00:00:00Z',
     watches: [
       {
@@ -96,10 +101,12 @@ const world = (
   on: On,
   file: () => string,
   open: () => UiOpenResult = () => ({ isPlaced: true }),
+  session = 'me',
 ) => {
   const seen = { reads: 0, opens: 0, closes: 0, status: [] as unknown[] }
   mock.env(on, { CREW_RECORD_ROOT: '/rec', HOME: '/home/me' })
-  const clock = mock.clock(on)
+  const clock = mock.clock(on, { now: NOW })
+  on('session.id', () => ({ value: session }))
   on('fs.read', (_, e) => {
     if (e.path !== BOARD) return { deny: `no ${e.path}` }
     seen.reads += 1
@@ -138,30 +145,18 @@ test('rows sort next:you first, then stage order, then newest', async ($, on) =>
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   const drawn = words(await ui.drawn())
   // Needs you: 4 (fixing) before 1 (approve). In flight: triage 3, reviewing
-  // 5 (newer) before 2, then blocked 6. Done is collapsed, so 7 is absent.
-  expect(order(drawn)).toEqual([4, 1, 3, 5, 2, 6])
+  // 5 (newer) before 2, then blocked 6. Done shows inline: 7.
+  expect(order(drawn)).toEqual([4, 1, 3, 5, 2, 6, 7])
   for (const name of ['Watching', 'Needs you', 'In flight', 'Done']) {
     expect(drawn).toContain(name)
   }
   await ui.unmount()
 })
 
-test('Done stays collapsed behind a button, and the choice survives a redraw', async ($, on) => {
-  world(on, () => board(ROWS))
-  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(order(words(await ui.drawn()))).not.toContain(7)
-  await ui.press({ key: 'toggle-done' })
-  expect(order(words(await ui.drawn()))).toContain(7)
-  await ui.unmount()
-  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(order(words(await ui.drawn()))).toContain(7)
-  await ui.unmount()
-})
-
 test('the title is capped at 60 characters and an assist watch shows in yellow', async ($, on) => {
   const long = 'x'.repeat(90)
   world(on, () => board([row(8, 'triage', 'crew', '2026-01-01T10:00:00Z', { title: long, policy: 'assist' })]))
-  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const ui = await $.ui.mount({ ...PANE, props: { ...PANE.props, bodyColumns: 140 }, surface: 'terminal' })
   const drawn = words(await ui.drawn())
   expect(drawn).not.toContain('x'.repeat(61))
   expect(drawn).toContain('x'.repeat(59))
@@ -176,17 +171,14 @@ test('In flight shows +N more when it exceeds the room', async ($, on) => {
   world(on, () => board(many))
   const ui = await $.ui.mount({
     ...PANE,
-    props: { ...PANE.props, scroll: { offset: 0, bodyRows: 12 } },
+    props: { ...PANE.props, scroll: { offset: 0, bodyRows: 20 } },
     surface: 'terminal',
   })
   const drawn = words(await ui.drawn())
   expect(drawn).toMatch(/\+\d+ more/)
-  // Every line the pane draws counts: the Done button stays inside bodyRows.
-  const root = (await ui.drawn()) as { children?: { props?: { key?: string } }[] }
-  const lines = root.children ?? []
-  const at = lines.findIndex(c => c.props?.key === 'toggle-done')
-  expect(at).toBeGreaterThanOrEqual(0)
-  expect(at + 1).toBeLessThanOrEqual(12)
+  // Every line the pane draws counts: all of them stay inside bodyRows.
+  const root = (await ui.drawn()) as { children?: unknown[] }
+  expect((root.children ?? []).length).toBeLessThanOrEqual(20)
   await ui.unmount()
 })
 
@@ -223,7 +215,8 @@ test('a skill that is not the queue leaves the board unarmed', async ($, on) => 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   await $.skill.prompt({ skill: 'crew:project-lead', text: 'go' })
   await w.clock.advance(10000)
-  expect(w.seen.reads).toBe(0)
+  // The owner check reads the board no more than once each POLL_MS.
+  expect(w.seen.reads).toBeLessThanOrEqual(Math.ceil(10000 / 3000))
   expect(w.seen.opens).toBe(0)
   expect(w.seen.status).toEqual([])
   // The command still opens the pane by hand.
@@ -231,12 +224,215 @@ test('a skill that is not the queue leaves the board unarmed', async ($, on) => 
   expect(w.seen.opens).toBe(1)
 })
 
+// Arming and reload: a session arms from the board's owner field, an open
+// pane reloads armed or not, and a later owner disarms a session.
+
+test('R7: the board names this session as owner: it arms with no skill prompt', async ($, on) => {
+  const w = world(on, () => board(ROWS), undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  expect(w.seen.opens).toBe(1)
+})
+
+test('R7: an open pane that is not armed reloads the board every POLL_MS', async ($, on) => {
+  let rows: object[] = ROWS
+  const w = world(on, () => board(rows))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(order(words(await ui.drawn()))).toContain(2)
+  rows = ROWS.filter(r => r.pr !== 2)
+  await w.clock.advance(3000)
+  expect(order(words(await ui.drawn()))).not.toContain(2)
+  await ui.unmount()
+})
+
+test('R7: a session that is not the owner and had no skill prompt shows nothing', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(120_000)
+  expect(w.seen.status).toEqual([])
+  expect(w.seen.opens).toBe(0)
+})
+
+test('R7: a session the board names as owner disarms when a later owner takes the board', async ($, on) => {
+  let file = board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' })
+  const w = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's2', since: '2026-07-01T00:00:00Z' })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+  const reads = w.seen.reads
+  await w.clock.advance(60_000)
+  // The disarmed session reads for the owner check only, once per POLL_MS.
+  expect(w.seen.reads - reads).toBeLessThanOrEqual(20)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: the takeover race: the old session arms from its board since and the new owner disarms it again', async ($, on) => {
+  const S1 = { session_id: 's1', since: '2026-01-01T00:00:00Z' }
+  const S2 = { session_id: 's2', since: '2026-03-01T00:00:00Z' }
+  let file = board(ROWS, S1)
+  const w = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, S2)
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+  // The race write: s1 puts its old owner back, and s1 arms again.
+  file = board(ROWS, S1)
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  // The new owner takes the board again with its same since: s1 stays out.
+  file = board(ROWS, S2)
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: two owners with an equal since: the greater session id keeps the board', async ($, on) => {
+  const SAME = '2026-01-01T00:00:00Z'
+  // s1 is armed, and s2 takes the board in the same second: s1 disarms.
+  let file = board(ROWS, { session_id: 's1', since: SAME })
+  const a = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await a.clock.advance(60_000)
+  expect(a.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's2', since: SAME })
+  await a.clock.advance(6000)
+  expect(a.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: an armed session with the greater id stays armed when the other owner has an equal since', async ($, on) => {
+  const SAME = '2026-01-01T00:00:00Z'
+  let file = board(ROWS, { session_id: 's2', since: SAME })
+  const w = world(on, () => file, undefined, 's2')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's1', since: SAME })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+})
+
+test('R7: a skill-armed session the board never names as owner disarms after the arming window', async ($, on) => {
+  const w = world(on, () => board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  await w.clock.advance(70_000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: the skill arm time is kept in an atom, so a reload keeps the window', async ($, on) => {
+  const DEFAULTS: Record<string, unknown> = {
+    armed: { shape: 'armed-1', value: false },
+    armedAt: { shape: 'armed-at-1', value: 0 },
+    skillArmedAt: { shape: 'skill-armed-at-1', value: 0 },
+  }
+  const state: Record<string, unknown> = { ...DEFAULTS }
+  world(on, () => board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' }))
+  on('state.get', (_, e) => ({ value: state[e.key] }))
+  on('state.set', (_, e) => {
+    state[e.key] = e.value
+    return { value: { isSet: true } }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  // An atom holds the time, so it outlives a reload of the module.
+  expect(state.skillArmedAt).toEqual({ shape: 'skill-armed-at-1', value: NOW })
+})
+
+test('R7: a skill-armed session whose own Start writes the owner in the window stays armed', async ($, on) => {
+  let file = board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' })
+  const w = world(on, () => file)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.advance(30_000)
+  file = board(ROWS, { session_id: 'me', since: '2026-01-01T00:00:00Z' })
+  await w.clock.advance(200_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+})
+
+test('R7: a closed pane stops the reload', async ($, on) => {
+  let rows: object[] = ROWS
+  const w = world(on, () => board(rows))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await w.clock.advance(3000)
+  await ui.unmount()
+  // The next change invalidates the pane, and no render answers.
+  rows = ROWS.filter(r => r.pr !== 2)
+  await w.clock.advance(3000)
+  await w.clock.advance(3000)
+  const reads = w.seen.reads
+  await w.clock.advance(60_000)
+  expect(w.seen.reads - reads).toBeLessThanOrEqual(2)
+})
+
+test('R7: an armed session whose pane never draws sets the status line once for each board change', async ($, on) => {
+  const w = world(on, () => board(ROWS), undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  const calls = w.seen.status.length
+  await w.clock.advance(30_000)
+  expect(w.seen.status.length).toBe(calls)
+})
+
+test('R7: a skill-armed session the board then names keeps the board since, and a same-second greater id disarms it', async ($, on) => {
+  const SAME = '2026-01-01T00:00:00Z'
+  let file = board(ROWS, { session_id: 's0', since: SAME })
+  const w = world(on, () => file)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.advance(6000)
+  file = board(ROWS, { session_id: 'me', since: SAME })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's2', since: SAME })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: an unarmed session with no pane checks the owner no more than once each 60 s', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(59_000)
+  expect(w.seen.reads).toBe(0)
+  await w.clock.advance(120_000)
+  expect(w.seen.reads).toBeLessThanOrEqual(3)
+})
+
+test('R7: a disarm clears the watcher notes from the pane', async ($, on) => {
+  let file = board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' })
+  const w = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(words(await ui.drawn())).toContain('no token')
+  file = board(ROWS, { session_id: 's2', since: '2026-07-01T00:00:00Z' })
+  await w.clock.advance(6000)
+  expect(words(await ui.drawn())).not.toContain('no token')
+  await ui.unmount()
+})
+
+test('R7: /review-board opens the pane in an unarmed session', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.command.run(command(120))
+  expect(w.seen.opens).toBe(1)
+  expect(w.seen.status).toEqual([])
+})
+
 test('/review-board prints the table as text, fitted to the width, under 110 columns', async ($, on) => {
   const w = world(on, () => board(ROWS))
   const out = await $.command.run(command(80))
   expect(w.seen.opens).toBe(0)
   expect(out.text).toContain('Needs you')
-  expect(order(out.text ?? '')).toEqual([4, 1, 3, 5, 2, 6])
+  expect(order(out.text ?? '')).toEqual([4, 1, 3, 5, 2, 6, 7])
   for (const line of (out.text ?? '').split('\n')) {
     expect(line.length).toBeLessThanOrEqual(80)
   }
@@ -265,6 +461,7 @@ const LONG_ROW = () =>
   board([
     row(8, 'triage', 'crew', '2026-01-01T10:00:00Z', {
       title: LONG,
+      watch: null,
       last: { at: '2026-01-01T10:00:00Z', text: LONG },
     }),
   ])
@@ -276,7 +473,7 @@ test('a text row is exactly the width given, with no second ellipsis', async ($,
   // The row is built from the widths alone: the final fit must not cut it.
   expect(line.length).toBe(80)
   expect(line).not.toContain('……')
-  // Title 23, last 20 (80 - indent 2 - 30 fixed - 5 gaps = 43 to share): the
+  // Title 16, last 20 (80 - indent 2 - 36 fixed - 6 gaps = 36 to share): the
   // last cell keeps all of its 19 letters and one ellipsis.
   expect(line.endsWith(`${'y'.repeat(19)}…`)).toBe(true)
 })
@@ -298,7 +495,7 @@ test('a pane row is exactly bodyColumns wide: cells plus gaps', async ($, on) =>
     const cells = line?.children ?? []
     const gaps = (line?.props?.gap ?? 0) * (cells.length - 1)
     const total = cells.reduce((sum, c) => sum + (c.props?.width ?? 0), 0) + gaps
-    expect(cells.length).toBe(6)
+    expect(cells.length).toBe(7)
     expect(total).toBe(columns)
     await ui.unmount()
   }
@@ -673,7 +870,10 @@ test('A3: a gh candidate with a row or an entry gives no second entry and no pro
 })
 
 test('A4: an unarmed session polls no source, writes nothing and prompts nothing', async ($, on) => {
-  const w = watcher(on, { board: () => watchBoard({ watches: [SLACK_WATCH, GH_WATCH] }) })
+  const w = watcher(on, {
+    board: () => watchBoard({ watches: [SLACK_WATCH, GH_WATCH] }),
+    session: 's9',
+  })
   w.slack.history = [msg(ts(1), [11])]
   w.gh.prs = [ghPr(5)]
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -1019,7 +1219,7 @@ test('A27: two untaken entries for one PR draw one derived row, and it alone ope
   expect(lines.length).toBe(1)
   // The row comes from the earliest entry: watch #dev, its policy assist, no
   // title, and the last event names the watch.
-  expect(lines[0]).toMatch(/#41\s+new\s+crew\s+assist\s/)
+  expect(lines[0]).toMatch(/#41\s+new\s+crew\s+-\s/)
   expect(lines[0]).toContain('new ask from #dev')
   expect(lines[0]).not.toContain('later')
 })
@@ -1082,8 +1282,7 @@ test('R8: a later last_checked in asks.json shows in Watching', async ($, on) =>
   })
   await arm($, w)
   const pane = await drawn($)
-  expect(pane).toContain('checked 2026-01-01 20:00')
-  expect(pane).toContain('found 9')
+  expect(pane).toContain('checked 4h ago')
 })
 
 for (const fault of ['mv', 'write'] as const) {
@@ -1309,4 +1508,269 @@ test('A35: a refused cursor write still prompts, and the next poll gives no seco
   await w.clock.advance(MINUTE)
   expect(w.asks().asks.map(a => a.pr)).toEqual([11])
   expect(w.seen.prompts.length).toBe(1)
+})
+
+// The layout of the pane and the text table (the mockup of #135).
+
+type N = { type?: string; props?: Record<string, unknown>; children?: (N | string)[] }
+const kids = (n: N | string | undefined): N[] =>
+  typeof n === 'object' ? (n.children ?? []).filter((c): c is N => typeof c !== 'string') : []
+const flat = (n: N | string | undefined): string => (n === undefined ? '' : words(n).trim())
+const MIN = 60_000
+const agoIso = (ms: number) => new Date(NOW - ms).toISOString()
+
+const lay = (rows: unknown[], watches?: object[], updated = agoIso(10 * MIN)) =>
+  JSON.stringify({
+    version: 1,
+    owner: { session_id: 's1', since: '2026-01-01T00:00:00Z' },
+    updated_at: updated,
+    watches: watches ?? [
+      { id: 'w1', source: 'slack:#x', policy: 'assist', status: 'active', since: '2026-01-01T00:00:00Z', last_checked: agoIso(5 * MIN), found: 3 },
+      { id: 'w2', source: 'github:review-requests', policy: 'review', status: 'active', since: '2026-01-01T00:00:00Z', last_checked: null, found: 0 },
+      { id: 'w3', source: 'direct', policy: 'review', status: 'active', since: '2026-01-01T00:00:00Z', last_checked: agoIso(2 * 60 * MIN), found: 0 },
+      { id: 'w4', source: 'slack:#old', policy: 'review', status: 'stopped', since: '2026-01-01T00:00:00Z', last_checked: null, found: 0 },
+    ],
+    rows,
+  })
+
+const lrow = (pr: number, stage: string, next: string, ageMs: number, extra: object = {}) =>
+  row(pr, stage, next, agoIso(ageMs), { watch: 'w2', ...extra })
+
+const LROWS = [
+  lrow(101, 'approve', 'you', 15 * MIN, { author: 'alice' }),
+  lrow(102, 'blocked', 'author', 32 * MIN),
+  lrow(103, 'fixing', 'crew', 21 * MIN, { watch: 'w1', policy: 'assist' }),
+  lrow(107, 'merged', '-', 20 * 60 * MIN, { author: '-' }),
+  lrow(108, 'merged', '-', 3 * 24 * 60 * MIN),
+]
+
+type Ui = {
+  ui: {
+    mount: (x: unknown) => Promise<{ drawn: () => Promise<unknown>; unmount: () => Promise<void> }>
+  }
+}
+
+const drawPane = async ($: unknown, bodyRows = 40, columns = 120) => {
+  const ui = await ($ as Ui).ui.mount({
+    ...PANE,
+    props: { ...PANE.props, bodyColumns: columns, scroll: { offset: 0, bodyRows } },
+    surface: 'terminal',
+  })
+  const root = (await ui.drawn()) as N
+  await ui.unmount()
+  return kids(root)
+}
+
+const rowLine = (lines: N[], pr: number) => lines.find(l => l.props?.key === `o/r#${pr}`) as N
+const textProps = (cell: N) => (kids(cell)[0]?.props ?? {}) as { color?: string; dimColor?: boolean }
+
+test('R8: the top line names the watch sources and the age of the board', async ($, on) => {
+  world(on, () => lay(LROWS))
+  const lines = await drawPane($)
+  expect(flat(lines[0])).toBe('Review board  #x + review requests + direct asks  ·  updated 10m ago')
+})
+
+test('R8: an open pane redraws while only the clock moves, so the board age advances', async ($, on) => {
+  const w = world(on, () => lay(LROWS))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(flat(kids((await ui.drawn()) as N)[0])).toContain('updated 10m ago')
+  await w.clock.advance(2 * MIN + 3000)
+  expect(flat(kids((await ui.drawn()) as N)[0])).toContain('updated 12m ago')
+  await ui.unmount()
+})
+
+test('R8: with no active watch the top line has no sources', async ($, on) => {
+  world(on, () => lay([], []))
+  const lines = await drawPane($)
+  expect(flat(lines[0])).toBe('Review board  ·  updated 10m ago')
+})
+
+test('R9: the Watching block has a count and one short line per active watch', async ($, on) => {
+  world(on, () => lay(LROWS))
+  const lines = await drawPane($)
+  expect(flat(lines[1])).toBe('Watching 3')
+  const [a, b, c] = [flat(lines[2]), flat(lines[3]), flat(lines[4])]
+  expect(a).toContain('#x')
+  expect(a).toContain('assist')
+  expect(a).toContain('5m')
+  expect(JSON.stringify(lines[2])).toContain('yellow')
+  expect(b).toContain('review requests')
+  expect(c).toContain('direct asks')
+  expect(c).toContain('2h')
+  for (const t of [a, b, c]) {
+    expect(t).not.toMatch(/\bw[1-4]\b/)
+    expect(t).not.toContain('direct · direct')
+    expect(t).not.toContain('found')
+    expect(t).not.toContain('since')
+  }
+  expect(flat(lines[5])).toBe('')
+  expect(JSON.stringify(lines)).not.toContain('#old')
+})
+
+test('R10: the column header row sits once, over cells of the same width', async ($, on) => {
+  world(on, () => lay(LROWS))
+  const lines = await drawPane($)
+  const heads = lines.filter(l => flat(l).includes('last event'))
+  expect(heads.length).toBe(1)
+  const head = heads[0]
+  expect(kids(head).map(flat)).toEqual(['PR', 'stage', 'next', 'author', 'title', 'age', 'last event'])
+  const offsets = (l: N) => {
+    const gap = (l.props?.gap ?? 0) as number
+    let at = 0
+    return kids(l).map(c => {
+      const here = at
+      at += (c.props?.width as number) + gap
+      return here
+    })
+  }
+  expect(offsets(head)).toEqual(offsets(rowLine(lines, 101)))
+  expect(lines.indexOf(head)).toBe(6)
+  expect(flat(lines[5])).toBe('')
+  expect(flat(lines[7])).toBe('')
+})
+
+test('R11: each section shows its count, and a blank line sets them apart', async ($, on) => {
+  world(on, () => lay(LROWS))
+  const lines = await drawPane($)
+  const at = (t: string) => lines.findIndex(l => flat(l) === t)
+  expect(at('Needs you 1')).toBeGreaterThan(0)
+  expect(at('In flight 2')).toBeGreaterThan(at('Needs you 1'))
+  expect(at('Done 2')).toBeGreaterThan(at('In flight 2'))
+  expect(flat(lines[at('In flight 2') - 1])).toBe('')
+  expect(flat(lines[at('Done 2') - 1])).toBe('')
+  expect(flat(lines[at('Needs you 1') - 1])).toBe('')
+})
+
+test('R11: an empty Needs you shows count 0 and the line Nothing needs you.', async ($, on) => {
+  const rows = [lrow(102, 'blocked', 'author', 32 * MIN)]
+  world(on, () => lay(rows))
+  const lines = await drawPane($)
+  const i = lines.findIndex(l => flat(l) === 'Needs you 0')
+  expect(i).toBeGreaterThan(0)
+  expect(flat(lines[i + 1])).toBe('Nothing needs you.')
+  expect(lines.some(l => flat(l) === 'Done 0')).toBe(true)
+})
+
+test('R12: a row has the author and the age since last.at', async ($, on) => {
+  world(on, () => lay(LROWS))
+  const lines = await drawPane($)
+  const c = (pr: number) => kids(rowLine(lines, pr)).map(flat)
+  expect(c(101).slice(0, 4)).toEqual(['#101', 'approve', 'you', 'alice'])
+  expect(c(101)[5]).toBe('15m')
+  expect(c(107)[3]).toBe('-')
+  expect(c(107)[5]).toBe('20h')
+  expect(c(108)[5]).toBe('3d')
+})
+
+test('R12: a policy marker shows only on a row that differs from its watch', async ($, on) => {
+  const rows = [
+    lrow(1, 'triage', 'crew', MIN, { watch: 'w1', policy: 'assist' }),
+    lrow(2, 'triage', 'crew', MIN, { watch: 'w1', policy: 'review' }),
+    lrow(3, 'triage', 'crew', MIN, { watch: 'w2', policy: 'review' }),
+    lrow(4, 'triage', 'crew', MIN, { watch: 'w2', policy: 'assist' }),
+  ]
+  world(on, () => lay(rows))
+  const lines = await drawPane($)
+  expect(flat(rowLine(lines, 1))).not.toContain('[')
+  expect(flat(rowLine(lines, 2))).toContain('[review]')
+  expect(flat(rowLine(lines, 3))).not.toContain('[')
+  expect(flat(rowLine(lines, 4))).toContain('[assist]')
+  expect(JSON.stringify(rowLine(lines, 4))).toContain('yellow')
+  expect(JSON.stringify(rowLine(lines, 2))).not.toContain('yellow')
+})
+
+test('R13: the stage cell takes the colour of its stage', async ($, on) => {
+  const want: [string, string][] = [
+    ['approve', 'magenta'], ['blocked', 'red'], ['fixing', 'yellow'],
+    ['reviewing', 'cyan'], ['rereview', 'cyan'], ['queued', 'blue'],
+    ['new', 'dim'], ['triage', 'dim'],
+  ]
+  const rows = want.map(([stage], i) => lrow(200 + i, stage, 'crew', MIN))
+  world(on, () => lay(rows))
+  const lines = await drawPane($)
+  want.forEach(([, color], i) => {
+    const p = textProps(kids(rowLine(lines, 200 + i))[1])
+    if (color === 'dim') {
+      expect(p.dimColor).toBe(true)
+      expect(p.color).toBeUndefined()
+    } else expect(p.color).toBe(color)
+  })
+})
+
+test('R13: next you colours the next cell magenta, and a done row is grey in every cell', async ($, on) => {
+  const rows = [
+    lrow(1, 'fixing', 'you', MIN),
+    lrow(2, 'merged', 'you', MIN),
+    lrow(3, 'closed', '-', MIN),
+  ]
+  world(on, () => lay(rows))
+  const lines = await drawPane($)
+  expect(textProps(kids(rowLine(lines, 1))[2]).color).toBe('magenta')
+  for (const pr of [2, 3]) {
+    for (const cell of kids(rowLine(lines, pr))) {
+      expect(textProps(cell).dimColor).toBe(true)
+      expect(textProps(cell).color).toBeUndefined()
+    }
+  }
+})
+
+test('R14: done rows show inline, newest first, with no button', async ($, on) => {
+  world(on, () => lay(LROWS))
+  const lines = await drawPane($)
+  expect(lines.findIndex(l => l.props?.key === 'o/r#107')).toBeGreaterThan(0)
+  expect(lines.findIndex(l => l.props?.key === 'o/r#107')).toBeLessThan(
+    lines.findIndex(l => l.props?.key === 'o/r#108'),
+  )
+  expect(JSON.stringify(lines)).not.toMatch(/Show done|Hide done|Button/)
+})
+
+test('R14: In flight and Done shrink to +N more, Needs you never, and the pane stays in its height', async ($, on) => {
+  const rows = [
+    lrow(1, 'approve', 'you', MIN),
+    lrow(2, 'approve', 'you', MIN),
+    ...Array.from({ length: 30 }, (_, i) => lrow(100 + i, 'reviewing', 'crew', (i + 2) * MIN)),
+    ...Array.from({ length: 30 }, (_, i) => lrow(300 + i, 'merged', '-', (i + 2) * MIN)),
+  ]
+  world(on, () => lay(rows))
+  const lines = await drawPane($, 24)
+  expect(lines.length).toBeLessThanOrEqual(24)
+  expect(rowLine(lines, 1)).toBeDefined()
+  expect(rowLine(lines, 2)).toBeDefined()
+  expect(lines.filter(l => /^\+\d+ more$/.test(flat(l))).length).toBe(2)
+  expect(lines.some(l => String(l.props?.key).startsWith('o/r#1'))).toBe(true)
+  expect(lines.some(l => String(l.props?.key).startsWith('o/r#3'))).toBe(true)
+})
+
+test('R14: in a short pane the body never passes bodyRows beyond the lines that are never cut', async ($, on) => {
+  world(on, () => lay(LROWS))
+  // The lines never cut: top, Watching and 3 watches, 3 header lines, Needs
+  // you and its row, and 3 headings with 3 blank lines. That is 14 lines.
+  for (const rows of [14, 15, 16]) {
+    const lines = await drawPane($, rows)
+    expect(lines.length).toBeLessThanOrEqual(Math.max(rows, 14))
+  }
+  const lines = await drawPane($, 15)
+  expect(lines.some(l => /^\+\d+ more$/.test(flat(l)))).toBe(true)
+})
+
+test('R15: the text table has the top line, the header, the counts and the policy marker', async ($, on) => {
+  const rows = [...LROWS, lrow(104, 'triage', 'crew', MIN, { watch: 'w1', policy: 'review' })]
+  world(on, () => lay(rows))
+  const out = (await $.command.run(command(100))).text ?? ''
+  const lines = out.split('\n')
+  expect(lines[0]).toBe('Review board  #x + review requests + direct asks  ·  updated 10m ago')
+  expect(lines[1]).toBe('Watching 3')
+  expect(lines[2]).toContain('#x')
+  expect(lines[2]).toContain('assist')
+  expect(lines[2]).toContain('5m')
+  expect(lines[2]).not.toContain('w1')
+  expect(lines[5]).toBe('')
+  expect(lines[6]).toMatch(/^ {2}PR {5}stage {6}next {4}author {3}title.*age {3}last event/)
+  expect(lines[7]).toBe('')
+  for (const t of ['Needs you 1', 'In flight 3', 'Done 2']) expect(lines).toContain(t)
+  expect(lines.some(l => l.includes('#104') && l.includes('[review]'))).toBe(true)
+  expect(lines.some(l => l.includes('#101') && l.includes('alice') && l.includes('15m'))).toBe(true)
+  expect(out).not.toContain('Show done')
+  expect(order(out)).toContain(108)
+  for (const l of lines) expect(l.length).toBeLessThanOrEqual(100)
 })

@@ -72,10 +72,15 @@ export type ReviewBoardAsksFile = {
 declare module 'claude-code' {
   interface PluginState {
     crew: {
-      // True once a `review-queue` skill prompt armed this session.
+      // True while this session shows the status line and opens the pane. The
+      // review-queue skill prompt arms it, and so does a board file that names
+      // this session as owner. A later owner on the board disarms it.
       armed: Shaped<boolean>
-      // True while the Done section shows its rows.
-      showDone: Shaped<boolean>
+      // When this session armed, in ms since the epoch.
+      armedAt: Shaped<number>
+      // When a skill prompt armed this session, in ms. 0 holds no time. The
+      // arming window ends from it, and a reload keeps it.
+      skillArmedAt: Shaped<number>
     }
   }
 }

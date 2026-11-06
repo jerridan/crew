@@ -34,6 +34,9 @@ emit() {
   exit 0
 }
 case "$args" in
+  "pr view"*"--json files"*)
+    if [ -e "$D/fail-files-once" ]; then rm -f "$D/fail-files-once"; exit 1; fi
+    emit "$D/pr.json" ;;
   "pr view"*) emit "$D/pr.json" ;;
   *"/deployments/"*"/statuses"*) emit "$D/statuses.json" ;;
   *"/deployments?sha="*) emit "$D/deployments.json" ;;
@@ -80,6 +83,7 @@ setup() {
   printf '[{"state":"success","created_at":"2026-01-01T00:00:00Z"}]\n' > "$STUB_DIR/statuses.json"
   [ -z "${FAIL_WF:-}" ] || : > "$STUB_DIR/fail-workflows"
   [ -z "${FAIL_WF_ONCE:-}" ] || : > "$STUB_DIR/fail-workflows-once"
+  [ -z "${FAIL_FILES_ONCE:-}" ] || : > "$STUB_DIR/fail-files-once"
 }
 
 # check <label> <want> : want is `none`, `no-deploy-wf` (the no deploy workflow
@@ -151,6 +155,21 @@ case "$out" in
       fails=$((fails + 1)); echo "FAIL failed-then-good read (sleeps: $sleeps)"; printf '     got: %s\n' "$out"
     fi ;;
   *) fails=$((fails + 1)); echo "FAIL failed-then-good read (sleeps: $sleeps)"; printf '     got: %s\n' "$out" ;;
+esac
+
+# One deploy process: the files read fails once, then shows only README.md.
+total=$((total + 1))
+FAIL_FILES_ONCE=1 FILES='[{"path":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+out=$(bash "$PW" "$T/rec" deploy 2>&1)
+sleeps=$(cat "$STUB_DIR/sleeps" 2>/dev/null || echo 0)
+case "$out" in
+  "no-deploy 7 - "*"and no deploy workflow")
+    if [ "$(printf '%s\n' "$out" | grep -c .)" = 1 ] && [ "$sleeps" = 1 ]; then
+      echo "ok   files read fails once, then no-deploy on the next poll"
+    else
+      fails=$((fails + 1)); echo "FAIL failed-then-good files read (sleeps: $sleeps)"; printf '     got: %s\n' "$out"
+    fi ;;
+  *) fails=$((fails + 1)); echo "FAIL failed-then-good files read (sleeps: $sleeps)"; printf '     got: %s\n' "$out" ;;
 esac
 
 echo "$((total - fails)) of $total checks passed"

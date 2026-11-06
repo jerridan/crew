@@ -173,8 +173,7 @@ gets no baseline.
 Then run the review through `review-runner.md`, with the files named
 `skeptical-r<n>` and `<n>` from `run.review_pending.round`. Set
 `run.review_rounds` as `skeptical-review.md`'s "When the review runs" table
-says,. The
-inputs that differ from a goal run:
+says. The inputs that differ from a goal run:
 
 | Input | On a review run |
 |---|---|
@@ -207,10 +206,10 @@ post:
    The label alone decides whether it posts.
 
 **Drop every finding that CI reports.** A finding about lint, format, types,
-a failing test or another CI check is `don't post`, with the reason `CI reports
-it`. This holds for every source: the skeptical reviewer, a bot claim, a
-replacement runner, a PR comment and a human reviewer's claim. Drop it before
-the draft. It is no finding held back for the go-ahead gate.
+a failing test or another CI check is `don't post`, with the reason
+`CI reports it`. This holds for every source: the skeptical reviewer, a bot
+claim, a replacement runner, a PR comment and a human reviewer's claim. Drop it
+before the draft. It is no finding held back for the go-ahead gate.
 
 A `don't post` or `not real` finding is declined, with its label as the
 reason. The skeptical ledger names no package on a review run. Write each

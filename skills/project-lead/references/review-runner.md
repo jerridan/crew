@@ -401,11 +401,11 @@ The rest of the section is for a goal run.
 **Run the repo's setup command yourself, in the review worktree.** A fresh
 worktree has the repo's files and none of its installed dependencies, so the
 suite fails there for a reason that has nothing to do with the diff. The
-scout records the command beside the suite command (`SKILL.md`, "Scout"). Run it as the project lead, in the worktree,
-before the launch. Never grant the child a rule for it, because that rule
-would let the review install whatever it liked. A setup that ran adds the
-line "Dependencies are installed. Do not install." to the instructions
-("Reviewer instructions").
+scout records the command beside the suite command (`SKILL.md`, "Scout"). Run
+it as the project lead, in the worktree, before the launch. Never grant the
+child a rule for it, because that rule would let the review install whatever it
+liked. A setup that ran adds the line "Dependencies are installed. Do not
+install." to the instructions ("Reviewer instructions").
 
 **Before the deliverable's first round, the baseline runs here.**
 `skeptical-review.md`'s "When the review runs" owns that step. It moves the
@@ -447,8 +447,9 @@ this order. A review run has no part 3:
    `github-review.md`'s reviewer paragraph instead.
 2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
    says.
-3. **On a goal run, `reviews/baseline.md`, whole**, then this sentence, verbatim: "A test
-   or gate on this list is red before the change. Do not raise it."
+3. **On a goal run, `reviews/baseline.md`, whole**, then this sentence,
+   verbatim: "A test or gate on this list is red before the change. Do not
+   raise it."
 4. **The block below**, with its bracketed values filled in. It holds what is
    this review's own and nothing that parts 1 to 3 already state: the goal
    text, the diff range, the suite and the line that says the dependencies
@@ -522,8 +523,8 @@ When you ran the setup command, add this line after that block, verbatim:
 Dependencies are installed. Do not install.
 ```
 
-On a goal run under the no-suite outcome, this replaces the whole paragraph — never a
-"run the suite" sentence with nothing to run:
+On a goal run under the no-suite outcome, this replaces the whole
+paragraph — never a "run the suite" sentence with nothing to run:
 
 ```
 This repository has no suite. Read the diff without running one.

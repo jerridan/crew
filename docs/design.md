@@ -9017,9 +9017,10 @@ Deliberately different:
      review run, so no `check` line exists. A `dequeued` item is a notice
      with no diagnosis and no `ci` round. The no-gate rule drops its "its
      suite ran" condition. An earlier design split a head by who pushed it
-     and let crew check its own push. The principal chose the simpler rule:
-     the PR's CI verifies crew's push, and the author and the principal see
-     the result on the PR.
+     and let crew check its own push. The project lead chose the simpler rule,
+     following the owner's comment that only the queue's triage reads CI: the
+     PR's CI verifies crew's push, and the author and the principal see the
+     result on the PR.
 
      No run has exercised this change. The seeded-record check of
      `pr-watch.sh` printed a `check` line for a goal run and none for a

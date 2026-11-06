@@ -63,13 +63,13 @@ principal for the ship word or for a new goal.
 **A `queued` item is a notice on every run**, and the watch goes on. Write
 `run.watch.queued` `true` with the cursor.
 
-**On a goal run, a `dequeued` item runs the diagnosis first**, as `pr-watch.md`'s "Diagnose a
-dequeue" says. When it finds a failed `merge_group` run, sort the item like a
-`check` item: it opens a `ci` round whose `ref` is that run's URL. When it
-finds none, the item is a notice, and no round opens. Either way, your report
-to the principal holds the diagnosis output, and the cursor write sets
-`run.watch.queued` `false`. When a section reads `read failed`, run the
-diagnosis once more. When it fails again, report the dequeue to the principal
+**On a goal run, a `dequeued` item runs the diagnosis first**, as
+`pr-watch.md`'s "Diagnose a dequeue" says. When it finds a failed
+`merge_group` run, sort the item like a `check` item: it opens a `ci` round
+whose `ref` is that run's URL. When it finds none, the item is a notice, and no
+round opens. Either way, your report to the principal holds the diagnosis
+output, and the cursor write sets `run.watch.queued` `false`. When a section
+reads `read failed`, run the diagnosis once more. When it fails again, report the dequeue to the principal
 as a `ci` item, with the output.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
@@ -190,15 +190,16 @@ notice too. A notice gets one line in your next message to the principal, and
 its id still joins `seen_ids`. It opens no round, takes no gate and gets no
 reply. Every other item opens its round and gets its reply on the PR.
 
+A change
+request from the watch is adjudicated like a finding, because the principal
+did not ask for it. A question from the watch takes the disposition
+`answered` (`skeptical-review.md`'s "Adjudication is a ledger").
+
 **A `run.kind: review` run reads no check.** Its watch prints no `check` line,
 and no item opens a `ci` round, whoever pushed the head. A `dequeued` item is a
 notice: run no `dequeue-diagnosis.sh` and open no `ci` round. The cursor write
 still sets `run.watch.queued` `false`. The PR's CI verifies crew's own assist
 push, and the author and the principal see it on the PR.
- A change
-request from the watch is adjudicated like a finding, because the principal
-did not ask for it. A question from the watch takes the disposition
-`answered` (`skeptical-review.md`'s "Adjudication is a ledger").
 
 ### A message that holds a finding
 
@@ -399,9 +400,9 @@ In order:
 8. **Take one group all the way through before you start the next.** Dispatch
    its IC with `reviews/baseline.md` and its sentence, as `review-runner.md`'s
    "Reviewer instructions" gives them. Every IC a goal run's window dispatches
-   gets both. A review run writes no baseline, so its IC gets the sentence
-   alone. Its brief asks for the whole defect class, as `simple-path.md`'s "Fix
-   rounds" says. Run its "Verify before you believe", which greps for the
+   gets both. A review run writes no baseline, so its IC gets neither the file
+   nor the sentence. Its brief asks for the whole defect class, as
+   `simple-path.md`'s "Fix rounds" says. Run its "Verify before you believe", which greps for the
    pattern each finding named, run its "Fix rounds" where a check fails, then
    run its "Integrate" in full, with the substitution "A change request"
    names. On a goal run, a package that answers a skeptical round whose verdict

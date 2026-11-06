@@ -9186,7 +9186,7 @@ Deliberately different:
      repo with only `pr-review.yml`, a `Deploy` workflow and a `release.yml`
      workflow with no run at 1 and 11 minutes, a failed workflows read, a
      deployment that exists, a successful production deployment, a disabled
-     `Deploy` workflow, and a `deploy.yml` run named `CI`. Seven of the
+     `Deploy` workflow, and a `deploy.yml` run named `CI`. Three of the
      eleven checks failed before the change. `test-queue-watch.sh` still
      passes.
 

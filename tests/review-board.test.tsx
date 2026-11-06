@@ -293,6 +293,89 @@ test('R7: the takeover race: the old session arms from its board since and the n
   expect(w.seen.status.at(-1)).toBeUndefined()
 })
 
+test('R7: two owners with an equal since: the greater session id keeps the board', async ($, on) => {
+  const SAME = '2026-01-01T00:00:00Z'
+  // s1 is armed, and s2 takes the board in the same second: s1 disarms.
+  let file = board(ROWS, { session_id: 's1', since: SAME })
+  const a = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await a.clock.advance(60_000)
+  expect(a.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's2', since: SAME })
+  await a.clock.advance(6000)
+  expect(a.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: an armed session with the greater id stays armed when the other owner has an equal since', async ($, on) => {
+  const SAME = '2026-01-01T00:00:00Z'
+  let file = board(ROWS, { session_id: 's2', since: SAME })
+  const w = world(on, () => file, undefined, 's2')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's1', since: SAME })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+})
+
+test('R7: a skill-armed session the board never names as owner disarms after the arming window', async ($, on) => {
+  const w = world(on, () => board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' }))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.advance(60_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  await w.clock.advance(70_000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
+test('R7: a skill-armed session whose own Start writes the owner in the window stays armed', async ($, on) => {
+  let file = board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' })
+  const w = world(on, () => file)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.advance(30_000)
+  file = board(ROWS, { session_id: 'me', since: '2026-01-01T00:00:00Z' })
+  await w.clock.advance(200_000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+})
+
+test('R7: a closed pane stops the reload', async ($, on) => {
+  let rows: object[] = ROWS
+  const w = world(on, () => board(rows))
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await w.clock.advance(3000)
+  await ui.unmount()
+  // The next change invalidates the pane, and no render answers.
+  rows = ROWS.filter(r => r.pr !== 2)
+  await w.clock.advance(3000)
+  await w.clock.advance(3000)
+  const reads = w.seen.reads
+  await w.clock.advance(60_000)
+  expect(w.seen.reads - reads).toBeLessThanOrEqual(2)
+})
+
+test('R7: an unarmed session with no pane checks the owner no more than once each 60 s', async ($, on) => {
+  const w = world(on, () => board(ROWS))
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(59_000)
+  expect(w.seen.reads).toBe(0)
+  await w.clock.advance(120_000)
+  expect(w.seen.reads).toBeLessThanOrEqual(3)
+})
+
+test('R7: a disarm clears the watcher notes from the pane', async ($, on) => {
+  let file = board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' })
+  const w = world(on, () => file, undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(words(await ui.drawn())).toContain('no token')
+  file = board(ROWS, { session_id: 's2', since: '2026-07-01T00:00:00Z' })
+  await w.clock.advance(6000)
+  expect(words(await ui.drawn())).not.toContain('no token')
+  await ui.unmount()
+})
+
 test('R7: /review-board opens the pane in an unarmed session', async ($, on) => {
   const w = world(on, () => board(ROWS))
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -1613,6 +1696,18 @@ test('R14: In flight and Done shrink to +N more, Needs you never, and the pane s
   expect(lines.filter(l => /^\+\d+ more$/.test(flat(l))).length).toBe(2)
   expect(lines.some(l => String(l.props?.key).startsWith('o/r#1'))).toBe(true)
   expect(lines.some(l => String(l.props?.key).startsWith('o/r#3'))).toBe(true)
+})
+
+test('R14: in a short pane the body never passes bodyRows beyond the lines that are never cut', async ($, on) => {
+  world(on, () => lay(LROWS))
+  // The lines never cut: top, Watching and 3 watches, 3 header lines, Needs
+  // you and its row, and 3 headings with 3 blank lines. That is 14 lines.
+  for (const rows of [14, 15, 16]) {
+    const lines = await drawPane($, rows)
+    expect(lines.length).toBeLessThanOrEqual(Math.max(rows, 14))
+  }
+  const lines = await drawPane($, 15)
+  expect(lines.some(l => /^\+\d+ more$/.test(flat(l)))).toBe(true)
 })
 
 test('R15: the text table has the top line, the header, the counts and the policy marker', async ($, on) => {

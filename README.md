@@ -196,18 +196,15 @@ Crew reviews in a worktree it cuts under `.claude/worktrees/` in your
 checkout. Add that folder to the repo's `.gitignore`. Crew tells you once when
 the repo does not ignore it.
 
-Put the test and setup commands in `.claude/crew.md`, under `Gates` and
-`Setup`. Crew then runs them with no scout. To let the PR's CI checks stand in
-for a local test run, write `ci` alone under `Gates`. Crew then installs
-nothing and runs no tests, and it gives the reviewer the result of each check.
+A review run runs no setup command, no test and no gate, and it reads none of
+the PR's checks. It raises no finding about lint, format, types or a failing
+test, because CI reports those to the author. The same holds for a fork.
 
 Replies and pushes in a review run follow the same rule as in a goal run.
-Crew waits when another person commented. A comment from a bot, a failed
-check and a comment from your own GitHub account take no go-ahead. To turn
-every wait off, say `post without asking` with the command.
-
-Crew does not run a fork's tests or setup unless you say
-`run the suite on this fork`.
+Crew waits when another person commented. A comment from a bot and a comment
+from your own GitHub account take no go-ahead. A failed check opens nothing in
+a review run, and a PR that leaves the merge queue is a notice. To turn every
+wait off, say `post without asking` with the command.
 
 Crew gives each finding one label:
 
@@ -304,8 +301,7 @@ under a `##` heading with one of these names:
 |---|---|
 | `Reviewers` | the reviewer to use in place of a review step, in plain words |
 | `Known red tests` | the tests that already fail on the main branch, and why |
-| `Gates` | the exact commands CI runs: tests, types, lint and build. Write `ci` alone to let a review read the PR's CI checks in place of a local run |
-| `Setup` | the one command that installs what the tests need in a fresh checkout |
+| `Gates` | the exact commands CI runs: tests, types, lint and build. Only a goal run reads this section |
 | `Checkouts` | the path of your checkout of each repo, one line each, as `<owner>/<repo>: <absolute path>`. Only the review queue reads it |
 | `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run checks that bot's blocking findings too |
 | `Hook workarounds` | what to do when a git hook stops a push or a merge |
@@ -413,7 +409,6 @@ A review run takes these steps:
 | Step | What happens |
 |---|---|
 | Take the PR | Reads the PR, refuses one that is not open, and opens the record. |
-| Read the test commands from `.claude/crew.md`, or scout when it has none | Finds the test and setup commands. |
 | Review | A separate session reads the diff against the PR's description and the repo. |
 | Adjudicate | Crew checks each finding and gives it a label, and drops findings that do not post and defects that were already there. |
 | Report and wait | Crew sends you the draft and waits for your go-ahead. |
@@ -463,8 +458,8 @@ to see every judgment call with its citation.
 └── diffs/          one diff per deliverable
 ```
 
-`reviews/baseline.md` lists the tests and checks that already fail before
-the change. Reviewers do not raise them.
+In a goal run, `reviews/baseline.md` lists the tests and checks that already
+fail before the change. Reviewers do not raise them.
 
 A review run's directory is `pr-<owner>-<repo>-<n>-<hex>/`. Its drafts are
 `reviews/github-r<n>.md`, one per round.

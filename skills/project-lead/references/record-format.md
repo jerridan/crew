@@ -282,8 +282,8 @@ naming convention. Do not mix their contents.
   with one writes the file. `skeptical-review.md`'s "The adjudication is
   complete" owns this.
 
-  **`reviews/baseline.md` is one file per deliverable of a goal run**, written by the
-  project lead before the first skeptical round at each of the
+  **`reviews/baseline.md` is one file per deliverable of a goal run**,
+  written by the project lead before the first skeptical round at each of the
   deliverable's bases (`skeptical-review.md`'s "When the review runs"). Its
   first line is `Base: <sha>`, the base it was measured at, so a resume can
   tell a file from an old base. Then it holds one line per test or gate that

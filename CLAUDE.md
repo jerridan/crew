@@ -28,7 +28,7 @@ tests, and `claude plugin validate <repo>` checks its module (§15.128).
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
-| `skills/review-queue/SKILL.md`, `skills/review-queue/references/board.md`, `ready-file.md`, `sources.md` | the `/crew:review-queue` entry point: watches, triage, children, the gate, every post, approval and enqueue, the board; the board file's schema; a child's ready file; the polls of a Slack channel and of the review requests | its skill trigger; `/crew:review` in child mode reads `ready-file.md` |
+| `skills/review-queue/SKILL.md`, `skills/review-queue/references/board.md`, `ownership.md`, `ready-file.md`, `sources.md` | the `/crew:review-queue` entry point: watches, triage, children, the gate, every post, approval and enqueue, the board; the board file's schema; who holds the board; a child's ready file; the polls of a Slack channel and of the review requests | its skill trigger; `/crew:review` in child mode reads `ready-file.md` |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` | the review-board mod: a pane and a status line that read the board file, and, with a Slack token, the watcher that polls the queue's sources and writes `asks.json`; its `$.state` contract; its tests | the plugin loader, as the hooks module `hooks.json` names; `claude plugin test` |
 | `docs/design.md` | the living spec | a person |
@@ -167,6 +167,8 @@ Each reference owns one subject and is canonical for it:
 - `skills/review-queue/references/board.md` — the board file the queue
   session writes and the review-board mod reads, and the asks file the mod
   writes and the queue session reads.
+- `skills/review-queue/references/ownership.md` — who holds the board: the
+  takeover, the takeover-time file and the owner check.
 - `skills/review-queue/references/ready-file.md` — a queue child's ready
   file and its message to the queue session.
 - `skills/review/references/severity-rubric.md` — the six labels of a review

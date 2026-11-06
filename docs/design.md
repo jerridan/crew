@@ -8919,18 +8919,29 @@ Deliberately different:
      a. **Arming and reload (#134).** A session now arms in two cases: the
         `review-queue` skill prompt, or a `board.json` whose
         `owner.session_id` names this session. The owner path needs no
-        `skill.prompt`. One timer reads the board once each `POLL_MS`. An
-        open pane reloads on every tick, armed or not, and redraws when a file
-        changes or the clock enters a new minute, so each age moves. A session
+        `skill.prompt`. One timer reads the board once each `POLL_MS`, for an
+        armed session or an open pane. A session with neither checks the owner
+        on the slower `WATCH_MS` timer, so a session that never uses the queue
+        does not read the board every 3 s. A session the board names as owner
+        arms within 60 s. An open pane reloads on every tick, armed or not, and
+        redraws when a file changes or the clock enters a new minute, so each
+        age moves. The mod gets no pane-close event. An invalidate with no
+        render before the next tick counts as a closed pane, and the reload
+        stops. A session
         that is not the owner sets no status line and opens no pane. An
         armed session disarms when the board names another non-empty owner
-        whose `since` is later than the time this session armed. That
-        `since` test keeps a session that the skill just armed from
-        disarming before its own Start writes the owner. On the owner path
-        the armed time is the board's `owner.since`, not the clock, so the
-        mod orders owners by the value the skill uses. After a takeover
-        race, the old session arms again at its old `since` and the new
-        owner's later `since` disarms it. The skill path keeps the clock.
+        whose `since` is later than the time this session armed, or equal
+        to it with the greater session id. That `since` test keeps a session
+        that the skill just armed from disarming before its own Start writes
+        the owner. On the owner path the armed time is the board's
+        `owner.since`, not the clock, so the mod orders owners by the value
+        the skill uses. After a takeover race, the old session arms again at
+        its old `since` and the new owner's later `since` disarms it. The
+        skill path keeps the clock, so a skill prompt in an old session
+        would out-date the owner. A session that the skill armed and the
+        board does not name as owner within `ARM_WINDOW_MS` (120 s, longer
+        than a Start takes) disarms. A disarm also clears the watcher notes,
+        the refused-prompt memory and the board the pane drew from.
 
      b. **The queue takes the board every time (#134).** "Start" now sets
         `owner` to the new session with no question, with `owner.since` from
@@ -8940,13 +8951,16 @@ Deliberately different:
         starts, and before each board write. It orders owners
         by `owner.since`, as the mod does. A session whose takeover is
         earlier than the board's `since` stops and deletes its wakeup cron
-        job. A session that an earlier owner wrote over takes the board
+        job. A tie in the second goes to the lexically greater session id, in
+        the skill and in the mod, so exactly one session keeps the board. A session that an earlier owner wrote over takes the board
         again and keeps the rows. "Start" also writes the takeover time to
         `<queue-dir>/owner-<session id>`, and "The owner check" reads it
         there, so a compaction cannot lose it. A missing file makes the
         session treat itself as the old session, which is the safe side. The
-        closing of the queue removes the file. `SKILL.md` owns the rule, and
-        `board.md` names the file.
+        closing of the queue removes the file. Each board write keeps
+        `owner.since` at the takeover time, so a write never moves it to the
+        write time. `references/ownership.md` owns the rule, `SKILL.md`
+        points at it, and `board.md` names the file.
 
      c. **The layout (#135).** The pane and the text table now match the
         mockup that the principal approved on 2026-10-29: a top line with
@@ -8957,7 +8971,9 @@ Deliberately different:
         `policy` cell is gone. A row shows its policy only when it differs
         from its watch's. The "Show done" button and the `showDone` atom are
         gone. Needs you is never cut, and In flight and Done shrink to
-        "+N more" lines.
+        "+N more" lines. In a short pane a list shows no row and only its
+        "+N more" line, and with no room at all it shows neither, so the body
+        passes `bodyRows` only by the lines that are never cut.
 
      d. **Not run.** The tests pass under `claude plugin test`. No live
         session has shown the new pane.

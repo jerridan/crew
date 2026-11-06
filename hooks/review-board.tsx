@@ -485,6 +485,7 @@ const disarm = async ($: Engine) => {
   watcher = undefined
   opened = false
   last = undefined
+  lastMinute = -1
   skillArmedAt = undefined
   notes = []
   unsent = new Map()
@@ -502,6 +503,9 @@ const tick = async ($: Engine) => {
   if (awaitingRender) {
     paneShown = false
     awaitingRender = false
+    // A pane opened again draws from a fresh read, not from this one.
+    current = undefined
+    last = undefined
   }
   let isArmed = await read($, armed)
   const owner = str(obj(parsed.owner).session_id)

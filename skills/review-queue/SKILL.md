@@ -31,6 +31,7 @@ installed.
 | File | What it owns | When you read it |
 |---|---|---|
 | `references/board.md`, beside this file | the path, schema and derived terms of the board file and of `asks.json` | before "Start" |
+| `references/ownership.md`, beside this file | the takeover, the takeover-time file, "The owner check" and the `owner.since` of each write | at "Start" step 1, wakeup step 0, "The board" and the close |
 | `references/sources.md`, beside this file | the Slack poll, the GitHub review-request poll and the direct ask | at "Sources" |
 | `references/ready-file.md`, beside this file | a child's ready file and its `ready:` message | before "Children" |
 | `<plugin-dir>/skills/review/references/github-review.md` | the sanitizing, the label rule, the draft and body shapes, the event rule, the re-read before an approval, and the post command | before "Triage" |
@@ -50,13 +51,7 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 ## Start
 
 1. **Read the board** at `references/board.md`'s path. **Always take it.**
-   Set `owner.session_id` to `$CLAUDE_CODE_SESSION_ID` and `owner.since` to
-   the output of `date -u +%Y-%m-%dT%H:%M:%SZ`. That value is your takeover
-   time. Write it, as one line, to `<queue-dir>/owner-$CLAUDE_CODE_SESSION_ID`,
-   because a compaction can lose a value that only your context holds.
-   Keep the existing watches and rows. When the board
-   named another non-empty session id, tell the principal in one line which
-   session id you took the board from. Ask nothing. When the board does not
+   `references/ownership.md` owns the takeover. When the board does not
    exist, write it with no watch and no row.
 2. **Take the watches and rows from the board.** A watch with `status:
    active` runs again. A row that is not done resumes at its `stage`.
@@ -79,8 +74,8 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
 Each fire, each `ready:` message, and each "Crew review-queue ask:" prompt
 from the review-board mod runs this loop:
 
-0. **Run "The owner check".** When it says stop, stop here. Do no triage, no
-   child launch, no post, no approval, no enqueue and no Slack reaction.
+0. **Run "The owner check"** (`references/ownership.md`). When it says
+   stop, do no triage, launch, post, approval, enqueue or Slack reaction.
 1. **With a token**, read `asks.json` first. Take each
    untaken entry, as `references/board.md` defines it. Treat it as
    "Triage" treats an ask: a new PR gets a row, and a PR with a row gets
@@ -469,27 +464,7 @@ child.
 
 Write the board at every transition: a new watch or row, a change of
 `stage` or `next`, and each wakeup loop. `references/board.md` owns its path
-and schema. Write this session's id, `$CLAUDE_CODE_SESSION_ID`, as the
-owning session id in `owner.session_id`.
-
-**The owner check.** Run it at step 0 of each wakeup-loop run, before a
-direct ask's triage, before each action that the principal's answer starts,
-and before each board write after your own "Start".
-Read `owner` from the board. Read your takeover time from
-`<queue-dir>/owner-$CLAUDE_CODE_SESSION_ID`. When that file is missing or
-empty, you cannot prove that you took the board last. Treat yourself as the
-old session. Order owners by `owner.since`:
-
-- `owner.session_id` is yours, or empty: go on.
-- Another session owns the board and its `owner.since` is later than your
-  takeover time, or you have no takeover time: a new queue session took
-  the board, and this one is the old session. Do not write. Delete the
-  cron job of your wakeup loop, the job that "Start" step 3 arms, with
-  `CronList` and `CronDelete`. Tell the principal in one line. Stop.
-- Another session owns the board and its `owner.since` is not later than your
-  takeover time: an earlier owner wrote over your takeover. Take the board
-  again. Set `owner.session_id` to yours and `owner.since` to your takeover
-  time, and keep the rows. Tell the principal in one line. Go on.
+and schema. `references/ownership.md` owns the `owner` of each write.
 
 Write the whole file to `board.json.tmp` beside it, then move it over
 `board.json`, so a reader never sees half a file. Set `last` at each event.
@@ -526,6 +501,4 @@ main working tree.**
 2. Clean up every row that is not done, as above.
 3. Delete the wakeup loop's job with `CronDelete`.
 4. Write the board one last time, with each watch `stopped`.
-5. Remove `<queue-dir>/owner-$CLAUDE_CODE_SESSION_ID`. A queue session that
-   is not closed leaves its file, as it leaves its other files in
-   `<queue-dir>`.
+5. Remove the takeover-time file, as `references/ownership.md` says.

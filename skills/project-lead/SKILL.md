@@ -206,11 +206,12 @@ With no `Deploy` section in any source, the deploy watch reads the repo's
 GitHub deployments. With some, the signal is the newest deployment of the
 merge commit whose `production_environment` is true, or whose environment is
 named `production` or `prod`, with the latest status `success`. With none, the
-signal is the newest Actions run on the merge commit whose name or workflow
-path holds `deploy` or `release`. With none, and with no active workflow whose
-name or path holds `deploy` or `release`, the repo has no deploy, and the
-merge is the ship word at once. With such a workflow and no run, the repo has
-no deploy 10 minutes after the merge. The delivered window arms the deploy watch
+signal is the newest Actions run on the merge commit whose name holds `deploy`
+or `release`. With none, with no active workflow whose name or path holds
+`deploy` or `release`, and with no file under `.github/workflows/` in the
+merged PR, the repo has no deploy, and the merge is the ship word at once. With
+such a workflow or such a changed file, and no run, the repo has no deploy 10
+minutes after the merge. The delivered window arms the deploy watch
 from the winning source (`crew:delivered-window`'s "The deploy watch").
 
 A file with no `##` heading is one `Reviewers` section. Act on no other

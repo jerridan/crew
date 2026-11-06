@@ -9171,9 +9171,11 @@ Deliberately different:
      script prints `no-deploy` on the first poll after the merge. With one,
      the 10-minute wait stays. A failed read keeps the wait, because a false
      `no-deploy` is a false ship word. A good read holds for the life of the
-     process, like the deployment count. The default case also matches a run
-     by its workflow path, so `deploy.yml` named `CI` counts. The `workflow:`
-     case still matches by name only.
+     process, like the deployment count. A run still matches by its name only,
+     in the default case and in the `workflow:` case, because a run matched by
+     path would let `release-drafter.yml` named `CI` make a false `deployed`,
+     the ship word. Only the workflows read tests the name or the path: there
+     a match only keeps the wait.
 
      `crew:delivered-window`'s "The deploy watch" runs `deploy-once` once
      before it arms the `Monitor`. A `no-deploy` line there makes the `merged`
@@ -9189,5 +9191,24 @@ Deliberately different:
      `Deploy` workflow, and a `deploy.yml` run named `CI`. Three of the
      eleven checks failed before the change. `test-queue-watch.sh` still
      passes.
+
+     Patch round 1 (PR comments on the PR). A merged PR that changes a file
+     under `.github/workflows/` can add the repo's first deploy workflow, and
+     a run of it may come after the first poll. So the script reads the files
+     of the merged PR with `gh pr view <pr> --json files` before it prints the
+     immediate `no-deploy`, and keeps the 10-minute wait when one is under
+     `.github/workflows/`. A failed files read counts as changed. The read is
+     kept like the others. A repo that deploys through an integration, such as
+     Vercel, has GitHub deployments from earlier merges, so only its first
+     deploy ever is at risk, and `Deploy: environment: <name>` covers it. A
+     workflow named `CD` at `cd.yml` is missed, as it was before this change.
+     The resume note in "The deploy watch" step 3 was wrong when the workflows
+     read fails: the first poll then prints `no-deploy` after the wait. The
+     tests now check the text of each `no-deploy` line, a run of
+     `release-drafter.yml` named `CI`, a PR that changes a workflow file, a
+     failed files read, and, in one `deploy` process with a stub `sleep`, a
+     workflows read that fails once and then succeeds. The check "a
+     `deploy.yml` run named `CI` with success prints `deployed`" now expects no
+     `deployed`.
 
      No crew run has used this change.

@@ -199,15 +199,19 @@ it reads the deploy signal that `run.deploy` names:
   `production_environment` is true or whose environment is named `production`
   or `prod`, in any case. Name the environment in a `Deploy` section for a
   repo whose production environment has another name. With none, the script
-  reads the newest Actions run on the merge commit whose name or workflow path
-  holds `deploy` or `release`, in any case. When there is no such run, the
-  script reads the repo's workflows with `gh api --paginate
+  reads the newest Actions run on the merge commit whose name holds `deploy`
+  or `release`, in any case, like a named workflow. When there is no such run,
+  the script reads the repo's workflows with `gh api --paginate
   repos/<owner>/<repo>/actions/workflows`. A workflow counts when its state is
   `active` and its name or path holds `deploy` or `release`, in any case. With
-  no such workflow, the script prints `no-deploy` on the first poll after the
-  merge. With one, it waits until 10 minutes after the merge, because the run
-  may not exist yet, and then prints `no-deploy`. A failed workflows read
-  keeps that wait and is read again on the next poll.
+  no such workflow, the script reads the files the merged PR changed with `gh
+  pr view <pr> --json files`. When none is under `.github/workflows/`, it
+  prints `no-deploy` on the first poll after the merge. When the PR changed one,
+  because it can add the first deploy workflow, the script keeps the wait that
+  follows. With a counting workflow, it waits until 10 minutes after the merge,
+  because the run may not exist yet, and then prints `no-deploy`. A failed
+  workflows read or a failed files read keeps that wait and is read again on
+  the next poll.
 
 The script prints one line and exits. The kinds are:
 

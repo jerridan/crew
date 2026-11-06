@@ -45,26 +45,8 @@ reviewer reads first. Write the base to the deliverable before the launch:
 python3 <project-lead-dir>/scripts/crew-record.py <record-dir> deliverable d1 set base '"<new merge base>"'
 ```
 
-A new base owes a new baseline. `skeptical-review.md`'s launch step 4 writes
-it again at that base, before the round.
-
 A resume that fails after this write launches fresh, and that launch first
 does the recompute that `review-runner.md`'s "Resume the reviewer" names.
 
 These two checks cover the two cases a fast-forward cannot: a force-push
 fails the first, and an "Update branch" merge fails the second.
-
-**Run the setup command again only when a lockfile changed** between the
-previous reviewed head and the new head. `Gates: ci` has its own rule in
-`skills/review/SKILL.md`'s "Review". The lockfiles are `package-lock.json`,
-`yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`, `uv.lock`, `poetry.lock`,
-`Pipfile.lock`, `Gemfile.lock`, `Cargo.lock` and `go.sum`. A `Lockfile:
-<path>` line in `Setup` names the one file to compare instead. This command
-exits 1 when one of them changed. Run the setup command on exit 1, and on
-any other non-zero exit, because the check then could not tell. Write each
-lockfile name as a `:(glob)**/<name>` pathspec, so the glob reaches every
-directory of a monorepo:
-
-```bash
-git -C <run.checkout> diff --quiet <previous head> <new head> -- ':(glob)**/package-lock.json' ':(glob)**/yarn.lock' ':(glob)**/pnpm-lock.yaml' ':(glob)**/bun.lockb' ':(glob)**/uv.lock' ':(glob)**/poetry.lock' ':(glob)**/Pipfile.lock' ':(glob)**/Gemfile.lock' ':(glob)**/Cargo.lock' ':(glob)**/go.sum'
-```

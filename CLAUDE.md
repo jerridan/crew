@@ -7,11 +7,12 @@ The repo root is the plugin root.
 Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
 two hooks, the three scripts under `skills/project-lead/scripts/`,
-`skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`, and
+`skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`,
 `skills/review/scripts/review-json.py`, and
 `skills/review-queue/scripts/queue-watch.sh`: they are code, run against a
-seeded record (design §15.38, §15.50, §15.123, §15.124, §15.136). The test
-`skills/review-queue/scripts/test-queue-watch.sh` runs the last one. The review-board mod,
+seeded record (design §15.38, §15.50, §15.123, §15.124, §15.136).
+`skills/review-queue/scripts/test-queue-watch.sh` tests the last one. The
+review-board mod,
 `hooks/review-board.tsx`, is TypeScript: `claude plugin test <repo>` runs its
 tests, and `claude plugin validate <repo>` checks its module (§15.128).
 

@@ -204,7 +204,7 @@ post:
    "The label rule". That includes each bot claim.
    The label alone decides whether it posts.
 
-**Drop every finding that CI reports**, as `github-review.md`'s "The label
+**Drop a finding that is a tool's own output**, as `github-review.md`'s "The label
 rule" says. Drop it before the draft.
 
 A `don't post` or `not real` finding is declined, with its label as the

@@ -63,7 +63,8 @@ principal for the ship word or for a new goal.
 **A `queued` item is a notice on every run**, and the watch goes on. Write
 `run.watch.queued` `true` with the cursor.
 
-**Except on a review run, a `dequeued` item runs the diagnosis first**, as
+**Except on a review run (see "A `run.kind: review` run reads no check"
+below), a `dequeued` item runs the diagnosis first**, as
 `pr-watch.md`'s "Diagnose a dequeue" says. When it finds a failed
 `merge_group` run, sort the item like a `check` item: it opens a `ci` round
 whose `ref` is that run's URL. When it finds none, the item is a notice, and no
@@ -194,11 +195,11 @@ A change request from the watch is adjudicated like a finding, because the
 principal did not ask for it. A question from the watch takes the disposition
 `answered` (`skeptical-review.md`'s "Adjudication is a ledger").
 
-**A `run.kind: review` run reads no check.** Its watch prints no `check` line,
-and no item opens a `ci` round, whoever pushed the head. A `dequeued` item is a
-notice: run no `dequeue-diagnosis.sh` and open no `ci` round. The cursor write
-still sets `run.watch.queued` `false`. The PR's CI verifies crew's own assist
-push, and the author and the principal see it on the PR.
+**A `run.kind: review` run reads no check**, as `/crew:review`'s "Review"
+says. Its watch prints no `check` line, and no item opens a `ci` round,
+whoever pushed the head. A `dequeued` item is a notice: run no
+`dequeue-diagnosis.sh` and open no `ci` round. The cursor write still sets
+`run.watch.queued` `false`.
 
 ### A message that holds a finding
 
@@ -400,9 +401,8 @@ In order:
    its IC with `reviews/baseline.md` and its sentence, as `review-runner.md`'s
    "Reviewer instructions" gives them. Every IC a goal run's window dispatches
    gets both. A review run writes no baseline, so its IC gets neither the file
-   nor the sentence. On a review run, its brief also says that dependencies
-   are not installed, not to install them and not to run the suite: it
-   writes the test, and the PR's CI runs it on the push. Its brief
+   nor the sentence. On a review run, its brief names `ic-contract.md`'s
+   review-run exception to its test-first steps. Its brief
    asks for the whole defect class, as `simple-path.md`'s "Fix rounds" says.
    Run its "Verify before you believe", which greps for the pattern each
    finding named, run its "Fix rounds" where a check fails, then run its
@@ -487,16 +487,15 @@ after a resume. A `principal` round takes the gate. A `ci` round and a
 **A `run.kind: review` run uses the same author rule**, so a bot-only
 `pr-comments` round posts with no wait there too. Its
 skeptical rounds differ: round 1 takes the gate. **A round takes no gate,
-round 1 included, when its report states no finding other than one dropped as
-CI-reported, and its ledger holds no `bot` claim that posts**: the first case of
-`skeptical-review.md`'s "The adjudication is complete". Its escalation
-records the answer `auto: no findings`. A round where you held any
-finding back as `don't post`, `not real` or `out of scope` takes the gate. A
-finding dropped as CI-reported, by `github-review.md`'s "The label rule", is
-no finding held back. A later skeptical round posts with no wait when its
-report raises no new finding and its ledger holds no `bot` claim that posts:
-every finding in it re-verifies one already posted. A round with a new finding
-takes the gate. Open
+round 1 included, when its report states no finding and its ledger holds no
+`bot` claim that posts**: the first case of `skeptical-review.md`'s "The
+adjudication is complete". Its escalation records the answer
+`auto: no findings`. A round where you held any finding back as
+`don't post`, `not real` or `out of scope` takes the gate. That includes a
+finding that "The label rule" drops as a tool's own output. A later skeptical
+round posts with no wait when its report raises no new finding and its ledger
+holds no `bot` claim that posts: every finding in it re-verifies one already
+posted. A round with a new finding takes the gate. Open
 a round that posts with no wait without `--gated`, and write no `round go-ahead`
 for it. Record its escalation as `/crew:review`'s "Report and wait at the gate"
 says. That entry, with the answer `auto: findings answered`, is the record of

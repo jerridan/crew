@@ -266,8 +266,9 @@ or no. Then run the suite, because a prose package can still break a test.
 "Scout" asks what runs the suite, and that answer is the command. A repo whose
 scout reported none has no suite to run, and **the no-suite outcome** is what
 that repo gets, here and at "Integrate": write "no suite" and the scout's
-answer in the package's `decisions.md` entry, and the check passes on the
-criterion, the checklists and the reading alone. This rule names that outcome
+answer in the package's `decisions.md` entry. On a review run, write "no suite:
+review run" and no scout answer. The check passes on the criterion,
+the checklists and the reading alone. This rule names that outcome
 for every file that needs it. Never invent a command, and never read a missing
 suite as a pass.
 

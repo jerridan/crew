@@ -8463,7 +8463,8 @@ Deliberately different:
      under 20 lines` skips the re-review of crew's own push. Both are
      charter lines in `record-format.md`. A round takes no gate, round 1
      included, when its suite ran and its report states no finding (a review
-     run drops the suite condition, §15.133). It
+     run drops the suite condition, and a finding dropped as `CI reports it`
+     is a finding held back, §15.133). It
      records the answer `auto: no findings`, which `crew-stats.py` counts as
      an auto post. The principal's review of the PR narrowed this rule. It
      first read "a round whose ledger posts nothing", which let a round with
@@ -9006,11 +9007,12 @@ Deliberately different:
 
      Second, the reviewer of a review run reads the diff, the PR text and
      the code around the change, with read-only commands. It gets one block
-     in place of the suite paragraph, and the block tells it to raise no
-     finding that CI reports. "The label rule" of `github-review.md` drops such
-     a finding from every source, the queue's inline read too, with the
-     reason `CI reports it`, and it is no finding held back
-     for the go-ahead gate. An assist fix round and a merge agent run no
+     in place of the suite paragraph, and the block tells it to raise every
+     behavior defect and to report no tool output as a finding. "The label
+     rule" of `github-review.md` drops a finding that is a tool's own output
+     from every source, the queue's inline read too, with the reason
+     `CI reports it`. Such a finding is a finding held back for the
+     go-ahead gate. An assist fix round and a merge agent run no
      suite, and the push's CI verifies.
 
      Third, the delivered window reads no check on a review run.
@@ -9022,6 +9024,13 @@ Deliberately different:
      following the owner's comment that only the queue's triage reads CI: the
      PR's CI verifies crew's push, and the author and the principal see the
      result on the PR.
+
+     The PR's review comments (round pr-comments-r1) fixed six sites. A
+     round that dropped a finding as a tool's own output takes the gate.
+     The drop covers a tool's own output only, never a behavior defect. The
+     IC of a review run writes the test and runs none, and `ic-contract.md`
+     owns that exception. The no-suite outcome has a review-run form. The
+     `dequeued` rule and the no-gate condition each have one owner.
 
      No run has exercised this change. The seeded-record check of
      `pr-watch.sh` printed a `check` line for a goal run and none for a

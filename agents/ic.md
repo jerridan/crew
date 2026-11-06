@@ -21,7 +21,8 @@ shape. Do not write it yourself.
 1. Read your brief and your interface contract.
 2. Write your implementation plan, then continue, as the contract's "Write
    your plan first" says.
-3. Work test-first, one small step at a time:
+3. Work test-first, one small step at a time. On a review run, the contract's
+   "Write the failing test first" names an exception: run no test.
    - Write one failing test.
    - Run it. Confirm it fails for the reason you expect.
    - Commit that test alone, when it is the test your acceptance criterion

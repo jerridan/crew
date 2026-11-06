@@ -88,6 +88,11 @@ passes there means the test proves nothing, and the package comes back to you
 commit the test alone: a commit that carries the code as well passes the check
 and fails you.
 
+**A review run is the exception** (`run.kind: review`). The worktree has no
+installed dependencies. Write the failing test and the fix, and run neither.
+Install nothing. The PR's CI runs the test on the push. The project lead runs
+no red-commit check on a review run.
+
 This holds for a new test only. A criterion that names a test which already
 exists and already fails needs no red commit, and neither does an acceptance
 checklist for an instruction package.

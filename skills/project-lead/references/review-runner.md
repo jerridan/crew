@@ -535,7 +535,10 @@ On a review run, this block replaces the whole paragraph:
 ```
 Do not run the suite, a gate or an install. Spot-check the diff against the
 code with read-only commands, such as a grep or a read of a call site.
-Do not raise a finding about lint, format, types, a failing test or another CI check, because CI reports those to the author.
+Raise every behavior defect you read, also one that a test or a type check
+would catch. Do not report a tool's output as a finding of your own: a lint,
+format or type-checker message, or a test run's result. When a CI check
+would also catch a finding, name that check in the finding.
 ```
 
 **Part 5, the later-round block, for any round `n > 1`.** `<previous head

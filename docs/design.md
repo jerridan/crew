@@ -8941,9 +8941,10 @@ Deliberately different:
         would out-date the owner. When the board names a session that the
         skill armed, the armed time becomes the board's `owner.since`, so a
         later owner of the same second and a greater id still disarms it. A
-        session that the skill armed and the board does not name as owner within `ARM_WINDOW_MS` (120 s, longer
-        than a Start takes) disarms. A disarm also clears the watcher notes,
-        the refused-prompt memory and the board the pane drew from.
+        session that the skill armed and the board does not name as owner
+        within `ARM_WINDOW_MS` (120 s, longer than a Start takes) disarms. A
+        disarm also clears the watcher notes, the refused-prompt memory and
+        the board the pane drew from.
 
      b. **The queue takes the board every time (#134).** "Start" now sets
         `owner` to the new session with no question, with `owner.since` from

@@ -407,11 +407,11 @@ In order:
    change request" names. On a goal run, a package that answers a skeptical
    round whose verdict after your labels is `accepted` integrates with
    `--no-review accepted-round`. Read that verdict from the reply file's
-   `Verdict after labels:` line (`skeptical-review.md`'s "The verdict pair"). A round with
-   no reply file is `accepted`. A review run arms every head
-   instead (`skeptical-review.md`'s "When the review runs"). One checkout
-   holds one writer, and a group that finishes before the next one starts is a
-   group a resume can tell apart. **Then complete every accepted item line
+   `Verdict after labels:` line (`skeptical-review.md`'s "The verdict pair").
+   A round with no reply file is `accepted`. A review run arms every head
+   instead (`skeptical-review.md`'s "When the review runs"). One checkout holds
+   one writer, and a group that finishes before the next one starts is a group
+   a resume can tell apart. **Then complete every accepted item line
    that names this group's package**, in the reply file: the commit sha, one
    line on what changed, and what your verification found. A group the
    fix-round breaker parks is recorded there as `abandoned`, with the

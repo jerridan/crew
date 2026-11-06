@@ -43,8 +43,9 @@ takeover time in the file `<record-root>/queue/owner-<session id>`: one
 line, the same value as `owner.since` at the takeover. `ownership.md` owns
 who writes, reads and removes it. The mod never reads it. The queue monitor
 keeps its state in `<record-root>/queue/watch-<session id>.json`.
-`scripts/queue-watch.sh` writes it, and the queue session removes it at the
-close. The mod never reads it. `asks_through` is the
+`scripts/queue-watch.sh` writes it, and removes it when it prints
+`not-owner`. The queue session removes it at the close. The mod never reads
+it. `asks_through` is the
 `found_at` of the newest asks-file entry that the queue session took. The
 queue session writes it. A board with no `asks_through` field reads as
 `null`. `found` counts the asks the watch found since `since`. `last` is

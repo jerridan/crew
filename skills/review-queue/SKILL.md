@@ -155,7 +155,8 @@ minutes, and no skeptical review runs.
 **The stall check** stays in the loop as the slow check behind the monitor.
 A child's record directory is
 `<record-root>/pr-<owner>-<repo>-<n>-<hex>/`, the newest one made after
-the launch. The suffix `<hex>` has lowercase hex digits only. Read the child's pane when no file in it changed for 30
+the launch. The suffix `<hex>` has lowercase hex digits only. Read the
+child's pane when no file in it changed for 30
 minutes, or when it has no record directory 30 minutes after its launch:
 
 ```bash

@@ -34,10 +34,10 @@ emit() {
   exit 0
 }
 case "$args" in
-  "pr view"*"--json files"*)
-    if [ -e "$D/fail-files-once" ]; then rm -f "$D/fail-files-once"; exit 1; fi
-    emit "$D/pr.json" ;;
   "pr view"*) emit "$D/pr.json" ;;
+  *"/pulls/"*"/files"*)
+    if [ -e "$D/fail-files-once" ]; then rm -f "$D/fail-files-once"; exit 1; fi
+    emit "$D/files.json" ;;
   *"/deployments/"*"/statuses"*) emit "$D/statuses.json" ;;
   *"/deployments?sha="*) emit "$D/deployments.json" ;;
   *"/deployments?per_page"*) emit "$D/deployments.json" ;;
@@ -75,8 +75,9 @@ export PATH="$T/bin:$PATH"
 setup() {
   rm -rf "$STUB_DIR"; mkdir -p "$STUB_DIR"
   merged=$(jq -nr --argjson m "$1" '(now - $m*60) | strftime("%Y-%m-%dT%H:%M:%SZ")')
-  files=${FILES-'[]'}
-  printf '{"state":"MERGED","mergeCommit":{"oid":"%s"},"mergedAt":"%s","files":%s}\n' "$OID" "$merged" "$files" > "$STUB_DIR/pr.json"
+  files=${FILES-'[{"filename":"README.md"}]'}
+  printf '{"state":"MERGED","mergeCommit":{"oid":"%s"},"mergedAt":"%s"}\n' "$OID" "$merged" > "$STUB_DIR/pr.json"
+  printf '%s\n' "$files" > "$STUB_DIR/files.json"
   printf '%s\n' "$2" > "$STUB_DIR/deployments.json"
   printf '%s\n' "$3" > "$STUB_DIR/workflows.json"
   printf '%s\n' "$4" > "$STUB_DIR/runs.json"
@@ -133,11 +134,11 @@ setup 1 "$NODEP" "$WF_RELEASE" "$RDRUN"; check 'release-drafter.yml run named CI
 NAMEDRUN='{"workflow_runs":[{"id":9,"name":"Deploy","path":".github/workflows/ci.yml","conclusion":"success","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:01:00Z"}]}'
 setup 1 "$NODEP" "$WF_PR" "$NAMEDRUN";    check 'a run named Deploy with success' deployed
 # The merged PR changed a workflow file: keep the wait.
-FILES='[{"path":"README.md"},{"path":".github/workflows/x.yml"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+FILES='[{"filename":"README.md"},{"filename":".github/workflows/x.yml"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
 check 'PR changed a workflow file, 1 minute' none
-FILES='[{"path":"README.md"},{"path":".github/workflows/x.yml"}]' setup 11 "$NODEP" "$WF_PR" "$NORUNS"
+FILES='[{"filename":"README.md"},{"filename":".github/workflows/x.yml"}]' setup 11 "$NODEP" "$WF_PR" "$NORUNS"
 check 'PR changed a workflow file, 11 minutes' no-deploy-wait
-FILES='[{"path":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+FILES='[{"filename":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
 check 'PR changed no workflow file, 1 minute' no-deploy-wf
 FILES=null setup 1 "$NODEP" "$WF_PR" "$NORUNS"
 check 'files read fails, 1 minute' none
@@ -159,7 +160,7 @@ esac
 
 # One deploy process: the files read fails once, then shows only README.md.
 total=$((total + 1))
-FAIL_FILES_ONCE=1 FILES='[{"path":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+FAIL_FILES_ONCE=1 FILES='[{"filename":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
 out=$(bash "$PW" "$T/rec" deploy 2>&1)
 sleeps=$(cat "$STUB_DIR/sleeps" 2>/dev/null || echo 0)
 case "$out" in

@@ -41,7 +41,27 @@ case "$args" in
   "pr view"*isDraft*) echo false ;;
   "pr view"*headRefOid*) cat "$D/head-$n" ;;
   "pr view"*state,mergedAt*) cat "$D/state-$n" ;;
-  "api graphql"*) cat "$D/queue-$n" ;;
+  "api graphql"*"-F n="*)
+    [ -e "$D/fail-queue-$n" ] && exit 1
+    cat "$D/queue-$n" ;;
+  "api graphql"*)
+    # The batched read: one alias for each open row.
+    [ -e "$D/fail-batch" ] && exit 1
+    rc=0; sep=''; body=''
+    while read -r al num; do
+      [ -n "$al" ] || continue
+      if [ -e "$D/fail-gh-$num" ]; then
+        body="$body$sep\"$al\":null"; rc=1
+      else
+        st=$(cut -d' ' -f1 "$D/state-$num"); q=$(cat "$D/queue-$num")
+        if [ "$q" = out ]; then qq='"isInMergeQueue":false,"mergeQueueEntry":null'
+        else qq="\"isInMergeQueue\":true,\"mergeQueueEntry\":{\"enqueuedAt\":\"$q\"}"; fi
+        body="$body$sep\"$al\":{\"pullRequest\":{\"headRefOid\":\"$(cat "$D/head-$num")\",\"state\":\"$st\",$qq}}"
+      fi
+      sep=','
+    done < <(printf '%s' "$args" | grep -o 'r[0-9]*: repository([^)]*) { pullRequest(number: [0-9]*)' | sed -E 's/^(r[0-9]+):.*number: ([0-9]+)$/\1 \2/')
+    printf '{"data":{%s}}\n' "$body"
+    exit $rc ;;
   "api repos/"*"/commits/"*) echo alice ;;
 esac
 exit 0
@@ -94,6 +114,7 @@ EOF
     echo out > "$S/queue-$n"
   done
   echo '[]' > "$S/search.json"
+  : > "$S/gh.log"
   for n in 1 2; do
     mkdir -p "$REC/pr-acme-widget-$n-aaaa/reviews"
     echo '{}' > "$REC/pr-acme-widget-$n-aaaa/state.json"
@@ -161,7 +182,7 @@ expect_kinds 'AC1 third pass with no change is silent' ''
 echo out > "$S/queue-2"
 run_pass
 expect_kinds 'AC1 leaving the queue (seed queued false) is silent' ''
-echo 2026-02-01T00:00:00Z > "$S/queue-2"
+echo 2026-03-01T00:00:00Z > "$S/queue-2"
 run_pass
 expect_kinds 'AC1 entering the queue again prints queued again' 'queued'
 ! grep -q 'pull/3' "$S/gh.log"; ok 'AC1 the done row is never polled' $?
@@ -262,6 +283,72 @@ expect_kinds 'AC2 tmux error is silent' ''
 rm "$S/tmux/error"
 run_pass
 expect_kinds 'AC2 pass after a tmux error is silent' ''
+
+# Item 4: the first pass prints child-prompt lines and nothing else.
+seed
+echo 2026-02-01T00:00:00Z > "$S/queue-2"
+echo "$SHA_B" > "$S/head-1"
+echo 'Do you want to proceed?' > "$S/tmux/pane-$C2"
+run_pass
+expect_kinds 'item 4 first pass prints child-prompt only' 'child-prompt'
+printf '%s\n' "$OUT" | grep -q '^child-prompt acme/widget#2 -$'; ok 'item 4 child-prompt line shape' $?
+run_pass
+expect_kinds 'item 4 second pass is silent' ''
+
+# Item 1: a failed queue read inside pr-watch.sh keeps the held queued event.
+seed
+echo 2026-02-01T00:00:00Z > "$S/queue-2"
+run_pass
+echo "$SHA_B" > "$S/head-2"
+touch "$S/fail-queue-2"
+run_pass
+expect_kinds 'item 1 failed queue read: only the push prints' 'push'
+rm "$S/fail-queue-2"
+echo "$SHA_A" > "$S/head-2"
+run_pass
+expect_kinds 'item 1 queued is not printed again after a failed queue read' ''
+
+# Item 1: a merge ends the held queued event.
+seed
+echo 2026-02-01T00:00:00Z > "$S/queue-2"
+run_pass
+echo 'MERGED 2026-02-02T00:00:00Z' > "$S/state-2"
+run_pass
+expect_kinds 'item 1 merged prints after a held queued' 'merged'
+echo 'OPEN null' > "$S/state-2"
+run_pass
+expect_kinds 'item 1 a group that printed merged does not hold queued' 'queued'
+
+# Item 2: one batched read for each pass; pr-watch.sh runs only when due.
+runs() { local c; c=$(grep -c "pull/$1 --json isDraft" "$S/gh.log"); echo "${c:-0}"; }
+batches() { local c; c=$(grep -c 'api graphql.*owner: "' "$S/gh.log"); echo "${c:-0}"; }
+seed
+run_pass
+[ "$(runs 1)" = 1 ] && [ "$(runs 2)" = 1 ]; ok 'item 2 first sight runs pr-watch for each row' $?
+run_pass
+[ "$(runs 1)" = 1 ] && [ "$(runs 2)" = 1 ]; ok 'item 2 unchanged values run no pr-watch' $?
+[ "$(batches)" = 2 ]; ok "item 2 one batched read for each pass" $?
+echo "$SHA_B" > "$S/head-1"
+run_pass
+expect_kinds 'item 2 a changed head prints push' 'push'
+[ "$(runs 1)" = 2 ] && [ "$(runs 2)" = 1 ]; ok 'item 2 only the changed row runs pr-watch' $?
+for i in 1 2 3 4 5 6 7 8 9; do run_pass; done
+[ "$(runs 1)" = 2 ] && [ "$(runs 2)" = 1 ]; ok 'item 2 nine quiet passes run nothing' $?
+run_pass
+[ "$(runs 1)" = 3 ] && [ "$(runs 2)" = 2 ]; ok 'item 2 the 10th pass after a run forces one' $?
+echo "$SHA_A" > "$S/head-1"
+touch "$S/fail-gh-2"
+run_pass
+[ "$(runs 1)" = 4 ] && [ "$(runs 2)" = 2 ]; ok 'item 2 a row the batch could not read runs no pr-watch' $?
+rm "$S/fail-gh-2"
+touch "$S/fail-batch"
+echo "$SHA_B" > "$S/head-1"
+run_pass
+expect_kinds 'item 2 a failed batch is silent' ''
+[ "$(runs 1)" = 4 ]; ok 'item 2 a failed batch runs no pr-watch' $?
+rm "$S/fail-batch"
+run_pass
+[ "$(runs 1)" = 5 ]; ok 'item 2 the change is read when the batch works again' $?
 
 # AC3: not the owner.
 seed

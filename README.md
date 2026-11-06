@@ -136,8 +136,11 @@ bot, a failed check and a comment from your own GitHub account are pushed and
 answered with no go-ahead. You can still send findings from anywhere else,
 and they wait for your go-ahead too.
 After a merge, crew watches GitHub for the deploy of the merge commit. When
-that deploy succeeds, the run closes with no word from you. A repo with no
-deploy closes 10 minutes after the merge, or at the merge with `Deploy: none`. If the deploy fails or does not finish in time,
+that deploy succeeds, the run closes with no word from you. With no deploy
+configured and no GitHub deployment, a repo with no deploy or release workflow
+closes at the merge, unless the merged PR changed a workflow file. One with
+such a workflow but no run closes 10 minutes after the merge. `Deploy: none` closes at the merge. If the deploy fails or
+does not finish in time,
 crew tells you, and the run stays open until you say the work shipped. With
 `Deploy: manual`, the run also waits for your word. Closing the
 session instead leaves the run recorded as interrupted, which is fine for a
@@ -311,7 +314,7 @@ under a `##` heading with one of these names:
 | `Branch names` | your rule for a branch name |
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
 | `Pre-enqueue checks` | shell commands, one per line, that the review queue runs before it puts a PR in the merge queue. A failed command stops that PR |
-| `Deploy` | how crew sees that a merge is live: `environment: <name>`, `workflow: <name>`, `none` (the repo has no deploy, so the run closes at the merge) or `manual` (the repo deploys where GitHub cannot see, so crew waits for your word), and an optional `timeout: <minutes>` (default 180). With no section, crew looks for a successful production deployment, or a deploy or release workflow run, on GitHub. It closes 10 minutes after the merge when it finds neither |
+| `Deploy` | how crew sees that a merge is live: `environment: <name>`, `workflow: <name>`, `none` (the repo has no deploy, so the run closes at the merge) or `manual` (the repo deploys where GitHub cannot see, so crew waits for your word), and an optional `timeout: <minutes>` (default 180). With no section, crew looks for a successful production deployment, or a deploy or release workflow run, on GitHub. A repo with neither and no deploy or release workflow closes at the merge, unless the merged PR changed a workflow file. A repo with such a workflow or such a file and no run closes 10 minutes after the merge |
 
 ```
 ## Known red tests

@@ -133,8 +133,10 @@ ok() { # name, condition result
 kinds() { printf '%s\n' "$OUT" | awk 'NF{print $1}' | sort | tr '\n' ' '; }
 
 expect_kinds() { # name, expected kinds (sorted, space separated, trailing space)
-  [ "$(kinds)" = "$2 " ] || [ -z "$2" -a -z "$(kinds)" ]
-  ok "$1 (kinds: $(kinds))" $?
+  local got want=0
+  got=$(kinds)
+  if [ -z "$2" ]; then [ -z "$got" ] || want=1; else [ "$got" = "$2 " ] || want=1; fi
+  ok "$1 (kinds: $got)" "$want"
 }
 
 # AC1: no token. First pass silent, then one line of each kind.

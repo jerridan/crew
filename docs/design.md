@@ -8952,14 +8952,15 @@ Deliberately different:
         by `owner.since`, as the mod does. A session whose takeover is
         earlier than the board's `since` stops and deletes its wakeup cron
         job. A tie in the second goes to the lexically greater session id, in
-        the skill and in the mod, so exactly one session keeps the board. A session that an earlier owner wrote over takes the board
-        again and keeps the rows. "Start" also writes the takeover time to
-        `<queue-dir>/owner-<session id>`, and "The owner check" reads it
-        there, so a compaction cannot lose it. A missing file makes the
-        session treat itself as the old session, which is the safe side. The
-        closing of the queue removes the file. Each board write keeps
-        `owner.since` at the takeover time, so a write never moves it to the
-        write time. `references/ownership.md` owns the rule, `SKILL.md`
+        the skill and in the mod, so exactly one session keeps the board. A
+        session that an earlier owner wrote over takes the board again and keeps
+        the rows. "Start" also writes the takeover time to
+        `<queue-dir>/owner-<session id>`, and "The owner check" reads it there,
+        so a compaction cannot lose it. A missing file makes the session treat
+        itself as the old session, which is the safe side. The closing of the
+        queue removes the file. Each board write keeps `owner.since` at the
+        takeover time, so a write never moves it to the write time.
+        `references/ownership.md` owns the rule, `SKILL.md`
         points at it, and `board.md` names the file.
 
      c. **The layout (#135).** The pane and the text table now match the

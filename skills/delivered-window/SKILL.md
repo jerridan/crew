@@ -115,7 +115,7 @@ on that item. In order:
    since, ended}`. `environment` and `workflow` are `null` when unused, and
    both are `null` with no `Deploy` section. `source` is the winning source's
    name, or `default`. `since` is the time now, and `ended` is `null`.
-3. Run the check `pr-watch.md`'s "Arm the deploy watch" names, once. When it
+3. Run the check `pr-watch.md`'s "The one-shot check" names, once. When it
    prints `no-deploy`, the repo has no deploy by the default rule in
    "Standing instructions". The `merged` item is then the ship word, as under
    `Deploy: none`: arm no monitor, write no `run.deploy.ended`, and go to
@@ -557,6 +557,8 @@ It ends this window. It comes from the principal, on either channel, or from
 the deploy. Decide it on no other evidence. These are the deploy's words:
 
 - a `deployed` or `no-deploy` item of the deploy watch;
+- a `no-deploy` line of the check in "The deploy watch" step 3, with the
+  `merged` item it follows;
 - a `merged` item when the winning `Deploy` is `none`.
 
 In a goal run, `Deploy: manual` makes the word the principal's. `Done` changes

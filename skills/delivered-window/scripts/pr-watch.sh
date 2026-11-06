@@ -14,6 +14,9 @@
 # It polls every 60 seconds, prints one terminal line (`deployed`,
 # `no-deploy`, `deploy-failed`, `deploy-timeout` or `closed`) and exits. With
 # `deploy-once`, it polls one time and prints a line only when one is due.
+# With no `environment` and no `workflow`, a repo with no GitHub deployment
+# and no active workflow whose name or path holds `deploy` or `release` prints
+# `no-deploy` on the first poll after the merge.
 # The deploy modes read `run.deploy` from `state.json`, need no `run.watch`,
 # and print nothing when `run.deploy.ended` is set.
 #
@@ -49,12 +52,12 @@ case "$PR" in
 esac
 R=${PR#https://github.com/}; R=${R%/pull/*}; N=${PR##*/pull/}; N=${N%%[/?#]*}
 
-# Judge the newest Actions run on the merge commit whose name passes the jq
-# test in $1. A success or a failure prints one line and sets `finished`. Any
+# Judge the newest Actions run on the merge commit that passes the jq test in
+# $1, a test on the run object. A success or a failure prints one line and sets `finished`. Any
 # other conclusion is no result yet, and the newest run still wins next poll.
 wf_check() {
   r=$(gh api "repos/$R/actions/runs?head_sha=$oid&per_page=100" --jq '
-    [.workflow_runs[] | select(.name | '"$1"')] | sort_by(.created_at) | last
+    [.workflow_runs[] | select('"$1"')] | sort_by(.created_at) | last
     | select(. != null)
     | "\(.id) \(.conclusion // "null") \(.updated_at) \(.name)"' 2>/dev/null) || r=''
   [ -n "$r" ] || return 0
@@ -72,7 +75,7 @@ wf_check() {
 }
 
 # What the last good read of the PR showed, kept for a poll whose read fails.
-oid=''; merged_at=''; dep_count=''
+oid=''; merged_at=''; dep_count=''; wf_has=''
 
 deploy_poll() {
   v=$(gh pr view "$PR" --json state,mergeCommit,mergedAt \
@@ -92,7 +95,7 @@ deploy_poll() {
   [ -n "$oid" ] && [ -n "$merged_at" ] || return 0
   seen_deploy=''
   if [ -n "$DEP_WF" ]; then
-    wf_check '. == $ENV.DEP_WF'
+    wf_check '.name == $ENV.DEP_WF'
     [ -z "$finished" ] || return 0
   else
     if [ -z "$DEP_ENV" ]; then
@@ -104,10 +107,23 @@ deploy_poll() {
       [ -n "$dep_count" ] || return 0
       if [ "$dep_count" = 0 ]; then
         # No deployment objects. A deploy or release run on the merge commit
-        # is the signal. With none, wait 10 minutes for a run to appear.
-        wf_check 'test("deploy|release"; "i")'
+        # is the signal. With none, a repo with no active deploy workflow has
+        # no deploy at all. Otherwise wait 10 minutes for a run to appear.
+        wf_check '((.name // "") | test("deploy|release"; "i")) or ((.path // "") | test("deploy|release"; "i"))'
         [ -z "$finished" ] || return 0
         if [ -z "$seen_deploy" ]; then
+          # Only a good read is kept. A failed read keeps the 10-minute wait.
+          if [ -z "$wf_has" ]; then
+            wfs=$(gh api --paginate "repos/$R/actions/workflows" --jq '.workflows[]
+              | select(.state == "active")
+              | select(((.name // "") + " " + (.path // "")) | test("deploy|release"; "i"))
+              | .id' 2>/dev/null) && wf_has=$(printf '%s\n' "$wfs" | grep -c .)
+          fi
+          if [ "$wf_has" = 0 ]; then
+            echo "no-deploy $N - $merged_at the repo has no GitHub deployments and no deploy workflow"
+            finished=1
+            return 0
+          fi
           jq -n --arg m "$merged_at" '((now - ($m | fromdateiso8601)) / 60) >= 10' 2>/dev/null |
             grep -q true || return 0
           echo "no-deploy $N - $merged_at the repo has no GitHub deployments or deploy runs"

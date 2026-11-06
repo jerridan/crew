@@ -8181,7 +8181,7 @@ Deliberately different:
      a finding that a listed test fails differently. The issue proposed that
      an IC run the baseline on the full path. The project lead runs it on
      every path instead, in the review worktree it already cuts. No run has
-     written a baseline.
+     written a baseline. A review run writes none now (§15.133).
 
 115. **The project lead escalated questions it could answer — 2026-10-25,
      T79.** Issue #114. Of 16 escalations in one batch of 11 records, at least
@@ -8431,7 +8431,8 @@ Deliberately different:
      record directory, so an install cannot carry across runs. A shared
      install per repo is #122's queue session. `skills/review/SKILL.md`'s
      "Review" holds the cadence and the lockfile list. #121 item 1's form,
-     one install per repo per day, stays open with #122.
+     one install per repo per day, stays open with #122. A review run runs
+     no setup command now, and the `Setup` section is gone (§15.133).
 
      R2, the auto-review bot. A new `Auto-review` section names the bot's
      login. "Adjudicate" reads the bot's latest review and its inline
@@ -8461,7 +8462,8 @@ Deliberately different:
      path's fix rounds, 3 by default. `Re-review: skip when prose-only or
      under 20 lines` skips the re-review of crew's own push. Both are
      charter lines in `record-format.md`. A round takes no gate, round 1
-     included, when its suite ran and its report states no finding. It
+     included, when its suite ran and its report states no finding (a review
+     run drops the suite condition, §15.133). It
      records the answer `auto: no findings`, which `crew-stats.py` counts as
      an auto post. The principal's review of the PR narrowed this rule. It
      first read "a round whose ledger posts nothing", which let a round with
@@ -8818,7 +8820,8 @@ Deliberately different:
      `pending`. The reviewer is told that CI ran the suite and may spot-check
      the diff against the code. A fork head runs no code, as before. A goal
      run ignores the value, because its verification is the project lead's
-     own and the scout's answer stands.
+     own and the scout's answer stands. The value is gone, and a review run
+     reads no check at all (§15.133).
 
      Fifth, update the cleanup. "Clean up" removes each worktree of the row
      with `git worktree remove --force`, prunes, and deletes the local
@@ -8981,3 +8984,43 @@ Deliberately different:
 
      d. **Not run.** The tests pass under `claude plugin test`. No live
         session has shown the new pane.
+
+133. **A review run runs no local check — 2026-11-05, #136.** The principal
+     asked for a review that reads the diff and nothing else. A review run
+     ran a setup command, a baseline at the base, a suite and the gates, and
+     CI ran the same checks on every head. The `Gates` value `ci` of §15.130
+     read the PR's checks in place of that run, and it still cost a wait of
+     up to 30 minutes and a block in the reviewer's instructions. The
+     issue and the owner's comment ask for no local check and no CI read.
+     What changed:
+
+     First, a review run, a queue child included, runs no setup command,
+     writes no `reviews/baseline.md` and runs no suite and no gate, at the
+     base and at every head, on a fork too. It dispatches no scout, because
+     the scout's one question on a review run was the suite. The `Setup`
+     section, `Suite: on fork`, the launch words "Run the suite on this
+     fork" and the `Gates` value `ci` are gone. A `Gates` section whose only
+     line is `ci` reads as no `Gates` section on a goal run. A goal run keeps
+     the scout's questions, `Gates`, `Known red tests`, the baseline and the
+     skeptical review's suite.
+
+     Second, the reviewer of a review run reads the diff, the PR text and
+     the code around the change, with read-only commands. It gets one block
+     in place of the suite paragraph, and the block tells it to raise no
+     finding that CI reports. "Adjudicate" drops such a finding from every
+     source, with the reason `CI reports it`, and it is no finding held back
+     for the go-ahead gate. An assist fix round and a merge agent run no
+     suite, and the push's CI verifies.
+
+     Third, the delivered window reads no check on a review run.
+     `pr-watch.sh` reads `run.kind` and makes no `gh pr checks` call for a
+     review run, so no `check` line exists. A `dequeued` item is a notice
+     with no diagnosis and no `ci` round. The no-gate rule drops its "its
+     suite ran" condition. An earlier design split a head by who pushed it
+     and let crew check its own push. The principal chose the simpler rule:
+     the PR's CI verifies crew's push, and the author and the principal see
+     the result on the PR.
+
+     No run has exercised this change. The seeded-record check of
+     `pr-watch.sh` printed a `check` line for a goal run and none for a
+     review run, with `gh` stubbed.

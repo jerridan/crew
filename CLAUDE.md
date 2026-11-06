@@ -100,8 +100,9 @@ no live Slack poll has run.
 
 T87 is built: the queue finds the principal's checkout in place of a clone,
 a review run cuts its one worktree under that checkout's
-`.claude/worktrees/`, and `Gates: ci` lets the PR's checks stand in for the
-local suite (§15.130). No queue session and no review run has used it.
+`.claude/worktrees/`. `Gates: ci` is gone: a review run runs no local check
+(§15.133, which replaced part of §15.130). No queue session and no review run
+has used it.
 
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline

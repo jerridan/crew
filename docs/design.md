@@ -9086,8 +9086,9 @@ Deliberately different:
 
      `skills/review-queue/scripts/queue-watch.sh` polls every 60 seconds. It
      runs `pr-watch.sh once` for each board row that is not done, and keeps
-     five of its kinds. It reads each child's `ready.json`, and with no Slack
-     token it polls the review requests. It reads each child's tmux pane for
+     five of its kinds. It reads each child's `ready.json`, and it polls the review
+     requests with no Slack token, or with one when the `review-requests`
+     watch is stale. It reads each child's tmux pane for
      a permission prompt, a missing session and an idle child. It prints a
      line only for an event that the last pass did not hold, so a PR that
      stays in the merge queue prints `queued` once, not each minute. The last
@@ -9098,8 +9099,9 @@ Deliberately different:
      nothing, so a network error neither prints a held event again nor
      forgets it. A held `queued` event stays until its group prints
      `dequeued`, `merged` or `closed`, or the batched read shows the PR
-     outside the queue, so a failed read inside `pr-watch.sh` does not drop
-     it. A session that lost the board gets `not-owner - -`, and the script
+     outside the queue, or a newer `queued` event replaces it, so a failed
+     read inside `pr-watch.sh` does not drop it. A session that lost the
+     board gets `not-owner - -`: the script removes its own state file, and
      exits.
 
      The first version ran `pr-watch.sh once` for every open row each minute.
@@ -9140,3 +9142,17 @@ Deliberately different:
      failed `gh` read inside `pr-watch.sh` other than its first read goes
      unseen: the script then sees a pass with no line for that event. Only
      the held `queued` event survives it.
+
+     Patch round 1 (PR 143 comments). A code review found eight defects.
+     Seven are fixed. The glob `pr-<slug>-*` matched the record directory of
+     PR 12 for PR 1, so a child's directory now needs a hex-only suffix. The
+     `queued` key now holds the `enqueuedAt` value, so a PR that leaves the
+     merge queue and enters it again between two passes prints `queued`
+     again. With a token, the script polls the review requests when the
+     watch is stale, so a stopped mod delays a request by 5 minutes, not 30.
+     `not-owner` removes the state file. The children state names its flag
+     `seen`. The wakeup loop arms the monitor again only when none is live.
+     "Clean up" writes a re-triaged row's stage before it kills the child.
+     One suggestion is declined: the script keeps running `pr-watch.sh once`,
+     because `pr-watch.sh` owns what each line means. The new checks fail
+     before the fix.

@@ -47,6 +47,10 @@ ids of the pending reviews. The comment is reported once its review is
 submitted. When that read fails, `PEND` is empty, and the poll drops no
 comment.
 
+On a review run (`run.kind` is `review`), the poll makes no `gh pr checks`
+read and prints no `check` line. `SKILL.md`'s "Sort what reaches you" owns
+that rule.
+
 `gh pr checks` exits 1 when a check failed, and when the PR has no checks at
 all, so the read ends in `|| true`. A `check` id is `<link>@<startedAt>`, so a
 failure on a new run is a new item, also when the link stays the same. A check

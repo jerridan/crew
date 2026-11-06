@@ -17,6 +17,9 @@
 # The deploy modes read `run.deploy` from `state.json`, need no `run.watch`,
 # and print nothing when `run.deploy.ended` is set.
 #
+# A review run (`run.kind` is `review`) makes no `gh pr checks` read, so it
+# prints no `check` line.
+#
 # It reads its start state from `<record-dir>/state.json` at each start: the
 # PR is the one deliverable `pr_url`, and the cursor is `run.watch`. So a
 # re-armed monitor always runs this plugin version's poll, from the record's
@@ -183,6 +186,7 @@ draft=$(jq -r 'if .run.watch.draft == true then "true" else "false" end' "$state
 head=$(jq -r '.run.watch.head' "$state")
 # Whether the PR is in the merge queue, as far as this watch knows.
 queued=$(jq -r 'if .run.watch.queued == true then "true" else "false" end' "$state")
+kind=$(jq -r '.run.kind // ""' "$state")
 merged=''
 
 poll() {
@@ -217,9 +221,11 @@ poll() {
       | select(.created_at >= $ENV.SINCE)
       | select((.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "" | startswith("<!-- pr-review: ")) | not)
       | "comment \(.id) \(.user.login) \(.created_at) \(.body // "" | gsub("\r"; "") | split("\n") | first // "" | .[0:100])"'
-    gh pr checks "$PR" --json name,bucket,link,startedAt --jq '.[]
-      | select(.bucket == "fail")
-      | "check \(if (.link // "") == "" then .name else .link end | gsub(" "; "_"))@\(.startedAt) - \(.startedAt) \(.name) failed"'
+    if [ "$kind" != review ]; then
+      gh pr checks "$PR" --json name,bucket,link,startedAt --jq '.[]
+        | select(.bucket == "fail")
+        | "check \(if (.link // "") == "" then .name else .link end | gsub(" "; "_"))@\(.startedAt) - \(.startedAt) \(.name) failed"'
+    fi
   } 2>/dev/null ) || true
   while IFS= read -r line; do
     [ -n "$line" ] || continue

@@ -171,18 +171,39 @@ child_carry() { # child
 }
 
 child_check() { # slug label
-  local child="review-$1" g="child:review-$1" err rc start alive=0 d='' m pane prompt idle running fl
+  local child="review-$1" g="child:review-$1" err rc start alive=0 d='' m rdy='' pane prompt idle running fl cur
   kid_prev "$child"
-  err=$(tmux has-session -t "=$child" 2>&1 </dev/null); rc=$?
+  # The newest record directory whose suffix is hex only: `pr-<slug>-*` alone
+  # also matches the directory of PR 12 for PR 1.
+  while IFS= read -r m; do
+    m=${m%/}
+    case "${m##*/pr-$1-}" in ''|*[!0-9a-f]*) continue ;; esac
+    d=$m; break
+  done < <(ls -dt "$record_root"/pr-"$1"-*/ 2>/dev/null)
+  if [ -n "$d" ] && [ -f "$d/ready.json" ]; then
+    rdy=$(mtime "$d/ready.json")
+    # A file that cannot be read now keeps the events held before.
+    [ -n "$rdy" ] || { child_carry "$child"; return 0; }
+  fi
+  # The target ends in a colon: tmux reads a dot in a bare `=name` as a pane.
+  err=$(tmux has-session -t "=$child:" 2>&1 </dev/null); rc=$?
   if [ "$rc" -eq 0 ]; then
     alive=1
   elif printf '%s' "$err" | grep -Eqi "can't find session|no server running|error connecting to|no sessions"; then
     alive=0
   else
+    # tmux does not answer. A ready file newer than the last known start
+    # still counts, so a ready line does not depend on tmux.
+    case "$pstart" in ''|*[!0-9]*) pstart='' ;; esac
+    if [ "$pseen" = true ] && [ -n "$rdy" ] && [ -n "$pstart" ] && [ "$rdy" -gt "$pstart" ]; then
+      add_event "$g" ready "$2" "$d/ready.json"
+      kid_put "$child" true "$pidle" "$pstart"
+      return 0
+    fi
     child_carry "$child"; return 0
   fi
   if [ "$alive" = 1 ]; then
-    start=$(tmux display-message -p -t "=$child" '#{session_created}' 2>/dev/null </dev/null)
+    start=$(tmux display-message -p -t "=$child:" '#{session_created}' 2>/dev/null </dev/null)
     case "$start" in
       ''|*[!0-9]*) child_carry "$child"; return 0 ;;
     esac
@@ -192,30 +213,24 @@ child_check() { # slug label
     [ "$pseen" = true ] || return 0
     start=$pstart
   fi
-  # The newest record directory whose suffix is hex only: `pr-<slug>-*` alone
-  # also matches the directory of PR 12 for PR 1.
-  d=''
-  while IFS= read -r m; do
-    m=${m%/}
-    case "${m##*/pr-$1-}" in ''|*[!0-9a-f]*) continue ;; esac
-    d=$m; break
-  done < <(ls -dt "$record_root"/pr-"$1"-*/ 2>/dev/null)
-  if [ -n "$d" ] && [ -f "$d/ready.json" ]; then
-    m=$(mtime "$d/ready.json")
-    # A file that cannot be read now keeps the events held before.
-    [ -n "$m" ] || { child_carry "$child"; return 0; }
-    if [ "$m" -gt "$start" ]; then
-      add_event "$g" ready "$2" "$d/ready.json"
-      kid_put "$child" true "$pidle" "$start"
-      return 0
-    fi
+  if [ -n "$rdy" ] && [ "$rdy" -gt "$start" ]; then
+    add_event "$g" ready "$2" "$d/ready.json"
+    kid_put "$child" true "$pidle" "$start"
+    return 0
   fi
   if [ "$alive" = 0 ]; then
+    # The pass read the board some time ago. The queue may have moved the row
+    # to a new stage and ended the child since: read the stage again.
+    cur=$(jq -r --arg r "${2%#*}" --argjson p "${2##*#}" '[.rows[]? | select(.repo == $r and .pr == $p) | .stage][0] // ""' "$board" 2>/dev/null)
+    case "$cur" in
+      reviewing|fixing|rereview|blocked) ;;
+      *) return 0 ;;
+    esac
     add_event "$g" child-gone "$2" -
     kid_put "$child" true "$pidle" "$start"
     return 0
   fi
-  pane=$(tmux capture-pane -p -t "=$child" 2>/dev/null </dev/null) || { child_carry "$child"; return 0; }
+  pane=$(tmux capture-pane -p -t "=$child:" 2>/dev/null </dev/null) || { child_carry "$child"; return 0; }
   prompt=0
   printf '%s' "$pane" | grep -Eq 'Do you want to proceed|❯ 1\. Yes|Esc to cancel' && prompt=1
   if printf '%s' "$pane" | grep -q 'esc to interrupt'; then idle=0; else idle=$((pidle + 1)); fi
@@ -302,9 +317,13 @@ pass() {
     esac
   done < "$W/rows"
   if grep -q '[^[:space:]]' "$HOME/.claude/secrets/slack-token" 2>/dev/null; then
-    review_requests_stale && ask_poll
+    if review_requests_stale; then ask_poll; else carry search; fi
   else
-    jq -e '[.watches[]? | select(.source == "github:review-requests" and .status == "active")] | length > 0' "$board" >/dev/null 2>&1 && ask_poll
+    if jq -e '[.watches[]? | select(.source == "github:review-requests" and .status == "active")] | length > 0' "$board" >/dev/null 2>&1; then
+      ask_poll
+    else
+      carry search
+    fi
   fi
   # The first pass prints only a child that waits at a prompt: no other
   # kind can hold on it, and the wakeup loop reads the rest at the takeover.

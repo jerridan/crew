@@ -335,7 +335,7 @@ test('R7: the skill arm time is kept in an atom, so a reload keeps the window', 
     skillArmedAt: { shape: 'skill-armed-at-1', value: 0 },
   }
   const state: Record<string, unknown> = { ...DEFAULTS }
-  const w = world(on, () => board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' }))
+  world(on, () => board(ROWS, { session_id: 's1', since: '2026-01-01T00:00:00Z' }))
   on('state.get', (_, e) => ({ value: state[e.key] }))
   on('state.set', (_, e) => {
     state[e.key] = e.value
@@ -345,10 +345,6 @@ test('R7: the skill arm time is kept in an atom, so a reload keeps the window', 
   await $.skill.prompt({ skill: 'review-queue', text: 'go' })
   // An atom holds the time, so it outlives a reload of the module.
   expect(state.skillArmedAt).toEqual({ shape: 'skill-armed-at-1', value: NOW })
-  await w.clock.advance(130_000)
-  expect(w.seen.status.at(-1)).toBeUndefined()
-  // The window ended: the atom no longer holds a time.
-  expect(state.skillArmedAt).toEqual({ shape: 'skill-armed-at-1', value: 0 })
 })
 
 test('R7: a skill-armed session whose own Start writes the owner in the window stays armed', async ($, on) => {

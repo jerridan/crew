@@ -78,6 +78,9 @@ declare module 'claude-code' {
       armed: Shaped<boolean>
       // When this session armed, in ms since the epoch.
       armedAt: Shaped<number>
+      // When a skill prompt armed this session, in ms. 0 holds no time. The
+      // arming window ends from it, and a reload keeps it.
+      skillArmedAt: Shaped<number>
     }
   }
 }

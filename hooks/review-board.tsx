@@ -72,6 +72,14 @@ const armedAt = atom({ plugin: 'crew', key: 'armedAt' } as const, 0, {
   shape: 'armed-at-1',
 })
 
+// When a skill prompt armed this session, in ms, until the board names it.
+// 0 holds no time. It is an atom so a reload keeps the arming window.
+const skillArmedAt = atom(
+  { plugin: 'crew', key: 'skillArmedAt' } as const,
+  0,
+  { shape: 'skill-armed-at-1' },
+)
+
 const isDone = (r: ReviewBoardRow) => r.stage === 'merged' || r.stage === 'closed'
 const isBlocked = (r: ReviewBoardRow) => r.stage === 'blocked'
 
@@ -412,8 +420,6 @@ let opened = false
 let timer: unknown
 // The slow timer of a session with no pane and no arm: it checks the owner.
 let idle: unknown
-// The clock at a skill prompt's arm, until the board names this session.
-let skillArmedAt: number | undefined
 // True from an invalidate until the next render: a render that does not come
 // means the pane is closed.
 let awaitingRender = false
@@ -472,7 +478,7 @@ const superseded = async ($: Engine, board: ReviewBoardFile) => {
 // owner.since, so the mod orders owners by the value the skill orders by.
 const arm = async ($: Engine, since?: number) => {
   const armTime = since ?? (await $.clock.now())
-  skillArmedAt = since === undefined ? armTime : undefined
+  await update($, skillArmedAt, () => (since === undefined ? armTime : 0))
   await update($, armed, () => true)
   await update($, armedAt, () => armTime)
   last = undefined
@@ -486,7 +492,7 @@ const disarm = async ($: Engine) => {
   opened = false
   last = undefined
   lastMinute = -1
-  skillArmedAt = undefined
+  await update($, skillArmedAt, () => 0)
   notes = []
   unsent = new Map()
   current = undefined
@@ -510,12 +516,12 @@ const tick = async ($: Engine) => {
   let isArmed = await read($, armed)
   const owner = str(obj(parsed.owner).session_id)
   const me = await $.session.id()
-  if (isArmed && owner === me) skillArmedAt = undefined
+  if (isArmed && owner === me) await update($, skillArmedAt, () => 0)
+  const skillTime = isArmed ? await read($, skillArmedAt) : 0
   if (
     isArmed &&
     ((await superseded($, parsed)) ||
-      (skillArmedAt !== undefined &&
-        (await $.clock.now()) - skillArmedAt > ARM_WINDOW_MS))
+      (skillTime > 0 && (await $.clock.now()) - skillTime > ARM_WINDOW_MS))
   ) {
     await disarm($)
     isArmed = false

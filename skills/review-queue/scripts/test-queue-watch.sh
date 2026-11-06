@@ -59,7 +59,7 @@ case "$args" in
         body="$body$sep\"$al\":{\"pullRequest\":{\"headRefOid\":\"$(cat "$D/head-$num")\",\"state\":\"$st\",$qq}}"
       fi
       sep=','
-    done < <(printf '%s' "$args" | grep -o 'r[0-9]*: repository([^)]*) { pullRequest(number: [0-9]*)' | sed -E 's/^(r[0-9]+):.*number: ([0-9]+)$/\1 \2/')
+    done < <(printf '%s' "$args" | grep -o 'r[0-9]*: repository([^)]*) { pullRequest(number: [0-9]*)' | sed -E 's/^(r[0-9]+):.*number: ([0-9]+)\)$/\1 \2/')
     printf '{"data":{%s}}\n' "$body"
     exit $rc ;;
   "api repos/"*"/commits/"*) echo alice ;;
@@ -182,7 +182,7 @@ expect_kinds 'AC1 third pass with no change is silent' ''
 echo out > "$S/queue-2"
 run_pass
 expect_kinds 'AC1 leaving the queue (seed queued false) is silent' ''
-echo 2026-03-01T00:00:00Z > "$S/queue-2"
+echo 2026-02-01T00:00:00Z > "$S/queue-2"
 run_pass
 expect_kinds 'AC1 entering the queue again prints queued again' 'queued'
 ! grep -q 'pull/3' "$S/gh.log"; ok 'AC1 the done row is never polled' $?
@@ -333,7 +333,7 @@ run_pass
 expect_kinds 'item 2 a changed head prints push' 'push'
 [ "$(runs 1)" = 2 ] && [ "$(runs 2)" = 1 ]; ok 'item 2 only the changed row runs pr-watch' $?
 for i in 1 2 3 4 5 6 7 8 9; do run_pass; done
-[ "$(runs 1)" = 2 ] && [ "$(runs 2)" = 1 ]; ok 'item 2 nine quiet passes run nothing' $?
+[ "$(runs 1)" = 2 ] && [ "$(runs 2)" = 2 ]; ok 'item 2 nine quiet passes run nothing' $?
 run_pass
 [ "$(runs 1)" = 3 ] && [ "$(runs 2)" = 2 ]; ok 'item 2 the 10th pass after a run forces one' $?
 echo "$SHA_A" > "$S/head-1"

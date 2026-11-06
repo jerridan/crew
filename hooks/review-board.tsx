@@ -48,6 +48,8 @@ const GH_SEARCH = [
   'number,repository,url,title,author',
 ]
 const PR_LINK = /https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/g
+// A Slack message with one of these reactions holds no new ask.
+const DONE_REACTIONS = new Set(['white_check_mark', 'done'])
 
 const STAGES: ReviewBoardStage[] = [
   'new',
@@ -746,7 +748,9 @@ const pollSlack = async (
       const ts = str(m.ts)
       if (!ts) continue
       if (newest === null || tsAfter(ts, newest)) newest = ts
-      if (list(m.reactions).some(x => obj(x).name === 'done')) continue
+      // The queue marks an approved message with ✅. People also mark a
+      // handled message with `done`, so that one hides it too.
+      if (list(m.reactions).some(x => DONE_REACTIONS.has(str(obj(x).name)))) continue
       const prs = new Set<string>()
       for (const [, owner, repo, n] of str(m.text).matchAll(PR_LINK)) {
         const key = `${owner}/${repo}#${n}`

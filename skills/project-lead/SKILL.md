@@ -168,14 +168,13 @@ differs from the base branch's, or exists where the base branch has none, tell
 the principal once that the review reads the committed file. A resumed
 session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these fourteen:
+**Each file holds optional `##` sections.** You act on these thirteen:
 
 | Section | What you do with it |
 |---|---|
 | `Reviewers` | the plain words that name a replacement for a review step, read as below |
-| `Known red tests` | it seeds `reviews/baseline.md` |
-| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads the suite and the gates from it in place of the scout (`/crew:review`'s "Take the PR" step 6). The value `ci` makes a review run read the PR's check runs in place of a local suite (`/crew:review`'s "Review" owns it). A goal run ignores `Gates: ci`: a `Gates` section whose only line is `ci` reads as no `Gates` section on a goal run, so the scout's suite and gates stand for your verification and for the skeptical review |
-| `Setup` | one install command that makes the suite runnable in a fresh worktree, and an optional line `Lockfile: <path>`. A review run reads it in place of the scout, and its "Review" says when the command runs |
+| `Known red tests` | on a goal run, it seeds `reviews/baseline.md` |
+| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads `Gates` not at all: it runs no local check. A `Gates` section whose only line is `ci` reads as no `Gates` section, so an old file does not run `ci` as a command; the scout's suite and gates stand for your verification and for the skeptical review |
 | `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run reads that bot's review as claims (`/crew:review`'s "Adjudicate"). With no section, nothing reads a bot's review |
 | `Hook workarounds` | read it before every push and every merge |
 | `Ticket defaults` | read it before you create or name a ticket. It answers that question without an escalation (`autonomy-contract.md`, "How to escalate") |

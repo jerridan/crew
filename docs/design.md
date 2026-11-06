@@ -8938,8 +8938,10 @@ Deliberately different:
         the skill uses. After a takeover race, the old session arms again at
         its old `since` and the new owner's later `since` disarms it. The
         skill path keeps the clock, so a skill prompt in an old session
-        would out-date the owner. A session that the skill armed and the
-        board does not name as owner within `ARM_WINDOW_MS` (120 s, longer
+        would out-date the owner. When the board names a session that the
+        skill armed, the armed time becomes the board's `owner.since`, so a
+        later owner of the same second and a greater id still disarms it. A
+        session that the skill armed and the board does not name as owner within `ARM_WINDOW_MS` (120 s, longer
         than a Start takes) disarms. A disarm also clears the watcher notes,
         the refused-prompt memory and the board the pane drew from.
 

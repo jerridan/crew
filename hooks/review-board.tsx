@@ -516,7 +516,13 @@ const tick = async ($: Engine) => {
   let isArmed = await read($, armed)
   const owner = str(obj(parsed.owner).session_id)
   const me = await $.session.id()
-  if (isArmed && owner === me) await update($, skillArmedAt, () => 0)
+  if (isArmed && owner === me) {
+    // The board names this session: its own since orders it from here on.
+    if ((await read($, skillArmedAt)) > 0) {
+      await update($, armedAt, () => at(str(obj(parsed.owner).since)))
+    }
+    await update($, skillArmedAt, () => 0)
+  }
   const skillTime = isArmed ? await read($, skillArmedAt) : 0
   if (
     isArmed &&
@@ -545,7 +551,7 @@ const tick = async ($: Engine) => {
   if (seen === last) {
     if (minute === lastMinute) return
     lastMinute = minute
-    awaitingRender = true
+    awaitingRender = paneShown
     $.ui.invalidate('ui.render')
     return
   }
@@ -561,7 +567,7 @@ const tick = async ($: Engine) => {
       await $.ui.open({ id: PANE, title: 'Review board' })
     }
   }
-  awaitingRender = true
+  awaitingRender = paneShown
   $.ui.invalidate('ui.render')
 }
 

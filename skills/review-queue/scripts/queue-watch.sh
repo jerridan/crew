@@ -10,9 +10,11 @@
 # Every line is `<kind> <owner>/<repo>#<n> <rest>`. The kinds are `push`,
 # `queued`, `merged`, `closed` and `dequeued` (from `pr-watch.sh once`, one
 # run for each board row that is not done), `ready` (a child wrote its
-# `ready.json`), `ask` (a review request with no board row, only with no Slack
-# token), `child-prompt`, `child-gone` and `child-idle`. The line `not-owner - -`
-# means another session took the board: the script prints it and exits 0.
+# `ready.json`), `ask` (a review request with no board row, with no Slack token,
+# or with one when the board's `review-requests` watch is stale),
+# `child-prompt`, `child-gone` and `child-idle`. The line `not-owner - -`
+# means another session took the board: the script removes its own state file,
+# prints the line and exits 0.
 #
 # The state of the last pass is in `<queue-dir>/watch-<session-id>.json`. A pass
 # prints the events that the last pass did not hold. A pass with no state file
@@ -26,7 +28,7 @@
 # on the 10th pass after the row's last run. A row that the read could not
 # fetch runs nothing and keeps its events. A held `queued` event stays until its
 # group prints `dequeued`, `merged` or `closed`, or the read shows the PR
-# outside the queue.
+# outside the queue, or a newer `queued` event of the group replaces it.
 #
 # It reads the board at each pass, and finds `pr-watch.sh` from its own path.
 # Never copy this file into a record: a copy keeps the poll of the version that
@@ -59,9 +61,11 @@ mtime() {
 }
 
 # add_event <group> <kind> <label> <rest>: the dedupe key is the kind, the PR
-# and the first word of the rest.
+# and the first word of the rest. A `queued` key also holds the third word of
+# the rest, its `enqueuedAt`: a PR that enters the queue again is a new event.
 add_event() {
-  local key="$2 $3 ${4%% *}"
+  local key="$2 $3 ${4%% *}" w
+  if [ "$2" = queued ]; then w=$(printf '%s' "$4" | awk '{print $3}'); key="$key $w"; fi
   cut -f2 "$W/cur" | grep -Fxq -- "$key" && return 0
   printf '%s\t%s\t%s\n' "$1" "$key" "$(printf '%s %s %s' "$2" "$3" "$4" | tr '\t' ' ')" >> "$W/cur"
 }
@@ -69,13 +73,14 @@ add_event() {
 # Keep the events the last pass held for a group whose check failed.
 carry() { awk -F'\t' -v g="$1" '$1 == g' "$W/prev" >> "$W/cur"; }
 
-# Keep the queued events the last pass held for a group, unless the group
-# printed an event that ends them.
+# Keep the queued event the last pass held for a group, unless the group
+# printed an event that ends it: `dequeued`, `merged`, `closed` or a newer
+# `queued`.
 hold_queued() { # group batch-values
   local g k l
   # The batched read shows the PR outside the queue: the held event is over.
   [ "${2##* }" != out ] || return 0
-  awk -F'\t' -v g="$1" '$1 == g && $2 ~ /^(dequeued|merged|closed) /' "$W/cur" | grep -q . && return 0
+  awk -F'\t' -v g="$1" '$1 == g && $2 ~ /^(dequeued|merged|closed|queued) /' "$W/cur" | grep -q . && return 0
   while IFS=$'\t' read -r g k l; do
     [ "$g" = "$1" ] || continue
     case "$k" in queued\ *) ;; *) continue ;; esac
@@ -151,18 +156,18 @@ pr_poll() {
   hold_queued "$g" "$v"
 }
 
-kid_prev() { # child: sets palive, pidle, pstart from the last pass
-  palive=''; pidle=0; pstart='-'
+kid_prev() { # child: sets pseen, pidle, pstart from the last pass
+  pseen=''; pidle=0; pstart='-'
   local l
   l=$(awk -F'\t' -v n="$1" '$1 == n' "$W/prevkids" | head -1)
-  [ -z "$l" ] || IFS=$'\t' read -r _ palive pidle pstart <<< "$l"
+  [ -z "$l" ] || IFS=$'\t' read -r _ pseen pidle pstart <<< "$l"
 }
 
 kid_put() { printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" >> "$W/kids"; }
 
 child_carry() { # child
   carry "child:$1"
-  [ -z "$palive" ] || kid_put "$1" "$palive" "$pidle" "$pstart"
+  [ -z "$pseen" ] || kid_put "$1" "$pseen" "$pidle" "$pstart"
 }
 
 child_check() { # slug label
@@ -184,10 +189,17 @@ child_check() { # slug label
     [ "$start" = "$pstart" ] || pidle=0
   else
     # A child never seen alive has no start time and gets no line.
-    [ "$palive" = true ] || return 0
+    [ "$pseen" = true ] || return 0
     start=$pstart
   fi
-  d=$(ls -dt "$record_root"/pr-"$1"-*/ 2>/dev/null | head -1); d=${d%/}
+  # The newest record directory whose suffix is hex only: `pr-<slug>-*` alone
+  # also matches the directory of PR 12 for PR 1.
+  d=''
+  while IFS= read -r m; do
+    m=${m%/}
+    case "${m##*/pr-$1-}" in ''|*[!0-9a-f]*) continue ;; esac
+    d=$m; break
+  done < <(ls -dt "$record_root"/pr-"$1"-*/ 2>/dev/null)
   if [ -n "$d" ] && [ -f "$d/ready.json" ]; then
     m=$(mtime "$d/ready.json")
     # A file that cannot be read now keeps the events held before.
@@ -212,7 +224,7 @@ child_check() { # slug label
   elif [ "$idle" -ge 3 ] && [ -n "$d" ]; then
     # Idle needs a quiet record directory and no skeptical review that runs.
     running=0
-    for fl in "$d"/reviews/skeptical-r*-result.stderr; do
+    for fl in "$d"/reviews/skeptical-r[0-9]*-result.stderr; do
       [ -e "$fl" ] || continue
       [ -e "${fl%.stderr}.exit" ] || running=1
     done
@@ -235,6 +247,24 @@ ask_poll() {
   done <<< "$asks"
 }
 
+# With a token, the mod polls the review requests. The script polls them only
+# when the active watch is stale, as `references/board.md` defines it: the later
+# of the asks file's `last_checked`, the watch's `since` and the board's
+# `owner.since` is more than 5 minutes old. A file that cannot be read counts
+# as no time.
+review_requests_stale() {
+  local ak='{}'
+  [ ! -f "$queue/asks.json" ] || ak=$(cat "$queue/asks.json" 2>/dev/null) || ak='{}'
+  printf '%s' "$ak" | jq -e --slurpfile b "$board" '
+    def ts: if type == "string" then (sub("\\.[0-9]+Z$"; "Z") | try fromdateiso8601 catch 0) else 0 end;
+    ($b[0]) as $bd
+    | . as $a
+    | [$bd.watches[]? | select(.source == "github:review-requests" and .status == "active") | . as $w
+        | ([(($a.watches // {})[$w.id].last_checked // null | ts), (.since | ts), ($bd.owner.since | ts)] | max)
+        | . < (now - 300)]
+    | any' >/dev/null 2>&1
+}
+
 NOT_OWNER=''
 
 pass() {
@@ -243,6 +273,7 @@ pass() {
   : > "$W/cur"; : > "$W/kids"; : > "$W/prev"; : > "$W/prevkids"; : > "$W/prevrows"; : > "$W/rowst"; : > "$W/vals"
   owner=$(jq -r '.owner.session_id // ""' "$board" 2>/dev/null) && [ -n "$owner" ] || { rm -rf "$W"; W=''; return 0; }
   if [ "$owner" != "$sid" ]; then
+    rm -f "$statef"
     echo 'not-owner - -'
     NOT_OWNER=1
     rm -rf "$W"; W=''
@@ -250,7 +281,7 @@ pass() {
   fi
   if [ -f "$statef" ] &&
      jq -r '.events[]? | [.g, .k, .l] | join("\t")' "$statef" > "$W/prev" 2>/dev/null &&
-     jq -r '(.children // {}) | to_entries[] | [.key, (.value.alive | tostring), (.value.idle | tostring), (.value.start | tostring)] | join("\t")' "$statef" > "$W/prevkids" 2>/dev/null &&
+     jq -r '(.children // {}) | to_entries[] | [.key, (.value.seen | tostring), (.value.idle | tostring), (.value.start | tostring)] | join("\t")' "$statef" > "$W/prevkids" 2>/dev/null &&
      jq -r '(.rows // {}) | to_entries[] | [.key, .value.v, (.value.n | tostring)] | join("\t")' "$statef" > "$W/prevrows" 2>/dev/null; then
     have_state=1
   else
@@ -270,9 +301,10 @@ pass() {
       reviewing|fixing|rereview|blocked) child_check "$slug" "$label" ;;
     esac
   done < "$W/rows"
-  if jq -e '[.watches[]? | select(.source == "github:review-requests" and .status == "active")] | length > 0' "$board" >/dev/null 2>&1 &&
-     ! grep -q '[^[:space:]]' "$HOME/.claude/secrets/slack-token" 2>/dev/null; then
-    ask_poll
+  if grep -q '[^[:space:]]' "$HOME/.claude/secrets/slack-token" 2>/dev/null; then
+    review_requests_stale && ask_poll
+  else
+    jq -e '[.watches[]? | select(.source == "github:review-requests" and .status == "active")] | length > 0' "$board" >/dev/null 2>&1 && ask_poll
   fi
   # The first pass prints only a child that waits at a prompt: no other
   # kind can hold on it, and the wakeup loop reads the rest at the takeover.
@@ -286,7 +318,7 @@ pass() {
       rows: ($rws | split("\n") | map(select(length > 0) | split("\t") | {key: .[0], value: {v: .[1], n: (.[2] | tonumber)}}) | from_entries),
       events: ($ev | split("\n") | map(select(length > 0) | split("\t") | {g: .[0], k: .[1], l: (.[2:] | join("\t"))})),
       children: ($kids | split("\n") | map(select(length > 0) | split("\t")
-        | {key: .[0], value: {alive: (.[1] == "true"), idle: (.[2] | tonumber), start: .[3]}}) | from_entries)
+        | {key: .[0], value: {seen: (.[1] == "true"), idle: (.[2] | tonumber), start: .[3]}}) | from_entries)
     }' > "$statef.tmp.$$" 2>/dev/null; then
     mv "$statef.tmp.$$" "$statef"
   else

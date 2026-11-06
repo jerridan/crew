@@ -525,8 +525,9 @@ Write the whole file to `board.json.tmp` beside it, then move it over
 ## Clean up
 
 **Clean up a row when it is done, and at a re-triage.** At a re-triage, write
-the row's new stage to the board first, so the monitor never sees a row at
-`reviewing` with no child. End its child.
+the row's new stage to the board first. A monitor pass that starts later does
+not see a row at `reviewing` with no child, and a pass in progress reads the
+stage again before it prints `child-gone`. End its child.
 Send `/exit` with `tmux send-keys -t =<child> '/exit' Enter`. Kill its tmux
 session with `tmux kill-session -t =<child>`. Then remove each of the row's
 worktrees that exists. All are under `<checkout>/.claude/worktrees/`:

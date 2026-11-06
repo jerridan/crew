@@ -8,8 +8,10 @@ Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
 two hooks, the three scripts under `skills/project-lead/scripts/`,
 `skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`, and
-`skills/review/scripts/review-json.py`: they are code, run against a seeded
-record (design §15.38, §15.50, §15.123, §15.124). The review-board mod,
+`skills/review/scripts/review-json.py`, and
+`skills/review-queue/scripts/queue-watch.sh`: they are code, run against a
+seeded record (design §15.38, §15.50, §15.123, §15.124, §15.136). The test
+`skills/review-queue/scripts/test-queue-watch.sh` runs the last one. The review-board mod,
 `hooks/review-board.tsx`, is TypeScript: `claude plugin test <repo>` runs its
 tests, and `claude plugin validate <repo>` checks its module (§15.128).
 
@@ -29,6 +31,7 @@ tests, and `claude plugin validate <repo>` checks its module (§15.128).
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `skills/review-queue/SKILL.md`, `skills/review-queue/references/board.md`, `ownership.md`, `ready-file.md`, `sources.md` | the `/crew:review-queue` entry point: watches, triage, children, the gate, every post, approval and enqueue, the board; the board file's schema; who holds the board; a child's ready file; the polls of a Slack channel and of the review requests | its skill trigger; `/crew:review` in child mode reads `ready-file.md` |
+| `skills/review-queue/scripts/queue-watch.sh`, `skills/review-queue/scripts/test-queue-watch.sh` | the queue watch poll: reads the board, the PRs and the children, and prints one line per new event; its seeded test | the queue session's `Monitor` call, from the plugin directory; a person, for the test |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` | the review-board mod: a pane and a status line that read the board file, and, with a Slack token, the watcher that polls the queue's sources and writes `asks.json`; its `$.state` contract; its tests | the plugin loader, as the hooks module `hooks.json` names; `claude plugin test` |
 | `docs/design.md` | the living spec | a person |
@@ -92,6 +95,10 @@ blocking finding is the last (§15.125). No run has exercised it.
 reads each child's ready file, and does every post, approval, enqueue and
 Slack reaction itself. The mod's tests pass under `claude plugin test`. No
 queue session and no child has run yet.
+
+The queue's `Monitor` watch is built (§15.136): `queue-watch.sh` polls the
+PRs and the children with no model turn, and the cron job is a 30-minute
+fallback. Its seeded test passes. No queue session has run the monitor.
 
 T86 makes the review-board mod the queue's watcher when
 `~/.claude/secrets/slack-token` holds a token: it polls Slack and the

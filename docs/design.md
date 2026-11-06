@@ -9077,3 +9077,47 @@ Deliberately different:
      counts as the queue's `APPROVE` post, so it gets ✅ too.
 
      No queue session has exercised this change.
+
+136. **The review queue watches with a `Monitor` — 2026-11-06.** The queue
+     woke on a `CronCreate` job every 5 minutes with no Slack token and every
+     15 with one. Each fire was a model turn, and most fires found nothing.
+     The principal asked (issue 141) to move the work that needs no model
+     into a script that a `Monitor` runs.
+
+     `skills/review-queue/scripts/queue-watch.sh` polls every 60 seconds. It
+     runs `pr-watch.sh once` for each board row that is not done, and keeps
+     five of its kinds. It reads each child's `ready.json`, and with no Slack
+     token it polls the review requests. It reads each child's tmux pane for
+     a permission prompt, a missing session and an idle child. It prints a
+     line only for an event that the last pass did not hold, so a PR that
+     stays in the merge queue prints `queued` once, not each minute. The last
+     pass is in `<queue-dir>/watch-<session-id>.json`. A pass with no such
+     file prints nothing, so a new session wakes on nothing that existed
+     before it. A check that fails keeps its events and prints nothing, so a
+     network error neither prints a held event again nor forgets it. A
+     session that lost the board gets `not-owner - -`, and the script exits.
+     `SKILL.md` "Start" arms the monitor with or without a token. The cron
+     job stays as a fallback every 30 minutes, and stays at 5 minutes only
+     when a `slack:` watch has no token, because only the queue session can
+     read that channel. With no `Monitor` tool, the cadences are as before.
+
+     The child-idle rule needs three facts at once: the pane shows no
+     `esc to interrupt` on 3 passes in a row, no file in the child's record
+     directory changed in 10 minutes, and no skeptical review runs. A child
+     that waits on a long tool call or a headless review shows no file
+     change for a long time, so any one fact alone gives a false alarm. The
+     first pass counts as the first idle pass.
+
+     `skills/review-queue/scripts/test-queue-watch.sh` ran the script against
+     a seeded queue directory with a stub `gh` and a stub `tmux`. It checks
+     the silent first pass, one line of each kind, no repeat of a held event,
+     `queued` again after a leave and a re-entry, `dequeued`, `merged`,
+     `closed`, a failed pass, the token case, `child-idle`, `child-gone` and
+     `not-owner`. A first version of the test passed with the carry of a
+     failed check removed, because the helper read `$?` after a command
+     substitution. The helper was fixed, and the removal now fails the test.
+
+     No run has exercised this change in a live queue session. A live
+     permission prompt and the idle rule on a live child are unexercised. A
+     failed `gh` read inside `pr-watch.sh` other than its first read goes
+     unseen: the script then sees a pass with no line for that event.

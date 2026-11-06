@@ -371,6 +371,10 @@ item. **A light-path run puts `charter.md` where the spec would go**, because
 it wrote none and the PR body is where its reasoning lands. Never hard wrap
 what you send to GitHub (`writing-standard.md`).
 
+**Close the issue with the PR.** For each `Issue:` line in `charter.md`, put
+`Closes <owner>/<repo>#<n>` on a line of its own in the body. GitHub then
+closes the issue when the PR merges into the default branch.
+
 `gh pr create --draft`. The PR stays a draft until the skeptical review
 stops. `skeptical-review.md`'s "Mark the PR ready" owns that step. Then one
 write: `crew-record.py deliver <deliverable-id> draft-pr-opened --pr-url

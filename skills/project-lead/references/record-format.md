@@ -107,6 +107,11 @@ each on its own, anywhere in the file:
   one it finds in the repo but the charter does not name.
 - `PR: draft` — the PR stays a draft, and only the principal marks it ready
   (`skeptical-review.md`'s "Mark the PR ready").
+- `Issue: <owner>/<repo>#<n>` — a goal run's charter only, one line per
+  GitHub issue the goal resolves. The PR body closes it
+  (`simple-path.md`'s "End the run"), and the ship word closes it when the
+  merge did not (`crew:delivered-window`'s "The word that the work
+  shipped").
 - `Gate: off` — no round of the delivered window waits for the principal's
   go-ahead before its push and its replies (`crew:delivered-window`'s "The
   go-ahead gate"). It holds on a review run too.
@@ -127,7 +132,8 @@ each on its own, anywhere in the file:
   child mode, and names the session the child messages (`/crew:review`'s
   "Child mode").
 
-`SKILL.md`'s "Take the goal" writes `PR: draft` and `Gate: off` when the
+`SKILL.md`'s "Take the goal" writes each `Issue:` line, and it writes
+`PR: draft` and `Gate: off` when the
 principal asks for them in the goal or at launch, and "Standing
 instructions" writes them for a `PR readiness: draft` or `Go-ahead: off`
 section.
@@ -1166,6 +1172,7 @@ Every name this file defines, with what consumes it.
 - `charter.md` `Favour:` line — consumer: `full-path.md`'s "Write the split" (split shape)
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks, or its "Standing instructions" for a `Go-ahead: off` section. Consumer: `crew:delivered-window`'s "The go-ahead gate"
+- `charter.md` `Issue:` line — writer: `SKILL.md`'s "Take the goal". Consumer: `simple-path.md`'s "End the run" (the `Closes` line in the PR body); `crew:delivered-window`'s "The word that the work shipped" (the close after the merge)
 - `charter.md` `Assist: on` line — writer: the principal, or `/crew:review` when the principal asks. Consumer: `crew:delivered-window`'s "Findings from a review"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.worktree_base` — writer: the project lead, at `full-path.md`'s launch check 1, run at the preference sweep. Consumer: `full-path.md`'s territory worktrees; `simple-path.md`'s held checkout; `review-runner.md` (every review worktree)

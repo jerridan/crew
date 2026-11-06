@@ -568,16 +568,28 @@ On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`.
-2. Stop the watch: `TaskStop` the monitor, the deploy monitor included, then
+2. Close each issue that an `Issue:` line of `charter.md` names, when the
+   deliverable's PR merged. A merge into a branch that is not the default
+   leaves the issue open, so this step catches it. Read the state first, and
+   close only an issue that is still open:
+
+   ```bash
+   gh issue view <n> --repo <owner>/<repo> --json state -q .state
+   gh issue close <n> --repo <owner>/<repo> --reason completed --comment "Done in <pr_url>."
+   ```
+
+   A PR that closed with no merge closes no issue. Name each issue you closed
+   in the closing message.
+3. Stop the watch: `TaskStop` the monitor, the deploy monitor included, then
    `CronList`, then `CronDelete` each job whose prompt starts "Crew
    keep-alive".
-3. Remove each deliverable's review worktree, as `review-runner.md`'s "Never
+4. Remove each deliverable's review worktree, as `review-runner.md`'s "Never
    review in the run's own checkout" says.
-4. `<project-lead-dir>/scripts/spend.py --write`, so the figure covers this
+5. `<project-lead-dir>/scripts/spend.py --write`, so the figure covers this
    window.
-5. Stop every process the run left listening, as `simple-path.md`'s "End the
+6. Stop every process the run left listening, as `simple-path.md`'s "End the
    run" says.
-6. Say the run is closed and this session can be. After a `deployed` item,
+7. Say the run is closed and this session can be. After a `deployed` item,
    first say that the deploy succeeded. Name the environment or the workflow
    and the item's id. After a `no-deploy` item or a merge under `none`, first
    say that the PR merged and the repo has no deploy. The principal closes the

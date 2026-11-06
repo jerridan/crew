@@ -9129,7 +9129,8 @@ Deliberately different:
      a seeded queue directory with a stub `gh` and a stub `tmux`. It checks
      the first pass (only `child-prompt` prints), one line of each kind, no
      repeat of a held event, `queued` again after a leave and a re-entry, the
-     run counts of `pr-watch.sh`, `dequeued`, `merged`, `closed`, a failed pass, the token case, `child-idle`, `child-gone` and
+     run counts of `pr-watch.sh`, `dequeued`, `merged`, `closed`, a failed
+     pass, the token case, `child-idle`, `child-gone` and
      `not-owner`. A first version of the test passed with the carry of a
      failed check removed, because the helper read `$?` after a command
      substitution. The helper was fixed, and the removal now fails the test.

@@ -62,17 +62,44 @@ says, before it cuts a `-merge` or `-check` worktree where no child has cut one.
    ```
    Never print the file, and never read it into this session. A file of
    only whitespace is no token. With a token, the review-board mod polls the
-   sources. Use the cron `*/15 * * * *`, because the stall check and the
-   child reads still need the loop. With no token, use the cron
-   `*/5 * * * *`. Call `CronCreate` with `recurring: true`, that cron, and
-   the prompt "Crew review-queue poll: run the wakeup loop of
+   sources. Then arm two things.
+
+   **The monitor.** With a `Monitor` tool, with a token or without one:
+   1. Stop the queue monitor this session armed before, with `TaskStop` and
+      the task id its `Monitor` call returned. **One queue monitor at a
+      time.** A resumed process holds none.
+   2. Call `Monitor` with this command, `timeout_ms: 1800000`, and
+      `persistent: false` when the tool offers that key:
+      ```bash
+      bash <plugin-dir>/skills/review-queue/scripts/queue-watch.sh <queue-dir> $CLAUDE_CODE_SESSION_ID
+      ```
+   Run the script from the plugin every time. Never copy it into a record.
+   It polls every 60 seconds and prints one line per new event. "A monitor
+   line" says what each line does.
+
+   **The cron job.** Call `CronCreate` with `recurring: true`, a cron below,
+   and the prompt "Crew review-queue poll: run the wakeup loop of
    crew:review-queue." Delete an older job with that prompt first, with
    `CronList` and `CronDelete`.
 
+   | Case | Cron |
+   |---|---|
+   | A `Monitor` tool, and no token with an active `slack:` watch | `*/5 * * * *`, because only this session reads that channel |
+   | A `Monitor` tool, any other case | `17,47 * * * *`, the fallback |
+   | No `Monitor` tool, a token | `*/15 * * * *` |
+   | No `Monitor` tool, no token | `*/5 * * * *` |
+
+   Choose the cron again when a watch is added or stopped. With no `Monitor`
+   tool, the script does not run, and the loop does all the work.
+4. **After the monitor is armed, run the wakeup loop once.** An event that
+   holds at the takeover then waits for no fire.
+
 ## The wakeup loop
 
-Each fire, each `ready:` message, and each "Crew review-queue ask:" prompt
-from the review-board mod runs this loop:
+Each fire, each `ready:` message, each "Crew review-queue ask:" prompt from
+the review-board mod, each monitor line and the monitor's expiry notice runs
+this loop. After a fire or an expiry notice, arm the monitor again, as
+"Start" step 3 says. The loop does these steps:
 
 0. **Run "The owner check"** (`references/ownership.md`). When it says
    stop, do no triage, launch, post, approval, enqueue or Slack reaction.
@@ -100,7 +127,27 @@ from the review-board mod runs this loop:
 5. Run "Watch each PR" on each row that is not done.
 6. Write the board.
 
-**The stall check.** A child's record directory is
+**A monitor line** is the wake signal. The loop's own polls and reads act on
+the event. The line's kind adds this:
+
+- **`push`, `queued`, `merged`, `closed`, `dequeued`, `ready`**: nothing more.
+  "Watch each PR" and step 4 act on them.
+- **`ask`**: a new ask. Triage it, and skip the review-request poll of step 1
+  in this run.
+- **`child-prompt`**: run "The stall check" for that child at once, with no
+  30-minute wait.
+- **`child-gone`, `child-idle`**: tell the principal which child it is, and
+  that `tmux attach -t =<child>` reaches it. Set `next: you`. Leave `stage`
+  as it is.
+- **`not-owner`**: the monitor has stopped. Run "The owner check"
+  (`references/ownership.md`). Arm nothing.
+
+`child-idle` means all of these hold: the pane shows no `esc to interrupt`
+on 3 passes in a row, no file in the child's record directory changed in 10
+minutes, and no skeptical review runs.
+
+**The stall check** stays in the loop as the slow check behind the monitor.
+A child's record directory is
 `<record-root>/pr-<owner>-<repo>-<n>-<hex>/`, the newest one made after
 the launch. Read the child's pane when no file in it changed for 30
 minutes, or when it has no record directory 30 minutes after its launch:
@@ -497,6 +544,7 @@ main working tree.**
 
 1. Stop each subagent this session dispatched, such as a merge agent.
 2. Clean up every row that is not done, as above.
-3. Delete the wakeup loop's job with `CronDelete`.
+3. Delete the wakeup loop's job with `CronDelete`. Stop the queue monitor
+   with `TaskStop`, and remove `<queue-dir>/watch-<session-id>.json`.
 4. Write the board one last time, with each watch `stopped`.
 5. Remove the takeover-time file, as `references/ownership.md` says.

@@ -269,8 +269,9 @@ gh run view <run-id> --repo <owner>/<repo> --log-failed
 
 ## Diagnose a dequeue
 
-Run this on every `dequeued` line of a goal run. `<dequeue-script>` is
-`scripts/dequeue-diagnosis.sh` beside `<watch-script>`, by its absolute path:
+Run this on every `dequeued` line, except on a review run (`run.kind` is
+`review`). `<dequeue-script>` is `scripts/dequeue-diagnosis.sh` beside
+`<watch-script>`, by its absolute path:
 
 ```bash
 bash <dequeue-script> <owner> <repo> <n>

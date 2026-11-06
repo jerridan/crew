@@ -9007,8 +9007,9 @@ Deliberately different:
      Second, the reviewer of a review run reads the diff, the PR text and
      the code around the change, with read-only commands. It gets one block
      in place of the suite paragraph, and the block tells it to raise no
-     finding that CI reports. "Adjudicate" drops such a finding from every
-     source, with the reason `CI reports it`, and it is no finding held back
+     finding that CI reports. "The label rule" of `github-review.md` drops such
+     a finding from every source, the queue's inline read too, with the
+     reason `CI reports it`, and it is no finding held back
      for the go-ahead gate. An assist fix round and a merge agent run no
      suite, and the push's CI verifies.
 

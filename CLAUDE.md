@@ -80,8 +80,9 @@ PR are unexercised.
 `/crew:review` is built and ran once (§15.108). Its reviewer resume, queue
 line and pane rule are unexercised (T77). T78 cut its pre-review steps to
 one scout and a charter template (§15.109). T82 reads the suite from the
-standing instructions, labels findings by the severity rubric, approves last,
-and keeps the watch past the merge queue (§15.124). No run has exercised T78
+standing instructions (a review run reads none since §15.133), labels
+findings by the severity rubric, approves last, and keeps the watch past the
+merge queue (§15.124). No run has exercised T78
 or T82. The severity rubric on goal runs is built: the project lead labels
 every review finding by it, whatever its source, and a round with no
 blocking finding is the last (§15.125). No run has exercised it.

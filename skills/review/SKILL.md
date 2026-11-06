@@ -167,8 +167,7 @@ check to the author, on the PR.
 The merge agent and an assist fix round run no suite either. Both take the
 no-suite outcome that `simple-path.md`'s "Verify before you believe" defines,
 and the push's CI verifies. A round with no suite output passes check 2 of
-`review-runner.md`'s "Check the review before you read it". A patch-round IC
-gets no baseline.
+`review-runner.md`'s "Check the review before you read it".
 
 Then run the review through `review-runner.md`, with the files named
 `skeptical-r<n>` and `<n>` from `run.review_pending.round`. Set
@@ -205,11 +204,8 @@ post:
    "The label rule". That includes each bot claim.
    The label alone decides whether it posts.
 
-**Drop every finding that CI reports.** A finding about lint, format, types,
-a failing test or another CI check is `don't post`, with the reason
-`CI reports it`. This holds for every source: the skeptical reviewer, a bot
-claim, a replacement runner, a PR comment and a human reviewer's claim. Drop it
-before the draft. It is no finding held back for the go-ahead gate.
+**Drop every finding that CI reports**, as `github-review.md`'s "The label
+rule" says. Drop it before the draft.
 
 A `don't post` or `not real` finding is declined, with its label as the
 reason. The skeptical ledger names no package on a review run. Write each

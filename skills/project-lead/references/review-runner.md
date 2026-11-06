@@ -371,8 +371,8 @@ review before you read it" is the documented path.
 **`node -e`, `python -c` and every install command stay off the list.**
 `node -e` and `python -c` run any code they get, so either one lets the
 review do more than report. An install changes the tree the review reads,
-and you already ran the setup command ("Prepare the worktree before you
-launch").
+and on a goal run you already ran the setup command ("Prepare the
+worktree before you launch").
 
 **`Bash(<prefix> *)` matches the start of the command string, not a git
 subcommand.** The probe showed `Bash(git log *)` allow `git log --oneline`

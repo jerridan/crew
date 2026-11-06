@@ -113,10 +113,6 @@ each on its own, anywhere in the file:
 - `Assist: on` — a review run's charter only. Crew fixes the blocking
   findings itself and pushes to the PR branch (`crew:delivered-window`'s
   "Findings from a review").
-- `Suite: on fork` — a review run's charter only. On a cross-repository PR,
-  the fork's setup command and suite run only when the charter carries this
-  line. The principal writes it at launch. The project lead writes it when
-  the principal lifts the block at the gate (`/crew:review`'s "Review").
 - `Rounds: <n>` — a review run's charter only. The cap on the assist path's
   fix rounds. With no line, the cap is 3. `/crew:review`'s "The assist path"
   says what happens at the cap.
@@ -286,7 +282,7 @@ naming convention. Do not mix their contents.
   with one writes the file. `skeptical-review.md`'s "The adjudication is
   complete" owns this.
 
-  **`reviews/baseline.md` is one file per deliverable**, written by the
+  **`reviews/baseline.md` is one file per deliverable of a goal run**, written by the
   project lead before the first skeptical round at each of the
   deliverable's bases (`skeptical-review.md`'s "When the review runs"). Its
   first line is `Base: <sha>`, the base it was measured at, so a resume can
@@ -1171,7 +1167,6 @@ Every name this file defines, with what consumes it.
 - `charter.md` `Instruments:` line — consumer: design §6.4 (what the project lead or a researcher may dispatch)
 - `charter.md` `Gate: off` line — writer: the principal, or `SKILL.md`'s "Take the goal" when the principal asks, or its "Standing instructions" for a `Go-ahead: off` section. Consumer: `crew:delivered-window`'s "The go-ahead gate"
 - `charter.md` `Assist: on` line — writer: the principal, or `/crew:review` when the principal asks. Consumer: `crew:delivered-window`'s "Findings from a review"
-- `charter.md` `Suite: on fork` line — writer: the principal at launch, or the project lead when the principal lifts the block at the gate. Consumer: `/crew:review`'s "Review"
 - `run.checkout` — writer: the project lead, at `simple-path.md`'s "Create the branch". Consumer: every later git command of the run, and a human asking which tree the work happened in (design §15.90)
 - `run.worktree_base` — writer: the project lead, at `full-path.md`'s launch check 1, run at the preference sweep. Consumer: `full-path.md`'s territory worktrees; `simple-path.md`'s held checkout; `review-runner.md` (every review worktree)
 - `run.session_ids` — writer: the project lead, at `init` and on every `--resume`. Consumer: `hooks/session-end.py` and `hooks/pre-compact.py` (which run this session belongs to); `scripts/spend.py` (the transcripts that price the run, design §15.90)
@@ -1326,7 +1321,7 @@ Every name this file defines, with what consumes it.
 - `reviews/<prefix>-r<n>-run.sh` — writer: the project lead, before it runs a replacement (`substitution.md`). Consumer: the pane or the headless shell that runs it
 - `reviews/skeptical-r<n>-result.txt` — writer: the shell redirect on a replacement's own command, in place of the `.json` (`substitution.md`). Consumer: the project lead, which reads the report out of it when the runner wrote no usable report file, and runs the checks the runner supports
 - `reviews/skeptical-r<n>-result.exit` — writer: the same shell line's trailing `echo $? >`, on the default runner's own command and on a replacement's alike. Consumer: the project lead's exit check, live and on a resume; its absence marks an attempt that never finished (`substitution.md`)
-- `reviews/baseline.md` — writer: the project lead, once per deliverable base, before the first skeptical round at that base (`skeptical-review.md`). Consumer: every reviewer's instructions file (`review-runner.md`); every IC the delivered window dispatches (`crew:delivered-window`); adjudication, which declines a finding on it
+- `reviews/baseline.md` — a goal run's file; a review run writes none. Writer: the project lead, once per deliverable base, before the first skeptical round at that base (`skeptical-review.md`). Consumer: every reviewer's instructions file (`review-runner.md`); every IC the delivered window dispatches (`crew:delivered-window`); adjudication, which declines a finding on it
 - `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)
 - `reviews/<round-id>-reply.md` — the same file for a patch round from any other source, with `<round-id>` from `run.rounds`. Writer and consumer as above; the send that closes it is `crew:delivered-window`'s "Send the reply file"
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts

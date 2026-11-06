@@ -23,7 +23,8 @@ Five rules. A review that drops one is not this step.
   mentioned is the defect this step exists to find.
 - **Assume the diff is wrong, and look for how.** A pass is a finding you
   failed to make, not a result.
-- **Run the suite.** A pass an IC reported is a claim about another tree.
+- **Run the suite.** A pass an IC reported is a claim about another tree. A
+  review run has no suite (`/crew:review`'s "Review").
 - **Label every finding.** `review-output.md` owns the `Severity:` line and
   the three closing lines, and `severity-rubric.md` defines the labels.
 - **Say what you looked for and did not find.** A check that found nothing
@@ -40,7 +41,7 @@ these.
 | the goal text | `charter.md`: the goal as the principal wrote it, and every constraint the principal stated there. Its acceptance criteria go in as supplementary, never on their own |
 | the branch and its pending head | the deliverable's `branch`, at `run.review_pending.head` |
 | the base ref | the deliverable's `base` |
-| the suite | the standing instructions' `Gates` section (`SKILL.md`, "Standing instructions"). With no `Gates` section, the invocation the scout recorded and the directory it runs in, or the recorded no-suite outcome (`SKILL.md`, "Scout") |
+| the suite, on a goal run | the standing instructions' `Gates` section (`SKILL.md`, "Standing instructions"). With no `Gates` section, the invocation the scout recorded and the directory it runs in, or the recorded no-suite outcome (`SKILL.md`, "Scout") |
 | the output path | `<record-dir>/reviews/skeptical-r<n>.md` |
 | the instructions file | `<record-dir>/reviews/skeptical-r<n>-instructions.md`, which you assemble before you launch |
 
@@ -141,9 +142,10 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    supersession and a round past the cap: entries 8 and 9 below, and the
    `--past-cap` command above. It is never a follow-up's own launch.
 2. **Set `review_rounds` to `review_pending.round`**, by the table below.
-3. **Cut or move the deliverable's review worktree** and run the setup
-   command in it (`review-runner.md`).
-4. **Write the baseline, before the first round at each `base`.** Skip
+3. **Cut or move the deliverable's review worktree** and, on a goal run, run
+   the setup command in it (`review-runner.md`).
+4. **On a goal run, write the baseline, before the first round at each
+   `base`.** A review run writes none. Skip
    this step when `reviews/baseline.md` exists and its first line names the
    deliverable's `base`. A file with another sha there, or with no `Base:`
    line, was measured at an old base: write it again. Move the worktree to
@@ -157,13 +159,8 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    The standing instructions' `Known red tests` section seeds the file:
    write its lines first after the `Base:` line (`SKILL.md`, "Standing
    instructions"). Under the no-suite outcome, the file holds the `Base:`
-   line and the line `No suite.` Under `Gates: ci`, which only a review run
-   reads, the file holds the `Base:` line, the `Known red tests` lines and the
-   line `Gates: ci`, and no gate runs at the base. A run holds one deliverable
-   (`autonomy-contract.md`, trigger 7), so it holds one baseline file. A
-   review run's base moves when the PR's base moves, and "Find the base of
-   a later round", in `skills/review/references/later-round.md`, writes the
-   new one.
+   line and the line `No suite.` A run holds one deliverable
+   (`autonomy-contract.md`, trigger 7), so it holds one baseline file.
 5. **Write the instructions file**, and the resume prompt on a later round
    (`review-runner.md`).
 6. **Launch, or resume the reviewer of the round before** (`review-runner.md`'s
@@ -561,8 +558,8 @@ somewhere else.
 | **Round 0**, the reply file written before `run.rounds[<round-id>]` — the ordinary kill point under this run's own order | 1, second bullet | the round entry is rebuilt from the reply's header, and the list re-enters |
 | **Launch 1**, the arming | 13, nothing on disk | `review_rounds` is set to the reserved round, then the review runs at launch step 2 |
 | **Launch 2**, `review_rounds` set | 13, nothing on disk | the review runs at launch step 2, in the same round |
-| **Launch 3**, the worktree cut or moved and setup run | 13, nothing for the round on disk | the review runs at launch step 2, which checks the worktree again (`review-runner.md`) |
-| **Launch 4**, the baseline running or written | 13, nothing for the round on disk | the review runs at launch step 2. Step 3 moves the worktree back to the pending head, and step 4 runs again only when `reviews/baseline.md` is missing or its `Base:` line names another sha |
+| **Launch 3**, the worktree cut or moved and, on a goal run, setup run | 13, nothing for the round on disk | the review runs at launch step 2, which checks the worktree again (`review-runner.md`) |
+| **Launch 4**, on a goal run, the baseline running or written | 13, nothing for the round on disk | the review runs at launch step 2. Step 3 moves the worktree back to the pending head, and step 4 runs again only when `reviews/baseline.md` is missing or its `Base:` line names another sha |
 | **Launch 5**, the instructions written, before the redirected command starts | 12, instructions and no JSON | the attempt is retired, then the review runs at launch step 2 |
 | **Launch 6**, the process launched and dead | 11, `-result.json` present (empty or partial; the shell's `>` redirect creates it before `claude` runs), no `-result.exit` | `review-runner.md`'s four checks run over that file; check 1 fails for the missing exit status, and the attempt is retired |
 | **Launch 6**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |

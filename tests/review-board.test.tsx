@@ -373,6 +373,30 @@ test('R7: a closed pane stops the reload', async ($, on) => {
   expect(w.seen.reads - reads).toBeLessThanOrEqual(2)
 })
 
+test('R7: an armed session whose pane never draws sets the status line once for each board change', async ($, on) => {
+  const w = world(on, () => board(ROWS), undefined, 's1')
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await w.clock.advance(60_000)
+  const calls = w.seen.status.length
+  await w.clock.advance(30_000)
+  expect(w.seen.status.length).toBe(calls)
+})
+
+test('R7: a skill-armed session the board then names keeps the board since, and a same-second greater id disarms it', async ($, on) => {
+  const SAME = '2026-01-01T00:00:00Z'
+  let file = board(ROWS, { session_id: 's0', since: SAME })
+  const w = world(on, () => file)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.skill.prompt({ skill: 'review-queue', text: 'go' })
+  await w.clock.advance(6000)
+  file = board(ROWS, { session_id: 'me', since: SAME })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBe(STATUS)
+  file = board(ROWS, { session_id: 's2', since: SAME })
+  await w.clock.advance(6000)
+  expect(w.seen.status.at(-1)).toBeUndefined()
+})
+
 test('R7: an unarmed session with no pane checks the owner no more than once each 60 s', async ($, on) => {
   const w = world(on, () => board(ROWS))
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })

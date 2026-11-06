@@ -245,7 +245,8 @@ the package yourself and read every output you get. `band-rubric.md` says what
 a `BLOCKED` cause earns.
 
 **A code package takes two runs and one reading.** Run the acceptance
-criterion, then the repo's test suite. Then read the diff itself, against the
+criterion, then the repo's test suite. A review run runs neither: see "A
+review run runs no test" below. Then read the diff itself, against the
 brief and against the interface contract. A green suite says the tests that
 exist pass, and nothing more: a defect you can name, or a `produces` signature
 the diff does not honour, is a fix round with every test green.
@@ -266,16 +267,25 @@ or no. Then run the suite, because a prose package can still break a test.
 "Scout" asks what runs the suite, and that answer is the command. A repo whose
 scout reported none has no suite to run, and **the no-suite outcome** is what
 that repo gets, here and at "Integrate": write "no suite" and the scout's
-answer in the package's `decisions.md` entry, and the check passes on the
-criterion, the checklists and the reading alone. This rule names that outcome
+answer in the package's `decisions.md` entry. On a review run, write "no suite:
+review run" and no scout answer. The check passes on the criterion,
+the checklists and the reading alone. This rule names that outcome
 for every file that needs it. Never invent a command, and never read a missing
 suite as a pass.
+
+**A review run runs no test.** On a review run (`run.kind: review`) the
+worktree has no installed dependencies. Run no test, the acceptance criterion
+included, at the head or at the red commit, and run no suite. The check passes
+on the diff reading, the pattern grep of "A fix or patch package is checked
+against the pattern", and the criterion read as text. The PR's CI runs the test
+on the push. Every rule below that runs a criterion or a suite holds for a goal
+run only.
 
 **What sends a package back.** This list is the whole trigger, at every band
 and on every path. Every other file points here rather than keep a second copy:
 
 - a dirty tree at the check above;
-- a failed acceptance criterion, or a failed suite run;
+- a failed acceptance criterion, or a failed suite run (a goal run only);
 - an item answered no in either checklist of a prose package;
 - a file in the diff the file set never named;
 - a missing verification-tool output, when the brief named a tool
@@ -283,7 +293,7 @@ and on every path. Every other file points here rather than keep a second copy:
 - a defect you can name in the diff, or an interface contract the diff breaks,
   whatever the tests say;
 - a criterion that passes at the red commit, when the package adds the test
-  its criterion names;
+  its criterion names (a goal run only);
 - a commit outside the IC's own branch or worktree, which only the full path
   can produce (`full-path.md`'s "Verify before you believe" runs that check).
 
@@ -293,10 +303,10 @@ for the pattern the finding named, and read every hit. A hit the package left
 unfixed is a defect you can name. Write the pattern and the count of hits in
 the package's `decisions.md` entry.
 
-**Run the criterion at the red commit too**, when the package adds the test its
-criterion names (design §7). `ic-contract.md`'s "Write the failing test first"
-owns the procedure and the clean-tree precondition. Run it in `<repo>`, against
-the sha the IC's report gives. Switch the branch back before anything else: an
+**Run the criterion at the red commit too**, on a goal run, when the package
+adds the test its criterion names (design §7). `ic-contract.md`'s "Write the
+failing test first" owns the procedure and the clean-tree precondition. Run it
+in `<repo>`, against the sha the IC's report gives. Switch the branch back before anything else: an
 IC may not switch branches, the simple path's checkout may be the principal's
 own, and `checkout_restored` at "End the run" records what it was left on.
 
@@ -334,7 +344,8 @@ count true. Five is the cap: at it, fix the package yourself or park it as
 
 Nothing merges — the work is already on the deliverable branch. Run the suite
 on the branch head and read the output, or take the no-suite outcome "Verify
-before you believe" defines. Then read the target repo's own
+before you believe" defines. A review run takes that outcome and runs no suite
+("A review run runs no test"). Then read the target repo's own
 instructions for which shared files must change together, edit them, and keep
 the values they require equal. Commit them, and mark the package `integrated`.
 

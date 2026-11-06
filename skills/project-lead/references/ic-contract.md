@@ -92,6 +92,11 @@ This holds for a new test only. A criterion that names a test which already
 exists and already fails needs no red commit, and neither does an acceptance
 checklist for an instruction package.
 
+**A review run is the exception** (`run.kind: review`). The worktree has no
+installed dependencies. Write the failing test and the fix, and run neither.
+Install nothing. The PR's CI runs the test on the push. The project lead's own
+checks on a review run are in `simple-path.md`'s "Verify before you believe".
+
 **A finding that a test is weak takes a mutation check.** Break the behaviour
 the test covers, and run the test. Check that its output
 confirms the test fails. Then restore the behaviour and run the test again.
@@ -126,7 +131,8 @@ after it.
 
 The project lead gives you an acceptance criterion at spawn time. Run it. It must
 pass — that is your only definition of done. Do not report `DONE`, and do
-not stop, before it passes.
+not stop, before it passes. On a review run, read the criterion
+against your diff in place of a run.
 
 When your brief names a verification tool — a fidelity harness, an audit
 script, a comparison — run it on your finished work and put its output in
@@ -189,7 +195,7 @@ actual state, not the one that sounds best.
 
 | Status | Meaning | What the project lead does |
 |---|---|---|
-| `DONE` | You finished the package with no reservations. | Verifies your work against git, then runs your acceptance criterion and the suite itself. |
+| `DONE` | You finished the package with no reservations. | Verifies your work against git, then runs your acceptance criterion and the suite itself. On a review run it runs neither (`simple-path.md`'s "Verify before you believe"). |
 | `DONE_WITH_CONCERNS` | You finished, but you have doubts worth flagging. | Reads your concerns first. Resolves any correctness or scope concern before it verifies. Notes a plain observation and verifies. |
 | `NEEDS_CONTEXT` | You are missing information and the work is not complete. | Supplies the missing information and re-dispatches you. This differs from the Questions protocol above, which is for a question you can work around — use `NEEDS_CONTEXT` only when you cannot continue at all. |
 | `BLOCKED` | You cannot complete the package as assigned. Name the cause in your report: `capability` — the work is beyond you — or `environment` — a denied permission, a missing tool, an unreachable path. | For a capability block: promotes the package one band up (`band-rubric.md`), or stops the run at the fix-round breaker. For an environment block: fixes the environment or performs the blocked action itself. It never promotes over one — a bigger model hits the same wall. |

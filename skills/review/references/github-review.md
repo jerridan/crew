@@ -80,6 +80,14 @@ label differs from the reviewer's, the ledger line holds both.
 The label alone decides the post. Only a `blocking` finding earns a fix
 round.
 
+**Drop a finding that is a tool's own output.** A lint, format or type-checker
+message, or a test run's result, is `don't post`, with the reason
+`CI reports it`. This holds for every source: the skeptical reviewer, a bot
+claim, a replacement runner, a PR comment, a human reviewer's claim and the
+queue's inline read. Every finding about behavior posts by its label, whatever
+word it uses: a type mismatch that crashes, a missing test, a wrong
+assertion.
+
 | Label | review path | assist path |
 |---|---|---|
 | blocking | posts | fixed in a fix round, then named in the body as the fix's note; at the `Rounds:` cap, one still open posts |

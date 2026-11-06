@@ -218,10 +218,8 @@ Then read these six things, and write each one in the row's `last.text`:
 set the row's `policy` to `review`, whatever the ask or the watch says.
 When the ask was `assist`, tell the principal it was changed. Crew cannot
 push to a fork's branch, so a fork PR gets no fix push, no merge agent and
-no enqueue: each is `assist`-only. **No step of the queue runs a fork
-head's code**, and `/crew:review`'s "A fork's code never runs unasked" owns
-that rule for a child. Add "Run the suite on this fork." to the child's
-launch words only when the principal said it for that PR.
+no enqueue: each is `assist`-only. A child runs no local check on a fork's
+head, as on any head. `/crew:review`'s "Review" owns that rule.
 
 **A diff of fewer than 150 lines changed, with green CI and no prior
 findings, gets an inline read** by this session. Every other ask gets a
@@ -384,8 +382,8 @@ Before every enqueue:
    head. In either worktree it works on the local branch `crew/pr-<n>`,
    never on `<headRefName>`. This session pushes by the refspec:
    `crew:delivered-window`'s "A change request" steps 3 and 5 give both
-   commands. The merge agent resolves the conflict, runs the suite (or, under
-   `Gates: ci`, takes `/crew:review`'s no-suite outcome), and commits. The
+   commands. The merge agent resolves the conflict, runs no suite, takes
+   `/crew:review`'s no-suite outcome, and commits. The
    new head goes back to "Triage". Under `review`, push nothing: set
    `next: author`, and tell the principal.
 3. **Run each command in the `Pre-enqueue checks` section** of the repo's

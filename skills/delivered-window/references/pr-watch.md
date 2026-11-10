@@ -204,12 +204,15 @@ it reads the deploy signal that `run.deploy` names:
   the script reads the repo's workflows with `gh api --paginate
   repos/<owner>/<repo>/actions/workflows`. A workflow counts when its state is
   `active` and its name or path holds `deploy` or `release`, in any case. With
-  no such workflow, the script reads the files the merged PR changed with `gh
-  api --paginate repos/<owner>/<repo>/pulls/<n>/files --jq
-  '.[].filename'`. When none is under `.github/workflows/`, it
-  prints `no-deploy` on the first poll after the merge. When the PR changed one,
-  because it can add the first deploy workflow, the script keeps the wait that
-  follows. With a counting workflow, it waits until 10 minutes after the merge,
+  no such workflow, the script reads the files the merged PR added or renamed
+  with `gh api --paginate repos/<owner>/<repo>/pulls/<n>/files --jq '.[] |
+  select(.status == "added" or .status == "renamed") | .filename'`. When none
+  is under `.github/workflows/`, it prints `no-deploy` once 2 minutes have
+  passed since the merge, and prints nothing before, so a deploy run or a
+  deployment that shows in those 2 minutes wins. An edit of an existing
+  workflow file does not count. When the PR added or renamed one, because it
+  can add the first deploy workflow, the script keeps the wait that follows.
+  With a counting workflow, it waits until 10 minutes after the merge,
   because the run may not exist yet, and then prints `no-deploy`. A failed
   workflows read or a failed files read keeps that wait for that poll, and is
   read again on the next poll.
@@ -219,7 +222,7 @@ The script prints one line and exits. The kinds are:
 | Line | Meaning |
 |---|---|
 | `deployed <id> - <time> <environment or workflow> succeeded` | the newest deployment status or the newest run conclusion is `success` |
-| `no-deploy <n> - <mergedAt> <text>` | only with both `null`: the repo has no deployment and no active deploy workflow (the text says so), or it has a deploy workflow and no deploy run 10 minutes after the merge. The repo has no deploy, and the line is the ship word. A failed read prints nothing |
+| `no-deploy <n> - <mergedAt> <text>` | only with both `null`: the repo has no deployment, no deploy run, no active deploy workflow and no workflow file that the merged PR added or renamed, and 2 minutes have passed since the merge (the text says so), or it has a deploy workflow, or such a file, and no deploy run 10 minutes after the merge. The repo has no deploy, and the line is the ship word. A failed read prints nothing |
 | `deploy-failed <id> - <time> <environment or workflow> <state>` | the newest deployment state is `failure` or `error`, or the newest run conclusion is `failure`, `timed_out` or `startup_failure`. A deployment that still runs holds this line back |
 | `deploy-timeout <n> - <time> no deploy seen <timeout> minutes after the watch started` | no result by `timeout_minutes` after `run.deploy.since`, or after `mergedAt` when the record has no `since`. When a deploy was seen but is still pending, the text says `no deploy finished` |
 | `closed <n> - <time> the PR closed` | the PR closed with no merge |

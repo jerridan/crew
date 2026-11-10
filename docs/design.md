@@ -9222,4 +9222,24 @@ Deliberately different:
      reads the files with `gh api --paginate`, which pages. The README line on
      closing at the merge now states the workflow-file exception.
 
+     Patch round 3 (the principal's own code review). A workflow with a
+     `run-name` that holds `deploy` has a run that the name test misses, and
+     the API gives no `run-name`. A `CD` workflow or an integration's first
+     deployment can also show seconds after the merge. So the fast `no-deploy`
+     now prints only once 2 minutes have passed since `mergedAt`, and prints
+     nothing before (the principal's choice, 2026-11-10). A deploy run or a
+     deployment that shows in those 2 minutes wins. The one-shot check of "The
+     deploy watch" step 3 runs at the merge, so it prints nothing for a repo
+     with no deploy, and the window arms the watch. The watch prints
+     `no-deploy` at the 2-minute mark, and that line is the ship word. A repo
+     with `Deploy: none` still closes at the merge. A repo with a deploy
+     workflow keeps the 10-minute wait. The script now counts only the files
+     the merged PR added or renamed (`status` `added` or `renamed`) as
+     workflow files: an edit of `pr-review.yml` no longer keeps the wait. The
+     first sentence of this finding, "ships at the merge", reads as "ships 2
+     minutes after the merge" for the default case. The tests now stub a
+     `jq` failure as a `gh` failure and assert the exact output of every
+     check; the 1-minute fast case prints nothing, and the 3-minute case
+     prints `no-deploy`.
+
      No crew run has used this change.

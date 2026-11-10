@@ -9157,7 +9157,8 @@ Deliberately different:
      because `pr-watch.sh` owns what each line means. The new checks fail
      before the fix.
 
-137. **A repo with no deploy workflow ships at the merge — 2026-11-06.** With
+137. **A repo with no deploy workflow ships 2 minutes after the
+     merge — 2026-11-06.** With
      no `Deploy` section and no GitHub deployment, the deploy watch waited 10
      minutes after the merge before it printed `no-deploy`. The issue-141 run
      waited that long on a repo whose only workflow is `pr-review.yml`. No
@@ -9177,11 +9178,9 @@ Deliberately different:
      the ship word. Only the workflows read tests the name or the path: there
      a match only keeps the wait.
 
-     `crew:delivered-window`'s "The deploy watch" runs `deploy-once` once
-     before it arms the `Monitor`. A `no-deploy` line there makes the `merged`
-     item the ship word, as `Deploy: none` does, and no monitor runs. A kill
-     before the ship write leaves `ended` `null`, so a resume arms the watch,
-     and its first poll prints `no-deploy`.
+     `Deploy: none` and `manual` are unchanged. With a default `Deploy`, the
+     window arms the `Monitor` at the merge, and the watch's `no-deploy` line
+     is the ship word.
 
      `skills/delivered-window/scripts/test-pr-watch-deploy.sh` ran the script
      against a seeded record with a stub `gh` first in `PATH`. It checks a
@@ -9205,7 +9204,7 @@ Deliberately different:
      Vercel, has GitHub deployments from earlier merges, so only its first
      deploy ever is at risk, and `Deploy: environment: <name>` covers it. A
      workflow named `CD` at `cd.yml` is missed, as it was before this change.
-     The resume note in "The deploy watch" step 3 was wrong when the workflows
+     The resume note in "The deploy watch" was wrong when the workflows
      read fails: the first poll then prints `no-deploy` after the wait. The
      tests now check the text of each `no-deploy` line, a run of
      `release-drafter.yml` named `CI`, a PR that changes a workflow file, a
@@ -9228,16 +9227,15 @@ Deliberately different:
      deployment can also show seconds after the merge. So the fast `no-deploy`
      now prints only once 2 minutes have passed since `mergedAt`, and prints
      nothing before (the principal's choice, 2026-11-10). A deploy run or a
-     deployment that shows in those 2 minutes wins. The one-shot check of "The
-     deploy watch" step 3 runs at the merge, so it prints nothing for a repo
-     with no deploy, and the window arms the watch. The watch prints
-     `no-deploy` at the 2-minute mark, and that line is the ship word. A repo
+     deployment that shows in those 2 minutes wins. The window no longer runs a
+     one-shot check before it arms the watch, because the grace made it a
+     no-op at the merge. The watch prints `no-deploy` at the 2-minute mark,
+     and that line is the ship word. A repo
      with `Deploy: none` still closes at the merge. A repo with a deploy
      workflow keeps the 10-minute wait. The script now counts only the files
      the merged PR added or renamed (`status` `added` or `renamed`) as
      workflow files: an edit of `pr-review.yml` no longer keeps the wait. The
-     first sentence of this finding, "ships at the merge", reads as "ships 2
-     minutes after the merge" for the default case. The tests now stub a
+     tests now stub a
      `jq` failure as a `gh` failure and assert the exact output of every
      check; the 1-minute fast case prints nothing, and the 3-minute case
      prints `no-deploy`.

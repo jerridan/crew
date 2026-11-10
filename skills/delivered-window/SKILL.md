@@ -115,23 +115,8 @@ on that item. In order:
    since, ended}`. `environment` and `workflow` are `null` when unused, and
    both are `null` with no `Deploy` section. `source` is the winning source's
    name, or `default`. `since` is the time now, and `ended` is `null`.
-3. Run the check `pr-watch.md`'s "The one-shot check" names, once. At the
-   merge it prints nothing for a repo with no deploy: the fast `no-deploy`
-   waits until 2 minutes after the merge. So it prints `no-deploy` only when
-   the merge is 2 minutes old or more, such as on a resume. When it prints
-   `no-deploy`, the repo has no deploy by the default rule in "Standing
-   instructions". The `merged` item is then the ship word, as under `Deploy:
-   none`: arm no monitor, write no `run.deploy.ended`, and go to "The word
-   that the work shipped". A kill before the ship write leaves `ended` `null`,
-   so a resume arms the watch. Its first poll prints `no-deploy` when the
-   workflows read and the files read succeed and 2 minutes have passed since
-   the merge. After a failed read, it prints `no-deploy` on the first poll
-   where both succeed, or after the 10-minute wait. With any other output, or
-   none, go on to step 4: the watch prints `no-deploy` at the 2-minute mark,
-   and that line is a ship word. Do not act on the check's own line: the watch
-   prints it again.
-4. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch".
-5. Report the merge to the principal in one sentence that says the deploy
+3. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch".
+4. Report the merge to the principal in one sentence that says the deploy
    watch runs. Never say the work shipped.
 
 With `none`, the `merged` item is the ship word, and you write no
@@ -142,9 +127,9 @@ The watch prints one line and ends: `deployed`, `no-deploy`, `deploy-failed`,
 `deploy-timeout` or `closed`. "The word that the work shipped" says what each
 one does. After you report a `deploy-failed` or `deploy-timeout` line, write
 `run.deploy.ended` as that kind. When the principal asks for the watch again,
-write `since` as the time now and `ended` as `null`, then arm it by step 4.
+write `since` as the time now and `ended` as `null`, then arm it by step 3.
 The watch touches no `run.watch` cursor. The expiry notice re-arms it by
-step 4, while `ended` is `null`.
+step 3, while `ended` is `null`.
 
 ### The fallback
 
@@ -564,8 +549,6 @@ It ends this window. It comes from the principal, on either channel, or from
 the deploy. Decide it on no other evidence. These are the deploy's words:
 
 - a `deployed` or `no-deploy` item of the deploy watch;
-- a `no-deploy` line of the check in "The deploy watch" step 3, with the
-  `merged` item it follows;
 - a `merged` item when the winning `Deploy` is `none`.
 
 In a goal run, `Deploy: manual` makes the word the principal's. `Done` changes

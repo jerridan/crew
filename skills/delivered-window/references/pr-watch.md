@@ -155,15 +155,6 @@ The script with no mode polls every 60 seconds. It stops after a `merged` or
 bash <watch-script> <record-dir>
 ```
 
-## The one-shot check
-
-`SKILL.md`'s "The deploy watch" step 3 says when this runs and what its line
-means.
-
-```bash
-bash <watch-script> <record-dir> deploy-once
-```
-
 ## Arm the deploy watch
 
 `SKILL.md`'s "The deploy watch" says when this runs. The script reads

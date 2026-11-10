@@ -127,8 +127,9 @@ path: launch check 1 probes one worktree base for every worktree of a run
 exercised it.
 
 T83 is built: after a merge, the project lead arms a deploy watch, and a
-successful deploy of the merge commit is the ship word. A repo with no deploy
-ships at the merge. The watch ran only against a seeded record, and no crew
+successful deploy of the merge commit is the ship word. A repo with
+`Deploy: none` ships at the merge, and a repo with no deploy by the default
+rule ships 2 minutes after it (§15.137). The watch ran only against a seeded record, and no crew
 run has used it (§15.127).
 
 Two items in one repo take a checkout each: the project lead cuts its own when

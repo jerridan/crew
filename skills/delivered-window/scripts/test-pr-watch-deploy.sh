@@ -30,7 +30,7 @@ for a in "$@"; do
 done
 emit() {
   [ -f "$1" ] || exit 1
-  if [ -n "$expr" ]; then jq -r "$expr" "$1"; else cat "$1"; fi
+  if [ -n "$expr" ]; then jq -r "$expr" "$1" || exit 1; else cat "$1"; fi
   exit 0
 }
 case "$args" in
@@ -70,8 +70,9 @@ chmod +x "$T/bin/sleep"
 export STUB_DIR="$T/stub"
 export PATH="$T/bin:$PATH"
 
-# case <name> <minutes since merge> <deployments json> <workflows json> <runs json>
-# Add `fail-workflows` to $STUB_DIR by setting FAIL_WF=1 before the call.
+# setup <minutes since merge> <deployments json> <workflows json> <runs json>
+# Set FILES to the PR files json, FAIL_WF=1 for a workflows read that always
+# fails, FAIL_WF_ONCE=1 or FAIL_FILES_ONCE=1 for a read that fails once.
 setup() {
   rm -rf "$STUB_DIR"; mkdir -p "$STUB_DIR"
   merged=$(jq -nr --argjson m "$1" '(now - $m*60) | strftime("%Y-%m-%dT%H:%M:%SZ")')
@@ -87,9 +88,9 @@ setup() {
   [ -z "${FAIL_FILES_ONCE:-}" ] || : > "$STUB_DIR/fail-files-once"
 }
 
-# check <label> <want> : want is `none`, `no-deploy-wf` (the no deploy workflow
-# text), `no-deploy-wait` (the 10-minute text), `deployed`, `not-deployed` or
-# `not-no-deploy`.
+# check <label> <want> : want is `none` (no output), `no-deploy-wf` (the no
+# deploy workflow text) or `no-deploy-wait` (the 10-minute text), each exactly
+# one line, or `deployed`.
 check() {
   total=$((total + 1))
   out=$(bash "$PW" "$T/rec" deploy-once 2>&1)
@@ -100,8 +101,6 @@ check() {
     no-deploy-wf) [ "$lines" = 1 ] && case "$out" in "no-deploy 7 - "*"and no deploy workflow") true ;; *) false ;; esac && ok=1 ;;
     no-deploy-wait) [ "$lines" = 1 ] && case "$out" in "no-deploy 7 - "*"or deploy runs") true ;; *) false ;; esac && ok=1 ;;
     deployed) case "$out" in "deployed "*) ok=1 ;; esac ;;
-    not-deployed) case "$out" in *deployed*) ;; *) ok=1 ;; esac ;;
-    not-no-deploy) case "$out" in *no-deploy*) ;; *) ok=1 ;; esac ;;
   esac
   if [ -n "$ok" ]; then echo "ok   $1"; else
     fails=$((fails + 1)); echo "FAIL $1 (want $2)"; printf '     got: %s\n' "$out"
@@ -118,34 +117,43 @@ OTHERDEP='[{"id":4,"environment":"staging","production_environment":false,"sha":
 PRODDEP='[{"id":5,"environment":"production","production_environment":true,"sha":"'$OID'","created_at":"2026-01-01T00:00:00Z"}]'
 DEPRUN='{"workflow_runs":[{"id":9,"name":"CI","path":".github/workflows/deploy.yml","conclusion":"success","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:01:00Z"}]}'
 
-setup 1 "$NODEP" "$WF_PR" "$NORUNS";      check 'no deploy workflow, merged 1 minute ago' no-deploy-wf
+setup 1 "$NODEP" "$WF_PR" "$NORUNS";      check 'no deploy workflow, merged 1 minute ago' none
+setup 3 "$NODEP" "$WF_PR" "$NORUNS";      check 'no deploy workflow, merged 3 minutes ago' no-deploy-wf
 setup 1 "$NODEP" "$WF_DEPLOY" "$NORUNS";  check 'workflow Deploy, no run, 1 minute' none
 setup 11 "$NODEP" "$WF_DEPLOY" "$NORUNS"; check 'workflow Deploy, no run, 11 minutes' no-deploy-wait
 setup 1 "$NODEP" "$WF_RELEASE" "$NORUNS"; check 'release.yml named CI, no run, 1 minute' none
 setup 11 "$NODEP" "$WF_RELEASE" "$NORUNS"; check 'release.yml named CI, no run, 11 minutes' no-deploy-wait
-FAIL_WF=1 setup 1 "$NODEP" "$WF_PR" "$NORUNS"; check 'workflows read fails, 1 minute' none
-setup 1 "$OTHERDEP" "$WF_PR" "$NORUNS";   check 'a deployment exists, no deploy workflow' not-no-deploy
-setup 1 "$OTHERDEP" "$WF_DEPLOY" "$NORUNS"; check 'a deployment exists, a deploy workflow' not-no-deploy
+FAIL_WF=1 setup 3 "$NODEP" "$WF_PR" "$NORUNS"; check 'workflows read fails, 3 minutes' none
+setup 1 "$OTHERDEP" "$WF_PR" "$NORUNS";   check 'a deployment exists, no deploy workflow' none
+setup 1 "$OTHERDEP" "$WF_DEPLOY" "$NORUNS"; check 'a deployment exists, a deploy workflow' none
 setup 1 "$PRODDEP" "$WF_PR" "$NORUNS";    check 'production deployment with success' deployed
-setup 1 "$NODEP" "$WF_OFF" "$NORUNS";     check 'only a disabled Deploy workflow' no-deploy-wf
-setup 1 "$NODEP" "$WF_RELEASE" "$DEPRUN"; check 'run of deploy.yml named CI with success' not-deployed
+setup 3 "$NODEP" "$WF_OFF" "$NORUNS";     check 'only a disabled Deploy workflow' no-deploy-wf
+setup 1 "$NODEP" "$WF_RELEASE" "$DEPRUN"; check 'run of deploy.yml named CI with success' none
 RDRUN='{"workflow_runs":[{"id":9,"name":"CI","path":".github/workflows/release-drafter.yml","conclusion":"success","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:01:00Z"}]}'
-setup 1 "$NODEP" "$WF_RELEASE" "$RDRUN"; check 'release-drafter.yml run named CI with success' not-deployed
+setup 1 "$NODEP" "$WF_RELEASE" "$RDRUN"; check 'release-drafter.yml run named CI with success' none
 NAMEDRUN='{"workflow_runs":[{"id":9,"name":"Deploy","path":".github/workflows/ci.yml","conclusion":"success","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:01:00Z"}]}'
-setup 1 "$NODEP" "$WF_PR" "$NAMEDRUN";    check 'a run named Deploy with success' deployed
-# The merged PR changed a workflow file: keep the wait.
-FILES='[{"filename":"README.md"},{"filename":".github/workflows/x.yml"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
-check 'PR changed a workflow file, 1 minute' none
-FILES='[{"filename":"README.md"},{"filename":".github/workflows/x.yml"}]' setup 11 "$NODEP" "$WF_PR" "$NORUNS"
-check 'PR changed a workflow file, 11 minutes' no-deploy-wait
-FILES='[{"filename":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
-check 'PR changed no workflow file, 1 minute' no-deploy-wf
-FILES=null setup 1 "$NODEP" "$WF_PR" "$NORUNS"
-check 'files read fails, 1 minute' none
+setup 1 "$NODEP" "$WF_PR" "$NAMEDRUN";    check 'a run named Deploy with success, 1 minute' deployed
+# The merged PR added or renamed a workflow file: keep the wait.
+ADD='[{"filename":"README.md","status":"modified"},{"filename":".github/workflows/x.yml","status":"added"}]'
+FILES=$ADD setup 3 "$NODEP" "$WF_PR" "$NORUNS"
+check 'PR added a workflow file, 3 minutes' none
+FILES=$ADD setup 11 "$NODEP" "$WF_PR" "$NORUNS"
+check 'PR added a workflow file, 11 minutes' no-deploy-wait
+FILES='[{"filename":".github/workflows/y.yml","status":"renamed"}]' setup 3 "$NODEP" "$WF_PR" "$NORUNS"
+check 'PR renamed a workflow file, 3 minutes' none
+# An edit of an existing workflow file does not keep the wait.
+FILES='[{"filename":".github/workflows/pr-review.yml","status":"modified"}]' setup 3 "$NODEP" "$WF_PR" "$NORUNS"
+check 'PR edited pr-review.yml, 3 minutes' no-deploy-wf
+FILES='[{"filename":"README.md","status":"modified"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+check 'PR changed no workflow file, 1 minute' none
+FILES='[{"filename":"README.md","status":"modified"}]' setup 3 "$NODEP" "$WF_PR" "$NORUNS"
+check 'PR changed no workflow file, 3 minutes' no-deploy-wf
+FILES=null setup 3 "$NODEP" "$WF_PR" "$NORUNS"
+check 'files read fails, 3 minutes' none
 
 # One deploy process: the workflows read fails once, then succeeds.
 total=$((total + 1))
-FAIL_WF_ONCE=1 setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+FAIL_WF_ONCE=1 setup 3 "$NODEP" "$WF_PR" "$NORUNS"
 out=$(bash "$PW" "$T/rec" deploy 2>&1)
 sleeps=$(cat "$STUB_DIR/sleeps" 2>/dev/null || echo 0)
 case "$out" in
@@ -160,7 +168,7 @@ esac
 
 # One deploy process: the files read fails once, then shows only README.md.
 total=$((total + 1))
-FAIL_FILES_ONCE=1 FILES='[{"filename":"README.md"}]' setup 1 "$NODEP" "$WF_PR" "$NORUNS"
+FAIL_FILES_ONCE=1 FILES='[{"filename":"README.md","status":"modified"}]' setup 3 "$NODEP" "$WF_PR" "$NORUNS"
 out=$(bash "$PW" "$T/rec" deploy 2>&1)
 sleeps=$(cat "$STUB_DIR/sleeps" 2>/dev/null || echo 0)
 case "$out" in

@@ -16,8 +16,10 @@
 # `deploy-once`, it polls one time and prints a line only when one is due.
 # With no `environment` and no `workflow`, a repo with no GitHub deployment
 # and no active workflow whose name or path holds `deploy` or `release` prints
-# `no-deploy` on the first poll after the merge, unless the merged PR changed a
-# file under `.github/workflows/`. Then the 10-minute wait holds.
+# `no-deploy` once 2 minutes have passed since the merge, and prints nothing
+# before. A deploy run or deployment that shows in those 2 minutes wins. The
+# merged PR can add or rename a file under `.github/workflows/`. Then the
+# 10-minute wait holds. An edit of an existing workflow file does not.
 # The deploy modes read `run.deploy` from `state.json`, need no `run.watch`,
 # and print nothing when `run.deploy.ended` is set.
 #
@@ -123,17 +125,21 @@ deploy_poll() {
           fi
           wf_now=$wf_changed
           if [ "$wf_has" = 0 ] && [ -z "$wf_changed" ]; then
-            # A merged PR that changed a workflow file can add the first deploy
-            # workflow. Only a good read is kept. A failed read counts as
-            # changed for this poll only: the safe side.
+            # A merged PR that adds or renames a workflow file can add the
+            # first deploy workflow. Only a good read is kept. A failed read
+            # counts as changed for this poll only: the safe side.
             wf_now=1
-            if files=$(gh api --paginate "repos/$R/pulls/$N/files" \
-                --jq '.[].filename' 2>/dev/null) && [ -n "$files" ]; then
+            if files=$(gh api --paginate "repos/$R/pulls/$N/files" --jq '.[]
+                | select(.status == "added" or .status == "renamed")
+                | .filename' 2>/dev/null); then
               wf_changed=$(printf '%s\n' "$files" | grep -c '^\.github/workflows/' || true)
               wf_now=$wf_changed
             fi
           fi
           if [ "$wf_has" = 0 ] && [ "$wf_now" = 0 ]; then
+            # The 2-minute grace: a deploy run can need seconds to appear.
+            jq -n --arg m "$merged_at" '((now - ($m | fromdateiso8601)) / 60) >= 2' 2>/dev/null |
+              grep -q true || return 0
             echo "no-deploy $N - $merged_at the repo has no GitHub deployments and no deploy workflow"
             finished=1
             return 0

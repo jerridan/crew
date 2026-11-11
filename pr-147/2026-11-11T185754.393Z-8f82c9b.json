@@ -1,0 +1,243 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 147,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Remove the review-queue skill and the review-board mod",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/147"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "7f5a6098dbf228c913d084582e0d8022853dbd11",
+    "head": "8f82c9bfde090060e4187586b36c0d3065b25239",
+    "started_at": "2026-11-11T18:57:54.393Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Remove the review-queue skill and the review-board mod\n\n## Summary\n\nThis PR removes the review queue and the review board from crew. The principal now uses a team-built skill for this work, so the queue session, the board pane, the Slack watcher and the \"child mode\" of a single review are no longer necessary. The project lead, the single PR review and the delivered window stay as they are.\n\n**Ticket:** N/A\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.138 records the removal. It marks §15.128, §15.129, §15.132, §15.135 and §15.136 as removed. For §15.130 and §15.133, it removes only the queue parts. `skills/project-lead/SKILL.md` \"Standing instructions\" owns the config sections. `record-format.md` owns the charter lines.\n\n### What changed, by file\n\n- `skills/review-queue/` (the skill, its four references and two scripts), `hooks/review-board.tsx`, `tests/review-board.test.tsx`, `types/index.d.ts`: deleted.\n- `hooks/hooks.json`: no `modules` entry. `.claude-plugin/plugin.json`: no `types` entry. Both manifests are at 0.1.105.\n- `skills/review/SKILL.md`: no child mode, no `Queue:` launch words, no `ready-file.md` row.\n- `skills/review/references/github-review.md`, `skills/project-lead/references/review-runner.md`, `record-format.md`: the queue's inline read, the child-mode clean-up rule and the `Queue:` charter line are removed.\n- `skills/project-lead/SKILL.md`: the `Pre-enqueue checks` and `Checkouts` config sections are removed (only the queue read them). The section count goes from thirteen to eleven.\n- `README.md`, `CLAUDE.md`: the queue and the board are removed from the commands, requirements, config, glossary, layout, build state and authority lists.\n- `docs/design.md`, `docs/tickets.md`: §15.138 is added, and the old sections and T84 to T87 have removal notes. The history is not changed.\n\n### Constraints that applied\n\n- A change to what the plugin loads bumps `version` in both manifests to the same value: 0.1.105.\n- `docs/implementation-plan.md` and `docs/stage-2-run/` are not edited.\n- The text about GitHub's merge queue (`queued`, `dequeued`, `dequeue-diagnosis.sh`) stays. It is not the review queue.\n\n### How this was verified\n\nA grep for `review-queue|review-board|queue session|asks\\.json|queue-watch|board\\.json|ready-file|child mode|/review-board` finds hits only in the design §15 history, in the T84 to T87 ticket bodies, and in the one CLAUDE.md sentence that records the removal. I read the diffs of the skill and reference files.\n\n### Known gaps\n\n`skills/project-lead/scripts/crew-stats.py` still skips a `<record-root>/queue/` directory when it walks the records. Old queue records can still be on disk, so the skip stays.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_011vtCEg5hAVSjy1FSvmQx3u\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 5
+      },
+      {
+        "path": "README.md",
+        "hunks": 7
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 8
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 4
+      },
+      {
+        "path": "hooks/hooks.json",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/review-board.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/review-runner.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/board.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/ownership.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/ready-file.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/sources.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/scripts/queue-watch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/scripts/test-queue-watch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 1
+      },
+      {
+        "path": "tests/review-board.test.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "types/index.d.ts",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5863954446,
+      "review_url": "https://github.com/jerridan/crew/pull/147#pullrequestreview-5863954446",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 130739120118
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 42,
+      "gather": 35,
+      "find_verify": 2,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

@@ -930,9 +930,9 @@ def report(records: list[dict], skips: list[str]) -> None:
 # `state.json` anywhere inside one would otherwise read as a run.
 NOT_A_RECORD = ("checkout", "worktrees", "review-worktrees", ".git")
 
-# The review queue keeps its own files in `<record-root>/queue/`: a small
-# record per queued PR and the full clones of the repos it reads. None is a
-# goal run. Only the top-level `queue/` is skipped, so a goal that has its own
+# The review queue, removed in design §15.138, kept its files in
+# `<record-root>/queue/`: a small record per queued PR and the full clones of
+# the repos it read. Old files can still be there, and none is a goal run. Only the top-level `queue/` is skipped, so a goal that has its own
 # `queue` directory deeper down is still read.
 QUEUE_DIR = "queue"
 

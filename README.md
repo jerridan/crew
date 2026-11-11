@@ -264,16 +264,7 @@ sessions never post. The queue session posts every review, approval and Slack
 reaction, and it asks you once for a batch of reviews that have findings. A
 review with no findings posts with no wait.
 
-The review board shows the queue in a pane beside the chat, and a count in
-the status line. It opens by itself in a queue session.
-Open it in any session with:
-
-```
-/review-board
-```
-
-An open pane updates while it is open, in any session. In a terminal under
-110 columns, the command prints the board as text.
+The plugin no longer loads the review board. The pane, the `/review-board` command and the status line do not exist in a session. The queue skill still works without them.
 
 ## What a run needs
 

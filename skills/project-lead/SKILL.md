@@ -159,9 +159,8 @@ chosen rather than fallen into.
 Two files tell every run what the principal wants it to know about a repo:
 `.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path
 whatever the record root is. Read both whole at "Take the goal", on every
-path and on a review run. A missing file holds nothing. **A review run, and
-the queue at triage, read the repo file from the PR's base branch**. Run `git
--C <checkout> fetch origin <baseRefName>` first, then `git -C <checkout> show
+path and on a review run. A missing file holds nothing. **A review run reads
+the repo file from the PR's base branch**. Run `git -C <checkout> fetch origin <baseRefName>` first, then `git -C <checkout> show
 origin/<baseRefName>:.claude/crew.md`, because the main working tree can hold
 any branch. A file missing there holds nothing. Then write
 `run set standing_instructions '{"repo": <path or null>, "machine": <path or
@@ -172,7 +171,7 @@ differs from the base branch's, or exists where the base branch has none, tell
 the principal once that the review reads the committed file. A resumed
 session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these thirteen:
+**Each file holds optional `##` sections.** You act on these eleven:
 
 | Section | What you do with it |
 |---|---|
@@ -186,8 +185,6 @@ session reads the files at those paths again before its first dispatch.
 | `Done` | `merged` or `rolled out`. `crew:delivered-window`'s "The word that the work shipped" reads it |
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
-| `Pre-enqueue checks` | shell commands, one per line, that the queue session runs before every enqueue. A non-zero exit stops the enqueue (`crew:review-queue`'s "Enqueue") |
-| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, the principal's checkout of each repo. Only `crew:review-queue` reads it. With no matching line, the queue stops and asks for one (`crew:review-queue`'s "Triage") |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
 
 **`Deploy` names the signal that the work is live.** Its lines are:

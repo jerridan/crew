@@ -8,15 +8,10 @@ Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
 two hooks, the three scripts under `skills/project-lead/scripts/`,
 `skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`,
-`skills/review/scripts/review-json.py`, and
-`skills/review-queue/scripts/queue-watch.sh`: they are code, run against a
-seeded record (design §15.38, §15.50, §15.123, §15.124, §15.136).
-`skills/review-queue/scripts/test-queue-watch.sh` tests the last one, and
+and `skills/review/scripts/review-json.py`: they are code, run against a
+seeded record (design §15.38, §15.50, §15.123, §15.124).
 `skills/delivered-window/scripts/test-pr-watch-deploy.sh` tests the default
-deploy signal of `pr-watch.sh`. The
-review-board mod,
-`hooks/review-board.tsx`, is TypeScript: `claude plugin test <repo>` runs its
-tests, and `claude plugin validate <repo>` checks its module (§15.128).
+deploy signal of `pr-watch.sh`.
 
 ## Layout
 
@@ -34,10 +29,7 @@ tests, and `claude plugin validate <repo>` checks its module (§15.128).
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
-| `skills/review-queue/SKILL.md`, `skills/review-queue/references/board.md`, `ownership.md`, `ready-file.md`, `sources.md` | the `/crew:review-queue` entry point: watches, triage, children, the gate, every post, approval and enqueue, the board; the board file's schema; who holds the board; a child's ready file; the polls of a Slack channel and of the review requests | its skill trigger; `/crew:review` in child mode reads `ready-file.md` |
-| `skills/review-queue/scripts/queue-watch.sh`, `skills/review-queue/scripts/test-queue-watch.sh` | the queue watch poll: reads the board, the PRs and the children, and prints one line per new event; its seeded test | the queue session's `Monitor` call, from the plugin directory; a person, for the test |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
-| `hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` | the review-board mod: a pane and a status line that read the board file, and, with a Slack token, the watcher that polls the queue's sources and writes `asks.json`; its `$.state` contract; its tests | the plugin loader, as the hooks module `hooks.json` names; `claude plugin test` |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
 | `docs/implementation-plan.md`, `docs/stage-2-run/`, `docs/pr-body.md` | frozen build record | a person |
@@ -84,7 +76,7 @@ a reply on the PR. One probe on the fixture repo ran its four checks
 (§15.104). The watch's later changes, a red check and the cron fallback with a
 PR are unexercised.
 
-`/crew:review` is built and ran once (§15.108). Its reviewer resume, queue
+`/crew:review` is built and ran once (§15.108). Its reviewer resume, merge-queue
 line and pane rule are unexercised (T77). T78 cut its pre-review steps to
 one scout and a charter template (§15.109). T82 reads the suite from the
 standing instructions (a review run reads none since §15.133), labels
@@ -94,27 +86,13 @@ or T82. The severity rubric on goal runs is built: the project lead labels
 every review finding by it, whatever its source, and a round with no
 blocking finding is the last (§15.125). No run has exercised it.
 
-`/crew:review-queue` and the review-board mod are built (T84, T85,
-§15.128). One queue session launches `/crew:review` children in child mode,
-reads each child's ready file, and does every post, approval, enqueue and
-Slack reaction itself. The mod's tests pass under `claude plugin test`. No
-queue session and no child has run yet.
+The review queue, the review-board mod and `/crew:review`'s child mode were
+removed (§15.138). The principal uses a team-built skill in their place.
 
-The queue's `Monitor` watch is built (§15.136): `queue-watch.sh` polls the
-PRs and the children with no model turn, and the cron job is a 30-minute
-fallback. Its seeded test passes. No queue session has run the monitor.
-
-T86 makes the review-board mod the queue's watcher when
-`~/.claude/secrets/slack-token` holds a token: it polls Slack and the
-review requests with no model turn, writes `queue/asks.json`, and prompts
-the queue session (§15.129). No Slack token was on the build machine, so
-no live Slack poll has run.
-
-T87 is built: the queue finds the principal's checkout in place of a clone,
-a review run cuts its one worktree under that checkout's
-`.claude/worktrees/`. `Gates: ci` is gone: a review run runs no local check
-(§15.133, which replaced part of §15.130). No queue session and no review run
-has used it.
+T87 is built: a review run cuts its one worktree under the principal's
+checkout, in `.claude/worktrees/`. `Gates: ci` is gone: a review run runs no
+local check (§15.133, which replaced part of §15.130). No review run has used
+it.
 
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline
@@ -178,13 +156,6 @@ Each reference owns one subject and is canonical for it:
   worktree, the instructions file, the runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.
 - `skills/review/references/github-review.md` — what a review run posts.
-- `skills/review-queue/references/board.md` — the board file the queue
-  session writes and the review-board mod reads, and the asks file the mod
-  writes and the queue session reads.
-- `skills/review-queue/references/ownership.md` — who holds the board: the
-  takeover, the takeover-time file and the owner check.
-- `skills/review-queue/references/ready-file.md` — a queue child's ready
-  file and its message to the queue session.
 - `skills/review/references/severity-rubric.md` — the six labels of a review
   finding.
 - `writing-standard.md` — how an instruction file and a README are written.

@@ -8689,7 +8689,10 @@ Deliberately different:
      cached-read cases. No crew run has armed the deploy watch yet.
 
 128. **The review queue and the review board — 2026-10-31, T84, T85, #122,
-     #123.** The review-queue trial of 2026-10-27 and 2026-10-28 found that a
+     #123.**
+     Removed in §15.138.
+
+     The review-queue trial of 2026-10-27 and 2026-10-28 found that a
      `/crew:review` child refuses a go-ahead, a standing rule or a "skip the
      re-review" that another session relays. That refusal is correct. So a
      queue cannot work by relay. One queue session holds the principal's
@@ -8731,6 +8734,8 @@ Deliberately different:
      and no installed copy of the mod has run.
 
 129. **The review board as the queue's watcher — 2026-10-31, T86, #124.**
+     Removed in §15.138.
+
      The queue's wakeup loop costs a model turn for each check, also when
      nothing is new. The mod's `$.clock.every` and `$.http.fetch` cost none.
      So, with a token, the mod polls the sources and the queue session only
@@ -8770,7 +8775,11 @@ Deliberately different:
      `gh` or a mod that never loaded all show as a stale watch.
 
 130. **A review in a worktree of the principal's checkout, and CI for the
-     local suite — 2026-11-04, T87, #132.** A queue review of one 140-line
+     local suite — 2026-11-04, T87, #132.**
+     Its queue parts were removed in §15.138. The worktree and CI parts hold
+     for a review run.
+
+     A queue review of one 140-line
      Python PR on a large monorepo took about 40 minutes, and the code
      review took about 4. The queue cloned the repo, cut a worktree for the
      child outside any folder Claude Code trusts, and the runner cut a second
@@ -8913,7 +8922,10 @@ Deliberately different:
         keeps both.
 
 132. **The review board follows its owner, and its pane matches the mockup —
-     2026-11-05.** On 2026-11-05 a pane froze. Another plugin's hook took
+     2026-11-05.**
+     Removed in §15.138.
+
+     On 2026-11-05 a pane froze. Another plugin's hook took
      the `skill.prompt` event first and passed it on past crew's handler, so
      the session never armed. The principal opened the pane with
      `/review-board`, and it showed the rows as they were at 20:44. The
@@ -8986,7 +8998,11 @@ Deliberately different:
      d. **Not run.** The tests pass under `claude plugin test`. No live
         session has shown the new pane.
 
-133. **A review run runs no local check — 2026-11-05, #136.** The principal
+133. **A review run runs no local check — 2026-11-05, #136.**
+     Its queue-child parts were removed in §15.138. The no-local-check rule
+     holds.
+
+     The principal
      asked for a review that reads the diff and nothing else. A review run
      ran a setup command, a baseline at the base, a suite and the gates, and
      CI ran the same checks on every head. The `Gates` value `ci` of §15.130
@@ -9057,7 +9073,10 @@ Deliberately different:
 
      No run has exercised this change.
 
-135. **The queue marks an approved PR with ✅ — 2026-11-06.** The queue set
+135. **The queue marks an approved PR with ✅ — 2026-11-06.**
+     Removed in §15.138.
+
+     The queue set
      the Slack `:done:` reaction when a `review` PR was approved, or when an
      `assist` PR was approved and queued. The principal prefers ✅
      (`:white_check_mark:`), set once the PR is approved. The queue now sets
@@ -9078,7 +9097,10 @@ Deliberately different:
 
      No queue session has exercised this change.
 
-136. **The review queue watches with a `Monitor` — 2026-11-06.** The queue
+136. **The review queue watches with a `Monitor` — 2026-11-06.**
+     Removed in §15.138.
+
+     The queue
      woke on a `CronCreate` job every 5 minutes with no Slack token and every
      15 with one. Each fire was a model turn, and most fires found nothing.
      The principal asked (issue 141) to move the work that needs no model
@@ -9241,3 +9263,20 @@ Deliberately different:
      prints `no-deploy`.
 
      No crew run has used this change.
+
+138. **The review queue, the review board and child mode are removed —
+     2026-11-11.** The principal uses a team-built skill in place of
+     `/crew:review-queue`. So this change removes `skills/review-queue/`, the
+     review-board mod (`hooks/review-board.tsx`, its tests and its types
+     file), the `Queue:` charter line, `/crew:review`'s child mode, and the
+     `Pre-enqueue checks` and `Checkouts` standing-instructions sections,
+     which only the queue read. The plugin version went to 0.1.105. Every
+     other skill stays. A review run still reads the repo file from the PR's
+     base branch, and GitHub's merge queue is not the review queue: the
+     `queued` and `dequeued` watch lines stay.
+
+     §15.128, §15.129, §15.135 and §15.136 are history. The queue parts of
+     §15.130, §15.132 and §15.133 are history too. T84, T85, T86 and the
+     queue part of T87 are closed by this change. `crew-stats.py` still skips
+     a top-level `queue/` folder in the record root, so an old queue's files
+     stay out of its record walk.

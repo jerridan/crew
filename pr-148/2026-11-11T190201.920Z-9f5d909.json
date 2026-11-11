@@ -1,0 +1,171 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 148,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Stop loading the review-board mod",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/148"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "7f5a6098dbf228c913d084582e0d8022853dbd11",
+    "head": "9f5d909a1b33a29d411f7a70cca13951335418a0",
+    "started_at": "2026-11-11T19:02:01.920Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Stop loading the review-board mod\n\n## Summary\n\nThe plugin no longer loads the review-board mod. A session gets no pane, no `/review-board` command, no status entry and no poller from the plugin. The `SessionEnd` and `PreCompact` hooks stay. The version moves to 0.1.105, because an installed copy is cached by version.\n\n**Ticket:** N/A\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n`CLAUDE.md`, \"Constraints that are easy to get wrong\": a change to `hooks/` or the manifests bumps `version` in `plugin.json` and `marketplace.json`.\n\n### What changed, by file\n\n- `hooks/hooks.json`: the `modules` line is removed.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.104 to 0.1.105.\n- `README.md`: the review-board paragraph and the `/review-board` command block are replaced by one line that says the plugin no longer loads the board.\n\n### Constraints that applied\n\n`hooks/review-board.tsx`, `types/index.d.ts`, `tests/review-board.test.tsx` and the `review-queue` skill stay in place. The `types` entry in `plugin.json` stays.\n\n### How this was verified\n\n`claude plugin validate .` passed with one warning (no plugin icon). `claude plugin test .` did not run: this machine has hooks modules turned off, so the tests were not run.\n\n### Known gaps\n\n`CLAUDE.md` and `skills/review-queue/SKILL.md` still describe the mod. The README Requirements table still lists the Slack token and the Claude Code version for the board.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_011vtCEgBdbSModyTJ81UpKL\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/hooks.json",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5864004011,
+      "review_url": "https://github.com/jerridan/crew/pull/148#pullrequestreview-5864004011",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 130741376186
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 57,
+      "gather": 27,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

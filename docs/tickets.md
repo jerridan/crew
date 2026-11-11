@@ -3510,6 +3510,8 @@ Read first: design §15.127; `pr-watch.md` "Arm the deploy watch";
 
 ## T84 — Add `crew:review-queue`
 
+Removed in design §15.138.
+
 Status: done 2026-10-31
 Depends on: T82
 Stage: 8 (design §15.128)
@@ -3546,6 +3548,8 @@ Read first: design §15.128; `skills/review-queue/SKILL.md`;
 
 ## T85 — Ship the review-board mod
 
+Removed in design §15.138.
+
 Status: done 2026-10-31
 Depends on: T84 (the board file)
 Stage: 8 (design §15.128)
@@ -3567,6 +3571,8 @@ Read first: design §15.128; `hooks/review-board.tsx`;
 `skills/review-queue/references/board.md`.
 
 ## T86 — Make the review-board mod the queue's watcher
+
+Removed in design §15.138.
 
 Status: done 2026-10-31
 Depends on: T84, T85
@@ -3594,6 +3600,8 @@ Read first: design §15.129; `hooks/review-board.tsx`;
 `skills/review-queue/references/board.md`.
 
 ## T87 — Review in a worktree of the principal's checkout, and let CI stand in for the suite
+
+The queue part was removed in design §15.138.
 
 Status: done 2026-11-04
 Depends on: T82, T84

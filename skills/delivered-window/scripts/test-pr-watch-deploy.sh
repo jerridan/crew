@@ -119,18 +119,18 @@ DEPRUN='{"workflow_runs":[{"id":9,"name":"CI","path":".github/workflows/deploy.y
 
 setup 1 "$NODEP" "$WF_PR" "$NORUNS";      check 'no deploy workflow, merged 1 minute ago' none
 setup 3 "$NODEP" "$WF_PR" "$NORUNS";      check 'no deploy workflow, merged 3 minutes ago' no-deploy-wf
-setup 1 "$NODEP" "$WF_DEPLOY" "$NORUNS";  check 'workflow Deploy, no run, 1 minute' none
+setup 3 "$NODEP" "$WF_DEPLOY" "$NORUNS";  check 'workflow Deploy, no run, 3 minutes' none
 setup 11 "$NODEP" "$WF_DEPLOY" "$NORUNS"; check 'workflow Deploy, no run, 11 minutes' no-deploy-wait
-setup 1 "$NODEP" "$WF_RELEASE" "$NORUNS"; check 'release.yml named CI, no run, 1 minute' none
+setup 3 "$NODEP" "$WF_RELEASE" "$NORUNS"; check 'release.yml named CI, no run, 3 minutes' none
 setup 11 "$NODEP" "$WF_RELEASE" "$NORUNS"; check 'release.yml named CI, no run, 11 minutes' no-deploy-wait
 FAIL_WF=1 setup 3 "$NODEP" "$WF_PR" "$NORUNS"; check 'workflows read fails, 3 minutes' none
-setup 1 "$OTHERDEP" "$WF_PR" "$NORUNS";   check 'a deployment exists, no deploy workflow' none
-setup 1 "$OTHERDEP" "$WF_DEPLOY" "$NORUNS"; check 'a deployment exists, a deploy workflow' none
+setup 3 "$OTHERDEP" "$WF_PR" "$NORUNS";   check 'a deployment exists, no deploy workflow, 3 minutes' none
+setup 3 "$OTHERDEP" "$WF_DEPLOY" "$NORUNS"; check 'a deployment exists, a deploy workflow, 3 minutes' none
 setup 1 "$PRODDEP" "$WF_PR" "$NORUNS";    check 'production deployment with success' deployed
 setup 3 "$NODEP" "$WF_OFF" "$NORUNS";     check 'only a disabled Deploy workflow' no-deploy-wf
-setup 1 "$NODEP" "$WF_RELEASE" "$DEPRUN"; check 'run of deploy.yml named CI with success' none
+setup 3 "$NODEP" "$WF_RELEASE" "$DEPRUN"; check 'run of deploy.yml named CI with success, 3 minutes' none
 RDRUN='{"workflow_runs":[{"id":9,"name":"CI","path":".github/workflows/release-drafter.yml","conclusion":"success","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:01:00Z"}]}'
-setup 1 "$NODEP" "$WF_RELEASE" "$RDRUN"; check 'release-drafter.yml run named CI with success' none
+setup 3 "$NODEP" "$WF_RELEASE" "$RDRUN"; check 'release-drafter.yml run named CI with success, 3 minutes' none
 NAMEDRUN='{"workflow_runs":[{"id":9,"name":"Deploy","path":".github/workflows/ci.yml","conclusion":"success","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:01:00Z"}]}'
 setup 1 "$NODEP" "$WF_PR" "$NAMEDRUN";    check 'a run named Deploy with success, 1 minute' deployed
 # The merged PR added or renamed a workflow file: keep the wait.

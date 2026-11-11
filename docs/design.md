@@ -9169,7 +9169,7 @@ Deliberately different:
      repo's workflows with `gh api --paginate` when it finds no deployment
      and no deploy run. A workflow counts when its state is `active` and its
      name or path holds `deploy` or `release`, in any case. With none, the
-     script prints `no-deploy` on the first poll after the merge. With one,
+     script prints `no-deploy` once 2 minutes have passed since the merge. With one,
      the 10-minute wait stays. A failed read keeps the wait, because a false
      `no-deploy` is a false ship word. A good read holds for the life of the
      process, like the deployment count. A run still matches by its name only,

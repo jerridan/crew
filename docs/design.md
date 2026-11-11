@@ -9275,8 +9275,8 @@ Deliberately different:
      base branch, and GitHub's merge queue is not the review queue: the
      `queued` and `dequeued` watch lines stay.
 
-     §15.128, §15.129, §15.135 and §15.136 are history. The queue parts of
-     §15.130, §15.132 and §15.133 are history too. T84, T85, T86 and the
+     §15.128, §15.129, §15.132, §15.135 and §15.136 are history. The queue
+     parts of §15.130 and §15.133 are history too. T84, T85, T86 and the
      queue part of T87 are closed by this change. `crew-stats.py` still skips
      a top-level `queue/` folder in the record root, so an old queue's files
      stay out of its record walk.

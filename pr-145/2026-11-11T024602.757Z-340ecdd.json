@@ -1,0 +1,1400 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 145,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Deploy watch: with no deploy in the repo, the merge is the ship word at once",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/145"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "4080476041e61ad28e0f7183ef3405a1ac17f85d",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-145/2026-11-11T024149.444Z-4080476.json",
+      "open": [
+        "58d5d8077ddba0ca",
+        "cf904a91025f738a",
+        "ddcfb1910e8bd67c"
+      ],
+      "dismissed": [],
+      "fetch_failed": false
+    },
+    "base": "7c6c70e7f8cf13b9b494121bbc63c478389a1f91",
+    "head": "340ecdd315bf1c0287143964aa3ddf98e4083771",
+    "started_at": "2026-11-11T02:46:02.757Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Deploy watch: with no deploy in the repo, the merge is the ship word at once\n\n## Summary\n\nA repo with no deploy no longer keeps a crew run open for 10 minutes after the merge. When the repo has no GitHub deployment and no active workflow whose name or path holds `deploy` or `release`, and the merged PR adds or renames no workflow file, the run ships 2 minutes after the merge. The 2 minutes give a deploy that starts late a chance to show. The 10-minute wait stays only for a repo that has such a workflow, or a PR that adds one, with no run on the merge commit yet.\n\nCloses #144.\n\n**Ticket:** N/A (GitHub issue #144)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.137 (new), and §15.127 (the deploy watch).\n- `skills/project-lead/SKILL.md` \"Standing instructions\" owns the default deploy rule. `skills/delivered-window/SKILL.md` \"The deploy watch\" owns when the watch arms. `skills/delivered-window/references/pr-watch.md` owns the commands and the output contract.\n\n### What changed, by file\n\n- `skills/delivered-window/scripts/pr-watch.sh`: in the default deploy case, with no deployment and no deploy run, it reads `gh api --paginate repos/<owner>/<repo>/actions/workflows` and the merged PR's files (`gh api --paginate repos/<owner>/<repo>/pulls/<n>/files`). With no active deploy or release workflow and no added or renamed workflow file, it prints `no-deploy` once 2 minutes have passed since the merge. A failed read keeps the wait and is read again on the next poll. A deploy run matches by its name, as before.\n- `skills/delivered-window/scripts/test-pr-watch-deploy.sh` (new): a seeded test with a stub `gh`, 23 checks.\n- `skills/delivered-window/SKILL.md`: no change in the end. An earlier round added a check before the watch arms; the 2-minute grace made it a no-op, so it was removed. The watch's `no-deploy` is the ship word, as before.\n- `skills/delivered-window/references/pr-watch.md`: the workflows read, the files read, the grace and the `no-deploy` row.\n- `skills/project-lead/references/record-format.md`: the `deploy` row.\n- `skills/project-lead/SKILL.md`: the default rule.\n- `README.md`: the two sentences on a repo with no deploy.\n- `CLAUDE.md`: the new test in the code list and the layout table.\n- `docs/design.md`: §15.137.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: 0.1.104.\n- `.github/workflows/pr-review.yml`: calls `jerridan/pr-review/.github/workflows/review.yml@v0.5.0` in place of `@v1`. The principal asked for this fix in this PR. `jerridan/pr-review` has no `v1` tag or branch (its tags are `v0.2.0` to `v0.5.0`, and its README says to call `review.yml@v<version>`), so every run of the review bot failed at startup with \"a workflow file issue\" on every branch, `main` included. `v0.5.0` is its latest release, so nothing rolls back. At `v0.5.0`, `review.yml` declares `workflow_call: {}`, which fits `secrets: inherit` and no inputs.\n\n### Constraints that applied\n\n- One rule, one file: the rule is in \"Standing instructions\", and the other files point at it.\n- macOS bash 3.2, only `jq` and `gh` beyond the base system.\n- `queue-watch.sh` calls `pr-watch.sh once`, not a deploy mode, so its behaviour does not change. Its test still passes.\n- A change under `skills/` bumps both manifests to the same value.\n\n### How this was verified\n\n- `bash skills/delivered-window/scripts/test-pr-watch-deploy.sh`: `23 of 23 checks passed`. Each round committed its checks red first.\n- Three skeptical review rounds (the last two accepted), and two `/code-review` runs by the principal. Every finding was adjudicated in the run record.\n- `bash skills/review-queue/scripts/test-queue-watch.sh`: `all 72 checks passed`.\n- I read the diff against the spec.\n\n### Known gaps\n\n- No crew run has used this change.\n- A workflow counts by name or path only. A deploy workflow with neither word in its name or path (for example `ship.yml` named `Ship`) is missed. Such a repo needs a `Deploy: workflow: <name>` line.\n\n<details><summary>Decisions</summary>\n\n- The change path. Not the light path, because it changes a rule in instruction files and README prose.\n- The principal chose a 2-minute grace over \"at once\" (2026-11-10), so a deploy that starts seconds after the merge is not missed. That replaces the issue's \"no deploy watch arms\": the watch now does the waiting.\n- Only an added or renamed workflow file keeps the 10-minute wait; an edit of an existing one does not.\n- A disabled workflow does not count, and a failed workflows read keeps the wait, because a false `no-deploy` is a false ship word.\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZdwJQVfuH7hRtkWJZq\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": ".github/workflows/pr-review.yml",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "README.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/pr-watch.sh",
+        "hunks": 5
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [
+      ".github/workflows/pr-review.yml"
+    ],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes the ship-word logic in pr-watch.sh (a false no-deploy closes a run early), and also changes a sensitive CI workflow pin and adds a new test script.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/delivered-window/scripts/pr-watch.sh: deploy_poll no-deploy branch (wf_has, wf_changed, 2-minute grace, failed-read handling)",
+        "skills/delivered-window/scripts/pr-watch.sh: wf_check signature change (jq test now on the run object; callers' .name tests)",
+        "skills/delivered-window/scripts/test-pr-watch-deploy.sh: stub gh routing and sleep/kill stub",
+        "skills/delivered-window/scripts/pr-watch.sh: gh api --paginate with --jq (per-page jq output, grep -c under set options)",
+        ".github/workflows/pr-review.yml: reusable workflow pin changed from @v1 to @v0.5.0 (secrets: inherit, write permissions)",
+        "docs/design.md and pr-watch.md: consistency with the code (2-min vs 10-min rules, added/renamed only)"
+      ],
+      "file_notes": [
+        {
+          "file": ".github/workflows/pr-review.yml",
+          "note": "sensitive: changes the pinned ref of a reusable workflow that gets secrets: inherit and write permissions. @v0.5.0 may be a downgrade from @v1, and it may not be a pinned SHA."
+        },
+        {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "note": "logic change: fast no-deploy path after 2 minutes, workflow and PR-file reads, wf_check refactor"
+        },
+        {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "note": "new seeded test with a stub gh, sleep and jq"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump to 0.1.104"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump to 0.1.104"
+        },
+        {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "note": "spec of the new behavior; check that it matches the code"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "instructions text that the agent follows: the ship-word rule changed"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "wording change for the run.deploy writer and since"
+        },
+        {
+          "file": "README.md",
+          "note": "user docs for the 2-minute and 10-minute rules"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs: file table and test mention"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new §15.137 design entry"
+        }
+      ],
+      "summary": "When a repo has no deploy configured and no GitHub deployment, the deploy watch in pr-watch.sh now prints `no-deploy` 2 minutes after the merge. It does this only if the repo has no active deploy or release workflow and the merged PR added or renamed no workflow file. Otherwise the 10-minute wait stays. The change adds a seeded test script with a stub gh, updates the docs and skill text, bumps the plugin version, and re-pins the pr-review reusable workflow from @v1 to @v0.5.0."
+    },
+    "tier": "full",
+    "tier_reason": "Sensitive paths set a floor of full: .github/workflows/pr-review.yml.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4705,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11432,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011547,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 428,
+              "cacheReadInputTokens": 10032,
+              "cacheCreationInputTokens": 10937,
+              "webSearchRequests": 0,
+              "costUSD": 0.0980704,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 119,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0992251
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7345,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11424,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011569,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 652,
+              "cacheReadInputTokens": 9990,
+              "cacheCreationInputTokens": 10929,
+              "webSearchRequests": 0,
+              "costUSD": 0.102478,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 250,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1036349
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10597,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11422,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011567,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 887,
+              "cacheReadInputTokens": 52179,
+              "cacheCreationInputTokens": 12644,
+              "webSearchRequests": 0,
+              "costUSD": 0.12935180000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 567,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.13050849999999997
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10629,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11424,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011539,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 919,
+              "cacheReadInputTokens": 74753,
+              "cacheCreationInputTokens": 12925,
+              "webSearchRequests": 0,
+              "costUSD": 0.1367626,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 492,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1379165
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+            "start_line": 6,
+            "end_line": 7,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The header says that the test runs `deploy-once` once per case, but the last two cases run the `deploy` mode with a stub `sleep`.",
+            "evidence": "# and runs `pr-watch.sh <record> deploy-once` once per case. The stub reads",
+            "suggested_fix": "Add that the last two cases run one `deploy` process each, with a stub `sleep` that ends the watch.",
+            "explanation": "The header does not mention the two `deploy`-mode cases or the stub `sleep` that ends the watch.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5617,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11430,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011565,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 536,
+              "cacheReadInputTokens": 9942,
+              "cacheCreationInputTokens": 10935,
+              "webSearchRequests": 0,
+              "costUSD": 0.1001964,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 234,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.10135290000000001
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8023,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 25652,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0025797000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 675,
+              "cacheReadInputTokens": 45271,
+              "cacheCreationInputTokens": 26169,
+              "webSearchRequests": 0,
+              "costUSD": 0.23192220000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 472,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.23450189999999999
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".github/workflows/pr-review.yml",
+            "start_line": 15,
+            "end_line": 16,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The workflow pins a third-party reusable workflow to a tag that can be moved, not to a commit SHA, and passes it every repo secret.",
+            "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "suggested_fix": "Pin to the full commit SHA of v0.5.0, and pass only the secrets the workflow needs.",
+            "explanation": "Whoever controls the tag can repoint it to new code, and that code then gets the inherited secrets and write permissions.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5511,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11436,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011581,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 524,
+              "cacheReadInputTokens": 31007,
+              "cacheCreationInputTokens": 11219,
+              "webSearchRequests": 0,
+              "costUSD": 0.1064494,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 114,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1076075
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".github/workflows/pr-review.yml",
+            "start_line": 15,
+            "end_line": 16,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The third-party reusable workflow is pinned to a mutable tag, but it gets every repo secret and write permissions.",
+            "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "suggested_fix": "Pin to a full commit SHA, and pass only the secrets that the workflow needs, not secrets: inherit.",
+            "explanation": "A tag can be moved to other code, and that code would then run with the repo's secrets and write tokens.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4727,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11430,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011575,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 465,
+              "cacheReadInputTokens": 31001,
+              "cacheCreationInputTokens": 11258,
+              "webSearchRequests": 0,
+              "costUSD": 0.1055802,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 65,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1067377
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9214,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11418,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011562999999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 898,
+              "cacheReadInputTokens": 10704,
+              "cacheCreationInputTokens": 10923,
+              "webSearchRequests": 0,
+              "costUSD": 0.1074928,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 387,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1086491
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "start_line": 6,
+          "end_line": 7,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The header says that the test runs `deploy-once` once per case, but the last two cases run the `deploy` mode with a stub `sleep`.",
+          "evidence": "# and runs `pr-watch.sh <record> deploy-once` once per case. The stub reads",
+          "suggested_fix": "Add that the last two cases run one `deploy` process each, with a stub `sleep` that ends the watch.",
+          "explanation": "The header does not mention the two `deploy`-mode cases or the stub `sleep` that ends the watch.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# and runs `pr-watch.sh <record> deploy-once` once per case. The stub reads",
+            "out=$(bash \"$PW\" \"$T/rec\" deploy 2>&1)",
+            "# A stub `sleep` for the deploy mode: it counts calls and ends the watch on the sixth."
+          ],
+          "rationale": "The header describes only `deploy-once` runs. The last two cases run `deploy` mode with a stub `sleep`, and the header doesn't mention either. This is a minor comment inaccuracy.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# and runs `pr-watch.sh <record> deploy-once` once per case. The stub reads",
+            "out=$(bash \"$PW\" \"$T/rec\" deploy 2>&1)",
+            "# A stub `sleep` for the deploy mode: it counts calls and ends the watch on the sixth."
+          ],
+          "rationale": "The header describes only `deploy-once` runs. The last two cases run `deploy` mode with a stub `sleep`, and the header doesn't mention either. This is a minor comment inaccuracy.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": ".github/workflows/pr-review.yml",
+          "start_line": 15,
+          "end_line": 16,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The workflow pins a third-party reusable workflow to a tag that can be moved, not to a commit SHA, and passes it every repo secret.",
+          "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+          "suggested_fix": "Pin to the full commit SHA of v0.5.0, and pass only the secrets the workflow needs.",
+          "explanation": "Whoever controls the tag can repoint it to new code, and that code then gets the inherited secrets and write permissions.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "secrets: inherit"
+          ],
+          "rationale": "The workflow does reference a movable tag and uses `secrets: inherit`, but the previous `@v1` pin and `secrets: inherit` were already there. This change only swaps one tag for another to fix a broken ref, so the risk is the same as before. The workflow is also first-party, from the same owner.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "secrets: inherit"
+          ],
+          "rationale": "The workflow does reference a movable tag and uses `secrets: inherit`, but the previous `@v1` pin and `secrets: inherit` were already there. This change only swaps one tag for another to fix a broken ref, so the risk is the same as before. The workflow is also first-party, from the same owner.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5853051852,
+      "review_url": "https://github.com/jerridan/crew/pull/145#pullrequestreview-5853051852",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 130286325854
+      },
+      "cleanup_comment_id": null,
+      "resolved": [
+        {
+          "thread_id": "PRRT_kwDOUGcgwM62ANPx",
+          "fingerprint": "58d5d8077ddba0ca"
+        },
+        {
+          "thread_id": "PRRT_kwDOUGcgwM62ANPz",
+          "fingerprint": "cf904a91025f738a"
+        }
+      ],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "start_line": 6,
+        "end_line": 7,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The header says that the test runs `deploy-once` once per case, but the last two cases run the `deploy` mode with a stub `sleep`.",
+        "evidence": "# and runs `pr-watch.sh <record> deploy-once` once per case. The stub reads",
+        "suggested_fix": "Add that the last two cases run one `deploy` process each, with a stub `sleep` that ends the watch.",
+        "explanation": "The header does not mention the two `deploy`-mode cases or the stub `sleep` that ends the watch.",
+        "needs_context": false,
+        "fingerprint": "cf3751a0b7a8ec77",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# and runs `pr-watch.sh <record> deploy-once` once per case. The stub reads",
+            "out=$(bash \"$PW\" \"$T/rec\" deploy 2>&1)",
+            "# A stub `sleep` for the deploy mode: it counts calls and ends the watch on the sixth."
+          ],
+          "rationale": "The header describes only `deploy-once` runs. The last two cases run `deploy` mode with a stub `sleep`, and the header doesn't mention either. This is a minor comment inaccuracy.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "# It builds a record under a temp directory, puts a stub `gh` first in PATH, # and runs `pr-watch.sh <record> deploy-once` once per case. The stub reads"
+      }
+    ],
+    "not_reposted": [],
+    "carried": [
+      {
+        "file": ".github/workflows/pr-review.yml",
+        "start_line": 15,
+        "end_line": 15,
+        "category": "other",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The reusable review workflow ref changes from the moving @v1 tag to the older-looking pinned @v0.5.0, and the PR description does not explain or justify it.",
+        "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+        "suggested_fix": "Revert to @v1, or keep the pin (preferably a full commit SHA) and state the reason in the PR body, or move it to a separate PR.",
+        "explanation": "The pin can roll back review fixes and checks while the workflow runs with inherited secrets and write permissions, and the change is outside this PR's scope and missing from the description.",
+        "needs_context": true,
+        "fingerprint": "ddcfb1910e8bd67c",
+        "severity": "suggestion",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1, which it had used since d55003d, to @v0.5.0. The PR description lists every changed file and never mentions .github/workflows/pr-review.yml, so it gives no reason for a change that may roll CI review back to an older version.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "span_text": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+      }
+    ]
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9223,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 20162,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020277,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1238,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 19675,
+            "webSearchRequests": 0,
+            "costUSD": 0.0912102,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0932379
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4705,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11432,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011547,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 428,
+            "cacheReadInputTokens": 10032,
+            "cacheCreationInputTokens": 10937,
+            "webSearchRequests": 0,
+            "costUSD": 0.0980704,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 119,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0992251
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5617,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11430,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011565,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 536,
+            "cacheReadInputTokens": 9942,
+            "cacheCreationInputTokens": 10935,
+            "webSearchRequests": 0,
+            "costUSD": 0.1001964,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 234,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10135290000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7345,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11424,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011569,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 652,
+            "cacheReadInputTokens": 9990,
+            "cacheCreationInputTokens": 10929,
+            "webSearchRequests": 0,
+            "costUSD": 0.102478,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 250,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1036349
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10597,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11422,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011567,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 887,
+            "cacheReadInputTokens": 52179,
+            "cacheCreationInputTokens": 12644,
+            "webSearchRequests": 0,
+            "costUSD": 0.12935180000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 567,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.13050849999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10629,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11424,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011539,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 919,
+            "cacheReadInputTokens": 74753,
+            "cacheCreationInputTokens": 12925,
+            "webSearchRequests": 0,
+            "costUSD": 0.1367626,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 492,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1379165
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5511,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11436,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011581,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 524,
+            "cacheReadInputTokens": 31007,
+            "cacheCreationInputTokens": 11219,
+            "webSearchRequests": 0,
+            "costUSD": 0.1064494,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 114,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1076075
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4727,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11430,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011575,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 465,
+            "cacheReadInputTokens": 31001,
+            "cacheCreationInputTokens": 11258,
+            "webSearchRequests": 0,
+            "costUSD": 0.1055802,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 65,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1067377
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8023,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25652,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025797000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 675,
+            "cacheReadInputTokens": 45271,
+            "cacheCreationInputTokens": 26169,
+            "webSearchRequests": 0,
+            "costUSD": 0.23192220000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 472,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.23450189999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4284,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14772,
+            "outputTokens": 31,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014927000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 496,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 14285,
+            "webSearchRequests": 0,
+            "costUSD": 0.0625407,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0640334
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5164,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4133,
+            "outputTokens": 236,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005313000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 210,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 641,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 3646,
+            "webSearchRequests": 0,
+            "costUSD": 0.0214347,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 304,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.021966
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9214,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11418,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011562999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 898,
+            "cacheReadInputTokens": 10704,
+            "cacheCreationInputTokens": 10923,
+            "webSearchRequests": 0,
+            "costUSD": 0.1074928,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 387,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1086491
+      }
+    ],
+    "total_cost_usd": 1.3093714,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 43,
+      "gather": 200,
+      "scope": 10,
+      "triage": 10088,
+      "find_verify": 21513,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

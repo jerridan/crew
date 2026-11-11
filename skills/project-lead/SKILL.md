@@ -160,7 +160,8 @@ Two files tell every run what the principal wants it to know about a repo:
 `.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path
 whatever the record root is. Read both whole at "Take the goal", on every
 path and on a review run. A missing file holds nothing. **A review run reads
-the repo file from the PR's base branch**. Run `git -C <checkout> fetch origin <baseRefName>` first, then `git -C <checkout> show
+the repo file from the PR's base branch**. Run `git -C <checkout> fetch
+origin <baseRefName>` first, then `git -C <checkout> show
 origin/<baseRefName>:.claude/crew.md`, because the main working tree can hold
 any branch. A file missing there holds nothing. Then write
 `run set standing_instructions '{"repo": <path or null>, "machine": <path or

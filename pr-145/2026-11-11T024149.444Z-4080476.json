@@ -1,0 +1,2037 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 145,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Deploy watch: with no deploy in the repo, the merge is the ship word at once",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/145"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "7c6c70e7f8cf13b9b494121bbc63c478389a1f91",
+    "head": "4080476041e61ad28e0f7183ef3405a1ac17f85d",
+    "started_at": "2026-11-11T02:41:49.444Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Deploy watch: with no deploy in the repo, the merge is the ship word at once\n\n## Summary\n\nA repo with no deploy no longer keeps a crew run open for 10 minutes after the merge. When the repo has no GitHub deployment and no active workflow whose name or path holds `deploy` or `release`, and the merged PR adds or renames no workflow file, the run ships 2 minutes after the merge. The 2 minutes give a deploy that starts late a chance to show. The 10-minute wait stays only for a repo that has such a workflow, or a PR that adds one, with no run on the merge commit yet.\n\nCloses #144.\n\n**Ticket:** N/A (GitHub issue #144)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.137 (new), and §15.127 (the deploy watch).\n- `skills/project-lead/SKILL.md` \"Standing instructions\" owns the default deploy rule. `skills/delivered-window/SKILL.md` \"The deploy watch\" owns when the watch arms. `skills/delivered-window/references/pr-watch.md` owns the commands and the output contract.\n\n### What changed, by file\n\n- `skills/delivered-window/scripts/pr-watch.sh`: in the default deploy case, with no deployment and no deploy run, it reads `gh api --paginate repos/<owner>/<repo>/actions/workflows` and the merged PR's files (`gh api --paginate repos/<owner>/<repo>/pulls/<n>/files`). With no active deploy or release workflow and no added or renamed workflow file, it prints `no-deploy` once 2 minutes have passed since the merge. A failed read keeps the wait and is read again on the next poll. A deploy run matches by its name, as before.\n- `skills/delivered-window/scripts/test-pr-watch-deploy.sh` (new): a seeded test with a stub `gh`, 23 checks.\n- `skills/delivered-window/SKILL.md`: no change in the end. An earlier round added a check before the watch arms; the 2-minute grace made it a no-op, so it was removed. The watch's `no-deploy` is the ship word, as before.\n- `skills/delivered-window/references/pr-watch.md`: the workflows read, the files read, the grace and the `no-deploy` row.\n- `skills/project-lead/references/record-format.md`: the `deploy` row.\n- `skills/project-lead/SKILL.md`: the default rule.\n- `README.md`: the two sentences on a repo with no deploy.\n- `CLAUDE.md`: the new test in the code list and the layout table.\n- `docs/design.md`: §15.137.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: 0.1.104.\n\n### Constraints that applied\n\n- One rule, one file: the rule is in \"Standing instructions\", and the other files point at it.\n- macOS bash 3.2, only `jq` and `gh` beyond the base system.\n- `queue-watch.sh` calls `pr-watch.sh once`, not a deploy mode, so its behaviour does not change. Its test still passes.\n- A change under `skills/` bumps both manifests to the same value.\n\n### How this was verified\n\n- `bash skills/delivered-window/scripts/test-pr-watch-deploy.sh`: `23 of 23 checks passed`. Each round committed its checks red first.\n- Three skeptical review rounds (the last two accepted), and two `/code-review` runs by the principal. Every finding was adjudicated in the run record.\n- `bash skills/review-queue/scripts/test-queue-watch.sh`: `all 72 checks passed`.\n- I read the diff against the spec.\n\n### Known gaps\n\n- No crew run has used this change.\n- A workflow counts by name or path only. A deploy workflow with neither word in its name or path (for example `ship.yml` named `Ship`) is missed. Such a repo needs a `Deploy: workflow: <name>` line.\n\n<details><summary>Decisions</summary>\n\n- The change path. Not the light path, because it changes a rule in instruction files and README prose.\n- The principal chose a 2-minute grace over \"at once\" (2026-11-10), so a deploy that starts seconds after the merge is not missed. That replaces the issue's \"no deploy watch arms\": the watch now does the waiting.\n- Only an added or renamed workflow file keeps the 10-minute wait; an edit of an existing one does not.\n- A disabled workflow does not count, and a failed workflows read keeps the wait, because a false `no-deploy` is a false ship word.\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZdwJQVfuH7hRtkWJZq\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": ".github/workflows/pr-review.yml",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "README.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/pr-watch.sh",
+        "hunks": 5
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [
+      ".github/workflows/pr-review.yml"
+    ],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes the logic of pr-watch.sh, whose output is the ship word, and also pins a CI workflow reference to a different version tag.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/delivered-window/scripts/pr-watch.sh: deploy_poll no-deploy branch (wf_has, wf_changed, wf_now, 2-minute grace)",
+        "skills/delivered-window/scripts/pr-watch.sh: wf_check now takes a jq test on the run object, and the callers' expressions changed",
+        "skills/delivered-window/scripts/pr-watch.sh: gh api --paginate with --jq and the `|| true` on grep -c",
+        "skills/delivered-window/scripts/pr-watch.sh: jq time arithmetic for the 2-minute and 10-minute grace",
+        "skills/delivered-window/scripts/test-pr-watch-deploy.sh: the stub gh and the sleep stub (kill -TERM $PPID)",
+        "skills/delivered-window/references/pr-watch.md and skills/project-lead/SKILL.md: the documented behavior must match the code",
+        "skills/project-lead/references/record-format.md: since now means 'decided', not 'armed'",
+        "pr-review.yml: the reusable workflow ref moves from @v1 to @v0.5.0"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "note": "Logic change. A repo with no deploy workflow now gets a fast `no-deploy` after 2 minutes, via new workflows and PR-files reads. wf_check's semantics changed. A false `no-deploy` is a false ship word."
+        },
+        {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "note": "New seeded test with a stub gh, sleep and jq. Check that the stub matches real gh behavior, and that the `sleep` stub's kill is safe."
+        },
+        {
+          "file": ".github/workflows/pr-review.yml",
+          "note": "Sensitive. The reusable workflow ref changes from @v1 to @v0.5.0, with `secrets: inherit` and write permissions. This is a pin to a different version, and it could be a downgrade."
+        },
+        {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "note": "Documents the new no-deploy rules. Check it against the code."
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "Deploy-signal wording updated to match the new rule."
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "Changes the meaning of `deploy.since` and the writer wording. This touches the record contract."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry §15.137."
+        },
+        {
+          "file": "README.md",
+          "note": "User-facing description of the new close timing."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Adds the file table row and the test mention. Describes the default-rule ship timing."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.104."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.104."
+        }
+      ],
+      "summary": "The deploy watch in pr-watch.sh now prints `no-deploy` 2 minutes after the merge when the repo has no GitHub deployment, no active deploy or release workflow, and no workflow file added or renamed by the merged PR. Otherwise the 10-minute wait stays. The change adds a seeded test with a stub gh, updates the docs and the design record, bumps the plugin version, and changes the pr-review workflow ref from @v1 to @v0.5.0."
+    },
+    "tier": "full",
+    "tier_reason": "Sensitive paths set a floor of full: .github/workflows/pr-review.yml.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9452,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22209,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022354000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 710,
+              "cacheReadInputTokens": 64891,
+              "cacheCreationInputTokens": 33518,
+              "webSearchRequests": 0,
+              "costUSD": 0.2953542,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 181,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2975896
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".github/workflows/pr-review.yml",
+            "start_line": 15,
+            "end_line": 15,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "high",
+            "claim": "The diff pins the reusable review workflow from @v1 to @v0.5.0, and the description does not mention this change.",
+            "evidence": "    uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "suggested_fix": "Add the workflow ref change to the description, or move it to a separate PR.",
+            "explanation": "The repo's CI review workflow version changes, and the change is not in the 'What changed, by file' list.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5687,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22195,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022340000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 471,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 31689,
+              "webSearchRequests": 0,
+              "costUSD": 0.26294,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 201,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.265174
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10700,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22189,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022334000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 910,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 31628,
+              "webSearchRequests": 0,
+              "costUSD": 0.27123200000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 489,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2734654
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10593,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22201,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022346,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 785,
+              "cacheReadInputTokens": 31640,
+              "cacheCreationInputTokens": 31971,
+              "webSearchRequests": 0,
+              "costUSD": 0.277812,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 612,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2800466
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "docs/design.md",
+            "start_line": 9168,
+            "end_line": 9172,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The main text of §15.137 says the script prints `no-deploy` on the first poll after the merge, but the code waits 2 minutes after the merge first.",
+            "evidence": "script prints `no-deploy` on the first poll after the merge",
+            "suggested_fix": "Change it to say that the script prints `no-deploy` once 2 minutes have passed since the merge, or note that patch round 3 replaced this text.",
+            "explanation": "pr-watch.sh prints nothing until 2 minutes have passed since mergedAt. Only patch round 3, further down, says so, which leaves the main description of §15.137 wrong.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10610,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22187,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022332000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 865,
+              "cacheReadInputTokens": 64805,
+              "cacheCreationInputTokens": 34091,
+              "webSearchRequests": 0,
+              "costUSD": 0.303013,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 297,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.30524619999999997
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".github/workflows/pr-review.yml",
+            "start_line": 15,
+            "end_line": 15,
+            "category": "other",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The diff pins the reusable review workflow from the moving @v1 tag to @v0.5.0, a change that the deploy-watch PR does not explain.",
+            "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "suggested_fix": "Revert to @v1, or explain the pin in the PR body.",
+            "explanation": "The workflow has used @v1 since commit d55003d. Moving it to an older-looking pinned tag can roll back review fixes, and the PR description does not mention or justify the change.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8049,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 36415,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.003656000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 642,
+              "cacheReadInputTokens": 49035,
+              "cacheCreationInputTokens": 43691,
+              "webSearchRequests": 0,
+              "costUSD": 0.372191,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 193,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.375847
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".github/workflows/pr-review.yml",
+            "start_line": 15,
+            "end_line": 15,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The PR review workflow moves from the floating @v1 ref to an older-looking fixed tag @v0.5.0. That change is outside this feature's scope, and it could pin the review to an older version with fewer checks while it inherits secrets and write permissions.",
+            "evidence": "    uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "suggested_fix": "Revert to @v1, or pin to a commit SHA and give the reason in the PR body.",
+            "explanation": "A ref change in a reusable workflow that has contents: write and secrets: inherit can roll back the review, and a tag can be moved. A commit SHA cannot.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5505,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22191,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022336,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 432,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 28669,
+              "webSearchRequests": 0,
+              "costUSD": 0.23861179999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 93,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2408454
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".github/workflows/pr-review.yml",
+            "start_line": 15,
+            "end_line": 16,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The reusable review workflow moves from @v1 to the older-looking @v0.5.0 tag. It runs with inherited secrets and write permissions, and the PR description does not explain the change.",
+            "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "suggested_fix": "Keep @v1, or pin to a full commit SHA of the intended release, and state the reason in the PR.",
+            "explanation": "Pinning the review workflow to a possibly older release can drop review checks after the merge. A mutable tag that gets `secrets: inherit` and write scopes is a supply-chain risk.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5557,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22195,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022340000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 430,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 28673,
+              "webSearchRequests": 0,
+              "costUSD": 0.2386038,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 100,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.24083780000000002
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+            "start_line": 127,
+            "end_line": 128,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The checks for an existing deployment run at 1 minute after the merge, inside the 2-minute grace, so they cannot fail if a repo that has a deployment wrongly gets the fast no-deploy.",
+            "evidence": "setup 1 \"$OTHERDEP\" \"$WF_PR\" \"$NORUNS\";   check 'a deployment exists, no deploy workflow' none",
+            "suggested_fix": "Run these cases at 3 minutes (and at 11 minutes), so a wrong no-deploy line would show in the output.",
+            "explanation": "At 1 minute the new branch prints nothing anyway, so these checks pass whether or not dep_count stops the no-deploy path. That path gives a false ship word if it breaks.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11925,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 22195,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0022340000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1097,
+              "cacheReadInputTokens": 35462,
+              "cacheCreationInputTokens": 30229,
+              "webSearchRequests": 0,
+              "costUSD": 0.2708804,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 593,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2731144
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": ".github/workflows/pr-review.yml",
+          "start_line": 15,
+          "end_line": 15,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "high",
+          "claim": "The diff pins the reusable review workflow from @v1 to @v0.5.0, and the description does not mention this change.",
+          "evidence": "    uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+          "suggested_fix": "Add the workflow ref change to the description, or move it to a separate PR.",
+          "explanation": "The repo's CI review workflow version changes, and the change is not in the 'What changed, by file' list.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1 to @v0.5.0, and neither the description's file list nor its text mentions `.github/workflows/pr-review.yml`. It is an unrelated, undocumented change that may be an accidental downgrade of CI review tooling.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1 to @v0.5.0, and neither the description's file list nor its text mentions `.github/workflows/pr-review.yml`. It is an unrelated, undocumented change that may be an accidental downgrade of CI review tooling.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 9168,
+          "end_line": 9172,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The main text of §15.137 says the script prints `no-deploy` on the first poll after the merge, but the code waits 2 minutes after the merge first.",
+          "evidence": "script prints `no-deploy` on the first poll after the merge",
+          "suggested_fix": "Change it to say that the script prints `no-deploy` once 2 minutes have passed since the merge, or note that patch round 3 replaced this text.",
+          "explanation": "pr-watch.sh prints nothing until 2 minutes have passed since mergedAt. Only patch round 3, further down, says so, which leaves the main description of §15.137 wrong.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "script prints `no-deploy` on the first poll after the merge.",
+            "now prints only once 2 minutes have passed since `mergedAt`, and prints\n     nothing before"
+          ],
+          "rationale": "The main text of §15.137 still says `no-deploy` prints on the first poll, and patch round 3 changes that to a 2-minute grace. This follows the entry's append-only patch-round convention, and the heading already says 2 minutes, so it is a minor staleness.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "script prints `no-deploy` on the first poll after the merge. With one,",
+            "now prints only once 2 minutes have passed since `mergedAt`, and prints",
+            "# `no-deploy` once 2 minutes have passed since the merge, and prints nothing",
+            "# The 2-minute grace: a deploy run can need seconds to appear."
+          ],
+          "rationale": "The new §15.137 main paragraph says `no-deploy` prints on the first poll after the merge, but pr-watch.sh applies a 2-minute grace. Patch round 3 and the heading of the same entry correct this, so the error is a minor stale sentence inside a new entry that a reader can resolve from the rest of the entry.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "script prints `no-deploy` on the first poll after the merge. With one,",
+            "now prints only once 2 minutes have passed since `mergedAt`, and prints",
+            "# `no-deploy` once 2 minutes have passed since the merge, and prints nothing",
+            "# The 2-minute grace: a deploy run can need seconds to appear."
+          ],
+          "rationale": "The new §15.137 main paragraph says `no-deploy` prints on the first poll after the merge, but pr-watch.sh applies a 2-minute grace. Patch round 3 and the heading of the same entry correct this, so the error is a minor stale sentence inside a new entry that a reader can resolve from the rest of the entry.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": ".github/workflows/pr-review.yml",
+          "start_line": 15,
+          "end_line": 15,
+          "category": "other",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The diff pins the reusable review workflow from the moving @v1 tag to @v0.5.0, a change that the deploy-watch PR does not explain.",
+          "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+          "suggested_fix": "Revert to @v1, or explain the pin in the PR body.",
+          "explanation": "The workflow has used @v1 since commit d55003d. Moving it to an older-looking pinned tag can roll back review fixes, and the PR description does not mention or justify the change.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff does change the reusable workflow ref from @v1 to @v0.5.0, and the PR description, which lists every changed file, never mentions this file or the pin. Whether v0.5.0 is a rollback relative to v1 can't be verified here, so the harm is speculative.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1, which it had used since d55003d, to @v0.5.0. The PR description lists every changed file and never mentions .github/workflows/pr-review.yml, so it gives no reason for a change that may roll CI review back to an older version.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1, which it had used since d55003d, to @v0.5.0. The PR description lists every changed file and never mentions .github/workflows/pr-review.yml, so it gives no reason for a change that may roll CI review back to an older version.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": ".github/workflows/pr-review.yml",
+          "start_line": 15,
+          "end_line": 15,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The PR review workflow moves from the floating @v1 ref to an older-looking fixed tag @v0.5.0. That change is outside this feature's scope, and it could pin the review to an older version with fewer checks while it inherits secrets and write permissions.",
+          "evidence": "    uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+          "suggested_fix": "Revert to @v1, or pin to a commit SHA and give the reason in the PR body.",
+          "explanation": "A ref change in a reusable workflow that has contents: write and secrets: inherit can roll back the review, and a tag can be moved. A commit SHA cannot.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1 to @v0.5.0. The description never mentions this, so it is unrelated to the deploy-watch feature. The security risk is speculative, because v0.5.0 may be a deliberate pin, but the unexplained change is real.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "    secrets: inherit",
+            "      contents: write"
+          ],
+          "rationale": "The diff moves the reusable review workflow from @v1 to @v0.5.0, and the PR description does not mention or explain the change, so it does look like an unrelated ref change on a job that inherits secrets and has write permissions. The repo cannot show whether v0.5.0 is really older than v1, and a fixed tag is no weaker than a floating major tag, so the security risk is speculative.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "    secrets: inherit",
+            "      contents: write"
+          ],
+          "rationale": "The diff moves the reusable review workflow from @v1 to @v0.5.0, and the PR description does not mention or explain the change, so it does look like an unrelated ref change on a job that inherits secrets and has write permissions. The repo cannot show whether v0.5.0 is really older than v1, and a fixed tag is no weaker than a floating major tag, so the security risk is speculative.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": ".github/workflows/pr-review.yml",
+          "start_line": 15,
+          "end_line": 16,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The reusable review workflow moves from @v1 to the older-looking @v0.5.0 tag. It runs with inherited secrets and write permissions, and the PR description does not explain the change.",
+          "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+          "suggested_fix": "Keep @v1, or pin to a full commit SHA of the intended release, and state the reason in the PR.",
+          "explanation": "Pinning the review workflow to a possibly older release can drop review checks after the merge. A mutable tag that gets `secrets: inherit` and write scopes is a supply-chain risk.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The PR changes the reusable workflow pin from @v1 to @v0.5.0 with no mention in the description, and the change is unrelated to the deploy-watch work. Whether v0.5.0 is older or drops checks can't be settled from the repo, and the mutable-tag risk existed before with @v1.",
+          "score": 55,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "secrets: inherit",
+            "contents: write"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1, which it has been since the file was created in d55003d, to @v0.5.0. The job keeps write permissions and `secrets: inherit`, and the PR description, which is about the deploy watch, says nothing about this. The part about a mutable tag was already true with @v1, so the main problem is an unexplained and likely accidental downgrade of the CI review workflow.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+            "secrets: inherit",
+            "contents: write"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1, which it has been since the file was created in d55003d, to @v0.5.0. The job keeps write permissions and `secrets: inherit`, and the PR description, which is about the deploy watch, says nothing about this. The part about a mutable tag was already true with @v1, so the main problem is an unexplained and likely accidental downgrade of the CI review workflow.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+          "start_line": 127,
+          "end_line": 128,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The checks for an existing deployment run at 1 minute after the merge, inside the 2-minute grace, so they cannot fail if a repo that has a deployment wrongly gets the fast no-deploy.",
+          "evidence": "setup 1 \"$OTHERDEP\" \"$WF_PR\" \"$NORUNS\";   check 'a deployment exists, no deploy workflow' none",
+          "suggested_fix": "Run these cases at 3 minutes (and at 11 minutes), so a wrong no-deploy line would show in the output.",
+          "explanation": "At 1 minute the new branch prints nothing anyway, so these checks pass whether or not dep_count stops the no-deploy path. That path gives a false ship word if it breaks.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "setup 1 \"$OTHERDEP\" \"$WF_PR\" \"$NORUNS\";   check 'a deployment exists, no deploy workflow' none",
+            "setup 1 \"$OTHERDEP\" \"$WF_DEPLOY\" \"$NORUNS\"; check 'a deployment exists, a deploy workflow' none",
+            "jq -n --arg m \"$merged_at\" '((now - ($m | fromdateiso8601)) / 60) >= 2' 2>/dev/null |"
+          ],
+          "rationale": "Both deployment-exists cases run at 1 minute, where the 2-minute grace in pr-watch.sh returns silently anyway. They would pass even if the dep_count guard were removed, so they don't test that guard.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "setup 1 \"$OTHERDEP\" \"$WF_PR\" \"$NORUNS\";   check 'a deployment exists, no deploy workflow' none",
+            "setup 1 \"$OTHERDEP\" \"$WF_DEPLOY\" \"$NORUNS\"; check 'a deployment exists, a deploy workflow' none",
+            "jq -n --arg m \"$merged_at\" '((now - ($m | fromdateiso8601)) / 60) >= 2' 2>/dev/null |"
+          ],
+          "rationale": "Both deployment-exists cases run at 1 minute, where the 2-minute grace in pr-watch.sh returns silently anyway. They would pass even if the dep_count guard were removed, so they don't test that guard.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          0,
+          2,
+          3,
+          4
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 1,
+              "claim": "The reusable review workflow ref changes from the moving @v1 tag to the older-looking pinned @v0.5.0, and the PR description does not explain or justify it.",
+              "explanation": "The pin can roll back review fixes and checks while the workflow runs with inherited secrets and write permissions, and the change is outside this PR's scope and missing from the description.",
+              "suggested_fix": "Revert to @v1, or keep the pin (preferably a full commit SHA) and state the reason in the PR body, or move it to a separate PR.",
+              "severity": "suggestion"
+            }
+          ]
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": ".github/workflows/pr-review.yml",
+        "start_line": 15,
+        "end_line": 15,
+        "category": "other",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The reusable review workflow ref changes from the moving @v1 tag to the older-looking pinned @v0.5.0, and the PR description does not explain or justify it.",
+        "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+        "explanation": "The pin can roll back review fixes and checks while the workflow runs with inherited secrets and write permissions, and the change is outside this PR's scope and missing from the description.",
+        "needs_context": true,
+        "fingerprint": "ddcfb1910e8bd67c",
+        "severity": "suggestion",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0"
+          ],
+          "rationale": "The diff changes the reusable workflow ref from @v1, which it had used since d55003d, to @v0.5.0. The PR description lists every changed file and never mentions .github/workflows/pr-review.yml, so it gives no reason for a change that may roll CI review back to an older version.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "span_text": "uses: jerridan/pr-review/.github/workflows/review.yml@v0.5.0",
+        "suggested_fix": "Revert to @v1, or keep the pin (preferably a full commit SHA) and state the reason in the PR body, or move it to a separate PR."
+      },
+      {
+        "file": "skills/delivered-window/scripts/test-pr-watch-deploy.sh",
+        "start_line": 127,
+        "end_line": 128,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The checks for an existing deployment run at 1 minute after the merge, inside the 2-minute grace, so they cannot fail if a repo that has a deployment wrongly gets the fast no-deploy.",
+        "evidence": "setup 1 \"$OTHERDEP\" \"$WF_PR\" \"$NORUNS\";   check 'a deployment exists, no deploy workflow' none",
+        "suggested_fix": "Run these cases at 3 minutes (and at 11 minutes), so a wrong no-deploy line would show in the output.",
+        "explanation": "At 1 minute the new branch prints nothing anyway, so these checks pass whether or not dep_count stops the no-deploy path. That path gives a false ship word if it breaks.",
+        "needs_context": false,
+        "fingerprint": "58d5d8077ddba0ca",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "setup 1 \"$OTHERDEP\" \"$WF_PR\" \"$NORUNS\";   check 'a deployment exists, no deploy workflow' none",
+            "setup 1 \"$OTHERDEP\" \"$WF_DEPLOY\" \"$NORUNS\"; check 'a deployment exists, a deploy workflow' none",
+            "jq -n --arg m \"$merged_at\" '((now - ($m | fromdateiso8601)) / 60) >= 2' 2>/dev/null |"
+          ],
+          "rationale": "Both deployment-exists cases run at 1 minute, where the 2-minute grace in pr-watch.sh returns silently anyway. They would pass even if the dep_count guard were removed, so they don't test that guard.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "setup 1 \"$OTHERDEP\" \"$WF_PR\" \"$NORUNS\"; check 'a deployment exists, no deploy workflow' none setup 1 \"$OTHERDEP\" \"$WF_DEPLOY\" \"$NORUNS\"; check 'a deployment exists, a deploy workflow' none"
+      },
+      {
+        "file": "docs/design.md",
+        "start_line": 9168,
+        "end_line": 9172,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The main text of §15.137 says the script prints `no-deploy` on the first poll after the merge, but the code waits 2 minutes after the merge first.",
+        "evidence": "script prints `no-deploy` on the first poll after the merge",
+        "suggested_fix": "Change it to say that the script prints `no-deploy` once 2 minutes have passed since the merge, or note that patch round 3 replaced this text.",
+        "explanation": "pr-watch.sh prints nothing until 2 minutes have passed since mergedAt. Only patch round 3, further down, says so, which leaves the main description of §15.137 wrong.",
+        "needs_context": false,
+        "fingerprint": "cf904a91025f738a",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "script prints `no-deploy` on the first poll after the merge. With one,",
+            "now prints only once 2 minutes have passed since `mergedAt`, and prints",
+            "# `no-deploy` once 2 minutes have passed since the merge, and prints nothing",
+            "# The 2-minute grace: a deploy run can need seconds to appear."
+          ],
+          "rationale": "The new §15.137 main paragraph says `no-deploy` prints on the first poll after the merge, but pr-watch.sh applies a 2-minute grace. Patch round 3 and the heading of the same entry correct this, so the error is a minor stale sentence inside a new entry that a reader can resolve from the rest of the entry.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "`pr-watch.sh` in the modes `deploy` and `deploy-once` now reads the repo's workflows with `gh api --paginate` when it finds no deployment and no deploy run. A workflow counts when its state is `active` and its name or path holds `deploy` or `release`, in any case. With none, the script prints `no-deploy` on the first poll after the merge. With one,"
+      }
+    ],
+    "github": {
+      "review_id": 5853025666,
+      "review_url": "https://github.com/jerridan/crew/pull/145#pullrequestreview-5853025666",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "ddcfb1910e8bd67c",
+          "comment_id": 4533327917
+        },
+        {
+          "fingerprint": "58d5d8077ddba0ca",
+          "comment_id": 4533327922
+        },
+        {
+          "fingerprint": "cf904a91025f738a",
+          "comment_id": 4533327927
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 130284934428
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9601,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 20118,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020243,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1361,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 20892,
+            "webSearchRequests": 0,
+            "costUSD": 0.097182,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.09920630000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5687,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22195,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022340000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 471,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 31689,
+            "webSearchRequests": 0,
+            "costUSD": 0.26294,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 201,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.265174
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9452,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22209,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022354000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 710,
+            "cacheReadInputTokens": 64891,
+            "cacheCreationInputTokens": 33518,
+            "webSearchRequests": 0,
+            "costUSD": 0.2953542,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 181,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2975896
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10700,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22189,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022334000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 910,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 31628,
+            "webSearchRequests": 0,
+            "costUSD": 0.27123200000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 489,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2734654
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10610,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22187,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022332000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 865,
+            "cacheReadInputTokens": 64805,
+            "cacheCreationInputTokens": 34091,
+            "webSearchRequests": 0,
+            "costUSD": 0.303013,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 297,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.30524619999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10593,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22201,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022346,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 785,
+            "cacheReadInputTokens": 31640,
+            "cacheCreationInputTokens": 31971,
+            "webSearchRequests": 0,
+            "costUSD": 0.277812,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 612,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2800466
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8049,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 36415,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.003656000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 642,
+            "cacheReadInputTokens": 49035,
+            "cacheCreationInputTokens": 43691,
+            "webSearchRequests": 0,
+            "costUSD": 0.372191,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 193,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.375847
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5505,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22191,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022336,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 432,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 28669,
+            "webSearchRequests": 0,
+            "costUSD": 0.23861179999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 93,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2408454
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4361,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4070,
+            "outputTokens": 274,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000544,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 251,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 519,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 7949,
+            "webSearchRequests": 0,
+            "costUSD": 0.036989999999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 195,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.037534
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5557,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22195,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022340000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 430,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 28673,
+            "webSearchRequests": 0,
+            "costUSD": 0.2386038,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 100,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.24083780000000002
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6483,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11569,
+            "outputTokens": 220,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012669,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 195,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 853,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 11081,
+            "webSearchRequests": 0,
+            "costUSD": 0.0532947,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 282,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0545616
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5660,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4137,
+            "outputTokens": 260,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005437,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 238,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 661,
+            "cacheReadInputTokens": 12383,
+            "cacheCreationInputTokens": 3986,
+            "webSearchRequests": 0,
+            "costUSD": 0.0238003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 218,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.024344
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6781,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4102,
+            "outputTokens": 210,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005152,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 187,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 779,
+            "cacheReadInputTokens": 12348,
+            "cacheCreationInputTokens": 3949,
+            "webSearchRequests": 0,
+            "costUSD": 0.024828799999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 339,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.025344
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11925,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22195,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022340000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1097,
+            "cacheReadInputTokens": 35462,
+            "cacheCreationInputTokens": 30229,
+            "webSearchRequests": 0,
+            "costUSD": 0.2708804,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 593,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2731144
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8010,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4116,
+            "outputTokens": 303,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005631,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 281,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 879,
+            "cacheReadInputTokens": 12362,
+            "cacheCreationInputTokens": 3953,
+            "webSearchRequests": 0,
+            "costUSD": 0.0258462,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 429,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0264093
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5142,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4100,
+            "outputTokens": 215,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005175000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 190,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 532,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 3604,
+            "webSearchRequests": 0,
+            "costUSD": 0.0403534,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 209,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.040870899999999995
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8069,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4145,
+            "outputTokens": 271,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00055,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 249,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 798,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 3649,
+            "webSearchRequests": 0,
+            "costUSD": 0.0460334,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 423,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.046583400000000004
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8072,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14547,
+            "outputTokens": 397,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016532,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 365,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 979,
+            "cacheReadInputTokens": 41921,
+            "cacheCreationInputTokens": 16449,
+            "webSearchRequests": 0,
+            "costUSD": 0.0797901,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 254,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08144330000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7132,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4130,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0004225,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 702,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 3634,
+            "webSearchRequests": 0,
+            "costUSD": 0.0439934,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 322,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0444159
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12544,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11551,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011676,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1227,
+            "cacheReadInputTokens": 31322,
+            "cacheCreationInputTokens": 16490,
+            "webSearchRequests": 0,
+            "costUSD": 0.16274840000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 570,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.163916
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3384,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 2406,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00025160000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 347,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 2980,
+            "webSearchRequests": 0,
+            "costUSD": 0.015394,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 102,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0156456
+      }
+    ],
+    "total_cost_usd": 3.2124407,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 40,
+      "gather": 199,
+      "triage": 10562,
+      "find_verify": 35343,
+      "merge": 3957
+    },
+    "errors": []
+  }
+}

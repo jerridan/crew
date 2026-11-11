@@ -1,5 +1,4 @@
 {
-  "modules": ["./review-board.tsx"],
   "hooks": {
     "SessionEnd": [
       {

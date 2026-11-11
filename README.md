@@ -22,7 +22,7 @@ waits for your go-ahead before it pushes or replies on the PR. A comment from
 a bot, a failed check and a comment from your own GitHub account take no
 go-ahead.
 
-Three entry points:
+Two entry points:
 
 | Command | Use it for |
 |---|---|
@@ -30,7 +30,7 @@ Three entry points:
 | `/crew:review` | One colleague's PR. It reviews the PR as a skeptical staff reviewer, posts the review on GitHub, and stays with the PR to the merge. |
 
 Crew is experimental. It has taken real goals to draft PRs, and the plugin
-changes often. `/crew:review` has not run yet.
+changes often. `/crew:review` has run once.
 
 ## Install
 

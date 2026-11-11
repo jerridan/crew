@@ -98,9 +98,6 @@ git -C <run.repo> worktree prune
 git -C <run.repo> branch -D crew/pr-<n>
 ```
 
-**A child in child mode removes nothing.** It stops after its ready file, and
-the queue's "Clean up" removes the worktree.
-
 **`run.repo`, never `run.checkout`.** "End the run" removes a checkout the
 run cut for itself, and a review that runs after that would have no repo to
 work from. `run.repo` is the target-repo clone, and it outlives the run

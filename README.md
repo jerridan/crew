@@ -28,11 +28,9 @@ Three entry points:
 |---|---|
 | `/crew:project-lead` | One goal, run in the session you are in. It sizes the work itself and brings you every question it cannot answer. |
 | `/crew:review` | One colleague's PR. It reviews the PR as a skeptical staff reviewer, posts the review on GitHub, and stays with the PR to the merge. |
-| `/crew:review-queue` | Many PRs at once. It watches a Slack channel, your GitHub review requests or your direct asks, runs a review per PR, and does every post, approval and merge-queue step from one session. |
 
 Crew is experimental. It has taken real goals to draft PRs, and the plugin
-changes often. `/crew:review` has not run yet, and neither has
-`/crew:review-queue`.
+changes often. `/crew:review` has not run yet.
 
 ## Install
 
@@ -235,46 +233,6 @@ tells you, with the reason.
 To use another reviewer, say so in plain words, as for a goal:
 `use Codex for the review`.
 
-### Run a review queue
-
-Start a named Claude Code session, then start the queue:
-
-```
-claude -n review-queue
-/crew:review-queue
-```
-
-Tell it what to watch, in plain words:
-
-```
-watch #frontend-reviews with assist
-watch my review requests
-review https://github.com/<owner>/<repo>/pull/<n> with assist
-what are you watching
-stop watching #frontend-reviews
-```
-
-`assist` fixes the blockers, approves, and puts the PR in the merge queue.
-`review`, the default, posts the findings and approves a clean PR. It pushes
-nothing.
-
-The queue reads a small PR with green CI itself. Every other PR gets its own
-`/crew:review` session in tmux, in a checkout you already have. Those
-sessions never post. The queue session posts every review, approval and Slack
-reaction, and it asks you once for a batch of reviews that have findings. A
-review with no findings posts with no wait.
-
-The review board shows the queue in a pane beside the chat, and a count in
-the status line. It opens by itself in a queue session.
-Open it in any session with:
-
-```
-/review-board
-```
-
-An open pane updates while it is open, in any session. In a terminal under
-110 columns, the command prints the board as text.
-
 ## What a run needs
 
 | Requirement | How | Which runs |
@@ -284,11 +242,6 @@ An open pane updates while it is open, in any session. In a terminal under
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
 | A checkout of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the checkout | every `/crew:review` run |
-| Your checkout of each repo you review | Start the queue inside one, or list each under `Checkouts` in `~/.claude/crew/config.md`. The queue asks when it finds none | every `/crew:review-queue` run |
-| A named session, tmux, and `gh` signed in as you | `claude -n review-queue`, with `tmux` installed | every `/crew:review-queue` run |
-| A Slack connector | A Slack MCP connector that reads channel history and adds reactions | a queue that watches a Slack channel |
-| A Slack user token | Put a token with the scopes `channels:history`, `channels:read` and `reactions:read` in `~/.claude/secrets/slack-token`. The review board then polls Slack and your review requests. Without the file, the queue session polls, and reads Slack through the Slack MCP connector | optional, every `/crew:review-queue` run |
-| Claude Code 2.1.314 or later | `claude --version` | the review board |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 | Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |
 
@@ -306,7 +259,6 @@ under a `##` heading with one of these names:
 | `Reviewers` | the reviewer to use in place of a review step, in plain words |
 | `Known red tests` | the tests that already fail on the main branch, and why |
 | `Gates` | the exact commands CI runs: tests, types, lint and build. Only a goal run reads this section |
-| `Checkouts` | the path of your checkout of each repo, one line each, as `<owner>/<repo>: <absolute path>`. Only the review queue reads it |
 | `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run checks that bot's blocking findings too |
 | `Hook workarounds` | what to do when a git hook stops a push or a merge |
 | `Ticket defaults` | where a new ticket goes, such as its team |
@@ -314,7 +266,6 @@ under a `##` heading with one of these names:
 | `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for the deploy of the merge, or for your word under `Deploy: manual`, not for the merge alone |
 | `Branch names` | your rule for a branch name |
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
-| `Pre-enqueue checks` | shell commands, one per line, that the review queue runs before it puts a PR in the merge queue. A failed command stops that PR |
 | `Deploy` | how crew sees that a merge is live: `environment: <name>`, `workflow: <name>`, `none` (the repo has no deploy, so the run closes at the merge) or `manual` (the repo deploys where GitHub cannot see, so crew waits for your word), and an optional `timeout: <minutes>` (default 180). With no section, crew looks for a successful production deployment, or a deploy or release workflow run, on GitHub. A repo with neither and no deploy or release workflow closes 2 minutes after the merge, unless the merged PR added or renamed a workflow file. A repo with such a workflow or such a file and no run closes 10 minutes after the merge |
 
 ```
@@ -439,7 +390,6 @@ else: every package takes the same steps.
 | Spec critic | opus | high |
 | Decomposition critic | opus | high |
 | Skeptical review | opus | high |
-| Queue session | your session's | your session's |
 
 The project lead, the ICs and the scouts take your session's effort, so set
 it before the run starts.
@@ -493,7 +443,6 @@ review kind, over every record.
 | Researcher | Answers one open question across several hops, with citations. |
 | Scout | Answers one lookup for the project lead, then exits. |
 | Advocate | Argues one assigned position in a council. |
-| Queue session | Watches your sources for PRs, runs a review per PR, and does every post, approval, merge-queue step and Slack reaction itself. |
 
 ## Help and contributing
 

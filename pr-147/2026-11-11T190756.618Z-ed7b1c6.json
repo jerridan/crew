@@ -1,0 +1,1353 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 147,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Remove the review-queue skill and the review-board mod",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/147"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "7f5a6098dbf228c913d084582e0d8022853dbd11",
+    "head": "ed7b1c624f5330c2346747d576c2cb1fc1adc274",
+    "started_at": "2026-11-11T19:07:56.618Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Remove the review-queue skill and the review-board mod\n\n## Summary\n\nThis PR removes the review queue and the review board from crew. The principal now uses a team-built skill for this work, so the queue session, the board pane, the Slack watcher and the \"child mode\" of a single review are no longer necessary. The project lead, the single PR review and the delivered window stay as they are.\n\n**Ticket:** N/A\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.138 records the removal. It marks §15.128, §15.129, §15.132, §15.135 and §15.136 as removed. For §15.130 and §15.133, it removes only the queue parts. `skills/project-lead/SKILL.md` \"Standing instructions\" owns the config sections. `record-format.md` owns the charter lines.\n\n### What changed, by file\n\n- `skills/review-queue/` (the skill, its four references and two scripts), `hooks/review-board.tsx`, `tests/review-board.test.tsx`, `types/index.d.ts`: deleted.\n- `hooks/hooks.json`: no `modules` entry. `.claude-plugin/plugin.json`: no `types` entry. Both manifests are at 0.1.105.\n- `skills/review/SKILL.md`: no child mode, no `Queue:` launch words, no `ready-file.md` row.\n- `skills/review/references/github-review.md`, `skills/project-lead/references/review-runner.md`, `record-format.md`: the queue's inline read, the child-mode clean-up rule and the `Queue:` charter line are removed.\n- `skills/project-lead/SKILL.md`: the `Pre-enqueue checks` and `Checkouts` config sections are removed (only the queue read them). The section count goes from thirteen to eleven.\n- `README.md`, `CLAUDE.md`: the queue and the board are removed from the commands, requirements, config, glossary, layout, build state and authority lists.\n- `docs/design.md`, `docs/tickets.md`: §15.138 is added, and the old sections and T84 to T87 have removal notes. The history is not changed.\n\n### Constraints that applied\n\n- A change to what the plugin loads bumps `version` in both manifests to the same value: 0.1.105.\n- `docs/implementation-plan.md` and `docs/stage-2-run/` are not edited.\n- The text about GitHub's merge queue (`queued`, `dequeued`, `dequeue-diagnosis.sh`) stays. It is not the review queue.\n\n### How this was verified\n\nA grep for `review-queue|review-board|queue session|asks\\.json|queue-watch|board\\.json|ready-file|child mode|/review-board` finds hits only in the design §15 history, in the T84 to T87 ticket bodies, and in the one CLAUDE.md sentence that records the removal. I read the diffs of the skill and reference files.\n\n### Known gaps\n\n`skills/project-lead/scripts/crew-stats.py` still skips a `<record-root>/queue/` directory when it walks the records. Old queue records can still be on disk, so the skip stays.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_011vtCEg5hAVSjy1FSvmQx3u\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": true
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 5
+      },
+      {
+        "path": "README.md",
+        "hunks": 7
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 8
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 4
+      },
+      {
+        "path": "hooks/hooks.json",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/review-board.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/review-runner.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/board.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/ownership.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/ready-file.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/references/sources.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/scripts/queue-watch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review-queue/scripts/test-queue-watch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 1
+      },
+      {
+        "path": "tests/review-board.test.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "types/index.d.ts",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Removes a whole feature (review-queue skill, review-board mod, child mode), edits hooks.json, plugin.json and skill instructions that agents read, so leftover references or broken config could cause runtime failures.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "hooks/hooks.json",
+        "skills/review/SKILL.md",
+        "skills/project-lead/SKILL.md",
+        "skills/project-lead/references/review-runner.md",
+        "skills/project-lead/references/record-format.md",
+        ".claude-plugin/plugin.json",
+        "skills/project-lead/scripts/crew-stats.py"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump to 0.1.105; removes the \"types\" key"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump only"
+        },
+        {
+          "file": "hooks/hooks.json",
+          "note": "removes the \"modules\" entry that loaded review-board.tsx; check the JSON is still valid and the SessionEnd and PreCompact hooks are intact"
+        },
+        {
+          "file": "skills/review/SKILL.md",
+          "note": "removes the Child mode section and the Queue: charter handling; check for dangling references to child mode elsewhere"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "standing-instructions table goes from thirteen to eleven sections; check the count and the base-branch read wording"
+        },
+        {
+          "file": "skills/project-lead/references/review-runner.md",
+          "note": "removes the child-mode cleanup paragraph"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "removes the Queue: charter line"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "comment-only change; the new line is long, but no logic change"
+        },
+        {
+          "file": "skills/review/references/github-review.md",
+          "note": "drops the queue inline-read mention from the tool-output rule"
+        },
+        {
+          "file": "hooks/review-board.tsx",
+          "note": "deleted"
+        },
+        {
+          "file": "tests/review-board.test.tsx",
+          "note": "deleted"
+        },
+        {
+          "file": "types/index.d.ts",
+          "note": "deleted"
+        },
+        {
+          "file": "skills/review-queue/SKILL.md",
+          "note": "deleted"
+        },
+        {
+          "file": "skills/review-queue/references/board.md",
+          "note": "deleted"
+        },
+        {
+          "file": "skills/review-queue/references/ownership.md",
+          "note": "deleted"
+        },
+        {
+          "file": "skills/review-queue/references/ready-file.md",
+          "note": "deleted"
+        },
+        {
+          "file": "skills/review-queue/references/sources.md",
+          "note": "deleted"
+        },
+        {
+          "file": "skills/review-queue/scripts/queue-watch.sh",
+          "note": "deleted"
+        },
+        {
+          "file": "skills/review-queue/scripts/test-queue-watch.sh",
+          "note": "deleted"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs updated to match the removal"
+        },
+        {
+          "file": "README.md",
+          "note": "docs updated to match the removal"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "adds §15.138 and marks the earlier sections as removed"
+        },
+        {
+          "file": "docs/tickets.md",
+          "note": "marks T84–T87 as removed"
+        }
+      ],
+      "summary": "Removes the /crew:review-queue skill, the review-board mod (tsx, tests, types), queue-watch scripts, and /crew:review's child mode. It also drops the Queue: charter line and the Pre-enqueue checks and Checkouts standing-instruction sections, and bumps the plugin to 0.1.105. Docs and design notes are updated to match. Reviewers should check for dangling references to the removed pieces, and that hooks.json and plugin.json stay valid and consistent."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Removes a whole feature (review-queue skill, review-board mod, child mode), edits hooks.json, plugin.json and skill instructions that agents read, so leftover references or broken config could cause runtime failures.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3525,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104193,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0521415,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 261,
+              "cacheReadInputTokens": 113762,
+              "cacheCreationInputTokens": 114064,
+              "webSearchRequests": 0,
+              "costUSD": 0.9405004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 81,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.9926419
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "README.md",
+            "start_line": 32,
+            "end_line": 33,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The description says the README change only removes the queue and the board, but the diff also changes the README's run status of `/crew:review` from 'has not run yet' to 'has run once'.",
+            "evidence": "changes often. `/crew:review` has run once.",
+            "suggested_fix": "Name the status change in the description, or keep the old wording minus the queue.",
+            "explanation": "This is a new statement about whether `/crew:review` has run, and the description does not mention it.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5006,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104209,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0521495,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 409,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 113736,
+              "webSearchRequests": 0,
+              "costUSD": 0.918076,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 123,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.9702255
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5175,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104199,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0521445,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 447,
+              "cacheReadInputTokens": 113671,
+              "cacheCreationInputTokens": 113876,
+              "webSearchRequests": 0,
+              "costUSD": 0.9426982,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 249,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.9948427000000001
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6567,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104201,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.052145500000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 515,
+              "cacheReadInputTokens": 113673,
+              "cacheCreationInputTokens": 113899,
+              "webSearchRequests": 0,
+              "costUSD": 0.9442425999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 331,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.9963880999999999
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9684,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104193,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.052143999999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 827,
+              "cacheReadInputTokens": 341868,
+              "cacheCreationInputTokens": 114442,
+              "webSearchRequests": 0,
+              "costUSD": 1.0004815999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 424,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 1.0526255999999998
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3275,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 137639,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.06886450000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 276,
+              "cacheReadInputTokens": 150292,
+              "cacheCreationInputTokens": 144394,
+              "webSearchRequests": 0,
+              "costUSD": 1.1907463999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 82,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 1.2596109
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2064,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104203,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0521615,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 130,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 110714,
+              "webSearchRequests": 0,
+              "costUSD": 0.8889318,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.9410933
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2066,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104199,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0521445,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 129,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 110710,
+              "webSearchRequests": 0,
+              "costUSD": 0.8888798,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.9410243
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 1488,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 104203,
+              "outputTokens": 18,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.052146500000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 83,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 111385,
+              "webSearchRequests": 0,
+              "costUSD": 0.8933598,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.9455063
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "README.md",
+          "start_line": 32,
+          "end_line": 33,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The description says the README change only removes the queue and the board, but the diff also changes the README's run status of `/crew:review` from 'has not run yet' to 'has run once'.",
+          "evidence": "changes often. `/crew:review` has run once.",
+          "suggested_fix": "Name the status change in the description, or keep the old wording minus the queue.",
+          "explanation": "This is a new statement about whether `/crew:review` has run, and the description does not mention it.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "changes often. `/crew:review` has run once."
+          ],
+          "rationale": "The diff does change the README status from \"has not run yet\" to \"has run once\", and the description lists only removals for the README. This is a minor, unmentioned wording edit that is plausibly correct, so it's not worth the author's time.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "changes often. `/crew:review` has run once.",
+            "Crew is experimental. It has taken real goals to draft PRs, and the plugin"
+          ],
+          "rationale": "The finding is accurate: the diff changes \"`/crew:review` has not run yet\" to \"`/crew:review` has run once\", which is a new status claim and more than removing the queue. Still, the change shows plainly in the diff, and the description's \"build state\" item may cover it. The note does not lead to a wrong result, so it is not worth the author's time.",
+          "score": 92,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "changes often. `/crew:review` has run once.",
+            "Crew is experimental. It has taken real goals to draft PRs, and the plugin"
+          ],
+          "rationale": "The finding is accurate: the diff changes \"`/crew:review` has not run yet\" to \"`/crew:review` has run once\", which is a new status claim and more than removing the queue. Still, the change shows plainly in the diff, and the description's \"build state\" item may cover it. The note does not lead to a wrong result, so it is not worth the author's time.",
+          "score": 92,
+          "severity": "dont_post"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5864078498,
+      "review_url": "https://github.com/jerridan/crew/pull/147#pullrequestreview-5864078498",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 130744912429
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 12279,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 103077,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.051583500000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1358,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 103852,
+            "webSearchRequests": 0,
+            "costUSD": 0.428992,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4805755
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3525,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104193,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0521415,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 261,
+            "cacheReadInputTokens": 113762,
+            "cacheCreationInputTokens": 114064,
+            "webSearchRequests": 0,
+            "costUSD": 0.9405004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 81,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.9926419
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5006,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104209,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0521495,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 409,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 113736,
+            "webSearchRequests": 0,
+            "costUSD": 0.918076,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 123,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.9702255
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5175,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104199,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0521445,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 447,
+            "cacheReadInputTokens": 113671,
+            "cacheCreationInputTokens": 113876,
+            "webSearchRequests": 0,
+            "costUSD": 0.9426982,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 249,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.9948427000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6567,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104201,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.052145500000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 515,
+            "cacheReadInputTokens": 113673,
+            "cacheCreationInputTokens": 113899,
+            "webSearchRequests": 0,
+            "costUSD": 0.9442425999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 331,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.9963880999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3275,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 137639,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.06886450000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 276,
+            "cacheReadInputTokens": 150292,
+            "cacheCreationInputTokens": 144394,
+            "webSearchRequests": 0,
+            "costUSD": 1.1907463999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 82,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 1.2596109
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2064,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104203,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0521615,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 130,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 110714,
+            "webSearchRequests": 0,
+            "costUSD": 0.8889318,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.9410933
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2066,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104199,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0521445,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 129,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 110710,
+            "webSearchRequests": 0,
+            "costUSD": 0.8888798,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.9410243
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 1488,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104203,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.052146500000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 83,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 111385,
+            "webSearchRequests": 0,
+            "costUSD": 0.8933598,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.9455063
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9684,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 104193,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.052143999999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 827,
+            "cacheReadInputTokens": 341868,
+            "cacheCreationInputTokens": 114442,
+            "webSearchRequests": 0,
+            "costUSD": 1.0004815999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 424,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 1.0526255999999998
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6551,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 20041,
+            "outputTokens": 307,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021576,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 289,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 509,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 23921,
+            "webSearchRequests": 0,
+            "costUSD": 0.100778,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 225,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1029356
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6565,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 20025,
+            "outputTokens": 254,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021295000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 232,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 656,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 23897,
+            "webSearchRequests": 0,
+            "costUSD": 0.204304,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 302,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.20643350000000002
+      }
+    ],
+    "total_cost_usd": 9.8839032,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 42,
+      "gather": 481,
+      "triage": 13115,
+      "find_verify": 22691,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

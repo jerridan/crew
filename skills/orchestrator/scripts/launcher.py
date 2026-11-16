@@ -297,8 +297,11 @@ def checkout_for(repo):
     inside = False
     for raw in text.splitlines():
         line = raw.strip()
-        if line.startswith("##"):
+        if re.match(r"##(?!#)", line):
+            # Only a heading with exactly two # ends the section.
             inside = line == "## Checkouts"
+            continue
+        if line.startswith("#"):
             continue
         if not inside:
             continue

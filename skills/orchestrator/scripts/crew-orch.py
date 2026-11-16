@@ -31,6 +31,7 @@ Commands:
   refresh [<item>]
   board [--urls | --json]
   show [<item>]
+  close
 """
 
 from __future__ import annotations
@@ -59,7 +60,8 @@ DONE_STAGES = {"shipped", "closed"}
 LANDED_STAGES = {"merged", "shipped"}
 KINDS = {"decision": "d", "question": "q", "idea": "i", "notice": "n"}
 SETTABLE = {"title", "repo", "ticket", "group", "launch"}
-LAUNCH_KEYS = ["session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group"]
+LAUNCH_KEYS = ["session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group",
+               "session_id"]
 PACE_MODES = {"normal", "slowed", "stopped"}
 
 GH_FIELDS = "state,isDraft,reviewDecision,mergeStateStatus,statusCheckRollup"
@@ -164,7 +166,10 @@ class Record:
 
     def load(self) -> dict:
         try:
-            return json.loads(self.json.read_text(encoding="utf-8"))
+            state = json.loads(self.json.read_text(encoding="utf-8"))
+            if isinstance(state, dict):
+                state.setdefault("closed_at", None)  # a record from before close
+            return state
         except FileNotFoundError:
             raise Fail(f"no orchestrator record '{self.name}'; run: crew-orch.py --orch {self.name} init")
         except ValueError as err:
@@ -206,6 +211,7 @@ def new_state(name: str) -> dict:
         "name": name,
         "created_at": stamp,
         "updated_at": stamp,
+        "closed_at": None,
         "counters": {"item": 0, "decision": 0, "question": 0, "idea": 0, "notice": 0},
         "items": {},
         "groups": {},
@@ -1247,11 +1253,24 @@ def cmd_show(rec: Record, args: list) -> None:
     print(json.dumps(value, indent=2, ensure_ascii=False))
 
 
+def cmd_close(rec: Record, args: list) -> None:
+    pos, _ = take_options(args, {})
+    want(pos, 0, 0, "close")
+
+    def change(state):
+        if state.get("closed_at"):
+            raise Fail(f"orchestrator record '{rec.name}' is already closed at {state['closed_at']}")
+        state["closed_at"] = now_iso()
+        return state["closed_at"]
+
+    print(rec.mutate(change))
+
+
 COMMANDS = {
     "init": cmd_init, "item": cmd_item, "group": cmd_group, "stage": cmd_stage, "doing": cmd_doing,
     "ask": cmd_ask, "inbox": cmd_inbox, "route": cmd_route, "answer": cmd_answer, "dismiss": cmd_dismiss,
     "plan": cmd_plan, "told": cmd_told, "pace": cmd_pace, "refresh": cmd_refresh, "board": cmd_board,
-    "show": cmd_show,
+    "show": cmd_show, "close": cmd_close,
 }
 
 

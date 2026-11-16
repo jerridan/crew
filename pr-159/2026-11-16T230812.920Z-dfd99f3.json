@@ -1,0 +1,2259 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 159,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add the plan usage figures and the slow-down of the orchestrator",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/159"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "88f7e0b451a6ddaa1dfa0e9557ef9202918f95c5",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-159/2026-11-16T205652.057Z-88f7e0b.json",
+      "open": [],
+      "dismissed": [
+        "33ff87ae0b01beeb",
+        "3916fc6d17097c89",
+        "b92e24511b351228",
+        "bd15ecc6aead6886",
+        "ce4d2c15b2fe1d57",
+        "d233b8dc8aa73182"
+      ],
+      "fetch_failed": false
+    },
+    "base": "70b7adff5c51110ed1a4b7589cd4407dfcac0231",
+    "head": "dfd99f3973d009b5eb9cfcb5c8b17ce88aa6bf25",
+    "started_at": "2026-11-16T23:08:12.920Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add the plan usage figures and the slow-down of the orchestrator\n\n## Summary\n\nThe crew orchestrator can now know the plan usage of the account and slow down before the five-hour limit. Before this change, only one session could see the usage figures, and only as of its own last reply, so a long batch ran from 52% to 92% with no warning. Now every implementer feeds one shared file from its status line, a fresh reading fills the gaps when no session works, and a check tells the orchestrator and each implementer when to slow down, stop, and start again after the reset. The user's own status line stays in each tab.\n\nCloses #153\n\n**Ticket:** [#153 — plan usage figures and the automatic slow-down](https://github.com/jerridan/crew/issues/153), part 3 of [#150](https://github.com/jerridan/crew/issues/150)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/usage.md` (new) owns the shared file, the merge rule, which sessions contribute, the levels and their exit codes, the launch value, the watch, the slow-down rule and the limit.\n- `skills/project-lead/references/autonomy-contract.md`, \"The usage limit line\", owns what a project lead does with a `Usage limit:` charter line.\n- `skills/project-lead/references/record-format.md` lists the charter line. `skills/project-lead/SKILL.md` writes it into the charter and lists the `Usage limit` standing-instructions section.\n- The orchestrator record and its `pace` object (mode, slots, limit) belong to issue 151 (`skills/orchestrator/references/orchestrator-record.md`, `crew-orch.py pace set`). This PR defines no copy of them.\n- `docs/design.md` §15.141 records the probe, the design, the review fixes and what the build's own limit taught.\n\n### Where the orchestrator and an implementer read the figures and the limit\n\n- Figures: both run `python3 <plugin>/skills/orchestrator/scripts/crew-usage.py check --limit <pct>` (level, exit 0/10/20) or `show --json` (figures). The board runs `show --json`. The file is `<record-root>/usage.json`.\n- Limit: the orchestrator reads `pace.limit_pct` from its own record (issue 151). An implementer reads the `Usage limit: <pct>` line of its charter, which only the orchestrator writes into the goal it sends, as a copy of `pace.limit_pct`; the orchestrator resends it when the limit changes.\n- Wake: the orchestrator arms `crew-usage.py watch --limit <pct>` with `Monitor`; it prints a line only when the level changes or the window resets. An implementer stopped at the limit arms `crew-usage.py wait` in the background and resumes when it exits.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-usage.py` (new): `record`, `statusline` (records the sample, then runs the user's own status line with the same stdin), `settings` (prints the `--settings` value for the launcher), `refresh` (a fresh reading from `claude --restricted --strict-mcp-config` with no prompt and no model turn, at most one attempt per 5 minutes across processes), `show` (exit 1 with no figures, 2 with no plan limits), `check` (level, exit 0/10/20, with the sample time), `watch` (one line per level change; `--until stopped` for a project lead), `wait`.\n- `skills/orchestrator/scripts/test-crew-usage.py` (new): 101 seeded checks with a stub `claude`, a temp HOME and a temp record root.\n- `skills/orchestrator/references/usage.md` (new): the reference above.\n- `skills/project-lead/references/autonomy-contract.md`: new section \"The usage limit line\": the check before each dispatch and push, `watch --until stopped` while ICs work, the stop steps, a pause message handled like `stopped`, and the restart on `wait`.\n- `skills/project-lead/references/record-format.md`: the `Usage limit: <pct>` charter line.\n- `skills/project-lead/SKILL.md`: the charter line at \"Take the goal\"; the `Usage limit` row in the standing-instructions table; the lead-in now says thirteen sections exist and the orchestrator reads `Checkouts` and `Usage limit`.\n- `CLAUDE.md`: the layout rows, the code-exceptions sentence, the build state and the authority list.\n- `docs/design.md`: the §15.141 entry.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.108, assigned by the orchestrator.\n\n### Constraints that applied\n\n- No probe or test changed a settings file, and no `claude` start loaded the user's plugins: the only real start is `claude --restricted --strict-mcp-config --settings <json>`, which reads no settings file. The tests check settings-file modification times.\n- Python 3 standard library only. No dollar budget.\n- One rule in one file: the project-lead side points at `usage.md`, and the record's `pace` object stays issue 151's.\n- The plugin version (0.1.108) and the §15 number (141) are the values the orchestrator assigned.\n- The README does not change: the only user-facing item is the `Usage limit` standing-instructions section, which only the orchestrator reads, and the orchestrator skill (issue 154) is not built yet. Its README row belongs with issue 154.\n\n### How this was verified\n\n- `python3 skills/orchestrator/scripts/test-crew-usage.py` prints `101 of 101 checks passed`. A seeded fault (the same-window merge reversed) made checks fail, then they passed again after the revert. Each review fix has a check that failed before it (red commits 16df5f9, 816acec).\n- Probe of the source, before the spec: a status line in a `claude --restricted` start got `rate_limits` 5 seconds after the start with no prompt (10%). It stayed at 10% for 4.5 idle minutes, and moved to 14% after one one-word prompt. A mod's `$.session.usage()` read 1% for the same window at the same time.\n- Live run of `refresh` once: five-hour 31%, seven-day 35%, in 7.5 seconds, no process left.\n- A skeptical review (Opus, headless, restricted mode) and the CI review ran on the first head; their findings are fixed or answered in the threads.\n- During the build, a feed of fresh readings every 5 minutes gave the orchestrator its figures and its 60% and 80% notices; it read 0% at 18:01, after the reset.\n- Live tab check of the wrapper: a `claude --restricted --settings \"$(crew-usage.py settings)\"` tab showed the user's own four-line status line, and the shared file got the sample within 12 seconds.\n\n### Known gaps\n\n- No orchestrator run has used any of this yet. The orchestrator skill (issue 154) and the board pane (issue 155) are the readers.\n- Not tested: whether an in-process subagent's or teammate's API reply refreshes the figures of its parent session's status line.\n- A fresh reading must run in a directory that `claude` already trusts. In another directory it fails after 30 seconds and `check` falls back to the stored file.\n- The 15-point margin assumes a burn of at most 2 points a minute, as experiment 1 measured. A faster burn can pass the limit between readings.\n- `slots` counts implementer sessions only. Review runs, CI reviews and ICs burn outside it, so the level, not the slot count, is the brake.\n- Not checked: whether each fresh-reading start writes to `~/.claude.json`.\n- Managed-policy rules on status lines: the wrapper does not read them.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZgCk9XyM3CDdY4AMdZ\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-usage.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-usage.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new 700-line Python script with concurrency (file locks), subprocess/pty management and slow-down logic, plus new workflow rules for project leads and a version bump.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-usage.py: do_refresh (pty, process-group kill, no-figures handling)",
+        "skills/orchestrator/scripts/crew-usage.py: update/claim_refresh (lock and atomic write, single refresh claim)",
+        "skills/orchestrator/scripts/crew-usage.py: apply_sample/advanced/merge_window (updated_at semantics)",
+        "skills/orchestrator/scripts/crew-usage.py: cmd_statusline (wrapper recursion guard, shell=True user command, exit code passthrough)",
+        "skills/orchestrator/scripts/crew-usage.py: level_of/forecast and cmd_watch reset logic",
+        "skills/project-lead/references/autonomy-contract.md: new usage limit section",
+        "skills/orchestrator/scripts/test-crew-usage.py: timing-based watch tests may be flaky"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "note": "new script; shared usage.json writer, status line wrapper, fresh reading via claude, levels, watch and wait"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "note": "new seeded test with a stub claude; sleep-based timing"
+        },
+        {
+          "file": "skills/orchestrator/references/usage.md",
+          "note": "new canonical reference for figures, levels and slow-down; check it matches the code"
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "new behavior rules for the project lead on a Usage limit line"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "charter line handling and section table changes (twelve to thirteen sections)"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "documents the Usage limit charter line"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "layout table and docs; a stray duplicated 'deploy signal of pr-watch.sh' line looks like a merge slip"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 141"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump to 0.1.108"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump to 0.1.108"
+        }
+      ],
+      "summary": "The change adds crew-usage.py, which keeps the account's plan usage figures in a shared usage.json. It feeds the file through a status line wrapper and through a fresh reading by a bare claude, and it computes normal/slowed/stopped levels with watch and wait commands. It also adds the usage reference, project-lead rules for a Usage limit charter line, a seeded test, design notes and a version bump."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new 700-line Python script with concurrency (file locks), subprocess/pty management and slow-down logic, plus new workflow rules for project leads and a version bump.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 18,
+            "end_line": 19,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "high",
+            "claim": "The new sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\" from line 15, so the paragraph now holds a broken, duplicated line.",
+            "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "suggested_fix": "Delete the stray \"deploy signal of `pr-watch.sh`.\" at the start of line 18 so the new sentence begins with \"`skills/orchestrator/scripts/crew-usage.py` is code too\".",
+            "explanation": "The writing standard that CLAUDE.md points to requires clear ASD-STE100 prose, and this duplicated fragment makes the code-exceptions paragraph read wrong.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6668,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38170,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038300000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 592,
+              "cacheReadInputTokens": 47748,
+              "cacheCreationInputTokens": 48522,
+              "webSearchRequests": 0,
+              "costUSD": 0.4095816,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 124,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4134116
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 15,
+            "end_line": 19,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The description says CLAUDE.md's code-exceptions sentence was updated, but the edit appends a duplicate fragment after the old sentence instead of extending it.",
+            "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is\ncode too, and `test-crew-usage.py` beside it tests it with a stub `claude`.",
+            "suggested_fix": "Remove the repeated \"deploy signal of `pr-watch.sh`.\" and add the crew-usage clause to the end of the existing sentence.",
+            "explanation": "The words \"deploy signal of `pr-watch.sh`.\" now appear twice, and the result is a broken paragraph rather than an updated sentence.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8389,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38166,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038271,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 829,
+              "cacheReadInputTokens": 96373,
+              "cacheCreationInputTokens": 49664,
+              "webSearchRequests": 0,
+              "costUSD": 0.43319060000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 153,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.43701770000000006
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 15,
+            "end_line": 19,
+            "category": "other",
+            "severity_estimate": "nit",
+            "confidence": "high",
+            "claim": "The edit repeats the line fragment `deploy signal of pr-watch.sh.` instead of replacing it, so the code-exceptions paragraph now reads twice.",
+            "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "suggested_fix": "Remove the repeated `deploy signal of pr-watch.sh.` fragment and append the crew-usage sentence after `commands.`",
+            "explanation": "The new text was added after the old sentence rather than in place of its line, so the paragraph is garbled.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10848,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38174,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038279000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1026,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 47655,
+              "webSearchRequests": 0,
+              "costUSD": 0.401768,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 631,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4055959
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 12324,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38168,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038283,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1153,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 47649,
+              "webSearchRequests": 0,
+              "costUSD": 0.40425999999999995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 703,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.40808829999999996
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 18,
+            "end_line": 19,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "high",
+            "claim": "The new sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\" after the launcher sentence, so the paragraph reads wrong.",
+            "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "suggested_fix": "Remove \"deploy signal of `pr-watch.sh`. \" from line 18.",
+            "explanation": "A merge leftover duplicates the end of the earlier sentence.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5566,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38170,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038275000000000006,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 525,
+              "cacheReadInputTokens": 47658,
+              "cacheCreationInputTokens": 48349,
+              "webSearchRequests": 0,
+              "costUSD": 0.40683959999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 122,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.41066709999999995
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 18,
+            "end_line": 19,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "high",
+            "claim": "The added sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\", so the paragraph now has a broken duplicate line.",
+            "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "suggested_fix": "Remove \"deploy signal of `pr-watch.sh`.\" from the start of the added line.",
+            "explanation": "The line copies the start of the line before it (from commit 3e25d90). The paragraph then holds a stray sentence fragment.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4193,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45368,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045473,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 380,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 51912,
+              "webSearchRequests": 0,
+              "costUSD": 0.4235158,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 77,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4280631
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 477,
+            "end_line": 479,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The status line wrapper runs a command from project-level settings, found from the stdin project_dir, through a shell with no trust or restricted-mode check.",
+            "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "suggested_fix": "Read only the user-level settings file, or read project settings only after a trust check and never in a restricted session.",
+            "explanation": "The wrapper might run a project's statusLine command in a case where Claude Code itself would not, for example an untrusted directory or a restricted start, so a repo's settings file could run code.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8441,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38160,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038265,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 778,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 44680,
+              "webSearchRequests": 0,
+              "costUSD": 0.3736198,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 182,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3774463
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 458,
+            "end_line": 460,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The statusline wrapper reads a status line command from `<project_dir>/.claude/settings*.json` and runs it with `shell=True`, and it skips Claude Code's own trust and managed-policy checks.",
+            "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "suggested_fix": "Run only the user-level status line, or apply the same trust and policy checks that Claude Code applies before you run a project-level command.",
+            "explanation": "The wrapper takes `project_dir` from stdin and runs whatever command the repo's settings name there. Claude Code applies its own trust and policy rules before it runs a status line, and the wrapper applies neither.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7541,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38168,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038273000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 691,
+              "cacheReadInputTokens": 10074,
+              "cacheCreationInputTokens": 37673,
+              "webSearchRequests": 0,
+              "costUSD": 0.3172268,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 228,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.32105409999999995
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-crew-usage.py",
+            "start_line": 345,
+            "end_line": 346,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The no-user-status-line check accepts any short line, but usage.md says the wrapper shows nothing in that case.",
+            "evidence": "          len(r.stdout.splitlines()) <= 1 and len(r.stdout) < 120 and r.returncode == 0)",
+            "suggested_fix": "Assert r.stdout == b\"\".",
+            "explanation": "The loose match still passes if the wrapper prints stray text, so the documented behaviour of showing nothing is not enforced.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/test-crew-usage.py",
+            "start_line": 705,
+            "end_line": 720,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The watch tests depend on fixed wall-clock sleeps (1.0 to 1.5 seconds) with a 0.2-second interval, so they can fail on a slow machine.",
+            "evidence": "def t_r7():",
+            "suggested_fix": "Poll the output until a deadline, or drive the watch with --ticks and a file clock.",
+            "explanation": "When the Python start and the stub take longer than the sleep window, the watch misses the change and the check fails for a reason that is not a defect.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10277,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 38170,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0038275000000000006,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1027,
+              "cacheReadInputTokens": 100310,
+              "cacheCreationInputTokens": 46066,
+              "webSearchRequests": 0,
+              "costUSD": 0.40915399999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 189,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.41298149999999995
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 18,
+          "end_line": 19,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "high",
+          "claim": "The new sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\" after the launcher sentence, so the paragraph reads wrong.",
+          "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+          "suggested_fix": "Remove \"deploy signal of `pr-watch.sh`. \" from line 18.",
+          "explanation": "A merge leftover duplicates the end of the earlier sentence.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is"
+          ],
+          "rationale": "Line 18 of CLAUDE.md starts with a copy of the end of the earlier sentence (\"deploy signal of `pr-watch.sh`.\"), so the paragraph reads wrong. The PR added this line, and the text is garbled where it sits.",
+          "score": 96,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is"
+          ],
+          "rationale": "Line 18 of CLAUDE.md starts with a copy of the end of the earlier sentence (\"deploy signal of `pr-watch.sh`.\"), so the paragraph reads wrong. The PR added this line, and the text is garbled where it sits.",
+          "score": 96,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 18,
+          "end_line": 19,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "high",
+          "claim": "The new sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\" from line 15, so the paragraph now holds a broken, duplicated line.",
+          "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+          "suggested_fix": "Delete the stray \"deploy signal of `pr-watch.sh`.\" at the start of line 18 so the new sentence begins with \"`skills/orchestrator/scripts/crew-usage.py` is code too\".",
+          "explanation": "The writing standard that CLAUDE.md points to requires clear ASD-STE100 prose, and this duplicated fragment makes the code-exceptions paragraph read wrong.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "commands.\ndeploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is"
+          ],
+          "rationale": "The added line 18 starts with the stray fragment \"deploy signal of `pr-watch.sh`.\", which copies line 15. It sits after \"commands.\" and makes the new sentence read wrong. The diff adds this line.",
+          "score": 97,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "commands.\ndeploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is"
+          ],
+          "rationale": "The added line 18 starts with the stray fragment \"deploy signal of `pr-watch.sh`.\", which copies line 15. It sits after \"commands.\" and makes the new sentence read wrong. The diff adds this line.",
+          "score": 97,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 15,
+          "end_line": 19,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The description says CLAUDE.md's code-exceptions sentence was updated, but the edit appends a duplicate fragment after the old sentence instead of extending it.",
+          "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is\ncode too, and `test-crew-usage.py` beside it tests it with a stub `claude`.",
+          "suggested_fix": "Remove the repeated \"deploy signal of `pr-watch.sh`.\" and add the crew-usage clause to the end of the existing sentence.",
+          "explanation": "The words \"deploy signal of `pr-watch.sh`.\" now appear twice, and the result is a broken paragraph rather than an updated sentence.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is\ncode too, and `test-crew-usage.py` beside it tests it with a stub `claude`."
+          ],
+          "rationale": "The diff adds a line that begins with the stray fragment \\\"deploy signal of `pr-watch.sh`.\\\", which already ends the earlier sentence. The paragraph now has a duplicated, broken fragment right after \\\"commands.\\\".",
+          "score": 96,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is\ncode too, and `test-crew-usage.py` beside it tests it with a stub `claude`."
+          ],
+          "rationale": "The diff adds a line that begins with the stray fragment \\\"deploy signal of `pr-watch.sh`.\\\", which already ends the earlier sentence. The paragraph now has a duplicated, broken fragment right after \\\"commands.\\\".",
+          "score": 96,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 18,
+          "end_line": 19,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "high",
+          "claim": "The added sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\", so the paragraph now has a broken duplicate line.",
+          "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+          "suggested_fix": "Remove \"deploy signal of `pr-watch.sh`.\" from the start of the added line.",
+          "explanation": "The line copies the start of the line before it (from commit 3e25d90). The paragraph then holds a stray sentence fragment.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "code too, and `test-crew-usage.py` beside it tests it with a stub `claude`."
+          ],
+          "rationale": "Line 18, added by this diff, starts with \"deploy signal of `pr-watch.sh`.\" again. The same fragment already ends line 14 and starts line 15, so the added sentence opens with a stray repeated fragment. The fix is trivial.",
+          "score": 97,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "code too, and `test-crew-usage.py` beside it tests it with a stub `claude`."
+          ],
+          "rationale": "Line 18, added by this diff, starts with \"deploy signal of `pr-watch.sh`.\" again. The same fragment already ends line 14 and starts line 15, so the added sentence opens with a stray repeated fragment. The fix is trivial.",
+          "score": 97,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 15,
+          "end_line": 19,
+          "category": "other",
+          "severity_estimate": "nit",
+          "confidence": "high",
+          "claim": "The edit repeats the line fragment `deploy signal of pr-watch.sh.` instead of replacing it, so the code-exceptions paragraph now reads twice.",
+          "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+          "suggested_fix": "Remove the repeated `deploy signal of pr-watch.sh.` fragment and append the crew-usage sentence after `commands.`",
+          "explanation": "The new text was added after the old sentence rather than in place of its line, so the paragraph is garbled.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is"
+          ],
+          "rationale": "The PR added line 18, which repeats \"deploy signal of `pr-watch.sh`.\" from line 15. The paragraph now reads \"...tests the default deploy signal of `pr-watch.sh`. ... commands. deploy signal of `pr-watch.sh`. ...crew-usage.py is code too\", which is garbled.",
+          "score": 97,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is"
+          ],
+          "rationale": "The PR added line 18, which repeats \"deploy signal of `pr-watch.sh`.\" from line 15. The paragraph now reads \"...tests the default deploy signal of `pr-watch.sh`. ... commands. deploy signal of `pr-watch.sh`. ...crew-usage.py is code too\", which is garbled.",
+          "score": 97,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 477,
+          "end_line": 479,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The status line wrapper runs a command from project-level settings, found from the stdin project_dir, through a shell with no trust or restricted-mode check.",
+          "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+          "suggested_fix": "Read only the user-level settings file, or read project settings only after a trust check and never in a restricted session.",
+          "explanation": "The wrapper might run a project's statusLine command in a case where Claude Code itself would not, for example an untrusted directory or a restricted start, so a repo's settings file could run code.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "os.path.join(cwd, \".claude\", \"settings.json\"),",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "project_dir = pick(ws.get(\"project_dir\")) or run_dir"
+          ],
+          "rationale": "The wrapper reads the project's .claude/settings.json and settings.local.json from the stdin project_dir. It runs that statusLine command with shell=True, and it checks no trust or restricted state. The PR itself uses the wrapper in `claude --restricted` tabs, and that mode reads no settings files. So a cloned repo's settings could run code there. Claude Code's own trust gate may still stop the wrapper in untrusted directories, so the severity is limited.",
+          "score": 68,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for p in (os.path.join(config_dir, \"settings.json\"),\n              os.path.join(cwd, \".claude\", \"settings.json\"),\n              os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,\n                           stderr=subprocess.PIPE, cwd=run_dir)",
+            "crew-usage.py settings --cwd <worktree path>",
+            "[\"claude\", \"--restricted\", \"--strict-mcp-config\", \"--settings\", settings],"
+          ],
+          "rationale": "It is true that the wrapper reads the project's settings files and runs their statusLine command through a shell without any trust or restricted-mode check. But Claude Code itself only invokes the wrapper as the status line of a launched implementer, inside a worktree of the user's own repo that Claude Code already trusts. The only `--restricted` start, `refresh`, uses its own probe status line and never runs the wrapper. So the case where a repo's settings file runs code it otherwise could not is narrow and theoretical.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for p in (os.path.join(config_dir, \"settings.json\"),\n              os.path.join(cwd, \".claude\", \"settings.json\"),\n              os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,\n                           stderr=subprocess.PIPE, cwd=run_dir)",
+            "crew-usage.py settings --cwd <worktree path>",
+            "[\"claude\", \"--restricted\", \"--strict-mcp-config\", \"--settings\", settings],"
+          ],
+          "rationale": "It is true that the wrapper reads the project's settings files and runs their statusLine command through a shell without any trust or restricted-mode check. But Claude Code itself only invokes the wrapper as the status line of a launched implementer, inside a worktree of the user's own repo that Claude Code already trusts. The only `--restricted` start, `refresh`, uses its own probe status line and never runs the wrapper. So the case where a repo's settings file runs code it otherwise could not is narrow and theoretical.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 458,
+          "end_line": 460,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The statusline wrapper reads a status line command from `<project_dir>/.claude/settings*.json` and runs it with `shell=True`, and it skips Claude Code's own trust and managed-policy checks.",
+          "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+          "suggested_fix": "Run only the user-level status line, or apply the same trust and policy checks that Claude Code applies before you run a project-level command.",
+          "explanation": "The wrapper takes `project_dir` from stdin and runs whatever command the repo's settings name there. Claude Code applies its own trust and policy rules before it runs a status line, and the wrapper applies neither.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "os.path.join(cwd, \".claude\", \"settings.json\"),",
+            "project_dir = pick(ws.get(\"project_dir\")) or run_dir"
+          ],
+          "rationale": "The wrapper reads statusLine from project .claude/settings*.json under a stdin-supplied project_dir and runs it with shell=True. It applies no trust or managed-policy check, and the PR description admits it does not read managed policy. The risk is limited because Claude Code launches the wrapper itself from a session in that directory, so the user has normally already trusted it. The cited line range is also off, since the call is at line 492.",
+          "score": 62,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "project_dir = pick(ws.get(\"project_dir\")) or run_dir",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "# ask for trust, and the status line never runs."
+          ],
+          "rationale": "The wrapper does run the project-level statusLine command with shell=True and reads no managed policy. But it only runs when Claude Code itself calls the status line, which happens only after the folder is trusted, so the trust bypass is largely closed upstream. The managed-policy gap is already listed under \"Known gaps\" in the description, so a comment would mostly repeat it.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "project_dir = pick(ws.get(\"project_dir\")) or run_dir",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "# ask for trust, and the status line never runs."
+          ],
+          "rationale": "The wrapper does run the project-level statusLine command with shell=True and reads no managed policy. But it only runs when Claude Code itself calls the status line, which happens only after the folder is trusted, so the trust bypass is largely closed upstream. The managed-policy gap is already listed under \"Known gaps\" in the description, so a comment would mostly repeat it.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "start_line": 345,
+          "end_line": 346,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The no-user-status-line check accepts any short line, but usage.md says the wrapper shows nothing in that case.",
+          "evidence": "          len(r.stdout.splitlines()) <= 1 and len(r.stdout) < 120 and r.returncode == 0)",
+          "suggested_fix": "Assert r.stdout == b\"\".",
+          "explanation": "The loose match still passes if the wrapper prints stray text, so the documented behaviour of showing nothing is not enforced.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "len(r.stdout.splitlines()) <= 1 and len(r.stdout) < 120 and r.returncode == 0)",
+            "With no user line, it shows nothing.",
+            "if not sl:\n        return 0"
+          ],
+          "rationale": "usage.md says that with no user line the wrapper shows nothing, and cmd_statusline returns 0 with no output in that case. The test accepts any single line shorter than 120 bytes, so stray output would pass. The check is looser than the documented behaviour.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "len(r.stdout.splitlines()) <= 1 and len(r.stdout) < 120 and r.returncode == 0)",
+            "With no user line, it shows nothing.",
+            "if not sl:\n        return 0"
+          ],
+          "rationale": "usage.md says that with no user line the wrapper shows nothing, and cmd_statusline returns 0 with no output in that case. The test accepts any single line shorter than 120 bytes, so stray output would pass. The check is looser than the documented behaviour.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "start_line": 705,
+          "end_line": 720,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The watch tests depend on fixed wall-clock sleeps (1.0 to 1.5 seconds) with a 0.2-second interval, so they can fail on a slow machine.",
+          "evidence": "def t_r7():",
+          "suggested_fix": "Poll the output until a deadline, or drive the watch with --ticks and a file clock.",
+          "explanation": "When the Python start and the stub take longer than the sleep window, the watch misses the change and the check fails for a reason that is not a defect.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    p = start_watch()\n    time.sleep(1.0)\n    seed(five=85, first=(NOW - 3610, 85))\n    time.sleep(1.2)\n    lines = stop(p)",
+            "return subprocess.Popen([PY, SCRIPT, \"watch\", \"--interval\", \"0.2\"],"
+          ],
+          "rationale": "The R7 watch tests, and the R8 wait tests too, rely on fixed `time.sleep` windows (1.0 to 1.5 s) against a 0.2 s watch interval. On a loaded machine the watch can start late or miss the seeded change, so the tests can fail without a real defect. The code does this, though the margin is about 5x the interval and the risk is moderate.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "p = start_watch()\n    time.sleep(1.0)\n    seed(five=85, first=(NOW - 3610, 85))\n    time.sleep(1.2)\n    lines = stop(p)",
+            "return subprocess.Popen([PY, SCRIPT, \"watch\", \"--interval\", \"0.2\"],",
+            "check(\"R7 the watch prints no line while the level stays the same\", lines == [])"
+          ],
+          "rationale": "The new R7 watch tests rely on fixed sleeps: 1.0 s before the file changes and 1.2 to 1.5 s after it. The watch prints nothing for its starting level, so if the Python start takes longer than the first sleep, the watch reads the changed file as its starting level and prints no line, and the \"exactly one line\" checks fail even though the code is correct. On a busy CI runner this can make the tests flaky, but it does not affect users, so it is worth a comment rather than a block.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "p = start_watch()\n    time.sleep(1.0)\n    seed(five=85, first=(NOW - 3610, 85))\n    time.sleep(1.2)\n    lines = stop(p)",
+            "return subprocess.Popen([PY, SCRIPT, \"watch\", \"--interval\", \"0.2\"],",
+            "check(\"R7 the watch prints no line while the level stays the same\", lines == [])"
+          ],
+          "rationale": "The new R7 watch tests rely on fixed sleeps: 1.0 s before the file changes and 1.2 to 1.5 s after it. The watch prints nothing for its starting level, so if the Python start takes longer than the first sleep, the watch reads the changed file as its starting level and prints no line, and the \"exactly one line\" checks fail even though the code is correct. On a busy CI runner this can make the tests flaky, but it does not affect users, so it is worth a comment rather than a block.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 3,
+              "claim": "The new CLAUDE.md sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\" after the earlier sentence, leaving a broken duplicated line in the code-exceptions paragraph.",
+              "explanation": "The edit was added after the old sentence instead of extending it, so the fragment appears twice and the paragraph reads wrong.",
+              "suggested_fix": "Remove the repeated \"deploy signal of `pr-watch.sh`.\" from the start of the added line so it begins with \"`skills/orchestrator/scripts/crew-usage.py` is code too\".",
+              "severity": "suggestion"
+            }
+          ]
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5929541962,
+      "review_url": "https://github.com/jerridan/crew/pull/159#pullrequestreview-5929541962",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133682582161
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "CLAUDE.md",
+        "start_line": 18,
+        "end_line": 19,
+        "category": "docs",
+        "severity_estimate": "suggestion",
+        "confidence": "high",
+        "claim": "The new CLAUDE.md sentence repeats the fragment \"deploy signal of `pr-watch.sh`.\" after the earlier sentence, leaving a broken duplicated line in the code-exceptions paragraph.",
+        "evidence": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+        "explanation": "The edit was added after the old sentence instead of extending it, so the fragment appears twice and the paragraph reads wrong.",
+        "needs_context": false,
+        "fingerprint": "2479bafa8fd4aabe",
+        "severity": "suggestion",
+        "score": 97,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is",
+            "code too, and `test-crew-usage.py` beside it tests it with a stub `claude`."
+          ],
+          "rationale": "Line 18, added by this diff, starts with \"deploy signal of `pr-watch.sh`.\" again. The same fragment already ends line 14 and starts line 15, so the added sentence opens with a stray repeated fragment. The fix is trivial.",
+          "score": 97,
+          "severity": "suggestion"
+        },
+        "span_text": "deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is code too, and `test-crew-usage.py` beside it tests it with a stub `claude`.",
+        "suggested_fix": "Remove the repeated \"deploy signal of `pr-watch.sh`.\" from the start of the added line so it begins with \"`skills/orchestrator/scripts/crew-usage.py` is code too\"."
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-crew-usage.py",
+        "start_line": 705,
+        "end_line": 720,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The watch tests depend on fixed wall-clock sleeps (1.0 to 1.5 seconds) with a 0.2-second interval, so they can fail on a slow machine.",
+        "evidence": "def t_r7():",
+        "suggested_fix": "Poll the output until a deadline, or drive the watch with --ticks and a file clock.",
+        "explanation": "When the Python start and the stub take longer than the sleep window, the watch misses the change and the check fails for a reason that is not a defect.",
+        "needs_context": false,
+        "fingerprint": "42adc8384c265fdb",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "p = start_watch()\n    time.sleep(1.0)\n    seed(five=85, first=(NOW - 3610, 85))\n    time.sleep(1.2)\n    lines = stop(p)",
+            "return subprocess.Popen([PY, SCRIPT, \"watch\", \"--interval\", \"0.2\"],",
+            "check(\"R7 the watch prints no line while the level stays the same\", lines == [])"
+          ],
+          "rationale": "The new R7 watch tests rely on fixed sleeps: 1.0 s before the file changes and 1.2 to 1.5 s after it. The watch prints nothing for its starting level, so if the Python start takes longer than the first sleep, the watch reads the changed file as its starting level and prints no line, and the \"exactly one line\" checks fail even though the code is correct. On a busy CI runner this can make the tests flaky, but it does not affect users, so it is worth a comment rather than a block.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "def t_r7(): orch = os.path.join(REC, \"orchestrator\") os.makedirs(orch, exist_ok=True) with open(os.path.join(orch, \"state.json\"), \"w\") as f: json.dump({\"pace\": {\"mode\": \"normal\"}}, f) snap = {n: (os.stat(os.path.join(orch, n)).st_mtime_ns, open(os.path.join(orch, n)).read()) for n in os.listdir(orch)} flat = (NOW - 3610, 20) seed(five=20, first=flat) p = start_watch() time.sleep(1.0) seed(five=85, first=(NOW - 3610, 85)) time.sleep(1.2) lines = stop(p) check(\"R7 a move from normal to slowed prints exactly one line\","
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-crew-usage.py",
+        "start_line": 345,
+        "end_line": 346,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The no-user-status-line check accepts any short line, but usage.md says the wrapper shows nothing in that case.",
+        "evidence": "          len(r.stdout.splitlines()) <= 1 and len(r.stdout) < 120 and r.returncode == 0)",
+        "suggested_fix": "Assert r.stdout == b\"\".",
+        "explanation": "The loose match still passes if the wrapper prints stray text, so the documented behaviour of showing nothing is not enforced.",
+        "needs_context": false,
+        "fingerprint": "7386d78bf2c2b7f0",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "len(r.stdout.splitlines()) <= 1 and len(r.stdout) < 120 and r.returncode == 0)",
+            "With no user line, it shows nothing.",
+            "if not sl:\n        return 0"
+          ],
+          "rationale": "usage.md says that with no user line the wrapper shows nothing, and cmd_statusline returns 0 with no output in that case. The test accepts any single line shorter than 120 bytes, so stray output would pass. The check is looser than the documented behaviour.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "check(\"R2 with no user status line the output is empty or one short line\", len(r.stdout.splitlines()) <= 1 and len(r.stdout) < 120 and r.returncode == 0)"
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7974,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 37143,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0037278000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1134,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 37918,
+            "webSearchRequests": 0,
+            "costUSD": 0.163016,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1667438
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5566,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38170,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038275000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 525,
+            "cacheReadInputTokens": 47658,
+            "cacheCreationInputTokens": 48349,
+            "webSearchRequests": 0,
+            "costUSD": 0.40683959999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 122,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.41066709999999995
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6668,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38170,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038300000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 592,
+            "cacheReadInputTokens": 47748,
+            "cacheCreationInputTokens": 48522,
+            "webSearchRequests": 0,
+            "costUSD": 0.4095816,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 124,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4134116
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8389,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38166,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038271,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 829,
+            "cacheReadInputTokens": 96373,
+            "cacheCreationInputTokens": 49664,
+            "webSearchRequests": 0,
+            "costUSD": 0.43319060000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 153,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.43701770000000006
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4193,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45368,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045473,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 380,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 51912,
+            "webSearchRequests": 0,
+            "costUSD": 0.4235158,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 77,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4280631
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10848,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38174,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038279000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1026,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 47655,
+            "webSearchRequests": 0,
+            "costUSD": 0.401768,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 631,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4055959
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12324,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38168,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038283,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1153,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 47649,
+            "webSearchRequests": 0,
+            "costUSD": 0.40425999999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 703,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.40808829999999996
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 2672,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14677,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014812000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 322,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 18557,
+            "webSearchRequests": 0,
+            "costUSD": 0.07745200000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07893320000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8441,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38160,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038265,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 778,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 44680,
+            "webSearchRequests": 0,
+            "costUSD": 0.3736198,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 182,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3774463
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7541,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38168,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038273000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 691,
+            "cacheReadInputTokens": 10074,
+            "cacheCreationInputTokens": 37673,
+            "webSearchRequests": 0,
+            "costUSD": 0.3172268,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 228,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.32105409999999995
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3955,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14760,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00149,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 553,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 14273,
+            "webSearchRequests": 0,
+            "costUSD": 0.0630627,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0645527
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4599,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14769,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014914,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 708,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 14282,
+            "webSearchRequests": 0,
+            "costUSD": 0.0646487,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.06614010000000001
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3902,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14685,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014810000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 572,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 14198,
+            "webSearchRequests": 0,
+            "costUSD": 0.0629527,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 220,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0644337
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3653,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14718,
+            "outputTokens": 32,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014878,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 515,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 14231,
+            "webSearchRequests": 0,
+            "costUSD": 0.0625147,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0640025
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10277,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38170,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038275000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1027,
+            "cacheReadInputTokens": 100310,
+            "cacheCreationInputTokens": 46066,
+            "webSearchRequests": 0,
+            "costUSD": 0.40915399999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 189,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.41298149999999995
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7212,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 18405,
+            "outputTokens": 347,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.002014,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 326,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 918,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 17918,
+            "webSearchRequests": 0,
+            "costUSD": 0.0812927,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 485,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0833067
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5756,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27464,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027574,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 681,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 26977,
+            "webSearchRequests": 0,
+            "costUSD": 0.1151587,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 246,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1179161
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 12013,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 18359,
+            "outputTokens": 281,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0019764,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 258,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1352,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 17872,
+            "webSearchRequests": 0,
+            "costUSD": 0.08544869999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 903,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08742509999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8217,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27169,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027294,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 927,
+            "cacheReadInputTokens": 67292,
+            "cacheCreationInputTokens": 29122,
+            "webSearchRequests": 0,
+            "costUSD": 0.1324992,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 120,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1352286
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7797,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27474,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027584000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 774,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 31346,
+            "webSearchRequests": 0,
+            "costUSD": 0.266256,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 273,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2690144
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13626,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 18413,
+            "outputTokens": 240,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0019613,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 217,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1357,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 22285,
+            "webSearchRequests": 0,
+            "costUSD": 0.205428,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 925,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2073893
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 22849,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 18341,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018451,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 12,
+            "outputTokens": 2076,
+            "cacheReadInputTokens": 125199,
+            "cacheCreationInputTokens": 22227,
+            "webSearchRequests": 0,
+            "costUSD": 0.24442380000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 848,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2462689
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 2193,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 2766,
+            "outputTokens": 32,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0002926,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 274,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 3341,
+            "webSearchRequests": 0,
+            "costUSD": 0.016107999999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.016400599999999998
+      }
+    ],
+    "total_cost_usd": 5.282081299999999,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 40,
+      "gather": 179,
+      "scope": 12,
+      "triage": 8924,
+      "find_verify": 54380,
+      "merge": 2997
+    },
+    "errors": []
+  }
+}

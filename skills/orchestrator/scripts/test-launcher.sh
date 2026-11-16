@@ -76,13 +76,20 @@ exit 0
 STUB
 
 # uv stub: the iTerm2 helper. It logs its args. Files: uv-fail (it fails),
-# uv-groups (the groups output).
+# uv-groups (the groups output), uv-out (its whole stdout) with uv-rc (its
+# exit code, 0 when missing).
 cat > "$T/bin/uv" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
 line=''
 for a in "$@"; do line="$line$a|"; done
 printf '%s\n' "$line" >> "$D/uv.log"
+if [ -e "$D/uv-out" ]; then
+  cat "$D/uv-out"
+  rc=$(cat "$D/uv-rc" 2>/dev/null || echo 0)
+  [ "$rc" = 0 ] || echo "iterm2-tabs: RPCException: stub failure" >&2
+  exit "$rc"
+fi
 [ -e "$D/uv-fail" ] && { echo "iterm2.rpc: connection refused" >&2; exit 1; }
 group=null
 prev=''
@@ -363,6 +370,174 @@ TERM_PROGRAM=iTerm.app run start --name it5 --model m --principal p --checkout "
 r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF "$CO/.claude/worktrees/it5" "$T/err" \
   && [ -d "$CO/.claude/worktrees/it5" ] && [ ! -s "$T/out" ] && r=0
 check 'a failed helper and a failed osascript exit 6 and name the kept worktree' $r
+
+# -- iterm2: a helper that fails part way (one tab, never two) -------------
+# helper_says <exit code> <stdout line>...: the next helper stdout and exit.
+helper_says() { reset_stub; echo "$1" > "$STUB_DIR/uv-rc"; shift; printf '%s\n' "$@" > "$STUB_DIR/uv-out"; }
+osa_starts() { grep -c '^-|start|' "$STUB_DIR/osa.log" 2>/dev/null | tr -d ' '; }
+
+helper_says 1 '{"opened": "T-1"}' '{"closed": "T-1"}'
+TERM_PROGRAM=iTerm.app run start --name pf1 --model m --principal p --checkout "$CO" --group grp
+r=1; [ "$rc" = 0 ] && [ "$(osa_starts)" = 1 ] && ! grep -sq '^-|stop|' "$STUB_DIR/osa.log" \
+  && [ "$(field tab)" = '"iterm2:OSA-0001"' ] && [ "$(lines "$T/err")" = 1 ] && r=0
+check 'a helper that closed its tab and failed gives exactly one osascript start call' $r
+
+helper_says 1 '{"opened": "T-1"}'
+echo 'T-1' > "$STUB_DIR/osa-sessions"
+TERM_PROGRAM=iTerm.app run start --name pf2 --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 0 ] && [ "$(sed -n 1p "$STUB_DIR/osa.log")" = '-|stop|T-1|' ] && [ "$(osa_starts)" = 1 ] \
+  && [ "$(field tab)" = '"iterm2:OSA-0001"' ] && [ "$(lines "$T/err")" = 1 ] && r=0
+check 'a helper that left its tab open with no command: osascript closes it first, then one start call' $r
+
+helper_says 1 '{"opened": "T-1"}'
+: > "$STUB_DIR/osa-fail"
+TERM_PROGRAM=iTerm.app run start --name pf3 --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 6 ] && [ "$(osa_starts)" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:T-1' "$T/err" \
+  && grep -sqF "$CO/.claude/worktrees/pf3" "$T/err" && [ ! -s "$T/out" ] && r=0
+check 'a tab that cannot close: exit 6, no osascript start, the line names the tab and the worktree' $r
+
+helper_says 1 '{"opened": "T-1"}' '{"typed": "T-1"}'
+TERM_PROGRAM=iTerm.app run start --name pf4 --model m --principal p --checkout "$CO" --group grp
+r=1; [ "$rc" = 0 ] && [ ! -e "$STUB_DIR/osa.log" ] && [ "$(field tab)" = '"iterm2:T-1"' ] \
+  && [ "$(field tab_group)" = null ] && [ "$(lines "$T/err")" = 1 ] && r=0
+check 'a helper that failed after it typed the command: the tab is reported, one stderr line, no osascript' $r
+
+helper_says 0 '{"opened": "T-1"}' '{"typed": "T-1"}' 'not json'
+TERM_PROGRAM=iTerm.app run start --name pf5 --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 0 ] && [ ! -e "$STUB_DIR/osa.log" ] && [ "$(field tab)" = '"iterm2:T-1"' ] && [ "$(lines "$T/err")" = 1 ] && r=0
+check 'a typed command and no result line: the tab is reported, no osascript' $r
+
+helper_says 0 '{"opened": "T-1"}' '{"typed": "T-1"}' '{"session_id": "T-1", "tab_group": null, "warning": "RPCException: x"}'
+TERM_PROGRAM=iTerm.app run start --name pf6 --model m --principal p --checkout "$CO" --group grp
+r=1; [ "$rc" = 0 ] && [ ! -e "$STUB_DIR/osa.log" ] && [ "$(field tab)" = '"iterm2:T-1"' ] \
+  && [ "$(field tab_group)" = null ] && [ "$(lines "$T/err")" = 1 ] && grep -sq 'RPCException: x' "$T/err" && r=0
+check 'a result with a warning: the tab is reported, one stderr line, no osascript' $r
+
+r=1; python3 - "$here" <<'PY' && r=0
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+rc, out, _ = launcher.run(["sh", "-c", "echo '{\"opened\": \"T-1\"}'; sleep 5"], timeout=1)
+sys.exit(0 if rc == 124 and '"opened"' in out else 1)
+PY
+check 'a helper timeout keeps the stdout the helper printed before it' $r
+
+# -- iterm2-tabs.py itself, against a fake iterm2 module -------------------
+mkdir -p "$T/fake"
+cat > "$T/fake/iterm2.py" <<'PY'
+"""A fake iterm2 module. FAKE_FAIL names the calls that raise."""
+import os
+
+FAIL = os.environ.get("FAKE_FAIL", "").split(",")
+
+
+def log(s):
+    with open(os.environ["STUB_DIR"] + "/fake.log", "a") as f:
+        f.write(s + "\n")
+
+
+class Boom(Exception):
+    pass
+
+
+class capabilities:
+    @staticmethod
+    def supports_tab_groups(conn):
+        return True
+
+
+class Color:
+    @staticmethod
+    def from_hex(h):
+        return h
+
+
+class Session:
+    session_id = "FAKE-1"
+
+    async def async_set_name(self, n):
+        log("set_name " + n)
+        if "set_name" in FAIL:
+            raise Boom("set_name failed")
+
+    async def async_send_text(self, t):
+        log("send_text")
+        if "send_text" in FAIL:
+            raise Boom("send_text failed")
+
+    async def async_close(self, force=False):
+        log("close force=%s" % force)
+        if "close" in FAIL:
+            raise Boom("close failed")
+
+
+class Tab:
+    tab_id = "T1"
+    tab_group = None
+
+    def __init__(self):
+        self.current_session = Session()
+
+
+class Window:
+    window_id = "W1"
+    tab_groups = []
+
+    async def async_create_tab(self, select=True):
+        log("create_tab select=%s" % select)
+        return Tab()
+
+    async def async_create_tab_group(self, name, tabs, color):
+        raise Boom("group failed")
+
+
+class App:
+    current_terminal_window = Window()
+
+    def get_session_by_id(self, i):
+        return None
+
+    def get_window_by_id(self, i):
+        return self.current_terminal_window
+
+    def get_tab_by_id(self, i):
+        return Tab()
+
+
+async def async_get_app(conn):
+    return App()
+
+
+class Connection:
+    @staticmethod
+    async def async_create():
+        return object()
+PY
+# helper <FAKE_FAIL> <args...>: run the helper itself on the fake module.
+helper() {
+  reset_stub
+  f=$1; shift
+  FAKE_FAIL=$f PYTHONPATH="$T/fake" python3 "$here/iterm2-tabs.py" start --name h1 --command 'echo hi' "$@" > "$T/out" 2> "$T/err"
+  rc=$?
+}
+has() { grep -sqF -- "$1" "$T/out"; }
+for f in set_name send_text; do
+  helper "$f"
+  r=1; [ "$rc" = 1 ] && has '{"opened": "FAKE-1"}' && has '{"closed": "FAKE-1"}' && ! has typed \
+    && ! has session_id && grep -sqx 'close force=True' "$STUB_DIR/fake.log" && [ "$(lines "$T/err")" = 1 ] && r=0
+  check "helper: a failed $f closes the tab with force, prints closed, and exits 1" $r
+done
+helper set_name,close
+r=1; [ "$rc" = 1 ] && has '{"opened": "FAKE-1"}' && ! has closed && ! has session_id && r=0
+check 'helper: a tab that does not close gives exit 1 and no closed line' $r
+helper '' --group grp
+r=1; [ "$rc" = 0 ] && has '{"typed": "FAKE-1"}' && ! grep -sq close "$STUB_DIR/fake.log" \
+  && [ "$(tail -n 1 "$T/out" | python3 -c 'import json,sys; o=json.load(sys.stdin); print(o["session_id"], o["tab_group"], "group failed" in o["warning"])')" = 'FAKE-1 None True' ] && r=0
+check 'helper: a failed group step after the command reports the tab with a warning and exits 0' $r
+helper ''
+r=1; [ "$rc" = 0 ] && grep -sqx 'create_tab select=False' "$STUB_DIR/fake.log" \
+  && [ "$(tail -n 1 "$T/out")" = '{"session_id": "FAKE-1", "tab_group": null}' ] && r=0
+check 'helper: with no group, the last line is the result with tab_group null' $r
 
 # -- groups ----------------------------------------------------------------
 reset_stub

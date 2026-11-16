@@ -21,6 +21,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import subprocess
 import sys
 
@@ -29,6 +30,8 @@ OK, USAGE, NO_CHECKOUT, NO_TERMINAL, GIT, TERMINAL_STEP, BAD_HANDLE = 0, 2, 3, 4
 HERE = os.path.dirname(os.path.abspath(__file__))
 HELPER = os.path.join(HERE, "iterm2-tabs.py")
 HELPER_TIMEOUT = 120
+# The helper stops itself this many seconds before the launcher kills it.
+HELPER_MARGIN = 20
 
 START_USAGE = (
     "usage: launcher.py start --name <session-name> [--model <model>] "
@@ -139,22 +142,44 @@ def one_line(text):
     return ""
 
 
-def run(cmd, cwd=None, stdin=None, timeout=None):
-    """Run a command. Return (exit code, stdout, stderr); 127 when it is missing."""
+def run(cmd, cwd=None, stdin=None, timeout=None, env=None):
+    """Run a command. Return (exit code, stdout, stderr); 127 when it is missing.
+
+    The command runs in its own process group. On a timeout the launcher kills
+    the whole group: `uv run` starts python as a child, and a child that
+    stays could open a second tab after the fallback opened one.
+    """
     try:
-        p = subprocess.run(
-            cmd, cwd=cwd, input=stdin, capture_output=True, text=True, timeout=timeout
+        p = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            env=env,
+            stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
         )
     except FileNotFoundError:
         return 127, "", "%s: command not found" % cmd[0]
+    try:
+        out, err = p.communicate(stdin, timeout=timeout)
     except subprocess.TimeoutExpired as e:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except OSError:
+            p.kill()
         # Keep what the command printed before the kill: a helper says on
         # stdout when its tab opened.
-        out = e.stdout or ""
+        try:
+            out, _ = p.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            out = e.stdout
+        out = out or ""
         if isinstance(out, bytes):
             out = out.decode("utf-8", "replace")
         return 124, out, "%s: timed out after %d seconds" % (cmd[0], timeout)
-    return p.returncode, p.stdout, p.stderr
+    return p.returncode, out, err
 
 
 # -- arguments --------------------------------------------------------------
@@ -394,10 +419,16 @@ def helper_lines(out):
     return said
 
 
+def helper_cmd(verb):
+    """The helper command line. Its --deadline ends it before HELPER_TIMEOUT."""
+    deadline = max(1, HELPER_TIMEOUT - HELPER_MARGIN)
+    return ["uv", "run", "-q", "--with", "iterm2", "python", HELPER, verb, "--deadline", str(deadline)]
+
+
 def iterm_start(name, group, color, command, worktree):
     """Open the tab through the helper; fall back to osascript with no group."""
     sid = own_iterm_session()
-    cmd = ["uv", "run", "-q", "--with", "iterm2", "python", HELPER, "start", "--name", name, "--command", command]
+    cmd = helper_cmd("start") + ["--name", name, "--command", command]
     if sid:
         cmd += ["--session", sid]
     if group:
@@ -496,7 +527,7 @@ def groups(_a):
             gid, name = line.split("\t", 1)
             print(json.dumps({"window_id": None, "group_id": gid, "name": name, "color": None}))
         return OK
-    rc, out, err = run(["uv", "run", "-q", "--with", "iterm2", "python", HELPER, "groups"], timeout=HELPER_TIMEOUT)
+    rc, out, err = run(helper_cmd("groups"), timeout=HELPER_TIMEOUT)
     rows = []
     if rc == 0:
         try:

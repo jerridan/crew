@@ -12,7 +12,9 @@ two hooks, the three scripts under `skills/project-lead/scripts/`,
 and `skills/review/scripts/review-json.py`: they are code, run against a
 seeded record (design §15.38, §15.50, §15.123, §15.124).
 `skills/delivered-window/scripts/test-pr-watch-deploy.sh` tests the default
-deploy signal of `pr-watch.sh`.
+deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/launcher.py` and
+`iterm2-tabs.py` are code too, and `test-launcher.sh` tests them with stub
+commands.
 
 ## Layout
 
@@ -25,6 +27,8 @@ deploy signal of `pr-watch.sh`.
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
 | `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line |
 | `skills/delivered-window/scripts/test-pr-watch-deploy.sh` | the seeded test of the default deploy signal of `pr-watch.sh`, with a stub `gh` | a person |
+| `skills/orchestrator/scripts/launcher.py`, `skills/orchestrator/scripts/iterm2-tabs.py` | the orchestrator launcher: starts, lists, focuses and stops implementer sessions in iTerm2 tabs or tmux windows; its iTerm2 Python API helper. `skills/orchestrator/references/launcher.md` owns its interface | the orchestrator session, from Bash |
+| `skills/orchestrator/scripts/test-launcher.sh` | the seeded test of `launcher.py`, with stub `tmux`, `osascript`, `uv` and `claude` | a person |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
@@ -112,6 +116,9 @@ successful deploy of the merge commit is the ship word. A repo with
 `Deploy: none` ships at the merge, and a repo with no deploy by the default
 rule ships 2 minutes after it (§15.137). The watch ran only against a seeded record, and no crew
 run has used it (§15.127).
+
+The orchestrator launcher is built and ran only against its seeded test, and
+no crew run has exercised it (§15.TBD-152).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

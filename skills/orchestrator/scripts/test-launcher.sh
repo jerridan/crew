@@ -1,0 +1,393 @@
+#!/bin/bash
+# Seeded test of launcher.py (issue 152, R5).
+#
+# usage: bash skills/orchestrator/scripts/test-launcher.sh
+#
+# It puts stub `tmux`, `osascript`, `uv` and `claude` commands first in PATH,
+# builds a bare origin and a checkout whose local main is older than the main
+# of the origin, and runs launcher.py once per case. It makes no network call,
+# opens no real tab, window or group, and starts no real `claude`. It exits 0
+# only when every check passes.
+
+set -u
+here=$(cd "$(dirname "$0")" && pwd)
+L="$here/launcher.py"
+T=$(mktemp -d)
+trap 'rm -rf "$T"' EXIT
+fails=0
+total=0
+
+mkdir -p "$T/bin" "$T/home" "$T/stub"
+export STUB_DIR="$T/stub"
+export HOME="$T/home"
+export GIT_CONFIG_NOSYSTEM=1
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com
+export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
+unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID
+
+# tmux stub. It logs each call as one line, args joined by `|`. Files under
+# $STUB_DIR set its answers: tmux-has (the session exists), tmux-fail (new
+# windows fail), tmux-panes (one known pane id per line), tmux-sessions (the
+# list-sessions output), tmux-clients (the list-clients output).
+cat > "$T/bin/tmux" <<'STUB'
+#!/bin/bash
+D=$STUB_DIR
+line=''
+for a in "$@"; do line="$line$a|"; done
+printf '%s\n' "$line" >> "$D/tmux.log"
+target=''
+prev=''
+for a in "$@"; do
+  case "$prev" in -t) target=$a ;; esac
+  prev=$a
+done
+case "$1" in
+  has-session) [ -e "$D/tmux-has" ] ;;
+  new-session|new-window)
+    [ -e "$D/tmux-fail" ] && { echo "tmux: failed" >&2; exit 1; }
+    for a in "$@"; do last=$a; done
+    printf '%s' "$last" > "$D/tmux-cmd"
+    echo '%7' ;;
+  display-message|select-window|select-pane|kill-pane|switch-client)
+    grep -sqxF -- "$target" "$D/tmux-panes" 2>/dev/null || { echo "can't find pane: $target" >&2; exit 1; }
+    [ "$1" = display-message ] && echo 'crew'
+    exit 0 ;;
+  list-sessions) [ -e "$D/tmux-sessions" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-sessions" ;;
+  list-clients) cat "$D/tmux-clients" 2>/dev/null; exit 0 ;;
+  *) exit 0 ;;
+esac
+STUB
+
+# osascript stub. It logs its args and the script on stdin. Files: osa-fail
+# (every call fails), osa-sessions (one known iTerm2 session id per line).
+cat > "$T/bin/osascript" <<'STUB'
+#!/bin/bash
+D=$STUB_DIR
+line=''
+for a in "$@"; do line="$line$a|"; done
+printf '%s\n' "$line" >> "$D/osa.log"
+cat > "$D/osa-script"
+[ -e "$D/osa-fail" ] && { echo "execution error: iTerm2 got an error" >&2; exit 1; }
+case "$2" in
+  start) echo 'OSA-0001' ;;
+  focus|stop) if grep -sqxF -- "$3" "$D/osa-sessions" 2>/dev/null; then echo ok; else echo gone; fi ;;
+esac
+exit 0
+STUB
+
+# uv stub: the iTerm2 helper. It logs its args. Files: uv-fail (it fails),
+# uv-groups (the groups output).
+cat > "$T/bin/uv" <<'STUB'
+#!/bin/bash
+D=$STUB_DIR
+line=''
+for a in "$@"; do line="$line$a|"; done
+printf '%s\n' "$line" >> "$D/uv.log"
+[ -e "$D/uv-fail" ] && { echo "iterm2.rpc: connection refused" >&2; exit 1; }
+group=null
+prev=''
+for a in "$@"; do
+  case "$prev" in --group) group="\"$a\"" ;; esac
+  prev=$a
+done
+case "$line" in
+  *"|start|"*) printf '{"session_id": "ABC-123", "tab_group": %s}\n' "$group" ;;
+  *"|groups|"*) cat "$D/uv-groups" 2>/dev/null ;;
+esac
+exit 0
+STUB
+
+# claude stub: it writes its working directory and then each arg on a line.
+cat > "$T/bin/claude" <<'STUB'
+#!/bin/bash
+{ pwd -P; for a in "$@"; do printf '%s\n' "$a"; done; } > "$STUB_DIR/claude-args"
+STUB
+chmod +x "$T/bin/"*
+export PATH="$T/bin:$PATH"
+
+# The origin: a bare repo whose default branch is main. The checkout clones
+# it at commit A; then the origin gets commit B. So the local main and
+# origin/main of the checkout stay at A.
+git init -q --bare --initial-branch=main "$T/origin.git"
+git clone -q "$T/origin.git" "$T/seed" 2>/dev/null
+(cd "$T/seed" && git commit -q --allow-empty -m A && git push -q origin main)
+git clone -q "$T/origin.git" "$T/co"
+(cd "$T/seed" && git commit -q --allow-empty -m B && git push -q origin main)
+A=$(cd "$T/co" && git rev-parse main)
+B=$(cd "$T/seed" && git rev-parse HEAD)
+CO=$(cd "$T/co" && pwd -P)
+
+# A checkout with no origin, for the git failure.
+git init -q --initial-branch=main "$T/noremote"
+(cd "$T/noremote" && git commit -q --allow-empty -m A)
+
+cat > "$T/config.md" <<EOF
+# Crew config
+
+## Checkouts
+
+o/other: $T/nowhere
+- o/r: ~/../co
+
+## Deploy
+
+o/missing: $T/co
+EOF
+export CREW_CONFIG="$T/config.md"
+
+ok() { echo "ok   $1"; }
+bad() { fails=$((fails + 1)); echo "FAIL $1"; }
+check() { total=$((total + 1)); if [ "$2" = 0 ]; then ok "$1"; else bad "$1"; fi; }
+
+# run <args...>: run the launcher; keep stdout, stderr and the exit code.
+run() {
+  python3 "$L" "$@" > "$T/out" 2> "$T/err"
+  rc=$?
+}
+lines() { grep -c . "$1" | tr -d ' '; }
+wtcount() { (cd "$T/co" && git worktree list | wc -l | tr -d ' '); }
+reset_stub() { rm -rf "$STUB_DIR"; mkdir -p "$STUB_DIR"; }
+# field <name>: one field of the start output, as JSON.
+field() { python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))[sys.argv[2]]))' "$T/out" "$1" 2>/dev/null; }
+
+# -- usage (exit 2) --------------------------------------------------------
+reset_stub
+base=$(wtcount)
+expect_usage() {
+  label=$1; shift
+  TMUX=/tmp/t,1,0 run start "$@"
+  r=1; [ "$rc" = 2 ] && grep -sqi usage "$T/err" && [ "$(wtcount)" = "$base" ] && [ ! -s "$T/out" ] && r=0
+  check "$label exits 2 with a usage line and no worktree" $r
+}
+expect_usage 'no --name' --model m --principal p --checkout "$CO"
+expect_usage 'no --model' --name n1 --principal p --checkout "$CO"
+expect_usage 'no --principal' --name n1 --model m --checkout "$CO"
+expect_usage 'neither --repo nor --checkout' --name n1 --model m --principal p
+for n in Bad_Name -x 'a b' 'a;b' eval my-eval-x retrieval; do
+  expect_usage "name '$n'" --name="$n" --model m --principal p --checkout "$CO"
+done
+expect_usage "group color 'red'" --name n1 --model m --principal p --checkout "$CO" --group g --group-color red
+expect_usage "group color '#12345'" --name n1 --model m --principal p --checkout "$CO" --group g --group-color '#12345'
+expect_usage "terminal 'kitty'" --name n1 --model m --principal p --checkout "$CO" --terminal kitty
+total=$((total + 1))
+TERM_PROGRAM=Apple_Terminal run start --name Bad_Name --model m --principal p --repo o/missing
+if [ "$rc" = 2 ]; then ok 'a bad name and an unsupported terminal exit 2'; else bad "a bad name and an unsupported terminal exit 2 (got $rc)"; fi
+
+# -- unsupported terminal (exit 4) ----------------------------------------
+reset_stub
+TERM_PROGRAM=Apple_Terminal run start --name t4 --model m --principal p --checkout "$CO"
+r=1
+[ "$rc" = 4 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Apple_Terminal "$T/err" && grep -sq iterm2 "$T/err" \
+  && grep -sq tmux "$T/err" && [ "$(wtcount)" = "$base" ] && [ ! -e "$STUB_DIR/tmux.log" ] && r=0
+check 'unsupported terminal exits 4 with one line naming TERM_PROGRAM and the supported terminals' $r
+startline=$(cat "$T/err")
+TERM_PROGRAM=Apple_Terminal run start --name t4 --model m --principal p --repo o/missing
+check 'unsupported terminal wins over a missing Checkouts line' $([ "$rc" = 4 ]; echo $?)
+TERM_PROGRAM=Apple_Terminal run groups
+r=1; [ "$rc" = 4 ] && [ "$(cat "$T/err")" = "$startline" ] && r=0
+check 'groups on an unsupported terminal exits 4 with the same line' $r
+
+# -- Checkouts (exit 3) ----------------------------------------------------
+TMUX=/tmp/t,1,0 run start --name t3 --model m --principal p --repo o/missing
+r=1
+[ "$rc" = 3 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq 'o/missing' "$T/err" && grep -sq Checkouts "$T/err" \
+  && [ "$(wtcount)" = "$base" ] && [ ! -e "$STUB_DIR/tmux.log" ] && r=0
+check 'no Checkouts line exits 3 with one line naming the repo and Checkouts' $r
+CREW_CONFIG="$T/none.md" TMUX=/tmp/t,1,0 run start --name t3 --model m --principal p --repo o/r
+check 'a missing config file exits 3' $([ "$rc" = 3 ]; echo $?)
+
+# -- git failures (exit 5) -------------------------------------------------
+TMUX=/tmp/t,1,0 run start --name g5 --model m --principal p --repo o/other
+r=1; [ "$rc" = 5 ] && [ "$(lines "$T/err")" = 1 ] && [ ! -e "$STUB_DIR/tmux.log" ] && r=0
+check 'the second Checkouts line, to a missing path, exits 5' $r
+TMUX=/tmp/t,1,0 run start --name g5 --model m --principal p --checkout "$T/noremote"
+r=1; [ "$rc" = 5 ] && [ "$(lines "$T/err")" = 1 ] && [ ! -e "$STUB_DIR/tmux.log" ] \
+  && [ ! -e "$T/noremote/.claude/worktrees/g5" ] && r=0
+check 'a checkout with no origin exits 5 with one line and opens no tab' $r
+
+# -- tmux start, through the Checkouts line --------------------------------
+reset_stub
+MODEL="opus 'x' \$HOME"
+PRINC="orch 'a' \$PATH b"
+TMUX=/tmp/t,1,0 run start --name review-x --model "$MODEL" --principal "$PRINC" --repo o/r
+WT="$CO/.claude/worktrees/review-x"
+check 'tmux start exits 0 (name review-x passes)' $([ "$rc" = 0 ]; echo $?)
+check 'the Checkouts line for o/r, with a ~ path, selects the checkout' $([ -d "$WT" ]; echo $?)
+r=1; [ "$(wc -l < "$T/out" | tr -d ' ')" = 1 ] && python3 - "$T/out" <<'PY' && r=0
+import json, sys
+o = json.loads(open(sys.argv[1]).read())
+want = {"session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group"}
+sys.exit(0 if set(o) == want else 1)
+PY
+check 'stdout is one line, one JSON object with exactly the nine fields' $r
+check 'the worktree HEAD is the sha of the remote main, not the stale local main' \
+  $([ "$(cd "$WT" 2>/dev/null && git rev-parse HEAD)" = "$B" ] && [ "$A" != "$B" ]; echo $?)
+check 'the worktree is on branch worktree-review-x' \
+  $([ "$(cd "$WT" 2>/dev/null && git rev-parse --abbrev-ref HEAD)" = worktree-review-x ]; echo $?)
+check 'session_name' $([ "$(field session_name)" = '"review-x"' ]; echo $?)
+check 'repo from --repo' $([ "$(field repo)" = '"o/r"' ]; echo $?)
+check 'worktree is the absolute worktree path' $([ "$(field worktree)" = "\"$WT\"" ]; echo $?)
+check 'branch' $([ "$(field branch)" = '"worktree-review-x"' ]; echo $?)
+check 'base' $([ "$(field base)" = '"origin/main"' ]; echo $?)
+check 'model is the --model value' $([ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["model"])' "$T/out" 2>/dev/null)" = "$MODEL" ]; echo $?)
+check 'terminal tmux' $([ "$(field terminal)" = '"tmux"' ]; echo $?)
+check 'tab is tmux:<pane id>' $([ "$(field tab)" = '"tmux:%7"' ]; echo $?)
+check 'tab_group is the default tmux session crew' $([ "$(field tab_group)" = '"crew"' ]; echo $?)
+check 'tmux checks the session with the exact target =crew' $(grep -sqxF 'has-session|-t|=crew|' "$STUB_DIR/tmux.log"; echo $?)
+check 'tmux creates the missing session detached, named crew, the window named review-x' \
+  $(grep -sq '^new-session|-d|-s|crew|-n|review-x|' "$STUB_DIR/tmux.log"; echo $?)
+check 'the tmux command starts with cd <worktree>' $(case "$(cat "$STUB_DIR/tmux-cmd" 2>/dev/null)" in ("cd $WT "*|"cd '$WT' "*) echo 0 ;; (*) echo 1 ;; esac)
+check 'the tmux command execs claude' $(grep -sq '&& exec claude ' "$STUB_DIR/tmux-cmd"; echo $?)
+
+# The shell runs the command: each value reaches the claude stub as one arg.
+sh -c "$(cat "$STUB_DIR/tmux-cmd")"
+PROMPT="You are an implementer session for the orchestrator session named $PRINC. The user started you through that orchestrator. Do nothing now. A goal arrives as a cross-session message from that session. When it arrives, run the crew:project-lead skill with that goal. The orchestrator is your principal: the user gave it the authority to decide for this work, so send your questions, your escalations and your reports to it with SendMessage, not to this tab. Answer this message with one line and then wait."
+expect_args=$(printf '%s\n' "$WT" --name review-x --model "$MODEL" "$PROMPT")
+check 'claude runs in the worktree with --name, --model and the wait prompt, quotes intact' \
+  $([ "$(cat "$STUB_DIR/claude-args" 2>/dev/null)" = "$expect_args" ]; echo $?)
+
+# -- an existing worktree or branch (exit 5) -------------------------------
+: > "$STUB_DIR/tmux.log"
+(cd "$WT" && git commit -q --allow-empty -m local)
+before=$(cd "$WT" && git rev-parse HEAD)
+TMUX=/tmp/t,1,0 run start --name review-x --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 5 ] && [ "$(lines "$T/err")" = 1 ] && [ ! -s "$STUB_DIR/tmux.log" ] \
+  && [ "$(cd "$WT" && git rev-parse HEAD)" = "$before" ] && r=0
+check 'an existing worktree exits 5, one line, changes nothing and opens no tab' $r
+(cd "$CO" && git branch -q worktree-only-branch "$A")
+TMUX=/tmp/t,1,0 run start --name only-branch --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 5 ] && [ ! -e "$CO/.claude/worktrees/only-branch" ] \
+  && [ "$(cd "$CO" && git rev-parse worktree-only-branch)" = "$A" ] && r=0
+check 'an existing branch worktree-<name> exits 5 and changes nothing' $r
+
+# -- tmux: an existing session, --group, --terminal ------------------------
+reset_stub
+: > "$STUB_DIR/tmux-has"
+run start --name tm2 --model m --principal p --checkout "$CO" --group grp --terminal tmux
+r=1; [ "$rc" = 0 ] && grep -sq '^new-window|-t|=grp:|-n|tm2|' "$STUB_DIR/tmux.log" && [ "$(field tab_group)" = '"grp"' ] && r=0
+check '--terminal tmux with --group grp opens a window in the existing session =grp' $r
+
+# -- repo from the origin URL, and --checkout over --repo ------------------
+git clone -q "$T/origin.git" "$T/co2"
+(cd "$T/co2" && git config url."$T/origin.git".insteadOf https://github.com/acme/widget.git \
+  && git remote set-url origin https://github.com/acme/widget.git)
+TMUX=/tmp/t,1,0 run start --name url-https --model m --principal p --checkout "$T/co2"
+check 'repo from an https origin URL' $([ "$rc" = 0 ] && [ "$(field repo)" = '"acme/widget"' ]; echo $?)
+(cd "$T/co2" && git config url."$T/origin.git".insteadOf git@github.com:acme/gadget.git \
+  && git remote set-url origin git@github.com:acme/gadget.git)
+TMUX=/tmp/t,1,0 run start --name url-ssh --model m --principal p --checkout "$T/co2"
+check 'repo from an ssh origin URL' $([ "$rc" = 0 ] && [ "$(field repo)" = '"acme/gadget"' ]; echo $?)
+TMUX=/tmp/t,1,0 run start --name both --model m --principal p --checkout "$T/co2" --repo o/other
+r=1; [ "$rc" = 0 ] && [ -d "$T/co2/.claude/worktrees/both" ] && [ "$(field repo)" = '"o/other"' ] && r=0
+check '--checkout wins over --repo, and --repo sets only the repo field' $r
+
+# -- tmux failure: no fallback, exit 6 -------------------------------------
+reset_stub
+: > "$STUB_DIR/tmux-fail"
+TMUX=/tmp/t,1,0 run start --name tm-fail --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF "$CO/.claude/worktrees/tm-fail" "$T/err" \
+  && [ -d "$CO/.claude/worktrees/tm-fail" ] && r=0
+check 'a failed tmux window exits 6, keeps the worktree and names it' $r
+
+# -- iterm2 ----------------------------------------------------------------
+reset_stub
+TERM_PROGRAM=iTerm.app run start --name it1 --model m --principal p --checkout "$CO" --group grp --group-color '#1a2B3c'
+r=1; [ "$rc" = 0 ] && [ "$(field terminal)" = '"iterm2"' ] && [ "$(field tab)" = '"iterm2:ABC-123"' ] && r=0
+check 'TERM_PROGRAM=iTerm.app detects iterm2 and runs the helper' $r
+check 'the helper runs through uv run --with iterm2 python iterm2-tabs.py' \
+  $(grep -sq "^run|.*--with|iterm2|python|$here/iterm2-tabs.py|start|" "$STUB_DIR/uv.log"; echo $?)
+check 'launcher.py passes --group and --group-color to the helper' \
+  $(grep -sq '|--group|grp|' "$STUB_DIR/uv.log" && grep -sq '|--group-color|#1a2B3c|' "$STUB_DIR/uv.log"; echo $?)
+check 'launcher.py passes the session name to the helper' $(grep -sq '|--name|it1|' "$STUB_DIR/uv.log"; echo $?)
+check 'tab_group is the group the helper reports' $([ "$(field tab_group)" = '"grp"' ]; echo $?)
+check 'the helper gets the cd command' $(grep -sqF "|cd $CO/.claude/worktrees/it1 && exec claude " "$STUB_DIR/uv.log"; echo $?)
+reset_stub
+ITERM_SESSION_ID=w0t1p0:ORCH-UUID run start --name it2 --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 0 ] && [ "$(field terminal)" = '"iterm2"' ] && [ "$(field tab_group)" = null ] \
+  && grep -sq '|--session|ORCH-UUID|' "$STUB_DIR/uv.log" && ! grep -sq -- '--group' "$STUB_DIR/uv.log" && r=0
+check 'ITERM_SESSION_ID detects iterm2; no --group gives tab_group null; the window is the orchestrator session' $r
+reset_stub
+TMUX=/tmp/t,1,0 run start --name it3 --model m --principal p --checkout "$CO" --terminal iterm2
+r=1; [ "$rc" = 0 ] && [ "$(field terminal)" = '"iterm2"' ] && [ ! -e "$STUB_DIR/tmux.log" ] && r=0
+check '--terminal iterm2 wins over TMUX' $r
+
+# The helper fails: the osascript fallback opens the tab, with no group.
+reset_stub
+: > "$STUB_DIR/uv-fail"
+TERM_PROGRAM=iTerm.app run start --name it4 --model m --principal p --checkout "$CO" --group grp
+r=1; [ "$rc" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqi 'no tab group' "$T/err" \
+  && [ "$(field tab)" = '"iterm2:OSA-0001"' ] && [ "$(field tab_group)" = null ] \
+  && grep -sq '^-|start|' "$STUB_DIR/osa.log" && r=0
+check 'a failed helper falls back to osascript, prints one no-group line, tab_group null' $r
+check 'the osascript fallback names the session' $(grep -sq '|it4|$' "$STUB_DIR/osa.log"; echo $?)
+
+# The helper and osascript fail: exit 6, the worktree stays and is named.
+: > "$STUB_DIR/osa-fail"
+TERM_PROGRAM=iTerm.app run start --name it5 --model m --principal p --checkout "$CO"
+r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF "$CO/.claude/worktrees/it5" "$T/err" \
+  && [ -d "$CO/.claude/worktrees/it5" ] && [ ! -s "$T/out" ] && r=0
+check 'a failed helper and a failed osascript exit 6 and name the kept worktree' $r
+
+# -- groups ----------------------------------------------------------------
+reset_stub
+printf '$1\tcrew\n$4\tgrp\n' > "$STUB_DIR/tmux-sessions"
+TMUX=/tmp/t,1,0 run groups
+r=1; [ "$rc" = 0 ] && python3 - "$T/out" <<'PY' && r=0
+import json, sys
+rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+ok = len(rows) == 2 and all(set(r) == {"window_id", "group_id", "name", "color"} for r in rows)
+ok = ok and [r["name"] for r in rows] == ["crew", "grp"] and [r["group_id"] for r in rows] == ["$1", "$4"]
+ok = ok and all(r["window_id"] is None and r["color"] is None for r in rows)
+sys.exit(0 if ok else 1)
+PY
+check 'groups on tmux prints one line per session, window_id and color null' $r
+printf '{"window_id": "w1", "group_id": "g1", "name": "grp", "color": "#1a2b3c"}\n' > "$STUB_DIR/uv-groups"
+TERM_PROGRAM=iTerm.app run groups
+r=1; [ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sq '"group_id": "g1"' "$T/out" && r=0
+check 'groups on iterm2 prints the helper lines' $r
+: > "$STUB_DIR/uv-fail"
+TERM_PROGRAM=iTerm.app run groups
+r=1; [ "$rc" = 0 ] && [ ! -s "$T/out" ] && [ "$(lines "$T/err")" = 1 ] && r=0
+check 'groups with no API prints one stderr line, no group line, and exits 0' $r
+
+# -- focus -----------------------------------------------------------------
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo '%7' > "$STUB_DIR/tmux-panes"
+run focus iterm2:SESS-1
+r=1; [ "$rc" = 0 ] && grep -sq '^-|focus|SESS-1|$' "$STUB_DIR/osa.log" && grep -sq activate "$STUB_DIR/osa-script" && r=0
+check 'focus iterm2:<id> addresses the id and activates iTerm2' $r
+TMUX=/tmp/t,1,0 run focus 'tmux:%7'
+r=1; [ "$rc" = 0 ] && grep -sq '^select-window|-t|%7|$' "$STUB_DIR/tmux.log" \
+  && grep -sq '^switch-client|-t|%7|$' "$STUB_DIR/tmux.log" && r=0
+check 'focus tmux:<pane> selects the window and switches the client, exact pane target' $r
+: > "$STUB_DIR/tmux.log"
+echo '/dev/ttys009' > "$STUB_DIR/tmux-clients"
+run focus 'tmux:%7'
+r=1; [ "$rc" = 0 ] && grep -sq '^switch-client|-c|/dev/ttys009|-t|%7|$' "$STUB_DIR/tmux.log" && r=0
+check 'focus tmux:<pane> outside tmux switches the attached client' $r
+for h in 'foo:1' 'iterm2:NOPE' 'tmux:%99' 'tmux:7'; do
+  run focus "$h"
+  check "focus $h exits 7 with one line" $([ "$rc" = 7 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+done
+
+# -- stop ------------------------------------------------------------------
+run stop iterm2:SESS-1
+check 'stop iterm2:<id> addresses the id' $([ "$rc" = 0 ] && grep -sq '^-|stop|SESS-1|$' "$STUB_DIR/osa.log"; echo $?)
+run stop 'tmux:%7'
+check 'stop tmux:<pane> kills the exact pane' $([ "$rc" = 0 ] && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log"; echo $?)
+check 'stop leaves the worktree and the branch' \
+  $([ -d "$WT" ] && (cd "$CO" && git rev-parse -q --verify refs/heads/worktree-review-x > /dev/null); echo $?)
+run stop iterm2:GONE
+check 'stop on a gone iTerm2 tab exits 0 with one line' $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sqi gone "$T/out"; echo $?)
+run stop 'tmux:%99'
+check 'stop on a gone tmux pane exits 0 with one line' $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sqi gone "$T/out"; echo $?)
+run stop 'foo:1'
+check 'stop with an unknown prefix exits 7 with one line' $([ "$rc" = 7 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+
+# -- what launcher.py never does -------------------------------------------
+check 'launcher.py imports no iterm2 module' $(! grep -sqE '^\s*(import|from) iterm2' "$L"; echo $?)
+check 'launcher.py runs no git clone' $(! grep -sq "clone" "$L"; echo $?)
+
+echo "$((total - fails)) of $total checks passed"
+[ "$fails" = 0 ]

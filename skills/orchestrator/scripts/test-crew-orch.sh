@@ -429,6 +429,11 @@ one_line_err
 after=$(cat "$CREW_RECORD_ROOT/orchestrators/patch/orchestrator.json")
 [ "$before" = "$after" ] || fail "a refused pr URL changed the record"
 expect_exit 0 orch2 item nopr pr https://github.com/owner/pat/pull/9
+before=$(cat "$CREW_RECORD_ROOT/orchestrators/patch/orchestrator.json")
+expect_exit 2 orch2 item nopr set repo '"owner/elsewhere"'
+one_line_err
+after=$(cat "$CREW_RECORD_ROOT/orchestrators/patch/orchestrator.json")
+[ "$before" = "$after" ] || fail "a refused repo change wrote the record"
 pass
 
 STEP="set group moves the item out of the old group's order and owners"

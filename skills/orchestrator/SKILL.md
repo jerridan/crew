@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: "Make this session an orchestrator of crew project-lead sessions. It takes one thing, a group of tickets, a milestone or project, or one large ticket, splits the work with no approval step, starts one project lead per item in its own terminal tab and worktree, answers their questions, keeps an inbox of what needs the principal, merges in order, and slows down before the plan usage limit. Use for 'orchestrate these tickets', 'run this milestone', 'run these in parallel', 'split this ticket and run the parts', 'crew orchestrator'."
+description: "Make this session an orchestrator of crew project-lead sessions. It takes one thing, a group of tickets, a milestone or project, or one large ticket, splits the work with no approval step, starts one project lead per item in its own terminal tab and worktree, answers their questions, keeps an inbox of what needs the principal, merges in order, and slows down before the plan usage limit. Use for 'orchestrate these tickets', 'run this milestone', 'run these in parallel', 'split this ticket and run the parts', 'crew orchestrator', 'resume orchestrator <name>'."
 ---
 
 # Orchestrator
@@ -10,14 +10,15 @@ session, the implementer, in its own terminal tab and git worktree. You are
 the principal of each implementer. The person who started you is your
 principal.
 
-Three references beside this file own every command line, file format and
-value that you use. Name the command, then read its owner:
+Four references beside this file own every command line, file format,
+value and procedure that you use. Name the command, then read its owner:
 
 | File | What it owns |
 |---|---|
 | `references/orchestrator-record.md` | the record, every field, the stages, the merge value, the board, and every `crew-orch.py` command |
 | `references/launcher.md` | every `launcher.py` command, its output, its exit codes, and the defaults of an implementer |
 | `references/usage.md` | the plan usage figures, the levels, the watch, the slow-down rule and the limit, and every `crew-usage.py` command |
+| `references/resume-and-close.md` | the resume after a compaction or a restart, the close of an item after its end, and the close of a run |
 
 `skills/project-lead/references/autonomy-contract.md` owns who a principal is
 and how a project lead escalates. `skills/project-lead/SKILL.md`'s "Report to
@@ -53,9 +54,10 @@ record. They survive a compaction and a restart of the machine.
 - Keep no second copy in a scratchpad file. A file that you pass to `plan
   change --file` or `told --file` is input only. Read the plan, the items and
   the inbox from the record, with `show` and `plan.md`.
-- After a compaction, read `show` and `plan.md` before your next action.
-  Then ask each implementer with an open PR to send its ready line again
-  ("The goal message").
+- After a compaction, do what `resume-and-close.md`'s "When a resume runs"
+  says before your next action.
+- A reopened session, or the principal's words such as "resume orchestrator
+  <name>", start `resume-and-close.md`'s "The resume".
 
 ## Take the work
 
@@ -401,10 +403,11 @@ An item ends with these steps, in this order:
    word (`crew:delivered-window`). When the repo has a deploy, the ship word
    waits for it.
 4. The implementer's run closes.
-5. The ticket closes. A GitHub issue closes through the `Closes` line of the
-   PR. You close a Linear ticket or a ticket in a ticket file after the merge.
+5. The ticket closes, as `resume-and-close.md`'s "The close of an item"
+   says.
 6. The record holds the item at `shipped`, or at `closed` for a run that ends
    with no merge.
 
-The tab and the worktree stay. Resume after a restart, and the removal of
-worktrees, belong to issue 156, which is not built.
+After step 6, close the item as `resume-and-close.md`'s "The close of an
+item" says. On the principal's word, close the whole run as its "The close of
+a run" says.

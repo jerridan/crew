@@ -276,6 +276,28 @@ To change the number that work at one time, say so:
 run five at a time
 ```
 
+When an item ships, the orchestrator ends its project lead, closes its tab
+and removes its worktree. A worktree with changed or untracked files stays,
+and the orchestrator tells you in the inbox. To end the whole run, say so:
+
+```
+close the run
+```
+
+After a restart of the machine, or when the session closed, start a session
+with the same name and resume the record:
+
+```
+claude --name my-orchestrator
+```
+
+```
+/crew:orchestrator resume orchestrator my-orchestrator
+```
+
+The orchestrator reads its record, joins the project leads that still run,
+and starts the others again in their worktrees, where they stopped.
+
 ### See an orchestrator's board
 
 In an orchestrator's session, open its board in a pane:

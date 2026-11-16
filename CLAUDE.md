@@ -31,8 +31,8 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
 | `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line |
 | `skills/delivered-window/scripts/test-pr-watch-deploy.sh` | the seeded test of the default deploy signal of `pr-watch.sh`, with a stub `gh` | a person |
-| `skills/orchestrator/scripts/launcher.py`, `skills/orchestrator/scripts/iterm2-tabs.py` | the orchestrator launcher: starts, lists, focuses and stops implementer sessions in iTerm2 tabs or tmux windows; its iTerm2 Python API helper. `skills/orchestrator/references/launcher.md` owns its interface | the orchestrator session, from Bash |
-| `skills/orchestrator/scripts/test-launcher.sh` | the seeded test of `launcher.py`, with stub `tmux`, `osascript`, `uv` and `claude` | a person |
+| `skills/orchestrator/scripts/launcher.py`, `skills/orchestrator/scripts/iterm2-tabs.py` | the orchestrator launcher: starts, resumes, finds, lists, focuses and stops implementer sessions in iTerm2 tabs or tmux windows, and removes their worktrees; its iTerm2 Python API helper. `skills/orchestrator/references/launcher.md` owns its interface | the orchestrator session, from Bash |
+| `skills/orchestrator/scripts/test-launcher.sh` | the seeded test of `launcher.py`, with stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` | a person |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
@@ -41,6 +41,7 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/orchestrator/scripts/test-crew-usage.py` | the seeded test of `crew-usage.py`, with a stub `claude` | a person |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `skills/orchestrator/SKILL.md` | the `/crew:orchestrator` entry point: the intake, the split, the launch, the goal message, the inbox, the merge, the wait and the close of each item of many project-lead sessions | its skill trigger |
+| `skills/orchestrator/references/resume-and-close.md` | the resume of an orchestrator after a compaction or a restart, the close of an item and the close of a run | the orchestrator session |
 | `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
 | `skills/orchestrator/scripts/crew-orch.py`, `skills/orchestrator/scripts/test-crew-orch.sh` | the only writer of the orchestrator record, and its board; the seeded test, with a stub `gh` | an orchestrator and a project lead it started, from Bash; a person runs the test |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
@@ -148,13 +149,17 @@ board, and a project lead that an orchestrator started reports its stage and
 its questions there (§15.139). Only the seeded test has run it.
 
 The `crew:orchestrator` skill is built (§15.142). No crew run has used it,
-except the build of the skill itself. Resume after a restart with the
-close-out (issue 156) is not built.
+except the build of the skill itself.
 
 The board pane is built: `crew-orch.py board --json` is the one source of the
 board, and the mod `hooks/orch-board.tsx` draws it in a pane that
 `/orch-board` opens (§15.143). Only its tests and `test-crew-orch.sh` have run
 it, and no session has opened the pane.
+
+The resume of an orchestrator and the close-out are built (§15.144):
+`resume-and-close.md`, with `launcher.py resume`, `find` and `remove`, the
+`/exit` of `stop`, and `crew-orch.py close`. Only the seeded tests have run
+the scripts, and no orchestrator has resumed or closed an item with them.
 
 T57 removed the tier above the project lead: the principal hands each goal
 over itself (§15.95). Its own kill and forced-compaction probes have run
@@ -201,6 +206,8 @@ Each reference owns one subject and is canonical for it:
   record and its command line.
 - `skills/orchestrator/references/usage.md` — the plan usage figures, the
   levels and the orchestrator's slow-down.
+- `skills/orchestrator/references/resume-and-close.md` — the resume of an
+  orchestrator, the close of an item and the close of a run.
 - `skills/orchestrator/SKILL.md` — the orchestrator's own rules: the manager
   rule, the authority at the start, the goal message, the inbox rule, the
   merge procedure and its `Merge` section, and the concurrency number.

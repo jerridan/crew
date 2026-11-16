@@ -9463,8 +9463,9 @@ NNN. **The skill `crew:orchestrator` — 2026-11-16.** (The orchestrator
        and that is a notice for the principal.
      - A slot counts an implementer from its start to its merge. After the
        merge it only watches the deploy, which burns little.
-     - Only the principal's word changes an implementer's model. No
-       standing-instructions section sets a model yet.
+     - The principal's word or an `Implementer model` section of the
+       machine file changes an implementer's model (rule 15). The
+       orchestrator passes it as `launcher.py start --model`.
      - The merge checks are fixed fields and commands. A review thread is
        resolved by the `isResolved` field of `reviewThreads`. A finding
        outside a thread has a fix or a reply when the implementer's newest
@@ -9478,8 +9479,9 @@ NNN. **The skill `crew:orchestrator` — 2026-11-16.** (The orchestrator
      - A `Merge` section comes from the repo file on the default branch and
        from the machine file. A `Concurrency` section comes from the machine
        file only, because concurrency is per orchestrator. The order of
-       sources of `skills/project-lead/SKILL.md` decides between them. Both
-       sections are new in the project lead's table, which the orchestrator
+       sources of `skills/project-lead/SKILL.md` decides between them. That
+       file's table stays the one list of sections. `Merge`, `Concurrency`
+       and `Implementer model` are new rows in it, which the orchestrator
        reads and the project lead does not.
      - The overlap check is `gh pr diff <n> --name-only` per open PR of a
        group, and the intersection of each pair, before each merge decision.

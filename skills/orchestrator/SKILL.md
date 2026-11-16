@@ -115,9 +115,8 @@ number:
 - the principal's word;
 - a `Concurrency` section of the machine file, `~/.claude/crew/config.md`.
 
-Concurrency is per orchestrator, so no repo file sets it. When both sources
-give a number, `skills/project-lead/SKILL.md`'s "Standing instructions" order
-of sources decides.
+Concurrency is per orchestrator, so no repo file sets it. When both give a
+number, the order of sources decides ("Standing instructions" below).
 
 The number is part of the plan. Write each change with `plan change` and its
 reason, so the number survives a slowed period. `pace.slots.max` holds the
@@ -167,9 +166,10 @@ codes". Fix the cause and run `start` again, or put a notice in the inbox.
 Send no goal to an implementer that did not start.
 
 **The model and Remote Control.** `launcher.md` owns both defaults of an
-implementer: the model, and Remote Control off. Pass another model only on
-the principal's word. No standing-instructions section sets a model. Never
-change the Remote Control setting of your own session.
+implementer: the model, and Remote Control off. Two things change the model:
+the principal's word, and an `Implementer model` section of the machine file.
+Pass the model that wins as `--model`. Never change the Remote Control
+setting of your own session.
 
 ## The goal message
 
@@ -306,9 +306,8 @@ repo with a merge queue, the merge command puts the PR in the queue.
 **A `Merge` section replaces this procedure.** The section holds prose steps,
 for example: "post the PR link in a review channel and wait for a human
 approval, then use the merge queue". Read it from the item's repo file,
-`.claude/crew.md` on the default branch, and from the machine file.
-`skills/project-lead/SKILL.md`'s "Standing instructions" order of sources
-decides which wins.
+`.claude/crew.md` on the default branch, and from the machine file. The order
+of sources decides which wins ("Standing instructions" below).
 
 **After the merge.** When the merge command succeeded, or the queue merged
 the PR, tell the implementer. Write `pace.slots.busy` one lower. Then start
@@ -334,6 +333,13 @@ loop prints a line only when the output changes. Write no new script for it.
 A `Monitor` watch ends after at most 30 minutes. At its expiry, run
 `crew-orch.py refresh` once, and act on any change. Arm it again only while
 you still wait on that PR.
+
+## Standing instructions
+
+`skills/project-lead/SKILL.md`'s "Standing instructions" owns which sections
+exist, which of them you read, and the order of sources that decides between
+the principal's word, a repo file and the machine file. Read it before you
+act on a section.
 
 ## The board
 

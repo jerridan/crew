@@ -142,7 +142,7 @@ The orchestrator record is built: `crew-orch.py` writes it and prints its
 board, and a project lead that an orchestrator started reports its stage and
 its questions there (§15.139). Only the seeded test has run it.
 
-The `crew:orchestrator` skill is built (§15.NNN). No crew run has used it,
+The `crew:orchestrator` skill is built (§15.142). No crew run has used it,
 except the build of the skill itself. Its board pane (issue 155), and resume
 after a restart with the close-out (issue 156), are not built.
 

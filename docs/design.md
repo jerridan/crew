@@ -9439,8 +9439,7 @@ Deliberately different:
      orchestrator of this build its figures. No orchestrator run has used
      the commands yet.
 
-NNN. **The skill `crew:orchestrator` — 2026-11-16.** (The orchestrator
-     assigns this number at the merge.)
+142. **The skill `crew:orchestrator` — 2026-11-16.**
      Issue 154, part 4 of issue 150. `skills/orchestrator/SKILL.md` makes a
      session the orchestrator of many project-lead sessions, by the sixteen
      rules of issue 150. It says when the orchestrator does what, and points

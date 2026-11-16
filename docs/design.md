@@ -9383,3 +9383,42 @@ Deliberately different:
      new group, focused them, stopped them and kept the worktrees. No probe
      has proven the Remote Control default on a real `claude` session yet.
      No crew run has used the launcher.
+
+NNN. **The plan usage figures and the slow-down of the orchestrator —
+     2026-11-16.** (The orchestrator assigns this number at the merge.)
+     Issue 153, part 3 of issue 150. A probe on Claude Code 2.1.325 settled
+     the source. The JSON on a status line command's stdin holds
+     `rate_limits.five_hour` and `rate_limits.seven_day`, each with
+     `used_percentage` and `resets_at`. The figures are account-wide. A
+     session's figures change only on its own API responses, and a start
+     fetches them in about 5 seconds with no prompt. An idle session kept
+     10% while one prompt in it read 14%, and a mod's `$.session.usage()`
+     read 1% for the same window. So no one session has current figures
+     while it is idle.
+
+     The answer is one shared file, `<record-root>/usage.json`, written only
+     by `skills/orchestrator/scripts/crew-usage.py`. Each launched
+     implementer feeds it through a status line wrapper, passed with the
+     launcher's `--settings`, which then shows the user's own status line.
+     The merge keeps the later window, and in one window the higher
+     percent, so a stale sample never lowers the figure. When the newest
+     sample is older than 5 minutes, a fresh reading starts `claude
+     --restricted --strict-mcp-config` with no prompt and no model turn.
+     That form reads no settings file and loads no user plugin. It must
+     start in a directory that `claude` already trusts, or the trust
+     dialog stops the status line.
+
+     The levels are `normal`, `slowed` at the limit minus 15 or on a
+     forecast that reaches the limit before the reset, and `stopped` at the
+     limit, default 95. The 15-point margin covers 5 minutes at the 2
+     points a minute that experiment 1 of issue 149 measured. `watch`
+     prints a line only on a change, so a quiet window costs no turn. A
+     project lead with a `Usage limit:` charter line checks before each
+     dispatch and push, stops itself at `stopped`, and resumes when
+     `wait` exits after the reset. The orchestrator record of issue 151
+     holds the mode, the slots and the limit in `pace`. The figures are not
+     copied there.
+
+     A seeded test runs 70 checks with a stub `claude`. The wrapper and the
+     fresh reading ran live once each. No orchestrator run has used them
+     yet.

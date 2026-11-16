@@ -106,8 +106,10 @@ draft gets the line `PR: draft` in `charter.md`, and one who asks to skip the
 go-ahead gets `Gate: off`. A goal that names a GitHub issue the work
 resolves, as `#<n>`, `issue <n>` or an issue URL, gets one line
 `Issue: <owner>/<repo>#<n>` per issue. Take `<owner>/<repo>` from the URL,
-or else from `gh repo view --json nameWithOwner` in `run.repo`. Add each line
-to a charter from disk the same way.
+or else from `gh repo view --json nameWithOwner` in `run.repo`. A goal that
+carries a `Usage limit: <pct>` line gets that line in `charter.md` unchanged
+(`autonomy-contract.md`, "The usage limit line"). Add each line to a charter
+from disk the same way.
 
 **Pick the path before you judge the criterion** (design §9.5), because the
 two paths need different things of it. The test is what the goal names. A
@@ -229,6 +231,7 @@ session reads the files at those paths again before its first dispatch.
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
 | `Checkouts` | one line per repo, the principal's checkout of that repo. The orchestrator launcher reads it from the machine file. `skills/orchestrator/references/launcher.md` owns the line format |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
+| `Usage limit` | the plan usage limit of an orchestrator, a percent of the five-hour window. Only an orchestrator reads it; `skills/orchestrator/references/usage.md`'s "The limit" owns it |
 
 **`Deploy` names the signal that the work is live.** Its lines are:
 

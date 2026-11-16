@@ -476,6 +476,29 @@ goes under. Then offer to write it to `.claude/crew.md` under the right
 section, and quote the wording word for word. On approval, write it on the
 deliverable branch and commit it. It goes out with the branch's next push.
 
+## The usage limit line
+
+A charter can carry `Usage limit: <pct>` (`record-format.md`). Only the
+orchestrator writes it. With no line, nothing in this section applies.
+
+With the line, run `python3 <plugin>/skills/orchestrator/scripts/crew-usage.py
+check --limit <pct>` before each dispatch and before each push. At `slowed`
+(exit 10) go on: the orchestrator decides how many implementers work. At
+`stopped` (exit 20):
+
+1. Commit.
+2. Dispatch nothing more.
+3. Tell each working IC to commit its work and stop at once. Start no new
+   step.
+4. Tell the principal in one line.
+5. Arm `crew-usage.py wait` as a background Bash command. It costs no turn,
+   and its exit wakes you.
+
+When `wait` exits, resume with no word from the principal. A new value of the
+line, sent to you, replaces the old one.
+`skills/orchestrator/references/usage.md` owns the levels, the limit and the
+file.
+
 ## Spend
 
 A run's cost is measured from its transcripts, in dollars at list price.

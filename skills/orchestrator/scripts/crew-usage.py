@@ -580,13 +580,31 @@ def cmd_show(a):
     return 0
 
 
+def sampled_text(d):
+    """`sampled=<UTC ISO time>` of the newest reading in d, or `sampled=none`."""
+    ts = newest_ts(d)
+    if ts is None:
+        return "sampled=none"
+    return "sampled=" + time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
+
+
 def limit_arg(a):
     return float(a.limit) if a.limit is not None else DEFAULT_LIMIT
 
 
 def cmd_check(a):
-    lv = level_of(ensure_fresh(), limit_arg(a), now())
-    print(lv)
+    d = ensure_fresh()
+    lv = level_of(d, limit_arg(a), now())
+    # The first word is the level. The rest says how old the reading is, so a
+    # caller that passes the reading on never states a time from memory.
+    parts = [lv]
+    five = d.get("five_hour")
+    if five and d.get("plan_limits") is not False:
+        parts.append("five_hour=%s%%" % five["used_pct"])
+    parts.append(sampled_text(d))
+    if d.get("source"):
+        parts.append("source=%s" % d["source"])
+    print(" ".join(parts))
     return EXIT[lv]
 
 
@@ -619,15 +637,15 @@ def cmd_watch(a):
         pct = five["used_pct"] if five else "none"
         if until_stopped:
             if lv == "stopped":
-                say("usage level=stopped five_hour=%s%% limit=%s" % (pct, limit))
+                say("usage level=stopped five_hour=%s%% limit=%s %s" % (pct, limit, sampled_text(d)))
                 return EXIT["stopped"]
         elif reset:
             # A reset after a window that stayed normal changes nothing for the
             # orchestrator: print no line, so it costs no model turn.
             if last_level != "normal":
-                say("usage reset: level=%s five_hour=%s%%" % (lv, pct))
+                say("usage reset: level=%s five_hour=%s%% %s" % (lv, pct, sampled_text(d)))
         elif last_level is not None and lv != last_level:
-            say("usage level=%s five_hour=%s%% limit=%s" % (lv, pct, limit))
+            say("usage level=%s five_hour=%s%% limit=%s %s" % (lv, pct, limit, sampled_text(d)))
         last_level = lv
         if a.ticks and tick >= a.ticks:
             return 0

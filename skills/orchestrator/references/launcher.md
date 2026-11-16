@@ -50,7 +50,8 @@ Give `--repo` or `--checkout`, or both.
 **The checkout.** Without `--checkout`, the launcher reads the `## Checkouts`
 section of the machine file. The file is `$CREW_CONFIG` when set, and
 `~/.claude/crew/config.md` otherwise. Set `CREW_CONFIG` only for a test or a
-probe. The section ends at the next `##` heading. Each line is `<owner>/<repo>:
+probe. The section ends at the next heading with exactly two `#`. A `###`
+subheading does not end it. Each line is `<owner>/<repo>:
 <path>`, with an optional `- ` before it, and a leading `~` is the home
 directory. The launcher never clones a repo.
 

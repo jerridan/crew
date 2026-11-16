@@ -128,6 +128,10 @@ usage reset: level=<level> five_hour=<pct>%
 The first level the watch reads prints nothing, whatever it is. So run
 `check` once when you arm the watch, and write its level as the first mode.
 
+A `Monitor` watch ends after at most 30 minutes. Arm it again at each expiry.
+Each new watch starts with a silent first level, so run `check` at each re-arm
+too. Write its level when it differs from `pace.mode`.
+
 The watch writes no mode and reads no orchestrator record. On each line, write
 the mode yourself: `crew-orch.py pace set '{"mode": "<level>"}'`. A reset line
 carries the level after the reset.
@@ -138,13 +142,14 @@ The mode, the slot counts and the limit live in `pace` of the orchestrator
 record (`orchestrator-record.md`). There is no second copy. A level only
 changes what you write there.
 
-- At `slowed`: start no new implementer. Note the current `slots.max`, then
-  set `slots.max` to 1 with `crew-orch.py pace set '{"slots": {"max": 1}}'`. An implementer above that number finishes its current
-  package, commits, and waits for the reset.
+- At `slowed`: start no new implementer. Set `slots.max` to 1 with
+  `crew-orch.py pace set '{"slots": {"max": 1}}'`. An implementer above that
+  number finishes its current package, commits, and waits for the reset.
 - At `stopped`: tell each implementer to stop. It commits and starts no new
   step.
-- At the reset: set the mode to `normal` and restore `slots.max` to the value
-  you noted. An implementer that waits resumes by itself.
+- At the reset: set the mode to `normal` and restore `slots.max` to the
+  concurrency number: 3 by default, or the number that the principal's word or
+  the standing instructions set. An implementer that waits resumes by itself.
 - With no plan limits: there is no meter and no slow-down. The level stays
   `normal`.
 

@@ -95,8 +95,9 @@ in a directory that it does not trust yet. The session waits until a person
 answers that dialog. Its status line waits too.
 
 - **tmux.** One new window, named `<name>`, in the tmux session `--group`.
-  The launcher creates that session detached when it does not exist. A
-  session target is always `=<session>`. Every tmux call runs with no
+  The launcher creates that session detached when it does not exist. The
+  new window is not selected. A session target is always `=<session>`.
+  Every tmux call runs with no
   `CLAUDECODE` and no `CLAUDE_CODE_*` variable. A tmux server that the
   launcher starts passes its environment to every window, so an implementer
   must not get the session variables of the orchestrator.

@@ -40,7 +40,9 @@ neither, the script exits 2 with one line.
 Each write takes an exclusive lock, reads the file again, changes it and
 replaces it with an atomic rename. Two writers at once both land. A usage
 error prints one line on stderr, exits 2 and writes nothing. An unknown item,
-group or entry id is a usage error. A command on a record that does not exist,
+group or entry id is a usage error. So is an argument that is not valid UTF-8.
+The argument `--` ends the options, so text that starts with `--` goes after
+it. A command on a record that does not exist,
 a second `init`, and `refresh <item>` on an item with no PR exit 1. Success
 exits 0.
 
@@ -180,8 +182,10 @@ The closed list, in order: `queued`, `spec`, `split`, `build`, `review`, `pr`,
 `●` for a stage passed, `◐` for the current one and `○` for one not reached.
 `queued` shows five `○`. `merged`, `shipped` and `closed` show five `●`.
 
-The status word of a row is the stage, with its `detail` (`build 2/3`), up to
-the stage `pr`. From `pr` on, it is the merge value.
+The status word of a row is the merge value in three cases: an item with a PR
+at stage `review` or `pr`, and an item at `merged` or `shipped`. An item at
+`closed` shows `closed`. In every other case the word is the stage, with its
+`detail` (`build 2/3`).
 
 ## The merge value
 
@@ -204,7 +208,8 @@ the stage `pr`. From `pr` on, it is the merge value.
 | `blocked` | none of the above |
 
 `refresh` drops every `CANCELLED` run, then takes the latest run of each
-workflow and check name. `SUCCESS`, `NEUTRAL` and `SKIPPED` pass. `FAILURE`,
+workflow and check name. A run with no `startedAt` is the latest run of its
+name. `SUCCESS`, `NEUTRAL` and `SKIPPED` pass. `FAILURE`,
 `ERROR`, `TIMED_OUT`, `STARTUP_FAILURE` and `ACTION_REQUIRED` fail. Any other
 state is pending. With no run left, `checks` is `none`, and `can merge` and
 `needs review` read `none` as passing.
@@ -232,12 +237,19 @@ value is `waits on <ids>` or `blocked` until then.
 5. `Done <count>`: the items at `shipped` or `closed` outside an open group.
 
 An item row holds `n`, the id, the five marks, the status word, the PR number,
-`doing` and the age of `doing_at`. A `waits on` value names the items. An age
+`doing` and the age of `doing_at`. A `waits on` value names the items. The text `after <ids>` shows only when
+the status word is not the merge value. An age
 is one number and one unit, the largest that is not zero: `40s`, `12m`, `2h`,
 `1d`.
 
-The PR number and the ticket are OSC 8 links when stdout is a terminal. With
-`--urls`, a `Links` list at the end gives each number and its URL.
+The board shows a group's ticket only. An item's ticket stays in the record
+and in `show`. The PR number and a group's ticket are OSC 8 links when stdout
+is a terminal. With `--urls`, a `Links` list at the end gives each PR number
+and each group ticket with its URL, and no item ticket.
+
+The board cleans every stored string before it prints it. It removes escape
+sequences and the C0, DEL and C1 control characters, and it changes tabs and
+line breaks to spaces.
 
 The Plan block comes from `python3 <directory of crew-orch.py>/crew-usage.py
 show --json`, run only when that file exists. The command prints
@@ -254,8 +266,8 @@ Each line is one command and what it does.
 |---|---|
 | `init` | creates the record. A second `init` of the same name exits 1 and changes nothing |
 | `item add <id> --title <t> --repo <owner/name> [--group <g>] [--ticket <id> --ticket-url <url>]` | adds an item at stage `queued` |
-| `item <id> pr <number\|url>` | sets the PR. A number builds the URL from `repo` |
-| `item <id> set <field> <json>` | sets `title`, `repo`, `ticket`, `group` or `launch`. A dotted key `launch.<key>` merges. Any other field exits 2 |
+| `item <id> pr <number\|url>` | sets the PR. A number builds the URL from `repo`. A URL whose repo is not the item's repo exits 2, and the match ignores case |
+| `item <id> set <field> <json>` | sets `title`, `repo`, `ticket`, `group` or `launch`. A dotted key `launch.<key>` merges. Any other field exits 2. A `repo` that differs from the repo of the item's PR URL exits 2, and the match ignores case |
 | `group add <id> --title <t> [--repo <r>] [--ticket <id> --ticket-url <url>]` | adds a group |
 | `group <id> order <item,item,...>` | sets the merge order. Each item must exist and belong to the group |
 | `group <id> owner <thing> <item>` | records the one item that owns a shared file or component |

@@ -31,7 +31,8 @@ Three entry points:
 | `/crew:orchestrator` | Many goals at once. It splits the work, starts one project lead per item in its own terminal tab, answers their questions, and merges their PRs in order. |
 
 Crew is experimental. It has taken real goals to draft PRs, and the plugin
-changes often. `/crew:review` has run once.
+changes often. `/crew:review` has run once, and `/crew:orchestrator` has run
+only to build itself.
 
 ## Install
 
@@ -237,6 +238,12 @@ To use another reviewer, say so in plain words, as for a goal:
 ### Run many goals with an orchestrator
 
 Start Claude Code in iTerm2 or in tmux, in a checkout of a repo it trusts.
+Give the session a name of lowercase letters, digits and dashes:
+
+```
+claude --name my-orchestrator
+```
+
 Then hand over the work:
 
 ```
@@ -278,6 +285,7 @@ run five at a time
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
 | A checkout of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the checkout | every `/crew:review` run |
+| iTerm2 or tmux, for `/crew:orchestrator` | iTerm2 3.7.5 or newer with its Python API turned on, and `uv` installed, for tab groups. Or start the session inside tmux | every `/crew:orchestrator` run |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
 | Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |
 

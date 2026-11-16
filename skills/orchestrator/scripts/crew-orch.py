@@ -29,7 +29,7 @@ Commands:
   told <item> --file <path>
   pace set <json>
   refresh [<item>]
-  board [--urls]
+  board [--urls | --json]
   show [<item>]
 """
 
@@ -86,7 +86,23 @@ class Fail(Exception):
 
 
 def now_iso() -> str:
+    """The time a write stamps: always the real clock."""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def board_now() -> float:
+    """The time `board` reads, in epoch seconds.
+
+    A test pins it with the environment variable CREW_ORCH_NOW. It changes
+    no write: `now_iso` stays the real clock.
+    """
+    pinned = os.environ.get("CREW_ORCH_NOW")
+    if pinned:
+        try:
+            return float(pinned)
+        except ValueError:
+            raise Usage(f"CREW_ORCH_NOW is not epoch seconds: {pinned!r}")
+    return time.time()
 
 
 def parse_iso(text):
@@ -103,7 +119,7 @@ def age(text) -> str:
     then = parse_iso(text)
     if then is None:
         return ""
-    sec = max(0, int((datetime.now(timezone.utc) - then).total_seconds()))
+    sec = max(0, int(board_now() - then.timestamp()))
     for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
         if sec >= size:
             return f"{sec // size}{unit}"
@@ -113,7 +129,7 @@ def age(text) -> str:
 def clock(epoch) -> str:
     """Local clock time, or a weekday when the time is more than a day away."""
     when = datetime.fromtimestamp(epoch)
-    if epoch - time.time() > 86400:
+    if epoch - board_now() > 86400:
         return when.strftime("%a")
     hour = when.hour % 12 or 12
     return f"{hour}:{when.minute:02d} {'AM' if when.hour < 12 else 'PM'}"
@@ -920,30 +936,6 @@ def pace_word(pace: dict) -> str:
     return ""
 
 
-def plan_lines(state: dict) -> list:
-    figures = usage_figures()
-    word = pace_word(state.get("pace") or {})
-    if figures is None:
-        return [f" {word}", ""] if word else []
-    lines = []
-    for label, key, head in (("5h", "five_hour", " Plan   "), ("7d", "seven_day", "        ")):
-        part = figures.get(key)
-        if not part:
-            continue
-        line = f"{head}{label} {meter(part['used_pct'])}  {int(round(part['used_pct'])):>3}%"
-        notes = []
-        if is_number(part.get("resets_at")):
-            notes.append(f"resets {clock(part['resets_at'])}")
-        if is_number(part.get("full_at")):
-            notes.append(f"full at about {clock(part['full_at'])}")
-        if notes:
-            line += "  " + " · ".join(notes)
-        if key == "five_hour" and word:
-            line += f"   {word}"
-        lines.append(line)
-    return lines + [""]
-
-
 # An escape sequence: a CSI (ESC [ ... final byte); an OSC, DCS, SOS, PM or
 # APC string, up to BEL or ESC \; then any other ESC and the one character
 # after it.
@@ -1031,97 +1023,220 @@ def row_text(item: dict) -> str:
     return clean(" · ".join(parts))
 
 
-def cmd_board(rec: Record, args: list) -> None:
-    pos, opts = take_options(args, {"urls": False})
-    want(pos, 0, 0, "board [--urls]")
-    state = rec.read()
-    links = Links(sys.stdout.isatty())
+BOARD_VERSION = 1
+LEGEND = "spec → split → build → review → PR"
+
+
+def link_value(ticket):
+    """A ticket as the board shows it: `{id, url}`, both cleaned, or None."""
+    if not ticket:
+        return None
+    url = clean(ticket["url"]) if ticket.get("url") else None
+    return {"id": clean(ticket["id"]), "url": url or None}
+
+
+def plan_data(state: dict):
+    """The Plan block: the usage windows and the pace word, or None."""
+    figures = usage_figures()
+    word = pace_word(state.get("pace") or {})
+    if figures is None:
+        return {"windows": [], "word": word} if word else None
+    windows = []
+    for key, label in (("five_hour", "5h"), ("seven_day", "7d")):
+        part = figures.get(key)
+        if not part:
+            continue
+        windows.append({
+            "key": key,
+            "label": label,
+            "used_pct": int(round(part["used_pct"])),
+            "meter": meter(part["used_pct"]),
+            "resets": clock(part["resets_at"]) if is_number(part.get("resets_at")) else "",
+            "full_at": clock(part["full_at"]) if is_number(part.get("full_at")) else "",
+        })
+    return {"windows": windows, "word": word}
+
+
+def row_data(item: dict, show_ticket: bool) -> dict:
+    pr = item.get("pr")
+    tab = (item.get("launch") or {}).get("tab")
+    return {
+        "n": item["n"],
+        "id": clean(item["id"]),
+        "marks": marks(item["stage"]),
+        "status": status_word(item),
+        "pr": {"number": pr["number"], "label": f"#{pr['number']}", "url": clean(pr["url"] or "")} if pr else None,
+        "ticket": link_value(item.get("ticket")) if show_ticket else None,
+        "text": row_text(item),
+        "age": age(item.get("doing_at")) if item.get("doing") else "",
+        "launch_tab": clean(tab) if tab else None,
+    }
+
+
+def board_data(name: str, state: dict) -> dict:
+    """The whole board as one object: the one place each board value is made.
+
+    orchestrator-record.md "The board" owns its shape. The text view and the
+    pane draw from it.
+    """
     items = state["items"]
     groups = state["groups"]
-    out = plan_lines(state)
 
     # Needs you: every open entry for the principal, oldest first.
     needs = [e for e in state["inbox"] if e["state"] == "open" and e["for"] == "principal"]
     needs.sort(key=lambda e: e["created_at"])  # A stable sort keeps the add order inside one second.
-    out.append(f" Needs you  {len(needs)}")
-    rows = []
+    entries = []
     for entry in needs:
         where = "-"
         if entry.get("item"):
             item = items.get(entry["item"])
             group = item.get("group") if item else None
             where = f"{group}/{entry['item']}" if group else entry["item"]
-        rows.append((clean(entry["id"]), clean(entry["kind"]),
-                     age(entry.get("routed_at") or entry["created_at"]), clean(where), entry))
-    if rows:
-        w = [max(len(r[i]) for r in rows) for i in range(4)]
-        indent = 2 + sum(w) + 2 * 4
-        for eid, kind, ago, where, entry in rows:
-            out.append(f"  {eid:<{w[0]}}  {kind:<{w[1]}}  {ago:<{w[2]}}  {where:<{w[3]}}  {clean(entry['text'])}")
-            if entry.get("recommend"):
-                out.append(" " * indent + f"Recommended: {clean(entry['recommend'])}")
-    out.append("")
+        entries.append({
+            "id": clean(entry["id"]),
+            "kind": clean(entry["kind"]),
+            "age": age(entry.get("routed_at") or entry["created_at"]),
+            "item": clean(where),
+            "item_id": clean(entry["item"]) if entry.get("item") else None,
+            "text": clean(entry["text"]),
+            "recommend": clean(entry["recommend"]) if entry.get("recommend") else None,
+        })
 
-    # The item rows, with one set of column widths for the whole board.
     def done(item):
         return item["stage"] in DONE_STAGES
 
     sections = []
+    open_groups = set()
     for group in sorted(groups.values(), key=lambda g: g["created_at"]):
         members = [i for i in items.values() if i.get("group") == group["id"]]
         if not any(not done(i) for i in members):
             continue
         ordered = [items[i] for i in group["order"] if i in items]
         rest = sorted((i for i in members if i["id"] not in group["order"]), key=lambda i: i["n"])
-        sections.append((group, ordered + rest))
+        members = ordered + rest
+        open_groups.add(group["id"])
+        sections.append({
+            "kind": "group",
+            "id": clean(group["id"]),
+            "title": clean(group["title"]),
+            "ticket": link_value(group.get("ticket")),
+            "repo": clean(group["repo"]) if group.get("repo") else None,
+            "merged": sum(1 for i in members if landed(i)),
+            "total": len(members),
+            "rows": [row_data(i, False) for i in members],
+        })
     singles = sorted((i for i in items.values() if i.get("group") not in groups and not done(i)),
                      key=lambda i: i["n"])
-    open_groups = {g["id"] for g, _ in sections}
+    if singles:
+        sections.append({
+            "kind": "single", "id": None, "title": "Single items", "ticket": None, "repo": None,
+            "merged": None, "total": None, "rows": [row_data(i, True) for i in singles],
+        })
     done_count = sum(1 for i in items.values() if done(i) and i.get("group") not in open_groups)
+    return {
+        "version": BOARD_VERSION,
+        "orch": name,
+        "plan": plan_data(state),
+        "needs_you": {"count": len(entries), "entries": entries},
+        "sections": sections,
+        "done": done_count,
+        "legend": LEGEND,
+    }
 
-    shown = [i for _, members in sections for i in members] + singles
+
+def render_text(data: dict, tty: bool, urls: bool) -> str:
+    """Draw the text view from the board data: widths, links and the Links list only."""
+    links = Links(tty)
+    out = []
+
+    plan = data["plan"]
+    if plan and not plan["windows"]:
+        out += [f" {plan['word']}", ""]
+    elif plan:
+        for w in plan["windows"]:
+            head = " Plan   " if w["key"] == "five_hour" else "        "
+            line = f"{head}{w['label']} {w['meter']}  {w['used_pct']:>3}%"
+            notes = []
+            if w["resets"]:
+                notes.append(f"resets {w['resets']}")
+            if w["full_at"]:
+                notes.append(f"full at about {w['full_at']}")
+            if notes:
+                line += "  " + " · ".join(notes)
+            if w["key"] == "five_hour" and plan["word"]:
+                line += f"   {plan['word']}"
+            out.append(line)
+        out.append("")
+
+    needs = data["needs_you"]
+    out.append(f" Needs you  {needs['count']}")
+    entries = needs["entries"]
+    if entries:
+        w = [max(len(e[k]) for e in entries) for k in ("id", "kind", "age", "item")]
+        indent = 2 + sum(w) + 2 * 4
+        for e in entries:
+            out.append(f"  {e['id']:<{w[0]}}  {e['kind']:<{w[1]}}  {e['age']:<{w[2]}}  {e['item']:<{w[3]}}  {e['text']}")
+            if e["recommend"] is not None:
+                out.append(" " * indent + f"Recommended: {e['recommend']}")
+    out.append("")
+
+    # The item rows, with one set of column widths for the whole board. The
+    # ticket cell is the single items' alone.
+    shown = [r for s in data["sections"] for r in s["rows"]]
     if shown:
-        wn = max(len(str(i["n"])) for i in shown)
-        wid = max(len(clean(i["id"])) for i in shown)
-        ws = max(len(status_word(i)) for i in shown)
-        wp = max(len(f"#{i['pr']['number']}") if i.get("pr") else 0 for i in shown)
-        wt = max(len(row_text(i)) for i in shown)
+        wn = max(len(str(r["n"])) for r in shown)
+        wid = max(len(r["id"]) for r in shown)
+        ws = max(len(r["status"]) for r in shown)
+        wp = max(len(r["pr"]["label"]) if r["pr"] else 0 for r in shown)
+        wt = max(len(r["text"]) for r in shown)
+    single_tickets = [r["ticket"]["id"] for s in data["sections"] if s["kind"] == "single"
+                      for r in s["rows"] if r["ticket"]]
+    wk = max((len(t) for t in single_tickets), default=0)
 
-    def row(item):
-        pr = item.get("pr")
-        pr_cell = links.make(f"#{pr['number']}", pr["url"], wp) if pr else " " * wp
-        text = row_text(item)
-        ago = age(item.get("doing_at")) if item.get("doing") else ""
-        line = (f"  {item['n']:>{wn}} {clean(item['id']):<{wid}}  {marks(item['stage'])}  "
-                f"{status_word(item):<{ws}}  {pr_cell}  {text:<{wt}}  {ago}")
+    def row(r, ticket_cell):
+        pr = r["pr"]
+        cell = links.make(pr["label"], pr["url"], wp) if pr else " " * wp
+        if ticket_cell:
+            ticket = r["ticket"]
+            cell += "  " + (links.make(ticket["id"], ticket["url"], wk) if ticket else " " * wk)
+        line = (f"  {r['n']:>{wn}} {r['id']:<{wid}}  {r['marks']}  "
+                f"{r['status']:<{ws}}  {cell}  {r['text']:<{wt}}  {r['age']}")
         return line.rstrip()
 
-    for group, members in sections:
-        merged = sum(1 for i in members if landed(i))
-        head = [clean(group["title"])]
-        if group.get("ticket"):
-            head.append(links.make(group["ticket"]["id"], group["ticket"].get("url")))
-        line = f" {head[0]}" + (f"  {head[1]}" if len(head) > 1 else "")
-        if group.get("repo"):
-            line += f"  ·  {clean(group['repo'])}"
-        line += f"  ·  {merged} of {len(members)} merged"
-        out.append(line)
-        for item in members:
-            out.append(row(item))
+    for s in data["sections"]:
+        if s["kind"] == "group":
+            line = f" {s['title']}"
+            if s["ticket"]:
+                line += f"  {links.make(s['ticket']['id'], s['ticket']['url'])}"
+            if s["repo"]:
+                line += f"  ·  {s['repo']}"
+            line += f"  ·  {s['merged']} of {s['total']} merged"
+            out.append(line)
+        else:
+            out.append(f" {s['title']}")
+        ticket_cell = s["kind"] == "single" and bool(single_tickets)
+        for r in s["rows"]:
+            out.append(row(r, ticket_cell))
         out.append("")
-    if singles:
-        out.append(" Single items")
-        for item in singles:
-            out.append(row(item))
-        out.append("")
-    out.append(f" Done  {done_count}   ·   stages: spec → split → build → review → PR")
-    if opts.get("urls"):
+    out.append(f" Done  {data['done']}   ·   stages: {data['legend']}")
+    if urls:
         out.append("")
         out.append(" Links")
         if links.seen:
             w = max(len(t) for t, _ in links.seen)
             out.extend(f"  {t:<{w}}  {u}" for t, u in links.seen)
-    print("\n".join(out))
+    return "\n".join(out)
+
+
+def cmd_board(rec: Record, args: list) -> None:
+    pos, opts = take_options(args, {"urls": False, "json": False})
+    want(pos, 0, 0, "board [--urls | --json]")
+    data = board_data(rec.name, rec.read())
+    if opts.get("json"):
+        # The JSON view always holds every URL, so --urls changes nothing here.
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        return
+    print(render_text(data, sys.stdout.isatty(), bool(opts.get("urls"))))
 
 
 def cmd_show(rec: Record, args: list) -> None:

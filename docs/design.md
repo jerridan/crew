@@ -9353,6 +9353,12 @@ TBD-152. **The orchestrator launcher — 2026-11-16.** Issue 152 builds the
        works, and a failed launch does not.
      - When the helper opened the tab and only the group step failed, it
        reports the tab with no group. The fallback then opens no second tab.
+     - The helper prints a line when the tab opens and a line when the
+       command is typed, at once. A failure after the typed line reports the
+       tab, and no fallback runs. A failure before it closes the tab, then
+       the fallback runs. A timeout cannot hide the lines, so the launcher
+       knows which tab is open. A second tab starts a second `claude` in the
+       same worktree.
      - The helper reads the app again after it changes a group. A `Window`
        object does not show a group made after it was read.
      - The new `claude` always gets `--model`, `opus` by default, and one
@@ -9372,4 +9378,8 @@ TBD-152. **The orchestrator launcher — 2026-11-16.** Issue 152 builds the
      from the machine file. `CREW_CONFIG` replaces that file for a test or a
      probe.
 
-     The seeded test passes. No crew run has used the launcher.
+     The seeded test passes. One live probe ran on iTerm2 3.7.7 and on
+     tmux, with a stub in place of `claude`. It started two tabs into one
+     new group, focused them, stopped them and kept the worktrees. No probe
+     has proven the Remote Control default on a real `claude` session yet.
+     No crew run has used the launcher.

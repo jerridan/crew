@@ -25,7 +25,8 @@ export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com
 export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
 unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID
 
-# tmux stub. It logs each call as one line, args joined by `|`. Files under
+# tmux stub. It logs each call as one line, args joined by `|`, and each
+# CLAUDECODE or CLAUDE_CODE_* variable it gets to tmux-env. Files under
 # $STUB_DIR set its answers: tmux-has (the session exists), tmux-fail (new
 # windows fail), tmux-panes (one known pane id per line), tmux-sessions (the
 # list-sessions output), tmux-clients (the list-clients output).
@@ -35,6 +36,7 @@ D=$STUB_DIR
 line=''
 for a in "$@"; do line="$line$a|"; done
 printf '%s\n' "$line" >> "$D/tmux.log"
+env | grep -E '^(CLAUDECODE|CLAUDE_CODE_)' >> "$D/tmux-env"
 target=''
 prev=''
 for a in "$@"; do
@@ -654,6 +656,25 @@ run stop 'tmux:%99'
 check 'stop on a gone tmux pane exits 0 with one line' $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sqi gone "$T/out"; echo $?)
 run stop 'foo:1'
 check 'stop with an unknown prefix exits 7 with one line' $([ "$rc" = 7 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+
+# -- no Claude Code variable reaches tmux ----------------------------------
+# A tmux server that the launcher starts passes its environment to every
+# window, so a claude in it would read the orchestrator's session variables.
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+printf '$1\tcrew\n' > "$STUB_DIR/tmux-sessions"
+export CLAUDECODE=1 CLAUDE_CODE_SSE_PORT=4242 CLAUDE_CODE_ENTRYPOINT=cli
+TMUX=/tmp/t,1,0 run start --name env-1 --model m --principal p --checkout "$CO"
+r1=$rc
+TMUX=/tmp/t,1,0 run groups
+TMUX=/tmp/t,1,0 run focus 'tmux:%7'
+run focus 'tmux:%7'
+run stop 'tmux:%7'
+unset CLAUDECODE CLAUDE_CODE_SSE_PORT CLAUDE_CODE_ENTRYPOINT
+r=1; [ "$r1" = 0 ] && grep -sq '^new-session|' "$STUB_DIR/tmux.log" && grep -sq '^list-sessions|' "$STUB_DIR/tmux.log" \
+  && grep -sq '^list-clients|' "$STUB_DIR/tmux.log" && grep -sq '^kill-pane|' "$STUB_DIR/tmux.log" \
+  && [ ! -s "$STUB_DIR/tmux-env" ] && r=0
+check 'no tmux call of start, groups, focus or stop gets CLAUDECODE or a CLAUDE_CODE_* variable' $r
 
 # -- what launcher.py never does -------------------------------------------
 check 'launcher.py imports no iterm2 module' $(! grep -sqE '^\s*(import|from) iterm2' "$L"; echo $?)

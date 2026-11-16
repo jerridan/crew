@@ -160,7 +160,6 @@ expect_usage() {
   check "$label exits 2 with a usage line and no worktree" $r
 }
 expect_usage 'no --name' --model m --principal p --checkout "$CO"
-expect_usage 'no --model' --name n1 --principal p --checkout "$CO"
 expect_usage 'no --principal' --name n1 --model m --checkout "$CO"
 expect_usage 'neither --repo nor --checkout' --name n1 --model m --principal p
 for n in Bad_Name -x 'a b' 'a;b' eval my-eval-x retrieval; do
@@ -169,6 +168,10 @@ done
 expect_usage "group color 'red'" --name n1 --model m --principal p --checkout "$CO" --group g --group-color red
 expect_usage "group color '#12345'" --name n1 --model m --principal p --checkout "$CO" --group g --group-color '#12345'
 expect_usage "terminal 'kitty'" --name n1 --model m --principal p --checkout "$CO" --terminal kitty
+echo '[1, 2]' > "$T/list.json"
+for v in '[1]' 'not json' '"a string"' "$T/list.json" "$T/no-such.json"; do
+  expect_usage "settings '$v'" --name n1 --model m --principal p --checkout "$CO" --settings "$v"
+done
 total=$((total + 1))
 TERM_PROGRAM=Apple_Terminal run start --name Bad_Name --model m --principal p --repo o/missing
 if [ "$rc" = 2 ]; then ok 'a bad name and an unsupported terminal exit 2'; else bad "a bad name and an unsupported terminal exit 2 (got $rc)"; fi
@@ -242,11 +245,44 @@ check 'the tmux command execs claude' $(grep -sq '&& exec claude ' "$STUB_DIR/tm
 # The shell runs the command: each value reaches the claude stub as one arg.
 sh -c "$(cat "$STUB_DIR/tmux-cmd")"
 PROMPT="You are an implementer session for the orchestrator session named $PRINC. The user started you through that orchestrator. Do nothing now. A goal arrives as a cross-session message from that session. When it arrives, run the crew:project-lead skill with that goal. The orchestrator is your principal: the user gave it the authority to decide for this work, so send your questions, your escalations and your reports to it with SendMessage, not to this tab. Answer this message with one line and then wait."
-expect_args=$(printf '%s\n' "$WT" --name review-x --model "$MODEL" "$PROMPT")
-check 'claude runs in the worktree with --name, --model and the wait prompt, quotes intact' \
+expect_args=$(printf '%s\n' "$WT" --name review-x --model "$MODEL" --settings '{"remoteControlAtStartup": false}' "$PROMPT")
+check 'claude runs in the worktree with --name, --model, the RC-off --settings and the wait prompt, quotes intact' \
   $([ "$(cat "$STUB_DIR/claude-args" 2>/dev/null)" = "$expect_args" ]; echo $?)
 
+# -- --settings and the --model default ------------------------------------
+# settings_is <label> <JSON>: run the last tmux command; the claude stub must
+# get exactly one --settings, two args after --model, equal to <JSON>.
+settings_is() {
+  total=$((total + 1))
+  sh -c "$(cat "$STUB_DIR/tmux-cmd" 2>/dev/null)" 2>/dev/null
+  if python3 - "$STUB_DIR/claude-args" "$2" <<'PY'
+import json, sys
+a = open(sys.argv[1]).read().split("\n")[1:-1]
+ok = a.count("--settings") == 1 and a.index("--settings") == a.index("--model") + 2
+ok = ok and json.loads(a[a.index("--settings") + 1]) == json.loads(sys.argv[2])
+sys.exit(0 if ok else 1)
+PY
+  then ok "$1"; else bad "$1"; fi
+}
+reset_stub
+TMUX=/tmp/t,1,0 run start --name set-1 --principal p --checkout "$CO" \
+  --settings '{"env": {"A": "it'"'"'s \"q\" $x"}, "model": "x"}'
+check 'start with a --settings JSON string exits 0' $([ "$rc" = 0 ]; echo $?)
+settings_is 'a JSON string with quotes is merged with remoteControlAtStartup false and passed as one arg' \
+  '{"env": {"A": "it'"'"'s \"q\" $x"}, "model": "x", "remoteControlAtStartup": false}'
+check 'no --model gives --model opus' $(grep -sqx -- opus "$STUB_DIR/claude-args" \
+  && [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["model"])' "$T/out" 2>/dev/null)" = opus ]; echo $?)
+reset_stub
+TMUX=/tmp/t,1,0 run start --name set-2 --model m --principal p --checkout "$CO" --settings '{"remoteControlAtStartup": true}'
+settings_is 'an explicit remoteControlAtStartup in the value is kept' '{"remoteControlAtStartup": true}'
+reset_stub
+printf '{"permissions": {"allow": ["Bash(ls)"]}}\n' > "$T/settings.json"
+TMUX=/tmp/t,1,0 run start --name set-3 --model m --principal p --checkout "$CO" --settings "$T/settings.json"
+settings_is 'a file path value is read and merged' \
+  '{"permissions": {"allow": ["Bash(ls)"]}, "remoteControlAtStartup": false}'
+
 # -- an existing worktree or branch (exit 5) -------------------------------
+reset_stub
 : > "$STUB_DIR/tmux.log"
 (cd "$WT" && git commit -q --allow-empty -m local)
 before=$(cd "$WT" && git rev-parse HEAD)

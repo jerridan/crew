@@ -16,6 +16,9 @@ deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/launcher.py` and
 `iterm2-tabs.py` are code too, and `test-launcher.sh` tests them with stub
 commands. `skills/orchestrator/scripts/crew-usage.py` is code too, and
 `test-crew-usage.py` beside it tests it with a stub `claude`.
+`claude plugin test`, run with `CLAUDE_CONFIG_DIR` set to a new empty
+directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
+`hooks/orch-board.tsx`.
 
 ## Layout
 

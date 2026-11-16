@@ -76,12 +76,15 @@ OSA_START = """on run argv
     end if
     if w is missing value then set w to current window
     if w is missing value then error "no iTerm2 window"
+    set oldTab to current tab of w
     tell w to set newTab to (create tab with default profile)
     set s to current session of newTab
     tell s
       set name to nm
       write text cmd
     end tell
+    -- create tab selects the new tab: select the tab of before again.
+    tell oldTab to select
     return unique id of s
   end tell
 end run

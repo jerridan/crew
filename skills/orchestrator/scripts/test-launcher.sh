@@ -371,6 +371,16 @@ r=1; [ "$rc" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqi 'no tab group' "$
   && grep -sq '^-|start|' "$STUB_DIR/osa.log" && r=0
 check 'a failed helper falls back to osascript, prints one no-group line, tab_group null' $r
 check 'the osascript fallback names the session' $(grep -sq '|it4|$' "$STUB_DIR/osa.log"; echo $?)
+r=1; python3 - "$STUB_DIR/osa-script" <<'PY' && r=0
+import sys
+s = [l.strip() for l in open(sys.argv[1])]
+def at(line):
+    return s.index(line) if line in s else -1
+keep, new, typed, back = (at("set oldTab to current tab of w"), at("tell w to set newTab to (create tab with default profile)"),
+                          at("write text cmd"), at("tell oldTab to select"))
+sys.exit(0 if -1 < keep < new < typed < back else 1)
+PY
+check 'the osascript fallback selects the tab it had before, so the orchestrator tab keeps the focus' $r
 
 # The helper and osascript fail: exit 6, the worktree stays and is named.
 : > "$STUB_DIR/osa-fail"

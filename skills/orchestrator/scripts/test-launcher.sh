@@ -541,24 +541,52 @@ class Session:
             raise Boom("close failed")
 
 
+class TabGroup:
+    def __init__(self, name, color):
+        self.name = name
+        self.color = color
+        self.group_id = "G-" + name
+
+
+# The open groups of the one window, by name: FAKE_GROUPS names the groups
+# that exist at the start. TAB_GROUP holds the group of the one tab.
+GROUPS = {n: TabGroup(n, None) for n in os.environ.get("FAKE_GROUPS", "").split(",") if n}
+TAB_GROUP = [None]
+
+
 class Tab:
     tab_id = "T1"
-    tab_group = None
 
     def __init__(self):
         self.current_session = Session()
 
+    @property
+    def tab_group(self):
+        return TAB_GROUP[0]
+
+    async def async_add_to_tab_group(self, group):
+        log("add_to_group " + group.name)
+        TAB_GROUP[0] = group
+
 
 class Window:
     window_id = "W1"
-    tab_groups = []
+
+    @property
+    def tab_groups(self):
+        return list(GROUPS.values())
 
     async def async_create_tab(self, select=True):
         log("create_tab select=%s" % select)
         return Tab()
 
     async def async_create_tab_group(self, name, tabs, color):
-        raise Boom("group failed")
+        log("create_group %s %s" % (name, color))
+        if "create_group" in FAIL:
+            raise Boom("group failed")
+        GROUPS[name] = TabGroup(name, color)
+        TAB_GROUP[0] = GROUPS[name]
+        return GROUPS[name]
 
 
 class App:
@@ -600,10 +628,18 @@ done
 helper set_name,close
 r=1; [ "$rc" = 1 ] && has '{"opened": "FAKE-1"}' && ! has closed && ! has session_id && r=0
 check 'helper: a tab that does not close gives exit 1 and no closed line' $r
-helper '' --group grp
+helper create_group --group grp
 r=1; [ "$rc" = 0 ] && has '{"typed": "FAKE-1"}' && ! grep -sq close "$STUB_DIR/fake.log" \
   && [ "$(tail -n 1 "$T/out" | python3 -c 'import json,sys; o=json.load(sys.stdin); print(o["session_id"], o["tab_group"], "group failed" in o["warning"])')" = 'FAKE-1 None True' ] && r=0
 check 'helper: a failed group step after the command reports the tab with a warning and exits 0' $r
+FAKE_GROUPS=other,grp helper '' --group grp --group-color '#112233'
+r=1; [ "$rc" = 0 ] && grep -sqx 'add_to_group grp' "$STUB_DIR/fake.log" && ! grep -sq create_group "$STUB_DIR/fake.log" \
+  && [ "$(tail -n 1 "$T/out")" = '{"session_id": "FAKE-1", "tab_group": "grp"}' ] && r=0
+check 'helper: an open group of that name: the tab joins it, no new group, tab_group is its name' $r
+FAKE_GROUPS=other helper '' --group grp --group-color '#112233'
+r=1; [ "$rc" = 0 ] && grep -sqx 'create_group grp #112233' "$STUB_DIR/fake.log" && ! grep -sq add_to_group "$STUB_DIR/fake.log" \
+  && [ "$(tail -n 1 "$T/out")" = '{"session_id": "FAKE-1", "tab_group": "grp"}' ] && r=0
+check 'helper: no open group of that name: a new group with the color, tab_group is its name' $r
 helper ''
 r=1; [ "$rc" = 0 ] && grep -sqx 'create_tab select=False' "$STUB_DIR/fake.log" \
   && [ "$(tail -n 1 "$T/out")" = '{"session_id": "FAKE-1", "tab_group": null}' ] && r=0

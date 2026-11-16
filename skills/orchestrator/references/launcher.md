@@ -57,9 +57,14 @@ directory. The launcher never clones a repo.
 **The worktree.** The launcher runs `git fetch origin` in the checkout and
 reads the remote default branch with `git ls-remote --symref origin HEAD`,
 never from a local ref. It adds the worktree at
-`<checkout>/.claude/worktrees/<name>`, on the new branch `worktree-<name>`,
-at `origin/<default>`, with no upstream. An existing worktree path or branch
-stops the command before the fetch.
+`<checkout top level>/.claude/worktrees/<name>`, on the new branch
+`worktree-<name>`, at `origin/<default>`, with no upstream. An existing
+worktree path or branch stops the command before the fetch.
+
+The worktree path is known before `start` runs. `<checkout top level>` is the
+real path of the checkout's top level: the output of `git rev-parse
+--show-toplevel` in the checkout, with every symlink resolved. Compute the
+path this way when a `--settings` value must name the worktree.
 
 **The tab.** The command that runs in the tab is:
 
@@ -75,11 +80,16 @@ harmless one.
 added when it has no `remoteControlAtStartup` key, and
 `{"remoteControlAtStartup": false}` without `--settings`. Remote Control is
 off for an implementer by default, whatever the user's own settings say, as
-issue 150 rule 16 decides. A value that is not a JSON
-object exits 2.
+issue 150 rule 16 decides. The user reaches the work through the orchestrator
+only. An implementer session with Remote Control on adds one more session to
+the session list of the mobile app. A value that is not a JSON object exits 2.
 
 The wait prompt tells the session that the orchestrator is its
 principal, to answer with one line, and to wait for the goal.
+
+**Limit: the trust dialog.** `claude` shows its trust dialog when it starts
+in a directory that it does not trust yet. The session waits until a person
+answers that dialog. Its status line waits too.
 
 - **tmux.** One new window, named `<name>`, in the tmux session `--group`.
   The launcher creates that session detached when it does not exist. A

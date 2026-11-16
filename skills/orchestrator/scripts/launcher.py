@@ -2,7 +2,8 @@
 """The launcher of crew:orchestrator: start, list, focus and stop implementers.
 
 usage:
-  launcher.py start --name <session-name> --model <model> --principal <name>
+  launcher.py start --name <session-name> [--model <model>]
+                    [--settings <file-or-json>] --principal <name>
                     [--repo <owner/repo>] [--checkout <path>]
                     [--group <name>] [--group-color <#rrggbb>]
                     [--terminal iterm2|tmux]
@@ -30,8 +31,9 @@ HELPER = os.path.join(HERE, "iterm2-tabs.py")
 HELPER_TIMEOUT = 120
 
 START_USAGE = (
-    "usage: launcher.py start --name <session-name> --model <model> "
-    "--principal <name> [--repo <owner/repo>] [--checkout <path>] "
+    "usage: launcher.py start --name <session-name> [--model <model>] "
+    "[--settings <file-or-json>] --principal <name> "
+    "[--repo <owner/repo>] [--checkout <path>] "
     "[--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]"
 )
 USAGE_LINE = "usage: launcher.py start ... | groups | focus <handle> | stop <handle>"
@@ -165,7 +167,8 @@ def parse(argv):
     s = sub.add_parser("start", add_help=False)
     s.usage_line = START_USAGE
     s.add_argument("--name", required=True)
-    s.add_argument("--model", required=True)
+    s.add_argument("--model", default="opus")
+    s.add_argument("--settings")
     s.add_argument("--principal", required=True)
     s.add_argument("--repo")
     s.add_argument("--checkout")
@@ -198,10 +201,32 @@ def check_start(a):
         bad("--name %r holds 'eval', which a worktree-isolated session refuses" % a.name)
     if a.group_color is not None and not COLOR_RE.fullmatch(a.group_color):
         bad("--group-color %r is not #rrggbb" % a.group_color)
+    a.settings_json = settings_json(a.settings, bad)
     if a.repo is not None and not REPO_RE.fullmatch(a.repo):
         bad("--repo %r is not <owner>/<repo>" % a.repo)
     if a.group is not None and not a.group.strip():
         bad("--group is empty")
+
+
+def settings_json(value, bad):
+    """The --settings JSON for claude: the given object, Remote Control off by default."""
+    obj = {}
+    if value is not None:
+        text = value
+        if os.path.isfile(value):
+            try:
+                with open(value) as f:
+                    text = f.read()
+            except OSError as e:
+                bad("--settings file %s cannot be read: %s" % (value, e))
+        try:
+            obj = json.loads(text)
+        except ValueError:
+            bad("--settings %r is not a JSON object or a file that holds one" % value)
+        if not isinstance(obj, dict):
+            bad("--settings %r is not a JSON object or a file that holds one" % value)
+    obj.setdefault("remoteControlAtStartup", False)
+    return json.dumps(obj)
 
 
 # -- terminal ---------------------------------------------------------------
@@ -310,13 +335,14 @@ def make_worktree(checkout, name):
 # -- start --------------------------------------------------------------------
 
 
-def launch_command(worktree, name, model, principal):
+def launch_command(worktree, name, model, settings, principal):
     claude = os.environ.get("CREW_LAUNCHER_CLAUDE") or "claude"
-    return "cd %s && exec %s --name %s --model %s %s" % (
+    return "cd %s && exec %s --name %s --model %s --settings %s %s" % (
         shlex.quote(worktree),
         shlex.quote(claude),
         shlex.quote(name),
         shlex.quote(model),
+        shlex.quote(settings),
         shlex.quote(WAIT_PROMPT.format(p=principal)),
     )
 
@@ -389,7 +415,7 @@ def start(a):
     if not repo:
         rc, out, _ = run(["git", "-C", worktree, "config", "--get", "remote.origin.url"])
         repo = repo_from_url(out) if rc == 0 else None
-    command = launch_command(worktree, a.name, a.model, a.principal)
+    command = launch_command(worktree, a.name, a.model, a.settings_json, a.principal)
     if terminal == "tmux":
         tab, group = tmux_start(a.name, a.group, command, worktree)
     else:

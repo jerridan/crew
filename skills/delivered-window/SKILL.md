@@ -58,7 +58,8 @@ in a goal run arms the deploy watch, or is the ship word under `Deploy: none`
 (see "The deploy watch"). In a `run.kind: review` run, `merged` and `closed`
 are the ship word, and `Done: rolled out` changes `merged` (see "The word that
 the work shipped"). In a goal run, a `closed` item is a notice that asks the
-principal for the ship word or for a new goal.
+principal for the ship word or for a new goal. Write the stage `closed` for
+it, as `project-lead`'s `SKILL.md` "Report to an orchestrator" says.
 
 **A `queued` item is a notice on every run**, and the watch goes on. Write
 `run.watch.queued` `true` with the cursor.
@@ -118,6 +119,8 @@ on that item. In order:
 3. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch".
 4. Report the merge to the principal in one sentence that says the deploy
    watch runs. Never say the work shipped.
+5. Write the stage `merged`, as `project-lead`'s `SKILL.md` "Report to an
+   orchestrator" says.
 
 With `none`, the `merged` item is the ship word, and you write no
 `run.deploy`. With `manual`, write no `run.deploy`. The item is a notice:
@@ -314,9 +317,7 @@ path the run took: an IC makes the edit, and you verify it yourself (design
 Only the principal can tell you to merge the PR. Then run `gh pr merge
 <pr_url> --squash --delete-branch`, or the repo's own merge method, and write
 a `decision` entry. The watch then reports the `merged` item, and "The deploy
-watch" says what it does. When `run.orchestrator` is set, `SKILL.md`'s "Report
-to an orchestrator" (in `crew:project-lead`) says which stage you write at the
-merge and at the ship word.
+watch" says what it does.
 
 ### Findings from a review
 
@@ -569,7 +570,8 @@ says.
 On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
-   `completed_at`.
+   `completed_at`. Then write the stage `shipped`, as `project-lead`'s
+   `SKILL.md` "Report to an orchestrator" says.
 2. Close each issue that an `Issue:` line of `charter.md` names, when the
    deliverable's PR merged. A merge into a branch that is not the default
    leaves the issue open, so this step catches it. Read the state first, and

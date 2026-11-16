@@ -3,8 +3,8 @@
 #
 # usage: bash skills/orchestrator/scripts/test-launcher.sh
 #
-# It puts stub `tmux`, `osascript`, `uv` and `claude` commands first in PATH,
-# builds a bare origin and a checkout whose local main is older than the main
+# It puts stub `tmux`, `osascript`, `uv` and `claude` commands and a logging
+# `git` wrapper first in PATH, builds a bare origin and a checkout whose local main is older than the main
 # of the origin, and runs launcher.py once per case. It makes no network call,
 # opens no real tab, window or group, and starts no real `claude`. It exits 0
 # only when every check passes.
@@ -119,6 +119,19 @@ cat > "$T/bin/claude" <<'STUB'
 #!/bin/bash
 { pwd -P; for a in "$@"; do printf '%s\n' "$a"; done; } > "$STUB_DIR/claude-args"
 STUB
+# git wrapper: when GIT_LOG is set, it logs each call as one line, args
+# joined by `|`, to that file. Then it runs the real git.
+REAL_GIT=$(command -v git)
+export REAL_GIT
+cat > "$T/bin/git" <<'STUB'
+#!/bin/bash
+if [ -n "${GIT_LOG:-}" ]; then
+  line=''
+  for a in "$@"; do line="$line$a|"; done
+  printf '%s\n' "$line" >> "$GIT_LOG"
+fi
+exec "$REAL_GIT" "$@"
+STUB
 chmod +x "$T/bin/"*
 export PATH="$T/bin:$PATH"
 
@@ -157,8 +170,9 @@ bad() { fails=$((fails + 1)); echo "FAIL $1"; }
 check() { total=$((total + 1)); if [ "$2" = 0 ]; then ok "$1"; else bad "$1"; fi; }
 
 # run <args...>: run the launcher; keep stdout, stderr and the exit code.
+# Each git call of the launcher goes to $T/git.log.
 run() {
-  python3 "$L" "$@" > "$T/out" 2> "$T/err"
+  GIT_LOG="$T/git.log" python3 "$L" "$@" > "$T/out" 2> "$T/err"
   rc=$?
 }
 lines() { grep -c . "$1" | tr -d ' '; }
@@ -728,7 +742,8 @@ check 'no tmux call of start, groups, focus or stop gets CLAUDECODE or a CLAUDE_
 
 # -- what launcher.py never does -------------------------------------------
 check 'launcher.py imports no iterm2 module' $(! grep -sqE '^\s*(import|from) iterm2' "$L"; echo $?)
-check 'launcher.py runs no git clone' $(! grep -sq "clone" "$L"; echo $?)
+check 'launcher.py runs no git clone: the git log of every run holds worktree add and no clone' \
+  $(grep -sq '|worktree|add|' "$T/git.log" && ! grep -sqE '(^|\|)clone\|' "$T/git.log"; echo $?)
 
 echo "$((total - fails)) of $total checks passed"
 [ "$fails" = 0 ]

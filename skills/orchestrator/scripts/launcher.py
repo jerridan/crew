@@ -165,6 +165,8 @@ def run(cmd, cwd=None, stdin=None, timeout=None, env=None):
         )
     except FileNotFoundError:
         return 127, "", "%s: command not found" % cmd[0]
+    except OSError as e:
+        return 127, "", "%s: cannot run: %s" % (cmd[0], e.strerror or e)
     try:
         out, err = p.communicate(stdin, timeout=timeout)
     except subprocess.TimeoutExpired as e:
@@ -402,7 +404,8 @@ def tmux_start(name, group, command, worktree):
     session = group or "crew"
     rc, _, _ = tmux(["has-session", "-t", "=" + session])
     if rc == 0:
-        cmd = ["new-window", "-t", "=%s:" % session, "-n", name, "-P", "-F", "#{pane_id}", command]
+        # -d: the new window is not selected, so the current window keeps the focus.
+        cmd = ["new-window", "-t", "=%s:" % session, "-n", name, "-P", "-F", "#{pane_id}", "-d", command]
     else:
         cmd = ["new-session", "-d", "-s", session, "-n", name, "-P", "-F", "#{pane_id}", command]
     rc, out, err = tmux(cmd)

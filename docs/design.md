@@ -9471,14 +9471,17 @@ Deliberately different:
      - The merge checks are fixed fields and commands. The record's merge
        value `can merge` covers the checks, the conflict, the wait, the
        draft and a required approval, so the skill reads that value and
-       copies none of its conditions. A review thread is resolved by the
-       `isResolved` field of `reviewThreads`. A finding has a fix or a reply
-       when the implementer's ready line names it. The project lead sends
+       copies none of its conditions. The implementer replies in each review
+       thread and resolves it, so a thread finding has one check: the
+       `isResolved` field of `reviewThreads`. A finding outside a thread has
+       a fix or a reply when the implementer's ready line names it. The project lead sends
        that line, with the head sha, each time its skeptical review stops
        with `accepted`, also after a round with no finding, and at the end
        of every round on PR comments or CI. The line counts only when its
-       sha equals the PR's `headRefOid`. In a repo that requires no
-       approval, that line is the approval (rule 7). A line that reports
+       sha equals the PR's `headRefOid`, and the merge command passes that
+       sha as `--match-head-commit`, so a moved head refuses the merge. In a
+       repo that requires no approval, shown by an empty `reviewDecision`,
+       that line is the approval (rule 7). A line that reports
        the head as unreviewed approves nothing: the orchestrator puts a
        notice in the inbox. A stage or the age of a comment cannot show
        which head the review accepted. After a compaction, or for a finding
@@ -9492,7 +9495,9 @@ Deliberately different:
        sources of `skills/project-lead/SKILL.md` decides between them. A
        `Merge` section replaces only the merge method and the ready line as
        the approval. The other checks, the group order and the overlap check
-       stay, by rules 7 and 14. That
+       stay, by rules 7 and 14. Its steps run when every check passes, or
+       when the only failed condition is the approval (`needs review`).
+       With no section, `needs review` is a notice for the principal. That
        file's table stays the one list of sections. `Merge`, `Concurrency`
        and `Implementer model` are new rows in it, which the orchestrator
        reads and the project lead does not.

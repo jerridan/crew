@@ -14,9 +14,8 @@ seeded record (design §15.38, §15.50, §15.123, §15.124).
 `skills/delivered-window/scripts/test-pr-watch-deploy.sh` tests the default
 deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/launcher.py` and
 `iterm2-tabs.py` are code too, and `test-launcher.sh` tests them with stub
-commands.
-deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is
-code too, and `test-crew-usage.py` beside it tests it with a stub `claude`.
+commands. `skills/orchestrator/scripts/crew-usage.py` is code too, and
+`test-crew-usage.py` beside it tests it with a stub `claude`.
 
 ## Layout
 

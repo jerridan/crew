@@ -220,7 +220,14 @@ value is `waits on <ids>` or `blocked` until then.
 
 ## The board
 
-`board` reads the record alone and prints, in this order:
+`board` reads the record alone and never writes it. `board --json` prints the
+board as one JSON object, described under "The board JSON" below. That object
+is the one source of the board's content. The text view of `board` and the
+board pane (`hooks/orch-board.tsx`) draw from it. The resume part (#156) is
+not built; it reads the same object. Each value is made once, in the object,
+and a reader computes no value of its own.
+
+The text view prints, in this order:
 
 1. The Plan block, when `crew-usage.py` gives figures. The 5h line holds the
    percent, the reset time and the time the plan is full. The 7d line holds
@@ -243,14 +250,19 @@ the status word is not the merge value. An age
 is one number and one unit, the largest that is not zero: `40s`, `12m`, `2h`,
 `1d`.
 
-The board shows a group's ticket only. An item's ticket stays in the record
-and in `show`. The PR number and a group's ticket are OSC 8 links when stdout
-is a terminal. With `--urls`, a `Links` list at the end gives each PR number
-and each group ticket with its URL, and no item ticket.
+A single item's row shows the item's own ticket in a cell after the PR. The
+cell is as wide as the widest ticket id of the single items, and it is there
+only when a single item has a ticket. A grouped item's row shows no ticket:
+the group heading shows the group's ticket. Every ticket stays in the record
+and in `show`. The PR number and a ticket with a URL are OSC 8 links when
+stdout is a terminal. With `--urls`, a `Links` list at the end gives each PR
+number and each ticket that the board shows, with its URL, in the order the
+board shows them.
 
 The board cleans every stored string before it prints it. It removes escape
 sequences and the C0, DEL and C1 control characters, and it changes tabs and
-line breaks to spaces.
+line breaks to spaces. The JSON view holds the same cleaned strings, and no
+OSC 8 sequence.
 
 The Plan block comes from `python3 <directory of crew-orch.py>/crew-usage.py
 show --json`, run only when that file exists. The command prints
@@ -258,6 +270,84 @@ show --json`, run only when that file exists. The command prints
 resets_at}`. A time there is epoch seconds. The board ignores any other field.
 A missing file, a non-zero exit, a run longer than 5 seconds or output that is
 not that JSON gives no Plan block. It is never an error.
+
+`board` reads the time from `$CREW_ORCH_NOW`, in epoch seconds, when it is
+set. The variable is for a test alone: it pins every age and clock time of
+the board. It changes no write, and each write stamps the real time.
+
+### The board JSON
+
+`board --json` takes no other option. With `--urls` its output is the same:
+the JSON view always holds every URL. A string is the cleaned text, formatted
+as the text view prints it. An age is the age string, or `""` where the text
+view prints none.
+
+| Field | Type | What it holds |
+|---|---|---|
+| `version` | integer | `1`. See the compatibility rule below |
+| `orch` | string | the orchestrator name |
+| `plan` | object or `null` | `null` when the text view prints no Plan block and no pace word |
+| `plan.windows` | array | one window object per usage window, 5h first. Empty when the board has no usage figures |
+| `plan.word` | string | `SLOWED: <busy> of <max> slots`, `STOPPED`, or `""` |
+| `needs_you` | object | `{count, entries}`: the `Needs you` line and its rows |
+| `sections` | array | one section object per open group, in the order the text view prints them, then `Single items` |
+| `done` | integer | the number in `Done <count>` |
+| `legend` | string | the stage legend after `stages:` in the footer |
+
+A window object:
+
+| Field | Type | What it holds |
+|---|---|---|
+| `key` | string | `five_hour` or `seven_day` |
+| `label` | string | `5h` or `7d` |
+| `used_pct` | integer | the percent as printed |
+| `meter` | string | ten characters of `█` and `░` |
+| `resets` | string | local clock text or a weekday, or `""` |
+| `full_at` | string | local clock text or a weekday, or `""` |
+
+An object of `needs_you.entries`, oldest first:
+
+| Field | Type | What it holds |
+|---|---|---|
+| `id` | string | the entry id |
+| `kind` | string | the kind |
+| `age` | string | the age, from `routed_at` when the entry has one |
+| `item` | string | `<group>/<item>`, `<item>` or `-` |
+| `item_id` | string or `null` | the bare item id |
+| `text` | string | the text |
+| `recommend` | string or `null` | the text after `Recommended:` |
+
+A section object:
+
+| Field | Type | What it holds |
+|---|---|---|
+| `kind` | string | `group` or `single` |
+| `id` | string or `null` | the group id; `null` for `single` |
+| `title` | string | the group title, or `Single items` |
+| `ticket` | object or `null` | the group ticket `{id, url}`; `url` is a string or `null`. Always `null` for `single` |
+| `repo` | string or `null` | the group repo. Always `null` for `single` |
+| `merged` | integer or `null` | `k` in `k of n merged`; `null` for `single` |
+| `total` | integer or `null` | `n` in `k of n merged`; `null` for `single` |
+| `rows` | array | the row objects, in the order the text view prints them |
+
+A row object:
+
+| Field | Type | What it holds |
+|---|---|---|
+| `n` | integer | the number column |
+| `id` | string | the item id |
+| `marks` | string | five characters of `●`, `◐` and `○` |
+| `status` | string | the status word |
+| `pr` | object or `null` | `{number, label, url}`; `label` is `#<number>` |
+| `ticket` | object or `null` | the ticket the row shows, `{id, url}`: a single item's own ticket. Always `null` for a grouped item |
+| `text` | string | the row text: `after <ids>`, `shipped`, `doing` |
+| `age` | string | the age of `doing_at`, or `""` |
+| `launch_tab` | string or `null` | the `launch.tab` handle: what `launcher.py focus` takes. It is not a board value |
+
+The compatibility rule: a reader ignores a field it does not know. A new
+field does not change `version`. The removal of a field, or a change in what
+a field means, raises `version`. A reader that gets a `version` it does not
+know shows no board.
 
 ## The commands
 
@@ -283,5 +373,5 @@ Each line is one command and what it does.
 | `told <item> --file <path>` | copies the message to `told/<item>-<k>.md` and appends to the item's `told`. `<k>` counts that item's `told` entries, from 1 |
 | `pace set <json>` | merges the object into `pace` |
 | `refresh [<item>]` | reads each item that has a PR with `gh`, and writes `github`. A failed `gh` call keeps the last values, prints one line and does not fail the command |
-| `board [--urls]` | prints the board |
+| `board [--urls \| --json]` | prints the board as text, or as one JSON object with `--json` |
 | `show [<item>]` | prints the whole state, or one item, as JSON |

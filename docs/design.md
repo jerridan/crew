@@ -9419,6 +9419,22 @@ Deliberately different:
      holds the mode, the slots and the limit in `pace`. The figures are not
      copied there.
 
-     A seeded test runs 70 checks with a stub `claude`. The wrapper and the
-     fresh reading ran live once each. No orchestrator run has used them
-     yet.
+     Two reviews of the PR found that an idle session that repeats its
+     figure kept the file looking fresh, so the fresh reading never ran.
+     Now only a changed figure or a fresh reading moves `updated_at`. A slow
+     start no longer marks a plan account as having no limits while the file
+     holds an open window. A project lead keeps `watch --until stopped`
+     running while its ICs work, so it stops at the limit with no
+     orchestrator.
+
+     The build itself ran into the limit. With one implementer at work, the
+     window went from 61% to 82% in 19 minutes, because review rounds, CI
+     review runs and ICs burn outside the slot count. So a slot is not a
+     brake; the level is. A wrong clock in one report also misled the
+     orchestrator, so every `check` and `watch` line carries the sample
+     time, and a reading sent to another session must carry it.
+
+     A seeded test runs 101 checks with a stub `claude`. The wrapper and the
+     fresh reading ran live once each, and a feed of fresh readings gave the
+     orchestrator of this build its figures. No orchestrator run has used
+     the commands yet.

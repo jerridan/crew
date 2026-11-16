@@ -10,8 +10,10 @@ Run the script from the plugin with `python3 <skill dir>/scripts/launcher.py`.
 It needs Python 3.9 or newer and no package. On iTerm2 it runs
 `scripts/iterm2-tabs.py` with `uv run --with iterm2`.
 
-The launcher writes no record file. Issue 151 owns the orchestrator record
-and its command line.
+The launcher writes no record file. The orchestrator stores the start
+output, unchanged, as the item's `launch` object.
+`orchestrator-record.md`, beside this file, owns the record and its command
+line.
 
 ## Terminals
 

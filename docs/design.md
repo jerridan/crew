@@ -9438,3 +9438,71 @@ Deliberately different:
      fresh reading ran live once each, and a feed of fresh readings gave the
      orchestrator of this build its figures. No orchestrator run has used
      the commands yet.
+NNN. **The skill `crew:orchestrator` — 2026-11-16.** (The orchestrator
+     assigns this number at the merge.)
+     Issue 154, part 4 of issue 150. `skills/orchestrator/SKILL.md` makes a
+     session the orchestrator of many project-lead sessions, by the sixteen
+     rules of issue 150. It says when the orchestrator does what, and points
+     at `orchestrator-record.md`, `launcher.md` and `usage.md` for every
+     command, field and value. `autonomy-contract.md` stays the owner of who
+     a principal is.
+
+     The issue left these choices open. The skill decides each, with its
+     reason:
+
+     - The record name is the orchestrator's own session name. The same
+       name then serves `SendMessage`, `launcher.py start --principal` and
+       the `Orchestrator:` line, so a project lead needs one name only.
+     - The one ask for actions that no allow rule covers does not hold a
+       launch. Only those actions wait for the answer, and the goal message
+       names them. Rule 2 forbids an approval step, and the rest of the work
+       needs no answer.
+     - The one `Checkouts` question holds only the items of that repo.
+     - The orchestrator sends the goal when `ListAgents` shows the new
+       session. A session that does not show can wait on the trust dialog,
+       and that is a notice for the principal.
+     - A slot counts an implementer from its start to its merge. After the
+       merge it only watches the deploy, which burns little.
+     - Only the principal's word changes an implementer's model. No
+       standing-instructions section sets a model yet.
+     - The merge checks are fixed fields and commands. A review thread is
+       resolved by the `isResolved` field of `reviewThreads`. A finding
+       outside a thread has a fix or a reply when the implementer's newest
+       "fixed ..., declined ..." line names it and no review or comment is
+       newer. With a `null` review decision the repo requires no approval,
+       and the item's stage `pr` shows that the skeptical review stopped.
+       The record's `can merge` is one input of these.
+     - The default merge method is rebase when the repo allows it, else the
+       one method it allows. Rule 7 names no method, and this build's
+       principal merges by rebase.
+     - A `Merge` section comes from the repo file on the default branch and
+       from the machine file. A `Concurrency` section comes from the machine
+       file only, because concurrency is per orchestrator. The order of
+       sources of `skills/project-lead/SKILL.md` decides between them. Both
+       sections are new in the project lead's table, which the orchestrator
+       reads and the project lead does not.
+     - The overlap check is `gh pr diff <n> --name-only` per open PR of a
+       group, and the intersection of each pair, before each merge decision.
+     - A wait on GitHub with no implementer to report it, such as a human
+       approval, is a `Monitor` watch on a shell loop over existing
+       commands. It prints only on a change and ends after at most 30
+       minutes. At the expiry the orchestrator refreshes once and arms the
+       watch again only while it still waits on that PR. Experiment 3 of
+       issue 149 found that a restart that reports "no change" costs a turn.
+     - With no board pane, the orchestrator prints the board in its
+       transcript at each change of state, as this build's orchestrator did
+       by hand.
+     - At the close of an item the tab and the worktree stay. Issue 156 owns
+       their removal.
+     - The README shows the command and no build record, as
+       `.claude/rules/readme.md` requires.
+
+     The skill also states six message rules from the friction of this
+     build: one settling message after a crossed message, a report only
+     after the command succeeded, the clock read before any time, the
+     relay of interfaces, separate commands in a worktree-isolated session,
+     and no `claude` process from a dispatched agent.
+
+     No crew run has used the skill, except the build of the skill itself.
+     The board pane (issue 155) and resume with the close-out (issue 156)
+     are not built.

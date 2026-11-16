@@ -38,6 +38,7 @@ code too, and `test-crew-usage.py` beside it tests it with a stub `claude`.
 | `skills/orchestrator/scripts/crew-usage.py`, `skills/orchestrator/references/usage.md` | the plan usage figures of the account in `<record-root>/usage.json`: the status line wrapper, the fresh reading, `show`, `check`, `watch` and `wait`; the reference that owns the figures, the levels and the slow-down | the orchestrator, from Bash and `Monitor`; a project lead with a `Usage limit:` charter line; the launcher's `--settings` value |
 | `skills/orchestrator/scripts/test-crew-usage.py` | the seeded test of `crew-usage.py`, with a stub `claude` | a person |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/orchestrator/SKILL.md` | the `/crew:orchestrator` entry point: the intake, the split, the launch, the goal message, the inbox, the merge, the wait and the close of each item of many project-lead sessions | its skill trigger |
 | `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
 | `skills/orchestrator/scripts/crew-orch.py`, `skills/orchestrator/scripts/test-crew-orch.sh` | the only writer of the orchestrator record, and its board; the seeded test, with a stub `gh` | an orchestrator and a project lead it started, from Bash; a person runs the test |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
@@ -140,8 +141,11 @@ crew run has used the mode yet (§15.131).
 
 The orchestrator record is built: `crew-orch.py` writes it and prints its
 board, and a project lead that an orchestrator started reports its stage and
-its questions there (§15.139). Only the seeded test has run it. The
-`crew:orchestrator` skill that uses it is not built.
+its questions there (§15.139). Only the seeded test has run it.
+
+The `crew:orchestrator` skill is built (§15.NNN). No crew run has used it,
+except the build of the skill itself. Its board pane (issue 155), and resume
+after a restart with the close-out (issue 156), are not built.
 
 T57 removed the tier above the project lead: the principal hands each goal
 over itself (§15.95). Its own kill and forced-compaction probes have run
@@ -188,6 +192,9 @@ Each reference owns one subject and is canonical for it:
   record and its command line.
 - `skills/orchestrator/references/usage.md` — the plan usage figures, the
   levels and the orchestrator's slow-down.
+- `skills/orchestrator/SKILL.md` — the orchestrator's own rules: the manager
+  rule, the authority at the start, the goal message, the inbox rule, the
+  merge procedure and its `Merge` section, and the concurrency number.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A
 second copy is worse than no copy, because nothing decides which copy wins.

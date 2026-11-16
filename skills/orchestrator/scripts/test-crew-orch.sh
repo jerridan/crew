@@ -1,0 +1,387 @@
+#!/usr/bin/env bash
+# Seeded test of crew-orch.py (spec #151, AC1 to AC10, AC12, C6 and C10).
+#
+# It uses a temporary record root, a stub `gh` and a stub `crew-usage.py`.
+# It never touches ~/.claude/crew and never starts `claude`. It runs every
+# command from a temporary directory outside the repo. It stops at the first
+# failed check and exits non-zero.
+set -u
+
+HERE=$(cd "$(dirname "$0")" && pwd)
+ORCH_PY="$HERE/crew-orch.py"
+STATS_PY="$HERE/../../project-lead/scripts/crew-stats.py"
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+export CREW_RECORD_ROOT="$TMP/root"
+mkdir -p "$CREW_RECORD_ROOT" "$TMP/bin" "$TMP/gh" "$TMP/work"
+unset CREW_ORCH
+cd "$TMP/work" || exit 1
+
+STEP=""
+fail() {
+  echo "FAIL [$STEP]: $*" >&2
+  exit 1
+}
+pass() { echo "ok   $STEP"; }
+
+orch() { python3 "$ORCH_PY" --orch fleet "$@"; }
+
+# expect_exit <code> <command...>: run the command, check its exit code.
+expect_exit() {
+  local want=$1
+  shift
+  "$@" >"$TMP/out" 2>"$TMP/err"
+  local got=$?
+  [ "$got" -eq "$want" ] || fail "exit $got, expected $want: $* (stderr: $(cat "$TMP/err"))"
+}
+
+# one_line_err: the last command wrote exactly one line to stderr.
+one_line_err() {
+  [ "$(wc -l <"$TMP/err" | tr -d ' ')" -eq 1 ] || fail "stderr is not one line: $(cat "$TMP/err")"
+}
+
+# jcheck <python expression over `s`>: `s` is the parsed output of `show`.
+jcheck() {
+  python3 "$ORCH_PY" --orch fleet show >"$TMP/show.json" || fail "show failed"
+  python3 - "$TMP/show.json" "$1" <<'PY' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PY
+}
+
+# The stub gh. It answers `gh pr view <n> ...` from $TMP/gh/pr-<n>.json and
+# `gh api graphql ... -F n=<n>` from $TMP/gh/queue-<n>.json. A missing file
+# is a failed call.
+cat >"$TMP/bin/gh" <<EOF
+#!/usr/bin/env bash
+D="$TMP/gh"
+echo "\$*" >>"\$D/calls.log"
+if [ "\$1" = pr ] && [ "\$2" = view ]; then
+  f="\$D/pr-\$3.json"
+elif [ "\$1" = api ] && [ "\$2" = graphql ]; then
+  n=""
+  for a in "\$@"; do case "\$a" in n=*) n="\${a#n=}" ;; esac; done
+  f="\$D/queue-\$n.json"
+else
+  echo "stub gh: unknown call: \$*" >&2; exit 1
+fi
+[ -f "\$f" ] || { echo "stub gh: no data for \$*" >&2; exit 1; }
+cat "\$f"
+EOF
+chmod +x "$TMP/bin/gh"
+export PATH="$TMP/bin:$PATH"
+
+# ---------------------------------------------------------------- usage
+STEP="no --orch and no CREW_ORCH exits 2 with one line"
+expect_exit 2 python3 "$ORCH_PY" init
+one_line_err
+pass
+
+STEP="a bad name exits 2"
+expect_exit 2 python3 "$ORCH_PY" --orch "Bad Name" init
+one_line_err
+pass
+
+# ---------------------------------------------------------------- AC1
+STEP="AC1 init makes the four paths"
+expect_exit 0 orch init
+D="$CREW_RECORD_ROOT/orchestrators/fleet"
+[ -f "$D/orchestrator.json" ] || fail "no orchestrator.json"
+[ -f "$D/plan.md" ] || fail "no plan.md"
+[ -d "$D/told" ] || fail "no told/"
+[ -f "$D/orchestrator.lock" ] || fail "no lock file"
+pass
+
+STEP="AC1 a second init exits non-zero and changes nothing"
+before=$(cd "$D" && ls -la; cat orchestrator.json)
+python3 "$ORCH_PY" --orch fleet init >/dev/null 2>&1 && fail "second init exited 0"
+after=$(cd "$D" && ls -la; cat orchestrator.json)
+[ "$before" = "$after" ] || fail "second init changed the record"
+pass
+
+STEP="CREW_ORCH stands in for --orch"
+CREW_ORCH=fleet python3 "$ORCH_PY" show >/dev/null || fail "show with CREW_ORCH failed"
+pass
+
+# ---------------------------------------------------------------- AC3
+STEP="AC3 two items read back with n 1 and 2"
+expect_exit 2 orch group add add --title "Reserved"
+expect_exit 0 orch group add dialogs --title "Dialog migration" --repo owner/dash --ticket T-1 --ticket-url https://tickets.example/T-1
+expect_exit 0 orch item add editor --title "Editor dialog" --repo owner/dash --group dialogs --ticket T-2 --ticket-url https://tickets.example/T-2
+expect_exit 0 orch item add settings --title "Settings dialog" --repo owner/dash --group dialogs
+jcheck 's["items"]["editor"]["n"] == 1 and s["items"]["settings"]["n"] == 2'
+jcheck 's["items"]["editor"]["stage"] == "queued" and s["items"]["editor"]["group"] == "dialogs"'
+python3 "$ORCH_PY" --orch fleet show editor >"$TMP/one.json" || fail "show <item> failed"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d["id"]=="editor" and d["ticket"]["url"]=="https://tickets.example/T-2" else 1)' "$TMP/one.json" || fail "show editor is wrong"
+pass
+
+STEP="AC3 set of a field outside the list exits 2"
+expect_exit 2 orch item editor set stage '"build"'
+one_line_err
+expect_exit 2 orch item add add --title x --repo owner/dash
+expect_exit 2 orch item add editor --title dup --repo owner/dash
+expect_exit 0 orch item editor set title '"Editor dialog v2"'
+expect_exit 0 orch item editor set launch '{"session_name": "s-editor", "terminal": "tmux"}'
+expect_exit 0 orch item editor set launch.tab '"tmux:%3"'
+jcheck 's["items"]["editor"]["title"] == "Editor dialog v2"'
+jcheck 's["items"]["editor"]["launch"] == {"session_name": "s-editor", "terminal": "tmux", "tab": "tmux:%3"}'
+pass
+
+# ---------------------------------------------------------------- AC4
+STEP="AC4 an unknown stage exits 2"
+expect_exit 2 orch stage editor coding
+one_line_err
+pass
+
+STEP="AC4 a valid stage shows on the board row"
+expect_exit 0 orch stage settings build --detail 2/3 --doing "ic-2 runs the suite"
+orch board >"$TMP/board" || fail "board failed"
+grep -E '^ *2 +settings .*build 2/3' "$TMP/board" >/dev/null || fail "no build 2/3 on the settings row: $(cat "$TMP/board")"
+grep -E '^ *2 +settings .*●●◐○○' "$TMP/board" >/dev/null || fail "no stage marks on the settings row"
+expect_exit 0 orch doing settings "ic-2 reads the diff"
+jcheck 's["items"]["settings"]["doing"] == "ic-2 reads the diff" and s["items"]["settings"]["doing_at"]'
+pass
+
+# ---------------------------------------------------------------- AC5
+STEP="AC5 group order: b waits on a until a is merged"
+expect_exit 0 orch item add loner --title "Single fix" --repo owner/other
+expect_exit 2 orch group dialogs order editor,loner
+expect_exit 2 orch group dialogs order editor,nosuch
+expect_exit 0 orch group dialogs order editor,settings
+expect_exit 0 orch group dialogs owner video-dialog editor
+jcheck 's["groups"]["dialogs"]["order"] == ["editor", "settings"] and s["groups"]["dialogs"]["owners"] == {"video-dialog": "editor"}'
+jcheck 's["items"]["settings"]["waits_on"] == ["editor"] and s["items"]["editor"]["waits_on"] == []'
+orch board >"$TMP/board"
+grep -E '^ *2 +settings .*editor' "$TMP/board" >/dev/null || fail "settings row does not name editor: $(cat "$TMP/board")"
+expect_exit 0 orch stage editor merged
+jcheck 's["items"]["settings"]["waits_on"] == []'
+orch board >"$TMP/board"
+grep -E '^ *2 +settings .*(after|waits).*editor' "$TMP/board" >/dev/null && fail "settings still waits on editor after merged"
+expect_exit 0 orch stage editor review
+pass
+
+# ---------------------------------------------------------------- AC6
+STEP="AC6 inbox entries of each kind and two open questions"
+d1=$(orch inbox add decision --item editor "Two parts open the video dialog. Who owns it?" --recommend "editor") || fail "inbox add decision"
+q1=$(orch ask settings "Does all rows include archived?") || fail "ask 1"
+q2=$(orch ask settings "Keep the old export?") || fail "ask 2"
+i1=$(orch inbox add idea "No test asserts button order. New ticket?") || fail "inbox add idea"
+n1=$(orch inbox add notice --item loner "CI is slow today") || fail "inbox add notice"
+[ "$d1 $q1 $q2 $i1 $n1" = "d1 q1 q2 i1 n1" ] || fail "ids are '$d1 $q1 $q2 $i1 $n1'"
+expect_exit 0 orch answer q1 "Yes, include archived rows."
+expect_exit 0 orch route q2 principal
+expect_exit 0 orch dismiss n1 --reason "not needed"
+jcheck '[(e["id"], e["state"], e["for"]) for e in s["inbox"] if e["kind"] == "question"] == [("q1", "answered", "orchestrator"), ("q2", "open", "principal")]'
+jcheck '[e for e in s["inbox"] if e["id"] == "q1"][0]["answer"] == "Yes, include archived rows."'
+jcheck '[e for e in s["inbox"] if e["id"] == "q2"][0]["routed_at"] is not None'
+pass
+
+STEP="AC6 answering a closed entry exits 2"
+expect_exit 2 orch answer q1 "again"
+one_line_err
+expect_exit 2 orch dismiss n1
+expect_exit 2 orch route q1 principal
+expect_exit 2 orch inbox add worry "x"
+pass
+
+# ---------------------------------------------------------------- AC2
+STEP="AC2 two concurrent asks both land"
+orch ask loner "first concurrent" >"$TMP/c1" &
+p1=$!
+orch ask loner "second concurrent" >"$TMP/c2" &
+p2=$!
+wait $p1 || fail "concurrent ask 1 failed"
+wait $p2 || fail "concurrent ask 2 failed"
+[ "$(sort "$TMP/c1" "$TMP/c2" | tr '\n' ' ')" = "q3 q4 " ] || fail "concurrent ids: $(cat "$TMP/c1" "$TMP/c2")"
+jcheck 'sorted(e["text"] for e in s["inbox"] if e["item"] == "loner" and e["kind"] == "question") == ["first concurrent", "second concurrent"]'
+pass
+
+# ---------------------------------------------------------------- AC7
+STEP="AC7 refresh gets can merge with a cancelled and a passing run"
+expect_exit 2 orch item loner pr notanumber
+expect_exit 0 orch item loner pr 77
+jcheck 's["items"]["loner"]["pr"] == {"number": 77, "url": "https://github.com/owner/other/pull/77"}'
+expect_exit 0 orch item editor pr https://github.com/owner/dash/pull/893
+jcheck 's["items"]["editor"]["pr"]["number"] == 893'
+cat >"$TMP/gh/pr-77.json" <<'EOF'
+{"state": "OPEN", "isDraft": false, "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN",
+ "statusCheckRollup": [
+  {"__typename": "CheckRun", "name": "test", "workflowName": "ci", "status": "COMPLETED", "conclusion": "SUCCESS", "startedAt": "2026-11-16T10:00:00Z"},
+  {"__typename": "CheckRun", "name": "test", "workflowName": "ci", "status": "COMPLETED", "conclusion": "CANCELLED", "startedAt": "2026-11-16T10:05:00Z"},
+  {"__typename": "CheckRun", "name": "lint", "workflowName": "ci", "status": "COMPLETED", "conclusion": "SKIPPED", "startedAt": "2026-11-16T10:00:00Z"}
+ ]}
+EOF
+cat >"$TMP/gh/queue-77.json" <<'EOF'
+{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}
+EOF
+expect_exit 0 orch stage loner pr
+expect_exit 0 orch refresh loner
+jcheck 's["items"]["loner"]["merge"] == "can merge"'
+jcheck 's["items"]["loner"]["github"]["checks"] == "pass" and s["items"]["loner"]["github"]["review_decision"] == "APPROVED" and s["items"]["loner"]["github"]["refreshed_at"]'
+grep -- '--repo owner/other' "$TMP/gh/calls.log" >/dev/null || fail "gh pr view did not name --repo"
+pass
+
+STEP="AC7 a failed gh call keeps the last values and does not fail"
+mv "$TMP/gh/pr-77.json" "$TMP/gh/pr-77.off"
+expect_exit 0 orch refresh
+[ "$(wc -l <"$TMP/err" | tr -d ' ')" -ge 1 ] || fail "no line for the failed gh call"
+jcheck 's["items"]["loner"]["merge"] == "can merge" and s["items"]["loner"]["github"]["checks"] == "pass"'
+mv "$TMP/gh/pr-77.off" "$TMP/gh/pr-77.json"
+pass
+
+STEP="AC7 a failed check is ci failing"
+cat >"$TMP/gh/pr-893.json" <<'EOF'
+{"state": "OPEN", "isDraft": false, "reviewDecision": "APPROVED", "mergeStateStatus": "BLOCKED",
+ "statusCheckRollup": [
+  {"__typename": "CheckRun", "name": "test", "workflowName": "ci", "status": "COMPLETED", "conclusion": "FAILURE", "startedAt": "2026-11-16T10:00:00Z"}
+ ]}
+EOF
+cat >"$TMP/gh/queue-893.json" <<'EOF'
+{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}
+EOF
+expect_exit 0 orch refresh editor
+jcheck 's["items"]["editor"]["github"]["checks"] == "fail" and s["items"]["editor"]["github"]["failed_checks"] == ["test"]'
+expect_exit 0 orch stage editor pr
+jcheck 's["items"]["editor"]["merge"] == "ci failing"'
+cat >"$TMP/gh/queue-893.json" <<'EOF'
+{"data": {"repository": {"pullRequest": {"isInMergeQueue": true, "mergeQueueEntry": {"position": 3}}}}}
+EOF
+expect_exit 0 orch refresh editor
+jcheck 's["items"]["editor"]["merge"] == "in queue 3" and s["items"]["editor"]["github"]["queue_position"] == 3'
+expect_exit 0 orch stage editor review
+pass
+
+# ---------------------------------------------------------------- AC8
+STEP="AC8 plan changes and told files"
+printf '# Plan\n\nv2\n' >"$TMP/plan-v2.md"
+expect_exit 0 orch plan change "split settings in two" --reason "two owners" --file "$TMP/plan-v2.md"
+expect_exit 0 orch plan change "move loner first" --reason "it blocks a release"
+expect_exit 2 orch plan change "no reason"
+jcheck '[(c["change"], c["reason"]) for c in s["plan_changes"]] == [("split settings in two", "two owners"), ("move loner first", "it blocks a release")]'
+cmp -s "$TMP/plan-v2.md" "$D/plan.md" || fail "plan.md is not the copied file"
+printf 'Build the editor.\n' >"$TMP/msg1.md"
+printf 'Rebase first.\n' >"$TMP/msg2.md"
+expect_exit 0 orch told editor --file "$TMP/msg1.md"
+expect_exit 0 orch told editor --file "$TMP/msg2.md"
+cmp -s "$TMP/msg1.md" "$D/told/editor-1.md" || fail "no told/editor-1.md"
+cmp -s "$TMP/msg2.md" "$D/told/editor-2.md" || fail "no told/editor-2.md"
+jcheck '[t["path"] for t in s["items"]["editor"]["told"]] == ["told/editor-1.md", "told/editor-2.md"]'
+pass
+
+# ---------------------------------------------------------------- AC9 / C10
+STEP="AC9 no crew-usage.py: no Plan block"
+orch board >"$TMP/board"
+grep -E '^ *Plan ' "$TMP/board" >/dev/null && fail "Plan block with no crew-usage.py"
+expect_exit 2 orch pace set '{"mode": "fast"}'
+expect_exit 0 orch pace set '{"mode": "slowed", "slots": {"busy": 2}}'
+jcheck 's["pace"] == {"mode": "slowed", "slots": {"busy": 2, "max": 3}, "limit_pct": 95}'
+orch board >"$TMP/board"
+grep -E 'SLOWED: 2 of 3 slots' "$TMP/board" >/dev/null || fail "no SLOWED line with no Plan block"
+pass
+
+STEP="AC9 a stub crew-usage.py beside a copy of the script: the 5h line"
+mkdir -p "$TMP/copy"
+cp "$ORCH_PY" "$TMP/copy/crew-orch.py"
+reset=$(( $(date +%s) + 3600 ))
+cat >"$TMP/copy/crew-usage.py" <<EOF
+import json, sys
+assert sys.argv[1:] == ["show", "--json"], sys.argv
+print(json.dumps({"five_hour": {"used_pct": 68, "resets_at": $reset, "full_at": $reset},
+                  "seven_day": {"used_pct": 31, "resets_at": $(( reset + 3 * 86400 ))}}))
+EOF
+python3 "$TMP/copy/crew-orch.py" --orch fleet board >"$TMP/board" || fail "board from the copy failed"
+grep -E '^ *Plan +5h .*68%.*SLOWED: 2 of 3 slots' "$TMP/board" >/dev/null || fail "no 5h line: $(cat "$TMP/board")"
+grep -E '7d .*31%' "$TMP/board" >/dev/null || fail "no 7d line"
+pass
+
+STEP="C10 a crew-usage.py that fails: no Plan block and no error"
+printf 'import sys\nsys.exit(3)\n' >"$TMP/copy/crew-usage.py"
+python3 "$TMP/copy/crew-orch.py" --orch fleet board >"$TMP/board" || fail "board failed with a failing crew-usage.py"
+grep -E '^ *Plan ' "$TMP/board" >/dev/null && fail "Plan block from a failing crew-usage.py"
+printf 'print("not json")\n' >"$TMP/copy/crew-usage.py"
+python3 "$TMP/copy/crew-orch.py" --orch fleet board >"$TMP/board" || fail "board failed with bad crew-usage.py output"
+grep -E '^ *Plan ' "$TMP/board" >/dev/null && fail "Plan block from bad output"
+expect_exit 0 orch pace set '{"mode": "normal"}'
+pass
+
+# ---------------------------------------------------------------- AC10
+STEP="AC10 board order, merge order and --urls"
+expect_exit 0 orch item add shipped1 --title "Old work" --repo owner/other
+expect_exit 0 orch stage shipped1 shipped
+orch board >"$TMP/board"
+needs=$(grep -n 'Needs you' "$TMP/board" | head -1 | cut -d: -f1)
+group=$(grep -n 'Dialog migration' "$TMP/board" | head -1 | cut -d: -f1)
+single=$(grep -n 'Single items' "$TMP/board" | head -1 | cut -d: -f1)
+done_=$(grep -n -E '^ *Done +1' "$TMP/board" | head -1 | cut -d: -f1)
+ed=$(grep -n -E '^ *1 +editor ' "$TMP/board" | head -1 | cut -d: -f1)
+se=$(grep -n -E '^ *2 +settings ' "$TMP/board" | head -1 | cut -d: -f1)
+lo=$(grep -n -E '^ *3 +loner ' "$TMP/board" | head -1 | cut -d: -f1)
+[ -n "$needs" ] && [ -n "$group" ] && [ -n "$single" ] && [ -n "$done_" ] && [ -n "$ed" ] && [ -n "$se" ] && [ -n "$lo" ] || fail "a section or row is missing: $(cat "$TMP/board")"
+[ "$needs" -lt "$group" ] && [ "$group" -lt "$ed" ] && [ "$ed" -lt "$se" ] && [ "$se" -lt "$single" ] && [ "$single" -lt "$lo" ] && [ "$lo" -lt "$done_" ] || fail "sections are out of order: $(cat "$TMP/board")"
+grep -E 'Needs you +3' "$TMP/board" >/dev/null || fail "Needs you count is not 3 (d1, q2, i1)"
+grep -E 'Recommended: editor' "$TMP/board" >/dev/null || fail "no Recommended line"
+grep -E 'Dialog migration .*T-1.*owner/dash.*0 of 2 merged' "$TMP/board" >/dev/null || fail "group heading is wrong"
+grep -E '^ *3 +loner .*can merge.*#77' "$TMP/board" >/dev/null || fail "loner row is wrong"
+grep -F "$(printf '\033]8')" "$TMP/board" >/dev/null && fail "OSC 8 link with no tty"
+orch board --urls >"$TMP/board"
+grep -E '^ *Links' "$TMP/board" >/dev/null || fail "no Links list with --urls"
+grep -F 'https://github.com/owner/other/pull/77' "$TMP/board" >/dev/null || fail "no PR URL in --urls"
+grep -F 'https://tickets.example/T-1' "$TMP/board" >/dev/null || fail "no group ticket URL in --urls"
+grep -F 'https://tickets.example/T-2' "$TMP/board" >/dev/null || fail "no item ticket URL in --urls"
+expect_exit 2 orch board --nope
+pass
+
+# ---------------------------------------------------------------- C6
+STEP="C6 a new show process returns what the test wrote"
+python3 "$ORCH_PY" --orch fleet show >"$TMP/final.json" || fail "final show failed"
+python3 - "$TMP/final.json" <<'PY' || fail "final show differs from what the test wrote"
+import json, sys
+s = json.load(open(sys.argv[1]))
+want_items = {
+    "editor": dict(n=1, title="Editor dialog v2", repo="owner/dash", group="dialogs", stage="review",
+                   ticket={"id": "T-2", "url": "https://tickets.example/T-2"},
+                   pr={"number": 893, "url": "https://github.com/owner/dash/pull/893"}),
+    "settings": dict(n=2, title="Settings dialog", repo="owner/dash", group="dialogs", stage="build",
+                     detail="2/3", doing="ic-2 reads the diff", ticket=None, pr=None),
+    "loner": dict(n=3, title="Single fix", repo="owner/other", group=None, stage="pr", merge="can merge",
+                  pr={"number": 77, "url": "https://github.com/owner/other/pull/77"}),
+    "shipped1": dict(n=4, stage="shipped", merge="merged"),
+}
+for iid, fields in want_items.items():
+    item = s["items"][iid]
+    for k, v in fields.items():
+        assert item[k] == v, (iid, k, item[k], v)
+assert set(s["items"]) == set(want_items), s["items"].keys()
+g = s["groups"]["dialogs"]
+assert g["order"] == ["editor", "settings"] and g["owners"] == {"video-dialog": "editor"}
+assert g["ticket"] == {"id": "T-1", "url": "https://tickets.example/T-1"} and g["repo"] == "owner/dash"
+states = {e["id"]: (e["kind"], e["for"], e["state"], e["item"]) for e in s["inbox"]}
+assert states == {
+    "d1": ("decision", "principal", "open", "editor"),
+    "q1": ("question", "orchestrator", "answered", "settings"),
+    "q2": ("question", "principal", "open", "settings"),
+    "i1": ("idea", "principal", "open", None),
+    "n1": ("notice", "principal", "dismissed", "loner"),
+    "q3": ("question", "orchestrator", "open", "loner"),
+    "q4": ("question", "orchestrator", "open", "loner"),
+}, states
+assert [e for e in s["inbox"] if e["id"] == "n1"][0]["answer"] == "not needed"
+assert [(c["change"], c["reason"]) for c in s["plan_changes"]] == [
+    ("split settings in two", "two owners"), ("move loner first", "it blocks a release")]
+assert s["counters"] == {"item": 4, "decision": 1, "question": 4, "idea": 1, "notice": 1}, s["counters"]
+assert s["version"] == 1 and s["name"] == "fleet"
+PY
+pass
+
+# ---------------------------------------------------------------- AC12
+STEP="AC12 crew-stats.py reports no run for the orchestrator record"
+mkdir -p "$D/decoy"
+echo '{"run": {"run_state": "complete"}}' >"$D/decoy/state.json"
+echo 'decoy' >"$D/decoy/charter.md"
+python3 "$STATS_PY" --record-root "$CREW_RECORD_ROOT" >"$TMP/stats" 2>&1
+grep -i -F 'no records under' "$TMP/stats" >/dev/null || fail "crew-stats.py read the orchestrator record: $(head -5 "$TMP/stats")"
+pass
+
+echo "all checks passed"

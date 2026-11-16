@@ -1,0 +1,2819 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 158,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add the orchestrator launcher for iTerm2 tab groups and tmux",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/158"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "772cf658a3b7836fe027d196483235e2782f63a3",
+    "head": "072e1f5a5816b0fcdfeb95d66ea120420c19f250",
+    "started_at": "2026-11-16T20:53:43.455Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add the orchestrator launcher for iTerm2 tab groups and tmux\n\n## Summary\n\nThe orchestrator now has a launcher. One command starts an implementer: it makes a git worktree from the fetched remote default branch, opens a new iTerm2 tab (in a tab group) or a tmux window, and starts a `crew:project-lead` session there that waits for its goal from the orchestrator. Other commands list the open tab groups, bring an implementer's tab to the front, and stop an implementer while they keep its worktree. Before this, the orchestrator experiments launched each tab with a hand-written script, and the worktrees started from an old local main.\n\nCloses #152\n\n**Ticket:** [#152 — crew:orchestrator: the launcher for iTerm2 tab groups and tmux](https://github.com/jerridan/crew/issues/152)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\nIssue #150 (the agreed orchestrator design, rules 4, 5, 11, 15 and 16) and issue #149 (the experiments). `skills/orchestrator/references/launcher.md` is the one owner of the launcher's subcommands, arguments, start output and exit codes. `skills/project-lead/SKILL.md` \"Standing instructions\" owns the sections of the standing-instructions files. `docs/design.md` §15.TBD-152 holds the decisions and their reasons.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py` (new): `start`, `groups`, `focus` and `stop`. Python 3.9+, standard library only. `start` prints one JSON line with exactly nine fields: `session_name`, `repo`, `worktree`, `branch`, `base`, `model`, `terminal`, `tab`, `tab_group`. These names are agreed with the record part (#151), which stores the object unchanged.\n- `skills/orchestrator/scripts/iterm2-tabs.py` (new): the iTerm2 Python API helper, run through `uv run --with iterm2`. It opens the tab and adds it to a named group, or makes the group. When it fails, the launcher opens the tab with `osascript` and says on one line that it made no group. The launcher never opens a second tab after a partial failure.\n- `skills/orchestrator/scripts/test-launcher.sh` (new): the seeded test, with stub `tmux`, `osascript`, `uv` and `claude`, a throwaway repo whose local main is older than its origin, and a fake `iterm2` module for the helper. 98 checks.\n- `skills/orchestrator/references/launcher.md` (new): the interface.\n- `skills/project-lead/SKILL.md`: a `Checkouts` row in the standing-instructions table (twelve sections now). §15.138 removed it with the review queue; the launcher reads it now.\n- `CLAUDE.md`: the new scripts in the code list and the Layout table, and one Build state sentence.\n- `docs/design.md`: the entry §15.TBD-152.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: `version` is the placeholder `TBD-152` in both. The orchestrator assigns the version and the §15 number before the merge.\n\n### Constraints that applied\n\n- The launcher writes no record. The record command of #151 is the only writer; the start output is the launcher's interface.\n- The new `claude` always gets `--model` (default `opus`, never the machine default) and one `--settings` JSON with `\"remoteControlAtStartup\": false` merged into any object that the orchestrator passes (the usage part, #153, passes its status-line settings this way). An explicit `remoteControlAtStartup` in that object is kept.\n- No clone: the checkout comes from `--checkout` or from a `Checkouts` line in `~/.claude/crew/config.md`. Exact tmux session targets (`=name`) and a `cd` before the command (design §15.47, §15.89). A session name holds no `eval`, because a worktree-isolated session refuses a command that holds it.\n- `skills/project-lead/SKILL.md` is now 516 lines, over the 500-line target, and `CLAUDE.md` is 248 lines, over its 200-line target. This PR adds one table row and five lines; it does not split either file.\n- `skills/orchestrator/SKILL.md` is not in this PR: the skill part (#154) owns it.\n- The README does not change: the launcher is internal to the orchestrator until the skill of #154 exists.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 98 of 98 checks passed, also with the bash 3.2 that macOS ships. Each round's test commit failed before its fix (3 of 77, 80 of 86, 88 of 98). With the fetch removed and the stale local main used, one check fails.\n- A live probe on iTerm2 3.7.7, with a stub in place of `claude`: two `start` calls with the same new `--group` put both tabs into one new group (the second joined the first); `groups` listed it (iTerm2 rounded `#3366cc` to `#3266cc`); `focus` and `stop` worked with no confirm dialog; a second `stop` said \"already gone\"; the worktrees stayed.\n- A live probe on tmux, on a separate server: `start` opened the window in the worktree, and the stub got `--name`, `--model`, `--settings {\"remoteControlAtStartup\": false}` and the wait prompt; `focus`, `stop` and a second `stop` behaved as stated. A socket path that was too long made `start` exit 6 and name the kept worktree.\n- Every probe tab, window, tmux server, worktree and branch was removed after.\n\n### Known gaps\n\n- Remote Control off is not proven on a real `claude` session. The probes used a stub, because a test must not start `claude` with the user's plugins. The orchestrator checks it on its next real launch.\n- A session in a directory that `claude` does not trust yet shows the trust dialog and waits for a person.\n- No crew run has used the launcher. Resume after a restart and worktree removal belong to #156.\n\n<details><summary>spec.md</summary>\n\n# Spec: the orchestrator launcher (issue 152)\n\nTarget repo: `<repo>` (the crew plugin).\n\n## Goal\n\nBuild the launcher of `crew:orchestrator` for iTerm2 tab groups and tmux. The launcher is code. The orchestrator session runs it from Bash. It starts an implementer, lists groups, brings an implementer to the front, and stops an implementer. An implementer is a `crew:project-lead` session in its own git worktree. It waits for a goal that the orchestrator sends as a cross-session message.\n\nThe launcher does not write the orchestrator record. Issue 151 owns the record.\n\n## Deliverables (files)\n\nAll paths are relative to the repo root. Later parts (issues 154, 155 and 156) depend on these locations.\n\n- D1. `skills/orchestrator/scripts/launcher.py`. Python 3, standard library only. It has subcommands.\n- D2. `skills/orchestrator/scripts/iterm2-tabs.py`. The iTerm2 Python API helper. `launcher.py` runs it with `uv run --with iterm2 python <helper>`.\n- D3. `skills/orchestrator/scripts/test-launcher.sh`. The seeded test. A person runs it with `bash <path>`.\n- D4. `skills/orchestrator/references/launcher.md`. It states the subcommands, their arguments, the start output object and the exit codes. It follows `skills/project-lead/references/writing-standard.md`.\n- D5. `skills/project-lead/SKILL.md`: one new `Checkouts` row in the standing-instructions table, and the count word above the table updated.\n- D6. `CLAUDE.md`: the new scripts in the code list and in the Layout table, and one sentence in Build state.\n- D7. `docs/design.md` section 15: a new entry `15.TBD-152`.\n- D8. `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`: `version` set to the literal string `\"TBD-152\"` in both.\n- D9. `README.md`: no change. The launcher and its env names are internal to the orchestrator until the skill of issue 154 exists, and that part owns the README change.\n\n## Requirements\n\n### R1. start\n\nCommand line:\n\n```\nlauncher.py start --name <session-name> [--model <model>] [--settings <file-or-json>] --principal <orchestrator session name>\n                  [--repo <owner/repo>] [--checkout <path>]\n                  [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]\n```\n\nThe command makes a worktree, opens a terminal tab or window, and starts `claude` in it with a wait prompt.\n\nAcceptance criteria:\n\n- AC R1.1: A call with a missing required argument (`--name`, `--principal`, or neither of `--repo` and `--checkout`) exits 2 and prints a usage line on stderr. It creates no worktree.\n- AC R1.2: A name that does not match `[a-z0-9][a-z0-9-]*` exits 2 and creates no worktree. Names such as `Bad_Name`, `-x`, `a b` and `a;b` must fail.\n- AC R1.3: A name that contains the substring `eval` exits 2 and creates no worktree. `eval`, `my-eval-x` and `retrieval` fail; `review-x` passes. Reason: a worktree-isolated session refuses a shell command that holds `eval` (issue 149, experiment 2, F6).\n- AC R1.4: `--checkout <path>` selects the checkout. Both `--repo` and `--checkout` may be given. Then `--checkout` wins, and `--repo` sets only the `repo` field.\n- AC R1.5: Without `--checkout`, the launcher reads the file named by env `CREW_CONFIG`. When `CREW_CONFIG` is unset, it reads `~/.claude/crew/config.md`. `CREW_CONFIG` is for tests and probes only, and `launcher.md` is its one owner. The section starts at the heading `## Checkouts` and ends at the next `##` heading. A line is `<owner>/<repo>: <path>`, with an optional `- ` bullet before it. A leading `~` in the path expands to the home directory. Other lines are ignored. It uses the line for `--repo`. A test with two repo lines must select the right one.\n- AC R1.6: When the file has no `Checkouts` line for `--repo`, the command exits 3. It prints exactly one line on stderr. The line names the repo and the section `Checkouts`. It creates no worktree and runs no `git clone`.\n- AC R1.7: The launcher runs `git fetch origin` in the checkout. It finds the remote default branch from the remote itself, with `git ls-remote --symref origin HEAD`. It does not use a local ref. A test whose local `main` is older than `origin/main` must make a worktree whose HEAD sha equals the sha that origin's default branch has.\n- AC R1.8: The worktree is at `<checkout>/.claude/worktrees/<name>`. It is on a new branch `worktree-<name>` that starts at `origin/<default>`.\n- AC R1.9: When the worktree path or the branch `worktree-<name>` already exists, the command exits 5 and prints one line on stderr. It changes nothing: the existing worktree and branch keep their state, and no tab opens.\n- AC R1.10: A git failure (for example, no remote, or a failed fetch) exits 5 with one line on stderr. It opens no tab.\n- AC R1.11: The launch command has this form: `cd <worktree> && exec <claude> --name <name> --model <model> <wait prompt>`. The launcher shell-quotes every value. `<claude>` is the value of env `CREW_LAUNCHER_CLAUDE` when set, and `claude` otherwise. A test that passes a model or a principal that contains a single quote, a space and a `$` must show that the shell passes each value to the stub as one argument, unchanged.\n- AC R1.12: The wait prompt is this text, with `<orchestrator>` replaced by the `--principal` value, and no other change: \"You are an implementer session for the orchestrator session named <orchestrator>. The user started you through that orchestrator. Do nothing now. A goal arrives as a cross-session message from that session. When it arrives, run the crew:project-lead skill with that goal. The orchestrator is your principal: the user gave it the authority to decide for this work, so send your questions, your escalations and your reports to it with SendMessage, not to this tab. Answer this message with one line and then wait.\"\n- AC R1.13: Terminal detection, in this order. `--terminal` wins. Else, when `$TMUX` is set, the terminal is tmux. Else, when `$TERM_PROGRAM` is `iTerm.app` or `$ITERM_SESSION_ID` is set, the terminal is iterm2. A test must show each of the four cases.\n- AC R1.14: When no terminal is found, the command exits 4. It prints one line on stderr. The line says the terminal is unsupported, names the value of `$TERM_PROGRAM`, and names the supported terminals (`iterm2`, `tmux`). It creates no worktree.\n- AC R1.15: On tmux, the launcher makes one new window in a tmux session. `--group` names that tmux session. The default name is `crew`. When the session does not exist, the launcher creates it detached. Every tmux target that names a session uses the exact form `=name`. A pane id (`%7`) is used as is. The command that runs in the window starts with `cd <worktree>`, so it does not depend on the tmux server cwd. A tmux stub log must show these calls.\n- AC R1.16: On tmux, the output has `terminal` equal to `tmux`, `tab` equal to `tmux:<pane id>` (for example `tmux:%7`), and `tab_group` equal to the tmux session name.\n- AC R1.17: On iterm2, the launcher opens one new tab in the window of the orchestrator's own session. That window is the window that holds the session named by `$ITERM_SESSION_ID`. When that session is not known, it uses the current window.\n- AC R1.18: On iterm2 with `--group <name>`: when an open group of that name exists in that window, the tab joins it. When none exists, the launcher creates a group with that name and the `--group-color` color (or the color iTerm2 picks when the option is absent). The helper reads the app state again after it changes a group. The test must not compare a color for exact equality, because iTerm2 rounds colors.\n- AC R1.19: On iterm2 without `--group`, the tab joins no group and `tab_group` is null.\n- AC R1.20: The iTerm2 helper runs with `uv run --with iterm2 python <helper path>`. `launcher.py` itself imports no `iterm2` module and works when the `iterm2` package is not installed.\n- AC R1.21: When the helper fails (no `uv`, the Python API is off, or iTerm2 has no tab groups), the launcher opens the tab with `osascript`. It prints exactly one line on stderr that says it made no group, and why. The output has `tab_group` equal to null. The exit code is 0 if the tab opened.\n- AC R1.22: When the terminal step fails, and the AppleScript fallback also fails, the command exits 6. The worktree stays. The one error line on stderr contains the worktree path.\n- AC R1.23: Stdout carries exactly one line. That line is one JSON object with exactly these nine fields, and no other: `session_name`, `repo`, `worktree`, `branch`, `base`, `model`, `terminal`, `tab`, `tab_group`. A test parses stdout with a JSON parser and checks the key set and that stdout has one line.\n- AC R1.24: The field values are as follows. `session_name` is the `--name` value. `repo` is `<owner>/<repo>`, taken from `--repo`, or else from the origin URL of the checkout (both https and ssh URLs). `worktree` is the absolute worktree path. `branch` is `worktree-<name>`. `base` is `origin/<default branch>`. `model` is the `--model` value. `terminal` is `iterm2` or `tmux`. `tab` is one opaque string, `iterm2:<session unique id>` or `tmux:<pane id>`. `tab_group` is the group name, or null.\n- AC R1.25: The launcher writes no record file and runs no record command.\n- AC R1.26: `launcher.py` exits 0 on success.\n- AC R1.30: `start` takes an optional `--settings <value>`: a path to a JSON file or a JSON string. The launch command always passes exactly one `--settings <json string>` to `claude`, shell-quoted, after `--model`. That JSON is the given value's object (read from the file when the value is a path), with `\"remoteControlAtStartup\": false` added when the object has no `remoteControlAtStartup` key. With no `--settings`, the JSON is `{\"remoteControlAtStartup\": false}`. A value that is not a JSON object, or a file that does not hold one, exits 2 and creates no worktree. (Issue 150 rule 16: Remote Control is off by default whatever the user's settings say. Issue 153 passes its settings through this argument.)\n- AC R1.31: `--model` is optional. Its default is `opus`, never the machine's default model (issue 150 rule 15). The launch command always carries `--model`.\n- AC R1.29: When a call fails more than one check, the first in this order decides the exit: usage (2), terminal (4), checkout (3), git (5), terminal step (6).\n- AC R1.27: The new iTerm2 session, or the new tmux window, has the session name as its name, so that a person and part 156 can find it by name.\n- AC R1.28: A `--group-color` value that is not `#rrggbb` exits 2 and creates no worktree.\n\n### R2. groups\n\nCommand line: `launcher.py groups`.\n\nAcceptance criteria:\n\n- AC R2.1: On iterm2, the command prints one JSON line per open tab group. Each line is an object with exactly the fields `window_id`, `group_id`, `name` and `color`. It exits 0.\n- AC R2.2: On tmux, the command prints one line per tmux session in the same shape, with the session as the group. The line fields are still `window_id`, `group_id`, `name` and `color`. The `window_id` and `color` values are null. It exits 0.\n- AC R2.3: When the API is not available (no `uv`, API off, no tab groups), the command prints one line on stderr that says so, prints no group line on stdout, and exits 0.\n- AC R2.4: A terminal that is not supported makes the command exit 4 with the same one line as AC R1.14.\n\n### R3. focus\n\nCommand line: `launcher.py focus <handle>`. The handle is the `tab` value of the start output.\n\nAcceptance criteria:\n\n- AC R3.1: For `iterm2:<id>`, the command selects the tab, brings its window to the front, and activates the iTerm2 app. The stub log must show a call that addresses `<id>`.\n- AC R3.2: For `tmux:<pane id>`, the command selects the window that holds the pane. When a tmux client is attached, it also switches that client to that window. The stub log must show calls with the exact pane target.\n- AC R3.3: A handle that has an unknown prefix, or that names a tab or pane that does not exist, makes the command exit 7 with one line on stderr.\n- AC R3.4: A successful focus exits 0. It does not change the worktree.\n\n### R4. stop\n\nCommand line: `launcher.py stop <handle>`.\n\nAcceptance criteria:\n\n- AC R4.1: For `iterm2:<id>`, the command ends the session and closes its tab. For `tmux:<pane id>`, the command ends the pane and closes its window. The stub log must show a call that addresses the handle exactly.\n- AC R4.2: The command never removes or changes the worktree or the branch. A test checks that the worktree directory and the branch exist after stop.\n- AC R4.3: When the tab or window is already gone, the command exits 0 and prints one line that says it was gone.\n- AC R4.4: A handle with an unknown prefix exits 7 with one line on stderr.\n\n### R5. seeded test\n\nThe file is `skills/orchestrator/scripts/test-launcher.sh`. It follows the pattern of `skills/delivered-window/scripts/test-pr-watch-deploy.sh`.\n\nAcceptance criteria:\n\n- AC R5.1: `bash skills/orchestrator/scripts/test-launcher.sh` exits 0 when all checks pass. It prints a final line `N of M checks passed`. It exits 1 when any check fails.\n- AC R5.2: The test puts stub commands first in `PATH` for `tmux`, `osascript`, `uv` and `claude`. It builds a throwaway git repo and a bare origin in a temporary directory. The local `main` of the repo is older than the `main` of the origin. The test removes the temporary directory when it ends.\n- AC R5.3: The test does no network call, opens no real terminal tab, window or group, and starts no real `claude`. It runs with the iterm2 package absent.\n- AC R5.4: The test has at least one check for each of these: the worktree sha equals the remote default branch sha (AC R1.7); the built command has `--name`, `--model` and the wait prompt, and a quote in a value survives (AC R1.11, AC R1.12); tmux detection, the exact `=name` target and the `cd` (AC R1.13, AC R1.15); iterm2 detection through a stub helper (AC R1.13); the fallback prints one no-group line (AC R1.21); an unsupported terminal prints one line and exits 4 (AC R1.14); a missing `Checkouts` line exits 3 (AC R1.6); a `Checkouts` line is parsed (AC R1.5); focus and stop dispatch by handle prefix (AC R3.1, AC R3.2, AC R4.1); stop leaves the worktree (AC R4.2); an existing worktree is rejected (AC R1.9); the start output has exactly the nine fields (AC R1.23); a name with `eval` is rejected (AC R1.3); `launcher.py` passes `--group` and `--group-color` to the stub helper (AC R1.18); a missing argument and a bad name exit 2 (AC R1.1, AC R1.2, AC R1.28); the worktree path and branch name (AC R1.8); a git failure exits 5 (AC R1.10); a failed helper and a failed `osascrip",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": false
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/iterm2-tabs.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new launcher that runs git worktree, tmux, osascript and shell commands, with new exit-code semantics, plus version metadata changed to a placeholder.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: iterm_start fallback and partial-failure logic (no duplicate tabs)",
+        "skills/orchestrator/scripts/launcher.py: launch_command shell quoting and WAIT_PROMPT/principal injection",
+        "skills/orchestrator/scripts/launcher.py: make_worktree (fetch, ls-remote default branch, existing path/branch checks)",
+        "skills/orchestrator/scripts/iterm2-tabs.py: start failure paths and group handling",
+        "skills/orchestrator/scripts/launcher.py: settings_json handling of file vs JSON, remoteControlAtStartup default",
+        "skills/orchestrator/scripts/launcher.py: checkout_for config parsing and osascript focus/stop scripts",
+        "skills/orchestrator/scripts/test-launcher.sh: stub accuracy and coverage",
+        "version \"TBD-152\" in plugin.json and marketplace.json"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version set to the non-semver placeholder TBD-152; may break plugin install or version checks"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version set to the non-semver placeholder TBD-152"
+        },
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "new public CLI: start, groups, focus and stop; runs git, tmux, osascript and uv; builds a shell command"
+        },
+        {
+          "file": "skills/orchestrator/scripts/iterm2-tabs.py",
+          "note": "new iTerm2 Python API helper with emitted progress lines and close-on-failure logic"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "new seeded test with stub commands"
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "new interface doc for the launcher; owns the exit codes and output"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "adds a Checkouts section to the table the project lead reads; count changed to twelve"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "layout rows and status note for the launcher"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry TBD-152"
+        }
+      ],
+      "summary": "Adds the crew:orchestrator launcher: launcher.py with start, groups, focus and stop subcommands, an iTerm2 Python API helper, and a seeded test with stub tools. It creates git worktrees from the remote default branch and starts a claude session in a tmux window or iTerm2 tab, with an osascript fallback. It also adds a Checkouts config section, docs, and sets the plugin version to a placeholder \"TBD-152\"."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new launcher that runs git worktree, tmux, osascript and shell commands, with new exit-code semantics, plus version metadata changed to a placeholder.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The version is set to the placeholder \"TBD-152\", not bumped from 0.1.105.",
+            "evidence": "\"version\": \"TBD-152\",",
+            "suggested_fix": "Set both manifests to 0.1.106, or to the version the orchestrator assigns, before the merge.",
+            "explanation": "CLAUDE.md says a change to `skills/` bumps `version` in both manifests. A placeholder string is not a bump, and it is not a valid version if the PR merges as it is.",
+            "needs_context": false
+          },
+          {
+            "file": ".claude-plugin/marketplace.json",
+            "start_line": 11,
+            "end_line": 11,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The marketplace version is the placeholder \"TBD-152\", not a bumped version.",
+            "evidence": "\"version\": \"TBD-152\"",
+            "suggested_fix": "Set it to the same bumped version as plugin.json.",
+            "explanation": "CLAUDE.md says a change to what the plugin loads bumps `version` in both manifests and keeps the two values equal.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6394,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45118,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045263,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 650,
+              "cacheReadInputTokens": 9722,
+              "cacheCreationInputTokens": 44623,
+              "webSearchRequests": 0,
+              "costUSD": 0.3719364,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 175,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3764627
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 535,
+            "end_line": 539,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The launcher.md that the description names as the one owner of the exit codes does not say that stop exits 6 when its terminal command fails.",
+            "evidence": "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "suggested_fix": "Add the focus and stop failures to the exit 6 row of launcher.md.",
+            "explanation": "In launcher.md, exit 6 covers only start's terminal step, but stop returns 6 on an osascript failure (iTerm2) or a kill-pane failure (tmux); focus on iTerm2 shares the same osascript call.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9363,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45126,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045271,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 849,
+              "cacheReadInputTokens": 9680,
+              "cacheCreationInputTokens": 44631,
+              "webSearchRequests": 0,
+              "costUSD": 0.375972,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 229,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3804991
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The plugin version is the placeholder \"TBD-152\", which is not a valid semver version.",
+            "evidence": "\"version\": \"TBD-152\",",
+            "suggested_fix": "Set the next real version (for example 0.1.106) in both manifests before the merge.",
+            "explanation": "If this is merged before the real number is set, the plugin loader or marketplace may reject the version or mishandle it, and it cannot be compared with older versions.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11302,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45130,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045275,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1111,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 44635,
+              "webSearchRequests": 0,
+              "costUSD": 0.381233,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 543,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3857605
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The plugin version is set to the non-semver placeholder \"TBD-152\", which may break the plugin loader or updates if it is merged as is.",
+            "evidence": "\"version\": \"TBD-152\",",
+            "suggested_fix": "Bump to 0.1.106 in both manifests.",
+            "explanation": "The plugin version should be a real version. The placeholder relies on someone replacing it by hand before the merge.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 277,
+            "end_line": 279,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "Any line that starts with '##', including a '###' subheading, ends the Checkouts section, so lines after a subheading are ignored.",
+            "evidence": "if line.startswith(\"##\"):\n            inside = line == \"## Checkouts\"",
+            "suggested_fix": "Use re.match(r'##\\s', line) to find a level-2 heading.",
+            "explanation": "The spec says the section ends at the next '##' heading, not at a deeper heading.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 533,
+            "end_line": 537,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "When osascript fails during an iTerm2 focus, the command exits 6, but the documented exit code for a focus failure is 7.",
+            "evidence": "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "explanation": "The exit-code table lists only codes 0 and 7 for focus and stop.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 13656,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45116,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045261,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1390,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 44621,
+              "webSearchRequests": 0,
+              "costUSD": 0.386701,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 699,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3912271
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/launcher.md",
+            "start_line": 182,
+            "end_line": 182,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Exit code 6 is documented only for the start terminal step, but focus and stop also exit 6 when osascript or tmux kill-pane fails.",
+            "evidence": "| 6 | the terminal step failed. On tmux, the window did not open. On iTerm2, the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. The worktree stays, and the line names its path |",
+            "suggested_fix": "Add: `focus` or `stop`: osascript or `tmux kill-pane` failed.",
+            "explanation": "iterm_script and stop raise Fail(TERMINAL_STEP, ...), which the table does not describe for focus or stop.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/SKILL.md",
+            "start_line": 189,
+            "end_line": 189,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The Checkouts row says the path is absolute, but the launcher also accepts a path that starts with ~ and expands it.",
+            "evidence": "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`",
+            "suggested_fix": "Write `<path>`, and say that a leading `~` is the home directory.",
+            "explanation": "checkout_for runs expanduser on the path, and the launcher.md text says a leading ~ is the home directory.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10521,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45122,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045267,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1068,
+              "cacheReadInputTokens": 9632,
+              "cacheCreationInputTokens": 44627,
+              "webSearchRequests": 0,
+              "costUSD": 0.3803104,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 297,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3848371
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The version is set to the non-semver placeholder \"TBD-152\" instead of a bump from 0.1.105, so a merge before the placeholder is replaced ships an invalid plugin version.",
+            "evidence": "\"version\": \"TBD-152\",",
+            "suggested_fix": "Set both manifests to 0.1.106 before merge.",
+            "explanation": "Every earlier change to loaded files bumped the version to a semver value (e.g. 64225c2 to 0.1.105); a placeholder version can break plugin update comparison if it is merged unchanged.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4244,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 50410,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0050555,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 370,
+              "cacheReadInputTokens": 9747,
+              "cacheCreationInputTokens": 49915,
+              "webSearchRequests": 0,
+              "costUSD": 0.4086774,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 66,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4137329
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8125,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45128,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045273,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 606,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 44633,
+              "webSearchRequests": 0,
+              "costUSD": 0.3711366,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 220,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3756639
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 336,
+            "end_line": 336,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The --principal value goes into the implementer's wait prompt with no check, so a crafted value could add instructions to the session's first prompt.",
+            "evidence": "shlex.quote(WAIT_PROMPT.format(p=principal)),",
+            "suggested_fix": "Check --principal against the same pattern as --name.",
+            "explanation": "Shell quoting stops shell injection, but free text from --principal can still steer the new claude session's prompt.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8525,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45118,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045263,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 729,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 44623,
+              "webSearchRequests": 0,
+              "costUSD": 0.37351660000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 242,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3780429
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 486,
+            "end_line": 491,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The helper's success path for joining an existing group or creating a new group is never tested: the fake always has no groups and always raises on group creation.",
+            "evidence": "    async def async_create_tab_group(self, name, tabs, color):",
+            "suggested_fix": "Make the fake keep the groups it creates, and add one check for joining an existing group and one for creating a group, asserting tab_group and the color passed in.",
+            "explanation": "A broken join or create path in iterm2-tabs.py, such as a wrong group name or a lost color, would pass every check.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 601,
+            "end_line": 601,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The no-clone check greps the source text for the word 'clone' instead of watching what the launcher runs.",
+            "evidence": "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)",
+            "suggested_fix": "Put a git wrapper first in PATH that logs a clone call, and assert that the exit-3 case and the success case made none.",
+            "explanation": "A comment that mentions 'clone' breaks the check, and a clone done another way passes it.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11612,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45126,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045271,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1064,
+              "cacheReadInputTokens": 65419,
+              "cacheCreationInputTokens": 45162,
+              "webSearchRequests": 0,
+              "costUSD": 0.3956758,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 388,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.40020290000000003
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The version is set to the placeholder \"TBD-152\", not bumped from 0.1.105.",
+          "evidence": "\"version\": \"TBD-152\",",
+          "suggested_fix": "Set both manifests to 0.1.106, or to the version the orchestrator assigns, before the merge.",
+          "explanation": "CLAUDE.md says a change to `skills/` bumps `version` in both manifests. A placeholder string is not a bump, and it is not a valid version if the PR merges as it is.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\",",
+            "bumps `version` in both `.claude-plugin/plugin.json` and"
+          ],
+          "rationale": "The version is the placeholder \"TBD-152\", not a number. The PR description and spec say this is on purpose, and the orchestrator assigns the real version before the merge. The finding only restates a documented step.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\",",
+            "manifests — bumps `version` in both `.claude-plugin/plugin.json` and"
+          ],
+          "rationale": "The version is the placeholder \"TBD-152\". The PR description says this is on purpose: the spec (D8) requires the literal string, and the orchestrator assigns the real version before the merge. The finding only repeats a known step in the workflow.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\",",
+            "manifests — bumps `version` in both `.claude-plugin/plugin.json` and"
+          ],
+          "rationale": "The version is the placeholder \"TBD-152\". The PR description says this is on purpose: the spec (D8) requires the literal string, and the orchestrator assigns the real version before the merge. The finding only repeats a known step in the workflow.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/marketplace.json",
+          "start_line": 11,
+          "end_line": 11,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The marketplace version is the placeholder \"TBD-152\", not a bumped version.",
+          "evidence": "\"version\": \"TBD-152\"",
+          "suggested_fix": "Set it to the same bumped version as plugin.json.",
+          "explanation": "CLAUDE.md says a change to what the plugin loads bumps `version` in both manifests and keeps the two values equal.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\""
+          ],
+          "rationale": "The version is the literal placeholder \"TBD-152\", not a bumped number. But the spec (D8) and the description require this, and say the orchestrator assigns the real version before merge. The value matches in both manifests, so the CLAUDE.md rule is met in spirit.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\"",
+            "manifests — bumps `version` in both `.claude-plugin/plugin.json` and",
+            "`.claude-plugin/marketplace.json`. Keep the two values equal."
+          ],
+          "rationale": "The finding is correct: marketplace.json now holds the placeholder \"TBD-152\". The placeholder is on purpose, though. It matches plugin.json, so the two values are still equal. The PR description says the orchestrator sets the real version before the merge, so the finding only repeats a step the author already plans.",
+          "score": 92,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\"",
+            "manifests — bumps `version` in both `.claude-plugin/plugin.json` and",
+            "`.claude-plugin/marketplace.json`. Keep the two values equal."
+          ],
+          "rationale": "The finding is correct: marketplace.json now holds the placeholder \"TBD-152\". The placeholder is on purpose, though. It matches plugin.json, so the two values are still equal. The PR description says the orchestrator sets the real version before the merge, so the finding only repeats a step the author already plans.",
+          "score": 92,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 535,
+          "end_line": 539,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The launcher.md that the description names as the one owner of the exit codes does not say that stop exits 6 when its terminal command fails.",
+          "evidence": "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+          "suggested_fix": "Add the focus and stop failures to the exit 6 row of launcher.md.",
+          "explanation": "In launcher.md, exit 6 covers only start's terminal step, but stop returns 6 on an osascript failure (iTerm2) or a kill-pane failure (tmux); focus on iTerm2 shares the same osascript call.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: tmux kill-pane %s failed: %s\" % (ref, one_line(err) or \"exit %d\" % rc))"
+          ],
+          "rationale": "The launcher exits 6 when focus/stop's osascript call fails or when tmux kill-pane fails. The launcher.md exit 6 row describes only start's terminal step and says the worktree stays, so the stop and focus failures are undocumented.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: tmux kill-pane %s failed: %s\" % (ref, one_line(err) or \"exit %d\" % rc))"
+          ],
+          "rationale": "The launcher exits 6 when focus/stop's osascript call fails or when tmux kill-pane fails. The launcher.md exit 6 row describes only start's terminal step and says the worktree stays, so the stop and focus failures are undocumented.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/launcher.md",
+          "start_line": 182,
+          "end_line": 182,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Exit code 6 is documented only for the start terminal step, but focus and stop also exit 6 when osascript or tmux kill-pane fails.",
+          "evidence": "| 6 | the terminal step failed. On tmux, the window did not open. On iTerm2, the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. The worktree stays, and the line names its path |",
+          "suggested_fix": "Add: `focus` or `stop`: osascript or `tmux kill-pane` failed.",
+          "explanation": "iterm_script and stop raise Fail(TERMINAL_STEP, ...), which the table does not describe for focus or stop.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: tmux kill-pane %s failed: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "| 6 | the terminal step failed. On tmux, the window did not open."
+          ],
+          "rationale": "`iterm_script` raises `Fail(TERMINAL_STEP)` for iTerm2 `focus` and `stop`, and `stop` raises it when `tmux kill-pane` fails. The exit-code table describes code 6 only for the start terminal step.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: tmux kill-pane %s failed: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "| 6 | the terminal step failed. On tmux, the window did not open."
+          ],
+          "rationale": "`iterm_script` raises `Fail(TERMINAL_STEP)` for iTerm2 `focus` and `stop`, and `stop` raises it when `tmux kill-pane` fails. The exit-code table describes code 6 only for the start terminal step.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/SKILL.md",
+          "start_line": 189,
+          "end_line": 189,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The Checkouts row says the path is absolute, but the launcher also accepts a path that starts with ~ and expands it.",
+          "evidence": "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`",
+          "suggested_fix": "Write `<path>`, and say that a leading `~` is the home directory.",
+          "explanation": "checkout_for runs expanduser on the path, and the launcher.md text says a leading ~ is the home directory.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, each the principal's checkout of a repo.",
+            "return os.path.expanduser(m.group(2).strip().strip(\"`\"))"
+          ],
+          "rationale": "launcher.py runs expanduser on the Checkouts path and launcher.md says a leading `~` is the home directory, so `<absolute path>` is slightly imprecise. The table row points to launcher.md, and a `~` path resolves to an absolute one, so the harm is small.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, each the principal's checkout of a repo. The orchestrator launcher reads it from the machine file (`skills/orchestrator/references/launcher.md`) |",
+            "return os.path.expanduser(m.group(2).strip().strip(\"`\"))",
+            "<path>`, with an optional `- ` before it, and a leading `~` is the home"
+          ],
+          "rationale": "The new row says `<absolute path>`, but launcher.py runs expanduser on the Checkouts path and launcher.md says a leading `~` is the home directory. So the row asks for more than the code needs. Nothing breaks, because an absolute path still works. It is a small mismatch between the two documents that is cheap to fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, each the principal's checkout of a repo. The orchestrator launcher reads it from the machine file (`skills/orchestrator/references/launcher.md`) |",
+            "return os.path.expanduser(m.group(2).strip().strip(\"`\"))",
+            "<path>`, with an optional `- ` before it, and a leading `~` is the home"
+          ],
+          "rationale": "The new row says `<absolute path>`, but launcher.py runs expanduser on the Checkouts path and launcher.md says a leading `~` is the home directory. So the row asks for more than the code needs. Nothing breaks, because an absolute path still works. It is a small mismatch between the two documents that is cheap to fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The version is set to the non-semver placeholder \"TBD-152\" instead of a bump from 0.1.105, so a merge before the placeholder is replaced ships an invalid plugin version.",
+          "evidence": "\"version\": \"TBD-152\",",
+          "suggested_fix": "Set both manifests to 0.1.106 before merge.",
+          "explanation": "Every earlier change to loaded files bumped the version to a semver value (e.g. 64225c2 to 0.1.105); a placeholder version can break plugin update comparison if it is merged unchanged.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\","
+          ],
+          "rationale": "The manifest does carry the non-semver placeholder. The PR description and spec (D8) say this is intentional: the orchestrator assigns the version and the §15 number before the merge. This is a documented merge-time process step, so the comment adds nothing for the author.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\","
+          ],
+          "rationale": "The manifest does hold the placeholder \"TBD-152\". The change description says this is on purpose: the spec (D8) requires the literal \"TBD-152\", and the orchestrator sets the real version before the merge. So the finding only repeats the description and points to a merge step that the review cannot judge.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\","
+          ],
+          "rationale": "The manifest does hold the placeholder \"TBD-152\". The change description says this is on purpose: the spec (D8) requires the literal \"TBD-152\", and the orchestrator sets the real version before the merge. So the finding only repeats the description and points to a merge step that the review cannot judge.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The plugin version is the placeholder \"TBD-152\", which is not a valid semver version.",
+          "evidence": "\"version\": \"TBD-152\",",
+          "suggested_fix": "Set the next real version (for example 0.1.106) in both manifests before the merge.",
+          "explanation": "If this is merged before the real number is set, the plugin loader or marketplace may reject the version or mishandle it, and it cannot be compared with older versions.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\","
+          ],
+          "rationale": "The version is the non-semver placeholder `TBD-152`, but the spec (D8) and the PR description require it and say the orchestrator assigns the real version and §15 number before the merge. The finding restates a known, deliberate step.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\","
+          ],
+          "rationale": "The version really is the non-semver placeholder \"TBD-152\". The PR description says this is on purpose: the orchestrator sets the real version before the merge. So the finding only repeats the description and asks about a process step.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"TBD-152\","
+          ],
+          "rationale": "The version really is the non-semver placeholder \"TBD-152\". The PR description says this is on purpose: the orchestrator sets the real version before the merge. So the finding only repeats the description and asks about a process step.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 277,
+          "end_line": 279,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "Any line that starts with '##', including a '###' subheading, ends the Checkouts section, so lines after a subheading are ignored.",
+          "evidence": "if line.startswith(\"##\"):\n            inside = line == \"## Checkouts\"",
+          "suggested_fix": "Use re.match(r'##\\s', line) to find a level-2 heading.",
+          "explanation": "The spec says the section ends at the next '##' heading, not at a deeper heading.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if line.startswith(\"##\"):\n            inside = line == \"## Checkouts\"\n            continue"
+          ],
+          "rationale": "The code treats any line that starts with \"##\", including \"### x\", as a section boundary. The spec says the section ends at the next \"##\" heading, so a \"###\" subheading arguably should not end it. The impact is small, because the Checkouts section is documented as flat lines with no subheadings.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if line.startswith(\"##\"):",
+            "inside = line == \"## Checkouts\"",
+            "probe. The section ends at the next `##` heading. Each line is `<owner>/<repo>:"
+          ],
+          "rationale": "`startswith(\"##\")` also matches `###` and deeper headings, so a subheading inside `## Checkouts` ends the section, and the repo lines after it are ignored. The documented contract says the section ends at the next `##` heading. Subheadings in this section are unlikely, and the failure shows up right away as an exit 3 that the user can fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if line.startswith(\"##\"):",
+            "inside = line == \"## Checkouts\"",
+            "probe. The section ends at the next `##` heading. Each line is `<owner>/<repo>:"
+          ],
+          "rationale": "`startswith(\"##\")` also matches `###` and deeper headings, so a subheading inside `## Checkouts` ends the section, and the repo lines after it are ignored. The documented contract says the section ends at the next `##` heading. Subheadings in this section are unlikely, and the failure shows up right away as an exit 3 that the user can fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 533,
+          "end_line": 537,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "When osascript fails during an iTerm2 focus, the command exits 6, but the documented exit code for a focus failure is 7.",
+          "evidence": "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+          "explanation": "The exit-code table lists only codes 0 and 7 for focus and stop.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "| 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |"
+          ],
+          "rationale": "The docs give 7 only for an unknown handle prefix or a tab that doesn't exist, not for any focus failure. An osascript execution failure exits 6, as tmux kill-pane failure does; this is a small gap in the docs, not a contradiction.",
+          "score": 15,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "| 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |"
+          ],
+          "rationale": "The docs give 7 only for an unknown handle prefix or a tab that doesn't exist, not for any focus failure. An osascript execution failure exits 6, as tmux kill-pane failure does; this is a small gap in the docs, not a contradiction.",
+          "score": 15,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 336,
+          "end_line": 336,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The --principal value goes into the implementer's wait prompt with no check, so a crafted value could add instructions to the session's first prompt.",
+          "evidence": "shlex.quote(WAIT_PROMPT.format(p=principal)),",
+          "suggested_fix": "Check --principal against the same pattern as --name.",
+          "explanation": "Shell quoting stops shell injection, but free text from --principal can still steer the new claude session's prompt.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "shlex.quote(WAIT_PROMPT.format(p=principal)),",
+            "s.add_argument(\"--principal\", required=True)"
+          ],
+          "rationale": "The value is not validated, but the caller is the orchestrator, which already has authority over the implementer, so no trust boundary is crossed. The spec (AC R1.11) also requires a principal with quotes, spaces and `$` to pass through unchanged, so a name-pattern check would break the contract.",
+          "score": 12,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "s.add_argument(\"--principal\", required=True)",
+            "shlex.quote(WAIT_PROMPT.format(p=principal)),"
+          ],
+          "rationale": "It is true that --principal goes into the wait prompt with no check (line 351, not 336). But the only caller is the orchestrator session, which already runs this script from Bash and could start any command it wants. The spec (AC R1.11) also requires a principal with quotes, spaces and `$` to pass through unchanged, so applying the --name pattern would break the agreed contract and give no real security gain.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "s.add_argument(\"--principal\", required=True)",
+            "shlex.quote(WAIT_PROMPT.format(p=principal)),"
+          ],
+          "rationale": "It is true that --principal goes into the wait prompt with no check (line 351, not 336). But the only caller is the orchestrator session, which already runs this script from Bash and could start any command it wants. The spec (AC R1.11) also requires a principal with quotes, spaces and `$` to pass through unchanged, so applying the --name pattern would break the agreed contract and give no real security gain.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 486,
+          "end_line": 491,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The helper's success path for joining an existing group or creating a new group is never tested: the fake always has no groups and always raises on group creation.",
+          "evidence": "    async def async_create_tab_group(self, name, tabs, color):",
+          "suggested_fix": "Make the fake keep the groups it creates, and add one check for joining an existing group and one for creating a group, asserting tab_group and the color passed in.",
+          "explanation": "A broken join or create path in iterm2-tabs.py, such as a wrong group name or a lost color, would pass every check.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    async def async_create_tab_group(self, name, tabs, color):\n        raise Boom(\"group failed\")",
+            "class Window:\n    window_id = \"W1\"\n    tab_groups = []",
+            "await fresh_tab.async_add_to_tab_group(group)"
+          ],
+          "rationale": "The fake Window always has an empty tab_groups list and its async_create_tab_group always raises. The helper's join branch (async_add_to_tab_group) and its successful create branch therefore never run in the test. Only the no-group and group-failure paths are covered. The PR description says a live probe covered the real success path, so this is a coverage gap rather than a bug.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    async def async_create_tab_group(self, name, tabs, color):\n        raise Boom(\"group failed\")",
+            "class Window:\n    window_id = \"W1\"\n    tab_groups = []",
+            "await fresh_tab.async_add_to_tab_group(group)"
+          ],
+          "rationale": "The fake Window always has an empty tab_groups list and its async_create_tab_group always raises. The helper's join branch (async_add_to_tab_group) and its successful create branch therefore never run in the test. Only the no-group and group-failure paths are covered. The PR description says a live probe covered the real success path, so this is a coverage gap rather than a bug.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 601,
+          "end_line": 601,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The no-clone check greps the source text for the word 'clone' instead of watching what the launcher runs.",
+          "evidence": "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)",
+          "suggested_fix": "Put a git wrapper first in PATH that logs a clone call, and assert that the exit-3 case and the success case made none.",
+          "explanation": "A comment that mentions 'clone' breaks the check, and a clone done another way passes it.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)"
+          ],
+          "rationale": "The check greps launcher.py's source text for \"clone\". It does not watch what the launcher runs, so a comment with that word fails it and a clone built another way passes it. The weakness is real but small. The exit-3 and success tests already check the observable behavior.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)",
+            "rc, out, err = run([\"git\", \"-C\", checkout] + list(args))"
+          ],
+          "rationale": "The check is a static text grep for \"clone\" in launcher.py, not a check of what the launcher runs. So a comment that mentions \"clone\" would fail it, and a clone built at runtime, for example through the generic git() helper, would pass it. The launcher has no clone today, so this is a weak-test nit, not a defect.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)",
+            "rc, out, err = run([\"git\", \"-C\", checkout] + list(args))"
+          ],
+          "rationale": "The check is a static text grep for \"clone\" in launcher.py, not a check of what the launcher runs. So a comment that mentions \"clone\" would fail it, and a clone built at runtime, for example through the generic git() helper, would pass it. The launcher has no clone today, so this is a weak-test nit, not a defect.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/scripts/test-launcher.sh",
+        "start_line": 486,
+        "end_line": 491,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The helper's success path for joining an existing group or creating a new group is never tested: the fake always has no groups and always raises on group creation.",
+        "evidence": "    async def async_create_tab_group(self, name, tabs, color):",
+        "suggested_fix": "Make the fake keep the groups it creates, and add one check for joining an existing group and one for creating a group, asserting tab_group and the color passed in.",
+        "explanation": "A broken join or create path in iterm2-tabs.py, such as a wrong group name or a lost color, would pass every check.",
+        "needs_context": false,
+        "fingerprint": "b4df31170f478771",
+        "severity": "suggestion",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    async def async_create_tab_group(self, name, tabs, color):\n        raise Boom(\"group failed\")",
+            "class Window:\n    window_id = \"W1\"\n    tab_groups = []",
+            "await fresh_tab.async_add_to_tab_group(group)"
+          ],
+          "rationale": "The fake Window always has an empty tab_groups list and its async_create_tab_group always raises. The helper's join branch (async_add_to_tab_group) and its successful create branch therefore never run in the test. Only the no-group and group-failure paths are covered. The PR description says a live probe covered the real success path, so this is a coverage gap rather than a bug.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "span_text": "async def async_create_tab(self, select=True): log(\"create_tab select=%s\" % select) return Tab() async def async_create_tab_group(self, name, tabs, color): raise Boom(\"group failed\")"
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-launcher.sh",
+        "start_line": 601,
+        "end_line": 601,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The no-clone check greps the source text for the word 'clone' instead of watching what the launcher runs.",
+        "evidence": "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)",
+        "suggested_fix": "Put a git wrapper first in PATH that logs a clone call, and assert that the exit-3 case and the success case made none.",
+        "explanation": "A comment that mentions 'clone' breaks the check, and a clone done another way passes it.",
+        "needs_context": false,
+        "fingerprint": "a8c5891195fc0868",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)",
+            "rc, out, err = run([\"git\", \"-C\", checkout] + list(args))"
+          ],
+          "rationale": "The check is a static text grep for \"clone\" in launcher.py, not a check of what the launcher runs. So a comment that mentions \"clone\" would fail it, and a clone built at runtime, for example through the generic git() helper, would pass it. The launcher has no clone today, so this is a weak-test nit, not a defect.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "check 'launcher.py runs no git clone' $(! grep -sq \"clone\" \"$L\"; echo $?)"
+      },
+      {
+        "file": "skills/orchestrator/references/launcher.md",
+        "start_line": 182,
+        "end_line": 182,
+        "category": "docs",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "Exit code 6 is documented only for the start terminal step, but focus and stop also exit 6 when osascript or tmux kill-pane fails.",
+        "evidence": "| 6 | the terminal step failed. On tmux, the window did not open. On iTerm2, the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. The worktree stays, and the line names its path |",
+        "suggested_fix": "Add: `focus` or `stop`: osascript or `tmux kill-pane` failed.",
+        "explanation": "iterm_script and stop raise Fail(TERMINAL_STEP, ...), which the table does not describe for focus or stop.",
+        "needs_context": false,
+        "fingerprint": "6dfab01ed61ccb8e",
+        "severity": "nit",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: tmux kill-pane %s failed: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "| 6 | the terminal step failed. On tmux, the window did not open."
+          ],
+          "rationale": "`iterm_script` raises `Fail(TERMINAL_STEP)` for iTerm2 `focus` and `stop`, and `stop` raises it when `tmux kill-pane` fails. The exit-code table describes code 6 only for the start terminal step.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "span_text": "## Test"
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 277,
+        "end_line": 279,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "Any line that starts with '##', including a '###' subheading, ends the Checkouts section, so lines after a subheading are ignored.",
+        "evidence": "if line.startswith(\"##\"):\n            inside = line == \"## Checkouts\"",
+        "suggested_fix": "Use re.match(r'##\\s', line) to find a level-2 heading.",
+        "explanation": "The spec says the section ends at the next '##' heading, not at a deeper heading.",
+        "needs_context": false,
+        "fingerprint": "82657d63addcd776",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if line.startswith(\"##\"):",
+            "inside = line == \"## Checkouts\"",
+            "probe. The section ends at the next `##` heading. Each line is `<owner>/<repo>:"
+          ],
+          "rationale": "`startswith(\"##\")` also matches `###` and deeper headings, so a subheading inside `## Checkouts` ends the section, and the repo lines after it are ignored. The documented contract says the section ends at the next `##` heading. Subheadings in this section are unlikely, and the failure shows up right away as an exit 3 that the user can fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "if line.startswith(\"- \"): line = line[2:].strip() m = re.fullmatch(r\"([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)\\s*:\\s*(\\S.*)\", line)"
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 535,
+        "end_line": 539,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The launcher.md that the description names as the one owner of the exit codes does not say that stop exits 6 when its terminal command fails.",
+        "evidence": "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+        "suggested_fix": "Add the focus and stop failures to the exit 6 row of launcher.md.",
+        "explanation": "In launcher.md, exit 6 covers only start's terminal step, but stop returns 6 on an osascript failure (iTerm2) or a kill-pane failure (tmux); focus on iTerm2 shares the same osascript call.",
+        "needs_context": false,
+        "fingerprint": "3c7546511f44b3b0",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: tmux kill-pane %s failed: %s\" % (ref, one_line(err) or \"exit %d\" % rc))"
+          ],
+          "rationale": "The launcher exits 6 when focus/stop's osascript call fails or when tmux kill-pane fails. The launcher.md exit 6 row describes only start's terminal step and says the worktree stays, so the stop and focus failures are undocumented.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "rc, out, err = run([\"osascript\", \"-\", verb, ref], stdin=script) if rc != 0: raise Fail(TERMINAL_STEP, \"launcher: osascript failed for iterm2:%s: %s\" % (ref, one_line(err) or \"exit %d\" % rc)) return one_line(out)"
+      },
+      {
+        "file": "skills/project-lead/SKILL.md",
+        "start_line": 189,
+        "end_line": 189,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The Checkouts row says the path is absolute, but the launcher also accepts a path that starts with ~ and expands it.",
+        "evidence": "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`",
+        "suggested_fix": "Write `<path>`, and say that a leading `~` is the home directory.",
+        "explanation": "checkout_for runs expanduser on the path, and the launcher.md text says a leading ~ is the home directory.",
+        "needs_context": false,
+        "fingerprint": "8f516fee3b4542dd",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, each the principal's checkout of a repo. The orchestrator launcher reads it from the machine file (`skills/orchestrator/references/launcher.md`) |",
+            "return os.path.expanduser(m.group(2).strip().strip(\"`\"))",
+            "<path>`, with an optional `- ` before it, and a leading `~` is the home"
+          ],
+          "rationale": "The new row says `<absolute path>`, but launcher.py runs expanduser on the Checkouts path and launcher.md says a leading `~` is the home directory. So the row asks for more than the code needs. Nothing breaks, because an absolute path still works. It is a small mismatch between the two documents that is cheap to fix.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, each the principal's checkout of a repo. The orchestrator launcher reads it from the machine file (`skills/orchestrator/references/launcher.md`) |"
+      }
+    ],
+    "github": {
+      "review_id": 5927475143,
+      "review_url": "https://github.com/jerridan/crew/pull/158#pullrequestreview-5927475143",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "b4df31170f478771",
+          "comment_id": 4591423183
+        },
+        {
+          "fingerprint": "a8c5891195fc0868",
+          "comment_id": 4591423191
+        },
+        {
+          "fingerprint": "6dfab01ed61ccb8e",
+          "comment_id": 4591423200
+        },
+        {
+          "fingerprint": "82657d63addcd776",
+          "comment_id": 4591423213
+        },
+        {
+          "fingerprint": "3c7546511f44b3b0",
+          "comment_id": 4591423222
+        },
+        {
+          "fingerprint": "8f516fee3b4542dd",
+          "comment_id": 4591423235
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 133605833754
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8155,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 37066,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0037191000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1137,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 36579,
+            "webSearchRequests": 0,
+            "costUSD": 0.1578162,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1615353
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6394,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45118,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045263,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 650,
+            "cacheReadInputTokens": 9722,
+            "cacheCreationInputTokens": 44623,
+            "webSearchRequests": 0,
+            "costUSD": 0.3719364,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 175,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3764627
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9363,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45126,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045271,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 849,
+            "cacheReadInputTokens": 9680,
+            "cacheCreationInputTokens": 44631,
+            "webSearchRequests": 0,
+            "costUSD": 0.375972,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 229,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3804991
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10521,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45122,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045267,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1068,
+            "cacheReadInputTokens": 9632,
+            "cacheCreationInputTokens": 44627,
+            "webSearchRequests": 0,
+            "costUSD": 0.3803104,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 297,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3848371
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4244,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 50410,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0050555,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 370,
+            "cacheReadInputTokens": 9747,
+            "cacheCreationInputTokens": 49915,
+            "webSearchRequests": 0,
+            "costUSD": 0.4086774,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 66,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4137329
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11302,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45130,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045275,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1111,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 44635,
+            "webSearchRequests": 0,
+            "costUSD": 0.381233,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 543,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3857605
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13656,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45116,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045261,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1390,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 44621,
+            "webSearchRequests": 0,
+            "costUSD": 0.386701,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 699,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3912271
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8125,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45128,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045273,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 606,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 44633,
+            "webSearchRequests": 0,
+            "costUSD": 0.3711366,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 220,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3756639
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8525,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45118,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045263,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 729,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 44623,
+            "webSearchRequests": 0,
+            "costUSD": 0.37351660000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 242,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3780429
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8093,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10632,
+            "outputTokens": 346,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012362,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 322,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 894,
+            "cacheReadInputTokens": 33953,
+            "cacheCreationInputTokens": 11287,
+            "webSearchRequests": 0,
+            "costUSD": 0.0574953,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 202,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.058731500000000006
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5867,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10654,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010774,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 677,
+            "cacheReadInputTokens": 33871,
+            "cacheCreationInputTokens": 11147,
+            "webSearchRequests": 0,
+            "costUSD": 0.0547571,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 109,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0558345
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11612,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45126,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045271,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1064,
+            "cacheReadInputTokens": 65419,
+            "cacheCreationInputTokens": 45162,
+            "webSearchRequests": 0,
+            "costUSD": 0.3956758,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 388,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.40020290000000003
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3322,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10666,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010781,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 353,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 10179,
+            "webSearchRequests": 0,
+            "costUSD": 0.0446867,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 57,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0457648
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7975,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28705,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028825,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 860,
+            "cacheReadInputTokens": 70114,
+            "cacheCreationInputTokens": 30091,
+            "webSearchRequests": 0,
+            "costUSD": 0.13598739999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 169,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1388699
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5690,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22771,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022901,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 585,
+            "cacheReadInputTokens": 31018,
+            "cacheCreationInputTokens": 22871,
+            "webSearchRequests": 0,
+            "costUSD": 0.10044380000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10273390000000002
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 2846,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10621,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010741000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 345,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 10134,
+            "webSearchRequests": 0,
+            "costUSD": 0.0444267,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 58,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0455008
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7392,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17259,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017364000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 802,
+            "cacheReadInputTokens": 47634,
+            "cacheCreationInputTokens": 19076,
+            "webSearchRequests": 0,
+            "costUSD": 0.0890994,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 88,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0908358
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7617,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28626,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028740999999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 847,
+            "cacheReadInputTokens": 36873,
+            "cacheCreationInputTokens": 28866,
+            "webSearchRequests": 0,
+            "costUSD": 0.1276293,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 242,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.13050340000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6975,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10642,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010777000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 675,
+            "cacheReadInputTokens": 33686,
+            "cacheCreationInputTokens": 10994,
+            "webSearchRequests": 0,
+            "costUSD": 0.1082132,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 129,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1092909
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7747,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28620,
+            "outputTokens": 247,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029855,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 227,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 705,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28133,
+            "webSearchRequests": 0,
+            "costUSD": 0.1200227,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 365,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1230082
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8325,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28621,
+            "outputTokens": 309,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030166000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 283,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 829,
+            "cacheReadInputTokens": 69976,
+            "cacheCreationInputTokens": 29610,
+            "webSearchRequests": 0,
+            "costUSD": 0.1337396,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 161,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1367562
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8386,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 847,
+            "cacheReadInputTokens": 33695,
+            "cacheCreationInputTokens": 11264,
+            "webSearchRequests": 0,
+            "costUSD": 0.113815,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 148,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 10650,
+            "outputTokens": 496,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.001313,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 474,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.115128
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3357,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10625,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010755,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 349,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 10130,
+            "webSearchRequests": 0,
+            "costUSD": 0.0889014,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 69,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0899769
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5718,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10668,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010798000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 538,
+            "cacheReadInputTokens": 18907,
+            "cacheCreationInputTokens": 10439,
+            "webSearchRequests": 0,
+            "costUSD": 0.0980694,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 127,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0991492
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8282,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 32983,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0033098,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 886,
+            "cacheReadInputTokens": 79213,
+            "cacheCreationInputTokens": 34926,
+            "webSearchRequests": 0,
+            "costUSD": 0.1564973,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 179,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1598071
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6592,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29192,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029302000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 672,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28705,
+            "webSearchRequests": 0,
+            "costUSD": 0.1219807,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 353,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.12491089999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7475,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22781,
+            "outputTokens": 359,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024576,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 333,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 686,
+            "cacheReadInputTokens": 31020,
+            "cacheCreationInputTokens": 22742,
+            "webSearchRequests": 0,
+            "costUSD": 0.201876,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 101,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2043336
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6482,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28626,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028726,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 566,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28131,
+            "webSearchRequests": 0,
+            "costUSD": 0.2372494,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 195,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.240122
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8583,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28636,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028751000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 854,
+            "cacheReadInputTokens": 70537,
+            "cacheCreationInputTokens": 29769,
+            "webSearchRequests": 0,
+            "costUSD": 0.2693634,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 254,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.27223849999999994
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7408,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29180,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029290000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 688,
+            "cacheReadInputTokens": 37419,
+            "cacheCreationInputTokens": 29389,
+            "webSearchRequests": 0,
+            "costUSD": 0.2563718,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 172,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2593008
+      }
+    ],
+    "total_cost_usd": 6.2507613000000015,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 37,
+      "gather": 115,
+      "triage": 9133,
+      "find_verify": 51177,
+      "merge": 8
+    },
+    "errors": []
+  }
+}

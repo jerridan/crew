@@ -692,17 +692,19 @@ PY
 STEP="R1 board --json prints one board object and writes nothing"
 snap() { (cd "$CREW_RECORD_ROOT" && find . | LC_ALL=C sort | while read -r f; do printf '%s ' "$f"; [ -f "$f" ] && cksum <"$f" || echo dir; done); }
 before=$(snap)
-orch board --json >"$TMP/bj" 2>"$TMP/err" || fail "board --json failed: $(cat "$TMP/err")"
+pin=$(date +%s)
+CREW_ORCH_NOW=$pin orch board --json >"$TMP/bj" 2>"$TMP/err" || fail "board --json failed: $(cat "$TMP/err")"
 after=$(snap)
 [ "$before" = "$after" ] || fail "board --json changed the record files"
 [ ! -s "$TMP/err" ] || fail "board --json wrote to stderr: $(cat "$TMP/err")"
 python3 -c 'import json,sys; json.load(sys.stdin)' <"$TMP/bj" || fail "board --json is not one JSON value"
 python3 "$TMP/check_json.py" "$TMP/bj" || fail "a field of board --json is missing or of the wrong type"
-orch board --json --urls >"$TMP/bj2" || fail "board --json --urls failed"
+CREW_ORCH_NOW=$pin orch board --json --urls >"$TMP/bj2" || fail "board --json --urls failed"
 cmp -s "$TMP/bj" "$TMP/bj2" || fail "--urls changes the JSON view"
 pass
 
 STEP="R1 board --json holds the values of the fleet record"
+CREW_ORCH_NOW=$pin orch board --json >"$TMP/bj" || fail "board --json failed"
 python3 - "$TMP/bj" <<'PY' || fail "a value of board --json is wrong: $(cat "$TMP/bj")"
 import json, sys
 d = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -719,12 +721,12 @@ assert (g["repo"], g["merged"], g["total"]) == ("owner/dash", 0, 2), g
 ed, se = g["rows"]
 assert (ed["n"], ed["id"], ed["launch_tab"], ed["ticket"]) == (1, "editor", "tmux:%3", None), ed
 assert ed["pr"] == {"number": 893, "label": "#893", "url": "https://github.com/owner/dash/pull/893"}, ed
-assert (se["n"], se["id"], se["marks"], se["status"], se["pr"], se["text"]) == (2, "settings", "●●◐○○", "build 2/3", None, "ic-2 reads the diff"), se
+assert (se["n"], se["id"], se["marks"], se["status"], se["pr"], se["text"]) == (2, "settings", "●●◐○○", "build 2/3", None, "after editor · ic-2 reads the diff"), se
 assert se["age"] != "" and se["launch_tab"] is None, se
 lo = d["sections"][1]["rows"][0]
 assert (lo["n"], lo["id"], lo["status"], lo["pr"]["label"], lo["ticket"], lo["age"]) == (3, "loner", "can merge", "#77", None, ""), lo
 PY
-orch board >"$TMP/bt" || fail "board failed"
+CREW_ORCH_NOW=$pin orch board >"$TMP/bt" || fail "board failed"
 python3 "$TMP/same_board.py" "$TMP/bj" "$TMP/bt" || fail "the text view and the JSON view differ: $(cat "$TMP/bt")"
 pass
 
@@ -753,7 +755,7 @@ expect_exit 0 orch3 item grouped pr 40
 
 STEP="R3 a single item's row shows its own ticket, a grouped row shows none"
 orch3 board >"$TMP/b3" || fail "board failed"
-grep -E '^ *2 +solo .*#41  SOLO-12 ' "$TMP/b3" >/dev/null || fail "the solo row has no ticket after its PR: $(cat "$TMP/b3")"
+grep -E '^ *2 +solo .*#41  SOLO-12( |$)' "$TMP/b3" >/dev/null || fail "the solo row has no ticket after its PR: $(cat "$TMP/b3")"
 grep -E '^ *4 +plain .* P-3' "$TMP/b3" >/dev/null || fail "a ticket with no URL does not show: $(cat "$TMP/b3")"
 grep -E '^ *1 +grouped ' "$TMP/b3" | grep -F 'A-1' >/dev/null && fail "the grouped row shows its ticket"
 python3 - "$TMP/b3" <<'PY' || fail "the ticket cell of the single items is not one width: $(cat "$TMP/b3")"
@@ -856,14 +858,22 @@ new = open(sys.argv[2], encoding="utf-8").read().split("\n")
 singles = set(sys.argv[3:])
 assert "Plan" in old[0] and re.search(r"resets (Mon|Tue|Wed|Thu|Fri|Sat|Sun)", old[0]), old[0]
 assert re.search(r"  [0-9]+d  ", "\n".join(old)), "no age in days"
-assert len(old) == len(new), (len(old), len(new))
-links = False
-for a, b in zip(old, new):
-    links = links or a == " Links"
+# Above the Links list, only the rows of those single items differ.
+cut_old = old.index(" Links") if " Links" in old else len(old)
+cut_new = new.index(" Links") if " Links" in new else len(new)
+assert cut_old == cut_new, (cut_old, cut_new)
+for a, b in zip(old[:cut_old], new[:cut_new]):
     if a == b:
         continue
     row = re.match(r"^ +[0-9]+ (\S+)", a)
-    assert links or (row and row.group(1) in singles), (a, b)
+    assert row and row.group(1) in singles, (a, b)
+# The Links list keeps every link of the main output, in its order; a
+# single item's ticket may come in between.
+rest = iter(new[cut_new:])
+for a in old[cut_old:]:
+    if a.startswith("  "):
+        a = a.split()
+    assert any((b.split() if isinstance(a, list) else b) == a for b in rest), ("Links lost", a)
 PY
   done
 }

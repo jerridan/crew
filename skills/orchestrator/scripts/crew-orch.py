@@ -440,6 +440,8 @@ def item_pr(rec: Record, item_id: str, ref: str) -> None:
 
     def change(state):
         item = get_item(state, item_id)
+        if url_match and url_match.group(1).lower() != item["repo"].lower():
+            raise Usage(f"PR URL repo {url_match.group(1)} is not the item's repo {item['repo']}")
         if url_match:
             item["pr"] = {"number": int(url_match.group(2)), "url": ref.rstrip("/")}
         else:
@@ -750,7 +752,8 @@ def check_summary(rollup: list) -> tuple:
     """Return (checks, failed names) from the latest run of each check.
 
     A cancelled run is dropped before the latest run is chosen, so it never
-    counts. A skipped or neutral run counts as a pass.
+    counts. A run with no `startedAt` is the latest of its name. A skipped or
+    neutral run counts as a pass.
     """
     latest = {}
     for index, check in enumerate(rollup or []):
@@ -761,7 +764,9 @@ def check_summary(rollup: list) -> tuple:
             continue
         name = check.get("name") or check.get("context") or f"#{index}"
         key = (check.get("workflowName") or "", name)
-        stamp = check.get("startedAt") or check.get("completedAt") or ""
+        # A run with no start time is queued or waiting, so it is the newest
+        # run of its name. Of two such runs, the later one in the list wins.
+        stamp = check.get("startedAt") or "\uffff"
         if key not in latest or stamp >= latest[key][0]:
             latest[key] = (stamp, name, check)
     if not latest:
@@ -924,14 +929,44 @@ def plan_lines(state: dict) -> list:
     return lines + [""]
 
 
+# An escape sequence: a CSI (ESC [ ... final byte); an OSC, DCS, SOS, PM or
+# APC string, up to BEL or ESC \; then any other ESC and the one character
+# after it.
+ESCAPE_RE = re.compile(
+    r"\x1b\[[0-?]*[ -/]*[@-~]"
+    r"|\x1b[\]PX^_][^\x07\x1b]*(?:\x07|\x1b\\)?"
+    r"|\x1b.?",
+    re.DOTALL,
+)
+SPACE_RE = re.compile(r"[\t\n\r\v\f]")
+CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def clean(value) -> str:
+    """Make a stored value safe to print on a terminal.
+
+    Remove each escape sequence whole, change a tab or a line break to a
+    space, and remove every other C0 or C1 control character and DEL.
+    """
+    text = ESCAPE_RE.sub("", str(value))
+    text = SPACE_RE.sub(" ", text)
+    return CONTROL_RE.sub("", text)
+
+
 class Links:
-    """Make a link: OSC 8 on a terminal, plain text otherwise. Keep a list for --urls."""
+    """Make a link: OSC 8 on a terminal, plain text otherwise. Keep a list for --urls.
+
+    The text and the URL are cleaned first, so the OSC 8 wrapping is the only
+    escape sequence in the output.
+    """
 
     def __init__(self, tty: bool):
         self.tty = tty
         self.seen = []
 
     def make(self, text: str, url, width: int = 0) -> str:
+        text = clean(text)
+        url = clean(url) if url else url
         pad = " " * max(0, width - len(text))
         if not url:
             return text + pad
@@ -965,8 +1000,8 @@ def status_word(item: dict) -> str:
     if stage == "closed":
         return "closed"
     if shows_merge(item):
-        return item["merge"]
-    return f"{stage} {item['detail']}" if item.get("detail") else stage
+        return clean(item["merge"])
+    return clean(f"{stage} {item['detail']}" if item.get("detail") else stage)
 
 
 def row_text(item: dict) -> str:
@@ -977,7 +1012,7 @@ def row_text(item: dict) -> str:
         parts.append("shipped")
     if item.get("doing"):
         parts.append(item["doing"])
-    return " · ".join(parts)
+    return clean(" · ".join(parts))
 
 
 def cmd_board(rec: Record, args: list) -> None:
@@ -1000,14 +1035,15 @@ def cmd_board(rec: Record, args: list) -> None:
             item = items.get(entry["item"])
             group = item.get("group") if item else None
             where = f"{group}/{entry['item']}" if group else entry["item"]
-        rows.append((entry["id"], entry["kind"], age(entry.get("routed_at") or entry["created_at"]), where, entry))
+        rows.append((clean(entry["id"]), clean(entry["kind"]),
+                     age(entry.get("routed_at") or entry["created_at"]), clean(where), entry))
     if rows:
         w = [max(len(r[i]) for r in rows) for i in range(4)]
         indent = 2 + sum(w) + 2 * 4
         for eid, kind, ago, where, entry in rows:
-            out.append(f"  {eid:<{w[0]}}  {kind:<{w[1]}}  {ago:<{w[2]}}  {where:<{w[3]}}  {entry['text']}")
+            out.append(f"  {eid:<{w[0]}}  {kind:<{w[1]}}  {ago:<{w[2]}}  {where:<{w[3]}}  {clean(entry['text'])}")
             if entry.get("recommend"):
-                out.append(" " * indent + f"Recommended: {entry['recommend']}")
+                out.append(" " * indent + f"Recommended: {clean(entry['recommend'])}")
     out.append("")
 
     # The item rows, with one set of column widths for the whole board.
@@ -1030,7 +1066,7 @@ def cmd_board(rec: Record, args: list) -> None:
     shown = [i for _, members in sections for i in members] + singles
     if shown:
         wn = max(len(str(i["n"])) for i in shown)
-        wid = max(len(i["id"]) for i in shown)
+        wid = max(len(clean(i["id"])) for i in shown)
         ws = max(len(status_word(i)) for i in shown)
         wp = max(len(f"#{i['pr']['number']}") if i.get("pr") else 0 for i in shown)
         wt = max(len(row_text(i)) for i in shown)
@@ -1040,18 +1076,18 @@ def cmd_board(rec: Record, args: list) -> None:
         pr_cell = links.make(f"#{pr['number']}", pr["url"], wp) if pr else " " * wp
         text = row_text(item)
         ago = age(item.get("doing_at")) if item.get("doing") else ""
-        line = (f"  {item['n']:>{wn}} {item['id']:<{wid}}  {marks(item['stage'])}  "
+        line = (f"  {item['n']:>{wn}} {clean(item['id']):<{wid}}  {marks(item['stage'])}  "
                 f"{status_word(item):<{ws}}  {pr_cell}  {text:<{wt}}  {ago}")
         return line.rstrip()
 
     for group, members in sections:
         merged = sum(1 for i in members if landed(i))
-        head = [group["title"]]
+        head = [clean(group["title"])]
         if group.get("ticket"):
             head.append(links.make(group["ticket"]["id"], group["ticket"].get("url")))
         line = f" {head[0]}" + (f"  {head[1]}" if len(head) > 1 else "")
         if group.get("repo"):
-            line += f"  ·  {group['repo']}"
+            line += f"  ·  {clean(group['repo'])}"
         line += f"  ·  {merged} of {len(members)} merged"
         out.append(line)
         for item in members:
@@ -1091,6 +1127,11 @@ COMMANDS = {
 def main(argv: list) -> int:
     try:
         name = None
+        for arg in argv:
+            try:
+                arg.encode("utf-8")
+            except UnicodeEncodeError:
+                raise Usage("an argument is not valid UTF-8")
         if argv and argv[0] in ("-h", "--help"):
             print(__doc__.strip())
             return 0

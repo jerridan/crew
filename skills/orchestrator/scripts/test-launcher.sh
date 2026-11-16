@@ -28,7 +28,7 @@ unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID
 # tmux stub. It logs each call as one line, args joined by `|`, and each
 # CLAUDECODE or CLAUDE_CODE_* variable it gets to tmux-env. Files under
 # $STUB_DIR set its answers: tmux-has (the session exists), tmux-fail (new
-# windows fail), tmux-panes (one known pane id per line), tmux-sessions (the
+# windows fail), tmux-kill-fail (kill-pane fails), tmux-panes (one known pane id per line), tmux-sessions (the
 # list-sessions output), tmux-clients (the list-clients output).
 cat > "$T/bin/tmux" <<'STUB'
 #!/bin/bash
@@ -52,6 +52,7 @@ case "$1" in
     echo '%7' ;;
   display-message|select-window|select-pane|kill-pane|switch-client)
     grep -sqxF -- "$target" "$D/tmux-panes" 2>/dev/null || { echo "can't find pane: $target" >&2; exit 1; }
+    [ "$1" = kill-pane ] && [ -e "$D/tmux-kill-fail" ] && { echo "tmux: kill failed" >&2; exit 1; }
     [ "$1" = display-message ] && echo 'crew'
     exit 0 ;;
   list-sessions) [ -e "$D/tmux-sessions" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-sessions" ;;
@@ -720,6 +721,19 @@ run stop 'tmux:%99'
 check 'stop on a gone tmux pane exits 0 with one line' $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sqi gone "$T/out"; echo $?)
 run stop 'foo:1'
 check 'stop with an unknown prefix exits 7 with one line' $([ "$rc" = 7 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+
+# focus and stop exit 6 when the terminal step fails; the line names the handle.
+: > "$STUB_DIR/tmux-kill-fail"
+run stop 'tmux:%7'
+check 'stop tmux:<pane> with a failed kill-pane exits 6, one line naming the handle' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'tmux:%7' "$T/err"; echo $?)
+: > "$STUB_DIR/osa-fail"
+for v in focus stop; do
+  run "$v" iterm2:SESS-1
+  check "$v iterm2:<id> with a failed osascript exits 6, one line naming the handle" \
+    $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:SESS-1' "$T/err"; echo $?)
+done
+rm -f "$STUB_DIR/tmux-kill-fail" "$STUB_DIR/osa-fail"
 
 # -- no Claude Code variable reaches tmux ----------------------------------
 # A tmux server that the launcher starts passes its environment to every

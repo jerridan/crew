@@ -1,0 +1,1666 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 160,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add the crew:orchestrator skill",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/160"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "55e7e89707a8b3fc8ca3c8d410745f868a5546fc",
+    "head": "0faca9ff620b1d98d29c239b83cbf662d67f235b",
+    "started_at": "2026-11-16T23:27:33.879Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add the crew:orchestrator skill\n\n## Summary\n\nThis adds the skill `/crew:orchestrator`. It makes one Claude Code session the manager of many `crew:project-lead` sessions: it takes tickets, a milestone or one large ticket, splits the work, starts one project lead per item in its own terminal tab and worktree, answers their questions, keeps an inbox of what needs the person, and merges their PRs in order. The record, the launcher and the usage parts already exist; this skill says when the orchestrator does what and points at those parts for every command. It also repairs a doubled sentence fragment in `CLAUDE.md` that the rebase of PR 159 left behind.\n\nCloses #154\n\n**Ticket:** [#154 — crew:orchestrator: the skill](https://github.com/jerridan/crew/issues/154)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\nIssue 150 holds the agreed design (rules 1 to 14 in the body, 15 and 16 in its comment); issue 149 holds the three experiments. `docs/design.md` §15.142 records this change and each choice the issue left open. Owners the skill points at: `skills/orchestrator/references/orchestrator-record.md` (record, `crew-orch.py`), `skills/orchestrator/references/launcher.md` (`launcher.py`, the implementer model and Remote Control defaults), `skills/orchestrator/references/usage.md` (usage levels, slow-down, limit), `skills/project-lead/references/autonomy-contract.md` (who a principal is, escalation), and `skills/project-lead/SKILL.md` \"Standing instructions\" (the one list of sections and the order of sources).\n\n### What changed, by file\n\n- `skills/orchestrator/SKILL.md` (new): the `/crew:orchestrator` entry point. The manager rule first, then the record, intake in four forms, split and start with no approval step, the authority at the start, concurrency, launch, the goal message, questions and the inbox, six message rules (crossed messages, report after the command ran, read the clock, relay interfaces, no compound git commands, no `claude` from an agent), groups and shared values, the overlap check, the merge checks, the wait, the board, usage, and the close of an item.\n- `skills/project-lead/SKILL.md`: three rows in the standing-instructions table, `Merge`, `Concurrency` and `Implementer model`, each pointing at the orchestrator skill; the count sentence now says sixteen.\n- `README.md`: the entry-point row, a \"Run many goals with an orchestrator\" section, a \"What a run needs\" row, rows in the standing-instructions, Models and Roles tables, and one clause in the experimental sentence.\n- `CLAUDE.md`: a Layout row, an Authority entry, a Build state paragraph, and the repair of the first paragraph (a leftover of PR 159's rebase).\n- `docs/design.md`: entry §15.142.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.109, assigned by the orchestrator of this build.\n\n### Constraints that applied\n\n- One rule, one file: the skill copies no command line, field, exit code, threshold or usage rule; it names the command and points at its owner. A search for the usage thresholds and line formats in the skill finds none.\n- The standing-instructions sections live only in the project lead's table, as the principal decided.\n- ASD-STE100 prose; `writing-standard.md`'s checklist; SKILL.md is under 500 lines.\n- Public repo: no employer, colleague or private repo name.\n- Nothing unbuilt is described as running: the board pane (#155) and resume with close-out (#156) are named as not built.\n\n### How this was verified\n\n- Two spec-critic rounds on the spec (3 blocking, then 0).\n- One headless skeptical review (Opus) of the whole diff against the goal: 3 blocking and 8 suggestions, all fixed in this PR (merge approval read from a ready line per head instead of the stage; slot freed at `closed`; a `Merge` section keeps the group order and overlap check; a GitHub wait as a background command; and more). A second round runs on this head now.\n- The status-vocabulary search over the added lines: every hit is true.\n- This repo has no suite.\n\n### Known gaps\n\n- No crew run has used the skill except this build.\n- The board pane (#155) and resume after a restart with the close-out (#156) are not built.\n\n<details><summary>spec.md</summary>\n\n# Spec: the skill `crew:orchestrator` (issue 154)\n\nSources: issue 154 (goal and desired outcome), issue 150 (the agreed design: rules 1 to 14 in the body, 15 and 16 in its comment, the board layout), issue 149 (three experiment reports, each with \"What a skill must supply\"), and the friction the principal reported from this build in the goal message, quoted under \"Evidence\" below.\n\n## Deliverable\n\nOne new file, `skills/orchestrator/SKILL.md`, plus the small edits in other files that R20 to R24 name. One PR into `jerridan/crew` main, opened ready for review (not a draft), with `Closes #154` in its body. The branch starts from `origin/main`. PR 159 (the usage part) merges first, and this branch rebases on it then; R16, R20 and R22 are written against `main` after PR 159. Every interface of PR 159 is read from the newest head of its branch, `origin/crew/gh-153-orch-usage-7e1d/deliverable-1`.\n\nEach requirement names the rule of issue 150 or the bullet of issue 154 it covers. Rule 8 is R16, rule 10 is R15 and rule 11 is R6.\n\n## Requirements\n\nEach requirement has an acceptance check. \"SKILL.md\" means `skills/orchestrator/SKILL.md`. \"States\" means the file says it in its own words, or points by file and section name at the one file that owns it.\n\n### The skill file\n\n- **R1. Entry point.** SKILL.md has frontmatter with `name: orchestrator` and a `description` that says what the skill does and when to use it, with trigger phrases. `/crew:orchestrator` starts it. *Check:* the frontmatter parses as YAML; `name` is `orchestrator`.\n- **R2. The manager rule comes first.** The first rule section of the body states issue 150 rule 1: the orchestrator owns what, the division and the order; the implementer owns how. A goal or a ticket it writes states the goal and the desired outcome, may add context, data and pointers marked as context, and never prescribes a method, file layout, constant or design. It may read code and dispatch read-only research to divide the work. It does no implementation. *Check:* the rule is the first `##` section after any short introduction.\n- **R3. Intake.** States that a person can hand over one thing, a group of tickets, a milestone, project or other ticket list, or one large ticket, at the start and at any later time; and what the orchestrator does with each form (record entries per `orchestrator-record.md`). *Check:* all four forms are named; \"at any later time\" is stated.\n- **R4. Split and sub-tickets.** States rule 2: it splits with no approval step, creates sub-tickets where the tickets live (Linear, GitHub issues, or a ticket file in the repo), and starts them; one small thing starts at once. *Check:* no step in the file waits for the principal before a split or a launch, except three: a gate the principal named, the one `Checkouts` question of R6, and the one ask for uncovered actions of R5.\n- **R5. The authority at the start.** States that at the start of a piece of work the orchestrator lists the outward actions that the work implies (for example: mark ready, push, force push with a lease after a rebase, reply on a PR, merge, close an issue, start a paid run) and checks each against the allow rules before the first implementer starts, so that it never tells an implementer an action is done that the permission check then refuses. Rule 6 holds: the allow rules are the authority, and the orchestrator does not ask the principal to confirm an action that they allow. It asks only for an action no allow rule covers, one time, for the whole set, or for a gate the principal named. *Check:* both rule 6 and the start-of-work list are stated.\n- **R6. Launch.** States when the orchestrator launches an implementer and points at `launcher.md` for the command, its output and its exit codes, and at `usage.md` for the `--settings` value. States rule 11 (iTerm2 tab groups, tmux second; the orchestrator reads the open groups with `launcher.py groups` and puts an implementer in a group that fits, or a new one). States rules 15 and 16 by pointing at `launcher.md`, which owns both defaults (the model, and Remote Control off), and says when the orchestrator passes another model: only on the principal's word in this build, since no standing-instructions section sets a model. The orchestrator's own Remote Control setting is untouched. States rule 4: items from many repos; a repo with no `Checkouts` line gets one question to the principal, one time, and the orchestrator writes the line. States that the launch output goes unchanged into the item's `launch` (`orchestrator-record.md`). States the concurrency check before a launch (R13) and the usage level check (R16). *Check:* no `launcher.py` argument table or exit-code table is copied.\n- **R7. The goal message.** States that the tab waits, and the goal arrives as a cross-session message from the orchestrator, which makes the orchestrator the implementer's principal (rule 5; `autonomy-contract.md` owns who a principal is). States what the goal carries: the goal and desired outcome, context marked as context, the charter lines `Gate: off` and the PR readiness, the line `Orchestrator: <name>, item <id>` (`skills/project-lead/SKILL.md`'s \"Report to an orchestrator\" owns what the project lead does with it), the `Usage limit:` line (`usage.md` owns it), the rules for the run (who merges, how to report, what to do on a stop, one report line when the PR is ready, and a line when an approval or a merge-queue event needs the orchestrator). States that the orchestrator records each message it sends an implementer with `told` before or as it sends it. *Check:* every element listed is named; no field of the record is defined here.\n- **R8. Questions and answers.** States how the orchestrator handles an implementer's question: it reads the entry the project lead wrote with `ask`, answers what it can decide (division, order, ownership, boundary, meaning of the parent ticket), records the answer, and routes to the principal only what is the principal's (with `route`, same id). States the inbox rule (rule 9): an item for the principal does not exist until it is in the inbox; nothing for the principal lives only in the transcript; the principal answers by id. *Check:* the inbox rule is stated in one sentence a reader can quote.\n- **R9. Message discipline.** States six rules from the evidence:\n1. **A crossed message.** When a message from an implementer crosses one the orchestrator sent, the orchestrator reads both in order and sends one message that settles the state; the implementer holds the safe reading until then.\n2. **Say it after it happened.** The orchestrator reports an action, or tells an implementer that something is done, only after the command ran and succeeded.\n3. **The clock.** The orchestrator reads the clock (a command) before it writes or sends any time. For a usage figure, it points at `usage.md` (\"The levels\") for the sample time and copies none of that rule.\n4. **Relay interfaces.** When an implementer reports an interface that another depends on, the orchestrator passes it to that implementer, and a part that needs an unmerged interface asks the orchestrator, not the other part.\n5. **Shell commands.** A worktree-isolated session refuses a compound shell command that names `git`; the orchestrator runs separate commands, or writes a script file in its scratchpad.\n6. **No `claude` process from an agent.** No agent that the orchestrator dispatches starts a `claude` process; only the launcher and `crew-usage.py` start one. *Check:* each of the six is stated.\n- **R10. Boundaries and shared things.** States rule 14 for a group of related items: a merge order (`group order`), one owner for each shared file or component (`group owner`), decided when the first message about that boundary arrives, after a read of what the shared thing does. States that a value that every PR in a group changes (for example a version number or a sequence number in a design doc) has one owner, the orchestrator, which assigns it to each PR in merge order when that PR is next to merge, and each later PR rebases. *Check:* \"decided at the first message\" and the merge-order assignment are both stated.\n- **R11. The overlap check and conflicting PRs.** States that before each merge decision the orchestrator lists the files that any two open PRs of a group share, and that PRs that conflict merge one at a time, in the order the check gives, with the next rebase started after each merge. The method: `gh pr diff <n> --name-only` for each open PR of the group, and the intersection of each pair. *Check:* \"before each merge decision\" and \"one at a time\" are stated, with that method.\n- **R12. The merge procedure.** States rule 7 as fixed checks that a command can pass or fail: the checks pass and the PR has no conflict; each finding of the reviews and of CI has a fix or a reply; each review thread is resolved; the approval that the repo requires is present, and where the repo requires none, the implementer's skeptical review is the approval. The record's merge value (`can merge`, `orchestrator-record.md`) is one input, not the whole procedure. The default merge method is rebase when the repo allows it, else the one method the repo allows. A `Merge` section of the standing instructions holds prose steps that replace the default procedure, for example \"post the PR link in a review channel and wait for a human approval, then use the merge queue\". The orchestrator reads it from the item's repo file (`.claude/crew.md` on the default branch) and the machine file, and `skills/project-lead/SKILL.md`'s \"Standing instructions\" order of sources decides. After the merge, the orchestrator tells the implementer. *Check:* each check names the command, the GitHub field or the record field that decides it. The implementer's one report line (\"fixed ..., declined ...\") is the evidence for \"fix or reply\" on a finding outside a thread. The `Merge` section is stated.\n- **R13. Concurrency.** States rule 3: at most three implementers work at one time by default; the principal's word or a `Concurrency` section of the machine file changes the number (concurrency is per orchestrator, so no repo file sets it). `pace.slots.max` holds it, except while `usage.md`'s slow-down rule lowers it. The number itself is in the plan: a change of it is a `plan change` with its reason, so it survives a slowed period. For \"a slot is not a brake\", it points at `usage.md`. *Check:* default, both sources of change, `pace.slots.max` and the plan entry are named; no usage figure or rule is copied.\n- **R14. The wait.** States rule 13: a wait costs no model turn. States what wakes the orchestrator — a cross-session message from an implementer, a PR or CI change it needs to act on, a usage level line, a message from the principal — and how each wake arrives with no polling turn. A message arrives on its own. A PR's state reaches the orchestrator through its implementer: the goal message tells the project lead to send one line when its PR is ready and when an approval or a merge-queue event needs the orchestrator. Before a merge decision the orchestrator runs `crew-orch.py refresh`. Where it must wait on GitHub with no implementer to tell it (for example a human approval), it may arm `Monitor` on a shell loop over existing commands that prints a line only on a change; no new script. A `Monitor` watch ends after at most 30 minutes. At the expiry of a GitHub watch the orchestrator runs `crew-orch.py refresh` once, acts on any change, and arms the watch again only while it still waits on that PR; the skill states this, and points at `usage.md`'s \"The watch\" for the usage watch. *Check:* every waker is named with its mechanism.\n- **R15. The board.** States when the orchestrator prints `crew-orch.py board`: at each change of state, in the transcript, while no board pane exists. The board pane is issue 155 and is not built; the skill says so without describing it as running. *Check:* no claim that a pane shows the board.\n- **R16. Usage.** States what the orchestrator does at a usage level, by pointing at `usage.md`'s \"The watch\", \"The slow-down rule\" and \"The limit\" for every action and value. It copies no threshold, exit code or command line from that file. *Check:* SKILL.md holds none of: the values `95` or `15` as a threshold, the exit codes `10` or `20`, the strings `sampled=` or `usage level=`.\n- **R17. The close of an item.** States what ends an item: the merge (and the ship word when the repo has a deploy), the message that tells the implementer, the implementer's closed run, and the stage the record holds. States what is not built yet (resume after a restart and the removal of worktrees, issue 156) without describing it as running. *Check:* the steps are named; issue 156's work is marked unbuilt.\n- **R18. The record.** States that the orchestrator's plan, plan changes with reasons, items, inbox and what each implementer was told live in the orchestrator record (rule 12), and points at `orchestrator-record.md` for every command. States that the orchestrator keeps no second copy in a scratchpad file. *Check:* no field table is copied.\n- **R19. One rule, one file.** SKILL.md restates no command line, file format, field, exit code, threshold or rule that `orchestrator-record.md`, `launcher.md`, `usage.md` or `autonomy-contract.md` owns. It names the command and points at the owner. `autonomy-contract.md` stays canonical for who a principal is and how a project lead escalates. *Check:* a read of SKILL.md beside each owner finds no copied table or rule text.\n\n### Other files\n\n- **R20. Standing instructions.** The `Merge` and `Concurrency` sections are listed in `skills/project-lead/SKILL.md`'s \"Standing instructions\" table, each with a pointer to the orchestrator SKILL.md as owner, as the `Checkouts` row points at `launcher.md`. After PR 159 the sentence above the table says \"Thirteen exist. The orchestrator reads `Checkouts` and `Usage limit`, and you act on the other eleven\". After this PR: fifteen exist, the orchestrator reads `Checkouts`, `Usage limit`, `Merge` and `Concurrency`, and the project lead acts on the other eleven. *Check:* both rows exist; the sentence names all four and the counts are right.\n- **R21. README.** `README.md` says how to start the orchestrator (`/crew:orchestrator`) and what it does, in the section that `.claude/rules/readme.md` assigns to a new command and to a new role, with no citation and no build record. `.claude/rules/readme.md` wins over the charter's words for README.md: the README shows the command (that is how it says the skill is built), and its existing \"crew is experimental\" sentence covers the rest. The \"no crew run has used it\" sentence goes to CLAUDE.md and design.md only. *Check:* `.claude/rules/readme.md`'s rules hold.\n- **R22. CLAUDE.md.** The Layout table has a row for SKILL.md; the Authority list names SKILL.md for what it owns; \"Build state\" says that the skill is built and that no crew run has used it except this build, and that the board pane (issue 155) and resume and close-out (issue 156) are not built. Where an existing sentence says the `crew:orchestrator` skill is not built, the edit replaces it rather than adds beside it. *Check:* each item is present.\n- **R23. design.md.** One new §15 entry, numbered with the placeholder `NNN` and a note that the orchestrator assigns the number, records the skill, each decision the skill makes that the issue left open, with its reason, and that no crew run has used it except this build. *Check:* the entry exists with the placeholder.\n- **R24. Version.** `version` in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` is the same placeholder string, `0.1.NNN-issue-154`. *Check:* the two values are equal and hold the placeholder.\n\n## Global constraints\n\n- The PR is read",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "README.md",
+        "hunks": 6
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new SKILL.md that is agent-executed instructions (merge procedure, authority, concurrency), and changes the config section table in project-lead SKILL.md, so it changes behavior.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "security",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/SKILL.md: 'The merge' table and merge procedure",
+        "skills/orchestrator/SKILL.md: 'The authority at the start'",
+        "skills/orchestrator/SKILL.md: 'Launch an implementer' commands and flags vs launcher.md/usage.md",
+        "skills/project-lead/SKILL.md: section count (Sixteen) and the new Merge/Concurrency/Implementer model rows",
+        "README.md: Merge, Concurrency, Implementer model section rows and orchestrator requirements",
+        "CLAUDE.md: duplicated-paragraph fix and the Layout table row"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "New 390-line skill. It defines the merge gating, the authority, the goal message and the concurrency. Check that every referenced command, field and section exists in the references."
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "Section count changed from thirteen to sixteen. It adds three rows, and the sentence about which sections the orchestrator reads and which the project lead acts on must stay consistent. The arithmetic needs checking: 5 orchestrator-read sections, plus 'the other eleven'."
+        },
+        {
+          "file": "README.md",
+          "note": "Documents the new entry point, a usage guide, the config sections and the model table."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Fixes a duplicated sentence fragment, adds a layout row and updates the status notes."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "Adds design entry 142 describing the decisions."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.109."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.109, matching plugin.json."
+        }
+      ],
+      "summary": "Adds the `crew:orchestrator` skill, a SKILL.md that runs many project-lead sessions. It splits the work, launches implementers, keeps an inbox, enforces merge checks and concurrency limits, and slows down near the usage limit. It also documents the skill in the README, CLAUDE.md and design §15.142, adds three config sections (`Merge`, `Concurrency`, `Implementer model`) to the project-lead section table, and bumps the plugin version to 0.1.109."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new SKILL.md that is agent-executed instructions (merge procedure, authority, concurrency), and changes the config section table in project-lead SKILL.md, so it changes behavior.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/SKILL.md",
+            "start_line": 306,
+            "end_line": 312,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The merge table copies field values of the record, such as `CLEAN`, `pass` and `null`, that orchestrator-record.md owns, and partly restates its merge value logic.",
+            "evidence": "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "suggested_fix": "Name the fields and point at orchestrator-record.md for their values and meaning.",
+            "explanation": "CLAUDE.md says a rule lives in exactly one file. orchestrator-record.md owns every field and the merge value, so this second copy can drift.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8686,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23216,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023311,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 730,
+              "cacheReadInputTokens": 35904,
+              "cacheCreationInputTokens": 31395,
+              "webSearchRequests": 0,
+              "costUSD": 0.2729568,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 289,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2752879
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9442,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23220,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023315000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 808,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 29748,
+              "webSearchRequests": 0,
+              "costUSD": 0.2547638,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 436,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.25709529999999997
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 12378,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23222,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023317,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 926,
+              "cacheReadInputTokens": 35813,
+              "cacheCreationInputTokens": 30540,
+              "webSearchRequests": 0,
+              "costUSD": 0.2700186,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 744,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2723503
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/SKILL.md",
+            "start_line": 319,
+            "end_line": 319,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Requiring `github.merge_state` to be exactly `CLEAN` can block a mergeable PR. GitHub can report such a PR as `UNSTABLE` or `HAS_HOOKS`.",
+            "evidence": "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "suggested_fix": "Accept CLEAN, HAS_HOOKS and UNSTABLE, and rely on the `github.checks` field for the state of the checks.",
+            "explanation": "GitHub sets mergeStateStatus to UNSTABLE when a check that is not required fails or is pending, and to HAS_HOOKS in some repos. The PR can still merge, but this check stops the orchestrator from merging it.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10771,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23208,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023303,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 928,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 29681,
+              "webSearchRequests": 0,
+              "costUSD": 0.2566278,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 408,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2589581
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10964,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23220,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023315000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 851,
+              "cacheReadInputTokens": 35818,
+              "cacheCreationInputTokens": 30264,
+              "webSearchRequests": 0,
+              "costUSD": 0.2663116,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 682,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.26864309999999997
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5926,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 32156,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032251,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 524,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 38751,
+              "webSearchRequests": 0,
+              "costUSD": 0.3211078,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 155,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3243329
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/SKILL.md",
+            "start_line": 312,
+            "end_line": 312,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "When the repo requires no review, the orchestrator merges on the implementer agent's own ready line, so no human approves the code before the merge.",
+            "evidence": "When it is `null`, the repo requires no approval, and the ready line for the current head is the approval",
+            "suggested_fix": "Require an explicit principal opt-in before the orchestrator auto-merges without a human approval.",
+            "explanation": "A `null` reviewDecision can also mean the branch has no protection, and in that case the agent's self-review alone permits the merge.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/SKILL.md",
+            "start_line": 323,
+            "end_line": 329,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A `Merge` section in the repo file can replace the merge steps with free prose, and that prose can weaken or skip the approval and review-thread checks.",
+            "evidence": "**A `Merge` section replaces the merge steps.** The section holds prose",
+            "suggested_fix": "State that the approval, review-thread and CI checks also stay when a `Merge` section is present.",
+            "explanation": "Only the group order, `waits_on` and the overlap check stay fixed, so repo-controlled text can drop the approval and review-thread checks.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9042,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23206,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023301000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 839,
+              "cacheReadInputTokens": 35895,
+              "cacheCreationInputTokens": 30267,
+              "webSearchRequests": 0,
+              "costUSD": 0.266111,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 187,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2684411
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/SKILL.md",
+            "start_line": 312,
+            "end_line": 312,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "When a repo requires no approval, the implementer's own ready line counts as the approval, so the orchestrator merges code that no human reviewed.",
+            "evidence": "When it is `null`, the repo requires no approval, and the ready line for the current head is the approval",
+            "suggested_fix": "When review_decision is null, put a notice in the principal's inbox and wait for the principal's word before the merge, unless a Merge section or an allow rule says that automatic merge is allowed.",
+            "explanation": "An agent's report on its own work stands in for an independent approval, so code that no person reviewed can merge with no human gate.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6613,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23220,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023315000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 576,
+              "cacheReadInputTokens": 42975,
+              "cacheCreationInputTokens": 23068,
+              "webSearchRequests": 0,
+              "costUSD": 0.204675,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 101,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.20700649999999998
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3142,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 23216,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0023311,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 216,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 30458,
+              "webSearchRequests": 0,
+              "costUSD": 0.24860379999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 55,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.25093489999999996
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/SKILL.md",
+          "start_line": 306,
+          "end_line": 312,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The merge table copies field values of the record, such as `CLEAN`, `pass` and `null`, that orchestrator-record.md owns, and partly restates its merge value logic.",
+          "evidence": "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+          "suggested_fix": "Name the fields and point at orchestrator-record.md for their values and meaning.",
+          "explanation": "CLAUDE.md says a rule lives in exactly one file. orchestrator-record.md owns every field and the merge value, so this second copy can drift.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |",
+            "A rule lives in exactly one file."
+          ],
+          "rationale": "The merge table repeats the field values (`pass`/`none`, `CLEAN`, `APPROVED`/`null`) that the record reference's `can merge` row already defines, so the claim is true. The effect is small: the spec asked each check to name its deciding field, and the table adds a check beyond the merge value (the ready line for the head).",
+          "score": 70,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |",
+            "| `can merge` | not a draft, the review decision is `APPROVED` or none, merge state `CLEAN`, checks `pass`, and no wait. GitHub gives an empty decision when the repo requires no review, and the record stores `null` |",
+            "A rule lives in exactly one file. Point at that file from anywhere else. A",
+            "second copy is worse than no copy, because nothing decides which copy wins."
+          ],
+          "rationale": "The new merge table lists record field values (`CLEAN`, `pass` or `none`, `false`, `APPROVED`/`null`, empty `waits_on`) that match the `can merge` definition owned by orchestrator-record.md. That breaks CLAUDE.md's one-rule-one-file rule and the PR's own R19 claim. The values agree today, so the cost is a risk of drift, not a wrong result now.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |",
+            "| `can merge` | not a draft, the review decision is `APPROVED` or none, merge state `CLEAN`, checks `pass`, and no wait. GitHub gives an empty decision when the repo requires no review, and the record stores `null` |",
+            "A rule lives in exactly one file. Point at that file from anywhere else. A",
+            "second copy is worse than no copy, because nothing decides which copy wins."
+          ],
+          "rationale": "The new merge table lists record field values (`CLEAN`, `pass` or `none`, `false`, `APPROVED`/`null`, empty `waits_on`) that match the `can merge` definition owned by orchestrator-record.md. That breaks CLAUDE.md's one-rule-one-file rule and the PR's own R19 claim. The values agree today, so the cost is a risk of drift, not a wrong result now.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/SKILL.md",
+          "start_line": 319,
+          "end_line": 319,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Requiring `github.merge_state` to be exactly `CLEAN` can block a mergeable PR. GitHub can report such a PR as `UNSTABLE` or `HAS_HOOKS`.",
+          "evidence": "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+          "suggested_fix": "Accept CLEAN, HAS_HOOKS and UNSTABLE, and rely on the `github.checks` field for the state of the checks.",
+          "explanation": "GitHub sets mergeStateStatus to UNSTABLE when a check that is not required fails or is pending, and to HAS_HOOKS in some repos. The PR can still merge, but this check stops the orchestrator from merging it.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |"
+          ],
+          "rationale": "The table does require `CLEAN`, so an `UNSTABLE` or `HAS_HOOKS` PR would not merge. But this matches the record owner's `can merge` rule and `crew-orch.py`, where `UNSTABLE` is deliberately classed as `blocked`. The same row already requires `github.checks` to be `pass` or `none`, so a PR with failing or pending checks is blocked either way. The strict rule is a conservative design choice. It is not a bug.",
+          "score": 35,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "    checks = gh.get(\"checks\")\n    checks_ok = checks in (\"pass\", \"none\")",
+            "        checks, failed = check_summary(info.get(\"statusCheckRollup\") or [])",
+            "| `can merge` | not a draft, the review decision is `APPROVED` or none, merge state `CLEAN`, checks `pass`, and no wait."
+          ],
+          "rationale": "The skill does require `CLEAN`, but `github.checks` is built from the whole `statusCheckRollup`. An `UNSTABLE` PR (a failing or pending check that is not required) already fails the `checks` test, so accepting `UNSTABLE` would change nothing; only `HAS_HOOKS` is a real gap, and it is rare (GitHub Enterprise pre-receive hooks), shows up as a PR that does not merge, and matches the existing `can merge` rule in crew-orch.py.",
+          "score": 50,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "    checks = gh.get(\"checks\")\n    checks_ok = checks in (\"pass\", \"none\")",
+            "        checks, failed = check_summary(info.get(\"statusCheckRollup\") or [])",
+            "| `can merge` | not a draft, the review decision is `APPROVED` or none, merge state `CLEAN`, checks `pass`, and no wait."
+          ],
+          "rationale": "The skill does require `CLEAN`, but `github.checks` is built from the whole `statusCheckRollup`. An `UNSTABLE` PR (a failing or pending check that is not required) already fails the `checks` test, so accepting `UNSTABLE` would change nothing; only `HAS_HOOKS` is a real gap, and it is rare (GitHub Enterprise pre-receive hooks), shows up as a PR that does not merge, and matches the existing `can merge` rule in crew-orch.py.",
+          "score": 50,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/SKILL.md",
+          "start_line": 312,
+          "end_line": 312,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "When a repo requires no approval, the implementer's own ready line counts as the approval, so the orchestrator merges code that no human reviewed.",
+          "evidence": "When it is `null`, the repo requires no approval, and the ready line for the current head is the approval",
+          "suggested_fix": "When review_decision is null, put a notice in the principal's inbox and wait for the principal's word before the merge, unless a Merge section or an allow rule says that automatic merge is allowed.",
+          "explanation": "An agent's report on its own work stands in for an independent approval, so code that no person reviewed can merge with no human gate.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When it is `null`, the repo requires no approval, and the ready line for the current head is the approval",
+            "A `Merge` section replaces the merge steps.",
+            "the charter line `Gate: off`;"
+          ],
+          "rationale": "The text does say the implementer's ready line counts as the approval when the repo requires none. That is the agreed design (rule 7 of issue 150, spec R12), not an oversight. The skill runs with `Gate: off`, and a repo or machine `Merge` section can add a human approval step. The finding is a disagreement with the design, not a defect.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |",
+            "The allow rules are the authority. Never ask the principal to confirm an\naction that an allow rule covers: mark a PR ready, push, rebase, force push a\nfeature branch with a lease, reply on a PR, or merge.",
+            "**A `Merge` section replaces the merge steps.** The section holds prose\nsteps, for example: \"post the PR link in a review channel and wait for a\nhuman approval, then use the merge queue\"."
+          ],
+          "rationale": "The text does treat the implementer's ready line as the approval when `review_decision` is null. The spec (R12) asks for exactly this. It applies only when the repo's own settings require no approval and an allow rule permits the merge. A `Merge` section can add a human gate, so this is a deliberate design choice, not a defect.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |",
+            "The allow rules are the authority. Never ask the principal to confirm an\naction that an allow rule covers: mark a PR ready, push, rebase, force push a\nfeature branch with a lease, reply on a PR, or merge.",
+            "**A `Merge` section replaces the merge steps.** The section holds prose\nsteps, for example: \"post the PR link in a review channel and wait for a\nhuman approval, then use the merge queue\"."
+          ],
+          "rationale": "The text does treat the implementer's ready line as the approval when `review_decision` is null. The spec (R12) asks for exactly this. It applies only when the repo's own settings require no approval and an allow rule permits the merge. A `Merge` section can add a human gate, so this is a deliberate design choice, not a defect.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/SKILL.md",
+          "start_line": 323,
+          "end_line": 329,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A `Merge` section in the repo file can replace the merge steps with free prose, and that prose can weaken or skip the approval and review-thread checks.",
+          "evidence": "**A `Merge` section replaces the merge steps.** The section holds prose",
+          "suggested_fix": "State that the approval, review-thread and CI checks also stay when a `Merge` section is present.",
+          "explanation": "Only the group order, `waits_on` and the overlap check stay fixed, so repo-controlled text can drop the approval and review-thread checks.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "**A `Merge` section replaces the merge steps.** The section holds prose",
+            "order, `waits_on` and the overlap check stay. A `Merge` section replaces none"
+          ],
+          "rationale": "The text says a `Merge` section replaces the merge steps. Only the group order, `waits_on` and the overlap check stay, so the approval and thread checks could be replaced. This is the intended design: the spec says the section replaces the default procedure, and the repo's standing-instructions file is configuration the principal controls. It is not an untrusted-input hole.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "**A `Merge` section replaces the merge steps.** The section holds prose",
+            "order, `waits_on` and the overlap check stay. A `Merge` section replaces none"
+          ],
+          "rationale": "The text says a `Merge` section replaces the merge steps. Only the group order, `waits_on` and the overlap check stay, so the approval and thread checks could be replaced. This is the intended design: the spec says the section replaces the default procedure, and the repo's standing-instructions file is configuration the principal controls. It is not an untrusted-input hole.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/SKILL.md",
+        "start_line": 306,
+        "end_line": 312,
+        "category": "convention",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The merge table copies field values of the record, such as `CLEAN`, `pass` and `null`, that orchestrator-record.md owns, and partly restates its merge value logic.",
+        "evidence": "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+        "suggested_fix": "Name the fields and point at orchestrator-record.md for their values and meaning.",
+        "explanation": "CLAUDE.md says a rule lives in exactly one file. orchestrator-record.md owns every field and the merge value, so this second copy can drift.",
+        "needs_context": true,
+        "fingerprint": "0235103031f9fc9a",
+        "severity": "suggestion",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |",
+            "| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |",
+            "| `can merge` | not a draft, the review decision is `APPROVED` or none, merge state `CLEAN`, checks `pass`, and no wait. GitHub gives an empty decision when the repo requires no review, and the record stores `null` |",
+            "A rule lives in exactly one file. Point at that file from anywhere else. A",
+            "second copy is worse than no copy, because nothing decides which copy wins."
+          ],
+          "rationale": "The new merge table lists record field values (`CLEAN`, `pass` or `none`, `false`, `APPROVED`/`null`, empty `waits_on`) that match the `can merge` definition owned by orchestrator-record.md. That breaks CLAUDE.md's one-rule-one-file rule and the PR's own R19 claim. The values agree today, so the cost is a risk of drift, not a wrong result now.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "span_text": "| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` | | No item waits before it | the record field `waits_on` is empty | | The PR is not a draft | the record field `github.is_draft` is `false` | | The ready line is for the current head | the sha of the implementer's newest ready line equals `headRefOid` of `gh pr view <n> --json headRefOid` | | Each finding of a review or of CI has a fix or a reply | that ready line names each finding outside a thread | | Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false` | | The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |"
+      }
+    ],
+    "github": {
+      "review_id": 5929765472,
+      "review_url": "https://github.com/jerridan/crew/pull/160#pullrequestreview-5929765472",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "0235103031f9fc9a",
+          "comment_id": 4593126353
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 133692237625
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6972,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15960,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.001609,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1017,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 15473,
+            "webSearchRequests": 0,
+            "costUSD": 0.0721922,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0738012
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8686,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23216,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023311,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 730,
+            "cacheReadInputTokens": 35904,
+            "cacheCreationInputTokens": 31395,
+            "webSearchRequests": 0,
+            "costUSD": 0.2729568,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 289,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2752879
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9442,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23220,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023315000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 808,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 29748,
+            "webSearchRequests": 0,
+            "costUSD": 0.2547638,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 436,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.25709529999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10771,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23208,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023303,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 928,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 29681,
+            "webSearchRequests": 0,
+            "costUSD": 0.2566278,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 408,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2589581
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10964,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23220,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023315000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 851,
+            "cacheReadInputTokens": 35818,
+            "cacheCreationInputTokens": 30264,
+            "webSearchRequests": 0,
+            "costUSD": 0.2663116,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 682,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.26864309999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12378,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23222,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023317,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 926,
+            "cacheReadInputTokens": 35813,
+            "cacheCreationInputTokens": 30540,
+            "webSearchRequests": 0,
+            "costUSD": 0.2700186,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 744,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2723503
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5926,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 32156,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032251,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 524,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 38751,
+            "webSearchRequests": 0,
+            "costUSD": 0.3211078,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 155,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3243329
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3142,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23216,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023311,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 216,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 30458,
+            "webSearchRequests": 0,
+            "costUSD": 0.24860379999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 55,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.25093489999999996
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6613,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23220,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023315000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 576,
+            "cacheReadInputTokens": 42975,
+            "cacheCreationInputTokens": 23068,
+            "webSearchRequests": 0,
+            "costUSD": 0.204675,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 101,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.20700649999999998
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9042,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23206,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023301000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 839,
+            "cacheReadInputTokens": 35895,
+            "cacheCreationInputTokens": 30267,
+            "webSearchRequests": 0,
+            "costUSD": 0.266111,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 187,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2684411
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7946,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23510,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023610000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1022,
+            "cacheReadInputTokens": 31757,
+            "cacheCreationInputTokens": 24158,
+            "webSearchRequests": 0,
+            "costUSD": 0.11003569999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 257,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11239669999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7030,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23564,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023699000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 832,
+            "cacheReadInputTokens": 31811,
+            "cacheCreationInputTokens": 25155,
+            "webSearchRequests": 0,
+            "costUSD": 0.11212910000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 271,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11449899999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4474,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23512,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023627,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 569,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 23025,
+            "webSearchRequests": 0,
+            "costUSD": 0.0982307,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 195,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1005934
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5222,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23487,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023587000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 638,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 23000,
+            "webSearchRequests": 0,
+            "costUSD": 0.0988207,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 272,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1011794
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7488,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23498,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023613,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 786,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 23003,
+            "webSearchRequests": 0,
+            "costUSD": 0.2006254,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 276,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.20298670000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12600,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23520,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023639999999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1439,
+            "cacheReadInputTokens": 59853,
+            "cacheCreationInputTokens": 25040,
+            "webSearchRequests": 0,
+            "costUSD": 0.2410946,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 355,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.24345860000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14154,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23586,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023691000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1450,
+            "cacheReadInputTokens": 61404,
+            "cacheCreationInputTokens": 25689,
+            "webSearchRequests": 0,
+            "costUSD": 0.2468168,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 658,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.24918590000000002
+      }
+    ],
+    "total_cost_usd": 3.5811509999999998,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 53,
+      "gather": 190,
+      "triage": 8112,
+      "find_verify": 39228,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

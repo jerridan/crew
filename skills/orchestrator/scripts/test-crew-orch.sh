@@ -234,6 +234,18 @@ expect_exit 0 orch refresh loner
 jcheck 's["items"]["loner"]["github"]["error"] is None'
 pass
 
+STEP="a new PR number clears the github values of the old PR"
+expect_exit 0 orch item loner pr 78
+jcheck 's["items"]["loner"]["github"] is None and s["items"]["loner"]["pr"]["number"] == 78'
+expect_exit 0 orch item loner pr 78
+jcheck 's["items"]["loner"]["github"] is None'
+expect_exit 0 orch item loner pr 77
+expect_exit 0 orch refresh loner
+jcheck 's["items"]["loner"]["merge"] == "can merge"'
+expect_exit 0 orch item loner pr 77
+jcheck 's["items"]["loner"]["github"] is not None'
+pass
+
 STEP="AC7 a failed check is ci failing"
 cat >"$TMP/gh/pr-893.json" <<'EOF'
 {"state": "OPEN", "isDraft": false, "reviewDecision": "APPROVED", "mergeStateStatus": "BLOCKED",

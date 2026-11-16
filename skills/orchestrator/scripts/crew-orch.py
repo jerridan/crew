@@ -447,9 +447,14 @@ def item_pr(rec: Record, item_id: str, ref: str) -> None:
         if url_match and url_match.group(1).lower() != item["repo"].lower():
             raise Usage(f"PR URL repo {url_match.group(1)} is not the item's repo {item['repo']}")
         if url_match:
-            item["pr"] = {"number": int(url_match.group(2)), "url": ref.rstrip("/")}
+            new = {"number": int(url_match.group(2)), "url": ref.rstrip("/")}
         else:
-            item["pr"] = {"number": int(ref), "url": f"https://github.com/{item['repo']}/pull/{ref}"}
+            new = {"number": int(ref), "url": f"https://github.com/{item['repo']}/pull/{ref}"}
+        # The GitHub values belong to one PR. A different PR starts with none,
+        # so the board shows the stage word until a refresh reads the new PR.
+        if (item.get("pr") or {}).get("number") != new["number"]:
+            item["github"] = None
+        item["pr"] = new
 
     rec.mutate(change)
 

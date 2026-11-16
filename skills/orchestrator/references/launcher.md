@@ -89,7 +89,15 @@ principal, to answer with one line, and to wait for the goal.
   selected. The session takes `<name>` as its name. With `--group`, the tab
   joins the open group of that name in that window, or starts a new group.
   When the helper fails, `osascript` opens the tab with no group, and one line
-  on stderr says why.
+  on stderr says why. The launcher never opens a second tab:
+  - The helper failed after it typed the command: the launcher reports the
+    helper's tab with no group, and one line on stderr says why. No fallback
+    runs.
+  - The helper failed before it typed the command: the helper closes its tab
+    first. When that close failed, the launcher closes the tab with
+    `osascript`. Then the fallback opens the only tab.
+  - That tab did not close: the command exits 6, and the line names the tab
+    and the worktree.
 
 **The output.** Stdout carries one line: one JSON object with exactly these
 nine fields.
@@ -156,7 +164,7 @@ check, the first in this order decides the exit: 2, 4, 3, 5, 6.
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal. The line names `$TERM_PROGRAM` and the supported terminals. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab |
-| 6 | the terminal step failed, and the `osascript` fallback too. The worktree stays, and the line names its path |
+| 6 | the terminal step failed. On tmux, the window did not open. On iTerm2, the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. The worktree stays, and the line names its path |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
 
 ## Test

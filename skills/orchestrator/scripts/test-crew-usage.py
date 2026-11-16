@@ -195,10 +195,10 @@ def wrapper_command(cwd=PROJ):
     return json.loads(r.stdout)["statusLine"]["command"]
 
 
-def run_wrapper(stdin, cwd=PROJ, **extra):
+def run_wrapper(stdin, cwd=PROJ, timeout=60, **extra):
     cmd = wrapper_command(cwd)
     return subprocess.run(["sh", "-c", cmd], input=stdin.encode(), capture_output=True,
-                          env=env(**extra), cwd=cwd, timeout=60)
+                          env=env(**extra), cwd=cwd, timeout=timeout)
 
 
 # ---------------------------------------------------------------- R1
@@ -339,6 +339,20 @@ def t_r2():
     check("R2 a local settings status line wins over the user one", r.stdout == b"local-line\n")
     os.remove(PROJ_LOCAL)
     base.pop(PROJ_LOCAL, None)
+
+    clean()
+    write_user_status(wrapper_command(), padding=3)
+    try:
+        r = run_wrapper(stdin, timeout=10)
+        ok = (r.returncode == 0 and r.stdout == b""
+              and load()["five_hour"]["used_pct"] == 17)
+    except subprocess.TimeoutExpired:
+        ok = False
+    check("R2 a user status line that is the wrapper itself ends at once, records and prints nothing",
+          ok)
+    sl = json.loads(run(["settings", "--cwd", PROJ]).stdout)["statusLine"]
+    check("R2 settings copies no option from a status line that is the wrapper itself",
+          "padding" not in sl)
 
     write_user_status("echo x", padding=2, refreshInterval=7)
     r = run(["settings", "--cwd", PROJ])

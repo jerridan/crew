@@ -1,0 +1,2586 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 161,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Show the orchestrator's board in a pane, from one board --json source",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/161"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "55e7e89707a8b3fc8ca3c8d410745f868a5546fc",
+    "head": "3d872356206dec292d0787e506a3c59e6e40da78",
+    "started_at": "2026-11-16T23:37:39.661Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Show the orchestrator's board in a pane, from one board --json source\n\n## Summary\n\nAn orchestrator session can now show its board in a pane that stays current by itself. The new `/orch-board <name>` command opens the pane: plan usage first, then what needs the principal, then each group of items in merge order, then the single items. A row number and Enter brings that implementer's tab to the front, and a new item for the principal shows a toast. The board's content now has one source, `crew-orch.py board --json`, and both the text board and the pane draw from it, so the two cannot show different values.\n\nCloses #155\n\n**Ticket:** [#155 — crew:orchestrator: the board pane](https://github.com/jerridan/crew/issues/155)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/orchestrator-record.md` \"The board\" owns the board, its JSON shape, its version rule and `CREW_ORCH_NOW`.\n- `skills/orchestrator/references/launcher.md` owns `launcher.py focus <handle>`, which the pane runs.\n- `skills/orchestrator/references/usage.md` owns `crew-usage.py show --json`, which the Plan block reads.\n- `docs/design.md` §15.TBD records the decisions. Issue #150 holds the agreed layout.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-orch.py`: `board --json` prints the board as one object (`board_data`); the text `board` draws from that object (`render_text`); a single item's row shows its own ticket; `CREW_ORCH_NOW` pins the time that `board` reads, for tests.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: checks the JSON shape and values, no write, one place per derived value, the text output against `origin/main` on a day-old record, the single item ticket, and the committed fixtures against a fresh run.\n- `skills/orchestrator/references/orchestrator-record.md`: \"The board\" documents the JSON fields, the version and compatibility rule, the single item ticket and `CREW_ORCH_NOW`.\n- `hooks/orch-board.tsx`: the board pane mod. `/orch-board [<name>]` (else `$CREW_ORCH`) opens the pane; it runs `board --json` every 5 s while open, draws it, toasts new Needs-you ids, and runs `launcher.py focus` for a typed row number. It computes no board value and writes no file.\n- `types/index.d.ts`: the board JSON types and the mod's `$.state` contract.\n- `tests/orch-board.test.tsx`, `tests/fixtures/board-json.ts`, `tests/fixtures/board-text.ts`: 22 mod tests with a stub board command and a stub launcher; the fixtures that `test-crew-orch.sh` keeps current.\n- `hooks/hooks.json`: `modules` names the mod beside the existing hooks.\n- `.claude-plugin/plugin.json`: `types` names the types file. `version` in both manifests is the placeholder `0.1.TBD`, for the orchestrator to set.\n- `CLAUDE.md`, `README.md`, `docs/design.md`: the Layout rows and Build state, the `/orch-board` command, and finding §15.TBD.\n\n### Constraints that applied\n\n- One definition of the board: every value is made in `board_data`; the text view and the pane only draw. A test greps for each derived value in one place.\n- The text `board` output is byte for byte as on main, except the single item ticket the principal asked for.\n- The pane reads no record file and writes no file; its kept state is `$.state`.\n- No test starts `claude` with the user's plugins: `claude plugin test` and `claude plugin validate` ran with `CLAUDE_CONFIG_DIR` set to a new empty directory. No test opens a tab.\n- `skills/orchestrator/SKILL.md` is not created (issue #154). The version and the §15 number are placeholders.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: \"all checks passed\". At the red commit f85fc30 it failed with \"unknown option --json\".\n- `CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin test .`: 22 pass, 0 fail, including the test that renders the JSON fixture at 200 columns and finds the same sections, rows and cells as the text fixture.\n- `CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin validate .`: passed; its three warnings (marketplace description, root CLAUDE.md, icon) were on main before.\n- The project lead read the whole diff of `crew-orch.py` and the mod against the spec.\n\n### Known gaps\n\n- No session has opened the pane yet. The key, the toast and the narrow layout ran only in the test kit.\n- The test kit cannot raise a pane close, so the stop of the timer on close is tested through the open-pane list.\n- `CLAUDE.md` is 280 lines, above the 200-line target; it was 270 before this change.\n\n<details><summary>spec.md</summary>\n\n# Spec: the board pane (jerridan/crew#155)\n\nPart of #150. Repo: `/Users/jerridan/src/crew/.claude/worktrees/orch-board`.\nLayout source: issue #150, \"The agreed board layout\". Outcome list: issue #155.\n\nTerms. The **text view** is the output of `crew-orch.py board`. The **JSON view** is the output of `crew-orch.py board --json`. The **mod** is a Claude Code hooks module of this plugin. The **pane** is what the mod draws. The **board data** is the JSON view.\n\n## Requirements\n\nEach requirement has one acceptance criterion (AC). A command or a checklist line can fail each AC.\n\n### The board data\n\n**R1. `board --json` prints the board as one JSON object.**\n`board --json` prints one JSON object on stdout, and nothing else, then exits 0. The object is the one definition of the board content: the section order, the group order, the row order, the five marks, the status word, the row text, every age, the Needs-you list, the Done count, the footer legend and the Plan figures. Each value that the text view prints today is in the object, formatted as the text view shows it (for example the age `12m`, the status word and the marks string `●●●●◐`). The object also holds what a pane needs and the text view does not print: the PR URL, the item id and `n`, the ticket id and URL, and the `launch.tab` handle of the item (or `null`). The command reads the record alone, as `board` does, and never writes it. The strings in the object follow the same cleaning as the text view. The object holds no OSC 8 sequence.\nAC: For one seeded record, `board --json | python3 -c 'import json,sys; json.load(sys.stdin)'` exits 0. A listing of the record files before and after the command is the same, and the bytes of every file are the same. A check of each field in \"The board JSON\" below finds the field, with the type that the table gives.\n\n**R2. The text view draws from the JSON view data.**\nPlain `board` and `board --urls` draw their text from the same data that `--json` prints. No derived value is computed in two places in `crew-orch.py`. The output of `board` and `board --urls` for any record is byte for byte the output on `main`, except for the change in R3.\nThe test pins the clock and the time zone (R16), so two runs give the same ages and clock text.\nAC: Every existing `board` assertion in `test-crew-orch.sh` passes with no edit, except the assertions R3 names. One extra check seeds a record whose every time is more than a day old (each age in days, each reset a weekday), runs `board` and `board --urls` from this branch and from the `main` commit (`git show <main>:skills/orchestrator/scripts/crew-orch.py` into a temporary file), and finds the two outputs equal except the lines R3 changes. A search of `crew-orch.py` finds each derived value (the age, the marks, the status word, the row text, the merge counts, the Plan percent, the meter and the clock text) computed in one place only.\n\n**R3. A single item's row shows its own ticket.**\nThe row of a single item (an item that is in no open group) shows its own ticket. The ticket is the item ticket id, linked to the ticket URL in the same way as a group ticket (an OSC 8 link on a terminal; plain text otherwise). The ticket cell follows the PR cell, with two spaces between them. A single item with no ticket shows an empty cell. The row of a grouped item shows no ticket, because the group heading shows it. The width of the ticket cell is the width of the widest ticket id among the single items. The Single items section has the ticket cell only when at least one single item has a ticket. Every row of a group is byte for byte the row on `main`. `--urls` lists the ticket of each single item in its `Links` list, in the order that the rows show them. The text \"The board shows a group's ticket only\" in `orchestrator-record.md` changes with this requirement. The assertion in `test-crew-orch.sh` that an item ticket is absent from `Links` changes with it.\nAC: In a seeded record with one grouped item that has a ticket and one single item that has a ticket, `board` prints the single item's ticket id in its row and prints no ticket id in the grouped item's row. `board --urls` lists the single item's ticket and its URL in `Links`, and does not list the grouped item's ticket. The grouped rows equal the `main` output byte for byte. A search of `orchestrator-record.md` finds no sentence that says only a group's ticket shows on the board.\n\n**R4. The shape is documented, with a version.**\nThe section \"The board\" of `skills/orchestrator/references/orchestrator-record.md` documents the JSON shape. That section stays the one owner of the board. The shape has a `version` field, an integer, which is `1` in this change. The section states the compatibility rule: a reader ignores a field it does not know; a new field does not change `version`; the removal of a field, or a change of what a field means, does. The section says that the resume part (#156) reads the same data. The description is a table of fields. It is not a dump of an example with every value.\nAC: A search of the section finds a field table that names every field in \"The board JSON\" below, the `version` field, and the compatibility rule. The section holds no JSON example longer than 20 lines. No other file defines the shape: a search of `skills/`, `docs/`, `README.md` and `CLAUDE.md` for the distinctive field names `needs_you` and `launch_tab` finds them only in that section and in the code, types and tests that use them.\n\n### The mod\n\n**R5. The pane draws the JSON view and computes nothing.**\nThe mod shows the board in a pane of the orchestrator session. It gets the board only by running `python3 <plugin root>/skills/orchestrator/scripts/crew-orch.py --orch <name> board --json`, and it draws that data. The mod computes no board value: no merge value, no stage, no marks, no status word, no age, no order and no count. It does only presentation: column widths, truncation, colour, links and keys. The JSON owns the sections, every order and every cell value. The cell order of a row and the shape of a heading follow `orchestrator-record.md`'s \"The board\", the same as the text view. The mod may set widths, truncation, colour, links and keys, and nothing else.\nAC: A test gives the mod a stub board JSON whose values differ from what the record rules would give (for example a status word `custom word` and an order that is not the merge order). The pane shows those values, in that order. A review of the mod source finds no read of `orchestrator.json` and no call to a command of `crew-orch.py` other than `board --json`.\n\n**R6. The pane stays current with no model turn.**\nThe pane runs the command in R5 again on a timer, every 5 seconds while the pane is open. It does not stat or read any record file: it does not know the record path. The pane redraws when a value in the new data differs from the old data, which includes an age that changes with the clock. The pane needs no model turn to do this.\nAC: A test with a fake clock and a stub command that returns data A, then data B with a changed age, finds the pane showing A, then B, after 5 seconds, with no other input. After the pane closes, the stub runs no more.\n\n**R7. The layout follows #150.**\nFrom the top, the pane shows:\n1. The Plan section, when the board data has a `plan` that is not `null`. For each window in `plan.windows`: the label, a meter as a bar, the percent, the reset time, and the full-at forecast when the data has one. The `plan.word` shows on the 5h line, or on its own line when `plan.windows` is empty. The pane shows no meter when `plan.windows` is empty, and no Plan section when `plan` is `null`.\n2. `Needs you <count>`. Each entry has the id, the kind, the age, the item and the text, oldest first. An entry with a `recommend` text has a `Recommended:` line under it.\n3. One section for each open group, in the order of the data. The heading has the title, the ticket link, the repo and `<merged> of <total> merged`.\n4. The `Single items` section.\n5. The footer: the Done count, the key hint (`type a number and Enter to go to the tab`), and the stage legend.\nThe order of sections, of groups, and of rows inside a section is the order of the data. The pane does not sort.\nAC: A test renders a seeded board JSON that has a Plan, two Needs-you entries (one with `recommend`), two groups and two single items. It checks the order of the sections and the rows in the rendered text. A second test renders data with `plan: null`, and the rendered text has no `Plan` line and no meter. A third test renders data with `plan.windows` empty and a `plan.word`, and the text has the word and no meter.\n\n**R8. Links.**\nThe PR number is a link to the PR URL. The ticket is a link to its URL, whatever kind of URL it is (Linear, a GitHub issue or a file URL of the repo). A PR or ticket with no URL is plain text.\nAC: A test renders data with a PR URL, a ticket URL, and a ticket with `url: null`. The rendered cells for the first two carry the link target. The third is plain text.\n\n**R9. A key on a row brings the implementer's tab to the front.**\nIn the focused pane, the person types the row's `n` and presses Enter. That runs `python3 <plugin root>/skills/orchestrator/scripts/launcher.py focus <launch.tab>`, where the handle is the `launch_tab` of the row. A row with no handle runs nothing, and the pane shows one line that says the row has no tab. `skills/orchestrator/references/launcher.md` owns the command. The mod restates no exit code of it beyond what the pane shows. The pane shows a non-zero exit of the command as one line with the exit code.\nAC: A test stubs the launcher. Typing `3` and Enter, where row 3 has handle `H`, runs the stub with the arguments `focus H` and no others. Typing a number of a row with `launch_tab: null` and Enter runs the stub zero times, and the pane shows the no-tab line. Typing `12` and Enter selects row 12, not row 1. A number that no row has runs nothing and shows one line.\n\n**R10. A new Needs-you entry shows a toast once.**\nThe pane shows one toast for an entry id that it has not seen before in the session. The first read after the pane opens shows no toast for an entry that is already there. A reload of the mod does not toast again for an id that it already toasted. The mod keeps the seen ids in the mod API's own state (`$.state` or `$.store`), never in a file.\nAC: A test reads data with entries `d1`, `q2` and checks that no toast shows. The next read adds `q3`, and exactly one toast shows, for `q3`. A third read of the same data shows no toast. After a reload of the mod, a read of the same data shows no toast.\n\n**R11. A narrow terminal.**\nAt a narrow width, the pane stays usable. Every row keeps its `n`, its id, its status word and its PR, each on one line. The row text and the long fields truncate first. The mod defines the breakpoint or breakpoints, and the tests name them.\nAC: A test renders the seeded data at width 40 and at width 60 (or at the widths the mod defines). Each row is one line. Each row still contains its `n`, id, status word and PR number. The row text is the part that is shortened.\n\n**R12. The pane never writes.**\nThe pane never writes the orchestrator record, and it never writes any file. Its only kept state is the mod API's `$.state` or `$.store`.\nAC: A test runs the pane with a stub command and a spy on file writes. The spy finds no write to a path under the record root or to `orchestrator.json`. A review of the mod source finds no write call to a file.\n\n**R13. How the pane opens.**\nThe mod registers one slash command, named `orch-board`, that opens the pane. The command takes the orchestrator name as its argument. With no argument, it uses `$CREW_ORCH`. With neither, the pane shows one line that says the name is missing, and runs no command. The mod names the command in its registration, and the same name is in the README. The skill `skills/orchestrator/SKILL.md` (issue #154) says when to open it. This change does not create or edit that file. The project lead reports the lines for it to the principal.\nAC: A test starts the pane with an argument `x`, and the stub command receives `--orch x`. A test with no argument and `CREW_ORCH=y` receives `--orch y`. A test with neither runs the stub zero times and shows the missing-name line. `git diff main --stat` shows no change to `skills/orchestrator/SKILL.md`.\n\n### Tests, manifests and docs\n\n**R14. Tests.**\n`test-crew-orch.sh` covers `board --json`: the shape, the values, the equality with the text view for a seeded record (the same sections, the same rows in the same order, and the same `n`, id, marks, status word, PR, ticket, text and age in each row), and a single item's ticket. The mod has a test file under `tests/`, run by `claude plugin test`, as the removed review-board mod had (`git show 2b7e2e2^:tests/review-board.test.tsx`). The mod tests cover every requirement above that a test can reach: Plan present and absent, the sections and the order as the JSON gives them, links, the command of the focus key, the toast once, the narrow layout and no write. The tests stub the launcher and the board command.\nAC: `bash skills/orchestrator/scripts/test-crew-orch.sh` exits 0. `claude plugin test` on this checkout exits 0 with every mod test passed, run as Global constraints says. `claude plugin validate` on this checkout reports no error. The mod test file has at least one test that names each of R5 to R13 that a test can reach. A checklist line in the PR body lists each of R5 to R13 that has no test, with the reason.\n\n**R15. Manifests and docs.**\nThe change does these things in the same PR:\n- `hooks/hooks.json` lists the mod in `modules`, beside the existing `hooks`.\n- `.claude-plugin/plugin.json` has a `types` entry if the mod uses a types file.\n- `version` in `.claude-plugin/plugin.json` and in `.claude-plugin/marketplace.json` is the placeholder `0.1.TBD` in both. The PR body says so.\n- `CLAUDE.md` has the mod in its Layout table and its Build state. The Build state says the mod is built and which parts a run has exercised, and no more.\n- `README.md` has the new slash command, in the section that `.claude/rules/readme.md` names for a new command, with no citation.\n- `docs/design.md` §15 has one new finding, numbered `§15.TBD`.\nAC: A diff of the two manifests shows the same `version`, `0.1.TBD`. `jq '.modules' hooks/hooks.json` names the mod file, and `jq '.hooks | keys' hooks/hooks.json` still names `SessionEnd` and `PreCompact`. `jq '.types' .claude-plugin/plugin.json` names the types file when the mod has one. `CLAUDE.md`'s Layout table has a row for the mod, its types file and its tests. `grep -n 'TBD' docs/design.md` finds `§15.TBD`. A search of `README.md` finds the slash command, and finds no `§`.\n\n**R16. The pane and the text view show the same board for one seeded record.**\n`crew-orch.py` reads the current time from one place. A test can pin it with the environment variable `CREW_ORCH_NOW` (epoch seconds), and the test sets `TZ` too. `orchestrator-record.md` names the variable as test-only. The variable changes only the time that `board` reads. Every write still stamps the real time. `test-crew-orch.sh` seeds one record that has every kind of row: a Plan with figures (from a stub `crew-usage.py`), Needs-you entries with and without `recommend`, a group with a merged item and open items, single items with and without a ticket, and a row with no PR. Two fixture files are committed under `tests/fixtures/`: the `board --json` output of that record at the pinned time, and its ",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/hooks.json",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/orch-board.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 3
+      },
+      {
+        "path": "tests/fixtures/board-json.ts",
+        "hunks": 1
+      },
+      {
+        "path": "tests/fixtures/board-text.ts",
+        "hunks": 1
+      },
+      {
+        "path": "tests/orch-board.test.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "types/index.d.ts",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new plugin mod with timers, process execution and state, refactors crew-orch.py board logic into a JSON data layer and a text renderer, changes the public JSON interface and plugin config, and sets version strings to a placeholder.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs",
+        "convention",
+        "other"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-orch.py: board_data, render_text, board_now (CREW_ORCH_NOW changes age and clock); the text output must stay the same as before apart from the new ticket cell",
+        "hooks/orch-board.tsx: refresh, tick and ensureTimer (timer lifecycle, busy flag, toast and seen logic), focusRow (runs launcher.py with the launch_tab value)",
+        "hooks/hooks.json: new modules entry",
+        "hooks/orch-board.tsx: layout() column-width and truncation arithmetic",
+        "skills/orchestrator/scripts/test-crew-orch.sh: R2 comparison against origin/main, the fixture-match check, and the single-definition grep assertions that can be brittle",
+        "skills/orchestrator/scripts/crew-orch.py: cmd_board option handling (--json together with --urls)",
+        ".claude-plugin/plugin.json and marketplace.json: version set to the placeholder '0.1.TBD' and a new 'types' key"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version changed from 0.1.108 to the placeholder 0.1.TBD; check that this is intended and does not break version parsing"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version changed to the placeholder 0.1.TBD; adds a types field"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs and layout table for the new mod and its tests"
+        },
+        {
+          "file": "README.md",
+          "note": "user docs for /orch-board"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "design entry with the section number TBD"
+        },
+        {
+          "file": "hooks/hooks.json",
+          "note": "registers the new mod in modules"
+        },
+        {
+          "file": "hooks/orch-board.tsx",
+          "note": "new mod: command, pane, 5s poll, toasts, focus key; runs subprocesses"
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "documents the board JSON schema, the compatibility rule and CREW_ORCH_NOW"
+        },
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "refactor: board_data builds the data and render_text draws it; adds --json, CREW_ORCH_NOW and a ticket cell on single-item rows; removes plan_lines"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "large new test section, including a comparison with origin/main and fixture generation"
+        },
+        {
+          "file": "tests/fixtures/board-json.ts",
+          "note": "generated fixture; must match a fresh run of the test script"
+        },
+        {
+          "file": "tests/fixtures/board-text.ts",
+          "note": "generated fixture; must match a fresh run of the test script"
+        },
+        {
+          "file": "tests/orch-board.test.tsx",
+          "note": "new tests of the mod, with a stubbed process.run"
+        },
+        {
+          "file": "types/index.d.ts",
+          "note": "new types for the board JSON and the state of the mod"
+        }
+      ],
+      "summary": "Adds `crew-orch.py board --json`, which makes one data object the only source of the board. The text view is now drawn from that object, and a single item's row shows its own ticket. Adds a pane mod, `hooks/orch-board.tsx`, that polls the command every 5 seconds, toasts new Needs-you entries and focuses a row's tab through launcher.py. Also adds the types, fixtures, tests, docs, a `CREW_ORCH_NOW` time override and placeholder version strings."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new plugin mod with timers, process execution and state, refactors crew-orch.py board logic into a JSON data layer and a text renderer, changes the public JSON interface and plugin config, and sets version strings to a placeholder.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The plugin version is set to the placeholder `0.1.TBD` instead of a bumped release version.",
+            "evidence": "\"version\": \"0.1.TBD\",",
+            "suggested_fix": "Set both manifests to 0.1.109 (or the next free number) before merge.",
+            "explanation": "CLAUDE.md says a change to what the plugin loads bumps `version` in both manifests; `0.1.TBD` is not a real version and would ship as such if merged unchanged.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5389,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55975,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.005609,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 497,
+              "cacheReadInputTokens": 10124,
+              "cacheCreationInputTokens": 55481,
+              "webSearchRequests": 0,
+              "costUSD": 0.4558208,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 152,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4614298
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1139,
+            "end_line": 1141,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The description says the text board output is byte for byte as on main except the single item ticket, but the output differs when usage figures exist with no 5h or 7d window.",
+            "evidence": "    if plan and not plan[\"windows\"]:\n        out += [f\" {plan['word']}\", \"\"]",
+            "suggested_fix": "In plan_data, return None when figures exist but give no windows and there is no word, or keep main's output for that case.",
+            "explanation": "main's plan_lines printed only an empty line when figures existed with no windows; the new code prints a ' <word>' line and an empty line instead.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9795,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55977,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0056087,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 854,
+              "cacheReadInputTokens": 10082,
+              "cacheCreationInputTokens": 55483,
+              "webSearchRequests": 0,
+              "costUSD": 0.4629684,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 292,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4685771
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The version is set to the placeholder \"0.1.TBD\", which is not valid semver, so the plugin loader or marketplace may reject it or fail to compare it if it merges as is.",
+            "evidence": "\"version\": \"0.1.TBD\",",
+            "suggested_fix": "Set both manifests to the next real version, 0.1.109, before merge.",
+            "explanation": "The plugin version string needs to be a real release number for update checks to work.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9769,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55977,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0056062,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 810,
+              "cacheReadInputTokens": 10027,
+              "cacheCreationInputTokens": 55483,
+              "webSearchRequests": 0,
+              "costUSD": 0.46207739999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 494,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4676836
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1038,
+            "end_line": 1056,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "When `crew-usage.py` returns figures but neither window is present, `plan_data` returns `{\"windows\": [], \"word\": word}` even when `word` is empty, so the text view prints a stray \" \" line, which `main` does not print.",
+            "evidence": "    if plan and not plan[\"windows\"]:\n        out += [f\" {plan['word']}\", \"\"]",
+            "suggested_fix": "In `plan_data`, return `None` when `windows` is empty and `word` is empty. In `render_text`, handle a plan with no windows the way `main` handled it.",
+            "explanation": "On `main`, a board with figures but no windows printed only a blank line, and it never printed the pace word on its own line. The new path prints \" <word>\" (or a lone space when the word is empty), so the text no longer matches `main`. The JSON also gets a non-null `plan`, although the doc says `plan` is `null` when the board has no Plan block and no pace word.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9957,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55979,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0056094000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 897,
+              "cacheReadInputTokens": 10027,
+              "cacheCreationInputTokens": 55485,
+              "webSearchRequests": 0,
+              "costUSD": 0.4638334,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 410,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4694428
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "tests/orch-board.test.tsx",
+            "start_line": 625,
+            "end_line": 626,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The comment says the text fixture's leading space is cut, but the code only splits on newlines.",
+            "evidence": "// The text fixture's lines, with the leading space of the text view cut.",
+            "suggested_fix": "Remove the words \"with the leading space of the text view cut\".",
+            "explanation": "The lines keep their leading space, and the tests match `^ Needs you`, so the comment is wrong.",
+            "needs_context": false
+          },
+          {
+            "file": "CLAUDE.md",
+            "start_line": 46,
+            "end_line": 46,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The Layout row for hooks/hooks.json describes only the two hooks, but the file now also lists the orch-board mod in `modules`.",
+            "evidence": "| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |",
+            "suggested_fix": "Add to the row that `modules` in hooks.json names `orch-board.tsx`.",
+            "explanation": "hooks.json now also loads the mod through `modules`, and this row does not say so.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10861,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55983,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0056093,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1094,
+              "cacheReadInputTokens": 10034,
+              "cacheCreationInputTokens": 55489,
+              "webSearchRequests": 0,
+              "costUSD": 0.46780679999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 325,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.47341609999999995
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5921,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 70818,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.007093300000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 549,
+              "cacheReadInputTokens": 10149,
+              "cacheCreationInputTokens": 70324,
+              "webSearchRequests": 0,
+              "costUSD": 0.5756098,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 237,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.5827030999999999
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "hooks/orch-board.tsx",
+            "start_line": 341,
+            "end_line": 349,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The pane makes clickable links from PR and ticket URLs in the record and does not check their scheme.",
+            "evidence": "<Link href={url}>{fit(label, width)}</Link>",
+            "suggested_fix": "Make a link only for http and https URLs, and show any other URL as plain text.",
+            "explanation": "A ticket URL that someone else controls (for example `file:` or a custom scheme) becomes a link that the principal can click.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8488,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55983,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0056093,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 680,
+              "cacheReadInputTokens": 10125,
+              "cacheCreationInputTokens": 55489,
+              "webSearchRequests": 0,
+              "costUSD": 0.459545,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 118,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.46515429999999997
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "hooks/orch-board.tsx",
+            "start_line": 238,
+            "end_line": 243,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The pane passes the stored launch_tab value to launcher.py without checking its form, so a value that starts with '-' is read as an option.",
+            "evidence": "      'focus',\n      row.launch_tab,",
+            "suggested_fix": "Put '--' before the handle, or check the handle against the documented tmux:/iterm2: forms.",
+            "explanation": "launch_tab comes from record data, and the pane does not check what it holds before it puts the value on the launcher's argv.",
+            "needs_context": true
+          },
+          {
+            "file": "hooks/orch-board.tsx",
+            "start_line": 306,
+            "end_line": 307,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The pane renders PR and ticket URLs as Link hrefs and does not check their scheme.",
+            "evidence": "<Link href={url}>{fit(label, width)}</Link>",
+            "suggested_fix": "Make a Link only for an http or https URL. Show any other URL as plain text.",
+            "explanation": "A URL in the record can use any scheme, for example file: or javascript:, and the pane makes it a clickable link.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7515,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55993,
+              "outputTokens": 22,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0056103,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 565,
+              "cacheReadInputTokens": 10125,
+              "cacheCreationInputTokens": 55499,
+              "webSearchRequests": 0,
+              "costUSD": 0.457325,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 96,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4629353
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+            "start_line": 574,
+            "end_line": 886,
+            "category": "test",
+            "severity_estimate": "blocking",
+            "confidence": "high",
+            "claim": "After this PR merges, the R2 step fails: origin/main then has the single-item ticket cell, so the two outputs are the same.",
+            "evidence": "cmp -s \"$TMP/main.out\" \"$TMP/this.out\" && fail \"a single item ticket does not change the board\"",
+            "suggested_fix": "Pin the reference to the commit before this change (the base SHA), or assert the expected text of the ticket cell directly and drop the origin/main comparison.",
+            "explanation": "The test compares against a moving branch. When main holds this change, the outputs match, the check fails, and every later run of the suite breaks.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+            "start_line": 890,
+            "end_line": 910,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The 'one place' check greps the source for function definitions and for counts of `time.time()` and `datetime.now(`, so it asserts internals and not behaviour.",
+            "evidence": "    assert len(re.findall(rf\"^def {name}\\(\", src, re.M)) == 1, (name, \"is not defined once\")",
+            "suggested_fix": "Rely on the same_board.py and fixture equality checks, which compare the text view with the JSON view, and drop the source greps.",
+            "explanation": "A rename or a refactor that keeps the behaviour breaks this check, and a second copy of the logic under a different name still passes it.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 16001,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 55979,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0056094000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1306,
+              "cacheReadInputTokens": 77077,
+              "cacheCreationInputTokens": 56316,
+              "webSearchRequests": 0,
+              "costUSD": 0.4920794,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 495,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4976888
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The plugin version is set to the placeholder `0.1.TBD` instead of a bumped release version.",
+          "evidence": "\"version\": \"0.1.TBD\",",
+          "suggested_fix": "Set both manifests to 0.1.109 (or the next free number) before merge.",
+          "explanation": "CLAUDE.md says a change to what the plugin loads bumps `version` in both manifests; `0.1.TBD` is not a real version and would ship as such if merged unchanged.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.TBD\","
+          ],
+          "rationale": "The version is the literal placeholder `0.1.TBD`. The PR description and spec say this is deliberate, for the orchestrator to assign at merge. Earlier commits in the history (e.g. `TBD-152`) did the same, so the finding restates a known, documented process step.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.TBD\",",
+            "manifests — bumps `version` in both `.claude-plugin/plugin.json` and"
+          ],
+          "rationale": "The manifest does hold the placeholder `0.1.TBD`. The PR description and spec R15 say this is on purpose: the orchestrator sets the real number. The git history shows the same pattern before (commit f8fa140 set a placeholder, then 993745d set 0.1.107), so the finding only repeats a known step of the process.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.TBD\",",
+            "manifests — bumps `version` in both `.claude-plugin/plugin.json` and"
+          ],
+          "rationale": "The manifest does hold the placeholder `0.1.TBD`. The PR description and spec R15 say this is on purpose: the orchestrator sets the real number. The git history shows the same pattern before (commit f8fa140 set a placeholder, then 993745d set 0.1.107), so the finding only repeats a known step of the process.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1038,
+          "end_line": 1056,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "When `crew-usage.py` returns figures but neither window is present, `plan_data` returns `{\"windows\": [], \"word\": word}` even when `word` is empty, so the text view prints a stray \" \" line, which `main` does not print.",
+          "evidence": "    if plan and not plan[\"windows\"]:\n        out += [f\" {plan['word']}\", \"\"]",
+          "suggested_fix": "In `plan_data`, return `None` when `windows` is empty and `word` is empty. In `render_text`, handle a plan with no windows the way `main` handled it.",
+          "explanation": "On `main`, a board with figures but no windows printed only a blank line, and it never printed the pace word on its own line. The new path prints \" <word>\" (or a lone space when the word is empty), so the text no longer matches `main`. The JSON also gets a non-null `plan`, although the doc says `plan` is `null` when the board has no Plan block and no pace word.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "return out if \"five_hour\" in out else None",
+            "return {\"windows\": [], \"word\": word} if word else None"
+          ],
+          "rationale": "`usage_figures()` returns `None` unless `five_hour` is present, so figures-with-no-windows can't occur. The empty-windows plan only arises when `figures is None` and `word` is non-empty, and that matches the output on `main`.",
+          "score": 3,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "return out if \"five_hour\" in out else None",
+            "return {\"windows\": [], \"word\": word} if word else None"
+          ],
+          "rationale": "`usage_figures()` returns `None` unless `five_hour` is present, so figures-with-no-windows can't occur. The empty-windows plan only arises when `figures is None` and `word` is non-empty, and that matches the output on `main`.",
+          "score": 3,
+          "severity": "not_real"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1139,
+          "end_line": 1141,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The description says the text board output is byte for byte as on main except the single item ticket, but the output differs when usage figures exist with no 5h or 7d window.",
+          "evidence": "    if plan and not plan[\"windows\"]:\n        out += [f\" {plan['word']}\", \"\"]",
+          "suggested_fix": "In plan_data, return None when figures exist but give no windows and there is no word, or keep main's output for that case.",
+          "explanation": "main's plan_lines printed only an empty line when figures existed with no windows; the new code prints a ' <word>' line and an empty line instead.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "return out if \"five_hour\" in out else None",
+            "if plan and not plan[\"windows\"]:",
+            "return {\"windows\": [], \"word\": word} if word else None"
+          ],
+          "rationale": "`usage_figures` returns None unless `five_hour` is present with numeric `used_pct`, so any non-None figures give at least one window. The \"figures exist with no windows\" case can't happen. The `windows == []` branch is only reached via the no-figures path with a word, and that output matches main.",
+          "score": 4,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "return out if \"five_hour\" in out else None",
+            "if isinstance(part, dict) and is_number(part.get(\"used_pct\")):",
+            "if plan and not plan[\"windows\"]:\n        out += [f\" {plan['word']}\", \"\"]",
+            "return {\"windows\": [], \"word\": word} if word else None"
+          ],
+          "rationale": "`usage_figures` returns None unless `five_hour` holds a dict with a numeric `used_pct`. So when it returns figures, `plan_data` always adds a five_hour window, and the case the finding describes (figures but no windows) cannot happen. The only way to get empty windows is figures None with a non-empty word, and there the output matches main's `[f\" {word}\", \"\"]`.",
+          "score": 5,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "return out if \"five_hour\" in out else None",
+            "if isinstance(part, dict) and is_number(part.get(\"used_pct\")):",
+            "if plan and not plan[\"windows\"]:\n        out += [f\" {plan['word']}\", \"\"]",
+            "return {\"windows\": [], \"word\": word} if word else None"
+          ],
+          "rationale": "`usage_figures` returns None unless `five_hour` holds a dict with a numeric `used_pct`. So when it returns figures, `plan_data` always adds a five_hour window, and the case the finding describes (figures but no windows) cannot happen. The only way to get empty windows is figures None with a non-empty word, and there the output matches main's `[f\" {word}\", \"\"]`.",
+          "score": 5,
+          "severity": "not_real"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The version is set to the placeholder \"0.1.TBD\", which is not valid semver, so the plugin loader or marketplace may reject it or fail to compare it if it merges as is.",
+          "evidence": "\"version\": \"0.1.TBD\",",
+          "suggested_fix": "Set both manifests to the next real version, 0.1.109, before merge.",
+          "explanation": "The plugin version string needs to be a real release number for update checks to work.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.TBD\","
+          ],
+          "rationale": "The version is \"0.1.TBD\", which is not valid semver. The description and spec say this is a deliberate placeholder that the orchestrator sets at merge, as earlier commits did (e.g. \"placeholder TBD-152\"). So the finding restates a known step in the project's own process.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.TBD\","
+          ],
+          "rationale": "\"0.1.TBD\" is not valid semver, so the literal claim holds. The placeholder is deliberate: the PR description says the orchestrator sets the real number, and the git history shows the same step before (f8fa140 set a TBD placeholder, then 993745d set 0.1.107). The finding only repeats a known workflow step that the description already states, and `claude plugin validate` passed with this value.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.TBD\","
+          ],
+          "rationale": "\"0.1.TBD\" is not valid semver, so the literal claim holds. The placeholder is deliberate: the PR description says the orchestrator sets the real number, and the git history shows the same step before (f8fa140 set a TBD placeholder, then 993745d set 0.1.107). The finding only repeats a known workflow step that the description already states, and `claude plugin validate` passed with this value.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "tests/orch-board.test.tsx",
+          "start_line": 625,
+          "end_line": 626,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The comment says the text fixture's leading space is cut, but the code only splits on newlines.",
+          "evidence": "// The text fixture's lines, with the leading space of the text view cut.",
+          "suggested_fix": "Remove the words \"with the leading space of the text view cut\".",
+          "explanation": "The lines keep their leading space, and the tests match `^ Needs you`, so the comment is wrong.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "// The text fixture's lines, with the leading space of the text view cut.",
+            "const TEXT_LINES = (FIXTURE_TEXT as string).split('\\n')",
+            "const needsLine = lineOf(/^ Needs you +3$/)"
+          ],
+          "rationale": "TEXT_LINES only splits on newlines, so no leading space is cut. The tests match patterns like `^ Needs you` that rely on that space, so the comment is wrong. The error is small and affects only the comment.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "// The text fixture's lines, with the leading space of the text view cut.",
+            "const TEXT_LINES = (FIXTURE_TEXT as string).split('\\n')",
+            "const needsLine = lineOf(/^ Needs you +3$/)"
+          ],
+          "rationale": "TEXT_LINES only splits on newlines, so no leading space is cut. The tests match patterns like `^ Needs you` that rely on that space, so the comment is wrong. The error is small and affects only the comment.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 46,
+          "end_line": 46,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The Layout row for hooks/hooks.json describes only the two hooks, but the file now also lists the orch-board mod in `modules`.",
+          "evidence": "| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |",
+          "suggested_fix": "Add to the row that `modules` in hooks.json names `orch-board.tsx`.",
+          "explanation": "hooks.json now also loads the mod through `modules`, and this row does not say so.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `hooks/orch-board.tsx`, `types/index.d.ts` | the board pane mod: `/orch-board` draws `crew-orch.py board --json` in a pane",
+            "| the plugin loader, from `modules` in `hooks/hooks.json` |",
+            "| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run |"
+          ],
+          "rationale": "The row for hooks.json is accurate about the two hooks. The new row 47 already says the mod loads \"from `modules` in `hooks/hooks.json`\", so the doc covers the modules entry. The finding asks for a duplicate mention, and CLAUDE.md says a rule should live in one place.",
+          "score": 12,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `hooks/orch-board.tsx`, `types/index.d.ts` | the board pane mod: `/orch-board` draws `crew-orch.py board --json` in a pane",
+            "| the plugin loader, from `modules` in `hooks/hooks.json` |",
+            "| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run |"
+          ],
+          "rationale": "The row for hooks.json is accurate about the two hooks. The new row 47 already says the mod loads \"from `modules` in `hooks/hooks.json`\", so the doc covers the modules entry. The finding asks for a duplicate mention, and CLAUDE.md says a rule should live in one place.",
+          "score": 12,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "hooks/orch-board.tsx",
+          "start_line": 238,
+          "end_line": 243,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The pane passes the stored launch_tab value to launcher.py without checking its form, so a value that starts with '-' is read as an option.",
+          "evidence": "      'focus',\n      row.launch_tab,",
+          "suggested_fix": "Put '--' before the handle, or check the handle against the documented tmux:/iterm2: forms.",
+          "explanation": "launch_tab comes from record data, and the pane does not check what it holds before it puts the value on the launcher's argv.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "      'focus',\n      row.launch_tab,",
+            "kind, _, ref = handle.partition(\":\")",
+            "raise Fail(BAD_HANDLE, \"launcher: unknown handle %r; a handle is iterm2:<session id> or tmux:<pane id>\" % handle)"
+          ],
+          "rationale": "The pane does pass launch_tab straight to argv with no '--' or check, so a leading '-' would be parsed by argparse. The launcher's focus subparser only has a positional handle, and split_handle rejects anything that is not iterm2:/tmux: with a valid id. The record is written by the plugin itself, so the worst case is a help or usage error and not a security problem.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "      'focus',\n      row.launch_tab,",
+            "raise Fail(BAD_HANDLE, \"launcher: unknown handle %r; a handle is iterm2:<session id> or tmux:<pane id>\" % handle)",
+            "h.add_argument(\"handle\")"
+          ],
+          "rationale": "It is true that the pane passes launch_tab without `--`, so argparse would read a value like `-h` as an option. But the argv goes to the process directly with no shell. The focus subparser has no option that does harm, and split_handle rejects anything that is not `iterm2:<session id>` or `tmux:<pane id>`. The value also comes from the orchestrator's own record. The worst case is a usage error, or a wrong \"in front\" line for `-h`, so there is no real security impact.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "      'focus',\n      row.launch_tab,",
+            "raise Fail(BAD_HANDLE, \"launcher: unknown handle %r; a handle is iterm2:<session id> or tmux:<pane id>\" % handle)",
+            "h.add_argument(\"handle\")"
+          ],
+          "rationale": "It is true that the pane passes launch_tab without `--`, so argparse would read a value like `-h` as an option. But the argv goes to the process directly with no shell. The focus subparser has no option that does harm, and split_handle rejects anything that is not `iterm2:<session id>` or `tmux:<pane id>`. The value also comes from the orchestrator's own record. The worst case is a usage error, or a wrong \"in front\" line for `-h`, so there is no real security impact.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "hooks/orch-board.tsx",
+          "start_line": 306,
+          "end_line": 307,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The pane renders PR and ticket URLs as Link hrefs and does not check their scheme.",
+          "evidence": "<Link href={url}>{fit(label, width)}</Link>",
+          "suggested_fix": "Make a Link only for an http or https URL. Show any other URL as plain text.",
+          "explanation": "A URL in the record can use any scheme, for example file: or javascript:, and the pane makes it a clickable link.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "<Link href={url}>{fit(label, width)}</Link>",
+            "<Link href={s.ticket.url}>{s.ticket.id}</Link>"
+          ],
+          "rationale": "The code passes URLs to Link with no scheme check, so the claim is literally true. The URLs come from the user's own local orchestrator record and render as terminal hyperlinks, where a javascript: link does nothing. The spec (R8) also requires links for any kind of URL, including file URLs, so the suggested http/https-only fix would break the stated behaviour.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "<Link href={url}>{fit(label, width)}</Link>",
+            "<Link href={s.ticket.url}>{s.ticket.id}</Link>"
+          ],
+          "rationale": "The claim is true: the pane passes record URLs straight to Link and never checks the scheme. But the spec (R8) requires ticket links to work for any kind of URL, including a file URL of the repo, so an http/https-only filter would break a stated requirement. The URLs also come from the user's own orchestrator record and are shown as terminal links, where a javascript: link cannot run script, so the risk is very small.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "<Link href={url}>{fit(label, width)}</Link>",
+            "<Link href={s.ticket.url}>{s.ticket.id}</Link>"
+          ],
+          "rationale": "The claim is true: the pane passes record URLs straight to Link and never checks the scheme. But the spec (R8) requires ticket links to work for any kind of URL, including a file URL of the repo, so an http/https-only filter would break a stated requirement. The URLs also come from the user's own orchestrator record and are shown as terminal links, where a javascript: link cannot run script, so the risk is very small.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "hooks/orch-board.tsx",
+          "start_line": 341,
+          "end_line": 349,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The pane makes clickable links from PR and ticket URLs in the record and does not check their scheme.",
+          "evidence": "<Link href={url}>{fit(label, width)}</Link>",
+          "suggested_fix": "Make a link only for http and https URLs, and show any other URL as plain text.",
+          "explanation": "A ticket URL that someone else controls (for example `file:` or a custom scheme) becomes a link that the principal can click.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "<Link href={url}>{fit(label, width)}</Link>",
+            "<Link href={s.ticket.url}>{s.ticket.id}</Link>"
+          ],
+          "rationale": "The code does pass PR and ticket URLs to Link with no scheme check. But spec R8 says the ticket links to its URL \"whatever kind of URL it is (Linear, a GitHub issue or a file URL of the repo)\", so allowing file URLs is deliberate. The URLs come from the principal's own local record, and the user has to click to follow one. The finding is real but not worth posting.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "<Link href={url}>{fit(label, width)}</Link>",
+            "<Link href={s.ticket.url}>{s.ticket.id}</Link>",
+            "{w.pr > 0 ? linkCell(w.pr, r.pr?.label ?? '', r.pr?.url ?? null) : null}"
+          ],
+          "rationale": "The pane does pass PR and ticket URLs to Link with no scheme check, so the claim is true. But the spec (R8) says file URLs of the repo must become links. The URLs come from the orchestrator's own record, and the principal still has to click the link. So the suggested http/https-only filter would break a stated requirement, and the risk is low.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "<Link href={url}>{fit(label, width)}</Link>",
+            "<Link href={s.ticket.url}>{s.ticket.id}</Link>",
+            "{w.pr > 0 ? linkCell(w.pr, r.pr?.label ?? '', r.pr?.url ?? null) : null}"
+          ],
+          "rationale": "The pane does pass PR and ticket URLs to Link with no scheme check, so the claim is true. But the spec (R8) says file URLs of the repo must become links. The URLs come from the orchestrator's own record, and the principal still has to click the link. So the suggested http/https-only filter would break a stated requirement, and the risk is low.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "start_line": 574,
+          "end_line": 886,
+          "category": "test",
+          "severity_estimate": "blocking",
+          "confidence": "high",
+          "claim": "After this PR merges, the R2 step fails: origin/main then has the single-item ticket cell, so the two outputs are the same.",
+          "evidence": "cmp -s \"$TMP/main.out\" \"$TMP/this.out\" && fail \"a single item ticket does not change the board\"",
+          "suggested_fix": "Pin the reference to the commit before this change (the base SHA), or assert the expected text of the ticket cell directly and drop the origin/main comparison.",
+          "explanation": "The test compares against a moving branch. When main holds this change, the outputs match, the check fails, and every later run of the suite breaks.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "cmp -s \"$TMP/main.out\" \"$TMP/this.out\" && fail \"a single item ticket does not change the board\"",
+            "MAIN_REF=${CREW_ORCH_MAIN_REF:-origin/main}",
+            "git -C \"$REPO\" show \"$MAIN_REF:skills/orchestrator/scripts/crew-orch.py\""
+          ],
+          "rationale": "The R2 step reads crew-orch.py from origin/main by default. Once this change is on main, both scripts print the lone row's ticket, so the final `cmp -s ... && fail` always fails. The step never passes again on main unless someone sets CREW_ORCH_MAIN_REF to an older commit.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "cmp -s \"$TMP/main.out\" \"$TMP/this.out\" && fail \"a single item ticket does not change the board\"",
+            "MAIN_REF=${CREW_ORCH_MAIN_REF:-origin/main}",
+            "git -C \"$REPO\" show \"$MAIN_REF:skills/orchestrator/scripts/crew-orch.py\""
+          ],
+          "rationale": "The R2 step reads crew-orch.py from origin/main by default. Once this change is on main, both scripts print the lone row's ticket, so the final `cmp -s ... && fail` always fails. The step never passes again on main unless someone sets CREW_ORCH_MAIN_REF to an older commit.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "start_line": 890,
+          "end_line": 910,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The 'one place' check greps the source for function definitions and for counts of `time.time()` and `datetime.now(`, so it asserts internals and not behaviour.",
+          "evidence": "    assert len(re.findall(rf\"^def {name}\\(\", src, re.M)) == 1, (name, \"is not defined once\")",
+          "suggested_fix": "Rely on the same_board.py and fixture equality checks, which compare the text view with the JSON view, and drop the source greps.",
+          "explanation": "A rename or a refactor that keeps the behaviour breaks this check, and a second copy of the logic under a different name still passes it.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "assert len(re.findall(rf\"^def {name}\\(\", src, re.M)) == 1, (name, \"is not defined once\")",
+            "assert src.count(\"time.time()\") == 1, \"the board time is read in more than one place\"",
+            "assert src.count(\"datetime.now(\") == 1, \"the write time is read in more than one place\""
+          ],
+          "rationale": "The check does grep source for definitions and call counts, so the description is accurate. But the spec's R2 acceptance criterion explicitly requires \\\"a search of crew-orch.py\\\" for each derived value computed in one place. The behaviour checks the finding suggests already exist beside it. The brittleness is a deliberate tradeoff, so it isn't worth the author's time.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    assert len(re.findall(rf\"^def {name}\\(\", src, re.M)) == 1, (name, \"is not defined once\")",
+            "assert src.count(\"time.time()\") == 1, \"the board time is read in more than one place\"",
+            "assert src.count(\"datetime.now(\") == 1, \"the write time is read in more than one place\""
+          ],
+          "rationale": "The step does grep the source for function definitions and literal counts, so it is coupled to internals. The spec's R2 acceptance criterion asks for exactly this search (\"A search of crew-orch.py finds each derived value ... computed in one place only\"), and behaviour is already covered by other checks. The finding is a design preference against a deliberate spec choice.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    assert len(re.findall(rf\"^def {name}\\(\", src, re.M)) == 1, (name, \"is not defined once\")",
+            "assert src.count(\"time.time()\") == 1, \"the board time is read in more than one place\"",
+            "assert src.count(\"datetime.now(\") == 1, \"the write time is read in more than one place\""
+          ],
+          "rationale": "The step does grep the source for function definitions and literal counts, so it is coupled to internals. The spec's R2 acceptance criterion asks for exactly this search (\"A search of crew-orch.py finds each derived value ... computed in one place only\"), and behaviour is already covered by other checks. The finding is a design preference against a deliberate spec choice.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "start_line": 574,
+        "end_line": 886,
+        "category": "test",
+        "severity_estimate": "blocking",
+        "confidence": "high",
+        "claim": "After this PR merges, the R2 step fails: origin/main then has the single-item ticket cell, so the two outputs are the same.",
+        "evidence": "cmp -s \"$TMP/main.out\" \"$TMP/this.out\" && fail \"a single item ticket does not change the board\"",
+        "suggested_fix": "Pin the reference to the commit before this change (the base SHA), or assert the expected text of the ticket cell directly and drop the origin/main comparison.",
+        "explanation": "The test compares against a moving branch. When main holds this change, the outputs match, the check fails, and every later run of the suite breaks.",
+        "needs_context": false,
+        "fingerprint": "043d3afbea0bb0ee",
+        "severity": "suggestion",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "cmp -s \"$TMP/main.out\" \"$TMP/this.out\" && fail \"a single item ticket does not change the board\"",
+            "MAIN_REF=${CREW_ORCH_MAIN_REF:-origin/main}",
+            "git -C \"$REPO\" show \"$MAIN_REF:skills/orchestrator/scripts/crew-orch.py\""
+          ],
+          "rationale": "The R2 step reads crew-orch.py from origin/main by default. Once this change is on main, both scripts print the lone row's ticket, so the final `cmp -s ... && fail` always fails. The step never passes again on main unless someone sets CREW_ORCH_MAIN_REF to an older commit.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "span_text": "MAIN_REF=${CREW_ORCH_MAIN_REF:-origin/main} # check_json <file>: the file is one board JSON object, each field of the # type that orchestrator-record.md \"The board\" gives. cat >\"$TMP/check_json.py\" <<'PY' import json, sys d = json.load(open(sys.argv[1], encoding=\"utf-8\")) def is_int(v): return isinstance(v, int) and not isinstance(v, bool) def str_or_none(v): return v is None or isinstance(v, str) def link(v): return v is None or (isinstance(v, dict) and isinstance(v.get(\"id\"), str) and str_or_none(v.get(\"url\"))) assert isinstance(d, dict), \"not an object\" assert d[\"version\"] == 1, d[\"version\"] assert isinstance(d[\"orch\"], str) plan = d[\"plan\"] assert plan is None or (isinstance(plan, dict) and isinstance(plan[\"windows\"], list) and isinstance(plan[\"word\"], str)), plan for w in (plan or {}).get(\"windows\", []): assert w[\"key\"] in (\"five_hour\", \"seven_day\") and w[\"label\"] in (\"5h\", \"7d\"), w assert is_int(w[\"used_pct\"]), w assert len(w[\"meter\"]) == 10 and set(w[\"meter\"]) <= {\"█\", \"░\"}, w assert isinstance(w[\"resets\"], str) and isinstance(w[\"full_at\"], str), w ny = d[\"needs_you\"] assert is_int(ny[\"count\"]) and isinstance(ny[\"entries\"], list) and ny[\"count\"] == len(ny[\"entries\"]), ny for e in ny[\"entries\"]: for k in (\"id\", \"kind\", \"age\", \"item\", \"text\"): assert isinstance(e[k], str), (k, e) assert str_or_none(e[\"item_id\"]) and str_or_none(e[\"recommend\"]), e assert isinstance(d[\"sections\"], list) for s in d[\"sections\"]: assert s[\"kind\"] in (\"group\", \"single\"), s assert isinstance(s[\"title\"], str) and isinstance(s[\"rows\"], list), s assert link(s[\"ticket\"]) and str_or_none(s[\"repo\"]) and str_or_none(s[\"id\"]), s if s[\"kind\"] == \"single\": assert s[\"id\"] is None and s[\"title\"] == \"Single items\" and s[\"ticket\"] is None and s[\"repo\"] is None, s assert s[\"merged\"] is None and s[\"total\"] is None, s else: assert isinstance(s[\"id\"], str) and is_int(s[\"merged\"]) and is_int(s[\"total\"]), s for r in s[\"rows\"]: assert is_int(r[\"n\"]) and isinstance(r[\"id\"], str), r assert len(r[\"marks\"]) == 5 and set(r[\"marks\"]) <= {\"●\", \"◐\", \"○\"}, r assert isinstance(r[\"status\"], str) and isinstance(r[\"text\"], str) and isinstance(r[\"age\"], str), r pr = r[\"pr\"] assert pr is None or (is_int(pr[\"number\"]) and pr[\"label\"] == f\"#{pr['number']}\" and isinstance(pr[\"url\"], str)), r assert link(r[\"ticket\"]) and str_or_none(r[\"launch_tab\"]), r if s[\"kind\"] == \"group\": assert r[\"ticket\"] is None, (\"a grouped row shows a ticket\", r) assert is_int(d[\"done\"]), d[\"done\"] assert d[\"legend\"] == \"spec → split → build → review → PR\", d[\"legend\"] assert \"\\x1b\" not in json.dumps(d, ensure_ascii=False), \"an escape sequence in the JSON\" PY # same_board <json> <text>: the text view shows the same sections, rows and # values as the JSON view, in the same order. cat >\"$TMP/same_board.py\" <<'PY' import json, re, sys d = json.load(open(sys.argv[1], encoding=\"utf-8\")) lines = open(sys.argv[2], encoding=\"utf-8\").read().split(\"\\n\") at = 0 def find(pred, what): global at for i in range(at, len(lines)): if pred(lines[i]): at = i + 1 return lines[i] raise AssertionError(f\"not found after line {at}: {what}\") def in_order(line, cells, what): pos = 0 for cell in cells: if cell == \"\": continue got = line.find(cell, pos) assert got >= 0, (what, cell, line) pos = got + len(cell) if d[\"plan\"]: for w in d[\"plan\"][\"windows\"]: line = find(lambda l, w=w: f\"{w['label']} {w['meter']}\" in l, w[\"label\"]) in_order(line, [w[\"meter\"], f\"{w['used_pct']}%\", w[\"resets\"], w[\"full_at\"]], w[\"label\"]) if d[\"plan\"][\"word\"]: assert any(d[\"plan\"][\"word\"] in l for l in lines), \"no pace word\" find(lambda l: l.strip() == f\"Needs you {d['needs_you']['count']}\", \"Needs you\") for e in d[\"needs_you\"][\"entries\"]: line = find(lambda l, e=e: l.startswith(f\" {e['id']} \"), e[\"id\"]) in_order(line, [e[\"id\"], e[\"kind\"], e[\"age\"], e[\"item\"], e[\"text\"]], e[\"id\"]) if e[\"recommend\"]: line = find(lambda l: \"Recommended:\" in l, \"Recommended\") assert line.strip() == f\"Recommended: {e['recommend']}\", line for s in d[\"sections\"]: head = [s[\"title\"]] + ([s[\"ticket\"][\"id\"]] if s[\"ticket\"] else []) + ([s[\"repo\"]] if s[\"repo\"] else []) if s[\"kind\"] == \"group\": head.append(f\"{s['merged']} of {s['total']} merged\") line = find(lambda l, t=s[\"title\"]: l.startswith(f\" {t}\"), s[\"title\"]) in_order(line, head, s[\"title\"]) for r in s[\"rows\"]: line = find(lambda l, r=r: re.match(rf\"^ +{r['n']} {re.escape(r['id'])}( |$)\", l), r[\"id\"]) cells = [str(r[\"n\"]), r[\"id\"], r[\"marks\"], r[\"status\"], r[\"pr\"][\"label\"] if r[\"pr\"] else \"\", r[\"ticket\"][\"id\"] if r[\"ticket\"] else \"\", r[\"text\"], r[\"age\"]] in_order(line, cells, r[\"id\"]) find(lambda l: l.strip().startswith(f\"Done {d['done']} \") and d[\"legend\"] in l, \"Done\") PY STEP=\"R1 board --json prints one board object and writes nothing\" snap() { (cd \"$CREW_RECORD_ROOT\" && find . | LC_ALL=C sort | while read -r f; do printf '%s ' \"$f\"; [ -f \"$f\" ] && cksum <\"$f\" || echo dir; done); } before=$(snap) pin=$(date +%s) CREW_ORCH_NOW=$pin orch board --json >\"$TMP/bj\" 2>\"$TMP/err\" || fail \"board --json failed: $(cat \"$TMP/err\")\" after=$(snap) [ \"$before\" = \"$after\" ] || fail \"board --json changed the record files\" [ ! -s \"$TMP/err\" ] || fail \"board --json wrote to stderr: $(cat \"$TMP/err\")\" python3 -c 'import json,sys; json.load(sys.stdin)' <\"$TMP/bj\" || fail \"board --json is not one JSON value\" python3 \"$TMP/check_json.py\" \"$TMP/bj\" || fail \"a field of board --json is missing or of the wrong type\" CREW_ORCH_NOW=$pin orch board --json --urls >\"$TMP/bj2\" || fail \"board --json --urls failed\" cmp -s \"$TMP/bj\" \"$TMP/bj2\" || fail \"--urls changes the JSON view\" pass STEP=\"R1 board --json holds the values of the fleet record\" CREW_ORCH_NOW=$pin orch board --json >\"$TMP/bj\" || fail \"board --json failed\" python3 - \"$TMP/bj\" <<'PY' || fail \"a value of board --json is wrong: $(cat \"$TMP/bj\")\" import json, sys d = json.load(open(sys.argv[1], encoding=\"utf-8\")) assert d[\"orch\"] == \"fleet\" and d[\"plan\"] is None and d[\"done\"] == 1, (d[\"orch\"], d[\"plan\"], d[\"done\"]) assert [e[\"id\"] for e in d[\"needs_you\"][\"entries\"]] == [\"d1\", \"q2\", \"i1\"], d[\"needs_you\"] d1 = d[\"needs_you\"][\"entries\"][0] assert (d1[\"kind\"], d1[\"item\"], d1[\"item_id\"], d1[\"recommend\"]) == (\"decision\", \"dialogs/editor\", \"editor\", \"editor\"), d1 i1 = d[\"needs_you\"][\"entries\"][2] assert (i1[\"item\"], i1[\"item_id\"], i1[\"recommend\"]) == (\"-\", None, None), i1 assert [(s[\"kind\"], s[\"title\"]) for s in d[\"sections\"]] == [(\"group\", \"Dialog migration\"), (\"single\", \"Single items\")] g = d[\"sections\"][0] assert g[\"id\"] == \"dialogs\" and g[\"ticket\"] == {\"id\": \"T-1\", \"url\": \"https://tickets.example/T-1\"}, g assert (g[\"repo\"], g[\"merged\"], g[\"total\"]) == (\"owner/dash\", 0, 2), g ed, se = g[\"rows\"] assert (ed[\"n\"], ed[\"id\"], ed[\"launch_tab\"], ed[\"ticket\"]) == (1, \"editor\", \"tmux:%3\", None), ed assert ed[\"pr\"] == {\"number\": 893, \"label\": \"#893\", \"url\": \"https://github.com/owner/dash/pull/893\"}, ed assert (se[\"n\"], se[\"id\"], se[\"marks\"], se[\"status\"], se[\"pr\"], se[\"text\"]) == (2, \"settings\", \"●●◐○○\", \"build 2/3\", None, \"after editor · ic-2 reads the diff\"), se assert se[\"age\"] != \"\" and se[\"launch_tab\"] is None, se lo = d[\"sections\"][1][\"rows\"][0] assert (lo[\"n\"], lo[\"id\"], lo[\"status\"], lo[\"pr\"][\"label\"], lo[\"ticket\"], lo[\"age\"]) == (3, \"loner\", \"can merge\", \"#77\", None, \"\"), lo PY CREW_ORCH_NOW=$pin orch board >\"$TMP/bt\" || fail \"board failed\" python3 \"$TMP/same_board.py\" \"$TMP/bj\" \"$TMP/bt\" || fail \"the text view and the JSON view differ: $(cat \"$TMP/bt\")\" pass STEP=\"R16 CREW_ORCH_NOW pins the time the board reads, and no write\" expect_exit 0 orch doing loner \"pins the clock\" stamp=$(python3 \"$ORCH_PY\" --orch fleet show loner | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"doing_at\"])') then_=$(python3 -c 'import calendar,sys,time; print(calendar.timegm(time.strptime(sys.argv[1], \"%Y-%m-%dT%H:%M:%SZ\")))' \"$stamp\") CREW_ORCH_NOW=$((then_ + 7200)) orch board --json >\"$TMP/bj\" || fail \"board with CREW_ORCH_NOW failed\" python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); r=[r for s in d[\"sections\"] for r in s[\"rows\"] if r[\"id\"]==\"loner\"][0]; sys.exit(0 if r[\"age\"]==\"2h\" else 1)' \"$TMP/bj\" || fail \"the age does not count from CREW_ORCH_NOW\" CREW_ORCH_NOW=1000 orch doing loner \"writes the real time\" jcheck 's[\"items\"][\"loner\"][\"doing_at\"] >= \"2026\"' jcheck 's[\"updated_at\"] >= \"2026\"' expect_exit 0 orch doing loner \"\" pass # A record with a ticket on a grouped item and on a single item. orch3() { python3 \"$ORCH_PY\" --orch tix \"$@\"; } expect_exit 0 orch3 init expect_exit 0 orch3 group add g --title \"Ticket group\" --repo owner/tix --ticket G-1 --ticket-url https://tickets.example/G-1 expect_exit 0 orch3 item add grouped --title \"Grouped\" --repo owner/tix --group g --ticket A-1 --ticket-url https://tickets.example/A-1 expect_exit 0 orch3 item add solo --title \"Solo\" --repo owner/tix --ticket SOLO-12 --ticket-url https://tickets.example/SOLO-12 expect_exit 0 orch3 item add bare --title \"Bare\" --repo owner/tix expect_exit 0 orch3 item add plain --title \"Plain\" --repo owner/tix --ticket P-3 expect_exit 0 orch3 item solo pr 41 expect_exit 0 orch3 item grouped pr 40 STEP=\"R3 a single item's row shows its own ticket, a grouped row shows none\" orch3 board >\"$TMP/b3\" || fail \"board failed\" grep -E '^ *2 +solo .*#41 SOLO-12( |$)' \"$TMP/b3\" >/dev/null || fail \"the solo row has no ticket after its PR: $(cat \"$TMP/b3\")\" grep -E '^ *4 +plain .* P-3' \"$TMP/b3\" >/dev/null || fail \"a ticket with no URL does not show: $(cat \"$TMP/b3\")\" grep -E '^ *1 +grouped ' \"$TMP/b3\" | grep -F 'A-1' >/dev/null && fail \"the grouped row shows its ticket\" python3 - \"$TMP/b3\" <<'PY' || fail \"the ticket cell of the single items is not one width: $(cat \"$TMP/b3\")\" import sys rows = [l for l in open(sys.argv[1], encoding=\"utf-8\").read().split(\"\\n\") if l.startswith(\" \") and l.split()[1] in (\"solo\", \"bare\", \"plain\")] assert len(rows) == 3, rows # Each single row has \"queued\" as its status, so its PR cell starts at one column. starts = {l.split()[1]: l.index(\"queued\") for l in rows} assert len(set(starts.values())) == 1, starts PY orch3 board --urls >\"$TMP/b3\" || fail \"board --urls failed\" sed -n '/^ Links/,$p' \"$TMP/b3\" >\"$TMP/links3\" grep -E '^ +SOLO-12 +https://tickets.example/SOLO-12$' \"$TMP/links3\" >/dev/null || fail \"Links has no single item ticket: $(cat \"$TMP/links3\")\" grep -F 'A-1' \"$TMP/links3\" >/dev/null && fail \"Links has the grouped item's ticket\" grep -F 'G-1' \"$TMP/links3\" >/dev/null || fail \"Links has no group ticket\" orch3 board --json >\"$TMP/bj3\" || fail \"board --json failed\" python3 \"$TMP/check_json.py\" \"$TMP/bj3\" || fail \"board --json of the ticket record is wrong\" python3 - \"$TMP/bj3\" <<'PY' || fail \"the JSON tickets are wrong\" import json, sys d = json.load(open(sys.argv[1], encoding=\"utf-8\")) rows = {r[\"id\"]: r for s in d[\"sections\"] for r in s[\"rows\"]} assert rows[\"grouped\"][\"ticket\"] is None, rows[\"grouped\"] assert rows[\"solo\"][\"ticket\"] == {\"id\": \"SOLO-12\", \"url\": \"https://tickets.example/SOLO-12\"}, rows[\"solo\"] assert rows[\"plain\"][\"ticket\"] == {\"id\": \"P-3\", \"url\": None}, rows[\"plain\"] assert rows[\"bare\"][\"ticket\"] is None, rows[\"bare\"] PY orch3 board >\"$TMP/b3\" python3 \"$TMP/same_board.py\" \"$TMP/bj3\" \"$TMP/b3\" || fail \"the text view and the JSON view of the ticket record differ\" pass # ---------------------------------------------------------------- R2 # The text view of this branch against the script on the main branch, for a # record whose every time is more than a day old, with a stub crew-usage.py # whose resets are more than a day away. Each age is in days, each reset a # weekday, so two runs a moment apart print the same text. STEP=\"R2 the text view equals the main branch's, except the R3 lines\" mkdir -p \"$TMP/main\" \"$TMP/this\" git -C \"$REPO\" show \"$MAIN_REF:skills/orchestrator/scripts/crew-orch.py\" >\"$TMP/main/crew-orch.py\" 2>\"$TMP/err\" || fail \"cannot read crew-orch.py at $MAIN_REF: $(cat \"$TMP/err\")\" cp \"$ORCH_PY\" \"$TMP/this/crew-orch.py\" for d in main this; do cat >\"$TMP/$d/crew-usage.py\" <<'EOF' import json, sys, time assert sys.argv[1:] == [\"show\", \"--json\"], sys.argv now = int(time.time()) print(json.dumps({\"five_hour\": {\"used_pct\": 47.6, \"resets_at\": now + 3 * 86400, \"full_at\": now + 2 * 86400}, \"seven_day\": {\"used_pct\": 12, \"resets_at\": now + 5 * 86400}})) EOF done orch4() { python3 \"$ORCH_PY\" --orch old \"$@\"; } expect_exit 0 orch4 init expect_exit 0 orch4 group add mig --title \"Old migration\" --repo owner/old --ticket M-1 --ticket-url https://tickets.example/M-1 expect_exit 0 orch4 item add first --title \"First\" --repo owner/old --group mig --ticket F-1 --ticket-url https://tickets.example/F-1 expect_exit 0 orch4 item add second --title \"Second\" --repo owner/old --group mig expect_exit 0 orch4 group mig order first,second expect_exit 0 orch4 item add lone --title \"Lone\" --repo owner/old expect_exit 0 orch4 item add longer-single --title \"Longer\" --repo owner/old expect_exit 0 orch4 item first pr 893 expect_exit 0 orch4 refresh first expect_exit 0 orch4 stage first pr --doing \"waits for review\" expect_exit 0 orch4 stage second build --detail 1/2 --doing \"ic runs the suite\" expect_exit 0 orch4 stage lone spec --doing \"writes the spec\" expect_exit 0 orch4 inbox add decision --item second \"Which owner?\" --recommend \"second\" expect_exit 0 orch4 inbox add idea \"A later idea\" expect_exit 0 orch4 ask lone \"A question\" expect_exit 0 orch4 route q1 principal expect_exit 0 orch4 pace set '{\"mode\": \"slowed\", \"slots\": {\"busy\": 1}}' # Move every time of the record back by days, and keep their order. age_record() { python3 - \"$CREW_RECORD_ROOT/orchestrators/old/orchestrator.json\" <<'PY' import json, sys p = sys.argv[1] s = json.load(open(p, encoding=\"utf-8\")) count = iter(range(100)) def back(obj, key): if obj.get(key): k = next(count) obj[key] = f\"2026-0{1 + k % 9}-{10 + k % 18}T0{k % 10}:00:00Z\" for item in s[\"items\"].values(): for key in (\"stage_at\", \"doing_at\", \"created_at\"): back(item, key) stamp = [\"2026-01-01T00:00:00Z\", \"2026-01-02T00:00:00Z\", \"2026-01-03T00:00:00Z\"] for entry, at in zip(s[\"inbox\"], stamp): entry[\"created_at\"] = at if entry.get(\"routed_at\"): entry[\"routed_at\"] = \"2026-01-05T00:00:00Z\" json.dump(s, open(p, \"w\", encoding=\"utf-8\"), indent=2, ensure_ascii=False) PY } age_record compare_main() { # compare_main <single ids>: the outputs of both scripts are equal, except # the rows of those single items and the Links list. for flag in \"\" \"--urls\"; do python3 \"$TMP/main/crew-orch.py\" --orch old board $flag >\"$TMP/main.out\" || fail \"main board $flag failed\" python3 \"$TMP/this/crew-orch.py\" --orch old board $flag >\"$TMP/this.out\" || fail \"board $flag failed\" python3 - \"$TMP/main.out\" \"$TMP/this.out\" \"$@\" <<'PY' || fail \"board $flag differs from $MAIN_REF: $(diff \"$TMP/main.out\" \"$TMP/this.out\")\" import re, sys old = open(sys.argv[1], encoding=\"utf-8\").read().split(\"\\n\") new = open(sys.argv[2], encoding=\"utf-8\").read().split(\"\\n\") singles = set(sys.argv[3:]) assert \"Plan\" in old[0] and re.search(r\"resets (Mon|Tue|Wed|Thu|Fri|Sat|Sun)\", old[0]), old[0] assert re.search(r\" [0-9]+d \", \"\\n\".join(old)), \"no age in days\" # Above the Links list, only the rows of those single items differ. cut_old = old.index(\" Links\") if \" Links\" in old else len(old) cut_new = new.index(\" Links\") if \" Links\" in new else len(new) assert cut_old == cut_new, (cut_old, cut_new) for a, b in zip(old[:cut_old], new[:cut_new]): if a == b: continue row = re.match(r\"^ +[0-9]+ (\\S+)\", a) assert row and row.group(1) in singles, (a, b) # The Links list keeps every link of the main output, in its order; a # single item's ticket may come in between. rest = iter(new[cut_new:]) for a in old[cut_old:]: if a.startswith(\" \"): a = a.split() assert any((b.split() if isinstance(a, list) else b) == a for b in rest), (\"Links lost\", a) PY done } compare_main cmp -s \"$TMP/main.out\" \"$TMP/this.out\" || fail \"with no single ticket, board --urls is not byte for byte the main output\" expect_exit 0 orch4 item lone set ticket '{\"id\": \"L-7\", \"url\": \"https://tickets.example/L-7\"}' age_record compare_main lone longer-single grep -E '^ *3 +lone .*L-7' \"$TMP/this.out\" >/dev/null || fail \"the lone row has no ticket\" cmp -s \"$TMP/main.out\" \"$TMP/this.out\" && fail \"a single item ticket does not change the board\""
+      },
+      {
+        "file": "tests/orch-board.test.tsx",
+        "start_line": 625,
+        "end_line": 626,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The comment says the text fixture's leading space is cut, but the code only splits on newlines.",
+        "evidence": "// The text fixture's lines, with the leading space of the text view cut.",
+        "suggested_fix": "Remove the words \"with the leading space of the text view cut\".",
+        "explanation": "The lines keep their leading space, and the tests match `^ Needs you`, so the comment is wrong.",
+        "needs_context": false,
+        "fingerprint": "574398dc2f7ca2c9",
+        "severity": "nit",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "// The text fixture's lines, with the leading space of the text view cut.",
+            "const TEXT_LINES = (FIXTURE_TEXT as string).split('\\n')",
+            "const needsLine = lineOf(/^ Needs you +3$/)"
+          ],
+          "rationale": "TEXT_LINES only splits on newlines, so no leading space is cut. The tests match patterns like `^ Needs you` that rely on that space, so the comment is wrong. The error is small and affects only the comment.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "span_text": "test('R12 the pane writes no file', async ($, on) => { const w = world(on, [withNeeds('d1'), withNeeds('d1', 'q2')], { env: { CREW_ORCH: 'x' } })"
+      }
+    ],
+    "github": {
+      "review_id": 5929896563,
+      "review_url": "https://github.com/jerridan/crew/pull/161#pullrequestreview-5929896563",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "043d3afbea0bb0ee",
+          "comment_id": 4593228171
+        },
+        {
+          "fingerprint": "574398dc2f7ca2c9",
+          "comment_id": 4593228179
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 133697363817
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9828,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 48529,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0048639,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1417,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 48043,
+            "webSearchRequests": 0,
+            "costUSD": 0.20647220000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.21133610000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5389,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55975,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.005609,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 497,
+            "cacheReadInputTokens": 10124,
+            "cacheCreationInputTokens": 55481,
+            "webSearchRequests": 0,
+            "costUSD": 0.4558208,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 152,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4614298
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9957,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55979,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0056094000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 897,
+            "cacheReadInputTokens": 10027,
+            "cacheCreationInputTokens": 55485,
+            "webSearchRequests": 0,
+            "costUSD": 0.4638334,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 410,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4694428
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9795,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55977,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0056087,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 854,
+            "cacheReadInputTokens": 10082,
+            "cacheCreationInputTokens": 55483,
+            "webSearchRequests": 0,
+            "costUSD": 0.4629684,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 292,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4685771
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9769,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55977,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0056062,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 810,
+            "cacheReadInputTokens": 10027,
+            "cacheCreationInputTokens": 55483,
+            "webSearchRequests": 0,
+            "costUSD": 0.46207739999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 494,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4676836
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10861,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55983,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0056093,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1094,
+            "cacheReadInputTokens": 10034,
+            "cacheCreationInputTokens": 55489,
+            "webSearchRequests": 0,
+            "costUSD": 0.46780679999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 325,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.47341609999999995
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5921,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 70818,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.007093300000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 549,
+            "cacheReadInputTokens": 10149,
+            "cacheCreationInputTokens": 70324,
+            "webSearchRequests": 0,
+            "costUSD": 0.5756098,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 237,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.5827030999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4827,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10060,
+            "outputTokens": 392,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.001202,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 372,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 592,
+            "cacheReadInputTokens": 18308,
+            "cacheCreationInputTokens": 9958,
+            "webSearchRequests": 0,
+            "costUSD": 0.0475908,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 133,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.048792800000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7515,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55993,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0056103,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 565,
+            "cacheReadInputTokens": 10125,
+            "cacheCreationInputTokens": 55499,
+            "webSearchRequests": 0,
+            "costUSD": 0.457325,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 96,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4629353
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5958,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28124,
+            "outputTokens": 413,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030189,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 394,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 683,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 27638,
+            "webSearchRequests": 0,
+            "costUSD": 0.1178227,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 185,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.12084160000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8488,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55983,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0056093,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 680,
+            "cacheReadInputTokens": 10125,
+            "cacheCreationInputTokens": 55489,
+            "webSearchRequests": 0,
+            "costUSD": 0.459545,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 118,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.46515429999999997
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4167,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10051,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010180999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 452,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9565,
+            "webSearchRequests": 0,
+            "costUSD": 0.0432207,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 146,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0442388
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6296,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25724,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025849000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 641,
+            "cacheReadInputTokens": 33972,
+            "cacheCreationInputTokens": 25545,
+            "webSearchRequests": 0,
+            "costUSD": 0.11199519999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 160,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11458009999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5814,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19681,
+            "outputTokens": 218,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020771,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 193,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 677,
+            "cacheReadInputTokens": 27929,
+            "cacheCreationInputTokens": 19480,
+            "webSearchRequests": 0,
+            "costUSD": 0.0874909,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 91,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.089568
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8536,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28030,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028144999999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 923,
+            "cacheReadInputTokens": 36278,
+            "cacheCreationInputTokens": 28583,
+            "webSearchRequests": 0,
+            "costUSD": 0.1271978,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 412,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1300123
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 16001,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 55979,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0056094000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1306,
+            "cacheReadInputTokens": 77077,
+            "cacheCreationInputTokens": 56316,
+            "webSearchRequests": 0,
+            "costUSD": 0.4920794,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 495,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4976888
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7825,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10066,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010171000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 721,
+            "cacheReadInputTokens": 32564,
+            "cacheCreationInputTokens": 10081,
+            "webSearchRequests": 0,
+            "costUSD": 0.1016048,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 157,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10262190000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5325,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10063,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010183000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 488,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9569,
+            "webSearchRequests": 0,
+            "costUSD": 0.08719339999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 144,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08821169999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7624,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23377,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023507,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 616,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22891,
+            "webSearchRequests": 0,
+            "costUSD": 0.09816470000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 251,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1005154
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7477,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23378,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023483,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 578,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22892,
+            "webSearchRequests": 0,
+            "costUSD": 0.09778869999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 203,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10013699999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9361,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23396,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023511,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 877,
+            "cacheReadInputTokens": 59462,
+            "cacheCreationInputTokens": 24699,
+            "webSearchRequests": 0,
+            "costUSD": 0.11352419999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 172,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11587529999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7102,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28040,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028155,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 800,
+            "cacheReadInputTokens": 36280,
+            "cacheCreationInputTokens": 28371,
+            "webSearchRequests": 0,
+            "costUSD": 0.25024,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 226,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2530555
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6363,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23387,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023492000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 613,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22893,
+            "webSearchRequests": 0,
+            "costUSD": 0.1962854,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 233,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1986346
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6413,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23370,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023495,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 605,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22876,
+            "webSearchRequests": 0,
+            "costUSD": 0.1959894,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 196,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1983389
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9358,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30463,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030583,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 599,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 29977,
+            "webSearchRequests": 0,
+            "costUSD": 0.1263387,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 167,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.12939699999999998
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 13797,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39730,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039875,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 901,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 39244,
+            "webSearchRequests": 0,
+            "costUSD": 0.1664267,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 474,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.17041420000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11360,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23378,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023493,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 956,
+            "cacheReadInputTokens": 59535,
+            "cacheCreationInputTokens": 25112,
+            "webSearchRequests": 0,
+            "costUSD": 0.23194700000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 250,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2342963
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7984,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30451,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030581000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 873,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 29957,
+            "webSearchRequests": 0,
+            "costUSD": 0.2579974,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 128,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2610555
+      }
+    ],
+    "total_cost_usd": 7.0609539,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 36,
+      "gather": 166,
+      "triage": 10631,
+      "find_verify": 53465,
+      "merge": 8
+    },
+    "errors": []
+  }
+}

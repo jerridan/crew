@@ -487,6 +487,9 @@ def item_set(rec: Record, item_id: str, field: str, value) -> None:
                 old["owners"] = {k: v for k, v in old["owners"].items() if v != item_id}
             item["group"] = value
         else:
+            pr_match = PR_URL_RE.fullmatch((item.get("pr") or {}).get("url") or "")
+            if base == "repo" and pr_match and pr_match.group(1).lower() != value.lower():
+                raise Usage(f"the item's PR is in {pr_match.group(1)}; set the PR first, then the repo")
             item[base] = value
 
     rec.mutate(change)

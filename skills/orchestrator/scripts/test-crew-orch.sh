@@ -422,6 +422,18 @@ orch2 board >"$TMP/board2"
 grep -E '^ *1 +withpr .*●●◐○○ +build ' "$TMP/board2" >/dev/null || fail "withpr at build does not show build"
 pass
 
+STEP="status word: a PR item with no refresh yet shows the stage word"
+expect_exit 0 orch2 item add fresh --title "Fresh PR" --repo owner/pat
+expect_exit 0 orch2 item fresh pr 600
+expect_exit 0 orch2 stage fresh review
+jcheck2 's["items"]["fresh"]["github"] is None'
+orch2 board >"$TMP/board2" || fail "board failed"
+grep -E '^ *[0-9]+ +fresh .*●●●◐○ +review +#600' "$TMP/board2" >/dev/null || fail "fresh at review does not show review: $(cat "$TMP/board2")"
+expect_exit 0 orch2 stage fresh pr
+orch2 board >"$TMP/board2"
+grep -E '^ *[0-9]+ +fresh .*●●●●◐ +pr +#600' "$TMP/board2" >/dev/null || fail "fresh at pr does not show pr: $(cat "$TMP/board2")"
+pass
+
 STEP="item pr: a URL of another repo exits 2 and writes nothing"
 before=$(cat "$CREW_RECORD_ROOT/orchestrators/patch/orchestrator.json")
 expect_exit 2 orch2 item nopr pr https://github.com/owner/elsewhere/pull/9
@@ -486,7 +498,9 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 done = {"name": "test", "workflowName": "ci", "status": "COMPLETED", "conclusion": "FAILURE", "startedAt": "2026-11-16T10:00:00Z"}
 queued = {"name": "test", "workflowName": "ci", "status": "QUEUED", "conclusion": None}
-for rollup in ([done, queued], [queued, done]):
+# gh prints an unset startedAt as the zero time.
+zero = {"name": "test", "workflowName": "ci", "status": "QUEUED", "conclusion": "", "startedAt": "0001-01-01T00:00:00Z"}
+for rollup in ([done, queued], [queued, done], [done, zero], [zero, done]):
     got = m.check_summary(rollup)
     assert got == ("pending", []), (rollup, got)
 PY2
@@ -517,9 +531,13 @@ cases = [
     ("in queue", item(in_queue=True), "in queue before can merge"),
     ("can merge", item(), "can merge"),
     ("can merge", item(checks="none"), "no checks pass"),
-    ("needs review", item(review_decision=None), "needs review, CLEAN"),
-    ("needs review", item(review_decision="REVIEW_REQUIRED", merge_state="BLOCKED"), "needs review, BLOCKED"),
-    ("needs review", item(review_decision=None, waits=["a"]), "needs review before waits on"),
+    ("can merge", item(review_decision=None), "no review required: empty decision, CLEAN"),
+    ("needs review", item(review_decision="REVIEW_REQUIRED"), "needs review, REVIEW_REQUIRED, CLEAN"),
+    ("needs review", item(review_decision="REVIEW_REQUIRED", merge_state="BLOCKED"), "needs review, REVIEW_REQUIRED, BLOCKED"),
+    ("needs review", item(review_decision=None, merge_state="BLOCKED"), "needs review, empty decision, BLOCKED"),
+    ("needs review", item(review_decision="REVIEW_REQUIRED", waits=["a"]), "needs review before waits on"),
+    ("waits on a", item(review_decision=None, waits=["a"]), "empty decision, CLEAN, waits: waits on"),
+    ("draft", item(review_decision=None, is_draft=True), "empty decision, draft: draft"),
     ("waits on a, b", item(waits=["a", "b"]), "waits on stops can merge"),
     ("waits on a", item(waits=["a"], merge_state="DIRTY"), "waits on before conflict"),
     ("conflict", item(merge_state="DIRTY"), "conflict, DIRTY"),

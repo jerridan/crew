@@ -9318,3 +9318,52 @@ Deliberately different:
 
      Only the seeded test has run this. No orchestrator and no project lead
      has used it yet.
+
+TBD-152. **The orchestrator launcher — 2026-11-16.** Issue 152 builds the
+     launcher of `crew:orchestrator`: `skills/orchestrator/scripts/launcher.py`
+     with the subcommands `start`, `groups`, `focus` and `stop`, its iTerm2
+     helper `iterm2-tabs.py`, and the seeded test `test-launcher.sh`.
+     `skills/orchestrator/references/launcher.md` owns the interface. The
+     decisions, each with its reason:
+
+     - `launcher.py` uses the standard library only, and the `iterm2`
+       package runs in the helper through `uv run --with iterm2`. A missing
+       package then stops only the tab group, not the launch.
+     - The worktree starts at `origin/<default>` after `git fetch origin`,
+       and the default branch comes from `git ls-remote --symref origin HEAD`.
+       A local `main` or `origin/HEAD` can be stale, and an implementer
+       that starts on old code builds on it.
+     - The new branch `worktree-<name>` has no upstream. An upstream of the
+       default branch lets a plain push go to the wrong branch.
+     - The launcher checks for an existing worktree path or branch before
+       the fetch, and stops. A second start of one name must not touch the
+       first implementer's work.
+     - A session name holds no `eval`. A worktree-isolated session refuses a
+       shell command that holds it (issue 149, experiment 2).
+     - The launcher never clones. It reads the principal's checkout from a
+       `Checkouts` line, as the review queue did, because a clone failed on
+       its first run (§15.130).
+     - The iTerm2 tab runs the command through the user's shell, as issue
+       149's `write text` did: the helper types it with `async_send_text`.
+       The tab opens unselected, so the orchestrator tab keeps the focus.
+     - `focus` and `stop` on iTerm2 use `osascript` and the unique-id scan of
+       issue 149. They then need no Python API and no `uv`.
+     - When the helper fails, `osascript` opens the tab with no group, and
+       the launcher says why on one line. An implementer with no group still
+       works, and a failed launch does not.
+     - When the helper opened the tab and only the group step failed, it
+       reports the tab with no group. The fallback then opens no second tab.
+     - The helper reads the app again after it changes a group. A `Window`
+       object does not show a group made after it was read.
+     - `stop` keeps the worktree and the branch. Issue 156 owns their
+       removal.
+     - Every exit code is fixed, and the first failed check decides it: usage
+       2, terminal 4, checkout 3, git 5, terminal step 6. Each failure is one
+       line on stderr, so the orchestrator reads it whole.
+
+     This entry adds the `Checkouts` standing-instructions section again,
+     which §15.138 removed with the review queue. The launcher now reads it
+     from the machine file. `CREW_CONFIG` replaces that file for a test or a
+     probe.
+
+     The seeded test passes. No crew run has used the launcher.

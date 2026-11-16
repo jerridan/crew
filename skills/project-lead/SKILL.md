@@ -215,8 +215,8 @@ differs from the base branch's, or exists where the base branch has none, tell
 the principal once that the review reads the committed file. A resumed
 session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** Twelve exist. You act on each of them except `Usage limit`, which only an
-orchestrator reads:
+**Each file holds optional `##` sections.** Thirteen exist. The orchestrator
+reads `Checkouts` and `Usage limit`, and you act on the other eleven:
 
 | Section | What you do with it |
 |---|---|

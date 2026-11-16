@@ -148,18 +148,18 @@ const world = (
       ? [{ id: PANE_ID, title: 'Board', isShown: true, isFocused: true, isPlaced: true }]
       : [],
   }))
-  for (const name of ['fs.write'] as const) {
-    on(name, (_, e) => {
-      w.writes.push(String((e as { path?: string }).path))
-      return { deny: 'the pane must not write' }
-    })
+  on('fs.write', (_, e) => {
+    w.writes.push(e.path)
+    return { deny: 'the pane must not write' }
+  })
+  const noRead = (what: string) => {
+    w.reads.push(what)
+    return { deny: 'the pane must not read a record file' }
   }
-  for (const name of ['fs.read', 'fs.stat', 'fs.exists', 'fs.list'] as const) {
-    on(name, (_, e) => {
-      w.reads.push(`${name} ${String((e as { path?: string }).path)}`)
-      return { deny: 'the pane must not read a record file' }
-    })
-  }
+  on('fs.read', (_, e) => noRead(`read ${e.path}`))
+  on('fs.stat', (_, e) => noRead(`stat ${e.path}`))
+  on('fs.exists', (_, e) => noRead(`exists ${e.path}`))
+  on('fs.list', (_, e) => noRead(`list ${String(e.path)}`))
   on('command.register', () => ({ value: { command: 'orch-board' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   return w
@@ -267,8 +267,8 @@ test('R13 /orch-board x runs the board command with --orch x', async ($, on) => 
   const w = world(on, [board()])
   await command($, 'x')
   expect(w.board).toHaveLength(1)
-  expect(w.board[0].slice(2)).toEqual(['--orch', 'x', 'board', '--json'])
-  expect(w.board[0][1]).toEndWith(BOARD_PY)
+  expect(w.board[0]?.slice(2)).toEqual(['--orch', 'x', 'board', '--json'])
+  expect(w.board[0]?.[1] ?? '').toEndWith(BOARD_PY)
   expect(w.opens).toHaveLength(1)
 })
 
@@ -401,17 +401,17 @@ test('R7 the sections and rows show in the order of the data', async ($, on) => 
       'need-d1',
       'recommend-d1',
       'need-q2',
-      'section-g1',
+      'group-g1',
       'row-1',
       'row-2',
-      'section-g2',
+      'group-g2',
       'row-3',
-      'section-single',
+      'singles',
       'row-5',
       'row-4',
       'footer',
     ]
-    for (let i = 1; i < want.length; i += 1) before(order, want[i - 1], want[i])
+    want.slice(1).forEach((key, i) => before(order, want[i] ?? '', key))
     expect(words(byKey(tree, 'needs'))).toContain('Needs you 2')
     expect(words(byKey(tree, 'recommend-d1'))).toContain('Recommended: take the editor')
     expect(byKey(tree, 'recommend-q2')).toBeUndefined()
@@ -493,10 +493,10 @@ test('R9 a row number and Enter runs launcher.py focus with the row handle', asy
   const ui = await mount($)
   await ui.input({ key: 'go', text: '3' })
   expect(w.launcher).toHaveLength(1)
-  expect(w.launcher[0][1]).toEndWith(LAUNCHER_PY)
-  expect(w.launcher[0].slice(2)).toEqual(['focus', 'H'])
+  expect(w.launcher[0]?.[1] ?? '').toEndWith(LAUNCHER_PY)
+  expect(w.launcher[0]?.slice(2)).toEqual(['focus', 'H'])
   await ui.input({ key: 'go', text: '12' })
-  expect(w.launcher[1].slice(2)).toEqual(['focus', 'H12'])
+  expect(w.launcher[1]?.slice(2)).toEqual(['focus', 'H12'])
   await ui.unmount()
 })
 
@@ -547,18 +547,30 @@ test('R10 a new Needs-you entry shows one toast, once', async ($, on) => {
   expect(w.toasts).toHaveLength(1)
 })
 
-// What the pane kept in $.state before a reload of the mod.
-const kept = (seen: string[]) => ({
-  value: {
-    shape: 'orch-board-1',
-    value: { name: 'x', board: withNeeds(...seen), error: null, line: null, seen, primed: true },
-  },
-  version: 4,
-})
+// What the pane kept in $.state before a reload of the mod: a host store
+// that starts with that value, read and written through the state events.
+const kept = (on: On, seen: string[]) => {
+  let held = {
+    value: {
+      shape: 'orch-board-1',
+      value: { name: 'x', board: withNeeds(...seen), error: null, line: null, seen, primed: true },
+    } as unknown,
+    version: 4,
+  }
+  on('state.get', () => ({ value: held }))
+  on('state.set', (_, e) => {
+    const ifVersion = (e as { ifVersion?: number }).ifVersion
+    if (ifVersion !== undefined && ifVersion !== held.version) {
+      return { value: { isSet: false, version: held.version } }
+    }
+    held = { value: e.value, version: held.version + 1 }
+    return { value: { isSet: true, version: held.version } }
+  })
+}
 
 test('R10 after a reload the pane does not toast an id it already toasted', async ($, on) => {
   const w = world(on, [withNeeds('d1', 'q2', 'q3')])
-  on('state.get', () => kept(['d1', 'q2', 'q3']))
+  kept(on, ['d1', 'q2', 'q3'])
   const ui = await mount($)
   await w.clock.advance(5_000)
   expect(w.board.length).toBeGreaterThanOrEqual(1)
@@ -568,7 +580,7 @@ test('R10 after a reload the pane does not toast an id it already toasted', asyn
 
 test('R10 after a reload the pane toasts an id it has not seen', async ($, on) => {
   const w = world(on, [withNeeds('d1', 'q2', 'q3', 'q4')])
-  on('state.get', () => kept(['d1', 'q2', 'q3']))
+  kept(on, ['d1', 'q2', 'q3'])
   const ui = await mount($)
   await w.clock.advance(5_000)
   expect(w.toasts).toHaveLength(1)
@@ -595,7 +607,7 @@ for (const columns of [40, 60]) {
         const indent = Number(node?.props?.paddingLeft ?? 0)
         // One line: the cells fit the width, and no cell holds more than its width.
         expect(indent + sizes.reduce((s, x) => s + x, 0) + gap * (sizes.length - 1)).toBeLessThanOrEqual(columns)
-        got.forEach((text, i) => expect(text.length).toBeLessThanOrEqual(sizes[i]))
+        got.forEach((text, i) => expect(text.length).toBeLessThanOrEqual(sizes[i] ?? 0))
         expect(got).toContain(String(r.n))
         expect(got).toContain(r.id)
         expect(got).toContain(r.status)
@@ -628,7 +640,7 @@ const TEXT_LINES = (FIXTURE_TEXT as string).split('\n')
 const lineOf = (pattern: RegExp) => {
   const i = TEXT_LINES.findIndex(l => pattern.test(l))
   expect(i, `a text line matches ${pattern}`).toBeGreaterThanOrEqual(0)
-  return { i, line: TEXT_LINES[i] }
+  return { i, line: TEXT_LINES[i] ?? '' }
 }
 
 // Each value is in the line, in order.
@@ -672,14 +684,14 @@ test('R16 at 200 columns the pane shows what the text view shows', async ($, on)
     next(i, e.id)
     if (e.recommend) {
       expect(words(byKey(tree, `recommend-${e.id}`)).trim()).toBe(`Recommended: ${e.recommend}`)
-      expect(TEXT_LINES[i + 1].trim()).toBe(`Recommended: ${e.recommend}`)
+      expect((TEXT_LINES[i + 1] ?? '').trim()).toBe(`Recommended: ${e.recommend}`)
     }
   }
   const drawnRows: string[] = []
   const textRows: string[] = []
   for (const s of FIXTURE.sections as Json[]) {
     const head = [s.title, s.ticket?.id ?? '', s.repo ?? '', s.kind === 'group' ? `${s.merged} of ${s.total} merged` : '']
-    inOrder(words(byKey(tree, `section-${s.id ?? 'single'}`)), head)
+    inOrder(words(byKey(tree, s.kind === 'group' ? `group-${s.id}` : 'singles')), head)
     const { i, line } = lineOf(new RegExp(`^ ${escape(s.title)}`))
     inOrder(line, head)
     next(i, s.title)

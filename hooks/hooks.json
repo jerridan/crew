@@ -1,4 +1,7 @@
 {
+  "modules": [
+    "./orch-board.tsx"
+  ],
   "hooks": {
     "SessionEnd": [
       {

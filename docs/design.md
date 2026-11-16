@@ -9461,44 +9461,62 @@ Deliberately different:
      - The orchestrator sends the goal when `ListAgents` shows the new
        session. A session that does not show can wait on the trust dialog,
        and that is a notice for the principal.
-     - A slot counts an implementer from its start to its merge. After the
-       merge it only watches the deploy, which burns little.
+     - A slot counts an implementer from its start to its merge, or to
+       `closed` for an item with no merge. After the merge it only watches
+       the deploy, which burns little.
      - The principal's word or an `Implementer model` section of the
        machine file changes an implementer's model. The principal decided
        this from rule 15. The orchestrator passes the model as
        `launcher.py start --model`.
      - The merge checks are fixed fields and commands. A review thread is
        resolved by the `isResolved` field of `reviewThreads`. A finding
-       outside a thread has a fix or a reply when the implementer's newest
-       "fixed ..., declined ..." line names it and no review or comment is
-       newer. With a `null` review decision the repo requires no approval,
-       and the item's stage `pr` shows that the skeptical review stopped.
-       The record's `can merge` is one input of these.
+       outside a thread has a fix or a reply when the implementer's ready
+       line names it. The project lead sends that line each time its
+       skeptical review stops on a head, also after a round with no
+       finding, and it names the head sha. The line counts only when its
+       sha equals the PR's `headRefOid`. With a `null` review decision the
+       repo requires no approval, and that line is the approval (rule 7).
+       A stage or the age of a comment cannot show which head the review
+       accepted. After a compaction the orchestrator asks for the line
+       again. The record's `can merge` is one input of these.
      - The default merge method is rebase when the repo allows it, else the
        one method it allows. Rule 7 names no method, and this build's
        principal merges by rebase.
      - A `Merge` section comes from the repo file on the default branch and
        from the machine file. A `Concurrency` section comes from the machine
        file only, because concurrency is per orchestrator. The order of
-       sources of `skills/project-lead/SKILL.md` decides between them. That
+       sources of `skills/project-lead/SKILL.md` decides between them. A
+       `Merge` section replaces only the merge steps. The group order,
+       `waits_on` and the overlap check stay, by rule 14. That
        file's table stays the one list of sections. `Merge`, `Concurrency`
        and `Implementer model` are new rows in it, which the orchestrator
        reads and the project lead does not.
      - The overlap check is `gh pr diff <n> --name-only` per open PR of a
        group, and the intersection of each pair, before each merge decision.
      - A wait on GitHub with no implementer to report it, such as a human
-       approval, is a `Monitor` watch on a shell loop over existing
-       commands. It prints only on a change and ends after at most 30
-       minutes. At the expiry the orchestrator refreshes once and arms the
-       watch again only while it still waits on that PR. Experiment 3 of
-       issue 149 found that a restart that reports "no change" costs a turn.
+       approval, is a background Bash command: a shell loop over existing
+       commands that exits on the first change. Its exit wakes the
+       orchestrator, so a quiet wait costs no turn. A `Monitor` watch ends
+       after at most 30 minutes, and experiment 3 of issue 149 found that a
+       restart that reports "no change" costs a turn.
      - With no board pane, the orchestrator prints the board in its
        transcript at each change of state, as this build's orchestrator did
        by hand.
      - At the close of an item the tab and the worktree stay. Issue 156 owns
        their removal.
-     - The README shows the command and no build record, as
-       `.claude/rules/readme.md` requires.
+     - The README shows the command. Its one "experimental" sentence says
+       that the orchestrator has run only to build itself, the one status
+       line that `.claude/rules/readme.md` allows.
+     - The goal message always carries `PR: ready`, so the skeptical review
+       ends on a PR that the merge checks can read.
+     - After the principal says yes to an action that no allow rule covers,
+       the orchestrator takes it itself where it can, or the principal adds
+       the allow rule. The implementer takes the action only after its rule
+       is present.
+     - A GitHub issue closes through the PR's `Closes` line. The
+       orchestrator closes a Linear ticket or a ticket file after the merge.
+     - A session with no name, or with a name the record refuses, asks the
+       principal for a name before `init`.
 
      The skill also states six message rules from the friction of this
      build: one settling message after a crossed message, a report only

@@ -624,7 +624,28 @@ def level(limit=None, **seedargs):
     seed(**seedargs)
     args = ["check"] + (["--limit", str(limit)] if limit is not None else [])
     r = run(args, STUB_MODE="fail")
-    return r.stdout.decode().strip(), r.returncode
+    return r.stdout.decode().split()[0], r.returncode
+
+
+def iso_t(ts):
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts))
+
+
+def t_r6_line():
+    seed(five=96, updated=NOW - 10)
+    r = run(["check"], STUB_MODE="fail")
+    line = r.stdout.decode().strip()
+    check("R6 the check line starts with the level, then the figure, sample time and source",
+          line == "stopped five_hour=96%% sampled=%s source=seed" % iso_t(NOW - 10)
+          and r.returncode == 20)
+    seed(five=None, plan=False, checked=NOW - 5)
+    line = run(["check"], STUB_MODE="fail").stdout.decode().strip()
+    check("R6 with no plan limits the check line carries the time of the check",
+          line.startswith("normal ") and "sampled=%s" % iso_t(NOW - 5) in line)
+    clean()
+    r = run(["check"], STUB_MODE="fail")
+    check("R6 with no figures the check line says sampled=none",
+          r.stdout.decode().strip() == "normal sampled=none" and r.returncode == 0)
 
 
 def t_r6():
@@ -698,6 +719,8 @@ def t_r7():
     lines = stop(p)
     check("R7 a move from normal to slowed prints exactly one line",
           len(lines) == 1 and "slowed" in lines[0])
+    check("R7 the watch line carries the sample time",
+          len(lines) == 1 and "sampled=%s" % iso_t(NOW - 10) in lines[0])
 
     seed(five=20, first=flat)
     p = start_watch()
@@ -823,7 +846,7 @@ def main():
     base = after = None
     try:
         for fn in (t_r1_merge, t_r1_no_ratelimits, t_r1_flag_cleared, t_r1_fields,
-                   t_r1_idle_repeat, t_r1_concurrent, t_r2, t_r3, t_r4, t_r5, t_r6, t_r7, t_r8_wait):
+                   t_r1_idle_repeat, t_r1_concurrent, t_r2, t_r3, t_r4, t_r5, t_r6_line, t_r6, t_r7, t_r8_wait):
             try:
                 res = fn()
                 if fn is t_r2:

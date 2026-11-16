@@ -348,6 +348,8 @@ reset_stub
 run start --name tm2 --model m --principal p --checkout "$CO" --group grp --terminal tmux
 r=1; [ "$rc" = 0 ] && grep -sq '^new-window|-t|=grp:|-n|tm2|' "$STUB_DIR/tmux.log" && [ "$(field tab_group)" = '"grp"' ] && r=0
 check '--terminal tmux with --group grp opens a window in the existing session =grp' $r
+check 'the new tmux window is not selected (-d), so the current window keeps the focus' \
+  $(grep -sqE '^new-window\|(.*\|)?-d\|' "$STUB_DIR/tmux.log"; echo $?)
 
 # -- repo from the origin URL, and --checkout over --repo ------------------
 git clone -q "$T/origin.git" "$T/co2"
@@ -470,6 +472,16 @@ rc, out, _ = launcher.run(["sh", "-c", "echo '{\"opened\": \"T-1\"}'; sleep 5"],
 sys.exit(0 if rc == 124 and '"opened"' in out else 1)
 PY
 check 'a helper timeout keeps the stdout the helper printed before it' $r
+chmod -x "$T/bin/claude"
+r=1; python3 - "$here" "$T/bin/claude" <<'PY' && r=0
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+rc, out, err = launcher.run([sys.argv[2]])
+sys.exit(0 if rc == 127 and err.strip() else 1)
+PY
+chmod +x "$T/bin/claude"
+check 'a command that cannot run gives exit 127 and a line, not a traceback' $r
 
 # A helper that hangs: the launcher kills the helper's whole process group.
 reset_stub

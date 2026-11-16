@@ -132,8 +132,8 @@ number, the order of sources decides ("Standing instructions" below).
 The number is part of the plan. Write each change with `plan change` and its
 reason, so the number survives a slowed period. `pace.slots.max` holds the
 number, except while `usage.md`'s "The slow-down rule" lowers it. Write
-`pace.slots.busy` with `pace set` when an implementer starts and when its PR
-merges.
+`pace.slots.busy` with `pace set` when an implementer starts, and when it
+ends ("After the merge").
 
 `slots` is not a brake on usage. `usage.md`'s "The slow-down rule" says why.
 
@@ -211,10 +211,13 @@ The rules for the run:
   `SendMessage`, never to the tab.
 - **A stop.** On your pause or stop message, commit and start no new step.
   Then wait for your next message, or for the reset that `usage.md` names.
-- **The ready line.** Each time the skeptical review stops on a head, send
-  one line that names the head sha and each finding outside a review thread,
-  for example "ready <sha>: fixed ..., declined ...". Send it also after a
-  round with no finding, and again when you ask for it.
+- **The ready line.** Send one line that names the current head sha and
+  the latest answer to each finding outside a review thread, for example
+  "ready <sha>: fixed ..., declined ...". Send it each time the skeptical
+  review stops with `accepted`, also after a round with no finding. Send it
+  at the end of every round on PR comments or CI. Send it again when you ask
+  for it. When a head stays unreviewed, such as past the review cap, say so
+  in the line.
 - **A GitHub event.** Send one line when an approval, a review, or a merge
   queue event needs you.
 - **Uncovered actions.** Name each action that no allow rule covers, and say
@@ -303,30 +306,31 @@ first. Each check names what decides it.
 
 | Check | What decides it |
 |---|---|
-| The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |
-| No item waits before it | the record field `waits_on` is empty |
-| The PR is not a draft | the record field `github.is_draft` is `false` |
+| The record allows the merge | the item's merge value is `can merge` (`orchestrator-record.md`'s "The merge value") |
 | The ready line is for the current head | the sha of the implementer's newest ready line equals `headRefOid` of `gh pr view <n> --json headRefOid` |
-| Each finding of a review or of CI has a fix or a reply | that ready line names each finding outside a thread |
+| Each finding of a review or of CI has a fix or a reply | that ready line names each finding. The findings are in `gh pr view <n> --json reviews,comments` and in the comments of each review thread |
 | Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false` |
-| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |
+| A repo that requires no approval has one | the ready line for the current head is the approval (rule 7) |
 | The overlap check is done | "The overlap check" gives this PR the next place |
 
-The record's merge value, `can merge`, is one input. It is not the whole
-procedure.
+A finding that the ready line does not name is not answered yet. Ask the
+implementer for its ready line again. A ready line that reports the head as
+unreviewed approves nothing. Put a notice in the inbox, and do not merge that
+PR on the line alone.
 
 **The method.** Merge by rebase when the repo allows it. Else use the one
 method that the repo allows. `gh repo view --json
 rebaseMergeAllowed,squashMergeAllowed,mergeCommitAllowed` says which. In a
 repo with a merge queue, the merge command puts the PR in the queue.
 
-**A `Merge` section replaces the merge steps.** The section holds prose
-steps, for example: "post the PR link in a review channel and wait for a
-human approval, then use the merge queue". Read it from the item's repo file,
-`.claude/crew.md` on the default branch, and from the machine file. The order
-of sources decides which wins ("Standing instructions" below). The group
-order, `waits_on` and the overlap check stay. A `Merge` section replaces none
-of them.
+**A `Merge` section replaces part of this procedure.** The section holds
+prose steps, for example: "post the PR link in a review channel and wait for
+a human approval, then use the merge queue". Read it from the item's repo
+file, `.claude/crew.md` on the default branch, and from the machine file. The
+order of sources decides which wins ("Standing instructions" below). It
+replaces two things: the method, and the row "A repo that requires no
+approval has one". Every other row of the table stays, and so do the group
+order and the overlap check.
 
 **After the merge.** When the merge command succeeded, or the queue merged
 the PR, tell the implementer. Write `pace.slots.busy` one lower. Then start
@@ -335,8 +339,9 @@ the next rebase in the group. Also write it one lower when an item reaches
 
 ## The wait
 
-A wait costs no model turn. When nothing needs you, end your turn. Never poll
-in a turn, and never sleep in one. Four things wake you:
+A wait costs no model turn, except one turn per timeout of a GitHub wait.
+When nothing needs you, end your turn. Never poll in a turn, and never sleep
+in one. Four things wake you:
 
 | Waker | How it arrives |
 |---|---|
@@ -346,10 +351,12 @@ in a turn, and never sleep in one. Four things wake you:
 | A usage level | the line of the usage watch (`usage.md`'s "The watch"). |
 
 **A GitHub wait.** Run a shell loop over existing commands as a background
-Bash command (`run_in_background`). An example is `gh pr view <n> --json
+Bash command (`run_in_background`), with the largest timeout that the Bash
+tool allows. An example is `gh pr view <n> --json
 reviewDecision,state,mergeStateStatus`. The loop exits on the first change of
-that output, and its exit wakes you. Write no new script for it. Start one
-again only while you still wait on that PR.
+that output, and its exit wakes you. Write no new script for it. A timeout
+wakes you too, for one turn: start the command again, only while you still
+wait on that PR.
 
 ## Standing instructions
 

@@ -234,7 +234,7 @@ model`, and you act on the other eleven:
 | `Checkouts` | one line per repo, the principal's checkout of that repo. The orchestrator launcher reads it from the machine file. `skills/orchestrator/references/launcher.md` owns the line format |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
 | `Usage limit` | the plan usage limit of an orchestrator, a percent of the five-hour window. Only an orchestrator reads it; `skills/orchestrator/references/usage.md`'s "The limit" owns it |
-| `Merge` | prose steps that replace the orchestrator's merge procedure. `skills/orchestrator/SKILL.md` acts on it |
+| `Merge` | prose steps that replace part of the orchestrator's merge procedure. `skills/orchestrator/SKILL.md` acts on it |
 | `Concurrency` | machine file only: how many implementers an orchestrator runs at once. `skills/orchestrator/SKILL.md` acts on it |
 | `Implementer model` | machine file only: the model of an implementer. `skills/orchestrator/SKILL.md` acts on it |
 

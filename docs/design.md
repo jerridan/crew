@@ -9468,17 +9468,21 @@ Deliberately different:
        machine file changes an implementer's model. The principal decided
        this from rule 15. The orchestrator passes the model as
        `launcher.py start --model`.
-     - The merge checks are fixed fields and commands. A review thread is
-       resolved by the `isResolved` field of `reviewThreads`. A finding
-       outside a thread has a fix or a reply when the implementer's ready
-       line names it. The project lead sends that line each time its
-       skeptical review stops on a head, also after a round with no
-       finding, and it names the head sha. The line counts only when its
-       sha equals the PR's `headRefOid`. With a `null` review decision the
-       repo requires no approval, and that line is the approval (rule 7).
-       A stage or the age of a comment cannot show which head the review
-       accepted. After a compaction the orchestrator asks for the line
-       again. The record's `can merge` is one input of these.
+     - The merge checks are fixed fields and commands. The record's merge
+       value `can merge` covers the checks, the conflict, the wait, the
+       draft and a required approval, so the skill reads that value and
+       copies none of its conditions. A review thread is resolved by the
+       `isResolved` field of `reviewThreads`. A finding has a fix or a reply
+       when the implementer's ready line names it. The project lead sends
+       that line, with the head sha, each time its skeptical review stops
+       with `accepted`, also after a round with no finding, and at the end
+       of every round on PR comments or CI. The line counts only when its
+       sha equals the PR's `headRefOid`. In a repo that requires no
+       approval, that line is the approval (rule 7). A line that reports
+       the head as unreviewed approves nothing: the orchestrator puts a
+       notice in the inbox. A stage or the age of a comment cannot show
+       which head the review accepted. After a compaction, or for a finding
+       the line does not name, the orchestrator asks for the line again.
      - The default merge method is rebase when the repo allows it, else the
        one method it allows. Rule 7 names no method, and this build's
        principal merges by rebase.
@@ -9486,8 +9490,9 @@ Deliberately different:
        from the machine file. A `Concurrency` section comes from the machine
        file only, because concurrency is per orchestrator. The order of
        sources of `skills/project-lead/SKILL.md` decides between them. A
-       `Merge` section replaces only the merge steps. The group order,
-       `waits_on` and the overlap check stay, by rule 14. That
+       `Merge` section replaces only the merge method and the ready line as
+       the approval. The other checks, the group order and the overlap check
+       stay, by rules 7 and 14. That
        file's table stays the one list of sections. `Merge`, `Concurrency`
        and `Implementer model` are new rows in it, which the orchestrator
        reads and the project lead does not.
@@ -9495,8 +9500,9 @@ Deliberately different:
        group, and the intersection of each pair, before each merge decision.
      - A wait on GitHub with no implementer to report it, such as a human
        approval, is a background Bash command: a shell loop over existing
-       commands that exits on the first change. Its exit wakes the
-       orchestrator, so a quiet wait costs no turn. A `Monitor` watch ends
+       commands that exits on the first change, with the largest timeout
+       that the Bash tool allows. Its exit wakes the orchestrator. A quiet
+       wait costs one turn per timeout and no other. A `Monitor` watch ends
        after at most 30 minutes, and experiment 3 of issue 149 found that a
        restart that reports "no change" costs a turn.
      - With no board pane, the orchestrator prints the board in its

@@ -213,7 +213,7 @@ differs from the base branch's, or exists where the base branch has none, tell
 the principal once that the review reads the committed file. A resumed
 session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** You act on these eleven:
+**Each file holds optional `##` sections.** You act on these twelve:
 
 | Section | What you do with it |
 |---|---|
@@ -227,6 +227,7 @@ session reads the files at those paths again before its first dispatch.
 | `Done` | `merged` or `rolled out`. `crew:delivered-window`'s "The word that the work shipped" reads it |
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
+| `Checkouts` | lines of the form `<owner>/<repo>: <absolute path>`, each the principal's checkout of a repo. The orchestrator launcher reads it from the machine file (`skills/orchestrator/references/launcher.md`) |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
 
 **`Deploy` names the signal that the work is live.** Its lines are:

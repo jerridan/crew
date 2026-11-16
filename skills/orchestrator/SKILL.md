@@ -47,11 +47,15 @@ record. They survive a compaction and a restart of the machine.
 
 - At the start, run `init` one time. Name the record after your own session
   name, the name that `SendMessage` reaches you by. Every `launcher.py start
-  --principal` and every `Orchestrator:` line uses the same name.
+  --principal` and every `Orchestrator:` line uses the same name. When your
+  session has no name, or its name does not match the name pattern of
+  `orchestrator-record.md`, ask the principal for a name before `init`.
 - Keep no second copy in a scratchpad file. A file that you pass to `plan
   change --file` or `told --file` is input only. Read the plan, the items and
   the inbox from the record, with `show` and `plan.md`.
 - After a compaction, read `show` and `plan.md` before your next action.
+  Then ask each implementer with an open PR to send its ready line again
+  ("The goal message").
 
 ## Take the work
 
@@ -107,6 +111,13 @@ Never tell an implementer that it can take an action that its permission
 check then refuses. Until the principal answers, the goal message names each
 uncovered action as one the implementer does not take.
 
+When the principal says yes to an uncovered action, do one of two things:
+
+- Take the action yourself, when you can and your own allow rules cover it.
+  An example is to close an issue.
+- Else the principal adds the allow rule. Tell the implementer that it can
+  take the action only after its allow rule is present.
+
 ## Concurrency
 
 At most three implementers work at one time by default. Two things change the
@@ -154,9 +165,10 @@ instructions and hooks. Then:
 3. **The settings value.** Compute the worktree path as `launcher.md`'s
    "start" says. Then print the value with `crew-usage.py settings`
    (`usage.md`'s "The launch value").
-4. **Start.** Run `launcher.py start` with that value as `--settings`, your
-   session name as `--principal`, and a session name that `launcher.md`'s
-   `--name` rule accepts. Use the item id when it does.
+4. **Start.** Run `launcher.py start` with the arguments of `launcher.md`'s
+   "start", among them `--repo` and `--group`. Give that value as
+   `--settings`, your session name as `--principal`, and a session name that
+   the `--name` rule accepts. Use the item id when it does.
 5. **Store the output.** Write the start output, unchanged, into the item's
    `launch` with `item <id> set launch`.
 6. **Count the slot.** Write `pace.slots.busy` one higher.
@@ -186,7 +198,7 @@ The goal message carries:
 - the goal and the desired outcome, under the manager rule;
 - context, data and pointers, each marked as context;
 - the charter line `Gate: off`;
-- the PR readiness line, `PR: ready` or `PR: draft`;
+- the line `PR: ready`;
 - the line `Orchestrator: <your name>, item <id>`
   (`skills/project-lead/SKILL.md`'s "Report to an orchestrator");
 - the line `Usage limit: <pct>` (`usage.md`'s "The limit");
@@ -199,9 +211,10 @@ The rules for the run:
   `SendMessage`, never to the tab.
 - **A stop.** On your pause or stop message, commit and start no new step.
   Then wait for your next message, or for the reset that `usage.md` names.
-- **The PR is ready.** Send one line when the PR is ready for review.
-- **Findings.** After each round on review or CI findings, send one line:
-  "fixed ..., declined ...".
+- **The ready line.** Each time the skeptical review stops on a head, send
+  one line that names the head sha and each finding outside a review thread,
+  for example "ready <sha>: fixed ..., declined ...". Send it also after a
+  round with no finding, and again when you ask for it.
 - **A GitHub event.** Send one line when an approval, a review, or a merge
   queue event needs you.
 - **Uncovered actions.** Name each action that no allow rule covers, and say
@@ -210,6 +223,8 @@ The rules for the run:
   Ask you, not the other part, for an interface that is not merged.
 - **Shared values.** Name each value that you own ("Groups and shared
   things"). The implementer leaves it as a placeholder.
+- **The ticket.** Name the GitHub issue that the item resolves, so that the
+  project lead writes `Closes #<n>` in the PR body.
 
 Record every message to an implementer with `told` before you send it, or as
 you send it. This holds for the goal and for every later message.
@@ -291,9 +306,10 @@ first. Each check names what decides it.
 | The checks pass, and the PR has no conflict | the record field `github.checks` is `pass` or `none`, and `github.merge_state` is `CLEAN` |
 | No item waits before it | the record field `waits_on` is empty |
 | The PR is not a draft | the record field `github.is_draft` is `false` |
-| Each finding of a review or of CI has a fix or a reply | the implementer's newest "fixed ..., declined ..." line names each finding outside a thread, and no review or comment in `gh pr view <n> --json reviews,comments` is newer than that line |
+| The ready line is for the current head | the sha of the implementer's newest ready line equals `headRefOid` of `gh pr view <n> --json headRefOid` |
+| Each finding of a review or of CI has a fix or a reply | that ready line names each finding outside a thread |
 | Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false` |
-| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the implementer's skeptical review is the approval: the item's `stage` is `pr` |
+| The approval that the repo requires is present | the record field `github.review_decision` is `APPROVED`. When it is `null`, the repo requires no approval, and the ready line for the current head is the approval |
 | The overlap check is done | "The overlap check" gives this PR the next place |
 
 The record's merge value, `can merge`, is one input. It is not the whole
@@ -304,15 +320,18 @@ method that the repo allows. `gh repo view --json
 rebaseMergeAllowed,squashMergeAllowed,mergeCommitAllowed` says which. In a
 repo with a merge queue, the merge command puts the PR in the queue.
 
-**A `Merge` section replaces this procedure.** The section holds prose steps,
-for example: "post the PR link in a review channel and wait for a human
-approval, then use the merge queue". Read it from the item's repo file,
+**A `Merge` section replaces the merge steps.** The section holds prose
+steps, for example: "post the PR link in a review channel and wait for a
+human approval, then use the merge queue". Read it from the item's repo file,
 `.claude/crew.md` on the default branch, and from the machine file. The order
-of sources decides which wins ("Standing instructions" below).
+of sources decides which wins ("Standing instructions" below). The group
+order, `waits_on` and the overlap check stay. A `Merge` section replaces none
+of them.
 
 **After the merge.** When the merge command succeeded, or the queue merged
 the PR, tell the implementer. Write `pace.slots.busy` one lower. Then start
-the next rebase in the group.
+the next rebase in the group. Also write it one lower when an item reaches
+`closed` with no merge.
 
 ## The wait
 
@@ -323,17 +342,14 @@ in a turn, and never sleep in one. Four things wake you:
 |---|---|
 | A message from an implementer | a cross-session message. It arrives on its own. |
 | A message from the principal | it arrives on its own. |
-| A PR or CI change that you must act on | the implementer's line: the goal asks for one when its PR is ready, and when an approval or a merge queue event needs you. Where no implementer can tell you, such as a human approval, a `Monitor` watch on GitHub. |
+| A PR or CI change that you must act on | the implementer's line: the goal asks for one at each ready head, and when an approval or a merge queue event needs you. Where no implementer can tell you, such as a human approval, a GitHub wait. |
 | A usage level | the line of the usage watch (`usage.md`'s "The watch"). |
 
-Before each merge decision, run `crew-orch.py refresh`.
-
-**A GitHub watch.** Arm `Monitor` on a shell loop over existing commands,
-such as `gh pr view <n> --json reviewDecision,state,mergeStateStatus`. The
-loop prints a line only when the output changes. Write no new script for it.
-A `Monitor` watch ends after at most 30 minutes. At its expiry, run
-`crew-orch.py refresh` once, and act on any change. Arm it again only while
-you still wait on that PR.
+**A GitHub wait.** Run a shell loop over existing commands as a background
+Bash command (`run_in_background`). An example is `gh pr view <n> --json
+reviewDecision,state,mergeStateStatus`. The loop exits on the first change of
+that output, and its exit wakes you. Write no new script for it. Start one
+again only while you still wait on that PR.
 
 ## Standing instructions
 
@@ -365,7 +381,9 @@ An item ends with these steps, in this order:
    word (`crew:delivered-window`). When the repo has a deploy, the ship word
    waits for it.
 4. The implementer's run closes.
-5. The record holds the item at `shipped`, or at `closed` for a run that ends
+5. The ticket closes. A GitHub issue closes through the `Closes` line of the
+   PR. You close a Linear ticket or a ticket in a ticket file after the merge.
+6. The record holds the item at `shipped`, or at `closed` for a run that ends
    with no merge.
 
 The tab and the worktree stay. Resume after a restart, and the removal of

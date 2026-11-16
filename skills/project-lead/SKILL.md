@@ -53,6 +53,9 @@ envelope's `from-name` for the record step below. `autonomy-contract.md` owns
 how you reach it, and its "How to escalate" owns what you check before any
 ask.
 
+**A goal with an `Orchestrator:` line** has its own reporting rules: see
+"Report to an orchestrator" below.
+
 **Then look for a live run on the same ticket**, unless the argument is
 `--resume`. A ticket id is any token in the goal that matches `[A-Z]+-[0-9]+`.
 Read `goal_slug`, `run.kind` and `run.run_state` in every `state.json` under
@@ -153,6 +156,43 @@ crew-record.py <record-dir> decision precedent "Which path does this goal take?"
 
 Nothing else in the record says an investigation run was
 chosen rather than fallen into.
+
+## Report to an orchestrator
+
+A goal message with the line `Orchestrator: <name>, item <id>` means an
+orchestrator session started this run. That session is `run.principal`.
+`skills/orchestrator/references/orchestrator-record.md` owns the record you
+report into, and every command below.
+
+When the line is there, do three things in the turn you take the goal:
+
+1. Copy the line to `charter.md`.
+2. Write `run.orchestrator` with `crew-record.py <record-dir> run set
+   orchestrator '{"name": "<name>", "item": "<id>"}'`.
+3. Call the script as `<this skill's dir>/../orchestrator/scripts/crew-orch.py
+   --orch <name> <command>`.
+
+Call `stage <id> <stage>` at each phase change. The path decides which calls
+you make:
+
+| Path | Stage calls |
+|---|---|
+| Change path | `spec` when you start the spec; `split` (full path only); `build` at the first IC dispatch, with `--detail <k>/<n>` for package k of n; `review` at the skeptical review; `pr` when the PR opens |
+| Light path | `build`, `review`, `pr` |
+| Investigation path | `spec` while you diagnose; then the change path's calls for a fix ending, or `closed` for a report ending |
+
+The delivered window writes `merged` at the merge and `shipped` at the ship
+word. A `crew:review` run writes no stage call.
+
+Write each question with `ask <id> "<text>"` before you send it to the
+principal. `ask` prints a question id. Send the question by `SendMessage`, as
+`autonomy-contract.md`'s "Reach the principal the way the goal arrived" says,
+and name that id in it. The answer arrives as a message, and the orchestrator
+records it with `answer`. If no session is addressable, the failed-send rule
+of `autonomy-contract.md` holds.
+
+A failed `crew-orch.py` call never stops the run. Note it in `decisions.md`
+and go on. A record with no `run.orchestrator` behaves as before.
 
 ## Standing instructions
 

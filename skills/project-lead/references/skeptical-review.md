@@ -543,6 +543,10 @@ the monitor before the write. Arm it again after `gh pr ready`, as
 check reads GitHub, not the record, so a session killed between the commands
 can run it again safely.
 
+When `run.orchestrator` is set, write the stage `pr` as the review stops, as
+`SKILL.md`'s "Report to an orchestrator" says. Write it also when `PR: draft`
+keeps the PR a draft.
+
 **Mark the PR ready once.** A later change request or patch round pushes to a
 PR that is already ready. Never turn it back into a draft.
 

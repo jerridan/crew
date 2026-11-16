@@ -185,7 +185,8 @@ The closed list, in order: `queued`, `spec`, `split`, `build`, `review`, `pr`,
 The status word of a row is the merge value in three cases: an item with a PR
 at stage `review` or `pr`, and an item at `merged` or `shipped`. An item at
 `closed` shows `closed`. In every other case the word is the stage, with its
-`detail` (`build 2/3`).
+`detail` (`build 2/3`). Before a `refresh` has read the PR, an item at `review`
+or `pr` shows the stage word.
 
 ## The merge value
 
@@ -197,8 +198,8 @@ at stage `review` or `pr`, and an item at `merged` or `shipped`. An item at
 | `no PR` | the item has no PR |
 | `closed` | the PR state is `CLOSED`, or the stage is `closed` |
 | `in queue` | the PR is in the merge queue. It adds the position when GitHub gives one: `in queue 3` |
-| `can merge` | not a draft, approved, merge state `CLEAN`, checks `pass`, and no wait |
-| `needs review` | not a draft, checks `pass`, merge state `CLEAN` or `BLOCKED`, and no decision yet |
+| `can merge` | not a draft, the review decision is `APPROVED` or none, merge state `CLEAN`, checks `pass`, and no wait. GitHub gives an empty decision when the repo requires no review, and the record stores `null` |
+| `needs review` | not a draft, checks `pass`, and either `REVIEW_REQUIRED` with merge state `CLEAN` or `BLOCKED`, or no decision with merge state `BLOCKED` |
 | `waits on <ids>` | the item waits on at least one item before it in its group |
 | `conflict` | merge state `DIRTY` or `BEHIND` |
 | `ci failing` | checks `fail` |
@@ -208,8 +209,8 @@ at stage `review` or `pr`, and an item at `merged` or `shipped`. An item at
 | `blocked` | none of the above |
 
 `refresh` drops every `CANCELLED` run, then takes the latest run of each
-workflow and check name. A run with no `startedAt` is the latest run of its
-name. `SUCCESS`, `NEUTRAL` and `SKIPPED` pass. `FAILURE`,
+workflow and check name. A run with no `startedAt`, or with one that starts with `0001-01-01`, is the
+latest run of its name. That is how `gh` prints an unset time. `SUCCESS`, `NEUTRAL` and `SKIPPED` pass. `FAILURE`,
 `ERROR`, `TIMED_OUT`, `STARTUP_FAILURE` and `ACTION_REQUIRED` fail. Any other
 state is pending. With no run left, `checks` is `none`, and `can merge` and
 `needs review` read `none` as passing.

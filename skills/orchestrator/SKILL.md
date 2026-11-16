@@ -377,8 +377,11 @@ act on a section.
 
 ## The board
 
-Print `crew-orch.py board` in the transcript at each change of state. No
-board pane exists: issue 155 owns it, and it is not built.
+Open the board pane with `/orch-board <name>` once `init` has made the
+record. With no name, it uses `$CREW_ORCH`. The pane stays current by
+itself, and `orchestrator-record.md`'s "The board" owns what it shows. In a
+session that cannot show a pane, print `crew-orch.py board` in the transcript
+at each change of state.
 
 ## Usage
 

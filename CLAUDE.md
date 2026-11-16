@@ -148,12 +148,12 @@ board, and a project lead that an orchestrator started reports its stage and
 its questions there (§15.139). Only the seeded test has run it.
 
 The `crew:orchestrator` skill is built (§15.142). No crew run has used it,
-except the build of the skill itself. Its board pane (issue 155), and resume
-after a restart with the close-out (issue 156), are not built.
+except the build of the skill itself. Resume after a restart with the
+close-out (issue 156) is not built.
 
 The board pane is built: `crew-orch.py board --json` is the one source of the
 board, and the mod `hooks/orch-board.tsx` draws it in a pane that
-`/orch-board` opens (§15.TBD). Only its tests and `test-crew-orch.sh` have run
+`/orch-board` opens (§15.143). Only its tests and `test-crew-orch.sh` have run
 it, and no session has opened the pane.
 
 T57 removed the tier above the project lead: the principal hands each goal

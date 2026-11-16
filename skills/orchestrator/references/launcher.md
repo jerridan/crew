@@ -64,7 +64,9 @@ worktree path or branch stops the command before the fetch.
 The worktree path is known before `start` runs. `<checkout top level>` is the
 real path of the checkout's top level: the output of `git rev-parse
 --show-toplevel` in the checkout, with every symlink resolved. Compute the
-path this way when a `--settings` value must name the worktree.
+path this way when a `--settings` value must name the worktree. The
+orchestrator builds the `--settings` value before it runs `start`. The
+reference of the usage part owns how.
 
 **The tab.** The command that runs in the tab is:
 

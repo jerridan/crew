@@ -621,7 +621,7 @@ def stop(a):
         return OK
     rc, _, err = tmux(["kill-pane", "-t", ref])
     if rc != 0:
-        raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane %s failed: %s" % (ref, one_line(err) or "exit %d" % rc))
+        raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane failed for tmux:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
     return OK
 
 

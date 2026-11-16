@@ -96,13 +96,18 @@ answers that dialog. Its status line waits too.
 
 - **tmux.** One new window, named `<name>`, in the tmux session `--group`.
   The launcher creates that session detached when it does not exist. A
-  session target is always `=<session>`.
+  session target is always `=<session>`. Every tmux call runs with no
+  `CLAUDECODE` and no `CLAUDE_CODE_*` variable. A tmux server that the
+  launcher starts passes its environment to every window, so an implementer
+  must not get the session variables of the orchestrator.
 - **iTerm2.** One new tab in the window that holds the session
   `$ITERM_SESSION_ID` names, or in the current window. The tab is not
   selected. The session takes `<name>` as its name. With `--group`, the tab
   joins the open group of that name in that window, or starts a new group.
   When the helper fails, `osascript` opens the tab with no group, and one line
-  on stderr says why. The launcher never opens a second tab:
+  on stderr says why. The `osascript` tab is selected when it opens, so the
+  fallback selects the tab of before again. The launcher never opens a second
+  tab:
   - The helper failed after it typed the command: the launcher reports the
     helper's tab with no group, and one line on stderr says why. No fallback
     runs.
@@ -111,6 +116,9 @@ answers that dialog. Its status line waits too.
     `osascript`. Then the fallback opens the only tab.
   - That tab did not close: the command exits 6, and the line names the tab
     and the worktree.
+  - The helper did not end in 120 seconds: the launcher kills the helper and
+    every process the helper started. Then the steps above apply. The helper
+    gets a deadline 20 seconds shorter, and it stops itself at that deadline.
 
 **The output.** Stdout carries one line: one JSON object with exactly these
 nine fields.
@@ -177,7 +185,7 @@ check, the first in this order decides the exit: 2, 4, 3, 5, 6.
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal. The line names `$TERM_PROGRAM` and the supported terminals. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab |
-| 6 | the terminal step failed. On tmux, the window did not open. On iTerm2, the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. The worktree stays, and the line names its path |
+| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
 
 ## Test

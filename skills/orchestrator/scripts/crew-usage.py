@@ -286,10 +286,12 @@ def do_refresh():
             fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 120, 0, 0))
         except OSError:
             pass
+        # The start keeps the caller's directory. A new directory makes claude
+        # ask for trust, and the status line never runs.
         try:
             proc = subprocess.Popen(
                 ["claude", "--restricted", "--strict-mcp-config", "--settings", settings],
-                stdin=slave, stdout=slave, stderr=slave, cwd=tmp,
+                stdin=slave, stdout=slave, stderr=slave,
                 start_new_session=True, close_fds=True)
         except OSError:
             return 1

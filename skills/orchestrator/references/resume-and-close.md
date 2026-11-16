@@ -1,0 +1,141 @@
+# Resume and close
+
+This file owns two procedures of the orchestrator: the resume after a restart,
+and the close of an item and of a run. Each step names its command. The owner
+of each command holds its arguments, its output and its exit codes:
+
+| File | Owns |
+|---|---|
+| `launcher.md` | `launcher.py find`, `resume`, `stop` and `remove` |
+| `orchestrator-record.md` | every `crew-orch.py` command, `launch`, `told`, `pace` and `closed_at` |
+| `usage.md` | `crew-usage.py check` and the usage watch |
+
+Each step is safe to run again. A step that stopped part way runs again from
+its start.
+
+## When a resume runs
+
+| Case | What is lost | What you do |
+|---|---|---|
+| A compaction of your session | your context only | Read the record ("The resume", step 3). Then ask each implementer with an open PR to send its ready line again. Background tasks, the usage watch and each GitHub wait continue. Arm none of them again |
+| The same session opened again: `claude --resume`, or `cc-restore` brought the tab back | every background task, `Monitor` watch and scheduled job | the whole of "The resume" |
+| A new session, after a restart of the machine or a lost transcript | your context and every background task | the whole of "The resume". The principal starts it with words such as "resume orchestrator <name>" |
+
+## The resume
+
+Do these steps in this order.
+
+1. **The name.** The record name is your session name, and each implementer
+   sends to that name. Run under the same name: `claude --resume`, or
+   `/rename <name>`. When the principal's words do not give the name, ask the
+   principal for it. When `ListAgents` shows another live session with that
+   name, a second orchestrator holds the record. Stop, and tell the
+   principal.
+2. **A closed record.** Run `crew-orch.py show`. When `closed_at` is set, the
+   run is closed. Tell the principal so, and do nothing more.
+3. **Read the record.** Read `show` and `plan.md`, then print `board`. They
+   give each item, each implementer (`launch`), each open inbox entry and the
+   plan.
+4. **Each implementer.** Do this for each item that has a
+   `launch.session_name` and a stage before `shipped`:
+   - **Alive.** `ListAgents` shows its name. Run `launcher.py find <name>
+     --worktree <launch.worktree>`. When the handle differs from
+     `launch.tab`, write it with `item <id> set launch.tab`. A restart of the
+     machine gives each iTerm2 tab a new id.
+   - **Gone, and its worktree exists.** Compute the settings value as
+     SKILL.md's "Launch an implementer" says. Run `launcher.py resume` with
+     the item's `launch` values: the name, the worktree, `session_id` when the
+     record holds one, the model, the repo, the group and the terminal.
+     Without a `session_id`, `resume` takes the newest transcript of the
+     worktree. Write its output with `item <id> set launch`. Exit 8 means that
+     `find` saw the session open: treat it as alive.
+   - **Gone, and its worktree is gone.** Nothing can resume it. Put a notice
+     with the item in the inbox (`inbox add notice --item <id>`), and leave the item as it is. The principal
+     decides.
+   - **The rejoin message.** Send one message, with `told`, to each
+     implementer that is alive or that you resumed. It says that the
+     orchestrator restarted. It tells the implementer to arm its background
+     tasks and watches again, because a restart ended them. It asks for its
+     ready line, its stage and each open question again. Send it to a resumed
+     implementer when `ListAgents` shows its name. A resumed tab can wait on
+     the trust dialog, as SKILL.md's "The goal message" says for a new tab.
+   - **No goal.** An item with a `launch` and an empty `told` never got its
+     goal. Send the goal now, as SKILL.md's "The goal message" says. Never
+     send a second goal to an item whose `told` holds one.
+   - **No launch.** An item with no `launch` follows SKILL.md's "Launch an
+     implementer".
+
+   An item at `shipped` or `closed` whose tab or worktree is still there
+   waits for its close. Run `launcher.py find` to get its current tab, then
+   run "The close of an item" again from step 1.
+5. **The slot count.** Write `pace.slots.busy` with `pace set`. The value is
+   the count of implementers, alive or resumed, at a stage before `merged`.
+6. **The watches and waits.** Run `crew-usage.py check`, write its level, and
+   arm the usage watch, as `usage.md`'s "The watch" says. Arm a GitHub wait
+   (SKILL.md's "The wait") for each item whose PR waits on something that no
+   implementer reports, such as a human approval. No scheduled job comes back
+   after a restart, so a wait never lives only in a session.
+7. **The inbox.** Answer each open entry with `for: orchestrator` that is
+   yours, with `answer`, and send the answer with `told`. Name each open entry for the principal in one message.
+
+## The close of an item
+
+The close runs when an item reaches `shipped`, or `closed` with no merge. It
+also runs on the principal's word for an item that stops early: write
+`stage <item> closed` for it first. Do these steps in this order.
+
+1. **The implementer's processes.** Tell the implementer, with `told`, to stop
+   each process and service that it started for the item, such as a server,
+   a container, a watcher or a local stack. It answers with what it stopped.
+   Only the implementer can stop a container or a service outside the
+   worktree. Wait for the answer. When its session is gone, go on.
+2. **The session and the tab.** Run `launcher.py stop <launch.tab>`. It ends
+   the session with `/exit`, then closes the tab or the window. A tab that is
+   already gone is not an error.
+3. **The worktree.** Run `launcher.py remove <launch.worktree>`. Add
+   `--delete-branch` only when the item's PR merged. `remove` stops each
+   process still in the worktree that has no terminal. When `remove` refuses,
+   it keeps the worktree and changes nothing. Put a notice in the inbox, with
+   `inbox add notice`, that names the item, the worktree, and each file and
+   process of the output. Never force a removal. The principal decides.
+4. **The ticket.** A GitHub issue closes through the `Closes` line of the PR.
+   Check that it closed, and close it when it did not. Close a Linear ticket,
+   or a ticket in a ticket file, as the standing instructions say. For an
+   item closed with no merge, leave the ticket open and say so in the inbox.
+
+The close writes no slot count. The item released its slot when it reached
+`merged` or `closed`, as SKILL.md's "After the merge" says.
+
+The order has three reasons. The processes stop while the session can still
+say what it started. The session ends before the worktree goes, because a live
+session holds its worktree, and `gh pr merge --delete-branch` fails on it. The
+worktree goes last, after its processes stop.
+
+The record keeps the item at `shipped` or `closed`, with its `launch` and
+`told`. They are the history of the item.
+
+## The close of a run
+
+The close of a run starts on the principal's word.
+
+1. **Each item.** Tell each item before `merged` to stop, with `told`: commit,
+   and start no new step. Then run "The close of an item" for each item. An
+   item that did not merge keeps its branch: run `remove` without
+   `--delete-branch`. A clean worktree with committed work is still removed,
+   because the branch keeps the work.
+2. **Your watches and waits.** Stop the usage watch and each GitHub wait with
+   `TaskStop`.
+3. **The record.** Write `pace.slots.busy` as 0. Write a last `plan change`
+   with the reason. Run `crew-orch.py close`, then print `board`.
+
+The record stays whole as the history of the run. Nothing deletes it. A later
+resume of the record stops at "The resume", step 2.
+
+## cc-restore
+
+The public plugin `cc-restore` brings Claude Code tabs back in iTerm2 after a
+restart, in their groups. Crew does not need it: "The resume", step 4, starts
+each gone implementer itself. With the plugin, an implementer is often alive
+already, in a tab with a new id. Step 4 finds that tab, and `resume` refuses a
+second copy. The close ends each session with `/exit`, so the plugin does not
+bring a closed implementer back.

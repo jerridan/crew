@@ -9438,6 +9438,7 @@ Deliberately different:
      fresh reading ran live once each, and a feed of fresh readings gave the
      orchestrator of this build its figures. No orchestrator run has used
      the commands yet.
+
 NNN. **The skill `crew:orchestrator` — 2026-11-16.** (The orchestrator
      assigns this number at the merge.)
      Issue 154, part 4 of issue 150. `skills/orchestrator/SKILL.md` makes a
@@ -9464,8 +9465,9 @@ NNN. **The skill `crew:orchestrator` — 2026-11-16.** (The orchestrator
      - A slot counts an implementer from its start to its merge. After the
        merge it only watches the deploy, which burns little.
      - The principal's word or an `Implementer model` section of the
-       machine file changes an implementer's model (rule 15). The
-       orchestrator passes it as `launcher.py start --model`.
+       machine file changes an implementer's model. The principal decided
+       this from rule 15. The orchestrator passes the model as
+       `launcher.py start --model`.
      - The merge checks are fixed fields and commands. A review thread is
        resolved by the `isResolved` field of `reviewThreads`. A finding
        outside a thread has a fix or a reply when the implementer's newest

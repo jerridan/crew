@@ -168,8 +168,9 @@ Send no goal to an implementer that did not start.
 **The model and Remote Control.** `launcher.md` owns both defaults of an
 implementer: the model, and Remote Control off. Two things change the model:
 the principal's word, and an `Implementer model` section of the machine file.
-Pass the model that wins as `--model`. Never change the Remote Control
-setting of your own session.
+When both give a model, the order of sources decides ("Standing
+instructions" below). Pass the model that wins as `--model`. Never change the
+Remote Control setting of your own session.
 
 ## The goal message
 

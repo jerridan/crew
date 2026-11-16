@@ -276,6 +276,19 @@ To change the number that work at one time, say so:
 run five at a time
 ```
 
+### See an orchestrator's board
+
+In an orchestrator's session, open its board in a pane:
+
+```
+/orch-board <orchestrator name>
+```
+
+With no name, the pane uses `$CREW_ORCH`. The pane shows the plan usage, what
+needs you, each group of items and the single items. It reads the board again
+every 5 seconds, and a new item for you shows a toast. Type a row's number
+and press Enter to bring that implementer's tab to the front.
+
 ## What a run needs
 
 | Requirement | How | Which runs |

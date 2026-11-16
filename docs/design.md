@@ -9538,3 +9538,47 @@ Deliberately different:
      No crew run has used the skill, except the build of the skill itself.
      The board pane (issue 155) and resume with the close-out (issue 156)
      are not built.
+
+143. **The board pane — 2026-11-16.** Issue 155 makes `crew-orch.py board
+     --json` the one source of the orchestrator's board, and adds a mod,
+     `hooks/orch-board.tsx`, that draws it in a pane. `/orch-board <name>`
+     opens the pane. `orchestrator-record.md` "The board" owns the JSON
+     shape. The decisions, each with its reason:
+
+     - Each board value is made once, in `board_data`. The text view and
+       the pane only draw it. Two copies of the merge value or the age would
+       drift, and nothing would decide which copy wins.
+     - The JSON has a `version`. A new field keeps it, and a removed or
+       changed field raises it. The pane shows one line, and no board, for a
+       version it does not know. The resume part (issue 156) is not built;
+       it is to read the same object.
+     - A single item's row now shows its own ticket. Before, only a group
+       heading showed a ticket, so a single item's ticket was not on the
+       board at all. A grouped row stays as it was.
+     - The pane runs the board command every 5 seconds while it is open,
+       and stops when it closes. It reads no record file, so it does not
+       need the record path. It writes state only when the output changes.
+     - The seen Needs-you ids live in `$.state`, so a reload of the mod
+       does not toast an entry again. The first read after the pane opens
+       toasts nothing.
+     - `CREW_ORCH_NOW` pins the time that `board` reads, for a test. It
+       changes no write. With it, the fixtures under `tests/fixtures/` stay
+       the same from run to run. `test-crew-orch.sh` writes them fresh and
+       compares, so a fixture cannot go stale.
+     - The fixtures are TypeScript modules that wrap the raw output.
+       `claude plugin test` loads only code files: an import of a `.json`
+       or `.txt` file fails with "is not named like code".
+     - `claude plugin test` and `claude plugin validate` run with
+       `CLAUDE_CONFIG_DIR` set to a new empty directory. In issue 149,
+       experiment 3, a `claude` that loaded the principal's plugins raised
+       login prompts on the principal's screen.
+
+     The mod API has three traps that cost a test round each. `$` can go
+     only to a function declared at the top of the module, so per-load
+     state such as the timer goes in an object that `register` makes and
+     passes beside `$`. A `Text` takes no `key`, so a keyed line is a `Box`
+     around a `Text`. A test that stubs `state.get` answers `{ value: {
+     value, version } }`, with the atom's shape tag inside `value`.
+
+     The mod's 22 tests and `test-crew-orch.sh` pass. No session has opened
+     the pane yet.

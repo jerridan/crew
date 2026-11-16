@@ -482,9 +482,14 @@ A charter can carry `Usage limit: <pct>` (`record-format.md`). Only the
 orchestrator writes it. With no line, nothing in this section applies.
 
 With the line, run `python3 <plugin>/skills/orchestrator/scripts/crew-usage.py
-check --limit <pct>` before each dispatch and before each push. At `slowed`
-(exit 10) go on: the orchestrator decides how many implementers work. At
-`stopped` (exit 20):
+check --limit <pct>` before each dispatch and before each push. While ICs
+work, keep `crew-usage.py watch --limit <pct> --until stopped` running as a
+background Bash command. It costs no turn until it exits 20, and a turn spent
+waiting on an IC runs no `check`. At `slowed` (exit 10) go on: the
+orchestrator decides how many implementers work.
+
+At exit 20 (`stopped`), and on a pause message from the principal for the
+usage window, do this:
 
 1. Commit.
 2. Dispatch nothing more.
@@ -494,8 +499,8 @@ check --limit <pct>` before each dispatch and before each push. At `slowed`
 5. Arm `crew-usage.py wait` as a background Bash command. It costs no turn,
    and its exit wakes you.
 
-When `wait` exits, resume with no word from the principal. A new value of the
-line, sent to you, replaces the old one.
+When `wait` exits, resume with no word from the principal, and arm the
+`watch` again. A new value of the line, sent to you, replaces the old one.
 `skills/orchestrator/references/usage.md` owns the levels, the limit and the
 file.
 

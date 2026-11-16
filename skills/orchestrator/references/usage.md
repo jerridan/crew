@@ -20,6 +20,7 @@ its only writer. Writes are atomic and safe when many sessions write at once.
 | `updated_at`, `source` | when the newest sample arrived, and which session or command wrote it |
 | `plan_limits` | `false` when the account has no plan limits, else `true` |
 | `checked_at` | when `plan_limits` was set to `false` |
+| `refresh_attempt_at`, `refresh_failed` | when the last fresh reading started, and whether it failed |
 | `window_first` | the first sample seen in the current five-hour window: `resets_at`, `at`, `used_pct` |
 
 The merge rule applies to each window. A sample with a later `resets_at`
@@ -27,8 +28,11 @@ replaces the stored one. Within the same `resets_at`, the higher percent wins.
 So the old sample of an idle session never lowers the figure. A sample with no
 figures changes nothing. A sample with figures clears `plan_limits: false`.
 
-`updated_at` moves only when a sample is not older than the stored figure. An
-idle session repeats its old figure and so cannot hide that the figure is old.
+`updated_at` and `source` move only when the five-hour figure advances: a
+higher percent in the same window, or a later window. A repeat of the stored
+figure, a lower one, and a seven-day-only advance do not move them. An idle
+session repeats its old figure and so cannot hide that the figure is old. The
+fresh reading is the one writer that moves `updated_at` on an equal figure.
 
 ## Which sessions contribute
 
@@ -68,12 +72,23 @@ gets and ends the process. It gives up after 30 seconds.
 | Result | Exit code | File |
 |---|---|---|
 | The status line ran and gave figures | 0 | the figures are recorded |
-| The status line ran and gave none | 0 | `plan_limits: false` |
-| `claude` did not start, or ran no status line | 1 | unchanged |
+| The status line ran and gave none, and the file holds no five-hour window that has not reset | 0 | `plan_limits: false` |
+| The status line ran and gave none, and the file holds such a window | 1 | `refresh_failed: true`; the stored figures stay |
+| `claude` did not start, or ran no status line | 1 | the attempt is recorded; the figures stay |
 
 Only `refresh` records `plan_limits: false`. An account with no plan limits,
-for example an API-key account, has no five-hour figure. An account marked
-that way gets one start every 5 minutes while `check` or `watch` runs.
+for example an API-key account, has no five-hour figure. A timeout on a plan
+account never turns the meter off, because the stored window outranks it.
+
+`check`, `watch` and `watch --until stopped` start `claude` only when the
+newest figure is older than 5 minutes and the last attempt is 5 minutes old or
+more. The attempt is claimed under the file lock. So two processes that find
+the file stale start one `claude`, and a failed start is not retried for 5
+minutes. The `refresh` command always starts.
+
+`claude` reads its user settings from `$CLAUDE_CONFIG_DIR/settings.json` when
+that variable is set, else from `~/.claude/settings.json`. The status line
+wrapper reads the same file.
 
 Run `refresh`, `check` and `watch` from a directory that `claude` already
 trusts, for example the orchestrator's repo. In a directory it does not trust,
@@ -83,7 +98,8 @@ seconds, and `check` falls back to the stored file.
 ## The levels
 
 `check [--limit <pct>]` prints the level and exits with its code. The limit
-defaults to 95. `check` reads no other copy of the limit.
+defaults to 95. `check` reads no other copy of the limit. Its line carries
+`sampled=<UTC ISO>`, the time of the figure it read.
 
 | Level | Exit code | When |
 |---|---|---|
@@ -97,17 +113,38 @@ least 10 minutes between the two. With less, the forecast is not used.
 `show --json` prints `{"five_hour": {"used_pct", "resets_at", "full_at"},
 "seven_day": {"used_pct", "resets_at"}}`, with `updated_at` and `source`
 beside it. `full_at` is the forecast epoch of 100 percent, or `null`. Plain
-`show` prints one line per window. Both exit 1 with no plan limits or no
-figures. The board reads `show --json`, and treats that exit as no meter.
+`show` prints one line per window.
+
+| `show` exit code | Meaning |
+|---|---|
+| 0 | figures printed |
+| 1 | no figures yet: no file, or no five-hour figure |
+| 2 | the account has no plan limits |
+
+After a window's `resets_at` has passed, `show` prints `used_pct` 0, `full_at`
+`null` and `reset: true` for that window, until a new sample arrives. Plain
+`show` adds `(reset)` to the line.
+
+The board reads `show --json` (`orchestrator-record.md`'s board section) and
+treats any non-zero exit as no meter.
+
+A reading that you send to another session, or write in a message, carries the
+sample time of the figure: the `sampled=` value of `check` and `watch`, or
+`updated_at` of `show --json`. Never write a time from memory. A figure with
+no time reads as current, and it is not.
 
 ## The launch value
 
 An implementer contributes through the status line of its session. Print the
-launch value, then pass it to the launcher as `start --settings`:
+launch value, then pass it to the launcher as `start --settings`
+(`launcher.md`):
 
 ```
-crew-usage.py settings --cwd <checkout top level>
+crew-usage.py settings --cwd <worktree path>
 ```
+
+`<worktree path>` is `<checkout top level>/.claude/worktrees/<name>`.
+`launcher.md` says how to compute it before `start` runs.
 
 The value is JSON. It sets a `statusLine` command that records the sample, and
 then shows the user's own status line with the same stdin and its exit code.
@@ -119,11 +156,15 @@ removes the user's line. No command here changes a settings file.
 
 Arm `crew-usage.py watch --limit <pct>` with the `Monitor` tool. It prints one
 line when the level changes, and one on a reset. It prints nothing otherwise.
+Each line carries `sampled=<UTC ISO>`.
 
 ```
 usage level=<level> five_hour=<pct>% limit=<n>
 usage reset: level=<level> five_hour=<pct>%
 ```
+
+The reset line prints only when the level before the reset was not `normal`.
+After a window that stayed `normal`, a reset costs no turn.
 
 The first level the watch reads prints nothing, whatever it is. So run
 `check` once when you arm the watch, and write its level as the first mode.
@@ -133,8 +174,14 @@ Each new watch starts with a silent first level, so run `check` at each re-arm
 too. Write its level when it differs from `pace.mode`.
 
 The watch writes no mode and reads no orchestrator record. On each line, write
-the mode yourself: `crew-orch.py pace set '{"mode": "<level>"}'`. A reset line
-carries the level after the reset.
+the mode yourself: `crew-orch.py pace set '{"mode": "<level>"}'`
+(`orchestrator-record.md` owns the command). A reset line carries the level
+after the reset.
+
+`watch --limit <pct> --until stopped` prints nothing while the level is below
+`stopped`. At `stopped`, even on its first read, it prints one `usage
+level=stopped ...` line and exits 20. A project lead runs it in the
+background (`autonomy-contract.md`).
 
 ## The slow-down rule
 
@@ -143,8 +190,12 @@ record (`orchestrator-record.md`). There is no second copy. A level only
 changes what you write there.
 
 - At `slowed`: start no new implementer. Set `slots.max` to 1 with
-  `crew-orch.py pace set '{"slots": {"max": 1}}'`. An implementer above that
-  number finishes its current package, commits, and waits for the reset.
+  `crew-orch.py pace set '{"slots": {"max": 1}}'`. Tell each implementer above
+  that number to pause: it finishes its current package, commits, and waits
+  for the reset. Tell each implementer to defer optional work that starts a
+  new process on the plan, until the reset, when the forecast says the limit
+  falls before it. A skeptical review round and a push that starts a CI run
+  are such work.
 - At `stopped`: tell each implementer to stop. It commits and starts no new
   step.
 - At the reset: set the mode to `normal` and restore `slots.max` to the
@@ -153,11 +204,17 @@ changes what you write there.
 - With no plan limits: there is no meter and no slow-down. The level stays
   `normal`.
 
-An implementer's own project lead acts only at `stopped`
-(`autonomy-contract.md`). At `slowed` it goes on, and you decide how many
-work. To wait for the reset, an implementer runs `crew-usage.py wait`. It
-exits 0 once the stored five-hour window has reset. With no figures it exits 1
-at once.
+An implementer's own project lead acts alone only at `stopped`
+(`autonomy-contract.md`). It treats your pause message like `stopped`. It
+waits with `crew-usage.py wait`, which exits 0 once the stored five-hour window
+has reset, or a later window shows in the file. With no figures it exits 1 at
+once.
+
+`slots` counts implementer sessions only. A slot is not a brake on burn. In one
+window, a single working implementer moved the five-hour figure from 61% to 82%
+in 19 minutes. A headless review run, a CI review run on the same plan, and the
+implementer's own ICs burn usage outside the slot count. The level is the
+brake: the figure itself, and the forecast.
 
 ## The limit
 

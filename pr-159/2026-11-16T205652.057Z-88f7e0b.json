@@ -1,0 +1,3206 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 159,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add the plan usage figures and the slow-down of the orchestrator",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/159"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "772cf658a3b7836fe027d196483235e2782f63a3",
+    "head": "88f7e0b451a6ddaa1dfa0e9557ef9202918f95c5",
+    "started_at": "2026-11-16T20:56:52.057Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add the plan usage figures and the slow-down of the orchestrator\n\n## Summary\n\nThe crew orchestrator can now know the plan usage of the account and slow down before the five-hour limit. Before this change, only one session could see the usage figures, and only as of its own last reply, so a long batch ran from 52% to 92% with no warning. Now every implementer feeds one shared file from its status line, a fresh reading fills the gaps when no session works, and a check tells the orchestrator and each implementer when to slow down, stop, and start again after the reset. The user's own status line stays in each tab.\n\nCloses #153\n\n**Ticket:** [#153 — plan usage figures and the automatic slow-down](https://github.com/jerridan/crew/issues/153), part 3 of [#150](https://github.com/jerridan/crew/issues/150)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/usage.md` (new) owns the shared file, the merge rule, which sessions contribute, the levels and their exit codes, the launch value, the watch, the slow-down rule and the limit.\n- `skills/project-lead/references/autonomy-contract.md`, \"The usage limit line\", owns what a project lead does with a `Usage limit:` charter line.\n- `skills/project-lead/references/record-format.md` lists the charter line. `skills/project-lead/SKILL.md` writes it into the charter and lists the `Usage limit` standing-instructions section.\n- The orchestrator record and its `pace` object (mode, slots, limit) belong to issue 151 (`skills/orchestrator/references/orchestrator-record.md`, `crew-orch.py pace set`). This PR defines no copy of them.\n- `docs/design.md` §15.NNN records the probe and the design. The orchestrator assigns the number.\n\n### Where the orchestrator and an implementer read the figures and the limit\n\n- Figures: both run `python3 <plugin>/skills/orchestrator/scripts/crew-usage.py check --limit <pct>` (level, exit 0/10/20) or `show --json` (figures). The board runs `show --json`. The file is `<record-root>/usage.json`.\n- Limit: the orchestrator reads `pace.limit_pct` from its own record (issue 151). An implementer reads the `Usage limit: <pct>` line of its charter, which only the orchestrator writes into the goal it sends, as a copy of `pace.limit_pct`; the orchestrator resends it when the limit changes.\n- Wake: the orchestrator arms `crew-usage.py watch --limit <pct>` with `Monitor`; it prints a line only when the level changes or the window resets. An implementer stopped at the limit arms `crew-usage.py wait` in the background and resumes when it exits.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-usage.py` (new): `record`, `statusline` (records the sample, then runs the user's own status line with the same stdin), `settings` (prints the `--settings` value for the launcher), `refresh` (a fresh reading from `claude --restricted --strict-mcp-config` with no prompt and no model turn), `show`, `check`, `watch`, `wait`.\n- `skills/orchestrator/scripts/test-crew-usage.py` (new): 70 seeded checks with a stub `claude`, a temp HOME and a temp record root.\n- `skills/orchestrator/references/usage.md` (new): the reference above.\n- `skills/project-lead/references/autonomy-contract.md`: new section \"The usage limit line\".\n- `skills/project-lead/references/record-format.md`: the `Usage limit: <pct>` charter line.\n- `skills/project-lead/SKILL.md`: the charter line at \"Take the goal\"; the `Usage limit` row in the standing-instructions table, with the count changed to twelve.\n- `CLAUDE.md`: the layout rows, the code-exceptions sentence, the build state and the authority list.\n- `docs/design.md`: the §15.NNN entry.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: the placeholder version `0.1.NNN-issue-153`. The orchestrator assigns the number.\n\n### Constraints that applied\n\n- No probe or test changed a settings file, and no `claude` start loaded the user's plugins: the only real start is `claude --restricted --strict-mcp-config --settings <json>`, which reads no settings file. The tests check settings-file modification times.\n- Python 3 standard library only. No dollar budget.\n- One rule in one file: the project-lead side points at `usage.md`, and the record's `pace` object stays issue 151's.\n- The plugin version and the §15 number are placeholders, as the orchestrator asked.\n- The README does not change: the only user-facing item is the `Usage limit` standing-instructions section, which only the orchestrator reads, and the orchestrator skill (issue 154) is not built yet. Its README row belongs with issue 154.\n\n### How this was verified\n\n- `python3 skills/orchestrator/scripts/test-crew-usage.py` prints `70 of 70 checks passed`. A seeded fault (the same-window merge reversed) gave `65 of 68` before the last fix round, then passed again after the revert.\n- Probe of the source, before the spec: a status line in a `claude --restricted` start got `rate_limits` 5 seconds after the start with no prompt (10%). It stayed at 10% for 4.5 idle minutes, and moved to 14% after one one-word prompt. A mod's `$.session.usage()` read 1% for the same window at the same time.\n- Live run of `refresh` once: five-hour 31%, seven-day 35%, in 7.5 seconds, no process left.\n- Live tab check of the wrapper: a `claude --restricted --settings \"$(crew-usage.py settings)\"` tab showed the user's own four-line status line, and the shared file got the sample within 12 seconds.\n\n### Known gaps\n\n- No orchestrator run has used any of this yet. The orchestrator skill (issue 154) and the board pane (issue 155) are the readers.\n- Not tested: whether an in-process subagent's or teammate's API reply refreshes the figures of its parent session's status line.\n- A fresh reading must run in a directory that `claude` already trusts. In another directory it fails after 30 seconds and `check` falls back to the stored file.\n- The 15-point margin assumes a burn of at most 2 points a minute, as experiment 1 measured. A faster burn can pass the limit between readings.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZgCk9XyM3CDdY4AMdZ\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": false
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-usage.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-usage.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new 600-line script with process management, file locking, merge logic and level thresholds, plus plugin version strings changed to a placeholder and new project-lead behavior rules.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs",
+        "convention",
+        "other"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-usage.py: do_refresh (pty, process group kill, trust dir, no-figures => plan_limits false)",
+        "skills/orchestrator/scripts/crew-usage.py: apply_sample/merge_window/newer and updated_at semantics",
+        "skills/orchestrator/scripts/crew-usage.py: cmd_statusline/user_statusline (recursion guard, exit code passthrough, shell=True)",
+        "skills/orchestrator/scripts/crew-usage.py: level_of/forecast and cmd_watch reset detection",
+        "skills/orchestrator/scripts/crew-usage.py: update() lock and atomic write",
+        "skills/orchestrator/scripts/crew-usage.py: cmd_wait",
+        "skills/orchestrator/references/usage.md vs. the script (documented behavior consistent with code)",
+        ".claude-plugin/plugin.json and marketplace.json: version '0.1.NNN-issue-153' placeholder",
+        "skills/project-lead/references/autonomy-contract.md: usage limit line behavior"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version set to the placeholder 0.1.NNN-issue-153; check whether it is meant to be replaced at merge"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "same placeholder version as plugin.json"
+        },
+        {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "note": "new script: shared usage file, status line wrapper, refresh via pty-spawned claude, levels, watch, wait"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "note": "new seeded test with a stub claude; uses sleeps and timing, may be flaky"
+        },
+        {
+          "file": "skills/orchestrator/references/usage.md",
+          "note": "new canonical reference for the figures, levels and slow-down"
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "new section: project lead checks usage before dispatch and push, stops at stopped, waits"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "adds the Usage limit charter line and a twelfth standing-instructions section"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "documents the Usage limit charter line"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "layout rows and status paragraph; refers to §15.NNN"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new entry numbered NNN as a placeholder"
+        }
+      ],
+      "summary": "The change adds crew-usage.py, which keeps the account's plan usage figures in a shared usage.json. Launched implementers feed it through a status line wrapper, and a bare `claude` start gives a fresh reading. It computes normal, slowed and stopped levels, with watch and wait commands. It adds a seeded test, a reference doc, and project-lead rules for a Usage limit charter line. The plugin version is set to a placeholder, \"0.1.NNN-issue-153\"."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new 600-line script with process management, file locking, merge logic and level thresholds, plus plugin version strings changed to a placeholder and new project-lead behavior rules.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The plugin version is set to a placeholder, not to a real bump from 0.1.105.",
+            "evidence": "\"version\": \"0.1.NNN-issue-153\",",
+            "suggested_fix": "Set the version to 0.1.106 (or the next free number) in both plugin.json and marketplace.json.",
+            "explanation": "CLAUDE.md says a change to skills/ bumps `version` in both manifests. The placeholder is not a real release number, and it sorts below 0.1.105 as a prerelease.",
+            "needs_context": false
+          },
+          {
+            "file": "docs/design.md",
+            "start_line": 9284,
+            "end_line": 9285,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The new §15 finding has the placeholder number NNN, and CLAUDE.md points at §15.NNN.",
+            "evidence": "NNN. **The plan usage figures and the slow-down of the orchestrator —",
+            "suggested_fix": "Give the entry the next §15 number and use it in CLAUDE.md.",
+            "explanation": "Every other §15 entry has a real number. CLAUDE.md's build state cites a real section number for each item.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6468,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31888,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032018000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 552,
+              "cacheReadInputTokens": 9722,
+              "cacheCreationInputTokens": 31394,
+              "webSearchRequests": 0,
+              "costUSD": 0.2641444,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2673462
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7820,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31890,
+              "outputTokens": 20,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0031990000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 603,
+              "cacheReadInputTokens": 9680,
+              "cacheCreationInputTokens": 31396,
+              "webSearchRequests": 0,
+              "costUSD": 0.265172,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 280,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.268371
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 318,
+            "end_line": 340,
+            "category": "bug",
+            "severity_estimate": "blocking",
+            "confidence": "medium",
+            "claim": "A refresh that times out before the status line receives rate_limits marks the account as having no plan limits, which turns off the slow-down.",
+            "evidence": "        out = dict(out)\n        out[\"plan_limits\"] = False\n        out[\"checked_at\"] = ts",
+            "suggested_fix": "Record plan_limits false only when the process ran its status line for long enough (for example, several refreshes after the 5 s fetch). If the refresh hits the deadline with no figures, return 1 and leave the file unchanged.",
+            "explanation": "Claude Code can run the status line before it fetches the figures, and it can also be slow. If only a figure-less line arrives before the 30-second limit, the code records `plan_limits: false`, and `level_of` then returns `normal` for every check.",
+            "needs_context": false
+          },
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The plugin version is a placeholder, not a real version number.",
+            "evidence": "\"version\": \"0.1.NNN-issue-153\",",
+            "suggested_fix": "Set the real next version (for example 0.1.106) in both manifests before the merge.",
+            "explanation": "If the change merges before the placeholder is replaced, the plugin and marketplace ship a version that is not valid.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 14572,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31894,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032009,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1313,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 31400,
+              "webSearchRequests": 0,
+              "costUSD": 0.279393,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 616,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2825939
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 121,
+            "end_line": 128,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "A repeated sample with the same window and percent counts as newer, so an idle session's periodic status line refresh keeps moving updated_at and the file never looks stale.",
+            "evidence": "    return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "suggested_fix": "Use a strict > for the same-window case, so only a higher percent or a later window moves updated_at.",
+            "explanation": "Idle implementers repeat their old figure every refresh, which resets updated_at, suppresses the fresh reading, and flattens the forecast rate.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 340,
+            "end_line": 350,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "If the refresh times out after the status line ran but before figures arrived, the account is wrongly marked plan_limits false.",
+            "evidence": "        out = dict(out)\n        out[\"plan_limits\"] = False",
+            "suggested_fix": "Mark plan_limits false only when claude exited or stayed up for a set time without figures, not when the time limit cut it short.",
+            "explanation": "A slow start is treated like an account with no plan limits, and check reports normal for up to 5 minutes.",
+            "needs_context": false
+          },
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "other",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The plugin version is a placeholder that is not a real release version.",
+            "evidence": "  \"version\": \"0.1.NNN-issue-153\",",
+            "suggested_fix": "Set the real next version (0.1.106) in both manifests before the merge.",
+            "explanation": "If this merges unchanged, the plugin ships with a version that is not a real number.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 17419,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31888,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032018000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1648,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 31394,
+              "webSearchRequests": 0,
+              "costUSD": 0.286045,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 667,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.28924679999999997
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/usage.md",
+            "start_line": 30,
+            "end_line": 31,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The doc says an idle session that repeats its old figure cannot move `updated_at`, but the code moves `updated_at` on an equal figure.",
+            "evidence": "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old.",
+            "suggested_fix": "Use `>` in `newer()` for the same window, or rewrite the doc sentence so it matches the code.",
+            "explanation": "`newer()` returns True when `resets_at` is the same and `new[\"used_pct\"] >= old[\"used_pct\"]`, so an equal repeated figure refreshes `updated_at`. An idle session then hides that the figure is old and holds off the fresh reading.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6675,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31878,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032023,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 680,
+              "cacheReadInputTokens": 9632,
+              "cacheCreationInputTokens": 31384,
+              "webSearchRequests": 0,
+              "costUSD": 0.2666064,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 312,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2698087
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".claude-plugin/plugin.json",
+            "start_line": 4,
+            "end_line": 4,
+            "category": "bug",
+            "severity_estimate": "blocking",
+            "confidence": "medium",
+            "claim": "The plugin version is set to the placeholder \"0.1.NNN-issue-153\" rather than the next version after 0.1.105.",
+            "evidence": "\"version\": \"0.1.NNN-issue-153\",",
+            "suggested_fix": "Set both manifests to 0.1.106 before the merge.",
+            "explanation": "Every prior change bumped the version to a real number, for example commit 64225c2 set 0.1.105. A placeholder that is not a valid version breaks the version ordering if it merges as it is.",
+            "needs_context": false
+          },
+          {
+            "file": ".claude-plugin/marketplace.json",
+            "start_line": 11,
+            "end_line": 11,
+            "category": "bug",
+            "severity_estimate": "blocking",
+            "confidence": "medium",
+            "claim": "The marketplace version is set to the placeholder \"0.1.NNN-issue-153\".",
+            "evidence": "\"version\": \"0.1.NNN-issue-153\"",
+            "suggested_fix": "Set it to 0.1.106.",
+            "explanation": "This is the same placeholder as in plugin.json. It is not a valid release version.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5830,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39172,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0039302,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 483,
+              "cacheReadInputTokens": 9747,
+              "cacheCreationInputTokens": 38678,
+              "webSearchRequests": 0,
+              "costUSD": 0.3210414,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.32497159999999997
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 398,
+            "end_line": 400,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The status line wrapper runs a shell command that it takes from the checkout's `.claude/settings.json` or `.claude/settings.local.json`. The checkout comes from the `workspace` directory in the stdin JSON. The wrapper does not apply Claude Code's own rules for which settings to trust, such as managed policy or a disabled status line.",
+            "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "suggested_fix": "Read only the user's ~/.claude/settings.json, or pass the user's resolved command in at `settings` time instead of reading it again from the cwd on each run.",
+            "explanation": "A repo-controlled settings file can define the command. The wrapper runs it on its own rules, and these can differ from the checks Claude Code makes before it runs a project status line.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8662,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31886,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032015999999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 674,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 31392,
+              "webSearchRequests": 0,
+              "costUSD": 0.26656860000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 264,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.26977020000000007
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 396,
+            "end_line": 419,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The statusline wrapper runs the statusLine command from the project's `.claude/settings.json` or `settings.local.json` with shell=True. It picks that project from the stdin JSON and does no trust check.",
+            "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "suggested_fix": "Take the user's status line only from `~/.claude/settings.json`, or from the settings the launcher passes in explicitly. Or read project files only when the directory is trusted.",
+            "explanation": "A repository checkout with an attacker-controlled `.claude/settings.json` gets its command run, maybe without the trust gate that Claude Code applies to project settings.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7565,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31888,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 688,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 31394,
+              "webSearchRequests": 0,
+              "costUSD": 0.2668646,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 150,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2700649
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-crew-usage.py",
+            "start_line": 646,
+            "end_line": 648,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "This final settings-file check cannot fail. PROJ_SETTINGS is never created, and t_r2 resets the PROJ_LOCAL baseline after its own write and then pops it.",
+            "evidence": "check(\"R2 test settings files were not changed by the script under test\",",
+            "suggested_fix": "Remove this check, or snapshot the files that exist while the script under test runs and compare those.",
+            "explanation": "Both paths are missing from `base` and from `after`, so `after.get(p) == base.get(p)` is always `None == None`, and an earlier check already covers this behaviour.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 562,
+            "end_line": 563,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "No test covers the branch where `wait` exits because a newer window arrived in the file, before the clock passes the reset.",
+            "evidence": "if cur and cur[\"resets_at\"] > target:",
+            "suggested_fix": "Start `wait` with the clock before the reset, record a sample with a later `resets_at`, and assert that `wait` exits 0.",
+            "explanation": "t_r8_wait only moves the clock past the reset, so this branch could break and every test would still pass.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/test-crew-usage.py",
+            "start_line": 602,
+            "end_line": 602,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The reset test of `watch` covers only the clock passing the reset. It does not cover a new window arriving in the file (`cur > prev_reset`) or the level the reset line reports.",
+            "evidence": "check(\"R7 a reset prints one line\", len(lines) == 1 and \"reset\" in lines[0].lower())",
+            "suggested_fix": "Also assert `level=normal` in the line, and add a case that records a sample with a later `resets_at` while the clock stays before the reset.",
+            "explanation": "The orchestrator writes the mode from the reset line, so a wrong level in that line would not be caught.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 14800,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 31878,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0032007999999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1415,
+              "cacheReadInputTokens": 52172,
+              "cacheCreationInputTokens": 32168,
+              "webSearchRequests": 0,
+              "costUSD": 0.29609440000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 387,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.29929520000000004
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The plugin version is set to a placeholder, not to a real bump from 0.1.105.",
+          "evidence": "\"version\": \"0.1.NNN-issue-153\",",
+          "suggested_fix": "Set the version to 0.1.106 (or the next free number) in both plugin.json and marketplace.json.",
+          "explanation": "CLAUDE.md says a change to skills/ bumps `version` in both manifests. The placeholder is not a real release number, and it sorts below 0.1.105 as a prerelease.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The version is a placeholder, as claimed. The PR description says the orchestrator asked for it and will assign the real number, so it is deliberate and the author already knows about it.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The finding is correct that the version is a placeholder. The change description says this was on purpose (\"The plugin version and the §15 number are placeholders, as the orchestrator asked\"), and the orchestrator assigns the number when it merges. The finding only repeats a step the author already planned, so it should not be posted.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The finding is correct that the version is a placeholder. The change description says this was on purpose (\"The plugin version and the §15 number are placeholders, as the orchestrator asked\"), and the orchestrator assigns the number when it merges. The finding only repeats a step the author already planned, so it should not be posted.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 9284,
+          "end_line": 9285,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The new §15 finding has the placeholder number NNN, and CLAUDE.md points at §15.NNN.",
+          "evidence": "NNN. **The plan usage figures and the slow-down of the orchestrator —",
+          "suggested_fix": "Give the entry the next §15 number and use it in CLAUDE.md.",
+          "explanation": "Every other §15 entry has a real number. CLAUDE.md's build state cites a real section number for each item.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **The plan usage figures and the slow-down of the orchestrator —",
+            "(The orchestrator assigns this number at the merge.)"
+          ],
+          "rationale": "The placeholder NNN is in design.md and CLAUDE.md (§15.NNN), but the entry itself says the orchestrator assigns the number at the merge, and the PR description says the placeholder is deliberate. The finding restates a known, requested placeholder.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **The plan usage figures and the slow-down of the orchestrator —",
+            "(The orchestrator assigns this number at the merge.)"
+          ],
+          "rationale": "The placeholder NNN is in design.md and CLAUDE.md (§15.NNN), but the entry itself says the orchestrator assigns the number at the merge, and the PR description says the placeholder is deliberate. The finding restates a known, requested placeholder.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/usage.md",
+          "start_line": 30,
+          "end_line": 31,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The doc says an idle session that repeats its old figure cannot move `updated_at`, but the code moves `updated_at` on an equal figure.",
+          "evidence": "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old.",
+          "suggested_fix": "Use `>` in `newer()` for the same window, or rewrite the doc sentence so it matches the code.",
+          "explanation": "`newer()` returns True when `resets_at` is the same and `new[\"used_pct\"] >= old[\"used_pct\"]`, so an equal repeated figure refreshes `updated_at`. An idle session then hides that the figure is old and holds off the fresh reading.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if newer(old, new):\n            moved = True",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts",
+            "idle session repeats its old figure and so cannot hide that the figure is old."
+          ],
+          "rationale": "`newer()` returns True for the same `resets_at` and an equal `used_pct` (`>=`), so `apply_sample` moves `updated_at` when an idle session repeats the stored figure. That contradicts the doc's claim that such a repeat cannot hide that the figure is old. A stale figure can then hold off the fresh reading.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts",
+            "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old."
+          ],
+          "rationale": "`newer()` treats an equal `used_pct` in the same window as newer, so `apply_sample` moves `updated_at` whenever an idle session repeats a figure equal to the stored one. That breaks the doc's promise that an idle session cannot hide a stale figure, and it can hold off the 5-minute fresh reading while a session started by hand keeps using the plan without adding samples.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts",
+            "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old."
+          ],
+          "rationale": "`newer()` treats an equal `used_pct` in the same window as newer, so `apply_sample` moves `updated_at` whenever an idle session repeats a figure equal to the stored one. That breaks the doc's promise that an idle session cannot hide a stale figure, and it can hold off the 5-minute fresh reading while a session started by hand keeps using the plan without adding samples.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "bug",
+          "severity_estimate": "blocking",
+          "confidence": "medium",
+          "claim": "The plugin version is set to the placeholder \"0.1.NNN-issue-153\" rather than the next version after 0.1.105.",
+          "evidence": "\"version\": \"0.1.NNN-issue-153\",",
+          "suggested_fix": "Set both manifests to 0.1.106 before the merge.",
+          "explanation": "Every prior change bumped the version to a real number, for example commit 64225c2 set 0.1.105. A placeholder that is not a valid version breaks the version ordering if it merges as it is.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The placeholder version is in the manifest, but the PR description says it is deliberate and that the orchestrator assigns the real number at merge, as it does for the §15.NNN number. This is a known process step, not a bug the author missed.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The version really is set to the placeholder \"0.1.NNN-issue-153\". The PR description says this is on purpose: \"The plugin version and the §15 number are placeholders, as the orchestrator asked.\" The orchestrator assigns the real number later, so the finding only repeats a choice the description already states.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The version really is set to the placeholder \"0.1.NNN-issue-153\". The PR description says this is on purpose: \"The plugin version and the §15 number are placeholders, as the orchestrator asked.\" The orchestrator assigns the real number later, so the finding only repeats a choice the description already states.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/marketplace.json",
+          "start_line": 11,
+          "end_line": 11,
+          "category": "bug",
+          "severity_estimate": "blocking",
+          "confidence": "medium",
+          "claim": "The marketplace version is set to the placeholder \"0.1.NNN-issue-153\".",
+          "evidence": "\"version\": \"0.1.NNN-issue-153\"",
+          "suggested_fix": "Set it to 0.1.106.",
+          "explanation": "This is the same placeholder as in plugin.json. It is not a valid release version.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\""
+          ],
+          "rationale": "The file does hold the placeholder version, but the description says this is deliberate: \"The plugin version and the §15 number are placeholders, as the orchestrator asked.\" The orchestrator assigns the real number at merge, so the finding isn't worth the author's time.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\""
+          ],
+          "rationale": "The change does set the version to the placeholder \"0.1.NNN-issue-153\". The description says this is on purpose and that the orchestrator assigns the final number, so the finding only repeats a known step of the process.",
+          "score": 97,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\""
+          ],
+          "rationale": "The change does set the version to the placeholder \"0.1.NNN-issue-153\". The description says this is on purpose and that the orchestrator assigns the final number, so the finding only repeats a known step of the process.",
+          "score": 97,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 318,
+          "end_line": 340,
+          "category": "bug",
+          "severity_estimate": "blocking",
+          "confidence": "medium",
+          "claim": "A refresh that times out before the status line receives rate_limits marks the account as having no plan limits, which turns off the slow-down.",
+          "evidence": "        out = dict(out)\n        out[\"plan_limits\"] = False\n        out[\"checked_at\"] = ts",
+          "suggested_fix": "Record plan_limits false only when the process ran its status line for long enough (for example, several refreshes after the 5 s fetch). If the refresh hits the deadline with no figures, return 1 and leave the file unchanged.",
+          "explanation": "Claude Code can run the status line before it fetches the figures, and it can also be slow. If only a figure-less line arrives before the 30-second limit, the code records `plan_limits: false`, and `level_of` then returns `normal` for every check.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        out = dict(out)\n        out[\"plan_limits\"] = False\n        out[\"checked_at\"] = ts",
+            "    if not five or d.get(\"plan_limits\") is False:\n        return \"normal\""
+          ],
+          "rationale": "The code does record plan_limits false when the status line ran but no figures arrived by the 30 s deadline, and level_of then returns normal. The window is narrow, though. Figures arrived about 5 s after start in the probe, and a later real sample resets the flag to true, so the effect is brief and rare.",
+          "score": 50,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        out = dict(out)\n        out[\"plan_limits\"] = False\n        out[\"checked_at\"] = ts",
+            "    if not five or d.get(\"plan_limits\") is False:\n        return \"normal\""
+          ],
+          "rationale": "The code does record plan_limits false when the status line ran but no figures arrived by the 30 s deadline, and level_of then returns normal. The window is narrow, though. Figures arrived about 5 s after start in the probe, and a later real sample resets the flag to true, so the effect is brief and rare.",
+          "score": 50,
+          "severity": "suggestion"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The plugin version is a placeholder, not a real version number.",
+          "evidence": "\"version\": \"0.1.NNN-issue-153\",",
+          "suggested_fix": "Set the real next version (for example 0.1.106) in both manifests before the merge.",
+          "explanation": "If the change merges before the placeholder is replaced, the plugin and marketplace ship a version that is not valid.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The diff replaces the valid version 0.1.105 with the placeholder 0.1.NNN-issue-153. The PR description says this is intentional, and the orchestrator assigns the number at merge, so the finding is real but already known and handled by the process.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The change does replace 0.1.105 with a placeholder version. The description says this is deliberate: the orchestrator assigns the real number before merge. So the finding only repeats a known, planned step.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The change does replace 0.1.105 with a placeholder version. The description says this is deliberate: the orchestrator assigns the real number before merge. So the finding only repeats a known, planned step.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 396,
+          "end_line": 419,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The statusline wrapper runs the statusLine command from the project's `.claude/settings.json` or `settings.local.json` with shell=True. It picks that project from the stdin JSON and does no trust check.",
+          "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+          "suggested_fix": "Take the user's status line only from `~/.claude/settings.json`, or from the settings the launcher passes in explicitly. Or read project files only when the directory is trusted.",
+          "explanation": "A repository checkout with an attacker-controlled `.claude/settings.json` gets its command run, maybe without the trust gate that Claude Code applies to project settings.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "os.path.join(cwd, \".claude\", \"settings.json\"),",
+            "os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "# The start keeps the caller's directory. A new directory makes claude"
+          ],
+          "rationale": "The wrapper does run a project-level statusLine command with shell=True and has no trust check of its own. But Claude Code starts the wrapper as the session's status line, and per the code's own comment it never runs that line in an untrusted directory. The wrapper runs only the command Claude Code would already have run, so the claimed bypass is speculative (\"maybe\").",
+          "score": 25,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "os.path.join(cwd, \".claude\", \"settings.json\"),",
+            "c = ws.get(\"project_dir\") or ws.get(\"current_dir\") or sample.get(\"cwd\")",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "# The start keeps the caller's directory. A new directory makes claude\n        # ask for trust, and the status line never runs."
+          ],
+          "rationale": "The code does run the project or local statusLine command with shell=True and does no trust check of its own. But the wrapper is itself a status line, and Claude Code runs status lines only after the user trusts the workspace (the code's own comment says this). The directory also comes from Claude's stdin, not from an attacker. So the command only runs in a trusted project, where Claude Code would run that project's status line anyway, and the risk added is at most marginal.",
+          "score": 45,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "os.path.join(cwd, \".claude\", \"settings.json\"),",
+            "c = ws.get(\"project_dir\") or ws.get(\"current_dir\") or sample.get(\"cwd\")",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "# The start keeps the caller's directory. A new directory makes claude\n        # ask for trust, and the status line never runs."
+          ],
+          "rationale": "The code does run the project or local statusLine command with shell=True and does no trust check of its own. But the wrapper is itself a status line, and Claude Code runs status lines only after the user trusts the workspace (the code's own comment says this). The directory also comes from Claude's stdin, not from an attacker. So the command only runs in a trusted project, where Claude Code would run that project's status line anyway, and the risk added is at most marginal.",
+          "score": 45,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 398,
+          "end_line": 400,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The status line wrapper runs a shell command that it takes from the checkout's `.claude/settings.json` or `.claude/settings.local.json`. The checkout comes from the `workspace` directory in the stdin JSON. The wrapper does not apply Claude Code's own rules for which settings to trust, such as managed policy or a disabled status line.",
+          "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+          "suggested_fix": "Read only the user's ~/.claude/settings.json, or pass the user's resolved command in at `settings` time instead of reading it again from the cwd on each run.",
+          "explanation": "A repo-controlled settings file can define the command. The wrapper runs it on its own rules, and these can differ from the checks Claude Code makes before it runs a project status line.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for p in (os.path.join(os.path.expanduser(\"~\"), \".claude\", \"settings.json\"),\n              os.path.join(cwd, \".claude\", \"settings.json\"),\n              os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,"
+          ],
+          "rationale": "The wrapper does read the project and local settings in the workspace directory and runs the statusLine command with shell=True, without Claude Code's managed-policy or disable checks. But Claude Code only starts the wrapper after the session is trusted, and it would run that same project status line itself. That makes the practical risk small.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "c = ws.get(\"project_dir\") or ws.get(\"current_dir\") or sample.get(\"cwd\")",
+            "os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "\"\"\"The status line Claude Code would show: local over project over user.\"\"\""
+          ],
+          "rationale": "The finding holds. The wrapper takes the directory from the stdin workspace fields, reads statusLine from that directory's project and local settings files, and runs the command with shell=True. It does not check managed policy, disableAllHooks or workspace trust. The PR also launches tabs with `--restricted`, which by the PR's own description reads no settings file. That means the wrapper alone decides to run commands from repo settings. The practical risk is limited, because Claude itself starts the session in a directory the user chose.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "c = ws.get(\"project_dir\") or ws.get(\"current_dir\") or sample.get(\"cwd\")",
+            "os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "\"\"\"The status line Claude Code would show: local over project over user.\"\"\""
+          ],
+          "rationale": "The finding holds. The wrapper takes the directory from the stdin workspace fields, reads statusLine from that directory's project and local settings files, and runs the command with shell=True. It does not check managed policy, disableAllHooks or workspace trust. The PR also launches tabs with `--restricted`, which by the PR's own description reads no settings file. That means the wrapper alone decides to run commands from repo settings. The practical risk is limited, because Claude itself starts the session in a directory the user chose.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 121,
+          "end_line": 128,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "A repeated sample with the same window and percent counts as newer, so an idle session's periodic status line refresh keeps moving updated_at and the file never looks stale.",
+          "evidence": "    return new[\"used_pct\"] >= old[\"used_pct\"]",
+          "suggested_fix": "Use a strict > for the same-window case, so only a higher percent or a later window moves updated_at.",
+          "explanation": "Idle implementers repeat their old figure every refresh, which resets updated_at, suppresses the fresh reading, and flattens the forecast rate.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if newer(old, new):\n            moved = True",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts"
+          ],
+          "rationale": "With `>=`, an equal-window equal-percent sample sets `moved` and so resets `updated_at`. That contradicts usage.md, which says an idle session repeating its old figure cannot hide that the figure is old. The fix is not simple: a strict `>` would stop a `refresh` that reads an unchanged figure from marking the file fresh. Idle sessions repeat samples only when a `refreshInterval` is set.",
+          "score": 68,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts",
+            "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old.",
+            "return ts is None or at - ts > AGE"
+          ],
+          "rationale": "With `>=`, a repeated sample that has the same window and percent counts as newer. So when an idle implementer's status line refreshes, it moves `updated_at` forward. `is_stale` then never fires and the fresh reading is skipped. This goes against usage.md, which says an idle session's repeated figure cannot hide that the figure is old. The effect only shows when the idle session's figure equals the stored maximum and its status line keeps refreshing, for example with a user `refreshInterval`.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts",
+            "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old.",
+            "return ts is None or at - ts > AGE"
+          ],
+          "rationale": "With `>=`, a repeated sample that has the same window and percent counts as newer. So when an idle implementer's status line refreshes, it moves `updated_at` forward. `is_stale` then never fires and the fresh reading is skipped. This goes against usage.md, which says an idle session's repeated figure cannot hide that the figure is old. The effect only shows when the idle session's figure equals the stored maximum and its status line keeps refreshing, for example with a user `refreshInterval`.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 340,
+          "end_line": 350,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "If the refresh times out after the status line ran but before figures arrived, the account is wrongly marked plan_limits false.",
+          "evidence": "        out = dict(out)\n        out[\"plan_limits\"] = False",
+          "suggested_fix": "Mark plan_limits false only when claude exited or stayed up for a set time without figures, not when the time limit cut it short.",
+          "explanation": "A slow start is treated like an account with no plan limits, and check reports normal for up to 5 minutes.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        deadline = time.time() + limit\n        while time.time() < deadline:",
+            "        out = dict(out)\n        out[\"plan_limits\"] = False",
+            "    if not lines:\n        return 1"
+          ],
+          "rationale": "The code does what the finding says. If the 30 second limit ends the loop with probe lines that have no rate_limits, `do_refresh` sets plan_limits false, and `level_of` then returns \"normal\" until the 5 minute AGE passes. This is a rare edge case: figures normally arrive in about 5 to 8 seconds. The fix is not obvious either, because the only way to tell an account with no plan limits from a slow one is to wait for the limit. Any later real sample also resets the flag to true.",
+          "score": 60,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        deadline = time.time() + limit\n        while time.time() < deadline:",
+            "        out = dict(out)\n        out[\"plan_limits\"] = False",
+            "    if not five or d.get(\"plan_limits\") is False:\n        return \"normal\"",
+            "| The status line ran and gave none | 0 | `plan_limits: false` |"
+          ],
+          "rationale": "The refresh loop stops at the 30 s deadline whether or not claude exited. If the probe file holds status-line samples with no rate_limits by then, fn writes plan_limits False, and level_of then returns \"normal\" even when stored figures were near the limit. This is deliberate: usage.md uses this rule to detect no-plan accounts. It still gives a wrong level on the unusual path where figures arrive slowly.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        deadline = time.time() + limit\n        while time.time() < deadline:",
+            "        out = dict(out)\n        out[\"plan_limits\"] = False",
+            "    if not five or d.get(\"plan_limits\") is False:\n        return \"normal\"",
+            "| The status line ran and gave none | 0 | `plan_limits: false` |"
+          ],
+          "rationale": "The refresh loop stops at the 30 s deadline whether or not claude exited. If the probe file holds status-line samples with no rate_limits by then, fn writes plan_limits False, and level_of then returns \"normal\" even when stored figures were near the limit. This is deliberate: usage.md uses this rule to detect no-plan accounts. It still gives a wrong level on the unusual path where figures arrive slowly.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": ".claude-plugin/plugin.json",
+          "start_line": 4,
+          "end_line": 4,
+          "category": "other",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The plugin version is a placeholder that is not a real release version.",
+          "evidence": "  \"version\": \"0.1.NNN-issue-153\",",
+          "suggested_fix": "Set the real next version (0.1.106) in both manifests before the merge.",
+          "explanation": "If this merges unchanged, the plugin ships with a version that is not a real number.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The version is a placeholder, but the description says this is deliberate (\"The orchestrator assigns the number\"). The orchestrator is expected to replace it at merge time, so a review comment adds nothing.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "  \"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The PR does change the version from 0.1.105 to the placeholder \"0.1.NNN-issue-153\". The PR description already says this placeholder is deliberate and that the orchestrator assigns the real number before merge. The finding only repeats a known step in the release process, so it is not worth posting.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "  \"version\": \"0.1.NNN-issue-153\","
+          ],
+          "rationale": "The PR does change the version from 0.1.105 to the placeholder \"0.1.NNN-issue-153\". The PR description already says this placeholder is deliberate and that the orchestrator assigns the real number before merge. The finding only repeats a known step in the release process, so it is not worth posting.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "start_line": 646,
+          "end_line": 648,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "This final settings-file check cannot fail. PROJ_SETTINGS is never created, and t_r2 resets the PROJ_LOCAL baseline after its own write and then pops it.",
+          "evidence": "check(\"R2 test settings files were not changed by the script under test\",",
+          "suggested_fix": "Remove this check, or snapshot the files that exist while the script under test runs and compare those.",
+          "explanation": "Both paths are missing from `base` and from `after`, so `after.get(p) == base.get(p)` is always `None == None`, and an earlier check already covers this behaviour.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "all(after.get(p) == base.get(p) for p in (PROJ_SETTINGS, PROJ_LOCAL))",
+            "and not os.path.exists(PROJ_SETTINGS) and not os.path.exists(PROJ_LOCAL))",
+            "base.pop(PROJ_LOCAL, None)"
+          ],
+          "rationale": "The check is redundant with the earlier existence check, but it is not impossible to fail. If the script under test created either project settings file before `after` was taken, `after.get(p)` would be set while `base.get(p)` is None, and the check would fail. So \"cannot fail\" is overstated, and the overlap is only a small redundancy.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "all(after.get(p) == base.get(p) for p in (PROJ_SETTINGS, PROJ_LOCAL))",
+            "and not os.path.exists(PROJ_SETTINGS) and not os.path.exists(PROJ_LOCAL))",
+            "base.pop(PROJ_LOCAL, None)"
+          ],
+          "rationale": "The check is redundant with the earlier existence check, but it is not impossible to fail. If the script under test created either project settings file before `after` was taken, `after.get(p)` would be set while `base.get(p)` is None, and the check would fail. So \"cannot fail\" is overstated, and the overlap is only a small redundancy.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 562,
+          "end_line": 563,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "No test covers the branch where `wait` exits because a newer window arrived in the file, before the clock passes the reset.",
+          "evidence": "if cur and cur[\"resets_at\"] > target:",
+          "suggested_fix": "Start `wait` with the clock before the reset, record a sample with a later `resets_at`, and assert that `wait` exits 0.",
+          "explanation": "t_r8_wait only moves the clock past the reset, so this branch could break and every test would still pass.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if cur and cur[\"resets_at\"] > target:",
+            "write(str(R + 1))"
+          ],
+          "rationale": "t_r8_wait only advances the clock to R+1 and never records a later resets_at while the clock is before the reset, so the `cur[\\\"resets_at\\\"] > target` branch is untested. The gap is real but minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if cur and cur[\"resets_at\"] > target:",
+            "write(str(R + 1))"
+          ],
+          "rationale": "t_r8_wait only advances the clock to R+1 and never records a later resets_at while the clock is before the reset, so the `cur[\\\"resets_at\\\"] > target` branch is untested. The gap is real but minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "start_line": 602,
+          "end_line": 602,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The reset test of `watch` covers only the clock passing the reset. It does not cover a new window arriving in the file (`cur > prev_reset`) or the level the reset line reports.",
+          "evidence": "check(\"R7 a reset prints one line\", len(lines) == 1 and \"reset\" in lines[0].lower())",
+          "suggested_fix": "Also assert `level=normal` in the line, and add a case that records a sample with a later `resets_at` while the clock stays before the reset.",
+          "explanation": "The orchestrator writes the mode from the reset line, so a wrong level in that line would not be caught.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R7 a reset prints one line\", len(lines) == 1 and \"reset\" in lines[0].lower())",
+            "and (at >= prev_reset or cur > prev_reset)):",
+            "say(\"usage reset: level=%s five_hour=%s%%\" % (lv, pct))"
+          ],
+          "rationale": "The reset test only moves the clock past the reset, so only the `at >= prev_reset` branch runs. The `cur > prev_reset` branch is never run. The assertion checks for \"reset\" and not for `level=normal` in the line.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R7 a reset prints one line\", len(lines) == 1 and \"reset\" in lines[0].lower())",
+            "and (at >= prev_reset or cur > prev_reset)):",
+            "say(\"usage reset: level=%s five_hour=%s%%\" % (lv, pct))"
+          ],
+          "rationale": "The reset test only moves the clock past the reset, so only the `at >= prev_reset` branch runs. The `cur > prev_reset` branch is never run. The assertion checks for \"reset\" and not for `level=normal` in the line.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/references/usage.md",
+        "start_line": 30,
+        "end_line": 31,
+        "category": "docs",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The doc says an idle session that repeats its old figure cannot move `updated_at`, but the code moves `updated_at` on an equal figure.",
+        "evidence": "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old.",
+        "suggested_fix": "Use `>` in `newer()` for the same window, or rewrite the doc sentence so it matches the code.",
+        "explanation": "`newer()` returns True when `resets_at` is the same and `new[\"used_pct\"] >= old[\"used_pct\"]`, so an equal repeated figure refreshes `updated_at`. An idle session then hides that the figure is old and holds off the fresh reading.",
+        "needs_context": false,
+        "fingerprint": "ce4d2c15b2fe1d57",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts",
+            "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old."
+          ],
+          "rationale": "`newer()` treats an equal `used_pct` in the same window as newer, so `apply_sample` moves `updated_at` whenever an idle session repeats a figure equal to the stored one. That breaks the doc's promise that an idle session cannot hide a stale figure, and it can hold off the 5-minute fresh reading while a session started by hand keeps using the plan without adding samples.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "`updated_at` moves only when a sample is not older than the stored figure. An idle session repeats its old figure and so cannot hide that the figure is old."
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-crew-usage.py",
+        "start_line": 602,
+        "end_line": 602,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The reset test of `watch` covers only the clock passing the reset. It does not cover a new window arriving in the file (`cur > prev_reset`) or the level the reset line reports.",
+        "evidence": "check(\"R7 a reset prints one line\", len(lines) == 1 and \"reset\" in lines[0].lower())",
+        "suggested_fix": "Also assert `level=normal` in the line, and add a case that records a sample with a later `resets_at` while the clock stays before the reset.",
+        "explanation": "The orchestrator writes the mode from the reset line, so a wrong level in that line would not be caught.",
+        "needs_context": false,
+        "fingerprint": "3916fc6d17097c89",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R7 a reset prints one line\", len(lines) == 1 and \"reset\" in lines[0].lower())",
+            "and (at >= prev_reset or cur > prev_reset)):",
+            "say(\"usage reset: level=%s five_hour=%s%%\" % (lv, pct))"
+          ],
+          "rationale": "The reset test only moves the clock past the reset, so only the `at >= prev_reset` branch runs. The `cur > prev_reset` branch is never run. The assertion checks for \"reset\" and not for `level=normal` in the line.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "check(\"R7 a reset prints one line\", len(lines) == 1 and \"reset\" in lines[0].lower())"
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 121,
+        "end_line": 128,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "A repeated sample with the same window and percent counts as newer, so an idle session's periodic status line refresh keeps moving updated_at and the file never looks stale.",
+        "evidence": "    return new[\"used_pct\"] >= old[\"used_pct\"]",
+        "suggested_fix": "Use a strict > for the same-window case, so only a higher percent or a later window moves updated_at.",
+        "explanation": "Idle implementers repeat their old figure every refresh, which resets updated_at, suppresses the fresh reading, and flattens the forecast rate.",
+        "needs_context": false,
+        "fingerprint": "b92e24511b351228",
+        "severity": "suggestion",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return new[\"used_pct\"] >= old[\"used_pct\"]",
+            "if moved or \"updated_at\" not in d:\n        d[\"updated_at\"] = ts",
+            "`updated_at` moves only when a sample is not older than the stored figure. An\nidle session repeats its old figure and so cannot hide that the figure is old.",
+            "return ts is None or at - ts > AGE"
+          ],
+          "rationale": "With `>=`, a repeated sample that has the same window and percent counts as newer. So when an idle implementer's status line refreshes, it moves `updated_at` forward. `is_stale` then never fires and the fresh reading is skipped. This goes against usage.md, which says an idle session's repeated figure cannot hide that the figure is old. The effect only shows when the idle session's figure equals the stored maximum and its status line keeps refreshing, for example with a user `refreshInterval`.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "span_text": "\"\"\"True when the new window figure is at least as new as the stored one.\"\"\" if not old: return True if new[\"resets_at\"] != old[\"resets_at\"]: return new[\"resets_at\"] > old[\"resets_at\"] return new[\"used_pct\"] >= old[\"used_pct\"]"
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 340,
+        "end_line": 350,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "If the refresh times out after the status line ran but before figures arrived, the account is wrongly marked plan_limits false.",
+        "evidence": "        out = dict(out)\n        out[\"plan_limits\"] = False",
+        "suggested_fix": "Mark plan_limits false only when claude exited or stayed up for a set time without figures, not when the time limit cut it short.",
+        "explanation": "A slow start is treated like an account with no plan limits, and check reports normal for up to 5 minutes.",
+        "needs_context": false,
+        "fingerprint": "bd15ecc6aead6886",
+        "severity": "suggestion",
+        "score": 72,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        deadline = time.time() + limit\n        while time.time() < deadline:",
+            "        out = dict(out)\n        out[\"plan_limits\"] = False",
+            "    if not five or d.get(\"plan_limits\") is False:\n        return \"normal\"",
+            "| The status line ran and gave none | 0 | `plan_limits: false` |"
+          ],
+          "rationale": "The refresh loop stops at the 30 s deadline whether or not claude exited. If the probe file holds status-line samples with no rate_limits by then, fn writes plan_limits False, and level_of then returns \"normal\" even when stored figures were near the limit. This is deliberate: usage.md uses this rule to detect no-plan accounts. It still gives a wrong level on the unusual path where figures arrive slowly.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "span_text": "return 0 def ensure_fresh(): d = load() if is_stale(d, now()): try: do_refresh() except Exception: pass d = load()"
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 398,
+        "end_line": 400,
+        "category": "security",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The status line wrapper runs a shell command that it takes from the checkout's `.claude/settings.json` or `.claude/settings.local.json`. The checkout comes from the `workspace` directory in the stdin JSON. The wrapper does not apply Claude Code's own rules for which settings to trust, such as managed policy or a disabled status line.",
+        "evidence": "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+        "suggested_fix": "Read only the user's ~/.claude/settings.json, or pass the user's resolved command in at `settings` time instead of reading it again from the cwd on each run.",
+        "explanation": "A repo-controlled settings file can define the command. The wrapper runs it on its own rules, and these can differ from the checks Claude Code makes before it runs a project status line.",
+        "needs_context": true,
+        "fingerprint": "33ff87ae0b01beeb",
+        "severity": "suggestion",
+        "score": 72,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "c = ws.get(\"project_dir\") or ws.get(\"current_dir\") or sample.get(\"cwd\")",
+            "os.path.join(cwd, \".claude\", \"settings.local.json\")):",
+            "r = subprocess.run(sl[\"command\"], shell=True, input=raw, stdout=subprocess.PIPE,",
+            "\"\"\"The status line Claude Code would show: local over project over user.\"\"\""
+          ],
+          "rationale": "The finding holds. The wrapper takes the directory from the stdin workspace fields, reads statusLine from that directory's project and local settings files, and runs the command with shell=True. It does not check managed policy, disableAllHooks or workspace trust. The PR also launches tabs with `--restricted`, which by the PR's own description reads no settings file. That means the wrapper alone decides to run commands from repo settings. The practical risk is limited, because Claude itself starts the session in a directory the user chose.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "span_text": "def cmd_statusline(a):"
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 562,
+        "end_line": 563,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "No test covers the branch where `wait` exits because a newer window arrived in the file, before the clock passes the reset.",
+        "evidence": "if cur and cur[\"resets_at\"] > target:",
+        "suggested_fix": "Start `wait` with the clock before the reset, record a sample with a later `resets_at`, and assert that `wait` exits 0.",
+        "explanation": "t_r8_wait only moves the clock past the reset, so this branch could break and every test would still pass.",
+        "needs_context": false,
+        "fingerprint": "d233b8dc8aa73182",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if cur and cur[\"resets_at\"] > target:",
+            "write(str(R + 1))"
+          ],
+          "rationale": "t_r8_wait only advances the clock to R+1 and never records a later resets_at while the clock is before the reset, so the `cur[\\\"resets_at\\\"] > target` branch is untested. The gap is real but minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "if cur and cur[\"resets_at\"] > target: return 0"
+      }
+    ],
+    "github": {
+      "review_id": 5927534342,
+      "review_url": "https://github.com/jerridan/crew/pull/159#pullrequestreview-5927534342",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "ce4d2c15b2fe1d57",
+          "comment_id": 4591465136
+        },
+        {
+          "fingerprint": "3916fc6d17097c89",
+          "comment_id": 4591465146
+        },
+        {
+          "fingerprint": "b92e24511b351228",
+          "comment_id": 4591465154
+        },
+        {
+          "fingerprint": "bd15ecc6aead6886",
+          "comment_id": 4591465163
+        },
+        {
+          "fingerprint": "33ff87ae0b01beeb",
+          "comment_id": 4591465176
+        },
+        {
+          "fingerprint": "d233b8dc8aa73182",
+          "comment_id": 4591465191
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 133607938797
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8522,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29148,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029283000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1251,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 28662,
+            "webSearchRequests": 0,
+            "costUSD": 0.1272882,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.13021649999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6468,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31888,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032018000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 552,
+            "cacheReadInputTokens": 9722,
+            "cacheCreationInputTokens": 31394,
+            "webSearchRequests": 0,
+            "costUSD": 0.2641444,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2673462
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6675,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31878,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032023,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 680,
+            "cacheReadInputTokens": 9632,
+            "cacheCreationInputTokens": 31384,
+            "webSearchRequests": 0,
+            "costUSD": 0.2666064,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 312,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2698087
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7820,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31890,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031990000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 603,
+            "cacheReadInputTokens": 9680,
+            "cacheCreationInputTokens": 31396,
+            "webSearchRequests": 0,
+            "costUSD": 0.265172,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 280,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.268371
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5830,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39172,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039302,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 483,
+            "cacheReadInputTokens": 9747,
+            "cacheCreationInputTokens": 38678,
+            "webSearchRequests": 0,
+            "costUSD": 0.3210414,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.32497159999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14572,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31894,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032009,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1313,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 31400,
+            "webSearchRequests": 0,
+            "costUSD": 0.279393,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 616,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2825939
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7565,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31888,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 688,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 31394,
+            "webSearchRequests": 0,
+            "costUSD": 0.2668646,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 150,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2700649
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8662,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31886,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032015999999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 674,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 31392,
+            "webSearchRequests": 0,
+            "costUSD": 0.26656860000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 264,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.26977020000000007
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 17419,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31888,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032018000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1648,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 31394,
+            "webSearchRequests": 0,
+            "costUSD": 0.286045,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 667,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.28924679999999997
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5591,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10086,
+            "outputTokens": 311,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011641,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 288,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 584,
+            "cacheReadInputTokens": 18334,
+            "cacheCreationInputTokens": 9939,
+            "webSearchRequests": 0,
+            "costUSD": 0.0474374,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 120,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0486015
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4669,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 569,
+            "cacheReadInputTokens": 13558,
+            "cacheCreationInputTokens": 5304,
+            "webSearchRequests": 0,
+            "costUSD": 0.0282698,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 177,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 5310,
+            "outputTokens": 554,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000808,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 533,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0290778
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8370,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5317,
+            "outputTokens": 252,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006577,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 232,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 817,
+            "cacheReadInputTokens": 23117,
+            "cacheCreationInputTokens": 5494,
+            "webSearchRequests": 0,
+            "costUSD": 0.032469700000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 266,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0331274
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3815,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5306,
+            "outputTokens": 261,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006611,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 241,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 483,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4820,
+            "webSearchRequests": 0,
+            "costUSD": 0.024550699999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 181,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0252118
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10576,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10691,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010801,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1212,
+            "cacheReadInputTokens": 33836,
+            "cacheCreationInputTokens": 12002,
+            "webSearchRequests": 0,
+            "costUSD": 0.0635236,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 503,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0646037
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14800,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 31878,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0032007999999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1415,
+            "cacheReadInputTokens": 52172,
+            "cacheCreationInputTokens": 32168,
+            "webSearchRequests": 0,
+            "costUSD": 0.29609440000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 387,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.29929520000000004
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6361,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5286,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005406,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 748,
+            "cacheReadInputTokens": 8734,
+            "cacheCreationInputTokens": 9627,
+            "webSearchRequests": 0,
+            "costUSD": 0.04686939999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 152,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.047409999999999994
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8268,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16756,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016901000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 899,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 16270,
+            "webSearchRequests": 0,
+            "costUSD": 0.0745107,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 529,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0762008
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7349,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16518,
+            "outputTokens": 304,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018038000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 282,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 920,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 16032,
+            "webSearchRequests": 0,
+            "costUSD": 0.0737687,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 481,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0755725
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3259,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5260,
+            "outputTokens": 222,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000637,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 201,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 436,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4774,
+            "webSearchRequests": 0,
+            "costUSD": 0.0238967,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 152,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0245337
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8468,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16759,
+            "outputTokens": 255,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018034000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 233,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1018,
+            "cacheReadInputTokens": 25007,
+            "cacheCreationInputTokens": 16899,
+            "webSearchRequests": 0,
+            "costUSD": 0.0802887,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 378,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0820921
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4011,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5316,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005436,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 405,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4822,
+            "webSearchRequests": 0,
+            "costUSD": 0.0475574,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 89,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.048101
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3368,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5306,
+            "outputTokens": 240,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006506,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 219,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 367,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4812,
+            "webSearchRequests": 0,
+            "costUSD": 0.046717400000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 81,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.04736800000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4185,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5307,
+            "outputTokens": 248,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006547,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 229,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 407,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4813,
+            "webSearchRequests": 0,
+            "costUSD": 0.047525399999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 90,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0481801
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10193,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16432,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016567,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1102,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 15946,
+            "webSearchRequests": 0,
+            "costUSD": 0.0752447,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 674,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0769014
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 17225,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16146,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016251000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1920,
+            "cacheReadInputTokens": 67575,
+            "cacheCreationInputTokens": 19199,
+            "webSearchRequests": 0,
+            "costUSD": 0.1027695,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1002,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1043946
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6306,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 650,
+            "cacheReadInputTokens": 42558,
+            "cacheCreationInputTokens": 15891,
+            "webSearchRequests": 0,
+            "costUSD": 0.0743318,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 14944,
+            "outputTokens": 396,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016924000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 371,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0760242
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6124,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19891,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020011,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 690,
+            "cacheReadInputTokens": 28139,
+            "cacheCreationInputTokens": 20466,
+            "webSearchRequests": 0,
+            "costUSD": 0.0915859,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 136,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.093587
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3792,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5254,
+            "outputTokens": 296,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006734,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 277,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 375,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4760,
+            "webSearchRequests": 0,
+            "costUSD": 0.0464614,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 93,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0471348
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10120,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 18867,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018976999999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1235,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 18381,
+            "webSearchRequests": 0,
+            "costUSD": 0.08631470000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 827,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08821240000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4130,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5254,
+            "outputTokens": 362,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0007064,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 342,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 397,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4760,
+            "webSearchRequests": 0,
+            "costUSD": 0.0469014,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 82,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.047607800000000006
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14140,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10701,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010816,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1340,
+            "cacheReadInputTokens": 34572,
+            "cacheCreationInputTokens": 12056,
+            "webSearchRequests": 0,
+            "costUSD": 0.1301864,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 629,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.131268
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12240,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16765,
+            "outputTokens": 269,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0018110000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 247,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1244,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 16271,
+            "webSearchRequests": 0,
+            "costUSD": 0.1559294,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 753,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1577404
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14947,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16524,
+            "outputTokens": 196,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017504,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 176,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1438,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 16030,
+            "webSearchRequests": 0,
+            "costUSD": 0.1578814,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 932,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.15963180000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 16453,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16438,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016578,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1569,
+            "cacheReadInputTokens": 46035,
+            "cacheCreationInputTokens": 17742,
+            "webSearchRequests": 0,
+            "costUSD": 0.182547,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 869,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18420479999999997
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 18619,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16144,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016249,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1816,
+            "cacheReadInputTokens": 45980,
+            "cacheCreationInputTokens": 18300,
+            "webSearchRequests": 0,
+            "costUSD": 0.19194,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1099,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.19356490000000004
+      }
+    ],
+    "total_cost_usd": 4.682037500000001,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 54,
+      "gather": 203,
+      "triage": 9697,
+      "find_verify": 74511,
+      "merge": 9
+    },
+    "errors": []
+  }
+}

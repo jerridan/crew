@@ -1,0 +1,1849 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 157,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add the orchestrator record, its command line, and the project lead's reports",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/157"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "63b84164d6b7c5049d8ee5805c7d8d153b625d64",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-157/2026-11-16T210649.553Z-63b8416.json",
+      "open": [],
+      "dismissed": [
+        "0ede81112c3e03e6",
+        "61544fc29dfaa50e",
+        "b2d60f05c2b6d347",
+        "b6d91ed6fe55a17a",
+        "dba9e61bcbf6a9d3",
+        "dcdc11db85839817"
+      ],
+      "fetch_failed": false
+    },
+    "base": "772cf658a3b7836fe027d196483235e2782f63a3",
+    "head": "be95d1aa1ff2e7546792cc4da081fd7965845d52",
+    "started_at": "2026-11-16T21:11:00.776Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add the orchestrator record, its command line, and the project lead's reports\n\n## Summary\n\nAn orchestrator session that runs many project leads now has a durable record of its own, and one command that is the only writer of it. The record holds the items and their stages, groups of related items with their merge order, one inbox for the principal (decisions, questions, ideas and notices that stay until they are answered or dismissed), the plan with each change and its reason, and a copy of what each implementer was told. The same command reads PR, check, review and merge-queue state from GitHub and prints the agreed board as text. A project lead that an orchestrator started reports its stage and records its questions there; a run with no orchestrator is unchanged.\n\nCloses #151\n\n**Ticket:** https://github.com/jerridan/crew/issues/151 (part 1 of https://github.com/jerridan/crew/issues/150)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- Issue 150 (the agreed design: rules 9, 10, 12 and 14, and the board layout) and issue 151.\n- `skills/orchestrator/references/orchestrator-record.md` is new and owns the orchestrator record: files, fields, ids, stages, merge value, board and commands.\n- `skills/project-lead/SKILL.md`'s new \"Report to an orchestrator\" owns what a project lead writes when an orchestrator started it. `record-format.md` owns the new `run.orchestrator` field.\n- `docs/design.md` §15.139 records the decisions.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-orch.py` (new): the only writer of `<record-root>/orchestrators/<name>/`. Commands: `init`, `item add|pr|set`, `group add|order|owner`, `stage`, `doing`, `ask`, `inbox add`, `route`, `answer`, `dismiss`, `plan change`, `told`, `pace set`, `refresh`, `board [--urls]`, `show`. An `fcntl` lock and an atomic rename on every write. Python standard library only.\n- `skills/orchestrator/scripts/test-crew-orch.sh` (new): the seeded test, 23 checks, with a temporary `CREW_RECORD_ROOT`, a stub `gh` and a stub `crew-usage.py`, run from outside the repo.\n- `skills/orchestrator/references/orchestrator-record.md` (new): the canonical definition of the record.\n- `skills/project-lead/scripts/crew-stats.py`: never walks into the top-level `orchestrators/` folder.\n- `skills/project-lead/SKILL.md`: the section \"Report to an orchestrator\" (the `Orchestrator: <name>, item <id>` goal line, `run.orchestrator`, the stage calls per path, `ask` before each question), and a one-line pointer to it from \"Take the goal\".\n- `skills/project-lead/references/record-format.md`: the `run.orchestrator` row and its writer/reader entry, and a pointer to the new reference.\n- `skills/project-lead/references/autonomy-contract.md`, `skills/delivered-window/SKILL.md`: one pointer each to that section.\n- `README.md` (The record), `CLAUDE.md` (layout, code list, authority list, build state), `docs/design.md` (§15.139).\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version `0.1.106`, assigned by the principal.\n\n### Constraints that applied\n\n- One writer, one canonical reference: Grep for `plan_changes`, `doing_at`, `stage_at`, `closed_at` over `skills/`, `agents/` and `hooks/` finds only the reference, the script and its test.\n- Formats owned by sibling parts are not copied: the account-wide usage figures stay with issue 153 (`usage.json`, read through its `crew-usage.py` when present); the launcher's nine `launch` fields are the ones issue 152 prints.\n- The plugin version (0.1.106) and the §15 number (139) were assigned by the principal.\n- Public repo: no private names; the prior art in issue 149 was read for its faults only.\n- `skills/project-lead/SKILL.md` is 555 lines against the 500-line target. It was 515 before; the new section is the one place that owns the project lead's reports.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-crew-orch.sh` from `/private/tmp`: all 23 checks pass (AC1 to AC10, AC12, a new-process read-back, and the absent or failing `crew-usage.py`).\n- A hand run of `board --urls` on a seeded record printed the #150 sections in order: Needs you, the group in merge order with its marks, Single items, Done, Links.\n- `show` output keys compared with the reference's field tables: they match.\n- A spec critic (two rounds' worth of findings applied) and a split critic (two rounds) reviewed the spec and the split before any code.\n\n### Known gaps\n\n- No orchestrator and no project lead has used this yet; the `crew:orchestrator` skill (issue 154) and the board pane (issue 155) are later parts.\n- `crew-stats.py` fails under macOS's `/usr/bin/python3` 3.9 because `spend.py` already uses `str | None` at run time. This predates this change; `crew-orch.py` runs on 3.9.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZfogKwg96muwwH1JsP\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": false
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 3
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new 1180-line state-writing script with locking, gh subprocess calls and a derived merge-value rule set, plus a change to crew-stats.py's record walk and new project-lead reporting behavior.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-orch.py: Record.mutate/locked/save (concurrency, atomic write; init lock vs mkdir race)",
+        "skills/orchestrator/scripts/crew-orch.py: merge_value and derive (rule order vs orchestrator-record.md table)",
+        "skills/orchestrator/scripts/crew-orch.py: check_summary and read_pr/cmd_refresh (gh parsing, cancelled runs, stale results written after lock)",
+        "skills/orchestrator/scripts/crew-orch.py: clean/ESCAPE_RE/Links (terminal escape injection)",
+        "skills/orchestrator/scripts/crew-orch.py: cmd_plan and cmd_told (file writes inside mutate, path handling)",
+        "skills/orchestrator/scripts/crew-orch.py: item_set group move and item_pr repo checks",
+        "skills/project-lead/scripts/crew-stats.py: candidates() skip of orchestrators/",
+        "skills/project-lead/SKILL.md: Report to an orchestrator (stage-call instructions)",
+        "skills/orchestrator/scripts/test-crew-orch.sh"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "new script: sole writer of the orchestrator record, with gh refresh, derived merge value and board rendering"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "new seeded test with stub gh and crew-usage.py; check that it covers the edge cases"
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "new canonical spec of fields, stages, merge order and commands; must match the code"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "walk now skips top-level orchestrators/ directory"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "new section telling project leads to report stages and questions to an orchestrator"
+        },
+        {
+          "file": "skills/delivered-window/SKILL.md",
+          "note": "adds stage-write steps for closed, merged and shipped"
+        },
+        {
+          "file": "skills/project-lead/references/skeptical-review.md",
+          "note": "adds stage pr write when review stops"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "documents the new run.orchestrator field"
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "pointer to the new reporting section"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new §15.139 entry"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "file table and status updates"
+        },
+        {
+          "file": "README.md",
+          "note": "short note on the orchestrator record location"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump to 0.1.106"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump to 0.1.106"
+        }
+      ],
+      "summary": "This change adds crew-orch.py, a new script that is the only writer of an orchestrator record. It also adds the record spec, a seeded test, and project-lead and delivered-window instructions to report stages and questions to it. crew-stats.py now skips the orchestrators/ directory, and the plugin version goes to 0.1.106."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new 1180-line state-writing script with locking, gh subprocess calls and a derived merge-value rule set, plus a change to crew-stats.py's record walk and new project-lead reporting behavior.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/SKILL.md",
+            "start_line": 160,
+            "end_line": 196,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The new section pushes SKILL.md to about 555 lines, past the 500-line target of the writing standard.",
+            "evidence": "## Report to an orchestrator",
+            "suggested_fix": "Move the stage-call table to orchestrator-record.md or to a reference, and point at it from SKILL.md.",
+            "explanation": "writing-standard.md sets a 500-line target for a SKILL.md, and the PR says the file now goes past it.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4459,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45511,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004562600000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 384,
+              "cacheReadInputTokens": 9722,
+              "cacheCreationInputTokens": 45016,
+              "webSearchRequests": 0,
+              "costUSD": 0.3697604,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 122,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.374323
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+            "start_line": 566,
+            "end_line": 569,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The description says the seeded test has 23 checks that all pass, but the script defines 31 steps.",
+            "evidence": "STEP=\"every merge value, and the order where two rules match\"",
+            "suggested_fix": "Change the description to give the real check count (31).",
+            "explanation": "The check count in the description does not match the test script.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5799,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45513,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045633,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 547,
+              "cacheReadInputTokens": 9680,
+              "cacheCreationInputTokens": 45018,
+              "webSearchRequests": 0,
+              "costUSD": 0.373028,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 259,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3775913
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 20313,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45513,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045633,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1717,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 45018,
+              "webSearchRequests": 0,
+              "costUSD": 0.396417,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1282,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4009803
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 14532,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45517,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045637,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1235,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 45022,
+              "webSearchRequests": 0,
+              "costUSD": 0.386809,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 899,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3913727
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8363,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45519,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045639,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 788,
+              "cacheReadInputTokens": 9632,
+              "cacheCreationInputTokens": 45024,
+              "webSearchRequests": 0,
+              "costUSD": 0.3778864,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 469,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3824503
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3424,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 58100,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.005822,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 191,
+              "cacheReadInputTokens": 9747,
+              "cacheCreationInputTokens": 57605,
+              "webSearchRequests": 0,
+              "costUSD": 0.4666174,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 66,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4724394
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 954,
+            "end_line": 966,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "A group ticket URL is stored with no scheme check and is printed as a clickable OSC 8 link on the board.",
+            "evidence": "return f\"\\033]8;;{url}\\033\\\\{text}\\033]8;;\\033\\\\{pad}\"",
+            "suggested_fix": "Accept only http(s) ticket URLs when the ticket is set, or print a non-https URL as plain text.",
+            "explanation": "Text that a project lead or an orchestrator writes can become a clickable file: or other non-https link in the principal's terminal, with link text that hides the target.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7363,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45511,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004562600000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 568,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 45016,
+              "webSearchRequests": 0,
+              "costUSD": 0.3734406,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 255,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.37800320000000004
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6334,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45517,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045637,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 526,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 45022,
+              "webSearchRequests": 0,
+              "costUSD": 0.3726486,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 175,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3772123
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 859,
+            "end_line": 860,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "No test covers the guard that throws away a refresh result when the item's PR changed while `gh` ran outside the lock.",
+            "evidence": "            if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "suggested_fix": "Add a test with a stub `gh` that runs `item <id> pr <other>` during its call. Then check that `github` stays null for the new PR.",
+            "explanation": "If this guard breaks, a slow refresh can write the old PR's GitHub values onto the new PR, and no test in test-crew-orch.sh would fail.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 113,
+            "end_line": 119,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "No test checks the weekday form of a reset time that is more than a day away. The 7d check matches only `31%`.",
+            "evidence": "    if epoch - time.time() > 86400:",
+            "suggested_fix": "In the 7d line check, match `resets <weekday>`. In the 5h line check, match the clock time.",
+            "explanation": "If the clock or weekday branch breaks, the Plan block test still passes, because it never matches the reset text.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9787,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 45519,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0045639,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 876,
+              "cacheReadInputTokens": 65812,
+              "cacheCreationInputTokens": 45440,
+              "webSearchRequests": 0,
+              "costUSD": 0.3942184,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 153,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.39878230000000003
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/SKILL.md",
+          "start_line": 160,
+          "end_line": 196,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The new section pushes SKILL.md to about 555 lines, past the 500-line target of the writing standard.",
+          "evidence": "## Report to an orchestrator",
+          "suggested_fix": "Move the stage-call table to orchestrator-record.md or to a reference, and point at it from SKILL.md.",
+          "explanation": "writing-standard.md sets a 500-line target for a SKILL.md, and the PR says the file now goes past it.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "## Report to an orchestrator",
+            "and a `SKILL.md` body 500. Both figures are the Claude Code",
+            "The item passes when the excess has moved to a reference, or\n   when the PR says why the file stays over its target."
+          ],
+          "rationale": "The file is about 556 lines, over the 500-line target, and the PR added the section. But writing-standard.md calls this a target, not a limit, and the item passes when the PR says why the file stays over. The PR does say so: the new section is the one place that owns the project lead's reports.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "## Report to an orchestrator",
+            "and a `SKILL.md` body 500. Both figures are the Claude Code",
+            "documentation's own targets, and they are targets, not limits: a",
+            "number. The item passes when the excess has moved to a reference, or",
+            "when the PR says why the file stays over its target."
+          ],
+          "rationale": "SKILL.md is now about 556 lines, so the new section takes it further past the 500-line target. But writing-standard.md says a file over the target passes when the PR explains why it stays over, and the PR description does that. The file was also already at 515 lines before this change, so the finding only repeats the description.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "## Report to an orchestrator",
+            "and a `SKILL.md` body 500. Both figures are the Claude Code",
+            "documentation's own targets, and they are targets, not limits: a",
+            "number. The item passes when the excess has moved to a reference, or",
+            "when the PR says why the file stays over its target."
+          ],
+          "rationale": "SKILL.md is now about 556 lines, so the new section takes it further past the 500-line target. But writing-standard.md says a file over the target passes when the PR explains why it stays over, and the PR description does that. The file was also already at 515 lines before this change, so the finding only repeats the description.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "start_line": 566,
+          "end_line": 569,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The description says the seeded test has 23 checks that all pass, but the script defines 31 steps.",
+          "evidence": "STEP=\"every merge value, and the order where two rules match\"",
+          "suggested_fix": "Change the description to give the real check count (31).",
+          "explanation": "The check count in the description does not match the test script.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "STEP=\"every merge value, and the order where two rules match\"",
+            "STEP=\"AC12 crew-stats.py reports no run for the orchestrator record\"",
+            "echo \"all checks passed\""
+          ],
+          "rationale": "I counted 31 STEP= assignments, each followed by pass, and the description says 23 checks. The count is stale, probably because the later patch-round steps were added after it was written. The effect is only a wrong number in the PR text, so it is not worth a review comment.",
+          "score": 93,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "STEP=\"every merge value, and the order where two rules match\"",
+            "STEP=\"AC12 crew-stats.py reports no run for the orchestrator record\"",
+            "echo \"all checks passed\""
+          ],
+          "rationale": "I counted 31 STEP= assignments, each followed by pass, and the description says 23 checks. The count is stale, probably because the later patch-round steps were added after it was written. The effect is only a wrong number in the PR text, so it is not worth a review comment.",
+          "score": 93,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 954,
+          "end_line": 966,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "A group ticket URL is stored with no scheme check and is printed as a clickable OSC 8 link on the board.",
+          "evidence": "return f\"\\033]8;;{url}\\033\\\\{text}\\033]8;;\\033\\\\{pad}\"",
+          "suggested_fix": "Accept only http(s) ticket URLs when the ticket is set, or print a non-https URL as plain text.",
+          "explanation": "Text that a project lead or an orchestrator writes can become a clickable file: or other non-https link in the principal's terminal, with link text that hides the target.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return {\"id\": opts[\"ticket\"], \"url\": opts.get(\"ticket-url\")}",
+            "return f\"\\033]8;;{url}\\033\\\\{text}\\033]8;;\\033\\\\{pad}\"",
+            "head.append(links.make(group[\"ticket\"][\"id\"], group[\"ticket\"].get(\"url\")))"
+          ],
+          "rationale": "The ticket URL is stored with no scheme check, since `ticket_from` and `check_ticket` only test the type. `Links.make` strips escape sequences from it but not the scheme, so any scheme becomes an OSC 8 link whose text is the ticket id. Only agents that already write the record can set the URL, and terminals often limit which schemes they open, so the impact is low.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return {\"id\": opts[\"ticket\"], \"url\": opts.get(\"ticket-url\")}",
+            "or not isinstance(value.get(\"url\"), (str, type(None)))):",
+            "head.append(links.make(group[\"ticket\"][\"id\"], group[\"ticket\"].get(\"url\")))",
+            "return f\"\\033]8;;{url}\\033\\\\{text}\\033]8;;\\033\\\\{pad}\""
+          ],
+          "rationale": "The claim is correct. The ticket URL is accepted as any string, either from `ticket_from` or from `check_ticket`, and on a TTY it is wrapped in OSC 8 after `clean()` removes control characters. Nothing checks the URL scheme. But the only writers are the principal's own local agents, which can already run commands on the same machine. The URL also appears in plain text under `--urls`, so the real risk is small.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return {\"id\": opts[\"ticket\"], \"url\": opts.get(\"ticket-url\")}",
+            "or not isinstance(value.get(\"url\"), (str, type(None)))):",
+            "head.append(links.make(group[\"ticket\"][\"id\"], group[\"ticket\"].get(\"url\")))",
+            "return f\"\\033]8;;{url}\\033\\\\{text}\\033]8;;\\033\\\\{pad}\""
+          ],
+          "rationale": "The claim is correct. The ticket URL is accepted as any string, either from `ticket_from` or from `check_ticket`, and on a TTY it is wrapped in OSC 8 after `clean()` removes control characters. Nothing checks the URL scheme. But the only writers are the principal's own local agents, which can already run commands on the same machine. The URL also appears in plain text under `--urls`, so the real risk is small.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 859,
+          "end_line": 860,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "No test covers the guard that throws away a refresh result when the item's PR changed while `gh` ran outside the lock.",
+          "evidence": "            if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+          "suggested_fix": "Add a test with a stub `gh` that runs `item <id> pr <other>` during its call. Then check that `github` stays null for the new PR.",
+          "explanation": "If this guard breaks, a slow refresh can write the old PR's GitHub values onto the new PR, and no test in test-crew-orch.sh would fail.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:"
+          ],
+          "rationale": "The test script has no test for the race. Its PR-change tests (lines 238-246) run `item pr` sequentially, never while `gh` is running, so deleting the guard would not fail any check.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "    # gh runs outside the lock, so a slow call never holds up another writer.",
+            "[ -f \"\\$f\" ] || { echo \"stub gh: no data for \\$*\" >&2; exit 1; }",
+            "expect_exit 0 orch item loner pr 78"
+          ],
+          "rationale": "The stub `gh` in test-crew-orch.sh only cats fixture files. No test changes the item's PR while a refresh is running, so nothing exercises the stale-result guard on line 859. The refresh tests only change the PR between commands. The guard is correct, so this is only a gap in test coverage.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "    # gh runs outside the lock, so a slow call never holds up another writer.",
+            "[ -f \"\\$f\" ] || { echo \"stub gh: no data for \\$*\" >&2; exit 1; }",
+            "expect_exit 0 orch item loner pr 78"
+          ],
+          "rationale": "The stub `gh` in test-crew-orch.sh only cats fixture files. No test changes the item's PR while a refresh is running, so nothing exercises the stale-result guard on line 859. The refresh tests only change the PR between commands. The guard is correct, so this is only a gap in test coverage.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 113,
+          "end_line": 119,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "No test checks the weekday form of a reset time that is more than a day away. The 7d check matches only `31%`.",
+          "evidence": "    if epoch - time.time() > 86400:",
+          "suggested_fix": "In the 7d line check, match `resets <weekday>`. In the 5h line check, match the clock time.",
+          "explanation": "If the clock or weekday branch breaks, the Plan block test still passes, because it never matches the reset text.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "grep -E '7d .*31%' \"$TMP/board\" >/dev/null || fail \"no 7d line\"",
+            "if epoch - time.time() > 86400:",
+            "\"seven_day\": {\"used_pct\": 31, \"resets_at\": $(( reset + 3 * 86400 ))}"
+          ],
+          "rationale": "The test seeds a seven_day reset three days away, but its 7d check matches only `31%` and the 5h check matches only `68%` and the pace word. Neither check looks at the \"resets\" text, so a break in `clock()` or its weekday branch would not fail any test.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "grep -E '7d .*31%' \"$TMP/board\" >/dev/null || fail \"no 7d line\"",
+            "if epoch - time.time() > 86400:",
+            "\"seven_day\": {\"used_pct\": 31, \"resets_at\": $(( reset + 3 * 86400 ))}"
+          ],
+          "rationale": "The test seeds a seven_day reset three days away, but its 7d check matches only `31%` and the 5h check matches only `68%` and the pace word. Neither check looks at the \"resets\" text, so a break in `clock()` or its weekday branch would not fail any test.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5927768998,
+      "review_url": "https://github.com/jerridan/crew/pull/157#pullrequestreview-5927768998",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133616216891
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 859,
+        "end_line": 860,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "No test covers the guard that throws away a refresh result when the item's PR changed while `gh` ran outside the lock.",
+        "evidence": "            if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+        "suggested_fix": "Add a test with a stub `gh` that runs `item <id> pr <other>` during its call. Then check that `github` stays null for the new PR.",
+        "explanation": "If this guard breaks, a slow refresh can write the old PR's GitHub values onto the new PR, and no test in test-crew-orch.sh would fail.",
+        "needs_context": false,
+        "fingerprint": "b94eed7b8ae4d4ff",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "    # gh runs outside the lock, so a slow call never holds up another writer.",
+            "[ -f \"\\$f\" ] || { echo \"stub gh: no data for \\$*\" >&2; exit 1; }",
+            "expect_exit 0 orch item loner pr 78"
+          ],
+          "rationale": "The stub `gh` in test-crew-orch.sh only cats fixture files. No test changes the item's PR while a refresh is running, so nothing exercises the stale-result guard on line 859. The refresh tests only change the PR between commands. The guard is correct, so this is only a gap in test coverage.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number: continue"
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 113,
+        "end_line": 119,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "No test checks the weekday form of a reset time that is more than a day away. The 7d check matches only `31%`.",
+        "evidence": "    if epoch - time.time() > 86400:",
+        "suggested_fix": "In the 7d line check, match `resets <weekday>`. In the 5h line check, match the clock time.",
+        "explanation": "If the clock or weekday branch breaks, the Plan block test still passes, because it never matches the reset text.",
+        "needs_context": false,
+        "fingerprint": "a6a45c61dcc0aec2",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "grep -E '7d .*31%' \"$TMP/board\" >/dev/null || fail \"no 7d line\"",
+            "if epoch - time.time() > 86400:",
+            "\"seven_day\": {\"used_pct\": 31, \"resets_at\": $(( reset + 3 * 86400 ))}"
+          ],
+          "rationale": "The test seeds a seven_day reset three days away, but its 7d check matches only `31%` and the 5h check matches only `68%` and the pace word. Neither check looks at the \"resets\" text, so a break in `clock()` or its weekday branch would not fail any test.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "def clock(epoch) -> str: \"\"\"Local clock time, or a weekday when the time is more than a day away.\"\"\" when = datetime.fromtimestamp(epoch) if epoch - time.time() > 86400: return when.strftime(\"%a\") hour = when.hour % 12 or 12 return f\"{hour}:{when.minute:02d} {'AM' if when.hour < 12 else 'PM'}\""
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10889,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 50755,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0050875,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1340,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 50268,
+            "webSearchRequests": 0,
+            "costUSD": 0.2146022,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2196897
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4459,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45511,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004562600000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 384,
+            "cacheReadInputTokens": 9722,
+            "cacheCreationInputTokens": 45016,
+            "webSearchRequests": 0,
+            "costUSD": 0.3697604,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 122,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.374323
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5799,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45513,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045633,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 547,
+            "cacheReadInputTokens": 9680,
+            "cacheCreationInputTokens": 45018,
+            "webSearchRequests": 0,
+            "costUSD": 0.373028,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 259,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3775913
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8363,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45519,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045639,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 788,
+            "cacheReadInputTokens": 9632,
+            "cacheCreationInputTokens": 45024,
+            "webSearchRequests": 0,
+            "costUSD": 0.3778864,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 469,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3824503
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3424,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 58100,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.005822,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 191,
+            "cacheReadInputTokens": 9747,
+            "cacheCreationInputTokens": 57605,
+            "webSearchRequests": 0,
+            "costUSD": 0.4666174,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 66,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4724394
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7363,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45511,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004562600000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 568,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 45016,
+            "webSearchRequests": 0,
+            "costUSD": 0.3734406,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 255,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.37800320000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14532,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45517,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045637,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1235,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 45022,
+            "webSearchRequests": 0,
+            "costUSD": 0.386809,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 899,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3913727
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6334,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45517,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045637,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 526,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 45022,
+            "webSearchRequests": 0,
+            "costUSD": 0.3726486,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 175,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3772123
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9787,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45519,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045639,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 876,
+            "cacheReadInputTokens": 65812,
+            "cacheCreationInputTokens": 45440,
+            "webSearchRequests": 0,
+            "costUSD": 0.3942184,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 153,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.39878230000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 20313,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 45513,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0045633,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1717,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 45018,
+            "webSearchRequests": 0,
+            "costUSD": 0.396417,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1282,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4009803
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7950,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 35295,
+            "outputTokens": 286,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0036725,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 264,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 733,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 34808,
+            "webSearchRequests": 0,
+            "costUSD": 0.1470027,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 384,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.15067519999999998
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7236,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28694,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028799000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 695,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28207,
+            "webSearchRequests": 0,
+            "costUSD": 0.1202187,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 242,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1230986
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 13027,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17871,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017986000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 925,
+            "cacheReadInputTokens": 70854,
+            "cacheCreationInputTokens": 18672,
+            "webSearchRequests": 0,
+            "costUSD": 0.0910394,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 175,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.092838
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8242,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27534,
+            "outputTokens": 358,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029324,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 333,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 668,
+            "cacheReadInputTokens": 35781,
+            "cacheCreationInputTokens": 27765,
+            "webSearchRequests": 0,
+            "costUSD": 0.1213261,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 132,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.12425850000000001
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10691,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28374,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028489,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 833,
+            "cacheReadInputTokens": 105015,
+            "cacheCreationInputTokens": 31328,
+            "webSearchRequests": 0,
+            "costUSD": 0.14415949999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 49,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.14700839999999998
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8353,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28692,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028802000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 748,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28197,
+            "webSearchRequests": 0,
+            "costUSD": 0.2414174,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 256,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2442976
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9709,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 17861,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 915,
+            "cacheReadInputTokens": 70741,
+            "cacheCreationInputTokens": 18598,
+            "webSearchRequests": 0,
+            "costUSD": 0.18126420000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 158,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18306380000000003
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14144,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-opus-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 1338,
+            "cacheReadInputTokens": 141958,
+            "cacheCreationInputTokens": 34029,
+            "webSearchRequests": 0,
+            "costUSD": 0.3274236,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 249,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 28374,
+            "outputTokens": 311,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029929,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 287,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3304165
+      }
+    ],
+    "total_cost_usd": 5.168501100000001,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 42,
+      "gather": 257,
+      "scope": 12,
+      "triage": 11851,
+      "find_verify": 46403,
+      "merge": 8
+    },
+    "errors": []
+  }
+}

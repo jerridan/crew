@@ -9281,7 +9281,7 @@ Deliberately different:
      a top-level `queue/` folder in the record root, so an old queue's files
      stay out of its record walk.
 
-NNN. **The orchestrator record and its command line — 2026-11-16.** Issue
+139. **The orchestrator record and its command line — 2026-11-16.** Issue
      151, part 1 of the `crew:orchestrator` build (issue 150). An orchestrator
      now has a durable record, `<record-root>/orchestrators/<name>/`, and one
      writer, `skills/orchestrator/scripts/crew-orch.py`.

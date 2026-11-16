@@ -7,14 +7,22 @@ usage:
 
 start opens one tab in the window of the session --session names, or in the
 current window. It does not select the tab. It names the session, types the
-command into its shell, and puts the tab in the group. It prints one JSON line:
-{"session_id": <unique id>, "tab_group": <name or null>}, and "warning" when
-the tab opened but the group step failed.
+command into its shell, and puts the tab in the group. It prints JSON lines,
+each one at once:
+
+  {"opened": <unique id>}   the tab is open
+  {"typed": <unique id>}    the command is typed into it
+  {"closed": <unique id>}   a step before "typed" failed, and the tab is closed
+  {"session_id": <unique id>, "tab_group": <name or null>}   the last line,
+                            with "warning" when the group step failed
+
+A failure before "typed" closes the tab and exits 1. A failure after "typed"
+goes into "warning" and the exit is 0.
 
 groups prints one JSON line per open tab group, over every window:
 {"window_id", "group_id", "name", "color"}.
 
-On a failure before a tab opens, it prints one line on stderr and exits 1.
+On a failure, it prints one line on stderr and exits 1.
 launcher.py owns every other rule: skills/orchestrator/references/launcher.md.
 """
 
@@ -28,6 +36,11 @@ import iterm2
 
 class HelperError(Exception):
     pass
+
+
+def emit(obj):
+    """Print one JSON line now, so a timeout or a crash cannot hide it."""
+    print(json.dumps(obj), flush=True)
 
 
 async def find_group(app, window_id, name):
@@ -59,9 +72,19 @@ async def start(conn, args):
     if tab is None:
         raise HelperError("iTerm2 opened no tab")
     session = tab.current_session
-    await session.async_set_name(args.name)
-    await session.async_send_text(args.command + "\n")
-    result = {"session_id": session.session_id, "tab_group": None}
+    sid = session.session_id
+    emit({"opened": sid})
+    try:
+        await session.async_set_name(args.name)
+        await session.async_send_text(args.command + "\n")
+    except Exception:
+        # No command runs in the tab: close it, so the fallback opens the
+        # only tab. When the close fails, no "closed" line goes out.
+        await session.async_close(force=True)
+        emit({"closed": sid})
+        raise
+    emit({"typed": sid})
+    result = {"session_id": sid, "tab_group": None}
     if not args.group:
         return result
     try:

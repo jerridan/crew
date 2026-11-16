@@ -147,8 +147,13 @@ def run(cmd, cwd=None, stdin=None, timeout=None):
         )
     except FileNotFoundError:
         return 127, "", "%s: command not found" % cmd[0]
-    except subprocess.TimeoutExpired:
-        return 124, "", "%s: timed out after %d seconds" % (cmd[0], timeout)
+    except subprocess.TimeoutExpired as e:
+        # Keep what the command printed before the kill: a helper says on
+        # stdout when its tab opened.
+        out = e.stdout or ""
+        if isinstance(out, bytes):
+            out = out.decode("utf-8", "replace")
+        return 124, out, "%s: timed out after %d seconds" % (cmd[0], timeout)
     return p.returncode, p.stdout, p.stderr
 
 
@@ -370,6 +375,25 @@ def own_iterm_session():
     return sid.split(":", 1)[1] if ":" in sid else sid
 
 
+def helper_lines(out):
+    """What the helper's start said: the ids of opened, typed, closed, and the
+    result object under session_id. A line that is not that JSON is skipped."""
+    said = {}
+    for line in (out or "").splitlines():
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        if isinstance(obj.get("session_id"), str) and ITERM_ID_RE.fullmatch(obj["session_id"]):
+            said["session_id"] = obj
+        for key in ("opened", "typed", "closed"):
+            if isinstance(obj.get(key), str) and ITERM_ID_RE.fullmatch(obj[key]):
+                said[key] = obj[key]
+    return said
+
+
 def iterm_start(name, group, color, command, worktree):
     """Open the tab through the helper; fall back to osascript with no group."""
     sid = own_iterm_session()
@@ -382,15 +406,34 @@ def iterm_start(name, group, color, command, worktree):
             cmd += ["--group-color", color]
     rc, out, err = run(cmd, timeout=HELPER_TIMEOUT)
     why = one_line(err) or "exit %d" % rc
+    said = helper_lines(out)
+    res = said.get("session_id")
+    if rc == 0 and res is not None:
+        if res.get("warning"):
+            print("launcher: made no tab group: %s" % res["warning"], file=sys.stderr)
+        return "iterm2:" + res["session_id"], res.get("tab_group")
     if rc == 0:
-        try:
-            res = json.loads(one_line(out))
-            tab = "iterm2:" + res["session_id"]
-            if res.get("warning"):
-                print("launcher: made no tab group: %s" % res["warning"], file=sys.stderr)
-            return tab, res.get("tab_group")
-        except (ValueError, KeyError, TypeError):
-            why = "the helper printed no session id"
+        why = "the helper printed no result line"
+    typed = res["session_id"] if res is not None else said.get("typed")
+    if typed:
+        # The command runs in that tab. A fallback tab would start a second
+        # claude in the same worktree.
+        print(
+            "launcher: made no tab group: the iTerm2 helper failed after it typed the command (%s)" % why,
+            file=sys.stderr,
+        )
+        return "iterm2:" + typed, None
+    opened = said.get("opened")
+    if opened and said.get("closed") != opened:
+        # The tab is open with no command. Close it before the fallback opens
+        # the only tab.
+        src, sout, serr = run(["osascript", "-", "stop", opened], stdin=OSA_STOP)
+        if src != 0 or one_line(sout) not in ("ok", "gone"):
+            raise Fail(
+                TERMINAL_STEP,
+                "launcher: the iTerm2 helper failed (%s) and the tab iterm2:%s it opened did not close (%s); "
+                "the worktree stays at %s" % (why, opened, one_line(serr) or "exit %d" % src, worktree),
+            )
     rc, out, err = run(["osascript", "-", "start", sid, command, name], stdin=OSA_START)
     uid = one_line(out)
     if rc != 0 or not ITERM_ID_RE.fullmatch(uid):

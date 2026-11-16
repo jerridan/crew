@@ -7,6 +7,7 @@ The repo root is the plugin root.
 Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
 two hooks, the three scripts under `skills/project-lead/scripts/`,
+`skills/orchestrator/scripts/crew-orch.py` with its test `test-crew-orch.sh`,
 `skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`,
 and `skills/review/scripts/review-json.py`: they are code, run against a
 seeded record (design §15.38, §15.50, §15.123, §15.124).
@@ -29,6 +30,8 @@ deploy signal of `pr-watch.sh`.
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
+| `skills/orchestrator/scripts/crew-orch.py`, `skills/orchestrator/scripts/test-crew-orch.sh` | the only writer of the orchestrator record, and its board; the seeded test, with a stub `gh` | an orchestrator and a project lead it started, from Bash; a person runs the test |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `docs/design.md` | the living spec | a person |
 | `docs/tickets.md` | the build backlog, one ticket per hand-off | a session taking a ticket |
@@ -118,6 +121,11 @@ Subagent mode is built and on trial: with the teams flag unset, every
 dispatch is a background subagent. One probe passed its four checks, and no
 crew run has used the mode yet (§15.131).
 
+The orchestrator record is built: `crew-orch.py` writes it and prints its
+board, and a project lead that an orchestrator started reports its stage and
+its questions there (§15.NNN). Only the seeded test has run it. The
+`crew:orchestrator` skill that uses it is not built.
+
 T57 removed the tier above the project lead: the principal hands each goal
 over itself (§15.95). Its own kill and forced-compaction probes have run
 (§15.98f).
@@ -159,6 +167,8 @@ Each reference owns one subject and is canonical for it:
 - `skills/review/references/severity-rubric.md` — the six labels of a review
   finding.
 - `writing-standard.md` — how an instruction file and a README are written.
+- `skills/orchestrator/references/orchestrator-record.md` — the orchestrator
+  record and its command line.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A
 second copy is worse than no copy, because nothing decides which copy wins.

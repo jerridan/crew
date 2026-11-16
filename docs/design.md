@@ -9280,3 +9280,41 @@ Deliberately different:
      queue part of T87 are closed by this change. `crew-stats.py` still skips
      a top-level `queue/` folder in the record root, so an old queue's files
      stay out of its record walk.
+
+NNN. **The orchestrator record and its command line — 2026-11-16.** Issue
+     151, part 1 of the `crew:orchestrator` build (issue 150). An orchestrator
+     now has a durable record, `<record-root>/orchestrators/<name>/`, and one
+     writer, `skills/orchestrator/scripts/crew-orch.py`.
+     `skills/orchestrator/references/orchestrator-record.md` owns its fields.
+     The record holds the items, the groups with their merge order and the
+     owner of each shared file, one inbox for the principal (decisions,
+     questions, ideas, notices, each with an id that is never reused), the
+     plan with each change and its reason, and a copy of every message the
+     orchestrator sent an implementer. `refresh` reads the PR, the checks,
+     the review decision and the merge queue from GitHub, and `board` prints
+     the agreed board as text.
+
+     Four choices follow experiment 3 of issue 149. A question is one inbox
+     entry, so one item can have many open questions (its board held one per
+     row and lost two). A cancelled check run never counts as a failure. The
+     merge value is derived on every write from stored fields, in one fixed
+     order. An implementer's question is first an entry for the orchestrator,
+     and `route` moves it to the principal with the same id.
+
+     The plan usage figures are account-wide, so they are not in this record:
+     the usage part (issue 153) owns `<record-root>/usage.json`. This record
+     holds only `pace`, the mode, the slots and the limit of one orchestrator.
+     The board reads the figures through that part's `crew-usage.py` when it
+     exists, and shows no meter when it does not. The launcher (issue 152)
+     prints the facts of each implementer, and the orchestrator writes them
+     into `launch` with this command.
+
+     A project lead whose goal carries `Orchestrator: <name>, item <id>`
+     writes `run.orchestrator`, calls `stage` at each phase change, and
+     writes each question with `ask` before it sends it.
+     `skills/project-lead/SKILL.md`'s "Report to an orchestrator" owns that.
+     A run with no such line is unchanged. `crew-stats.py` skips the
+     top-level `orchestrators/` folder.
+
+     Only the seeded test has run this. No orchestrator and no project lead
+     has used it yet.

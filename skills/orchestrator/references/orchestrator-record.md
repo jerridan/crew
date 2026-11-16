@@ -23,7 +23,7 @@ matches `[a-z0-9][a-z0-9_-]{0,63}`. A goal record never lives under
 | `orchestrator.json` | the state: every field below |
 | `plan.md` | the current plan, copied there by `plan change --file` |
 | `told/` | one file per message the orchestrator sent an implementer |
-| the lock file | the `fcntl` lock that each write takes |
+| `orchestrator.lock` | the `fcntl` lock that each write takes |
 
 `crew-orch.py` is the only writer. A reader uses `show`, or reads
 `orchestrator.json`, and never writes it.
@@ -39,7 +39,10 @@ neither, the script exits 2 with one line.
 
 Each write takes an exclusive lock, reads the file again, changes it and
 replaces it with an atomic rename. Two writers at once both land. A usage
-error prints one line on stderr, exits 2 and writes nothing. Success exits 0.
+error prints one line on stderr, exits 2 and writes nothing. An unknown item,
+group or entry id is a usage error. A command on a record that does not exist,
+a second `init`, and `refresh <item>` on an item with no PR exit 1. Success
+exits 0.
 
 A time is an ISO-8601 UTC string, `YYYY-MM-DDTHH:MM:SSZ`. `null` means not set.
 
@@ -189,7 +192,7 @@ the stage `pr`. From `pr` on, it is the merge value.
 | `merged` | the PR state is `MERGED`, or the stage is `merged` or `shipped` |
 | `no PR` | the item has no PR |
 | `closed` | the PR state is `CLOSED`, or the stage is `closed` |
-| `in queue` | the PR is in the merge queue. It adds the position when GitHub gives one |
+| `in queue` | the PR is in the merge queue. It adds the position when GitHub gives one: `in queue 3` |
 | `can merge` | not a draft, approved, merge state `CLEAN`, checks `pass`, and no wait |
 | `needs review` | not a draft, checks `pass`, merge state `CLEAN` or `BLOCKED`, and no decision yet |
 | `waits on <ids>` | the item waits on at least one item before it in its group |
@@ -200,8 +203,14 @@ the stage `pr`. From `pr` on, it is the merge value.
 | `changes requested` | the review decision is `CHANGES_REQUESTED` |
 | `blocked` | none of the above |
 
-`refresh` takes the latest run of each check name. A cancelled run or a
-skipped run never counts as a failure.
+`refresh` drops every `CANCELLED` run, then takes the latest run of each
+workflow and check name. `SUCCESS`, `NEUTRAL` and `SKIPPED` pass. `FAILURE`,
+`ERROR`, `TIMED_OUT`, `STARTUP_FAILURE` and `ACTION_REQUIRED` fail. Any other
+state is pending. With no run left, `checks` is `none`, and `can merge` and
+`needs review` read `none` as passing.
+
+An item with a PR has no `github` until its first `refresh`, so its merge
+value is `waits on <ids>` or `blocked` until then.
 
 ## The board
 
@@ -214,7 +223,8 @@ skipped run never counts as a failure.
    of <max> slots` to the 5h line, and `stopped` adds `STOPPED`. With no Plan
    block, a `slowed` or `stopped` mode prints that word on its own line.
 2. `Needs you <count>`: every open entry with `for: principal`, oldest first.
-   A row holds the id, the kind, the age, the item and the text. A
+   A row holds the id, the kind, the age, the item and the text. The age of a
+   routed entry counts from `routed_at`. A
    `Recommended:` line follows an entry that has `recommend`.
 3. One section for each group that has an open item: the title, the ticket,
    the repo and `<merged> of <total> merged`. Its items follow in merge order.
@@ -242,7 +252,7 @@ Each line is one command and what it does.
 
 | Command | What it does |
 |---|---|
-| `init` | creates the record. A second `init` of the same name exits 2 and changes nothing |
+| `init` | creates the record. A second `init` of the same name exits 1 and changes nothing |
 | `item add <id> --title <t> --repo <owner/name> [--group <g>] [--ticket <id> --ticket-url <url>]` | adds an item at stage `queued` |
 | `item <id> pr <number\|url>` | sets the PR. A number builds the URL from `repo` |
 | `item <id> set <field> <json>` | sets `title`, `repo`, `ticket`, `group` or `launch`. A dotted key `launch.<key>` merges. Any other field exits 2 |

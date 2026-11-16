@@ -314,7 +314,9 @@ path the run took: an IC makes the edit, and you verify it yourself (design
 Only the principal can tell you to merge the PR. Then run `gh pr merge
 <pr_url> --squash --delete-branch`, or the repo's own merge method, and write
 a `decision` entry. The watch then reports the `merged` item, and "The deploy
-watch" says what it does.
+watch" says what it does. When `run.orchestrator` is set, `SKILL.md`'s "Report
+to an orchestrator" (in `crew:project-lead`) says which stage you write at the
+merge and at the ship word.
 
 ### Findings from a review
 

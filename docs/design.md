@@ -9580,7 +9580,7 @@ Deliberately different:
      around a `Text`. A test that stubs `state.get` answers `{ value: {
      value, version } }`, with the atom's shape tag inside `value`.
 
-     The mod's 22 tests and `test-crew-orch.sh` pass. No session has opened
+     The mod's 29 tests and `test-crew-orch.sh` pass. No session has opened
      the pane yet.
 
 144. **Python 3.9 for every script — 2026-11-16.** Issue 162. On macOS,
@@ -9604,3 +9604,66 @@ Deliberately different:
      run time; it parses on 3.9. `crew-stats.py` reads the whole record root
      and exits 0. `crew-record.py init` and `run state` write a new record,
      and the hook exits 0 on an empty payload.
+
+144. **The resume of an orchestrator, and the close-out — 2026-11-16.**
+     Issue 156, part 6 of issue 150. `skills/orchestrator/references/
+     resume-and-close.md` owns three procedures: the resume after a
+     compaction, a reopened session or a restart of the machine; the close
+     of an item; and the close of a run. `SKILL.md` points at it.
+     `launcher.md` gains `resume`, `find` and `remove`, a tenth start field
+     `session_id`, and `/exit` in `stop`. `orchestrator-record.md` gains
+     `closed_at` and `close`, and `launch.session_id`.
+
+     The issue left these choices open. Each is decided, with its reason:
+
+     - A compaction reads the record and arms nothing again. A reopened or
+       new session runs the whole resume. Background tasks and `Monitor`
+       watches survive a compaction and end with the session (issue 149,
+       experiment 1, F8), so only the second case loses them.
+     - Each step of the resume and of the close reads the world again: the
+       live sessions from `ListAgents`, the tabs from `launcher.py find`, the
+       worktree from the disk. The record holds no per-item close state, and
+       a step that stopped part way runs again from its start.
+     - `start` passes `claude --session-id <uuid>`, so a resume opens the
+       exact conversation with `claude --resume <id>`. An implementer
+       started before this field gets the newest transcript of its worktree.
+       A transcript directory name is the cwd with each character outside
+       `[A-Za-z0-9]` changed to `-`.
+     - `find` matches a tab by the `claude` process on its tty: the argv
+       pair `--name <name>`, or a cwd equal to the worktree. It never reads
+       a tab title, because Claude Code decorates the title, such as
+       "✳ orch-record (claude)". A session that `cc-restore` resumed has no
+       `--name` in its argv, and the cwd finds it. A restart of the machine
+       gives each iTerm2 tab a new id, so the resume writes `launch.tab`
+       again.
+     - `resume` refuses a second copy of a session that `find` sees open
+       (exit 8), so crew works beside `cc-restore` and does not depend on it.
+     - The close order is: the implementer stops what it started, `stop`
+       ends the session and closes the tab, `remove` stops what is left and
+       removes the worktree, then the ticket. The implementer alone knows a
+       container or a service outside the worktree. A live session holds its
+       worktree, and `gh pr merge --delete-branch` fails on one (experiment
+       1, F11). A stack that still ran in a removed worktree had to be
+       killed by hand (experiment 3, F11).
+     - `stop` types `/exit` before it closes the tab. A probe on Claude Code
+       2.1.326, with no setting sources and a `SessionEnd` hook, showed that
+       `/exit` ends a session with the reason `prompt_input_exit`.
+       `cc-restore` forgets a session on that reason only, or on `logout`,
+       so a closed implementer does not come back at the next iTerm2 launch.
+     - `remove` finds a process by its cwd. A process that Claude Code's
+       Bash tool started in the background has no controlling terminal. The
+       `claude` process, and a person's shell or editor, have one. So
+       `remove` stops each process with no terminal, names each one, and
+       refuses with no change while a process with a terminal is in the
+       worktree. It also refuses when it, or a process above it such as a
+       worktree-isolated orchestrator, works in the worktree. Changed or
+       untracked files refuse too, with no force flag. Ignored files do not.
+     - `--delete-branch` is passed only for a merged PR. A run close removes
+       a clean worktree of an unmerged item and keeps its branch.
+     - `crew-orch.py close` marks the record closed and changes nothing else.
+       The record stays as the history of the run, and a resume of a closed
+       record stops at once.
+
+     Only the seeded tests have run the scripts. No orchestrator has resumed
+     or closed an item with them yet. The tests do not prove that iTerm2's
+     `write text "/exit"` submits the command in Claude Code's input box.

@@ -143,8 +143,8 @@ ten fields.
 | `session_id` | the conversation id: the `--session-id` value of `claude` |
 
 Two fields have fixed readers. The board of issue 155 focuses an implementer
-with `tab`. The resume of issue 156 finds an implementer again after a restart
-with `session_name`, `worktree`, `branch` and `session_id`.
+with `tab`. The resume of `resume-and-close.md` finds an implementer again
+after a restart with `session_name`, `worktree`, `branch` and `session_id`.
 
 ## resume
 

@@ -3,8 +3,8 @@
 #
 # usage: bash skills/orchestrator/scripts/test-launcher.sh
 #
-# It puts stub `tmux`, `osascript`, `uv` and `claude` commands and a logging
-# `git` wrapper first in PATH, builds a bare origin and a checkout whose local main is older than the main
+# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands
+# and a logging `git` wrapper first in PATH, builds a bare origin and a checkout whose local main is older than the main
 # of the origin, and runs launcher.py once per case. It makes no network call,
 # opens no real tab, window or group, and starts no real `claude`. It exits 0
 # only when every check passes.
@@ -13,7 +13,9 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd)
 L="$here/launcher.py"
 T=$(mktemp -d)
-trap 'rm -rf "$T"' EXIT
+# Each test process that may stay has its pid in $T/pids; the exit kills it.
+cleanup() { [ -e "$T/pids" ] && kill -9 $(cat "$T/pids") 2>/dev/null; rm -rf "$T"; }
+trap cleanup EXIT
 fails=0
 total=0
 
@@ -29,7 +31,9 @@ unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID
 # CLAUDECODE or CLAUDE_CODE_* variable it gets to tmux-env. Files under
 # $STUB_DIR set its answers: tmux-has (the session exists), tmux-fail (new
 # windows fail), tmux-kill-fail (kill-pane fails), tmux-panes (one known pane id per line), tmux-sessions (the
-# list-sessions output), tmux-clients (the list-clients output).
+# list-sessions output), tmux-clients (the list-clients output), tmux-list-panes
+# (the list-panes output), tmux-ttys (`<pane id> <tty>` lines: the #{pane_tty}
+# answer).
 cat > "$T/bin/tmux" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
@@ -53,16 +57,27 @@ case "$1" in
   display-message|select-window|select-pane|kill-pane|switch-client)
     grep -sqxF -- "$target" "$D/tmux-panes" 2>/dev/null || { echo "can't find pane: $target" >&2; exit 1; }
     [ "$1" = kill-pane ] && [ -e "$D/tmux-kill-fail" ] && { echo "tmux: kill failed" >&2; exit 1; }
-    [ "$1" = display-message ] && echo 'crew'
+    if [ "$1" = display-message ]; then
+      case "$*" in
+        *'#{pane_tty}'*) t=$(awk -v p="$target" '$1 == p {print $2}' "$D/tmux-ttys" 2>/dev/null); echo "${t:-/dev/ttys999}" ;;
+        *) echo 'crew' ;;
+      esac
+    fi
     exit 0 ;;
+  send-keys)
+    grep -sqxF -- "$target" "$D/tmux-panes" 2>/dev/null || { echo "can't find pane: $target" >&2; exit 1; }
+    exit 0 ;;
+  list-panes) [ -e "$D/tmux-list-panes" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-list-panes" ;;
   list-sessions) [ -e "$D/tmux-sessions" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-sessions" ;;
   list-clients) cat "$D/tmux-clients" 2>/dev/null; exit 0 ;;
   *) exit 0 ;;
 esac
 STUB
 
-# osascript stub. It logs its args and the script on stdin. Files: osa-fail
-# (every call fails), osa-sessions (one known iTerm2 session id per line).
+# osascript stub. It logs its args and the script on stdin, each script to
+# osa-script and all of them to osa-scripts. Files: osa-fail (every call
+# fails), osa-sessions (one known iTerm2 session id per line), osa-ttys
+# (`<session id> <tty>` lines: the ttys answer, and the tty of an exit).
 cat > "$T/bin/osascript" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
@@ -70,10 +85,16 @@ line=''
 for a in "$@"; do line="$line$a|"; done
 printf '%s\n' "$line" >> "$D/osa.log"
 cat > "$D/osa-script"
+cat "$D/osa-script" >> "$D/osa-scripts"
 [ -e "$D/osa-fail" ] && { echo "execution error: iTerm2 got an error" >&2; exit 1; }
 case "$2" in
   start) echo 'OSA-0001' ;;
   focus|stop) if grep -sqxF -- "$3" "$D/osa-sessions" 2>/dev/null; then echo ok; else echo gone; fi ;;
+  ttys) cat "$D/osa-ttys" 2>/dev/null ;;
+  exit)
+    if grep -sqxF -- "$3" "$D/osa-sessions" 2>/dev/null; then
+      t=$(awk -v s="$3" '$1 == s {print $2}' "$D/osa-ttys" 2>/dev/null); echo "${t:-/dev/ttys998}"
+    else echo gone; fi ;;
 esac
 exit 0
 STUB
@@ -132,6 +153,27 @@ if [ -n "${GIT_LOG:-}" ]; then
   printf '%s\n' "$line" >> "$GIT_LOG"
 fi
 exec "$REAL_GIT" "$@"
+STUB
+# ps and lsof stubs: they run the real tool, so the launcher sees each real
+# process. Files: ps-tty (`<pid> <tty>` lines: the tty that ps shows for that
+# pid), ps-extra (more ps lines, of processes that do not exist), lsof-extra
+# (more lsof lines).
+REAL_PS=$(command -v ps)
+REAL_LSOF=$(command -v lsof)
+export REAL_PS REAL_LSOF
+cat > "$T/bin/ps" <<'STUB'
+#!/bin/bash
+D=$STUB_DIR
+"$REAL_PS" "$@" | awk -v f="$D/ps-tty" 'BEGIN { while ((getline l < f) > 0) { split(l, a, " "); t[a[1]] = a[2] } }
+  { if ($1 in t) $3 = t[$1]; print }'
+cat "$D/ps-extra" 2>/dev/null
+exit 0
+STUB
+cat > "$T/bin/lsof" <<'STUB'
+#!/bin/bash
+"$REAL_LSOF" "$@"
+cat "$STUB_DIR/lsof-extra" 2>/dev/null
+exit 0
 STUB
 chmod +x "$T/bin/"*
 export PATH="$T/bin:$PATH"
@@ -265,10 +307,12 @@ check 'the Checkouts line for o/r, with a ~ path, selects the checkout' $([ -d "
 r=1; [ "$(wc -l < "$T/out" | tr -d ' ')" = 1 ] && python3 - "$T/out" <<'PY' && r=0
 import json, sys
 o = json.loads(open(sys.argv[1]).read())
-want = {"session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group"}
+want = {"session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group", "session_id"}
 sys.exit(0 if set(o) == want else 1)
 PY
-check 'stdout is one line, one JSON object with exactly the nine fields' $r
+check 'stdout is one line, one JSON object with exactly the ten fields' $r
+SID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["session_id"])' "$T/out" 2>/dev/null)
+check 'session_id is a UUID4' $(python3 -c 'import sys,uuid; u=uuid.UUID(sys.argv[1]); sys.exit(0 if str(u) == sys.argv[1] and u.version == 4 else 1)' "$SID" 2>/dev/null; echo $?)
 check 'the worktree HEAD is the sha of the remote main, not the stale local main' \
   $([ "$(cd "$WT" 2>/dev/null && git rev-parse HEAD)" = "$B" ] && [ "$A" != "$B" ]; echo $?)
 check 'the worktree is on branch worktree-review-x' \
@@ -291,8 +335,8 @@ check 'the tmux command execs claude' $(grep -sq '&& exec claude ' "$STUB_DIR/tm
 # The shell runs the command: each value reaches the claude stub as one arg.
 sh -c "$(cat "$STUB_DIR/tmux-cmd")"
 PROMPT="You are an implementer session for the orchestrator session named $PRINC. The user started you through that orchestrator. Do nothing now. A goal arrives as a cross-session message from that session. When it arrives, run the crew:project-lead skill with that goal. The orchestrator is your principal: the user gave it the authority to decide for this work, so send your questions, your escalations and your reports to it with SendMessage, not to this tab. Answer this message with one line and then wait."
-expect_args=$(printf '%s\n' "$WT" --name review-x --model "$MODEL" --settings '{"remoteControlAtStartup": false}' "$PROMPT")
-check 'claude runs in the worktree with --name, --model, the RC-off --settings and the wait prompt, quotes intact' \
+expect_args=$(printf '%s\n' "$WT" --name review-x --session-id "$SID" --model "$MODEL" --settings '{"remoteControlAtStartup": false}' "$PROMPT")
+check 'claude runs in the worktree with --name, --session-id <session_id>, --model, the RC-off --settings and the wait prompt, quotes intact' \
   $([ "$(cat "$STUB_DIR/claude-args" 2>/dev/null)" = "$expect_args" ]; echo $?)
 
 # -- --settings and the --model default ------------------------------------
@@ -747,6 +791,261 @@ for v in focus stop; do
 done
 rm -f "$STUB_DIR/tmux-kill-fail" "$STUB_DIR/osa-fail"
 
+# -- stop types /exit before the close ---------------------------------------
+# claude then ends the session with the reason prompt_input_exit, and a
+# restore tool does not start it again.
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
+run stop iterm2:SESS-1
+r=1; [ "$rc" = 0 ] && [ "$(sed -n 1p "$STUB_DIR/osa.log")" = '-|exit|SESS-1|' ] \
+  && [ "$(sed -n 2p "$STUB_DIR/osa.log")" = '-|stop|SESS-1|' ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
+check 'stop iterm2:<id> types /exit into the session first, then closes the tab' $r
+check 'the iTerm2 exit step types /exit with write text' $(grep -sqF 'write text "/exit"' "$STUB_DIR/osa-scripts"; echo $?)
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+run stop 'tmux:%7'
+r=1; [ "$rc" = 0 ] && python3 - "$STUB_DIR/tmux.log" <<'PY' && r=0
+import sys
+s = [l.rstrip("\n") for l in open(sys.argv[1])]
+def at(line):
+    return s.index(line) if line in s else -1
+sys.exit(0 if -1 < at("send-keys|-t|%7|-l|/exit|") < at("send-keys|-t|%7|Enter|") < at("kill-pane|-t|%7|") else 1)
+PY
+check 'stop tmux:<pane> sends /exit literally, then Enter, then kills the pane' $r
+# A claude on the tab's tty that does not end: one stderr line, the tab still closes.
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+echo '900010 1 ttys961 claude --name x --model opus' > "$STUB_DIR/ps-extra"
+r=1; python3 - "$here" > "$T/out" 2> "$T/err" <<'PY' && r=0
+import sys, time
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.STOP_WAIT = 1
+t = time.time()
+rc = launcher.main(["stop", "tmux:%7"])
+sys.exit(0 if rc == 0 and time.time() - t < 10 else 1)
+PY
+r2=1; [ "$r" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log" && r2=0
+check 'a claude that did not end in time: one stderr line, exit 0, and the pane is still killed' $r2
+
+# -- find ------------------------------------------------------------------
+reset_stub
+WTREAL=$(cd "$WT" && pwd -P)
+printf '%%7 /dev/ttys901\n%%8 /dev/ttys902\n%%9 /dev/ttys903\n%%10 /dev/ttys904\n' > "$STUB_DIR/tmux-list-panes"
+cat > "$STUB_DIR/ps-extra" <<PS
+900001 1 ttys901 claude --name a --model opus
+900002 1 ttys902 /usr/local/bin/claude --resume x --name a-2 --model opus
+900003 1 ttys903 vim --name a
+900004 1 ttys904 claude --name zz-other --model opus
+900005 1 ttys905 claude --name a --model opus
+PS
+printf 'p900002\nfcwd\nn%s\np900003\nfcwd\nn%s\np900004\nfcwd\nn%s-x\n' "$WTREAL" "$WTREAL" "$WTREAL" > "$STUB_DIR/lsof-extra"
+TMUX=/tmp/t,1,0 run find a
+check 'find a on tmux prints only the pane of the claude with --name a, not a-2' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%7' ]; echo $?)
+TMUX=/tmp/t,1,0 run find a-2
+check 'find a-2 on tmux prints only the pane of the claude with --name a-2' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%8' ]; echo $?)
+TMUX=/tmp/t,1,0 run find zz
+check 'find with no match prints no line and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
+TMUX=/tmp/t,1,0 run find zz --worktree "$WT"
+check 'find --worktree matches a claude whose cwd is the worktree, not another program, not a longer path' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%8' ]; echo $?)
+check 'find on tmux lists the panes with list-panes -a' \
+  $(grep -sqF 'list-panes|-a|-F|#{pane_id} #{pane_tty}|' "$STUB_DIR/tmux.log"; echo $?)
+printf 'S-1 /dev/ttys901\nS-2 /dev/ttys902\nS-3 /dev/ttys903\n' > "$STUB_DIR/osa-ttys"
+TERM_PROGRAM=iTerm.app run find a
+check 'find a on iTerm2 prints only the session of the claude with --name a' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'iterm2:S-1' ]; echo $?)
+TERM_PROGRAM=iTerm.app run find nobody --worktree "$WT"
+check 'find --worktree on iTerm2 matches by the cwd' $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'iterm2:S-2' ]; echo $?)
+check 'find on iTerm2 reads the unique id and the tty of each session' \
+  $(grep -sq 'unique id of s' "$STUB_DIR/osa-script" && grep -sq 'tty of s' "$STUB_DIR/osa-script" && ! grep -sq 'name of s' "$STUB_DIR/osa-script"; echo $?)
+rm -f "$STUB_DIR/tmux-list-panes"
+TMUX=/tmp/t,1,0 run find a
+check 'find with no tmux server prints no line and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
+
+# -- resume ----------------------------------------------------------------
+reset_stub
+TMUX=/tmp/t,1,0 run start --name rs-1 --principal p --checkout "$CO"
+RWT="$CO/.claude/worktrees/rs-1"
+export CLAUDE_CONFIG_DIR="$T/cc"
+ENC=$(printf '%s' "$RWT" | sed 's/[^A-Za-z0-9]/-/g')
+PD="$CLAUDE_CONFIG_DIR/projects/$ENC"
+mkdir -p "$PD/sub"
+: > "$PD/old-1111.jsonl"; touch -t 202601010000 "$PD/old-1111.jsonl"
+: > "$PD/new-2222.jsonl"; touch -t 202601020000 "$PD/new-2222.jsonl"
+: > "$PD/sub/deeper-3333.jsonl"; touch -t 202601030000 "$PD/sub/deeper-3333.jsonl"
+: > "$PD/notes.txt"; touch -t 202601030000 "$PD/notes.txt"
+reset_stub
+mv "$T/git.log" "$T/git.log.keep"
+TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
+check 'resume exits 0' $([ "$rc" = 0 ]; echo $?)
+r=1; [ "$(wc -l < "$T/out" | tr -d ' ')" = 1 ] && python3 - "$T/out" <<'PY' && r=0
+import json, sys
+o = json.loads(open(sys.argv[1]).read())
+want = {"session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group", "session_id"}
+sys.exit(0 if set(o) == want else 1)
+PY
+check 'resume prints the ten fields of start' $r
+check 'resume takes the newest top-level transcript of the worktree' $([ "$(field session_id)" = '"new-2222"' ]; echo $?)
+r=1; [ "$(field branch)" = '"worktree-rs-1"' ] && [ "$(field base)" = '"origin/main"' ] && [ "$(field worktree)" = "\"$RWT\"" ] \
+  && [ "$(field model)" = '"opus"' ] && [ "$(field tab)" = '"tmux:%7"' ] && [ "$(field repo)" = null ] && r=0
+check 'resume: branch, base, worktree, model opus and tab' $r
+sh -c "$(cat "$STUB_DIR/tmux-cmd")"
+expect_args=$(printf '%s\n' "$RWT" --resume new-2222 --name rs-1 --model opus --settings '{"remoteControlAtStartup": false}')
+check 'resume runs claude in the worktree with --resume, --name, --model opus, the RC-off --settings, and no prompt' \
+  $([ "$(cat "$STUB_DIR/claude-args" 2>/dev/null)" = "$expect_args" ]; echo $?)
+check 'resume makes no worktree and no branch' \
+  $(! grep -sqE '\|worktree\|add\||(^|\|)branch\|' "$T/git.log" 2>/dev/null; echo $?)
+cat "$T/git.log" >> "$T/git.log.keep" 2>/dev/null; mv "$T/git.log.keep" "$T/git.log"
+reset_stub
+TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT" --session-id given-1 --model m --settings '{"a": 1}' --repo o/r
+settings_is 'resume merges --settings with remoteControlAtStartup false' '{"a": 1, "remoteControlAtStartup": false}'
+check 'resume --session-id wins over the transcript; --repo sets repo' \
+  $([ "$(field session_id)" = '"given-1"' ] && [ "$(field repo)" = '"o/r"' ] && grep -sq -- '--resume given-1 ' "$STUB_DIR/tmux-cmd"; echo $?)
+reset_stub
+TERM_PROGRAM=iTerm.app run resume --name rs-1 --worktree "$RWT"
+check 'resume on iTerm2 gives the helper the --resume command' \
+  $([ "$rc" = 0 ] && grep -sqF "|cd $RWT && exec claude --resume new-2222 --name rs-1 " "$STUB_DIR/uv.log"; echo $?)
+reset_stub
+CLAUDE_CONFIG_DIR="$T/empty-cc" TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
+check 'resume with no transcript exits 5 with one line and opens no tab' \
+  $([ "$rc" = 5 ] && [ "$(lines "$T/err")" = 1 ] && ! grep -sq '^new-' "$STUB_DIR/tmux.log" 2>/dev/null; echo $?)
+TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$T/no-such-worktree" --session-id x
+check 'resume with a missing worktree exits 5 and opens no tab' \
+  $([ "$rc" = 5 ] && [ "$(lines "$T/err")" = 1 ] && ! grep -sq '^new-' "$STUB_DIR/tmux.log" 2>/dev/null; echo $?)
+printf '%%7 /dev/ttys901\n' > "$STUB_DIR/tmux-list-panes"
+echo '900001 1 ttys901 claude --name rs-1 --model opus' > "$STUB_DIR/ps-extra"
+TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
+check 'resume of a session that find sees exits 8, names the tab, and opens no tab' \
+  $([ "$rc" = 8 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'tmux:%7' "$T/err" && ! grep -sq '^new-' "$STUB_DIR/tmux.log"; echo $?)
+TMUX=/tmp/t,1,0 run resume --name Bad_Name --worktree "$RWT"
+check 'resume with a bad --name exits 2' $([ "$rc" = 2 ]; echo $?)
+unset CLAUDE_CONFIG_DIR
+
+# -- remove ----------------------------------------------------------------
+# rm_wt <name>: a worktree from start, with a tracked file f and a .gitignore.
+rm_wt() {
+  TMUX=/tmp/t,1,0 run start --name "$1" --principal p --checkout "$CO"
+  RM="$CO/.claude/worktrees/$1"
+  (cd "$RM" && echo x > f && echo '*.log' > .gitignore && git add f .gitignore && git commit -q -m f)
+}
+# rjson <expr>: a Python expression on the remove output o; exit 0 when true.
+rjson() { python3 -c 'import json,sys; o=json.load(open(sys.argv[1])); sys.exit(0 if eval(sys.argv[2]) else 1)' "$T/out" "$1" 2>/dev/null; }
+# orphan <dir> [ignore-term]: a sleep with its cwd in dir and init as its parent. Prints its pid.
+orphan() {
+  if [ -n "${2:-}" ]; then
+    (cd "$1" && { bash -c 'trap "" TERM; exec sleep 300' < /dev/null > /dev/null 2>&1 & echo $! > "$T/orphan"; })
+  else
+    (cd "$1" && { sleep 300 < /dev/null > /dev/null 2>&1 & echo $! > "$T/orphan"; })
+  fi
+  cat "$T/orphan" >> "$T/pids"
+  cat "$T/orphan"
+}
+alive() { kill -0 "$1" 2>/dev/null; }
+reset_stub
+rm_wt rm-clean
+run remove "$RM"
+r=1; [ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && [ ! -e "$RM" ] && rjson 'set(o) == {"worktree", "removed", "stopped", "kept", "changed", "branch", "branch_deleted"}' \
+  && rjson 'o["removed"] is True and o["stopped"] == [] and o["kept"] == [] and o["changed"] == []' \
+  && rjson 'o["branch"] == "worktree-rm-clean" and o["branch_deleted"] is False' \
+  && (cd "$CO" && git rev-parse -q --verify refs/heads/worktree-rm-clean > /dev/null) && r=0
+check 'remove of a clean worktree removes it, keeps the branch, and prints the seven fields' $r
+check 'remove runs git worktree remove with no force' \
+  $(grep -sq '|worktree|remove|' "$T/git.log" && ! grep -sqE '\|worktree\|remove\|.*(--force|-f)\|' "$T/git.log"; echo $?)
+
+rm_wt rm-mod
+echo y > "$RM/f"
+run remove "$RM"
+r=1; [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && [ -d "$RM" ] && [ "$(cat "$RM/f")" = y ] \
+  && rjson 'o["removed"] is False and any(l.endswith(" f") for l in o["changed"])' && r=0
+check 'remove of a worktree with a modified file exits 9, keeps it and names the file' $r
+rm_wt rm-new
+echo n > "$RM/new.txt"
+run remove "$RM"
+r=1; [ "$rc" = 9 ] && [ -e "$RM/new.txt" ] && rjson 'o["removed"] is False and "?? new.txt" in o["changed"]' && r=0
+check 'remove of a worktree with an untracked file exits 9 and names the file' $r
+rm_wt rm-ign
+echo l > "$RM/build.log"
+run remove "$RM"
+check 'remove of a worktree with only an ignored file removes it' \
+  $([ "$rc" = 0 ] && [ ! -e "$RM" ] && rjson 'o["removed"] is True and o["changed"] == []'; echo $?)
+
+rm_wt rm-proc
+p1=$(orphan "$RM")
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+run remove "$RM"
+r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && ! alive "$p1" \
+  && rjson "o['removed'] is True and [s['pid'] for s in o['stopped']] == [$p1] and 'sleep' in o['stopped'][0]['command']" && r=0
+check 'remove stops a process with no terminal in the worktree, names it, then removes the worktree' $r
+reset_stub
+rm_wt rm-kill
+p1=$(orphan "$RM" ignore-term)
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+r=1; python3 - "$here" "$RM" > "$T/out" 2> "$T/err" <<'PY' && r=0
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.REMOVE_WAIT = 1
+sys.exit(launcher.main(["remove", sys.argv[2]]))
+PY
+check 'remove sends KILL to a process that outlives TERM' \
+  $([ "$r" = 0 ] && ! alive "$p1" && [ ! -e "$RM" ] && rjson "[s['pid'] for s in o['stopped']] == [$p1]"; echo $?)
+
+reset_stub
+rm_wt rm-tty
+p1=$(orphan "$RM")
+p2=$(orphan "$RM")
+printf '%s ttys950\n%s ??\n' "$p1" "$p2" > "$STUB_DIR/ps-tty"
+run remove "$RM"
+r=1; [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && [ -d "$RM" ] && alive "$p1" && alive "$p2" \
+  && grep -sqF "$p1" "$T/err" && ! grep -sqF "$p2" "$T/err" \
+  && rjson "o['removed'] is False and o['stopped'] == [] and sorted((k['pid'], k['tty'] or '') for k in o['kept']) == sorted([($p1, 'ttys950'), ($p2, '')])" && r=0
+check 'remove with a terminal process in the worktree exits 9, stops nothing, keeps both processes, and the line names only the terminal one' $r
+kill "$p1" "$p2" 2>/dev/null
+
+reset_stub
+rm_wt rm-keep
+echo n > "$RM/new.txt"
+p1=$(orphan "$RM")
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+run remove "$RM"
+r=1; [ "$rc" = 9 ] && [ -d "$RM" ] && alive "$p1" && ! grep -sqF "$p1" "$T/err" \
+  && rjson "o['stopped'] == [] and [(k['pid'], k['tty']) for k in o['kept']] == [($p1, None)]" && r=0
+check 'a refused worktree (an untracked file) lists a no-tty process in kept, with tty null, and does not stop it' $r
+kill "$p1" 2>/dev/null
+
+reset_stub
+rm_wt rm-anc
+(cd "$RM/" && GIT_LOG="$T/git.log" python3 "$L" remove "$RM" > "$T/out" 2> "$T/err")
+rc=$?
+r=1; [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && [ -d "$RM" ] && rjson 'o["removed"] is False and len(o["kept"]) >= 1' && r=0
+check 'remove run from inside the worktree (its own or an ancestor cwd) exits 9 and keeps it' $r
+
+rm_wt rm-br
+run remove "$RM" --delete-branch
+r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && ! (cd "$CO" && git rev-parse -q --verify refs/heads/worktree-rm-br > /dev/null) \
+  && rjson 'o["branch"] == "worktree-rm-br" and o["branch_deleted"] is True' && r=0
+check 'remove --delete-branch deletes the branch the worktree had' $r
+
+rm_wt rm-lock
+(cd "$CO" && git worktree lock "$RM")
+run remove "$RM"
+check 'remove of a locked worktree is a git failure: exit 5, one line, the worktree stays' \
+  $([ "$rc" = 5 ] && [ "$(lines "$T/err")" = 1 ] && [ -d "$RM" ]; echo $?)
+(cd "$CO" && git worktree unlock "$RM")
+mkdir -p "$T/plain"
+for p in "$T/plain" "$T/nothing-here" "$CO"; do
+  run remove "$p"
+  check "remove of $(basename "$p"), not a linked worktree, exits 2" $([ "$rc" = 2 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+done
+run remove "$RM" --force
+check 'remove has no --force flag: exit 2' $([ "$rc" = 2 ] && [ -d "$RM" ]; echo $?)
+
 # -- no Claude Code variable reaches tmux ----------------------------------
 # A tmux server that the launcher starts passes its environment to every
 # window, so a claude in it would read the orchestrator's session variables.
@@ -756,15 +1055,17 @@ printf '$1\tcrew\n' > "$STUB_DIR/tmux-sessions"
 export CLAUDECODE=1 CLAUDE_CODE_SSE_PORT=4242 CLAUDE_CODE_ENTRYPOINT=cli
 TMUX=/tmp/t,1,0 run start --name env-1 --model m --principal p --checkout "$CO"
 r1=$rc
+TMUX=/tmp/t,1,0 run resume --name env-1 --worktree "$CO/.claude/worktrees/env-1" --session-id s-1
+r1r=$rc
 TMUX=/tmp/t,1,0 run groups
 TMUX=/tmp/t,1,0 run focus 'tmux:%7'
 run focus 'tmux:%7'
 run stop 'tmux:%7'
 unset CLAUDECODE CLAUDE_CODE_SSE_PORT CLAUDE_CODE_ENTRYPOINT
-r=1; [ "$r1" = 0 ] && grep -sq '^new-session|' "$STUB_DIR/tmux.log" && grep -sq '^list-sessions|' "$STUB_DIR/tmux.log" \
+r=1; [ "$r1" = 0 ] && [ "$r1r" = 0 ] && [ "$(grep -c '^new-' "$STUB_DIR/tmux.log")" = 2 ] && grep -sq '^new-session|' "$STUB_DIR/tmux.log" && grep -sq '^list-sessions|' "$STUB_DIR/tmux.log" \
   && grep -sq '^list-clients|' "$STUB_DIR/tmux.log" && grep -sq '^kill-pane|' "$STUB_DIR/tmux.log" \
   && [ ! -s "$STUB_DIR/tmux-env" ] && r=0
-check 'no tmux call of start, groups, focus or stop gets CLAUDECODE or a CLAUDE_CODE_* variable' $r
+check 'no tmux call of start, resume, groups, focus or stop gets CLAUDECODE or a CLAUDE_CODE_* variable' $r
 
 # -- what launcher.py never does -------------------------------------------
 check 'launcher.py imports no iterm2 module' $(! grep -sqE '^\s*(import|from) iterm2' "$L"; echo $?)

@@ -7,9 +7,16 @@ usage:
                     [--repo <owner/repo>] [--checkout <path>]
                     [--group <name>] [--group-color <#rrggbb>]
                     [--terminal iterm2|tmux]
+  launcher.py resume --name <session-name> --worktree <path>
+                     [--session-id <id>] [--model <model>]
+                     [--settings <file-or-json>] [--repo <owner/repo>]
+                     [--group <name>] [--group-color <#rrggbb>]
+                     [--terminal iterm2|tmux]
   launcher.py groups
+  launcher.py find <session-name> [--worktree <path>]
   launcher.py focus <handle>
   launcher.py stop <handle>
+  launcher.py remove <worktree> [--delete-branch]
 
 skills/orchestrator/references/launcher.md owns the arguments, the start
 output and the exit codes. This file uses the standard library only. The
@@ -24,14 +31,21 @@ import shlex
 import signal
 import subprocess
 import sys
+import time
+import uuid
 
 OK, USAGE, NO_CHECKOUT, NO_TERMINAL, GIT, TERMINAL_STEP, BAD_HANDLE = 0, 2, 3, 4, 5, 6, 7
+OPEN_TAB, REFUSED = 8, 9
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HELPER = os.path.join(HERE, "iterm2-tabs.py")
 HELPER_TIMEOUT = 120
 # The helper stops itself this many seconds before the launcher kills it.
 HELPER_MARGIN = 20
+# stop waits this many seconds for the claude of the tab to end after /exit.
+STOP_WAIT = 15
+# remove waits this many seconds after TERM before it sends KILL.
+REMOVE_WAIT = 10
 
 START_USAGE = (
     "usage: launcher.py start --name <session-name> [--model <model>] "
@@ -39,7 +53,16 @@ START_USAGE = (
     "[--repo <owner/repo>] [--checkout <path>] "
     "[--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]"
 )
-USAGE_LINE = "usage: launcher.py start ... | groups | focus <handle> | stop <handle>"
+RESUME_USAGE = (
+    "usage: launcher.py resume --name <session-name> --worktree <path> "
+    "[--session-id <id>] [--model <model>] [--settings <file-or-json>] "
+    "[--repo <owner/repo>] [--group <name>] [--group-color <#rrggbb>] "
+    "[--terminal iterm2|tmux]"
+)
+USAGE_LINE = (
+    "usage: launcher.py start ... | resume ... | groups | find <session-name> "
+    "| focus <handle> | stop <handle> | remove <worktree>"
+)
 
 WAIT_PROMPT = (
     "You are an implementer session for the orchestrator session named {p}. "
@@ -87,6 +110,41 @@ OSA_START = """on run argv
     tell oldTab to select
     return unique id of s
   end tell
+end run
+"""
+
+# One line per session: its unique id and its tty. Never its name: Claude Code
+# changes the name that a tab shows.
+OSA_TTYS = """on run argv
+  set out to ""
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          set out to out & (unique id of s) & " " & (tty of s) & linefeed
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  return out
+end run
+"""
+
+# Type /exit into the session. Return its tty, or "gone".
+OSA_EXIT = """on run argv
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          if unique id of s is item 2 of argv then
+            tell s to write text "/exit"
+            return tty of s
+          end if
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  return "gone"
 end run
 """
 
@@ -210,17 +268,38 @@ def parse(argv):
     s.add_argument("--group")
     s.add_argument("--group-color")
     s.add_argument("--terminal", choices=["iterm2", "tmux"])
+    r = sub.add_parser("resume", add_help=False)
+    r.usage_line = RESUME_USAGE
+    r.add_argument("--name", required=True)
+    r.add_argument("--worktree", required=True)
+    r.add_argument("--session-id")
+    r.add_argument("--model", default="opus")
+    r.add_argument("--settings")
+    r.add_argument("--repo")
+    r.add_argument("--group")
+    r.add_argument("--group-color")
+    r.add_argument("--terminal", choices=["iterm2", "tmux"])
     g = sub.add_parser("groups", add_help=False)
     g.usage_line = "usage: launcher.py groups"
+    f = sub.add_parser("find", add_help=False)
+    f.usage_line = "usage: launcher.py find <session-name> [--worktree <path>]"
+    f.add_argument("session_name")
+    f.add_argument("--worktree")
     for verb in ("focus", "stop"):
         h = sub.add_parser(verb, add_help=False)
         h.usage_line = "usage: launcher.py %s <handle>" % verb
         h.add_argument("handle")
+    m = sub.add_parser("remove", add_help=False)
+    m.usage_line = "usage: launcher.py remove <worktree> [--delete-branch]"
+    m.add_argument("worktree")
+    m.add_argument("--delete-branch", action="store_true")
     args = top.parse_args(argv)
     if args.cmd is None:
         raise Fail(USAGE, "launcher: no subcommand; " + USAGE_LINE)
     if args.cmd == "start":
         check_start(args)
+    if args.cmd == "resume":
+        check_resume(args)
     return args
 
 
@@ -230,6 +309,20 @@ def check_start(a):
 
     if not a.repo and not a.checkout:
         bad("give --repo or --checkout")
+    check_common(a, bad)
+
+
+def check_resume(a):
+    def bad(why):
+        raise Fail(USAGE, "launcher: %s; %s" % (why, RESUME_USAGE))
+
+    if a.session_id is not None and not a.session_id.strip():
+        bad("--session-id is empty")
+    check_common(a, bad)
+
+
+def check_common(a, bad):
+    """The checks that start and resume share."""
     if not NAME_RE.fullmatch(a.name):
         bad("--name %r does not match [a-z0-9][a-z0-9-]*" % a.name)
     if "eval" in a.name:
@@ -373,15 +466,30 @@ def make_worktree(checkout, name):
 # -- start --------------------------------------------------------------------
 
 
-def launch_command(worktree, name, model, settings, principal):
-    claude = os.environ.get("CREW_LAUNCHER_CLAUDE") or "claude"
-    return "cd %s && exec %s --name %s --model %s --settings %s %s" % (
+def claude_program():
+    return os.environ.get("CREW_LAUNCHER_CLAUDE") or "claude"
+
+
+def launch_command(worktree, name, session_id, model, settings, principal):
+    return "cd %s && exec %s --name %s --session-id %s --model %s --settings %s %s" % (
         shlex.quote(worktree),
-        shlex.quote(claude),
+        shlex.quote(claude_program()),
         shlex.quote(name),
+        shlex.quote(session_id),
         shlex.quote(model),
         shlex.quote(settings),
         shlex.quote(WAIT_PROMPT.format(p=principal)),
+    )
+
+
+def resume_command(worktree, session_id, name, model, settings):
+    return "cd %s && exec %s --resume %s --name %s --model %s --settings %s" % (
+        shlex.quote(worktree),
+        shlex.quote(claude_program()),
+        shlex.quote(session_id),
+        shlex.quote(name),
+        shlex.quote(model),
+        shlex.quote(settings),
     )
 
 
@@ -513,7 +621,14 @@ def start(a):
     if not repo:
         rc, out, _ = run(["git", "-C", worktree, "config", "--get", "remote.origin.url"])
         repo = repo_from_url(out) if rc == 0 else None
-    command = launch_command(worktree, a.name, a.model, a.settings_json, a.principal)
+    session_id = str(uuid.uuid4())
+    command = launch_command(worktree, a.name, session_id, a.model, a.settings_json, a.principal)
+    open_tab(a, terminal, command, worktree, repo, branch, base, session_id)
+    return OK
+
+
+def open_tab(a, terminal, command, worktree, repo, branch, base, session_id):
+    """Open the one tab or window, and print the start output line."""
     if terminal == "tmux":
         tab, group = tmux_start(a.name, a.group, command, worktree)
     else:
@@ -530,9 +645,183 @@ def start(a):
                 "terminal": terminal,
                 "tab": tab,
                 "tab_group": group,
+                "session_id": session_id,
             }
         )
     )
+
+
+# -- resume -------------------------------------------------------------------
+
+
+def encode_path(path):
+    """The transcript directory name of a cwd: each character outside
+    [A-Za-z0-9] becomes '-'."""
+    return re.sub(r"[^A-Za-z0-9]", "-", path)
+
+
+def newest_transcript(worktree):
+    """The id of the newest top-level transcript of the worktree, or None."""
+    config = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+    folder = os.path.join(config, "projects", encode_path(worktree))
+    best = None
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return None
+    for n in names:
+        path = os.path.join(folder, n)
+        if not n.endswith(".jsonl") or not os.path.isfile(path):
+            continue
+        mtime = os.path.getmtime(path)
+        if best is None or mtime > best[0]:
+            best = (mtime, n[: -len(".jsonl")])
+    return best[1] if best else None
+
+
+def default_base(worktree):
+    out = git(worktree, "ls-remote", "--symref", "origin", "HEAD")
+    m = re.search(r"^ref: refs/heads/(\S+)\s+HEAD$", out, re.M)
+    if not m:
+        raise Fail(GIT, "launcher: origin of %s names no default branch" % worktree)
+    return "origin/" + m.group(1)
+
+
+def resume(a):
+    terminal = detect_terminal(a.terminal)
+    path = os.path.abspath(os.path.expanduser(a.worktree))
+    if not os.path.isdir(path):
+        raise Fail(GIT, "launcher: the worktree %s does not exist" % path)
+    worktree = os.path.realpath(git(path, "rev-parse", "--show-toplevel").strip())
+    session_id = a.session_id or newest_transcript(worktree)
+    if not session_id:
+        raise Fail(GIT, "launcher: no transcript of %s to resume; give --session-id" % worktree)
+    rc, out, _ = run(["git", "-C", worktree, "symbolic-ref", "-q", "--short", "HEAD"])
+    branch = one_line(out) if rc == 0 and one_line(out) else None
+    base = default_base(worktree)
+    tabs = find_tabs(a.name, worktree, terminal)
+    if tabs:
+        raise Fail(
+            OPEN_TAB,
+            "launcher: the session %s is open in %s; focus that tab, or stop it first" % (a.name, ", ".join(tabs)),
+        )
+    repo = a.repo
+    if not repo:
+        rc, out, _ = run(["git", "-C", worktree, "config", "--get", "remote.origin.url"])
+        repo = repo_from_url(out) if rc == 0 else None
+    command = resume_command(worktree, session_id, a.name, a.model, a.settings_json)
+    open_tab(a, terminal, command, worktree, repo, branch, base, session_id)
+    return OK
+
+
+# -- processes ----------------------------------------------------------------
+
+
+def processes():
+    """Each process, by pid: {"pid", "ppid", "tty" (None for no tty), "argv"}.
+
+    ps prints the argv as one text, so a token holds no space. That is enough
+    for --name: a session name holds no space.
+    """
+    rc, out, err = run(["ps", "-axww", "-o", "pid=,ppid=,tty=,command="])
+    if rc != 0:
+        raise Fail(TERMINAL_STEP, "launcher: ps failed: %s" % (one_line(err) or "exit %d" % rc))
+    procs = {}
+    for line in out.splitlines():
+        parts = line.split(None, 3)
+        if len(parts) < 3 or not parts[0].isdigit() or not parts[1].isdigit():
+            continue
+        tty = parts[2]
+        procs[int(parts[0])] = {
+            "pid": int(parts[0]),
+            "ppid": int(parts[1]),
+            "tty": None if tty in ("??", "?", "-") else norm_tty(tty),
+            "argv": parts[3].split() if len(parts) > 3 else [],
+        }
+    return procs
+
+
+def cwds():
+    """The cwd of each process lsof can read, by pid."""
+    _, out, _ = run(["lsof", "-n", "-P", "-w", "-d", "cwd", "-F", "pn"])
+    found = {}
+    pid = None
+    for line in out.splitlines():
+        if line.startswith("p") and line[1:].isdigit():
+            pid = int(line[1:])
+        elif line.startswith("n") and pid is not None:
+            found[pid] = line[1:]
+    return found
+
+
+def norm_tty(tty):
+    return tty[len("/dev/"):] if tty.startswith("/dev/") else tty
+
+
+def is_claude(argv):
+    if not argv:
+        return False
+    names = {"claude", os.path.basename(claude_program())}
+    return os.path.basename(argv[0]) in names
+
+
+def has_name(argv, name):
+    return any(argv[i] == "--name" and argv[i + 1] == name for i in range(len(argv) - 1))
+
+
+def inside(path, root):
+    return path == root or path.startswith(root.rstrip("/") + "/")
+
+
+# -- find -----------------------------------------------------------------------
+
+
+def terminal_ttys(terminal):
+    """[(handle, tty)] of every open tab or pane."""
+    if terminal == "tmux":
+        rc, out, _ = tmux(["list-panes", "-a", "-F", "#{pane_id} #{pane_tty}"])
+        if rc != 0:
+            return []  # no tmux server: no pane
+        rows = []
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) == 2 and PANE_RE.fullmatch(parts[0]):
+                rows.append(("tmux:" + parts[0], norm_tty(parts[1])))
+        return rows
+    rc, out, err = run(["osascript", "-", "ttys"], stdin=OSA_TTYS)
+    if rc != 0:
+        raise Fail(TERMINAL_STEP, "launcher: osascript could not list the iTerm2 sessions: %s" % (one_line(err) or "exit %d" % rc))
+    rows = []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and ITERM_ID_RE.fullmatch(parts[0]):
+            rows.append(("iterm2:" + parts[0], norm_tty(parts[1])))
+    return rows
+
+
+def find_tabs(name, worktree, terminal):
+    """The handle of each open tab or pane that holds this implementer."""
+    tabs = terminal_ttys(terminal)
+    if not tabs:
+        return []
+    procs = processes()
+    where = cwds() if worktree else {}
+    found = []
+    for handle, tty in tabs:
+        for p in procs.values():
+            if p["tty"] != tty or not is_claude(p["argv"]):
+                continue
+            if has_name(p["argv"], name) or (worktree and where.get(p["pid"]) == worktree):
+                found.append(handle)
+                break
+    return found
+
+
+def find(a):
+    terminal = detect_terminal()
+    worktree = os.path.realpath(os.path.expanduser(a.worktree)) if a.worktree else None
+    for handle in find_tabs(a.session_name, worktree, terminal):
+        print(handle)
     return OK
 
 
@@ -586,6 +875,28 @@ def tmux_pane_exists(pane):
     return rc == 0
 
 
+def tmux_pane_tty(pane):
+    """The tty of the pane, or None when the pane does not exist."""
+    rc, out, _ = tmux(["display-message", "-p", "-t", pane, "#{pane_tty}"])
+    return norm_tty(one_line(out)) if rc == 0 and one_line(out) else None
+
+
+def wait_claude_gone(tty, handle):
+    """Wait up to STOP_WAIT seconds until no claude process has the tty."""
+    end = time.time() + STOP_WAIT
+    while True:
+        if not any(p["tty"] == tty and is_claude(p["argv"]) for p in processes().values()):
+            return
+        if time.time() >= end:
+            print(
+                "launcher: the claude session in %s did not end %d seconds after /exit; the tab closes now"
+                % (handle, STOP_WAIT),
+                file=sys.stderr,
+            )
+            return
+        time.sleep(0.5)
+
+
 def iterm_script(script, verb, ref):
     rc, out, err = run(["osascript", "-", verb, ref], stdin=script)
     if rc != 0:
@@ -614,24 +925,174 @@ def focus(a):
 
 
 def stop(a):
+    """Type /exit, wait for claude to end, then close the tab or kill the pane.
+
+    /exit ends the session with the reason prompt_input_exit, so a tool that
+    restores closed sessions does not start it again.
+    """
     kind, ref = split_handle(a.handle)
     if kind == "iterm2":
-        if iterm_script(OSA_STOP, "stop", ref) != "ok":
+        tty = iterm_script(OSA_EXIT, "exit", ref)
+        if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
+            return OK
+        wait_claude_gone(norm_tty(tty), a.handle)
+        iterm_script(OSA_STOP, "stop", ref)  # "gone" here: the tab closed when claude ended
         return OK
-    if not tmux_pane_exists(ref):
+    tty = tmux_pane_tty(ref)
+    if tty is None:
         print("launcher: %s was already gone" % a.handle)
         return OK
+    tmux(["send-keys", "-t", ref, "-l", "/exit"])
+    tmux(["send-keys", "-t", ref, "Enter"])
+    wait_claude_gone(tty, a.handle)
+    if not tmux_pane_exists(ref):
+        return OK  # the pane closed when claude ended
     rc, _, err = tmux(["kill-pane", "-t", ref])
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane failed for tmux:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
     return OK
 
 
+# -- remove -------------------------------------------------------------------
+
+
+def linked_worktree(path):
+    """(real worktree path, main worktree path) of a linked worktree.
+
+    Raise Fail(USAGE) when the path is not the top level of a linked
+    worktree: a missing path, a plain directory, or the main worktree.
+    """
+    def bad(why):
+        raise Fail(USAGE, "launcher: %s is not a linked worktree (%s); usage: launcher.py remove <worktree> [--delete-branch]" % (path, why))
+
+    if not os.path.isdir(path):
+        bad("no such directory")
+    rc, out, _ = run(["git", "-C", path, "rev-parse", "--show-toplevel", "--git-dir", "--git-common-dir"])
+    lines = out.splitlines()
+    if rc != 0 or len(lines) != 3:
+        bad("not in a git work tree")
+    top = os.path.realpath(lines[0])
+    if top != os.path.realpath(path):
+        bad("not the top level of its work tree")
+    gitdir = os.path.realpath(os.path.join(path, lines[1]))
+    common = os.path.realpath(os.path.join(path, lines[2]))
+    if gitdir == common:
+        bad("the main worktree")
+    out = git(path, "worktree", "list", "--porcelain")
+    m = re.match(r"worktree (.+)", out)
+    if not m:
+        raise Fail(GIT, "launcher: git worktree list named no main worktree for %s" % path)
+    return top, m.group(1)
+
+
+def proc_row(p, keys):
+    row = {"pid": p["pid"], "tty": p["tty"], "command": " ".join(p["argv"])}
+    return {k: row[k] for k in keys}
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def signal_all(pids, sig):
+    for pid in pids:
+        try:
+            os.kill(pid, sig)
+        except OSError:
+            pass
+
+
+def remove(a):
+    path = os.path.abspath(os.path.expanduser(a.worktree))
+    worktree, main_tree = linked_worktree(path)
+    rc, out, _ = run(["git", "-C", worktree, "symbolic-ref", "-q", "--short", "HEAD"])
+    branch = one_line(out) if rc == 0 and one_line(out) else None
+    changed = [l for l in git(worktree, "status", "--porcelain").splitlines() if l.strip()]
+
+    procs = processes()
+    where = cwds()
+    where[os.getpid()] = os.path.realpath(os.getcwd())
+    # The launcher and each process above it.
+    mine = set()
+    pid = os.getpid()
+    while pid and pid not in mine:
+        mine.add(pid)
+        pid = procs[pid]["ppid"] if pid in procs else 0
+    in_tree = [
+        procs[pid]
+        for pid in sorted(where)
+        if pid in procs and inside(where[pid], worktree) and procs[pid]["ppid"] != os.getpid()
+    ]
+    # A process with a terminal, or the launcher and its ancestors, makes remove refuse.
+    blockers = [p for p in in_tree if p["tty"] is not None or p["pid"] in mine]
+    refused = bool(changed or blockers)
+
+    result = {
+        "worktree": worktree,
+        "removed": False,
+        "stopped": [],
+        # A refusal keeps every process in the worktree running.
+        "kept": [proc_row(p, ("pid", "tty", "command")) for p in in_tree] if refused else [],
+        "changed": changed,
+        "branch": branch,
+        "branch_deleted": False,
+    }
+    if refused:
+        why = []
+        if changed:
+            why.append("%d changed or untracked files" % len(changed))
+        if blockers:
+            why.append(
+                "%d processes with a terminal or that run this command (pids %s)"
+                % (len(blockers), ", ".join(str(p["pid"]) for p in blockers))
+            )
+        print(json.dumps(result))
+        raise Fail(REFUSED, "launcher: kept the worktree %s: %s" % (worktree, "; ".join(why)))
+
+    pids = [p["pid"] for p in in_tree]
+    signal_all(pids, signal.SIGTERM)
+    end = time.time() + REMOVE_WAIT
+    while any(alive(pid) for pid in pids) and time.time() < end:
+        time.sleep(0.2)
+    signal_all([pid for pid in pids if alive(pid)], signal.SIGKILL)
+    result["stopped"] = [proc_row(p, ("pid", "command")) for p in in_tree]
+
+    def git_step(*args):
+        try:
+            git(main_tree, *args)
+        except Fail:
+            print(json.dumps(result))
+            raise
+
+    git_step("worktree", "remove", worktree)
+    result["removed"] = True
+    if a.delete_branch and branch:
+        git_step("branch", "-D", branch)
+        result["branch_deleted"] = True
+    print(json.dumps(result))
+    return OK
+
+
 def main(argv):
     try:
         a = parse(argv)
-        return {"start": start, "groups": groups, "focus": focus, "stop": stop}[a.cmd](a)
+        verbs = {
+            "start": start,
+            "resume": resume,
+            "groups": groups,
+            "find": find,
+            "focus": focus,
+            "stop": stop,
+            "remove": remove,
+        }
+        return verbs[a.cmd](a)
     except Fail as f:
         print(f.line, file=sys.stderr)
         return f.code

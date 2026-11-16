@@ -1,7 +1,7 @@
 # The launcher
 
-The orchestrator starts, lists, focuses and stops its implementers with
-`scripts/launcher.py` in this skill's directory. An implementer is a
+The orchestrator starts, resumes, finds, lists, focuses, stops and removes
+its implementers with `scripts/launcher.py` in this skill's directory. An implementer is a
 `crew:project-lead` session in its own git worktree. It waits for a goal that
 the orchestrator sends as a cross-session message. This file owns the
 subcommands, their arguments, the start output and the exit codes.
@@ -24,7 +24,7 @@ The launcher supports iTerm2 and tmux. It takes the first rule that holds:
 3. `$TERM_PROGRAM` is `iTerm.app`, or `$ITERM_SESSION_ID` is set: iterm2.
 4. Otherwise the command exits 4.
 
-`groups` uses rules 2 to 4. It has no `--terminal`.
+`groups` and `find` use rules 2 to 4. They have no `--terminal`.
 
 ## start
 
@@ -74,8 +74,11 @@ reference of the usage part owns how.
 **The tab.** The command that runs in the tab is:
 
 ```
-cd <worktree> && exec <claude> --name <name> --model <model> --settings <json> <wait prompt>
+cd <worktree> && exec <claude> --name <name> --session-id <uuid> --model <model> --settings <json> <wait prompt>
 ```
+
+`<uuid>` is a new random UUID (version 4). It is the id of the new
+conversation, and the `session_id` field of the output.
 
 Every value is shell-quoted. `<claude>` is `$CREW_LAUNCHER_CLAUDE` when set,
 and `claude` otherwise. It names one program; a test or a probe sets it to a
@@ -124,7 +127,7 @@ answers that dialog. Its status line waits too.
     gets a deadline 20 seconds shorter, and it stops itself at that deadline.
 
 **The output.** Stdout carries one line: one JSON object with exactly these
-nine fields.
+ten fields.
 
 | Field | Value |
 |---|---|
@@ -137,10 +140,68 @@ nine fields.
 | `terminal` | `iterm2` or `tmux` |
 | `tab` | the handle: `iterm2:<session unique id>` or `tmux:<pane id>`, such as `tmux:%7`. Treat it as one opaque string |
 | `tab_group` | the iTerm2 group or tmux session name, or `null` |
+| `session_id` | the conversation id: the `--session-id` value of `claude` |
 
 Two fields have fixed readers. The board of issue 155 focuses an implementer
 with `tab`. The resume of issue 156 finds an implementer again after a restart
-with `session_name`, `worktree` and `branch`.
+with `session_name`, `worktree`, `branch` and `session_id`.
+
+## resume
+
+```
+launcher.py resume --name <session-name> --worktree <path> [--session-id <id>]
+                   [--model <model>] [--settings <file-or-json>] [--repo <owner/repo>]
+                   [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]
+```
+
+`resume` opens one tab or window that resumes an implementer's conversation
+in its existing worktree. It makes no worktree and no branch. `--name`,
+`--model`, `--settings`, `--repo`, `--group`, `--group-color` and
+`--terminal` have the meanings and the checks of `start`. The `--model`
+default is `opus`, and `<json>` gets `"remoteControlAtStartup": false` as in
+`start`.
+
+| Argument | Meaning |
+|---|---|
+| `--worktree` | the implementer's worktree: the `worktree` field of its start output |
+| `--session-id` | the conversation to resume: the `session_id` field of its start output |
+
+**The conversation.** Without `--session-id`, `resume` takes the newest
+transcript of the worktree. That is the `*.jsonl` file with the latest
+modification time directly in `<config dir>/projects/<encoded worktree>/`.
+A file in a subdirectory does not count. `<config dir>` is
+`$CLAUDE_CONFIG_DIR` when set, and `~/.claude` otherwise. `<encoded
+worktree>` is the real worktree path with each character outside
+`[A-Za-z0-9]` changed to `-`. The id is the file name without `.jsonl`.
+
+**The checks.** In this order:
+
+1. The worktree does not exist, or is not in a git work tree: exit 5.
+2. No `--session-id` and no transcript: exit 5.
+3. The base cannot be read: exit 5.
+4. `find` sees an open tab or pane for `--name` or the worktree: exit 8. The
+   line names each handle. No tab opens. Focus that tab, or stop it first.
+
+**The tab.** The command that runs in the tab is:
+
+```
+cd <worktree> && exec <claude> --resume <id> --name <name> --model <model> --settings <json>
+```
+
+It has no wait prompt. The tab rules of `start` apply whole: the tmux window,
+the iTerm2 helper, the `osascript` fallback, and the one-tab rule.
+
+**The output.** The ten fields of `start`, with these values:
+
+| Field | Value |
+|---|---|
+| `worktree` | the real worktree path |
+| `branch` | the branch that the worktree has checked out, or `null` when its `HEAD` is detached |
+| `base` | `origin/<default branch>`, read with `git ls-remote --symref origin HEAD` as `start` reads it |
+| `repo` | from `--repo`, or else from the worktree's origin URL |
+| `session_id` | the resumed id |
+
+The other fields are as in `start`.
 
 ## groups
 
@@ -155,6 +216,33 @@ such as `$3`, and `window_id` and `color` are `null`. When the iTerm2 Python
 API is not available, it prints one line on stderr, no group line, and exits
 0.
 
+## find
+
+```
+launcher.py find <session-name> [--worktree <path>]
+```
+
+`find` prints one handle per line for each open tab or pane that holds this
+implementer, and exits 0. With no such tab or pane, it prints no line. A tab
+or pane holds the implementer when a `claude` process on its tty has:
+
+- the two arguments `--name <session-name>`, next to each other, or
+- with `--worktree`, its working directory equal to the real worktree path.
+
+Each match is exact. `find a` never matches the session `a-2`, and a working
+directory below the worktree does not match. A `claude` process is one whose
+program name is `claude`, or the program name of `$CREW_LAUNCHER_CLAUDE`.
+
+The launcher reads the tty of each tab and pane:
+
+- **iTerm2.** `osascript` lists the `unique id` and the `tty` of each
+  session. A failed `osascript` exits 6.
+- **tmux.** `tmux list-panes -a -F '#{pane_id} #{pane_tty}'`. With no tmux
+  server, `find` prints no line.
+
+It reads the processes with `ps` and their working directories with `lsof`.
+It never reads a tab title, because Claude Code changes the title of its tab.
+
 ## focus and stop
 
 ```
@@ -168,31 +256,99 @@ launcher.py stop <handle>
   activates iTerm2. `focus tmux:<pane>` selects the window that holds the
   pane. When a tmux client is attached, it switches that client to the
   window.
-- `stop iterm2:<id>` closes the tab and ends its session. `stop tmux:<pane>`
-  kills the pane, and its window closes with it. A tab or pane that is
-  already gone prints one line on stdout and exits 0.
+- `stop` first ends the `claude` session in the tab. It types `/exit` and
+  Enter into the tab: `write text` on iTerm2, and `send-keys -l /exit` then
+  `send-keys Enter` on tmux. Then it waits up to 15 seconds until no
+  `claude` process has the tab's tty. When one is still there, one line on
+  stderr says so, and the stop continues.
+- Then `stop iterm2:<id>` closes the tab, and `stop tmux:<pane>` kills the
+  pane, and its window closes with it. A tab or pane that closed when
+  `claude` ended is not an error.
+- A tab or pane that is already gone before the stop prints one line on
+  stdout and exits 0.
+
+`/exit` makes Claude Code end the session with the reason
+`prompt_input_exit`. A tool that restores closed sessions, such as
+`cc-restore`, then does not start the session again. A closed tab gives
+another reason, and such a tool restores the session at the next start of
+iTerm2.
 
 Neither changes the worktree or the branch.
 
 On iTerm2, both run `osascript` and need no Python API.
 
+## remove
+
+```
+launcher.py remove <worktree> [--delete-branch]
+```
+
+`remove` stops what the implementer left running in a worktree, and then
+removes the worktree. It never forces a step. It has no force flag. Stop the
+implementer's tab with `stop` first: a `claude` in a tab has a terminal, so
+`remove` refuses while it runs.
+
+1. It finds each process whose working directory is the real worktree path
+   or below it. It reads the processes with `ps` and their working
+   directories with `lsof`. It finds a process by its working directory
+   only. A process with its working directory outside the worktree, such as
+   a container or a server started from another directory, stays running.
+   The implementer stops that process itself.
+2. It refuses, and changes nothing, when one of these holds:
+   - `git status --porcelain` in the worktree prints a line: a changed or
+     untracked file. An ignored file does not count.
+   - A process in the worktree has a controlling terminal. That is a
+     person's shell or editor, or a live session in a tab. `remove` never
+     stops it.
+   - The process that runs `remove`, or a process above it, has its working
+     directory in the worktree.
+3. Else it sends `TERM` to each process in the worktree. Each has no
+   terminal: it is what the implementer's tools left running, such as a dev
+   server. It waits up to 10 seconds, and sends `KILL` to each process that
+   is still there.
+4. It runs `git worktree remove <path>`, with no force.
+5. With `--delete-branch`, it deletes the branch that the worktree had
+   checked out, with `git branch -D`.
+
+**The output.** Stdout carries one line: one JSON object with exactly these
+seven fields. A refusal prints it too.
+
+| Field | Value |
+|---|---|
+| `worktree` | the real worktree path |
+| `removed` | `true` when the worktree is gone |
+| `stopped` | one `{"pid", "command"}` object for each process that got `TERM` |
+| `kept` | on a refusal, one `{"pid", "tty", "command"}` object for each process in the worktree, because a refusal stops none. `tty` is `null` for a process with no terminal. An empty list when `remove` did not refuse |
+| `changed` | each line of `git status --porcelain`, unchanged |
+| `branch` | the branch that the worktree had checked out, or `null` when its `HEAD` was detached |
+| `branch_deleted` | `true` when `--delete-branch` deleted the branch |
+
+A refusal exits 9, and one line on stderr names each reason. The line names
+only the processes that caused the refusal, not each process in `kept`. Remove each
+reason, then run `remove` again. A path that is not the top level of a linked
+worktree exits 2: a missing path, a plain directory, or the main worktree. A
+failed git step exits 5. When `git worktree remove` or `git branch -D`
+fails, the stdout line still lists what `stopped` holds.
+
 ## Exit codes
 
 Each failure prints one line on stderr. When a call fails more than one
-check, the first in this order decides the exit: 2, 4, 3, 5, 6.
+check, the first in this order decides the exit: 2, 4, 3, 5, 8, 9, 6.
 
 | Code | Meaning |
 |---|---|
 | 0 | done |
-| 2 | usage: a missing or bad argument. No worktree |
+| 2 | usage: a missing or bad argument. No worktree. `remove`: a path that is not a linked worktree |
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal. The line names `$TERM_PROGRAM` and the supported terminals. No worktree |
-| 5 | git failure, or the worktree path or branch exists. No tab |
-| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree |
+| 5 | git failure, or the worktree path or branch exists. No tab. `resume`: a missing worktree, or no transcript and no `--session-id` |
+| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` failed |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
+| 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
+| 9 | `remove` refused: changed or untracked files, a process with a terminal, or the caller's own working directory in the worktree. Nothing changed |
 
 ## Test
 
 `bash scripts/test-launcher.sh` runs the seeded test with stub `tmux`,
-`osascript`, `uv` and `claude`. It ends with `N of M checks passed` and exits
+`osascript`, `uv`, `claude`, `ps` and `lsof`. It ends with `N of M checks passed` and exits
 0 when every check passes.

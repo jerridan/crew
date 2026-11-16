@@ -9355,6 +9355,12 @@ TBD-152. **The orchestrator launcher — 2026-11-16.** Issue 152 builds the
        reports the tab with no group. The fallback then opens no second tab.
      - The helper reads the app again after it changes a group. A `Window`
        object does not show a group made after it was read.
+     - The new `claude` always gets `--model`, `opus` by default, and one
+       `--settings` with `"remoteControlAtStartup": false` unless the given
+       settings set that key. The machine's default model and the user's
+       Remote Control setting must not decide for an implementer (issue 150
+       rules 15 and 16). Another part passes its own settings through
+       `--settings`.
      - `stop` keeps the worktree and the branch. Issue 156 owns their
        removal.
      - Every exit code is fixed, and the first failed check decides it: usage

@@ -571,7 +571,10 @@ pass
 # The repo root, for the fixtures and for the script on the main branch.
 REPO=$(cd "$HERE/../../.." && pwd)
 FIX="$REPO/tests/fixtures"
-MAIN_REF=${CREW_ORCH_MAIN_REF:-origin/main}
+# The fixed commit that the R2 step compares with: the main branch before
+# #155. Never a moving ref: once this change is on main, a moving ref holds
+# this same script, and the R2 step then fails.
+MAIN_REF=${CREW_ORCH_MAIN_REF:-55e7e89}
 
 # check_json <file>: the file is one board JSON object, each field of the
 # type that orchestrator-record.md "The board" gives.
@@ -791,7 +794,13 @@ pass
 # record whose every time is more than a day old, with a stub crew-usage.py
 # whose resets are more than a day away. Each age is in days, each reset a
 # weekday, so two runs a moment apart print the same text.
+# This step checks the one-time migration from the commit MAIN_REF (55e7e89
+# by default) to this script. When the clone does not hold that commit, the
+# step prints one skip line, and the script goes on.
 STEP="R2 the text view equals the main branch's, except the R3 lines"
+if ! git -C "$REPO" cat-file -e "$MAIN_REF^{commit}" 2>/dev/null; then
+  echo "skip $STEP: no commit $MAIN_REF in this clone"
+else
 mkdir -p "$TMP/main" "$TMP/this"
 git -C "$REPO" show "$MAIN_REF:skills/orchestrator/scripts/crew-orch.py" >"$TMP/main/crew-orch.py" 2>"$TMP/err" || fail "cannot read crew-orch.py at $MAIN_REF: $(cat "$TMP/err")"
 cp "$ORCH_PY" "$TMP/this/crew-orch.py"
@@ -879,12 +888,16 @@ PY
 }
 compare_main
 cmp -s "$TMP/main.out" "$TMP/this.out" || fail "with no single ticket, board --urls is not byte for byte the main output"
+# This script's own output before the ticket, so the check below does not
+# depend on what MAIN_REF shows.
+cp "$TMP/this.out" "$TMP/this-before.out"
 expect_exit 0 orch4 item lone set ticket '{"id": "L-7", "url": "https://tickets.example/L-7"}'
 age_record
 compare_main lone longer-single
 grep -E '^ *3 +lone .*L-7' "$TMP/this.out" >/dev/null || fail "the lone row has no ticket"
-cmp -s "$TMP/main.out" "$TMP/this.out" && fail "a single item ticket does not change the board"
+cmp -s "$TMP/this-before.out" "$TMP/this.out" && fail "a single item ticket does not change the board"
 pass
+fi
 
 STEP="R2 each derived value is computed in one place"
 python3 - "$ORCH_PY" <<'PY' || fail "a derived value is computed in more than one place"

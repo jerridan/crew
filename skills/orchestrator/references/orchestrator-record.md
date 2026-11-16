@@ -267,7 +267,7 @@ Each line is one command and what it does.
 |---|---|
 | `init` | creates the record. A second `init` of the same name exits 1 and changes nothing |
 | `item add <id> --title <t> --repo <owner/name> [--group <g>] [--ticket <id> --ticket-url <url>]` | adds an item at stage `queued` |
-| `item <id> pr <number\|url>` | sets the PR. A number builds the URL from `repo`. A URL whose repo is not the item's repo exits 2, and the match ignores case |
+| `item <id> pr <number\|url>` | sets the PR. A number builds the URL from `repo`. A URL whose repo is not the item's repo exits 2, and the match ignores case. A PR with a new number clears `github` until the next `refresh` |
 | `item <id> set <field> <json>` | sets `title`, `repo`, `ticket`, `group` or `launch`. A dotted key `launch.<key>` merges. Any other field exits 2. A `repo` that differs from the repo of the item's PR URL exits 2, and the match ignores case |
 | `group add <id> --title <t> [--repo <r>] [--ticket <id> --ticket-url <url>]` | adds a group |
 | `group <id> order <item,item,...>` | sets the merge order. Each item must exist and belong to the group |

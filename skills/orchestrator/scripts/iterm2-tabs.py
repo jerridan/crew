@@ -1,9 +1,14 @@
 """The iTerm2 Python API helper of launcher.py.
 
 usage:
-  uv run -q --with iterm2 python iterm2-tabs.py start --name <name> --command <cmd>
+  uv run -q --with iterm2 python iterm2-tabs.py start [--deadline <seconds>]
+         --name <name> --command <cmd>
          [--session <unique id>] [--group <name>] [--group-color <#rrggbb>]
-  uv run -q --with iterm2 python iterm2-tabs.py groups
+  uv run -q --with iterm2 python iterm2-tabs.py groups [--deadline <seconds>]
+
+--deadline stops the work after that many seconds: the helper prints one
+line on stderr and exits 1. launcher.py gives a deadline shorter than its own
+timeout, so the helper stops before the launcher kills it.
 
 start opens one tab in the window of the session --session names, or in the
 current window. It does not select the tab. It names the session, types the
@@ -142,19 +147,24 @@ def parse(argv):
     p = argparse.ArgumentParser(prog="iterm2-tabs.py")
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("start")
+    s.add_argument("--deadline", type=float)
     s.add_argument("--name", required=True)
     s.add_argument("--command", required=True)
     s.add_argument("--session")
     s.add_argument("--group")
     s.add_argument("--group-color")
-    sub.add_parser("groups")
+    g = sub.add_parser("groups")
+    g.add_argument("--deadline", type=float)
     return p.parse_args(argv)
 
 
 if __name__ == "__main__":
     a = parse(sys.argv[1:])
     try:
-        asyncio.run(main(a))
+        asyncio.run(asyncio.wait_for(main(a), a.deadline))
+    except asyncio.TimeoutError:
+        print("iterm2-tabs: stopped at the deadline of %g seconds" % a.deadline, file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print("iterm2-tabs: %s: %s" % (type(e).__name__, e), file=sys.stderr)
         sys.exit(1)

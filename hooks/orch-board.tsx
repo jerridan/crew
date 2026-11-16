@@ -30,11 +30,15 @@ const LAUNCHER_PY = 'skills/orchestrator/scripts/launcher.py'
 // it changes.
 const VERSION = 1
 // The breakpoint: below this many columns, a row drops the marks, the ticket
-// and the age. At any width the row text truncates first.
+// and the age, and a Needs-you row drops the kind and the age. At any width
+// the row text truncates first.
 export const NARROW = 60
 const INDENT = 2
 const GAP = 2
 const MIN_TICKET = 4
+// A Needs-you question keeps this many characters before its other columns
+// shrink.
+const MIN_QUESTION = 15
 const SEEN_CAP = 500
 const MISSING =
   'No orchestrator name. Type /orch-board <name>, or set CREW_ORCH.'
@@ -109,16 +113,24 @@ export const layout = (board: OrchBoard, columns: number): Widths => {
     [w.n, w.id, w.marks, w.status, w.pr, w.ticket, w.age]
       .filter(x => x > 0)
       .reduce((sum, x) => sum + x + GAP, -GAP)
-  // The row text takes the room that is left.
+  // The row text truncates first: it takes the room that is left, down to 0.
+  const full = w.text
   const room = () => columns - used() - GAP
-  if (room() < w.text && w.ticket > MIN_TICKET) {
-    w.ticket = Math.max(MIN_TICKET, w.ticket - (w.text - Math.max(0, room())))
-  }
+  const over = () => used() - columns
+  w.text = Math.max(0, Math.min(full, room()))
+  // Only a row that is still wider than the pane shrinks the ticket, then
+  // drops the age, the marks and the ticket, then shrinks the status and the
+  // id. The row number stays whole.
+  if (over() > 0 && w.ticket > MIN_TICKET) w.ticket = Math.max(MIN_TICKET, w.ticket - over())
   for (const drop of ['age', 'marks', 'ticket'] as const) {
-    if (room() >= 1) break
+    if (over() <= 0) break
     w[drop] = 0
   }
-  w.text = Math.max(0, Math.min(w.text, room()))
+  for (const shrink of ['status', 'id'] as const) {
+    if (over() > 0) w[shrink] = Math.max(1, w[shrink] - over())
+  }
+  // A dropped column can give the text room again.
+  w.text = Math.max(0, Math.min(full, room()))
   return w
 }
 
@@ -153,6 +165,8 @@ const refresh = async ($: Engine) => {
     'board',
     '--json',
   ])
+  // A read for a name that is no longer the pane's name writes nothing.
+  if ((await read($, view)).name !== old.name) return
   let board = old.board
   let error: string | null = null
   let { seen, primed } = old
@@ -176,7 +190,9 @@ const refresh = async ($: Engine) => {
   const next: OrchBoardView = { ...old, board, error, seen, primed }
   // Write only a change, so the pane redraws only when a value differs.
   if (JSON.stringify(next) !== JSON.stringify(old)) {
-    await update($, view, current => ({ ...current, board, error, seen, primed }))
+    await update($, view, current =>
+      current.name === old.name ? { ...current, board, error, seen, primed } : current,
+    )
   }
 }
 
@@ -217,7 +233,7 @@ const ensureTimer = ($: Engine, load: Load) => {
 
 const focusRow = async ($: Engine, typed: string) => {
   const text = typed.trim()
-  const { board } = await read($, view)
+  const { board, name } = await read($, view)
   const rows = board ? allRows(board) : []
   let line: string
   const row = /^\d+$/.test(text) ? rows.find(r => r.n === Number(text)) : undefined
@@ -239,7 +255,8 @@ const focusRow = async ($: Engine, typed: string) => {
         ? `Row ${row.n} (${row.id}): its tab is in front.`
         : `launcher.py focus exited ${run.exitCode}: ${lastLine(run.stderr)}`
   }
-  await update($, view, current => ({ ...current, line }))
+  // A result for a name that is no longer the pane's name writes nothing.
+  await update($, view, current => (current.name === name ? { ...current, line } : current))
 }
 
 // ---------------------------------------------------------------- register
@@ -373,24 +390,39 @@ export const register: Register = on => {
     )
     if (entries.length > 0) {
       const most = (f: (e: OrchBoardEntry) => string) => Math.max(...entries.map(e => f(e).length))
-      const [wId, wKind, wAge, wItem] = [most(e => e.id), most(e => e.kind), most(e => e.age), most(e => e.item)]
-      const textAt = INDENT + wId + wKind + wAge + wItem + 4 * GAP
-      const room = Math.max(1, columns - textAt)
+      const narrow = columns < NARROW
+      const n = {
+        id: most(e => e.id),
+        kind: narrow ? 0 : most(e => e.kind),
+        age: narrow ? 0 : most(e => e.age),
+        item: most(e => e.item),
+      }
+      const textAt = () =>
+        INDENT + [n.id, n.kind, n.age, n.item].filter(x => x > 0).reduce((sum, x) => sum + x + GAP, 0)
+      // The question keeps MIN_QUESTION characters: the item, then the id
+      // shrink first, so no row is wider than the pane.
+      const want = Math.min(MIN_QUESTION, most(e => e.text))
+      for (const shrink of ['item', 'id'] as const) {
+        const short = want - (columns - textAt())
+        if (short > 0) n[shrink] = Math.max(1, n[shrink] - short)
+      }
+      const room = Math.max(0, columns - textAt())
       for (const e of entries) {
+        const textWidth = Math.min(room, e.text.length)
         parts.push(
           <Box key={`need-${e.id}`} paddingLeft={INDENT} gap={GAP}>
-            {cell(wId, e.id, { color: 'magenta' })}
-            {cell(wKind, e.kind)}
-            {cell(wAge, e.age, { dim: true })}
-            {cell(wItem, e.item)}
-            {cell(Math.min(room, Math.max(1, e.text.length)), e.text)}
+            {cell(n.id, e.id, { color: 'magenta' })}
+            {n.kind > 0 ? cell(n.kind, e.kind) : null}
+            {n.age > 0 ? cell(n.age, e.age, { dim: true }) : null}
+            {cell(n.item, e.item)}
+            {textWidth > 0 ? cell(textWidth, e.text) : null}
           </Box>,
         )
         if (e.recommend !== null) {
           parts.push(
-            <Box key={`recommend-${e.id}`} paddingLeft={textAt}>
+            <Box key={`recommend-${e.id}`} paddingLeft={textAt()}>
               <Text dimColor wrap="truncate">
-                {fit(`Recommended: ${e.recommend}`, Math.max(1, columns - textAt))}
+                {fit(`Recommended: ${e.recommend}`, room)}
               </Text>
             </Box>,
           )

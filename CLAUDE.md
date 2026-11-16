@@ -123,7 +123,7 @@ crew run has used the mode yet (§15.131).
 
 The orchestrator record is built: `crew-orch.py` writes it and prints its
 board, and a project lead that an orchestrator started reports its stage and
-its questions there (§15.NNN). Only the seeded test has run it. The
+its questions there (§15.139). Only the seeded test has run it. The
 `crew:orchestrator` skill that uses it is not built.
 
 T57 removed the tier above the project lead: the principal hands each goal

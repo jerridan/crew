@@ -9384,8 +9384,8 @@ Deliberately different:
      has proven the Remote Control default on a real `claude` session yet.
      No crew run has used the launcher.
 
-NNN. **The plan usage figures and the slow-down of the orchestrator —
-     2026-11-16.** (The orchestrator assigns this number at the merge.)
+141. **The plan usage figures and the slow-down of the orchestrator —
+     2026-11-16.**
      Issue 153, part 3 of issue 150. A probe on Claude Code 2.1.325 settled
      the source. The JSON on a status line command's stdin holds
      `rate_limits.five_hour` and `rate_limits.seven_day`, each with

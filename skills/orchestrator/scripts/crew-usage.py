@@ -371,6 +371,10 @@ def user_statusline(cwd):
               os.path.join(cwd, ".claude", "settings.local.json")):
         sl = read_json(p).get("statusLine")
         if isinstance(sl, dict) and sl.get("type", "command") == "command" and sl.get("command"):
+            # A status line that runs this wrapper is no user line: skip it,
+            # or the wrapper would call itself without end.
+            if "crew-usage.py" in sl["command"] and "statusline" in sl["command"]:
+                continue
             found = sl
     return found
 

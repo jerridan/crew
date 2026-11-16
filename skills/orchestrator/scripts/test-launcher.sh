@@ -75,7 +75,8 @@ esac
 exit 0
 STUB
 
-# uv stub: the iTerm2 helper. It logs its args. Files: uv-fail (it fails),
+# uv stub: the iTerm2 helper. It logs its args. Files: uv-hang (it starts a
+# child, writes the child pid to uv-child and hangs), uv-fail (it fails),
 # uv-groups (the groups output), uv-out (its whole stdout) with uv-rc (its
 # exit code, 0 when missing).
 cat > "$T/bin/uv" <<'STUB'
@@ -84,6 +85,13 @@ D=$STUB_DIR
 line=''
 for a in "$@"; do line="$line$a|"; done
 printf '%s\n' "$line" >> "$D/uv.log"
+if [ -e "$D/uv-hang" ]; then
+  # uv starts its python child and hangs. The child holds no pipe of the
+  # launcher, so only a kill of the process group stops it.
+  sleep 30 > /dev/null 2>&1 &
+  echo $! > "$D/uv-child"
+  exec sleep 30
+fi
 if [ -e "$D/uv-out" ]; then
   cat "$D/uv-out"
   rc=$(cat "$D/uv-rc" 2>/dev/null || echo 0)
@@ -422,13 +430,47 @@ sys.exit(0 if rc == 124 and '"opened"' in out else 1)
 PY
 check 'a helper timeout keeps the stdout the helper printed before it' $r
 
+# A helper that hangs: the launcher kills the helper's whole process group.
+reset_stub
+: > "$STUB_DIR/uv-hang"
+r=1; python3 - "$here" "$CO" > "$T/out" 2> "$T/err" <<'PY' && r=0
+import sys, time
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.HELPER_TIMEOUT = 2
+t = time.time()
+rc = launcher.main(["start", "--name", "hang-1", "--principal", "p", "--checkout", sys.argv[2], "--terminal", "iterm2"])
+sys.exit(0 if rc == 0 and time.time() - t < 10 else 1)
+PY
+child=$(cat "$STUB_DIR/uv-child" 2>/dev/null)
+gone=1
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  if [ -n "$child" ] && ! kill -0 "$child" 2>/dev/null; then gone=0; break; fi
+  sleep 0.2
+done
+[ -n "$child" ] && kill "$child" 2>/dev/null
+check 'a helper timeout kills the child of the helper too: no stub child stays' \
+  $([ "$r" = 0 ] && [ "$gone" = 0 ]; echo $?)
+r=1; python3 - "$here" "$STUB_DIR/uv.log" <<'PY' && r=0
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+a = open(sys.argv[2]).readline().rstrip("\n").split("|")
+ok = "--deadline" in a and 0 < int(a[a.index("--deadline") + 1]) < launcher.HELPER_TIMEOUT
+sys.exit(0 if ok else 1)
+PY
+check 'launcher.py gives the helper a --deadline shorter than HELPER_TIMEOUT' $r
+
 # -- iterm2-tabs.py itself, against a fake iterm2 module -------------------
 mkdir -p "$T/fake"
 cat > "$T/fake/iterm2.py" <<'PY'
-"""A fake iterm2 module. FAKE_FAIL names the calls that raise."""
+"""A fake iterm2 module. FAKE_FAIL names the calls that raise, FAKE_HANG the
+calls that hang."""
+import asyncio
 import os
 
 FAIL = os.environ.get("FAKE_FAIL", "").split(",")
+HANG = os.environ.get("FAKE_HANG", "").split(",")
 
 
 def log(s):
@@ -462,6 +504,8 @@ class Session:
 
     async def async_send_text(self, t):
         log("send_text")
+        if "send_text" in HANG:
+            await asyncio.sleep(60)
         if "send_text" in FAIL:
             raise Boom("send_text failed")
 
@@ -538,6 +582,11 @@ helper ''
 r=1; [ "$rc" = 0 ] && grep -sqx 'create_tab select=False' "$STUB_DIR/fake.log" \
   && [ "$(tail -n 1 "$T/out")" = '{"session_id": "FAKE-1", "tab_group": null}' ] && r=0
 check 'helper: with no group, the last line is the result with tab_group null' $r
+s0=$(date +%s)
+FAKE_HANG=send_text helper '' --deadline 1
+r=1; [ "$rc" = 1 ] && [ $(($(date +%s) - s0)) -lt 10 ] && has '{"opened": "FAKE-1"}' && ! has session_id \
+  && [ "$(lines "$T/err")" = 1 ] && r=0
+check 'helper: a call that hangs past --deadline exits 1 with one stderr line' $r
 
 # -- groups ----------------------------------------------------------------
 reset_stub

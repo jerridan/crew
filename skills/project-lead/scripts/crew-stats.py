@@ -936,6 +936,11 @@ NOT_A_RECORD = ("checkout", "worktrees", "review-worktrees", ".git")
 # `queue` directory deeper down is still read.
 QUEUE_DIR = "queue"
 
+# An orchestrator record (`skills/orchestrator/references/orchestrator-record.md`)
+# lives in `<record-root>/orchestrators/<name>/`. It is not a goal run, so the
+# walk never goes into the top-level `orchestrators/` directory.
+ORCHESTRATORS_DIR = "orchestrators"
+
 
 def is_record(state_path: Path) -> bool:
     """`True` when this `state.json` is a run record, not some other file.
@@ -967,7 +972,8 @@ def candidates(root: Path) -> list[Path]:
 
     Two rules keep a file that is not a record out. The walk never descends
     into a directory `NOT_A_RECORD` names, so nothing inside a checkout or a
-    worktree is read at all, and neither is `<root>/queue/`. `is_record` then
+    worktree is read at all, and neither is `<root>/queue/` or
+    `<root>/orchestrators/`. `is_record` then
     checks the shape of each `state.json` the walk does reach.
     """
     found = []
@@ -982,7 +988,7 @@ def candidates(root: Path) -> list[Path]:
             if child.is_dir():
                 if child.name in NOT_A_RECORD:
                     continue
-                if directory == root and child.name == QUEUE_DIR:
+                if directory == root and child.name in (QUEUE_DIR, ORCHESTRATORS_DIR):
                     continue
                 stack.append(child)
             elif child.name == "state.json" and is_record(child):

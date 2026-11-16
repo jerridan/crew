@@ -14,10 +14,13 @@ commands:
   settings [--cwd D]       print the value for `claude --settings` that runs the wrapper
   probe FILE               status line command of `refresh`: append stdin to FILE
   refresh                  start a bare claude, read the figures, record them, stop it
-  show [--json]            print the figures; exit 1 with no plan limits or no figures
+  show [--json]            print the figures; exit 2 with no plan limits, 1 with no figures
   check [--limit N]        print the level; exit 0 normal, 10 slowed, 20 stopped
-  watch [--limit N] [--interval S] [--ticks N]
+  watch [--limit N] [--interval S] [--ticks N] [--until stopped]
                            print one line when the level changes and on a reset
+                           (not after a window that stayed normal). With --until
+                           stopped: print nothing until the level is stopped, then
+                           print one line and exit 20
   wait [--interval S]      exit 0 when the five-hour window of the stored figure resets
 
 Test hooks: CREW_USAGE_NOW is an integer clock, or "@file" to read it from a
@@ -117,13 +120,17 @@ def parse_window(w):
     return {"used_pct": p, "resets_at": int(r)}
 
 
-def newer(old, new):
-    """True when the new window figure is at least as new as the stored one."""
+def advanced(old, new):
+    """True when the new window figure is strictly newer than the stored one.
+
+    An equal figure is no advance: an idle session repeats its old figure on
+    every refresh, and that must not make the file look fresh.
+    """
     if not old:
         return True
     if new["resets_at"] != old["resets_at"]:
         return new["resets_at"] > old["resets_at"]
-    return new["used_pct"] >= old["used_pct"]
+    return new["used_pct"] > old["used_pct"]
 
 
 def merge_window(old, new):
@@ -136,8 +143,12 @@ def merge_window(old, new):
     return old
 
 
-def apply_sample(d, sample, source, ts):
-    """Merge one status line sample into d. Return the new dict, or None for no figures."""
+def apply_sample(d, sample, source, ts, fresh=False):
+    """Merge one status line sample into d. Return the new dict, or None for no figures.
+
+    updated_at moves when the five-hour figure advances strictly, or when the
+    sample is a fresh reading of the account (fresh=True, from `refresh`).
+    """
     rl = sample.get("rate_limits") if isinstance(sample, dict) else None
     if not isinstance(rl, dict):
         return None
@@ -145,12 +156,12 @@ def apply_sample(d, sample, source, ts):
     if not five and not seven:
         return None
     d = dict(d)
-    moved = False
+    moved = fresh
     for key, new in (("five_hour", five), ("seven_day", seven)):
         if new is None:
             continue
         old = d.get(key)
-        if newer(old, new):
+        if key == "five_hour" and advanced(old, new):
             moved = True
         d[key] = merge_window(old, new)
     if five:
@@ -320,16 +331,23 @@ def do_refresh():
     if not lines:
         return 1
     ts = now()
+    result = [0]
 
     def fn(d):
         out = d
         got = False
         for x in lines:
-            new = apply_sample(out, x, "refresh", ts)
+            new = apply_sample(out, x, "refresh", ts, fresh=True)
             if new is not None:
                 out, got = new, True
         if got:
             return out
+        five = out.get("five_hour")
+        if five and five["resets_at"] > ts:
+            # The start ran the status line but gave no figures. A stored
+            # window that has not reset says the account has limits: keep it.
+            result[0] = 1
+            return None
         out = dict(out)
         out["plan_limits"] = False
         out["checked_at"] = ts
@@ -337,16 +355,58 @@ def do_refresh():
         return out
 
     update(fn)
-    return 0
+    return result[0]
+
+
+def mark_attempt():
+    """Record the start of a fresh reading attempt, without a check of the age."""
+    ts = now()
+    update(lambda d: dict(d, refresh_attempt_at=ts))
+
+
+def claim_refresh():
+    """Take the right to start claude, under the lock.
+
+    True when the file is stale and no attempt began in the last AGE seconds.
+    Two processes that find the file stale cannot both get True.
+    """
+    got = [False]
+
+    def fn(d):
+        at = now()
+        if not is_stale(d, at):
+            return None
+        t = d.get("refresh_attempt_at")
+        if t is not None and at - t < AGE:
+            return None
+        got[0] = True
+        return dict(d, refresh_attempt_at=at)
+
+    try:
+        update(fn)
+    except Exception:
+        return False
+    return got[0]
+
+
+def run_refresh():
+    """do_refresh, then record whether the attempt failed. Return its exit code."""
+    try:
+        rc = do_refresh()
+    except Exception:
+        rc = 1
+    try:
+        update(lambda d: dict(d, refresh_failed=(rc != 0)))
+    except Exception:
+        pass
+    return rc
 
 
 def ensure_fresh():
+    """Load the file; take one fresh reading first when it is stale and no one tried lately."""
     d = load()
-    if is_stale(d, now()):
-        try:
-            do_refresh()
-        except Exception:
-            pass
+    if is_stale(d, now()) and claim_refresh():
+        run_refresh()
         d = load()
     return d
 
@@ -366,7 +426,9 @@ def read_json(path):
 def user_statusline(cwd):
     """The status line Claude Code would show: local over project over user."""
     found = None
-    for p in (os.path.join(os.path.expanduser("~"), ".claude", "settings.json"),
+    config_dir = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(
+        os.path.expanduser("~"), ".claude")
+    for p in (os.path.join(config_dir, "settings.json"),
               os.path.join(cwd, ".claude", "settings.json"),
               os.path.join(cwd, ".claude", "settings.local.json")):
         sl = read_json(p).get("statusLine")
@@ -399,28 +461,36 @@ def cmd_record(a):
 
 def cmd_statusline(a):
     raw = sys.stdin.buffer.read()
-    cwd = os.getcwd()
+    run_dir = project_dir = os.getcwd()
     try:
         sample = json.loads(raw)
         if isinstance(sample, dict):
             ws = sample.get("workspace") if isinstance(sample.get("workspace"), dict) else {}
-            c = ws.get("project_dir") or ws.get("current_dir") or sample.get("cwd")
-            if isinstance(c, str) and os.path.isdir(c):
-                cwd = c
+
+            def pick(*names):
+                for n in names:
+                    if isinstance(n, str) and os.path.isdir(n):
+                        return n
+                return None
+
+            # Project settings sit under project_dir. The user's command runs
+            # in the session's own directory, as Claude Code runs it.
+            run_dir = pick(ws.get("current_dir"), sample.get("cwd")) or run_dir
+            project_dir = pick(ws.get("project_dir")) or run_dir
             source = "session:%s" % sample.get("session_id", "unknown")
             ts = now()
             update(lambda d: apply_sample(d, sample, source, ts))
     except Exception:
         pass  # a fault in the recording never removes the user's line
     try:
-        sl = user_statusline(cwd)
+        sl = user_statusline(project_dir)
     except Exception:
         sl = None
     if not sl:
         return 0
     try:
         r = subprocess.run(sl["command"], shell=True, input=raw, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE, cwd=cwd)
+                           stderr=subprocess.PIPE, cwd=run_dir)
     except Exception:
         return 0
     sys.stdout.buffer.write(r.stdout)
@@ -453,7 +523,11 @@ def cmd_probe(a):
 
 
 def cmd_refresh(a):
-    rc = do_refresh()
+    try:
+        mark_attempt()
+    except Exception:
+        pass
+    rc = run_refresh()
     if rc:
         print("crew-usage: claude did not start or ran no status line", file=sys.stderr)
     return rc
@@ -469,26 +543,38 @@ def iso(ts):
 def cmd_show(a):
     d = load()
     five, seven = d.get("five_hour"), d.get("seven_day")
-    if not five or d.get("plan_limits") is False:
-        print("crew-usage: no plan usage figures", file=sys.stderr)
+    if d.get("plan_limits") is False:
+        print("crew-usage: the account has no plan limits", file=sys.stderr)
+        return 2
+    if not five:
+        print("crew-usage: no figures yet", file=sys.stderr)
         return 1
-    full = time_to(d, 100)
+    at = now()
+    five_reset = five["resets_at"] <= at
+    full = None if five_reset else time_to(d, 100)
     if full is not None and full >= five["resets_at"]:
         full = None
     if full is not None:
         full = int(full)
-    out = {"five_hour": {"used_pct": five["used_pct"], "resets_at": five["resets_at"],
-                         "full_at": full},
-           "seven_day": ({"used_pct": seven["used_pct"], "resets_at": seven["resets_at"]}
+    seven_reset = bool(seven) and seven["resets_at"] <= at
+    out = {"five_hour": {"used_pct": 0 if five_reset else five["used_pct"],
+                         "resets_at": five["resets_at"], "full_at": full,
+                         "reset": five_reset},
+           "seven_day": ({"used_pct": 0 if seven_reset else seven["used_pct"],
+                          "resets_at": seven["resets_at"], "reset": seven_reset}
                          if seven else None),
            "updated_at": d.get("updated_at"), "source": d.get("source")}
     if a.json:
         print(json.dumps(out))
         return 0
-    print("five_hour: %s%% used, resets %s, full %s" % (
-        five["used_pct"], iso(five["resets_at"]), iso(full) if full else "not before the reset"))
+    f = out["five_hour"]
+    print("five_hour: %s%% used, resets %s%s, full %s" % (
+        f["used_pct"], iso(f["resets_at"]), " (reset)" if five_reset else "",
+        iso(full) if full else "not before the reset"))
     if seven:
-        print("seven_day: %s%% used, resets %s" % (seven["used_pct"], iso(seven["resets_at"])))
+        print("seven_day: %s%% used, resets %s%s" % (
+            out["seven_day"]["used_pct"], iso(seven["resets_at"]),
+            " (reset)" if seven_reset else ""))
     else:
         print("seven_day: no figure")
     return 0
@@ -514,19 +600,12 @@ def cmd_watch(a):
     last_level = None
     prev_reset = None
     announced = set()
-    last_attempt = None
     tick = 0
+    until_stopped = a.until == "stopped"
     while True:
         tick += 1
         at = now()
-        d = load()
-        if is_stale(d, at) and (last_attempt is None or at - last_attempt >= AGE):
-            last_attempt = at
-            try:
-                do_refresh()
-            except Exception:
-                pass
-            d = load()
+        d = ensure_fresh()
         five = d.get("five_hour")
         lv = level_of(d, limit, at)
         reset = False
@@ -538,8 +617,15 @@ def cmd_watch(a):
                 reset = True
             prev_reset = cur
         pct = five["used_pct"] if five else "none"
-        if reset:
-            say("usage reset: level=%s five_hour=%s%%" % (lv, pct))
+        if until_stopped:
+            if lv == "stopped":
+                say("usage level=stopped five_hour=%s%% limit=%s" % (pct, limit))
+                return EXIT["stopped"]
+        elif reset:
+            # A reset after a window that stayed normal changes nothing for the
+            # orchestrator: print no line, so it costs no model turn.
+            if last_level != "normal":
+                say("usage reset: level=%s five_hour=%s%%" % (lv, pct))
         elif last_level is not None and lv != last_level:
             say("usage level=%s five_hour=%s%% limit=%s" % (lv, pct, limit))
         last_level = lv
@@ -590,6 +676,7 @@ def main(argv=None):
     s.add_argument("--limit")
     s.add_argument("--interval", type=float, default=30.0)
     s.add_argument("--ticks", type=int, default=0)
+    s.add_argument("--until", choices=["stopped"])
     s.set_defaults(fn=cmd_watch)
     s = sub.add_parser("wait")
     s.add_argument("--interval", type=float, default=30.0)

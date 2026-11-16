@@ -951,18 +951,27 @@ def marks(stage: str) -> str:
     return "●" * at + "◐" + "○" * (4 - at)
 
 
+def shows_merge(item: dict) -> bool:
+    """`True` when the status word is the merge value: a PR at stage `review` or
+    later, or stage `merged` or `shipped`. Stage `closed` shows `closed`."""
+    stage = item["stage"]
+    if stage in ("merged", "shipped"):
+        return True
+    return bool(item.get("pr")) and stage in ("review", "pr")
+
+
 def status_word(item: dict) -> str:
     stage = item["stage"]
     if stage == "closed":
         return "closed"
-    if stage in ("pr", "merged", "shipped"):
+    if shows_merge(item):
         return item["merge"]
     return f"{stage} {item['detail']}" if item.get("detail") else stage
 
 
 def row_text(item: dict) -> str:
     parts = []
-    if item.get("waits_on") and item["stage"] not in ("pr", "merged", "shipped", "closed"):
+    if item.get("waits_on") and not shows_merge(item) and item["stage"] != "closed":
         parts.append("after " + ", ".join(item["waits_on"]))
     if item["stage"] == "shipped" and not item.get("doing"):
         parts.append("shipped")
@@ -1046,15 +1055,11 @@ def cmd_board(rec: Record, args: list) -> None:
         line += f"  ·  {merged} of {len(members)} merged"
         out.append(line)
         for item in members:
-            if item.get("ticket"):
-                links.make(item["ticket"]["id"], item["ticket"].get("url"))
             out.append(row(item))
         out.append("")
     if singles:
         out.append(" Single items")
         for item in singles:
-            if item.get("ticket"):
-                links.make(item["ticket"]["id"], item["ticket"].get("url"))
             out.append(row(item))
         out.append("")
     out.append(f" Done  {done_count}   ·   stages: spec → split → build → review → PR")

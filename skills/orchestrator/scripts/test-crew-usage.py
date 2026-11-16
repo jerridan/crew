@@ -55,6 +55,7 @@ STUB_SRC = r"""#!/bin/bash
 echo "$@" >> "$STUB_DIR/args"
 echo x >> "$STUB_DIR/calls"
 echo "$$" > "$STUB_DIR/pid"
+[ -n "$STUB_DELAY" ] && sleep "$STUB_DELAY"
 val=''
 prev=''
 for a in "$@"; do
@@ -220,6 +221,31 @@ def t_r1_merge():
           load()["five_hour"]["resets_at"] == R + 18000)
 
 
+def t_r1_idle_repeat():
+    seed(five=60, updated=NOW - 600)
+    run(["record"], sample(60))
+    check("R1 an equal repeat of the stored figure does not move updated_at",
+          load()["updated_at"] == NOW - 600)
+    run(["check"], STUB_MODE="figures", STUB_PCT=61)
+    check("R1 after an idle repeat the next check still takes a fresh reading",
+          calls() == 1 and load()["five_hour"]["used_pct"] == 61)
+    seed(five=60, updated=NOW - 600, seven=30)
+    run(["record"], sample(50, seven=30))
+    check("R1 an older, lower figure with an equal seven-day figure does not move updated_at",
+          load()["updated_at"] == NOW - 600 and load()["five_hour"]["used_pct"] == 60)
+    seed(five=60, updated=NOW - 600, seven=30)
+    run(["record"], sample(60, seven=35))
+    check("R1 a seven-day advance alone does not move updated_at",
+          load()["updated_at"] == NOW - 600 and load()["seven_day"]["used_pct"] == 35)
+    seed(five=60, updated=NOW - 600)
+    run(["record"], sample(61))
+    check("R1 a higher percent in the same window moves updated_at",
+          load()["updated_at"] == NOW)
+    seed(five=60, updated=NOW - 600)
+    run(["record"], sample(3, five_resets=R + 18000))
+    check("R1 a later window moves updated_at", load()["updated_at"] == NOW)
+
+
 def t_r1_no_ratelimits():
     seed(five=40)
     before = load()
@@ -354,6 +380,45 @@ def t_r2():
     check("R2 settings copies no option from a status line that is the wrapper itself",
           "padding" not in sl)
 
+    # session directory: settings from project_dir, command run in current_dir
+    clean()
+    sub = os.path.join(PROJ, "sub")
+    os.makedirs(sub, exist_ok=True)
+    write_user_status("pwd -P")
+    cwd_stdin = json.dumps({"session_id": "s9", "workspace": {"project_dir": PROJ,
+                                                              "current_dir": sub},
+                            "rate_limits": json.loads(sample(17))["rate_limits"]})
+    r = run_wrapper(cwd_stdin)
+    check("R2 the user command runs in current_dir, not in project_dir",
+          r.stdout.decode().strip() == os.path.realpath(sub))
+    no_user_status()
+    with open(PROJ_LOCAL, "w") as f:
+        json.dump({"statusLine": {"type": "command", "command": "pwd -P"}}, f)
+    r = run_wrapper(cwd_stdin)
+    check("R2 project settings are found with project_dir, and the command runs in current_dir",
+          r.stdout.decode().strip() == os.path.realpath(sub))
+    os.remove(PROJ_LOCAL)
+    cwd_stdin2 = json.dumps({"session_id": "s9", "cwd": sub,
+                             "rate_limits": json.loads(sample(17))["rate_limits"]})
+    write_user_status("pwd -P")
+    r = run_wrapper(cwd_stdin2)
+    check("R2 with no workspace the command runs in the session cwd",
+          r.stdout.decode().strip() == os.path.realpath(sub))
+
+    # CLAUDE_CONFIG_DIR
+    cfg = os.path.join(T, "cfg")
+    os.makedirs(cfg, exist_ok=True)
+    with open(os.path.join(cfg, "settings.json"), "w") as f:
+        json.dump({"statusLine": {"type": "command", "command": "echo from-config-dir",
+                                  "padding": 4}}, f)
+    no_user_status()
+    r = run_wrapper(stdin, CLAUDE_CONFIG_DIR=cfg)
+    check("R2 the user status line is read from CLAUDE_CONFIG_DIR when it is set",
+          r.stdout == b"from-config-dir\n")
+    r = run(["settings", "--cwd", PROJ], CLAUDE_CONFIG_DIR=cfg)
+    check("R2 settings copies the options from CLAUDE_CONFIG_DIR",
+          json.loads(r.stdout)["statusLine"].get("padding") == 4)
+
     write_user_status("echo x", padding=2, refreshInterval=7)
     r = run(["settings", "--cwd", PROJ])
     try:
@@ -410,14 +475,18 @@ def t_r3():
           d.get("plan_limits") is False and "five_hour" not in d)
 
     seed(five=44)
-    before = open(USAGE).read()
+    before = load()
     r = run(["refresh"], STUB_MODE="fail")
-    check("R3 a stub that fails to start leaves the file unchanged and exits non-zero",
-          r.returncode != 0 and open(USAGE).read() == before)
+    after = load()
+    check("R3 a stub that fails to start changes no figure or flag and exits non-zero",
+          r.returncode != 0 and all(after.get(k) == before.get(k) for k in before))
+    check("R3 a failed start is recorded as the last attempt, with its failure",
+          after.get("refresh_attempt_at") == NOW and after.get("refresh_failed") is True)
     clean()
     r = run(["refresh"], STUB_MODE="fail")
-    check("R3 a failed start with no file creates no file",
-          r.returncode != 0 and not os.path.exists(USAGE))
+    d = load() if os.path.exists(USAGE) else {}
+    check("R3 a failed start with no file records no figure and no plan flag",
+          r.returncode != 0 and "five_hour" not in d and "plan_limits" not in d)
 
     clean()
     t0 = time.time()
@@ -432,6 +501,26 @@ def t_r3():
           not alive(pid) and not alive(child))
     check("R3 a start that ran the status line but gave no figures records no plan limits",
           os.path.exists(USAGE) and load().get("plan_limits") is False)
+
+    # A no-figures start keeps a window that has not reset (fix round 2, finding 2).
+    seed(five=96, updated=NOW - 1000)
+    r = run(["refresh"], STUB_MODE="nofigures")
+    d = load()
+    check("R3 no figures with a live window stored: nothing recorded, non-zero exit",
+          r.returncode != 0 and d.get("plan_limits") is True
+          and d["five_hour"]["used_pct"] == 96 and d.get("refresh_failed") is True)
+    seed(five=96, updated=NOW - 1000)
+    r = run(["check", "--limit", "95"], STUB_MODE="nofigures")
+    check("R3 a no-figures start does not turn the slow-down off", r.returncode == 20)
+    seed(five=96, five_resets=NOW - 20, updated=NOW - 1000)
+    r = run(["refresh"], STUB_MODE="nofigures")
+    check("R3 no figures with only a window that has reset records no plan limits",
+          r.returncode == 0 and load().get("plan_limits") is False)
+
+    seed(five=60, updated=NOW - 1000)
+    run(["refresh"], STUB_MODE="figures", STUB_PCT=60)
+    check("R3 a refresh with an equal figure still moves the arrival time",
+          load()["updated_at"] == NOW and load().get("refresh_failed") is False)
 
     check("R3 no settings file has a changed modification time",
           os.stat(USER_SETTINGS).st_mtime_ns == m_user)
@@ -455,6 +544,29 @@ def t_r4():
     seed(five=30, updated=NOW - 60)
     r = run(["watch", "--ticks", "1", "--interval", "0.1"], STUB_MODE="figures")
     check("R4 watch takes no fresh reading when the newest sample is newer", calls() == 0)
+    seed(five=30, updated=NOW - 400)
+    d = load()
+    d["refresh_attempt_at"] = NOW - 60
+    d["refresh_failed"] = True
+    with open(USAGE, "w") as f:
+        json.dump(d, f)
+    run(["check"], STUB_MODE="figures")
+    run(["watch", "--ticks", "1", "--interval", "0.1"], STUB_MODE="figures")
+    run(["watch", "--ticks", "1", "--interval", "0.1", "--until", "stopped"], STUB_MODE="figures")
+    check("R4 a start inside 5 minutes of the last attempt is skipped (check, watch, until)",
+          calls() == 0)
+    d["refresh_attempt_at"] = NOW - 400
+    with open(USAGE, "w") as f:
+        json.dump(d, f)
+    run(["check"], STUB_MODE="figures")
+    check("R4 an attempt older than 5 minutes allows a new start", calls() == 1)
+    seed(five=30, updated=NOW - 400)
+    procs = [subprocess.Popen([PY, SCRIPT, "check"], env=env(STUB_MODE="figures", STUB_DELAY="1"),
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+             for _ in range(4)]
+    for p in procs:
+        p.wait()
+    check("R4 four processes that find the file stale start claude once", calls() == 1)
     seed(five=None, plan=False, checked=NOW - 60)
     run(["check"], STUB_MODE="figures")
     check("R4 a recent no-plan-limits check counts as a fresh reading", calls() == 0)
@@ -486,11 +598,23 @@ def t_r5():
     check("R5 plain show prints one line for each window",
           r.returncode == 0 and len(r.stdout.decode().strip().splitlines()) == 2)
     seed(five=None, plan=False, checked=NOW - 5)
-    check("R5 show exits non-zero when the account has no plan limits",
-          run(["show", "--json"]).returncode != 0 and run(["show"]).returncode != 0)
+    r1, r2 = run(["show", "--json"]), run(["show"])
+    check("R5 show exits 2 when the account has no plan limits, and says so",
+          r1.returncode == 2 and r2.returncode == 2 and b"no plan limits" in r1.stderr
+          and b"no plan limits" in r2.stderr)
     clean()
-    check("R5 show exits non-zero with no file",
-          run(["show", "--json"]).returncode != 0 and run(["show"]).returncode != 0)
+    r1, r2 = run(["show", "--json"]), run(["show"])
+    check("R5 show exits 1 with no file, and says there are no figures",
+          r1.returncode == 1 and r2.returncode == 1 and b"no figures" in r1.stderr
+          and b"no figures" in r2.stderr)
+    seed(five=96, five_resets=NOW - 20, updated=NOW - 100, seven=40)
+    d = json.loads(run(["show", "--json"]).stdout)
+    check("R5 show after the window reset: used_pct 0, full_at null, reset true, resets_at kept",
+          d["five_hour"]["used_pct"] == 0 and d["five_hour"]["full_at"] is None
+          and d["five_hour"]["reset"] is True and d["five_hour"]["resets_at"] == NOW - 20)
+    seed(five=50)
+    d = json.loads(run(["show", "--json"]).stdout)
+    check("R5 show inside the window has reset false", d["five_hour"]["reset"] is False)
 
 
 # ---------------------------------------------------------------- R6
@@ -599,7 +723,54 @@ def t_r7():
         f.write(str(R + 30))
     time.sleep(1.5)
     lines = stop(p)
-    check("R7 a reset prints one line", len(lines) == 1 and "reset" in lines[0].lower())
+    check("R7 a reset prints one line, with the level after it",
+          len(lines) == 1 and "reset" in lines[0].lower() and "level=normal" in lines[0])
+
+    # a new window in the file, with the clock before the old reset
+    seed(five=96, first=(NOW - 3610, 96))
+    p = start_watch()
+    time.sleep(1.0)
+    seed(five=4, five_resets=R + 18000, first=(NOW - 5, 4))
+    time.sleep(1.2)
+    lines = stop(p)
+    check("R7 a later window in the file prints one reset line with the level",
+          len(lines) == 1 and "reset" in lines[0].lower() and "level=normal" in lines[0])
+
+    # a reset after a window that stayed normal costs no line
+    with open(NOWFILE, "w") as f:
+        f.write(str(NOW))
+    seed(five=20, first=flat)
+    p = start_watch(CREW_USAGE_NOW="@" + NOWFILE)
+    time.sleep(1.0)
+    with open(NOWFILE, "w") as f:
+        f.write(str(R + 30))
+    time.sleep(1.2)
+    lines = stop(p)
+    check("R7 a reset after a normal window prints no line", lines == [])
+
+    # --until stopped: waits with no output, exits 20 at stopped
+    seed(five=85, first=(NOW - 3610, 85))
+    p = subprocess.Popen([PY, SCRIPT, "watch", "--until", "stopped", "--interval", "0.2"],
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env())
+    time.sleep(1.0)
+    alive_before = p.poll() is None
+    seed(five=96, first=(NOW - 3610, 96))
+    try:
+        out, _ = p.communicate(timeout=5)
+        rc = p.returncode
+    except subprocess.TimeoutExpired:
+        p.kill()
+        out, rc = b"", None
+    check("R7 watch --until stopped runs while the level is below stopped and exits 20 at stopped",
+          alive_before and rc == 20 and b"stopped" in out)
+    seed(five=85, first=(NOW - 3610, 85))
+    r = run(["watch", "--until", "stopped", "--interval", "0.2", "--ticks", "3"])
+    check("R7 watch --until stopped prints nothing and exits 0 when its ticks end below stopped",
+          r.returncode == 0 and r.stdout == b"")
+    seed(five=97, first=(NOW - 3610, 97))
+    r = run(["watch", "--until", "stopped", "--limit", "95"], timeout=10)
+    check("R7 watch --until stopped exits 20 at once when the level is stopped at the start",
+          r.returncode == 20)
 
     now2 = {n: (os.stat(os.path.join(orch, n)).st_mtime_ns, open(os.path.join(orch, n)).read())
             for n in os.listdir(orch)}
@@ -626,6 +797,22 @@ def t_r8_wait():
         rc = None
     check("R8 the wait command does not exit before the reset", before is None)
     check("R8 the wait command exits zero after the reset", rc == 0)
+    # a newer window in the file ends the wait before the clock passes the reset
+    with open(NOWFILE, "w") as f:
+        f.write(str(NOW))
+    seed(five=96, first=(NOW - 3610, 96))
+    p = subprocess.Popen([PY, SCRIPT, "wait", "--interval", "0.2"], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, env=env(CREW_USAGE_NOW="@" + NOWFILE))
+    time.sleep(1.0)
+    before = p.poll()
+    seed(five=3, five_resets=R + 18000)
+    try:
+        rc = p.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        rc = None
+    check("R8 the wait command exits on a newer window in the file before the clock reaches the reset",
+          before is None and rc == 0)
     clean()
     r = run(["wait", "--interval", "0.2"], timeout=10)
     check("R8 the wait command exits non-zero at once when no figures exist",
@@ -636,7 +823,7 @@ def main():
     base = after = None
     try:
         for fn in (t_r1_merge, t_r1_no_ratelimits, t_r1_flag_cleared, t_r1_fields,
-                   t_r1_concurrent, t_r2, t_r3, t_r4, t_r5, t_r6, t_r7, t_r8_wait):
+                   t_r1_idle_repeat, t_r1_concurrent, t_r2, t_r3, t_r4, t_r5, t_r6, t_r7, t_r8_wait):
             try:
                 res = fn()
                 if fn is t_r2:

@@ -304,6 +304,7 @@ under a `##` heading with one of these names:
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
 | `Merge` | your own merge steps for an orchestrator, in plain words, such as "post the PR link in the review channel and wait for an approval, then use the merge queue" |
 | `Concurrency` | how many project leads an orchestrator runs at one time. Only the machine file sets it |
+| `Implementer model` | the model of each project lead that an orchestrator starts, such as `sonnet`. Only the machine file sets it |
 | `Deploy` | how crew sees that a merge is live: `environment: <name>`, `workflow: <name>`, `none` (the repo has no deploy, so the run closes at the merge) or `manual` (the repo deploys where GitHub cannot see, so crew waits for your word), and an optional `timeout: <minutes>` (default 180). With no section, crew looks for a successful production deployment, or a deploy or release workflow run, on GitHub. A repo with neither and no deploy or release workflow closes 2 minutes after the merge, unless the merged PR added or renamed a workflow file. A repo with such a workflow or such a file and no run closes 10 minutes after the merge |
 
 ```
@@ -422,7 +423,7 @@ else: every package takes the same steps.
 |---|---|---|
 | Project lead | your session's: use `fable` | your session's: use `high` |
 | Orchestrator | your session's | your session's |
-| Project lead that an orchestrator starts | opus, unless you name another model | your default |
+| Project lead that an orchestrator starts | opus, unless you name another model or set `Implementer model` | your default |
 | IC, Instruction IC | the package's band: sonnet or opus | your session's |
 | Scout | haiku | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |

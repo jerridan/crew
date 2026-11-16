@@ -102,6 +102,10 @@ after=$(cd "$D" && ls -la; cat orchestrator.json)
 [ "$before" = "$after" ] || fail "second init changed the record"
 pass
 
+STEP="init writes closed_at null"
+jcheck '"closed_at" in s and s["closed_at"] is None'
+pass
+
 STEP="CREW_ORCH stands in for --orch"
 CREW_ORCH=fleet python3 "$ORCH_PY" show >/dev/null || fail "show with CREW_ORCH failed"
 pass
@@ -128,6 +132,13 @@ expect_exit 0 orch item editor set launch '{"session_name": "s-editor", "termina
 expect_exit 0 orch item editor set launch.tab '"tmux:%3"'
 jcheck 's["items"]["editor"]["title"] == "Editor dialog v2"'
 jcheck 's["items"]["editor"]["launch"] == {"session_name": "s-editor", "terminal": "tmux", "tab": "tmux:%3"}'
+pass
+
+STEP="item set launch takes session_id, as a whole object and as a dotted key"
+expect_exit 0 orch item settings set launch '{"session_name": "s-settings", "session_id": "11111111-2222-4333-8444-555555555555"}'
+jcheck 's["items"]["settings"]["launch"]["session_id"] == "11111111-2222-4333-8444-555555555555"'
+expect_exit 0 orch item settings set launch.session_id '"resumed-1"'
+jcheck 's["items"]["settings"]["launch"] == {"session_name": "s-settings", "session_id": "resumed-1"}'
 pass
 
 # ---------------------------------------------------------------- AC4
@@ -1008,6 +1019,42 @@ fi
 for f in board-json.ts board-text.ts; do
   cmp -s "$TMP/fix/$f" "$FIX/$f" || fail "tests/fixtures/$f differs from a fresh run; run CREW_ORCH_WRITE_FIXTURES=1 bash $0 on purpose: $(diff "$TMP/fix/$f" "$FIX/$f" 2>&1 | head -20)"
 done
+pass
+
+# ---------------------------------------------------------------- close
+# A record of its own, so every check above sees an open record.
+closer() { python3 "$ORCH_PY" --orch closer "$@"; }
+CD="$CREW_RECORD_ROOT/orchestrators/closer"
+
+STEP="close sets closed_at to now and prints it on one line"
+expect_exit 0 closer init
+expect_exit 2 closer close now
+one_line_err
+expect_exit 0 closer close
+[ "$(wc -l <"$TMP/out" | tr -d ' ')" -eq 1 ] || fail "close printed not one line: $(cat "$TMP/out")"
+stamp=$(cat "$TMP/out")
+python3 -c 'import sys; from datetime import datetime; datetime.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")' "$stamp" \
+  || fail "close printed no time: $stamp"
+python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["closed_at"] == sys.argv[2] else 1)' "$CD/orchestrator.json" "$stamp" \
+  || fail "closed_at is not the printed value"
+pass
+
+STEP="a second close exits 1 and changes nothing"
+before=$(cat "$CD/orchestrator.json")
+expect_exit 1 closer close
+one_line_err
+[ ! -s "$TMP/out" ] || fail "a second close printed: $(cat "$TMP/out")"
+[ "$before" = "$(cat "$CD/orchestrator.json")" ] || fail "a second close changed the record"
+pass
+
+STEP="an old record with no closed_at reads as null, and close works on it"
+expect_exit 0 python3 "$ORCH_PY" --orch oldrec init
+OD="$CREW_RECORD_ROOT/orchestrators/oldrec"
+python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p)); del s["closed_at"]; json.dump(s, open(p, "w"))' "$OD/orchestrator.json"
+python3 "$ORCH_PY" --orch oldrec show >"$TMP/old.json" || fail "show of an old record failed"
+python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); sys.exit(0 if "closed_at" in s and s["closed_at"] is None else 1)' "$TMP/old.json" \
+  || fail "an old record does not show closed_at null"
+expect_exit 0 python3 "$ORCH_PY" --orch oldrec close
 pass
 
 echo "all checks passed"

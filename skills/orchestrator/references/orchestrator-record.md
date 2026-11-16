@@ -57,6 +57,7 @@ Top-level keys:
 | `version` | `1` |
 | `name` | the orchestrator name |
 | `created_at`, `updated_at` | times |
+| `closed_at` | the time of `close`, or `null` while the run is open. See "Closing the record" |
 | `counters` | `{item, decision, question, idea, notice}`, each an integer that only grows |
 | `items` | an object keyed by item id |
 | `groups` | an object keyed by group id |
@@ -113,7 +114,7 @@ alone. No command sets them.
 | `refreshed_at` | a time |
 | `error` | one line, or `null` |
 
-`launch` holds nine keys, each a string or `null`. The launcher writes them.
+`launch` holds ten keys, each a string or `null`. The launcher writes them.
 
 | Key | Holds |
 |---|---|
@@ -126,6 +127,7 @@ alone. No command sets them.
 | `terminal` | `iterm2` or `tmux` |
 | `tab` | `iterm2:<session unique id>` or `tmux:<pane id>` |
 | `tab_group` | a tab group name, or `null` for none |
+| `session_id` | the id of the project lead's conversation, which `launcher.py resume` takes |
 
 ### A group
 
@@ -375,3 +377,16 @@ Each line is one command and what it does.
 | `refresh [<item>]` | reads each item that has a PR with `gh`, and writes `github`. A failed `gh` call keeps the last values, prints one line and does not fail the command |
 | `board [--urls \| --json]` | prints the board as text, or as one JSON object with `--json` |
 | `show [<item>]` | prints the whole state, or one item, as JSON |
+| `close` | sets `closed_at`. See "Closing the record" |
+
+## Closing the record
+
+`close` takes no argument. It sets `closed_at` to the time now and prints
+that value on one line. A `close` of a record that is already closed exits 1
+and changes nothing.
+
+`init` writes `closed_at` as `null`. A record that has no `closed_at` key
+reads as `null`, so `close` works on a record from before this key.
+
+A closed record stays on disk as the history of the run. `close` changes no
+other field, and the other commands still work on a closed record.

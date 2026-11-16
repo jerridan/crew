@@ -118,7 +118,7 @@ rule ships 2 minutes after it (§15.137). The watch ran only against a seeded re
 run has used it (§15.127).
 
 The orchestrator launcher is built and ran only against its seeded test, and
-no crew run has exercised it (§15.TBD-152).
+no crew run has exercised it (§15.140).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

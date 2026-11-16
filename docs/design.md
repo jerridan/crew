@@ -9319,7 +9319,7 @@ Deliberately different:
      Only the seeded test has run this. No orchestrator and no project lead
      has used it yet.
 
-TBD-152. **The orchestrator launcher — 2026-11-16.** Issue 152 builds the
+140. **The orchestrator launcher — 2026-11-16.** Issue 152 builds the
      launcher of `crew:orchestrator`: `skills/orchestrator/scripts/launcher.py`
      with the subcommands `start`, `groups`, `focus` and `stop`, its iTerm2
      helper `iterm2-tabs.py`, and the seeded test `test-launcher.sh`.

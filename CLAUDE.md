@@ -131,7 +131,7 @@ sessions rather than from the checkout (§15.90).
 The plan usage figures are built: a status line wrapper in each launched
 implementer feeds one shared file, a fresh reading covers idle time, and
 `check`, `watch` and `wait` give the levels, the wake line and the restart
-(§15.NNN). The wrapper and the fresh reading ran live once each. No
+(§15.141). The wrapper and the fresh reading ran live once each. No
 orchestrator run has used them yet.
 
 Subagent mode is built and on trial: with the teams flag unset, every

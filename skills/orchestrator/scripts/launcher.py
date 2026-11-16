@@ -380,14 +380,29 @@ def launch_command(worktree, name, model, settings, principal):
     )
 
 
+def tmux(args):
+    """Run one tmux command with no Claude Code session variable.
+
+    A tmux server that this call starts keeps its environment and passes it
+    to every window. A claude in one of those windows must not read the
+    CLAUDECODE or CLAUDE_CODE_* values of the session that ran the launcher.
+    """
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k != "CLAUDECODE" and not k.startswith("CLAUDE_CODE_")
+    }
+    return run(["tmux"] + args, env=env)
+
+
 def tmux_start(name, group, command, worktree):
     session = group or "crew"
-    rc, _, _ = run(["tmux", "has-session", "-t", "=" + session])
+    rc, _, _ = tmux(["has-session", "-t", "=" + session])
     if rc == 0:
-        cmd = ["tmux", "new-window", "-t", "=%s:" % session, "-n", name, "-P", "-F", "#{pane_id}", command]
+        cmd = ["new-window", "-t", "=%s:" % session, "-n", name, "-P", "-F", "#{pane_id}", command]
     else:
-        cmd = ["tmux", "new-session", "-d", "-s", session, "-n", name, "-P", "-F", "#{pane_id}", command]
-    rc, out, err = run(cmd)
+        cmd = ["new-session", "-d", "-s", session, "-n", name, "-P", "-F", "#{pane_id}", command]
+    rc, out, err = tmux(cmd)
     pane = one_line(out)
     if rc != 0 or not PANE_RE.fullmatch(pane):
         raise Fail(
@@ -521,7 +536,7 @@ def start(a):
 def groups(_a):
     terminal = detect_terminal()
     if terminal == "tmux":
-        rc, out, _ = run(["tmux", "list-sessions", "-F", "#{session_id}\t#{session_name}"])
+        rc, out, _ = tmux(["list-sessions", "-F", "#{session_id}\t#{session_name}"])
         if rc != 0:
             return OK  # no tmux server: no session, no group
         for line in out.splitlines():
@@ -561,7 +576,7 @@ def split_handle(handle):
 
 
 def tmux_pane_exists(pane):
-    rc, _, _ = run(["tmux", "display-message", "-p", "-t", pane, "#{session_name}"])
+    rc, _, _ = tmux(["display-message", "-p", "-t", pane, "#{session_name}"])
     return rc == 0
 
 
@@ -580,15 +595,15 @@ def focus(a):
         return OK
     if not tmux_pane_exists(ref):
         raise Fail(BAD_HANDLE, "launcher: no tmux pane %s" % ref)
-    run(["tmux", "select-window", "-t", ref])
-    run(["tmux", "select-pane", "-t", ref])
+    tmux(["select-window", "-t", ref])
+    tmux(["select-pane", "-t", ref])
     if os.environ.get("TMUX"):
-        run(["tmux", "switch-client", "-t", ref])
+        tmux(["switch-client", "-t", ref])
     else:
-        rc, out, _ = run(["tmux", "list-clients", "-F", "#{client_name}"])
+        rc, out, _ = tmux(["list-clients", "-F", "#{client_name}"])
         client = one_line(out) if rc == 0 else ""
         if client:
-            run(["tmux", "switch-client", "-c", client, "-t", ref])
+            tmux(["switch-client", "-c", client, "-t", ref])
     return OK
 
 
@@ -601,7 +616,7 @@ def stop(a):
     if not tmux_pane_exists(ref):
         print("launcher: %s was already gone" % a.handle)
         return OK
-    rc, _, err = run(["tmux", "kill-pane", "-t", ref])
+    rc, _, err = tmux(["kill-pane", "-t", ref])
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane %s failed: %s" % (ref, one_line(err) or "exit %d" % rc))
     return OK

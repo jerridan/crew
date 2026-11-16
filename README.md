@@ -22,12 +22,13 @@ waits for your go-ahead before it pushes or replies on the PR. A comment from
 a bot, a failed check and a comment from your own GitHub account take no
 go-ahead.
 
-Two entry points:
+Three entry points:
 
 | Command | Use it for |
 |---|---|
 | `/crew:project-lead` | One goal, run in the session you are in. It sizes the work itself and brings you every question it cannot answer. |
 | `/crew:review` | One colleague's PR. It reviews the PR as a skeptical staff reviewer, posts the review on GitHub, and stays with the PR to the merge. |
+| `/crew:orchestrator` | Many goals at once. It splits the work, starts one project lead per item in its own terminal tab, answers their questions, and merges their PRs in order. |
 
 Crew is experimental. It has taken real goals to draft PRs, and the plugin
 changes often. `/crew:review` has run once.
@@ -233,6 +234,41 @@ tells you, with the reason.
 To use another reviewer, say so in plain words, as for a goal:
 `use Codex for the review`.
 
+### Run many goals with an orchestrator
+
+Start Claude Code in iTerm2 or in tmux, in a checkout of a repo it trusts.
+Then hand over the work:
+
+```
+/crew:orchestrator run these tickets: #41, #42, #45
+```
+
+You can hand over one thing, a group of tickets, a milestone or project, or
+one large ticket that it splits. Hand over more at any time in the same
+session.
+
+The orchestrator splits the work with no approval step, and creates the
+sub-tickets where your tickets live. It starts one project lead per item, in
+its own tab and worktree. At most three work at one time. Each project lead
+sends its questions and reports to the orchestrator, not to you.
+
+What needs you goes into an inbox, and each entry has an id. Answer by id:
+
+```
+q5: yes, include the archived rows
+```
+
+The orchestrator merges each PR when its checks pass, each review finding has
+a fix or a reply, and the approval the repo requires is present. It merges
+related PRs one at a time, in order. Before a project lead starts in a new
+repo, it asks you one time where your checkout of that repo is.
+
+To change the number that work at one time, say so:
+
+```
+run five at a time
+```
+
 ## What a run needs
 
 | Requirement | How | Which runs |
@@ -266,6 +302,8 @@ under a `##` heading with one of these names:
 | `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for the deploy of the merge, or for your word under `Deploy: manual`, not for the merge alone |
 | `Branch names` | your rule for a branch name |
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
+| `Merge` | your own merge steps for an orchestrator, in plain words, such as "post the PR link in the review channel and wait for an approval, then use the merge queue" |
+| `Concurrency` | how many project leads an orchestrator runs at one time. Only the machine file sets it |
 | `Deploy` | how crew sees that a merge is live: `environment: <name>`, `workflow: <name>`, `none` (the repo has no deploy, so the run closes at the merge) or `manual` (the repo deploys where GitHub cannot see, so crew waits for your word), and an optional `timeout: <minutes>` (default 180). With no section, crew looks for a successful production deployment, or a deploy or release workflow run, on GitHub. A repo with neither and no deploy or release workflow closes 2 minutes after the merge, unless the merged PR added or renamed a workflow file. A repo with such a workflow or such a file and no run closes 10 minutes after the merge |
 
 ```
@@ -383,6 +421,8 @@ else: every package takes the same steps.
 | Agent | Model | Reasoning effort |
 |---|---|---|
 | Project lead | your session's: use `fable` | your session's: use `high` |
+| Orchestrator | your session's | your session's |
+| Project lead that an orchestrator starts | opus, unless you name another model | your default |
 | IC, Instruction IC | the package's band: sonnet or opus | your session's |
 | Scout | haiku | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |
@@ -439,6 +479,7 @@ review kind, over every record.
 | Role | What it does |
 |---|---|
 | Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays until the work ships: it watches the PR and CI, fixes what lands, and waits for your go-ahead before it answers another person's comment or a finding you sent. It answers your questions and takes your changes too. |
+| Orchestrator | Runs many goals from one session: splits the work, starts a project lead per item in its own tab, answers their questions, keeps an inbox of what needs you, and merges in order. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |

@@ -15,6 +15,8 @@ seeded record (design §15.38, §15.50, §15.123, §15.124).
 deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/launcher.py` and
 `iterm2-tabs.py` are code too, and `test-launcher.sh` tests them with stub
 commands.
+deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/crew-usage.py` is
+code too, and `test-crew-usage.py` beside it tests it with a stub `claude`.
 
 ## Layout
 
@@ -33,6 +35,8 @@ commands.
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
+| `skills/orchestrator/scripts/crew-usage.py`, `skills/orchestrator/references/usage.md` | the plan usage figures of the account in `<record-root>/usage.json`: the status line wrapper, the fresh reading, `show`, `check`, `watch` and `wait`; the reference that owns the figures, the levels and the slow-down | the orchestrator, from Bash and `Monitor`; a project lead with a `Usage limit:` charter line; the launcher's `--settings` value |
+| `skills/orchestrator/scripts/test-crew-usage.py` | the seeded test of `crew-usage.py`, with a stub `claude` | a person |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
 | `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
 | `skills/orchestrator/scripts/crew-orch.py`, `skills/orchestrator/scripts/test-crew-orch.sh` | the only writer of the orchestrator record, and its board; the seeded test, with a stub `gh` | an orchestrator and a project lead it started, from Bash; a person runs the test |
@@ -124,6 +128,12 @@ Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own
 sessions rather than from the checkout (§15.90).
 
+The plan usage figures are built: a status line wrapper in each launched
+implementer feeds one shared file, a fresh reading covers idle time, and
+`check`, `watch` and `wait` give the levels, the wake line and the restart
+(§15.NNN). The wrapper and the fresh reading ran live once each. No
+orchestrator run has used them yet.
+
 Subagent mode is built and on trial: with the teams flag unset, every
 dispatch is a background subagent. One probe passed its four checks, and no
 crew run has used the mode yet (§15.131).
@@ -176,6 +186,8 @@ Each reference owns one subject and is canonical for it:
 - `writing-standard.md` — how an instruction file and a README are written.
 - `skills/orchestrator/references/orchestrator-record.md` — the orchestrator
   record and its command line.
+- `skills/orchestrator/references/usage.md` — the plan usage figures, the
+  levels and the orchestrator's slow-down.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A
 second copy is worse than no copy, because nothing decides which copy wins.

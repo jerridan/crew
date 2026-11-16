@@ -222,6 +222,9 @@ The rules for the run:
   queue event needs you.
 - **Uncovered actions.** Name each action that no allow rule covers, and say
   that the implementer does not take it.
+- **Review threads.** Reply in each review thread with your fix or your
+  decline, then resolve that thread. The command is in
+  `skills/review/references/github-review.md`'s "The resolve command".
 - **Interfaces.** Report an interface that another item depends on to you.
   Ask you, not the other part, for an interface that is not merged.
 - **Shared values.** Name each value that you own ("Groups and shared
@@ -308,9 +311,9 @@ first. Each check names what decides it.
 |---|---|
 | The record allows the merge | the item's merge value is `can merge` (`orchestrator-record.md`'s "The merge value") |
 | The ready line is for the current head | the sha of the implementer's newest ready line equals `headRefOid` of `gh pr view <n> --json headRefOid` |
-| Each finding of a review or of CI has a fix or a reply | that ready line names each finding. The findings are in `gh pr view <n> --json reviews,comments` and in the comments of each review thread |
-| Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false` |
-| A repo that requires no approval has one | the ready line for the current head is the approval (rule 7) |
+| Each finding outside a review thread has a fix or a reply | that ready line names each finding in `gh pr view <n> --json reviews,comments` |
+| Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false`. This row covers each finding in a thread |
+| A repo that requires no approval has one | `reviewDecision` of `gh pr view <n> --json reviewDecision` is empty. Then the ready line for the current head is the approval (rule 7) |
 | The overlap check is done | "The overlap check" gives this PR the next place |
 
 A finding that the ready line does not name is not answered yet. Ask the
@@ -320,8 +323,11 @@ PR on the line alone.
 
 **The method.** Merge by rebase when the repo allows it. Else use the one
 method that the repo allows. `gh repo view --json
-rebaseMergeAllowed,squashMergeAllowed,mergeCommitAllowed` says which. In a
-repo with a merge queue, the merge command puts the PR in the queue.
+rebaseMergeAllowed,squashMergeAllowed,mergeCommitAllowed` says which. Give
+the merge command the sha that the ready-line row read, as `gh pr merge
+--match-head-commit <sha>`, so that GitHub refuses the merge when the head
+moved. In a repo with a merge queue, the merge command puts the PR in the
+queue.
 
 **A `Merge` section replaces part of this procedure.** The section holds
 prose steps, for example: "post the PR link in a review channel and wait for
@@ -330,7 +336,11 @@ file, `.claude/crew.md` on the default branch, and from the machine file. The
 order of sources decides which wins ("Standing instructions" below). It
 replaces two things: the method, and the row "A repo that requires no
 approval has one". Every other row of the table stays, and so do the group
-order and the overlap check.
+order and the overlap check. Run its steps when every row passes, or when the
+only failed condition is the approval: the merge value is `needs review`.
+
+With no `Merge` section, a merge value of `needs review` means that the PR
+waits for a human approval. Put a notice in the inbox, with the PR link.
 
 **After the merge.** When the merge command succeeded, or the queue merged
 the PR, tell the implementer. Write `pace.slots.busy` one lower. Then start

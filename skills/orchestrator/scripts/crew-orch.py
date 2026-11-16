@@ -230,9 +230,13 @@ def merge_value(item: dict) -> str:
     merge_state = gh.get("merge_state")
     decision = gh.get("review_decision")
     waits = item.get("waits_on") or []
-    if gh and not draft and decision == "APPROVED" and merge_state == "CLEAN" and checks_ok and not waits:
+    # GitHub gives an empty decision when the repo requires no review; it is
+    # stored as null. With merge state CLEAN, such a PR can merge.
+    if gh and not draft and decision in ("APPROVED", None) and merge_state == "CLEAN" and checks_ok and not waits:
         return "can merge"
-    if gh and not draft and checks_ok and merge_state in ("CLEAN", "BLOCKED") and decision in (None, "REVIEW_REQUIRED"):
+    if gh and not draft and checks_ok and (
+            (decision == "REVIEW_REQUIRED" and merge_state in ("CLEAN", "BLOCKED"))
+            or (decision is None and merge_state == "BLOCKED")):
         return "needs review"
     if waits:
         return "waits on " + ", ".join(waits)
@@ -769,7 +773,10 @@ def check_summary(rollup: list) -> tuple:
         key = (check.get("workflowName") or "", name)
         # A run with no start time is queued or waiting, so it is the newest
         # run of its name. Of two such runs, the later one in the list wins.
-        stamp = check.get("startedAt") or "\uffff"
+        # gh prints an unset start time as the zero time, 0001-01-01T00:00:00Z.
+        stamp = check.get("startedAt") or ""
+        if not stamp or stamp.startswith("0001-01-01"):
+            stamp = "\uffff"
         if key not in latest or stamp >= latest[key][0]:
             latest[key] = (stamp, name, check)
     if not latest:
@@ -990,12 +997,13 @@ def marks(stage: str) -> str:
 
 
 def shows_merge(item: dict) -> bool:
-    """`True` when the status word is the merge value: a PR at stage `review` or
-    later, or stage `merged` or `shipped`. Stage `closed` shows `closed`."""
+    """`True` when the status word is the merge value: a PR that a refresh has
+    read, at stage `review` or `pr`, or stage `merged` or `shipped`. Stage
+    `closed` shows `closed`. A PR with no refresh yet shows the stage word."""
     stage = item["stage"]
     if stage in ("merged", "shipped"):
         return True
-    return bool(item.get("pr")) and stage in ("review", "pr")
+    return bool(item.get("pr")) and item.get("github") is not None and stage in ("review", "pr")
 
 
 def status_word(item: dict) -> str:

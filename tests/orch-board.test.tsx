@@ -101,7 +101,12 @@ type World = {
 const world = (
   on: On,
   boards: (Json | Run)[],
-  options: { env?: Record<string, string>; launcher?: Run } = {},
+  options: {
+    env?: Record<string, string>
+    launcher?: Run
+    // Holds a run of either command until the promise it returns settles.
+    hold?: (argv: string[]) => Promise<void> | undefined
+  } = {},
 ): World => {
   const w: World = {
     board: [],
@@ -115,11 +120,12 @@ const world = (
     clock: mock.clock(on, { now: NOW }),
   }
   mock.env(on, options.env ?? {})
-  on('process.run', (_, e) => {
+  on('process.run', async (_, e) => {
     const argv = [...e.argv]
     if (argv[0] === 'python3' && argv[1]?.endsWith(BOARD_PY)) {
       w.board.push(argv)
       const next = boards[Math.min(w.board.length, boards.length) - 1]
+      await options.hold?.(argv)
       const run =
         next && typeof next === 'object' && 'exitCode' in next
           ? (next as Run)
@@ -128,6 +134,7 @@ const world = (
     }
     if (argv[0] === 'python3' && argv[1]?.endsWith(LAUNCHER_PY)) {
       w.launcher.push(argv)
+      await options.hold?.(argv)
       const run = options.launcher ?? { exitCode: 0, stdout: '', stderr: '' }
       return { value: { ...run, isStdoutTruncated: false, isStderrTruncated: false } }
     }
@@ -270,6 +277,24 @@ test('R13 /orch-board x runs the board command with --orch x', async ($, on) => 
   expect(w.board[0]?.slice(2)).toEqual(['--orch', 'x', 'board', '--json'])
   expect(w.board[0]?.[1] ?? '').toEndWith(BOARD_PY)
   expect(w.opens).toHaveLength(1)
+})
+
+test('R13 a read for x that ends after /orch-board y does not draw x under y', async ($, on) => {
+  const g = gate()
+  const forX = board({ sections: [singles([row(1, 'from-x')])] })
+  const forY = board({ sections: [singles([row(1, 'from-y')])] })
+  const w = world(on, [forX, forY], { hold: argv => (argv.includes('x') ? g.promise : undefined) })
+  await start($)
+  const first = runCommand($, 'x')
+  await until(() => w.board.length === 1)
+  await runCommand($, 'y')
+  g.open()
+  await first
+  const ui = await mount($)
+  const text = words(await ui.drawn())
+  expect(text).toContain('from-y')
+  expect(text).not.toContain('from-x')
+  await ui.unmount()
 })
 
 test('R13 with no argument the name comes from CREW_ORCH', async ($, on) => {
@@ -531,6 +556,50 @@ test('R9 a non-zero exit of the launcher shows its exit code', async ($, on) => 
   await ui.unmount()
 })
 
+test('R9 focus exit 7 makes one launcher call and shows the exit code and the stderr text', async ($, on) => {
+  const w = world(on, [FOCUS], { launcher: { exitCode: 7, stdout: '', stderr: 'launcher: no tmux pane %7\n' } })
+  await command($, 'x')
+  const ui = await mount($)
+  await ui.input({ key: 'go', text: '2' })
+  expect(w.launcher).toHaveLength(1)
+  const line = words(byKey(await ui.drawn(), 'line'))
+  expect(line).toContain('exited 7')
+  expect(line).toContain('launcher: no tmux pane %7')
+  await ui.unmount()
+})
+
+// A promise and the function that settles it.
+const gate = () => {
+  let open = () => {}
+  const promise = new Promise<void>(resolve => {
+    open = resolve
+  })
+  return { promise, open }
+}
+
+// Wait until a condition holds, a bounded number of turns.
+const until = async (ok: () => boolean) => {
+  for (let i = 0; i < 1000 && !ok(); i++) await new Promise(r => setTimeout(r, 0))
+  expect(ok()).toBe(true)
+}
+
+const runCommand = ($: Json, args: string) =>
+  $.command.run({ command: 'orch-board', args, presentation: { isFullscreen: true, columns: 200 } } as never)
+
+test('R9 a focus result that ends after /orch-board y shows no line under y', async ($, on) => {
+  const g = gate()
+  const w = world(on, [FOCUS], { hold: argv => (argv.includes('focus') ? g.promise : undefined) })
+  await command($, 'x')
+  const ui = await mount($)
+  const typed = ui.input({ key: 'go', text: '2' })
+  await until(() => w.launcher.length === 1)
+  await runCommand($, 'y')
+  g.open()
+  await typed
+  expect(byKey(await ui.drawn(), 'line')).toBeUndefined()
+  await ui.unmount()
+})
+
 // ---------------------------------------------------------------- R10
 
 const withNeeds = (...ids: string[]) => board({ needs_you: needs(...ids.map(id => entry(id))) })
@@ -620,6 +689,73 @@ for (const columns of [40, 60]) {
   })
 }
 
+// A row's width: its indent, its cells and the gaps between them.
+const rowWidth = (node: Node | undefined) => {
+  const sizes = widths(node)
+  const gap = Number(node?.props?.gap ?? 0)
+  const indent = Number(node?.props?.paddingLeft ?? 0)
+  return indent + sizes.reduce((s, x) => s + x, 0) + gap * (sizes.length - 1)
+}
+
+test('R11 at 80 columns the row text truncates before the single-item ticket', async ($, on) => {
+  world(on, [FIXTURE])
+  await command($, 'x')
+  const ui = await mount($, 'terminal', 80)
+  const tree = await ui.drawn()
+  const loner = (FIXTURE.sections as Json[]).flatMap(s => s.rows).find((r: Json) => r.ticket)
+  expect(cells(byKey(tree, `row-${loner.n}`))).toContain(loner.ticket.id)
+  for (const section of FIXTURE.sections) {
+    for (const r of section.rows as Json[]) expect(rowWidth(byKey(tree, `row-${r.n}`))).toBeLessThanOrEqual(80)
+  }
+  await ui.unmount()
+})
+
+for (const columns of [40, 60]) {
+  test(`R11 at ${columns} columns each Needs-you row fits the pane and keeps its question readable`, async ($, on) => {
+    world(on, [FIXTURE])
+    await command($, 'x')
+    const ui = await mount($, 'terminal', columns)
+    const tree = await ui.drawn()
+    for (const e of FIXTURE.needs_you.entries as Json[]) {
+      const node = byKey(tree, `need-${e.id}`)
+      const got = cells(node)
+      expect(rowWidth(node)).toBeLessThanOrEqual(columns)
+      got.forEach((text, i) => expect(text.length).toBeLessThanOrEqual(widths(node)[i] ?? 0))
+      expect(got).toContain(e.id)
+      // The question keeps at least 15 characters, or all of it.
+      const question = got.at(-1) ?? ''
+      expect(question.length).toBeGreaterThanOrEqual(Math.min(15, e.text.length))
+      expect(e.text.startsWith(question.replace(/…$/, ''))).toBe(true)
+      if (columns < 60) {
+        expect(got).not.toContain(e.kind)
+        expect(got).not.toContain(e.age)
+      }
+      if (e.recommend !== null) {
+        const rec = byKey(tree, `recommend-${e.id}`)
+        expect(Number(rec?.props?.paddingLeft ?? 0) + words(rec).length).toBeLessThanOrEqual(columns)
+        expect(words(rec).length).toBeGreaterThanOrEqual(15)
+      }
+    }
+    await ui.unmount()
+  })
+}
+
+test('R11 at 24 columns no row is wider than the pane', async ($, on) => {
+  world(on, [FIXTURE])
+  await command($, 'x')
+  const ui = await mount($, 'terminal', 24)
+  const tree = await ui.drawn()
+  for (const section of FIXTURE.sections) {
+    for (const r of section.rows as Json[]) {
+      const node = byKey(tree, `row-${r.n}`)
+      expect(rowWidth(node)).toBeLessThanOrEqual(24)
+      expect(cells(node)).toContain(String(r.n))
+    }
+  }
+  for (const e of FIXTURE.needs_you.entries as Json[]) expect(rowWidth(byKey(tree, `need-${e.id}`))).toBeLessThanOrEqual(24)
+  await ui.unmount()
+})
+
 // ---------------------------------------------------------------- R12
 
 test('R12 the pane writes no file', async ($, on) => {
@@ -634,7 +770,8 @@ test('R12 the pane writes no file', async ($, on) => {
 
 // ---------------------------------------------------------------- R16
 
-// The text fixture's lines, with the leading space of the text view cut.
+// The text fixture's lines, as the text view prints them: each keeps its
+// leading space.
 const TEXT_LINES = (FIXTURE_TEXT as string).split('\n')
 
 const lineOf = (pattern: RegExp) => {

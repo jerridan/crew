@@ -1,0 +1,1717 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 157,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add the orchestrator record, its command line, and the project lead's reports",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/157"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "fb3ea94d6cdfd3a6d4d11cfa3f6af7bdbd2190c6",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-157/2026-11-16T204703.333Z-fb3ea94.json",
+      "open": [],
+      "dismissed": [
+        "0ede81112c3e03e6",
+        "61544fc29dfaa50e",
+        "b2d60f05c2b6d347",
+        "b6d91ed6fe55a17a",
+        "dba9e61bcbf6a9d3",
+        "dcdc11db85839817"
+      ],
+      "fetch_failed": false
+    },
+    "base": "772cf658a3b7836fe027d196483235e2782f63a3",
+    "head": "23b6c21a88c2bede1428ed73e4adccbd2c20cac5",
+    "started_at": "2026-11-16T20:59:07.043Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add the orchestrator record, its command line, and the project lead's reports\n\n## Summary\n\nAn orchestrator session that runs many project leads now has a durable record of its own, and one command that is the only writer of it. The record holds the items and their stages, groups of related items with their merge order, one inbox for the principal (decisions, questions, ideas and notices that stay until they are answered or dismissed), the plan with each change and its reason, and a copy of what each implementer was told. The same command reads PR, check, review and merge-queue state from GitHub and prints the agreed board as text. A project lead that an orchestrator started reports its stage and records its questions there; a run with no orchestrator is unchanged.\n\nCloses #151\n\n**Ticket:** https://github.com/jerridan/crew/issues/151 (part 1 of https://github.com/jerridan/crew/issues/150)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- Issue 150 (the agreed design: rules 9, 10, 12 and 14, and the board layout) and issue 151.\n- `skills/orchestrator/references/orchestrator-record.md` is new and owns the orchestrator record: files, fields, ids, stages, merge value, board and commands.\n- `skills/project-lead/SKILL.md`'s new \"Report to an orchestrator\" owns what a project lead writes when an orchestrator started it. `record-format.md` owns the new `run.orchestrator` field.\n- `docs/design.md` §15.139 records the decisions.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-orch.py` (new): the only writer of `<record-root>/orchestrators/<name>/`. Commands: `init`, `item add|pr|set`, `group add|order|owner`, `stage`, `doing`, `ask`, `inbox add`, `route`, `answer`, `dismiss`, `plan change`, `told`, `pace set`, `refresh`, `board [--urls]`, `show`. An `fcntl` lock and an atomic rename on every write. Python standard library only.\n- `skills/orchestrator/scripts/test-crew-orch.sh` (new): the seeded test, 23 checks, with a temporary `CREW_RECORD_ROOT`, a stub `gh` and a stub `crew-usage.py`, run from outside the repo.\n- `skills/orchestrator/references/orchestrator-record.md` (new): the canonical definition of the record.\n- `skills/project-lead/scripts/crew-stats.py`: never walks into the top-level `orchestrators/` folder.\n- `skills/project-lead/SKILL.md`: the section \"Report to an orchestrator\" (the `Orchestrator: <name>, item <id>` goal line, `run.orchestrator`, the stage calls per path, `ask` before each question), and a one-line pointer to it from \"Take the goal\".\n- `skills/project-lead/references/record-format.md`: the `run.orchestrator` row and its writer/reader entry, and a pointer to the new reference.\n- `skills/project-lead/references/autonomy-contract.md`, `skills/delivered-window/SKILL.md`: one pointer each to that section.\n- `README.md` (The record), `CLAUDE.md` (layout, code list, authority list, build state), `docs/design.md` (§15.139).\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version `0.1.106`, assigned by the principal.\n\n### Constraints that applied\n\n- One writer, one canonical reference: Grep for `plan_changes`, `doing_at`, `stage_at`, `closed_at` over `skills/`, `agents/` and `hooks/` finds only the reference, the script and its test.\n- Formats owned by sibling parts are not copied: the account-wide usage figures stay with issue 153 (`usage.json`, read through its `crew-usage.py` when present); the launcher's nine `launch` fields are the ones issue 152 prints.\n- The plugin version (0.1.106) and the §15 number (139) were assigned by the principal.\n- Public repo: no private names; the prior art in issue 149 was read for its faults only.\n- `skills/project-lead/SKILL.md` is 555 lines against the 500-line target. It was 515 before; the new section is the one place that owns the project lead's reports.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-crew-orch.sh` from `/private/tmp`: all 23 checks pass (AC1 to AC10, AC12, a new-process read-back, and the absent or failing `crew-usage.py`).\n- A hand run of `board --urls` on a seeded record printed the #150 sections in order: Needs you, the group in merge order with its marks, Single items, Done, Links.\n- `show` output keys compared with the reference's field tables: they match.\n- A spec critic (two rounds' worth of findings applied) and a split critic (two rounds) reviewed the spec and the split before any code.\n\n### Known gaps\n\n- No orchestrator and no project lead has used this yet; the `crew:orchestrator` skill (issue 154) and the board pane (issue 155) are later parts.\n- `crew-stats.py` fails under macOS's `/usr/bin/python3` 3.9 because `spend.py` already uses `str | None` at run time. This predates this change; `crew-orch.py` runs on 3.9.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZfogKwg96muwwH1JsP\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": false
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 3
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "The change adds a new 1,167-line stateful script with locking, subprocess calls to gh, and terminal output sanitising. It also edits crew-stats.py's record walk and the project-lead and delivered-window instructions, which are logic and public interfaces.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-orch.py: Record.mutate/locked/save (locking, atomic write)",
+        "skills/orchestrator/scripts/crew-orch.py: cmd_refresh (gh outside the lock, then merged back) and check_summary",
+        "skills/orchestrator/scripts/crew-orch.py: merge_value and derive (rule order, waits_on)",
+        "skills/orchestrator/scripts/crew-orch.py: clean/ESCAPE_RE/Links (terminal escape injection)",
+        "skills/orchestrator/scripts/crew-orch.py: usage_figures (runs a sibling script via subprocess)",
+        "skills/orchestrator/scripts/crew-orch.py: cmd_plan and cmd_told (file writes inside mutate)",
+        "skills/project-lead/scripts/crew-stats.py: candidates (orchestrators/ skip)",
+        "skills/project-lead/SKILL.md: Report to an orchestrator (new instruction flow)",
+        "skills/delivered-window/SKILL.md: new stage-write steps"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "new script, the only writer of the orchestrator record; needs full review"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "new seeded test with stub gh; check that its coverage matches the spec"
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "new canonical reference; check that it matches the script (merge order, fields, exit codes)"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "skips top-level orchestrators/ in the record walk; small logic change"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "new section that tells the project lead to call crew-orch.py at phase changes"
+        },
+        {
+          "file": "skills/delivered-window/SKILL.md",
+          "note": "adds stage writes at merged, shipped and closed"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "documents the new run.orchestrator field"
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "pointer to the new section"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 139"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs index updates"
+        },
+        {
+          "file": "README.md",
+          "note": "docs addition"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump to 0.1.106"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump to 0.1.106"
+        }
+      ],
+      "summary": "The change adds an orchestrator record, `crew-orch.py`. It is a locked, atomic JSON writer with a board renderer and a `gh` refresh that derives a merge value. It comes with a seeded test and a reference doc. The project-lead and delivered-window skills now report stage and questions into that record, and `crew-stats.py` skips the new `orchestrators/` folder. The remaining edits are docs and a version bump."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: The change adds a new 1,167-line stateful script with locking, subprocess calls to gh, and terminal output sanitising. It also edits crew-stats.py's record walk and the project-lead and delivered-window instructions, which are logic and public interfaces.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4639,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46650,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004677,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 301,
+              "cacheReadInputTokens": 9722,
+              "cacheCreationInputTokens": 46154,
+              "webSearchRequests": 0,
+              "costUSD": 0.3772044,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 144,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3818814
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4215,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46636,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004675599999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 248,
+              "cacheReadInputTokens": 65500,
+              "cacheCreationInputTokens": 46471,
+              "webSearchRequests": 0,
+              "costUSD": 0.389844,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 77,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3945196
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 904,
+            "end_line": 905,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The Needs you list sorts by created_at but shows a routed entry's age from routed_at, so the order and the ages shown can disagree.",
+            "evidence": "needs.sort(key=lambda e: e[\"created_at\"])  # A stable sort keeps the add order inside one second.",
+            "suggested_fix": "Sort by e.get(\"routed_at\") or e[\"created_at\"].",
+            "explanation": "An old question that was routed recently shows a young age near the top, so the list does not read oldest first by the age it shows.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 17624,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46652,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046772,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1481,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 46156,
+              "webSearchRequests": 0,
+              "costUSD": 0.400801,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1008,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4054782
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 17757,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46636,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046751,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1499,
+              "cacheReadInputTokens": 9625,
+              "cacheCreationInputTokens": 46140,
+              "webSearchRequests": 0,
+              "costUSD": 0.40103300000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1107,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4057081
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 893,
+            "end_line": 894,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The shows_merge docstring says a PR at stage review \"or later\" shows the merge value, but the code limits this to the stages review and pr.",
+            "evidence": "\"\"\"`True` when the status word is the merge value: a PR at stage `review` or\n    later, or stage `merged` or `shipped`. Stage `closed` shows `closed`.\"\"\"",
+            "suggested_fix": "Say \"a PR at stage `review` or `pr`\".",
+            "explanation": "The code returns True only for the stages review and pr when the item has a PR, and orchestrator-record.md also says \"at stage `review` or `pr`\".",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10018,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46626,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046746,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1003,
+              "cacheReadInputTokens": 9632,
+              "cacheCreationInputTokens": 46130,
+              "webSearchRequests": 0,
+              "costUSD": 0.3910344,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 424,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.395709
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4790,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 58794,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0058914,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 262,
+              "cacheReadInputTokens": 9747,
+              "cacheCreationInputTokens": 58298,
+              "webSearchRequests": 0,
+              "costUSD": 0.47358140000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 45,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.47947280000000003
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9079,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46636,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004675599999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 662,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 46140,
+              "webSearchRequests": 0,
+              "costUSD": 0.3843126,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 296,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3889882
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7841,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46646,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046766,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 611,
+              "cacheReadInputTokens": 9723,
+              "cacheCreationInputTokens": 46150,
+              "webSearchRequests": 0,
+              "costUSD": 0.38337259999999995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 214,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3880491999999999
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 856,
+            "end_line": 857,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "No test covers the case where the PR view succeeds but the merge-queue read fails. In that case the old queue values must be kept and the error recorded.",
+            "evidence": "queue = result[\"queue\"] or {\"in_queue\": bool(old.get(\"in_queue\")),",
+            "suggested_fix": "Add a test that refreshes an item while it is in the queue. Then remove queue-<n>.json and refresh again. Assert that in_queue and queue_position are kept, and that github.error names the merge queue read.",
+            "explanation": "If this fallback breaks, a PR in the merge queue silently drops out of the queue on the board, and no test fails.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 847,
+            "end_line": 847,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "No test covers the guard that skips a refresh result when the item's PR changed while gh was running, which happens outside the lock.",
+            "evidence": "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "suggested_fix": "Add a test with a stub gh that runs `item <id> pr <other>` before it answers. Assert that github is not written for the old PR number.",
+            "explanation": "Without this guard, state from the old PR would be written onto the new PR, and nothing tests that path.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9389,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46640,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046760000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 901,
+              "cacheReadInputTokens": 66932,
+              "cacheCreationInputTokens": 46521,
+              "webSearchRequests": 0,
+              "costUSD": 0.40359039999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 116,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4082664
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 893,
+          "end_line": 894,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The shows_merge docstring says a PR at stage review \"or later\" shows the merge value, but the code limits this to the stages review and pr.",
+          "evidence": "\"\"\"`True` when the status word is the merge value: a PR at stage `review` or\n    later, or stage `merged` or `shipped`. Stage `closed` shows `closed`.\"\"\"",
+          "suggested_fix": "Say \"a PR at stage `review` or `pr`\".",
+          "explanation": "The code returns True only for the stages review and pr when the item has a PR, and orchestrator-record.md also says \"at stage `review` or `pr`\".",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return bool(item.get(\"pr\")) and stage in (\"review\", \"pr\")",
+            "\"\"\"`True` when the status word is the merge value: a PR at stage `review` or\n    later, or stage `merged` or `shipped`. Stage `closed` shows `closed`.\"\"\""
+          ],
+          "rationale": "The code checks only `review` and `pr` for an item with a PR. The docstring's \"or later\" is looser than that, but the stage order is review, pr, merged, shipped, closed. The next clause covers merged and shipped, and the last sentence excludes closed, so a reader would not be misled.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return bool(item.get(\"pr\")) and stage in (\"review\", \"pr\")",
+            "\"\"\"`True` when the status word is the merge value: a PR at stage `review` or\n    later, or stage `merged` or `shipped`. Stage `closed` shows `closed`.\"\"\""
+          ],
+          "rationale": "The code checks only `review` and `pr` for an item with a PR. The docstring's \"or later\" is looser than that, but the stage order is review, pr, merged, shipped, closed. The next clause covers merged and shipped, and the last sentence excludes closed, so a reader would not be misled.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 904,
+          "end_line": 905,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The Needs you list sorts by created_at but shows a routed entry's age from routed_at, so the order and the ages shown can disagree.",
+          "evidence": "needs.sort(key=lambda e: e[\"created_at\"])  # A stable sort keeps the add order inside one second.",
+          "suggested_fix": "Sort by e.get(\"routed_at\") or e[\"created_at\"].",
+          "explanation": "An old question that was routed recently shows a young age near the top, so the list does not read oldest first by the age it shows.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "needs.sort(key=lambda e: e[\"created_at\"])",
+            "age(entry.get(\"routed_at\") or entry[\"created_at\"])"
+          ],
+          "rationale": "The code sorts by created_at but shows the age from routed_at when the entry is routed, so the order and the ages shown can disagree. The reference says \"oldest first\" and also says a routed entry's age counts from routed_at, so the author may have meant this. The finding's cited lines (904-905) are wrong, since the code is at 1032 and 1042.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "needs.sort(key=lambda e: e[\"created_at\"])  # A stable sort keeps the add order inside one second.",
+            "age(entry.get(\"routed_at\") or entry[\"created_at\"]), clean(where), entry))",
+            "2. `Needs you <count>`: every open entry with `for: principal`, oldest first.",
+            "routed entry counts from `routed_at`. A"
+          ],
+          "rationale": "The board sorts Needs you by created_at but shows a routed entry's age from routed_at, so an old entry that was routed recently can sit above newer entries while showing a smaller age. This is a small display mismatch that the spec leaves unclear, and nothing is lost or wrong in the data.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "needs.sort(key=lambda e: e[\"created_at\"])  # A stable sort keeps the add order inside one second.",
+            "age(entry.get(\"routed_at\") or entry[\"created_at\"]), clean(where), entry))",
+            "2. `Needs you <count>`: every open entry with `for: principal`, oldest first.",
+            "routed entry counts from `routed_at`. A"
+          ],
+          "rationale": "The board sorts Needs you by created_at but shows a routed entry's age from routed_at, so an old entry that was routed recently can sit above newer entries while showing a smaller age. This is a small display mismatch that the spec leaves unclear, and nothing is lost or wrong in the data.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 856,
+          "end_line": 857,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "No test covers the case where the PR view succeeds but the merge-queue read fails. In that case the old queue values must be kept and the error recorded.",
+          "evidence": "queue = result[\"queue\"] or {\"in_queue\": bool(old.get(\"in_queue\")),",
+          "suggested_fix": "Add a test that refreshes an item while it is in the queue. Then remove queue-<n>.json and refresh again. Assert that in_queue and queue_position are kept, and that github.error names the merge queue read.",
+          "explanation": "If this fallback breaks, a PR in the merge queue silently drops out of the queue on the board, and no test fails.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "queue = result[\"queue\"] or {\"in_queue\": bool(old.get(\"in_queue\")),",
+            "return {\"fields\": fields, \"queue\": None, \"error\": f\"gh merge queue read {number}: {err}\"}"
+          ],
+          "rationale": "The fallback that keeps the old queue values exists. In the test script, the stub `gh` fails a call only when its data file is missing. Only `pr-77.json` is ever removed, and no `queue-<n>.json` is, so no test covers a queue read that fails while the PR view succeeds.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "queue = result[\"queue\"] or {\"in_queue\": bool(old.get(\"in_queue\")),",
+            "return {\"fields\": fields, \"queue\": None, \"error\": f\"gh merge queue read {number}: {err}\"}"
+          ],
+          "rationale": "The fallback that keeps the old queue values exists. In the test script, the stub `gh` fails a call only when its data file is missing. Only `pr-77.json` is ever removed, and no `queue-<n>.json` is, so no test covers a queue read that fails while the PR view succeeds.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 847,
+          "end_line": 847,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "No test covers the guard that skips a refresh result when the item's PR changed while gh was running, which happens outside the lock.",
+          "evidence": "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+          "suggested_fix": "Add a test with a stub gh that runs `item <id> pr <other>` before it answers. Assert that github is not written for the old PR number.",
+          "explanation": "Without this guard, state from the old PR would be written onto the new PR, and nothing tests that path.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:"
+          ],
+          "rationale": "The guard exists in the new code. The test script only runs `refresh` in sequence (lines 220 to 254 and 414) and never changes the item's PR while gh is running. So that path is untested. The guard is correct, and the gap is minor.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "# gh runs outside the lock, so a slow call never holds up another writer.",
+            "expect_exit 0 orch refresh loner",
+            "expect_exit 0 orch2 refresh withpr"
+          ],
+          "rationale": "Every refresh test in test-crew-orch.sh leaves the item's PR the same while the stub gh runs, so no test reaches the guard that skips a result whose PR number changed. The guard itself is correct, so the only gap is a test for a rare race.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "# gh runs outside the lock, so a slow call never holds up another writer.",
+            "expect_exit 0 orch refresh loner",
+            "expect_exit 0 orch2 refresh withpr"
+          ],
+          "rationale": "Every refresh test in test-crew-orch.sh leaves the item's PR the same while the stub gh runs, so no test reaches the guard that skips a result whose PR number changed. The guard itself is correct, so the only gap is a test for a rare race.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5927563272,
+      "review_url": "https://github.com/jerridan/crew/pull/157#pullrequestreview-5927563272",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133608924818
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 856,
+        "end_line": 857,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "No test covers the case where the PR view succeeds but the merge-queue read fails. In that case the old queue values must be kept and the error recorded.",
+        "evidence": "queue = result[\"queue\"] or {\"in_queue\": bool(old.get(\"in_queue\")),",
+        "suggested_fix": "Add a test that refreshes an item while it is in the queue. Then remove queue-<n>.json and refresh again. Assert that in_queue and queue_position are kept, and that github.error names the merge queue read.",
+        "explanation": "If this fallback breaks, a PR in the merge queue silently drops out of the queue on the board, and no test fails.",
+        "needs_context": false,
+        "fingerprint": "e2b7a0e22282b57a",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "queue = result[\"queue\"] or {\"in_queue\": bool(old.get(\"in_queue\")),",
+            "return {\"fields\": fields, \"queue\": None, \"error\": f\"gh merge queue read {number}: {err}\"}"
+          ],
+          "rationale": "The fallback that keeps the old queue values exists. In the test script, the stub `gh` fails a call only when its data file is missing. Only `pr-77.json` is ever removed, and no `queue-<n>.json` is, so no test covers a queue read that fails while the PR view succeeds.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "queue = result[\"queue\"] or {\"in_queue\": bool(old.get(\"in_queue\")), \"queue_position\": old.get(\"queue_position\")}"
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 847,
+        "end_line": 847,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "No test covers the guard that skips a refresh result when the item's PR changed while gh was running, which happens outside the lock.",
+        "evidence": "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+        "suggested_fix": "Add a test with a stub gh that runs `item <id> pr <other>` before it answers. Assert that github is not written for the old PR number.",
+        "explanation": "Without this guard, state from the old PR would be written onto the new PR, and nothing tests that path.",
+        "needs_context": false,
+        "fingerprint": "3e02718c94fe84ce",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:",
+            "# gh runs outside the lock, so a slow call never holds up another writer.",
+            "expect_exit 0 orch refresh loner",
+            "expect_exit 0 orch2 refresh withpr"
+          ],
+          "rationale": "Every refresh test in test-crew-orch.sh leaves the item's PR the same while the stub gh runs, so no test reaches the guard that skips a result whose PR number changed. The guard itself is correct, so the only gap is a test for a rare race.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "if item is None or not item.get(\"pr\") or item[\"pr\"][\"number\"] != number:"
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 904,
+        "end_line": 905,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The Needs you list sorts by created_at but shows a routed entry's age from routed_at, so the order and the ages shown can disagree.",
+        "evidence": "needs.sort(key=lambda e: e[\"created_at\"])  # A stable sort keeps the add order inside one second.",
+        "suggested_fix": "Sort by e.get(\"routed_at\") or e[\"created_at\"].",
+        "explanation": "An old question that was routed recently shows a young age near the top, so the list does not read oldest first by the age it shows.",
+        "needs_context": false,
+        "fingerprint": "f28e06e155a1c7c2",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "needs.sort(key=lambda e: e[\"created_at\"])  # A stable sort keeps the add order inside one second.",
+            "age(entry.get(\"routed_at\") or entry[\"created_at\"]), clean(where), entry))",
+            "2. `Needs you <count>`: every open entry with `for: principal`, oldest first.",
+            "routed entry counts from `routed_at`. A"
+          ],
+          "rationale": "The board sorts Needs you by created_at but shows a routed entry's age from routed_at, so an old entry that was routed recently can sit above newer entries while showing a smaller age. This is a small display mismatch that the spec leaves unclear, and nothing is lost or wrong in the data.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "slots = pace.get(\"slots\") or {} return f\"SLOWED: {slots.get('busy', 0)} of {slots.get('max', 0)} slots\""
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8657,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49013,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004913300000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1290,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 48525,
+            "webSearchRequests": 0,
+            "costUSD": 0.2071302,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2120435
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4215,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46636,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004675599999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 248,
+            "cacheReadInputTokens": 65500,
+            "cacheCreationInputTokens": 46471,
+            "webSearchRequests": 0,
+            "costUSD": 0.389844,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 77,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3945196
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4639,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46650,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004677,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 301,
+            "cacheReadInputTokens": 9722,
+            "cacheCreationInputTokens": 46154,
+            "webSearchRequests": 0,
+            "costUSD": 0.3772044,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 144,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3818814
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4790,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 58794,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0058914,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 262,
+            "cacheReadInputTokens": 9747,
+            "cacheCreationInputTokens": 58298,
+            "webSearchRequests": 0,
+            "costUSD": 0.47358140000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 45,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.47947280000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10018,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46626,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046746,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1003,
+            "cacheReadInputTokens": 9632,
+            "cacheCreationInputTokens": 46130,
+            "webSearchRequests": 0,
+            "costUSD": 0.3910344,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 424,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.395709
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9079,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46636,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004675599999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 662,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 46140,
+            "webSearchRequests": 0,
+            "costUSD": 0.3843126,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 296,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3889882
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 17624,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46652,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046772,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1481,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 46156,
+            "webSearchRequests": 0,
+            "costUSD": 0.400801,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1008,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4054782
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 17757,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46636,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046751,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1499,
+            "cacheReadInputTokens": 9625,
+            "cacheCreationInputTokens": 46140,
+            "webSearchRequests": 0,
+            "costUSD": 0.40103300000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1107,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4057081
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7841,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46646,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046766,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 611,
+            "cacheReadInputTokens": 9723,
+            "cacheCreationInputTokens": 46150,
+            "webSearchRequests": 0,
+            "costUSD": 0.38337259999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 214,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3880491999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9389,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46640,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046760000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 901,
+            "cacheReadInputTokens": 66932,
+            "cacheCreationInputTokens": 46521,
+            "webSearchRequests": 0,
+            "costUSD": 0.40359039999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 116,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4082664
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7362,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28040,
+            "outputTokens": 255,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029315,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 230,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 832,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 27552,
+            "webSearchRequests": 0,
+            "costUSD": 0.1189687,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 439,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1219002
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6768,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27983,
+            "outputTokens": 274,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029353,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 248,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 601,
+            "cacheReadInputTokens": 36229,
+            "cacheCreationInputTokens": 28371,
+            "webSearchRequests": 0,
+            "costUSD": 0.1231249,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 141,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1260602
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10539,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28052,
+            "outputTokens": 279,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029447,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 256,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 795,
+            "cacheReadInputTokens": 68703,
+            "cacheCreationInputTokens": 28515,
+            "webSearchRequests": 0,
+            "costUSD": 0.12889230000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 149,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.13183699999999998
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11346,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28073,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028193000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1091,
+            "cacheReadInputTokens": 105260,
+            "cacheCreationInputTokens": 32367,
+            "webSearchRequests": 0,
+            "costUSD": 0.15092,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 154,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.15373929999999997
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8272,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 821,
+            "cacheReadInputTokens": 68480,
+            "cacheCreationInputTokens": 28370,
+            "webSearchRequests": 0,
+            "costUSD": 0.2571,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 151,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 28032,
+            "outputTokens": 440,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030232000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 416,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2601232
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13346,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27993,
+            "outputTokens": 322,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029603000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 296,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1100,
+            "cacheReadInputTokens": 104972,
+            "cacheCreationInputTokens": 33015,
+            "webSearchRequests": 0,
+            "costUSD": 0.3071464,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 180,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.31010669999999996
+      }
+    ],
+    "total_cost_usd": 4.963882999999999,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 47,
+      "gather": 241,
+      "scope": 12,
+      "triage": 9698,
+      "find_verify": 43133,
+      "merge": 7
+    },
+    "errors": []
+  }
+}

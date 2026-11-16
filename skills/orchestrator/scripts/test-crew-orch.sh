@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Seeded test of crew-orch.py (spec #151, AC1 to AC10, AC12, C6 and C10).
+# Seeded test of crew-orch.py (spec #151, AC1 to AC10, AC12, C6 and C10), and
+# of `board --json` (spec #155, R1 to R3 and R16).
 #
 # It uses a temporary record root, a stub `gh` and a stub `crew-usage.py`.
 # It never touches ~/.claude/crew and never starts `claude`. It runs every
@@ -344,7 +345,7 @@ orch board --urls >"$TMP/board"
 grep -E '^ *Links' "$TMP/board" >/dev/null || fail "no Links list with --urls"
 grep -F 'https://github.com/owner/other/pull/77' "$TMP/board" >/dev/null || fail "no PR URL in --urls"
 grep -F 'https://tickets.example/T-1' "$TMP/board" >/dev/null || fail "no group ticket URL in --urls"
-grep -F 'https://tickets.example/T-2' "$TMP/board" >/dev/null && fail "an item ticket URL is in --urls"
+grep -F 'https://tickets.example/T-2' "$TMP/board" >/dev/null && fail "a grouped item's ticket URL is in --urls"
 expect_exit 2 orch board --nope
 pass
 
@@ -564,6 +565,426 @@ cases = [
 bad = [(want, m.merge_value(it), why) for want, it, why in cases if m.merge_value(it) != want]
 assert not bad, bad
 PY2
+pass
+
+# ---------------------------------------------------------------- board --json (#155)
+# The repo root, for the fixtures and for the script on the main branch.
+REPO=$(cd "$HERE/../../.." && pwd)
+FIX="$REPO/tests/fixtures"
+MAIN_REF=${CREW_ORCH_MAIN_REF:-origin/main}
+
+# check_json <file>: the file is one board JSON object, each field of the
+# type that orchestrator-record.md "The board" gives.
+cat >"$TMP/check_json.py" <<'PY'
+import json, sys
+
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+
+
+def is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def str_or_none(v):
+    return v is None or isinstance(v, str)
+
+
+def link(v):
+    return v is None or (isinstance(v, dict) and isinstance(v.get("id"), str) and str_or_none(v.get("url")))
+
+
+assert isinstance(d, dict), "not an object"
+assert d["version"] == 1, d["version"]
+assert isinstance(d["orch"], str)
+plan = d["plan"]
+assert plan is None or (isinstance(plan, dict) and isinstance(plan["windows"], list) and isinstance(plan["word"], str)), plan
+for w in (plan or {}).get("windows", []):
+    assert w["key"] in ("five_hour", "seven_day") and w["label"] in ("5h", "7d"), w
+    assert is_int(w["used_pct"]), w
+    assert len(w["meter"]) == 10 and set(w["meter"]) <= {"█", "░"}, w
+    assert isinstance(w["resets"], str) and isinstance(w["full_at"], str), w
+ny = d["needs_you"]
+assert is_int(ny["count"]) and isinstance(ny["entries"], list) and ny["count"] == len(ny["entries"]), ny
+for e in ny["entries"]:
+    for k in ("id", "kind", "age", "item", "text"):
+        assert isinstance(e[k], str), (k, e)
+    assert str_or_none(e["item_id"]) and str_or_none(e["recommend"]), e
+assert isinstance(d["sections"], list)
+for s in d["sections"]:
+    assert s["kind"] in ("group", "single"), s
+    assert isinstance(s["title"], str) and isinstance(s["rows"], list), s
+    assert link(s["ticket"]) and str_or_none(s["repo"]) and str_or_none(s["id"]), s
+    if s["kind"] == "single":
+        assert s["id"] is None and s["title"] == "Single items" and s["ticket"] is None and s["repo"] is None, s
+        assert s["merged"] is None and s["total"] is None, s
+    else:
+        assert isinstance(s["id"], str) and is_int(s["merged"]) and is_int(s["total"]), s
+    for r in s["rows"]:
+        assert is_int(r["n"]) and isinstance(r["id"], str), r
+        assert len(r["marks"]) == 5 and set(r["marks"]) <= {"●", "◐", "○"}, r
+        assert isinstance(r["status"], str) and isinstance(r["text"], str) and isinstance(r["age"], str), r
+        pr = r["pr"]
+        assert pr is None or (is_int(pr["number"]) and pr["label"] == f"#{pr['number']}" and isinstance(pr["url"], str)), r
+        assert link(r["ticket"]) and str_or_none(r["launch_tab"]), r
+        if s["kind"] == "group":
+            assert r["ticket"] is None, ("a grouped row shows a ticket", r)
+assert is_int(d["done"]), d["done"]
+assert d["legend"] == "spec → split → build → review → PR", d["legend"]
+assert "\x1b" not in json.dumps(d, ensure_ascii=False), "an escape sequence in the JSON"
+PY
+
+# same_board <json> <text>: the text view shows the same sections, rows and
+# values as the JSON view, in the same order.
+cat >"$TMP/same_board.py" <<'PY'
+import json, re, sys
+
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+lines = open(sys.argv[2], encoding="utf-8").read().split("\n")
+at = 0
+
+
+def find(pred, what):
+    global at
+    for i in range(at, len(lines)):
+        if pred(lines[i]):
+            at = i + 1
+            return lines[i]
+    raise AssertionError(f"not found after line {at}: {what}")
+
+
+def in_order(line, cells, what):
+    pos = 0
+    for cell in cells:
+        if cell == "":
+            continue
+        got = line.find(cell, pos)
+        assert got >= 0, (what, cell, line)
+        pos = got + len(cell)
+
+
+if d["plan"]:
+    for w in d["plan"]["windows"]:
+        line = find(lambda l, w=w: f"{w['label']} {w['meter']}" in l, w["label"])
+        in_order(line, [w["meter"], f"{w['used_pct']}%", w["resets"], w["full_at"]], w["label"])
+    if d["plan"]["word"]:
+        assert any(d["plan"]["word"] in l for l in lines), "no pace word"
+find(lambda l: l.strip() == f"Needs you  {d['needs_you']['count']}", "Needs you")
+for e in d["needs_you"]["entries"]:
+    line = find(lambda l, e=e: l.startswith(f"  {e['id']} "), e["id"])
+    in_order(line, [e["id"], e["kind"], e["age"], e["item"], e["text"]], e["id"])
+    if e["recommend"]:
+        line = find(lambda l: "Recommended:" in l, "Recommended")
+        assert line.strip() == f"Recommended: {e['recommend']}", line
+for s in d["sections"]:
+    head = [s["title"]] + ([s["ticket"]["id"]] if s["ticket"] else []) + ([s["repo"]] if s["repo"] else [])
+    if s["kind"] == "group":
+        head.append(f"{s['merged']} of {s['total']} merged")
+    line = find(lambda l, t=s["title"]: l.startswith(f" {t}"), s["title"])
+    in_order(line, head, s["title"])
+    for r in s["rows"]:
+        line = find(lambda l, r=r: re.match(rf"^ +{r['n']} {re.escape(r['id'])}( |$)", l), r["id"])
+        cells = [str(r["n"]), r["id"], r["marks"], r["status"], r["pr"]["label"] if r["pr"] else "",
+                 r["ticket"]["id"] if r["ticket"] else "", r["text"], r["age"]]
+        in_order(line, cells, r["id"])
+find(lambda l: l.strip().startswith(f"Done  {d['done']} ") and d["legend"] in l, "Done")
+PY
+
+STEP="R1 board --json prints one board object and writes nothing"
+snap() { (cd "$CREW_RECORD_ROOT" && find . | LC_ALL=C sort | while read -r f; do printf '%s ' "$f"; [ -f "$f" ] && cksum <"$f" || echo dir; done); }
+before=$(snap)
+orch board --json >"$TMP/bj" 2>"$TMP/err" || fail "board --json failed: $(cat "$TMP/err")"
+after=$(snap)
+[ "$before" = "$after" ] || fail "board --json changed the record files"
+[ ! -s "$TMP/err" ] || fail "board --json wrote to stderr: $(cat "$TMP/err")"
+python3 -c 'import json,sys; json.load(sys.stdin)' <"$TMP/bj" || fail "board --json is not one JSON value"
+python3 "$TMP/check_json.py" "$TMP/bj" || fail "a field of board --json is missing or of the wrong type"
+orch board --json --urls >"$TMP/bj2" || fail "board --json --urls failed"
+cmp -s "$TMP/bj" "$TMP/bj2" || fail "--urls changes the JSON view"
+pass
+
+STEP="R1 board --json holds the values of the fleet record"
+python3 - "$TMP/bj" <<'PY' || fail "a value of board --json is wrong: $(cat "$TMP/bj")"
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+assert d["orch"] == "fleet" and d["plan"] is None and d["done"] == 1, (d["orch"], d["plan"], d["done"])
+assert [e["id"] for e in d["needs_you"]["entries"]] == ["d1", "q2", "i1"], d["needs_you"]
+d1 = d["needs_you"]["entries"][0]
+assert (d1["kind"], d1["item"], d1["item_id"], d1["recommend"]) == ("decision", "dialogs/editor", "editor", "editor"), d1
+i1 = d["needs_you"]["entries"][2]
+assert (i1["item"], i1["item_id"], i1["recommend"]) == ("-", None, None), i1
+assert [(s["kind"], s["title"]) for s in d["sections"]] == [("group", "Dialog migration"), ("single", "Single items")]
+g = d["sections"][0]
+assert g["id"] == "dialogs" and g["ticket"] == {"id": "T-1", "url": "https://tickets.example/T-1"}, g
+assert (g["repo"], g["merged"], g["total"]) == ("owner/dash", 0, 2), g
+ed, se = g["rows"]
+assert (ed["n"], ed["id"], ed["launch_tab"], ed["ticket"]) == (1, "editor", "tmux:%3", None), ed
+assert ed["pr"] == {"number": 893, "label": "#893", "url": "https://github.com/owner/dash/pull/893"}, ed
+assert (se["n"], se["id"], se["marks"], se["status"], se["pr"], se["text"]) == (2, "settings", "●●◐○○", "build 2/3", None, "ic-2 reads the diff"), se
+assert se["age"] != "" and se["launch_tab"] is None, se
+lo = d["sections"][1]["rows"][0]
+assert (lo["n"], lo["id"], lo["status"], lo["pr"]["label"], lo["ticket"], lo["age"]) == (3, "loner", "can merge", "#77", None, ""), lo
+PY
+orch board >"$TMP/bt" || fail "board failed"
+python3 "$TMP/same_board.py" "$TMP/bj" "$TMP/bt" || fail "the text view and the JSON view differ: $(cat "$TMP/bt")"
+pass
+
+STEP="R16 CREW_ORCH_NOW pins the time the board reads, and no write"
+expect_exit 0 orch doing loner "pins the clock"
+stamp=$(python3 "$ORCH_PY" --orch fleet show loner | python3 -c 'import json,sys; print(json.load(sys.stdin)["doing_at"])')
+then_=$(python3 -c 'import calendar,sys,time; print(calendar.timegm(time.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")))' "$stamp")
+CREW_ORCH_NOW=$((then_ + 7200)) orch board --json >"$TMP/bj" || fail "board with CREW_ORCH_NOW failed"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); r=[r for s in d["sections"] for r in s["rows"] if r["id"]=="loner"][0]; sys.exit(0 if r["age"]=="2h" else 1)' "$TMP/bj" || fail "the age does not count from CREW_ORCH_NOW"
+CREW_ORCH_NOW=1000 orch doing loner "writes the real time"
+jcheck 's["items"]["loner"]["doing_at"] >= "2026"'
+jcheck 's["updated_at"] >= "2026"'
+expect_exit 0 orch doing loner ""
+pass
+
+# A record with a ticket on a grouped item and on a single item.
+orch3() { python3 "$ORCH_PY" --orch tix "$@"; }
+expect_exit 0 orch3 init
+expect_exit 0 orch3 group add g --title "Ticket group" --repo owner/tix --ticket G-1 --ticket-url https://tickets.example/G-1
+expect_exit 0 orch3 item add grouped --title "Grouped" --repo owner/tix --group g --ticket A-1 --ticket-url https://tickets.example/A-1
+expect_exit 0 orch3 item add solo --title "Solo" --repo owner/tix --ticket SOLO-12 --ticket-url https://tickets.example/SOLO-12
+expect_exit 0 orch3 item add bare --title "Bare" --repo owner/tix
+expect_exit 0 orch3 item add plain --title "Plain" --repo owner/tix --ticket P-3
+expect_exit 0 orch3 item solo pr 41
+expect_exit 0 orch3 item grouped pr 40
+
+STEP="R3 a single item's row shows its own ticket, a grouped row shows none"
+orch3 board >"$TMP/b3" || fail "board failed"
+grep -E '^ *2 +solo .*#41  SOLO-12 ' "$TMP/b3" >/dev/null || fail "the solo row has no ticket after its PR: $(cat "$TMP/b3")"
+grep -E '^ *4 +plain .* P-3' "$TMP/b3" >/dev/null || fail "a ticket with no URL does not show: $(cat "$TMP/b3")"
+grep -E '^ *1 +grouped ' "$TMP/b3" | grep -F 'A-1' >/dev/null && fail "the grouped row shows its ticket"
+python3 - "$TMP/b3" <<'PY' || fail "the ticket cell of the single items is not one width: $(cat "$TMP/b3")"
+import sys
+rows = [l for l in open(sys.argv[1], encoding="utf-8").read().split("\n") if l.startswith("  ") and l.split()[1] in ("solo", "bare", "plain")]
+assert len(rows) == 3, rows
+# Each single row has "queued" as its status, so its PR cell starts at one column.
+starts = {l.split()[1]: l.index("queued") for l in rows}
+assert len(set(starts.values())) == 1, starts
+PY
+orch3 board --urls >"$TMP/b3" || fail "board --urls failed"
+sed -n '/^ Links/,$p' "$TMP/b3" >"$TMP/links3"
+grep -E '^ +SOLO-12 +https://tickets.example/SOLO-12$' "$TMP/links3" >/dev/null || fail "Links has no single item ticket: $(cat "$TMP/links3")"
+grep -F 'A-1' "$TMP/links3" >/dev/null && fail "Links has the grouped item's ticket"
+grep -F 'G-1' "$TMP/links3" >/dev/null || fail "Links has no group ticket"
+orch3 board --json >"$TMP/bj3" || fail "board --json failed"
+python3 "$TMP/check_json.py" "$TMP/bj3" || fail "board --json of the ticket record is wrong"
+python3 - "$TMP/bj3" <<'PY' || fail "the JSON tickets are wrong"
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+rows = {r["id"]: r for s in d["sections"] for r in s["rows"]}
+assert rows["grouped"]["ticket"] is None, rows["grouped"]
+assert rows["solo"]["ticket"] == {"id": "SOLO-12", "url": "https://tickets.example/SOLO-12"}, rows["solo"]
+assert rows["plain"]["ticket"] == {"id": "P-3", "url": None}, rows["plain"]
+assert rows["bare"]["ticket"] is None, rows["bare"]
+PY
+orch3 board >"$TMP/b3"
+python3 "$TMP/same_board.py" "$TMP/bj3" "$TMP/b3" || fail "the text view and the JSON view of the ticket record differ"
+pass
+
+# ---------------------------------------------------------------- R2
+# The text view of this branch against the script on the main branch, for a
+# record whose every time is more than a day old, with a stub crew-usage.py
+# whose resets are more than a day away. Each age is in days, each reset a
+# weekday, so two runs a moment apart print the same text.
+STEP="R2 the text view equals the main branch's, except the R3 lines"
+mkdir -p "$TMP/main" "$TMP/this"
+git -C "$REPO" show "$MAIN_REF:skills/orchestrator/scripts/crew-orch.py" >"$TMP/main/crew-orch.py" 2>"$TMP/err" || fail "cannot read crew-orch.py at $MAIN_REF: $(cat "$TMP/err")"
+cp "$ORCH_PY" "$TMP/this/crew-orch.py"
+for d in main this; do
+  cat >"$TMP/$d/crew-usage.py" <<'EOF'
+import json, sys, time
+assert sys.argv[1:] == ["show", "--json"], sys.argv
+now = int(time.time())
+print(json.dumps({"five_hour": {"used_pct": 47.6, "resets_at": now + 3 * 86400, "full_at": now + 2 * 86400},
+                  "seven_day": {"used_pct": 12, "resets_at": now + 5 * 86400}}))
+EOF
+done
+orch4() { python3 "$ORCH_PY" --orch old "$@"; }
+expect_exit 0 orch4 init
+expect_exit 0 orch4 group add mig --title "Old migration" --repo owner/old --ticket M-1 --ticket-url https://tickets.example/M-1
+expect_exit 0 orch4 item add first --title "First" --repo owner/old --group mig --ticket F-1 --ticket-url https://tickets.example/F-1
+expect_exit 0 orch4 item add second --title "Second" --repo owner/old --group mig
+expect_exit 0 orch4 group mig order first,second
+expect_exit 0 orch4 item add lone --title "Lone" --repo owner/old
+expect_exit 0 orch4 item add longer-single --title "Longer" --repo owner/old
+expect_exit 0 orch4 item first pr 893
+expect_exit 0 orch4 refresh first
+expect_exit 0 orch4 stage first pr --doing "waits for review"
+expect_exit 0 orch4 stage second build --detail 1/2 --doing "ic runs the suite"
+expect_exit 0 orch4 stage lone spec --doing "writes the spec"
+expect_exit 0 orch4 inbox add decision --item second "Which owner?" --recommend "second"
+expect_exit 0 orch4 inbox add idea "A later idea"
+expect_exit 0 orch4 ask lone "A question"
+expect_exit 0 orch4 route q1 principal
+expect_exit 0 orch4 pace set '{"mode": "slowed", "slots": {"busy": 1}}'
+# Move every time of the record back by days, and keep their order.
+age_record() {
+  python3 - "$CREW_RECORD_ROOT/orchestrators/old/orchestrator.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+s = json.load(open(p, encoding="utf-8"))
+count = iter(range(100))
+def back(obj, key):
+    if obj.get(key):
+        k = next(count)
+        obj[key] = f"2026-0{1 + k % 9}-{10 + k % 18}T0{k % 10}:00:00Z"
+for item in s["items"].values():
+    for key in ("stage_at", "doing_at", "created_at"):
+        back(item, key)
+stamp = ["2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z", "2026-01-03T00:00:00Z"]
+for entry, at in zip(s["inbox"], stamp):
+    entry["created_at"] = at
+    if entry.get("routed_at"):
+        entry["routed_at"] = "2026-01-05T00:00:00Z"
+json.dump(s, open(p, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+PY
+}
+age_record
+compare_main() {
+  # compare_main <single ids>: the outputs of both scripts are equal, except
+  # the rows of those single items and the Links list.
+  for flag in "" "--urls"; do
+    python3 "$TMP/main/crew-orch.py" --orch old board $flag >"$TMP/main.out" || fail "main board $flag failed"
+    python3 "$TMP/this/crew-orch.py" --orch old board $flag >"$TMP/this.out" || fail "board $flag failed"
+    python3 - "$TMP/main.out" "$TMP/this.out" "$@" <<'PY' || fail "board $flag differs from $MAIN_REF: $(diff "$TMP/main.out" "$TMP/this.out")"
+import re, sys
+old = open(sys.argv[1], encoding="utf-8").read().split("\n")
+new = open(sys.argv[2], encoding="utf-8").read().split("\n")
+singles = set(sys.argv[3:])
+assert "Plan" in old[0] and re.search(r"resets (Mon|Tue|Wed|Thu|Fri|Sat|Sun)", old[0]), old[0]
+assert re.search(r"  [0-9]+d  ", "\n".join(old)), "no age in days"
+assert len(old) == len(new), (len(old), len(new))
+links = False
+for a, b in zip(old, new):
+    links = links or a == " Links"
+    if a == b:
+        continue
+    row = re.match(r"^ +[0-9]+ (\S+)", a)
+    assert links or (row and row.group(1) in singles), (a, b)
+PY
+  done
+}
+compare_main
+cmp -s "$TMP/main.out" "$TMP/this.out" || fail "with no single ticket, board --urls is not byte for byte the main output"
+expect_exit 0 orch4 item lone set ticket '{"id": "L-7", "url": "https://tickets.example/L-7"}'
+age_record
+compare_main lone longer-single
+grep -E '^ *3 +lone .*L-7' "$TMP/this.out" >/dev/null || fail "the lone row has no ticket"
+cmp -s "$TMP/main.out" "$TMP/this.out" && fail "a single item ticket does not change the board"
+pass
+
+STEP="R2 each derived value is computed in one place"
+python3 - "$ORCH_PY" <<'PY' || fail "a derived value is computed in more than one place"
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+for name in ("age", "clock", "marks", "status_word", "row_text", "meter", "pace_word", "landed",
+             "board_data", "render_text", "board_now"):
+    assert len(re.findall(rf"^def {name}\(", src, re.M)) == 1, (name, "is not defined once")
+# The text view draws from the board data alone: it calls no function
+# that derives a value.
+body = src[src.index("\ndef render_text("):]
+body = body[: body.index("\ndef ", 1)]
+for name in ("age", "clock", "marks", "status_word", "row_text", "meter", "pace_word", "landed",
+             "merge_value", "usage_figures", "board_now"):
+    assert not re.search(rf"(?<![\w.]){name}\(", body), ("render_text calls", name)
+# One read of the board time, and one of the time a write stamps.
+assert src.count("time.time()") == 1, "the board time is read in more than one place"
+assert src.count('"CREW_ORCH_NOW"') == 1, "CREW_ORCH_NOW is read in more than one place"
+assert src.count("datetime.now(") == 1, "the write time is read in more than one place"
+PY
+pass
+
+# ---------------------------------------------------------------- R16 fixtures
+# One record with every kind of row, at a pinned time and time zone. The
+# fixtures under tests/fixtures/ are its JSON view and its text view, each
+# wrapped as a module: `claude plugin test` loads only code files.
+STEP="R16 the board fixtures match a fresh run"
+NOW=1794830400  # 2026-11-16T12:00:00Z
+mkdir -p "$TMP/fixcopy" "$TMP/fix"
+cp "$ORCH_PY" "$TMP/fixcopy/crew-orch.py"
+cat >"$TMP/fixcopy/crew-usage.py" <<EOF
+import json, sys
+assert sys.argv[1:] == ["show", "--json"], sys.argv
+print(json.dumps({"five_hour": {"used_pct": 68, "resets_at": $NOW + 5400, "full_at": $NOW + 3000},
+                  "seven_day": {"used_pct": 31, "resets_at": $NOW + 3 * 86400}}))
+EOF
+orch5() { python3 "$ORCH_PY" --orch fixture "$@"; }
+expect_exit 0 orch5 init
+expect_exit 0 orch5 group add dialogs --title "Dialog migration" --repo owner/dash --ticket DASH-1 --ticket-url https://tickets.example/DASH-1
+expect_exit 0 orch5 item add editor --title "Editor" --repo owner/dash --group dialogs --ticket DASH-2 --ticket-url https://tickets.example/DASH-2
+expect_exit 0 orch5 item add settings --title "Settings" --repo owner/dash --group dialogs
+expect_exit 0 orch5 item add export --title "Export" --repo owner/dash --group dialogs
+expect_exit 0 orch5 group dialogs order editor,settings,export
+expect_exit 0 orch5 item add loner --title "Loner" --repo owner/other --ticket "owner/other#12" --ticket-url https://github.com/owner/other/issues/12
+expect_exit 0 orch5 item add docs --title "Docs" --repo owner/other
+expect_exit 0 orch5 item add done1 --title "Done" --repo owner/other
+expect_exit 0 orch5 item editor pr 893
+expect_exit 0 orch5 item settings pr 894
+expect_exit 0 orch5 item loner pr 77
+expect_exit 0 orch5 stage editor merged
+expect_exit 0 orch5 stage settings review --doing "reads the review"
+expect_exit 0 orch5 stage export build --detail 2/3 --doing "ic-2 runs the suite"
+expect_exit 0 orch5 stage loner pr
+expect_exit 0 orch5 stage docs spec --doing "writes the spec"
+expect_exit 0 orch5 stage done1 shipped
+expect_exit 0 orch5 item settings set launch '{"tab": "tmux:%7", "terminal": "tmux"}'
+expect_exit 0 orch5 item loner set launch.tab '"iterm2:w1t2"'
+cat >"$TMP/gh/pr-894.json" <<'EOF'
+{"state": "OPEN", "isDraft": false, "reviewDecision": "REVIEW_REQUIRED", "mergeStateStatus": "BLOCKED", "statusCheckRollup": []}
+EOF
+cat >"$TMP/gh/queue-894.json" <<'EOF'
+{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}
+EOF
+cat >"$TMP/gh/pr-77.json" <<'EOF'
+{"state": "OPEN", "isDraft": false, "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN", "statusCheckRollup": []}
+EOF
+expect_exit 0 orch5 refresh settings
+expect_exit 0 orch5 refresh loner
+expect_exit 0 orch5 inbox add decision --item export "Two parts open the video dialog. Who owns it?" --recommend "export"
+expect_exit 0 orch5 ask loner "Keep the old export?"
+expect_exit 0 orch5 route q1 principal
+expect_exit 0 orch5 inbox add idea "No test asserts button order. New ticket?"
+expect_exit 0 orch5 pace set '{"mode": "slowed", "slots": {"busy": 2}}'
+python3 - "$CREW_RECORD_ROOT/orchestrators/fixture/orchestrator.json" "$NOW" <<'PY'
+import json, sys, time
+p, now = sys.argv[1], int(sys.argv[2])
+s = json.load(open(p, encoding="utf-8"))
+def at(ago):
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - ago))
+for n, item in enumerate(s["items"].values()):
+    item["created_at"] = item["stage_at"] = at(3 * 86400 - n)
+for iid, ago in (("settings", 40), ("export", 12 * 60), ("docs", 2 * 3600)):
+    s["items"][iid]["doing_at"] = at(ago)
+for n, entry in enumerate(s["inbox"]):
+    entry["created_at"] = at(86400 + 600 - n * 300)
+    if entry.get("routed_at"):
+        entry["routed_at"] = at(3 * 3600)
+json.dump(s, open(p, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+PY
+TZ=UTC CREW_ORCH_NOW=$NOW python3 "$TMP/fixcopy/crew-orch.py" --orch fixture board --json >"$TMP/fix/board.json" || fail "board --json of the fixture record failed"
+TZ=UTC CREW_ORCH_NOW=$NOW python3 "$TMP/fixcopy/crew-orch.py" --orch fixture board >"$TMP/fix/board.txt" || fail "board of the fixture record failed"
+python3 "$TMP/check_json.py" "$TMP/fix/board.json" || fail "the fixture JSON is wrong"
+python3 "$TMP/same_board.py" "$TMP/fix/board.json" "$TMP/fix/board.txt" || fail "the fixture views differ: $(cat "$TMP/fix/board.txt")"
+python3 - "$TMP/fix" <<'PY' || fail "cannot wrap the fixtures"
+import json, sys
+d = sys.argv[1]
+head = "// Generated by skills/orchestrator/scripts/test-crew-orch.sh. Do not edit.\n"
+board = open(f"{d}/board.json", encoding="utf-8").read()
+text = open(f"{d}/board.txt", encoding="utf-8").read()
+open(f"{d}/board-json.ts", "w", encoding="utf-8").write(f"{head}// The output of crew-orch.py board --json.\nexport default {board.rstrip()}\n")
+open(f"{d}/board-text.ts", "w", encoding="utf-8").write(f"{head}// The output of crew-orch.py board.\nexport default {json.dumps(text, ensure_ascii=False)}\n")
+PY
+if [ "${CREW_ORCH_WRITE_FIXTURES:-}" = 1 ]; then
+  mkdir -p "$FIX"
+  cp "$TMP/fix/board-json.ts" "$TMP/fix/board-text.ts" "$FIX/"
+  echo "     wrote $FIX/board-json.ts and $FIX/board-text.ts"
+fi
+for f in board-json.ts board-text.ts; do
+  cmp -s "$TMP/fix/$f" "$FIX/$f" || fail "tests/fixtures/$f differs from a fresh run; run CREW_ORCH_WRITE_FIXTURES=1 bash $0 on purpose: $(diff "$TMP/fix/$f" "$FIX/$f" 2>&1 | head -20)"
+done
 pass
 
 echo "all checks passed"

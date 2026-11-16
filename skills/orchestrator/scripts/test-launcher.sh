@@ -215,6 +215,20 @@ r=1
 check 'no Checkouts line exits 3 with one line naming the repo and Checkouts' $r
 CREW_CONFIG="$T/none.md" TMUX=/tmp/t,1,0 run start --name t3 --model m --principal p --repo o/r
 check 'a missing config file exits 3' $([ "$rc" = 3 ]; echo $?)
+printf '## Checkouts\n\n### Work\n\no/sub: /x/sub\n\n#### More\n- o/deep: ~/deep\n\n## Deploy\n\no/after: /x/after\n' > "$T/sub.md"
+r=1; CREW_CONFIG="$T/sub.md" python3 - "$here" <<'PY' && r=0
+import os, sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+def get(repo):
+    try:
+        return launcher.checkout_for(repo)
+    except launcher.Fail as f:
+        return f.code
+ok = get("o/sub") == "/x/sub" and get("o/deep") == os.path.expanduser("~/deep") and get("o/after") == 3
+sys.exit(0 if ok else 1)
+PY
+check 'a ### subheading does not end the Checkouts section; the next ## heading does' $r
 
 # -- git failures (exit 5) -------------------------------------------------
 TMUX=/tmp/t,1,0 run start --name g5 --model m --principal p --repo o/other

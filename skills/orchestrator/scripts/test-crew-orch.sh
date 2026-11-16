@@ -228,7 +228,10 @@ mv "$TMP/gh/pr-77.json" "$TMP/gh/pr-77.off"
 expect_exit 0 orch refresh
 [ "$(wc -l <"$TMP/err" | tr -d ' ')" -ge 1 ] || fail "no line for the failed gh call"
 jcheck 's["items"]["loner"]["merge"] == "can merge" and s["items"]["loner"]["github"]["checks"] == "pass"'
+jcheck '"gh pr view 77" in (s["items"]["loner"]["github"]["error"] or "")'
 mv "$TMP/gh/pr-77.off" "$TMP/gh/pr-77.json"
+expect_exit 0 orch refresh loner
+jcheck 's["items"]["loner"]["github"]["error"] is None'
 pass
 
 STEP="AC7 a failed check is ci failing"
@@ -329,7 +332,7 @@ orch board --urls >"$TMP/board"
 grep -E '^ *Links' "$TMP/board" >/dev/null || fail "no Links list with --urls"
 grep -F 'https://github.com/owner/other/pull/77' "$TMP/board" >/dev/null || fail "no PR URL in --urls"
 grep -F 'https://tickets.example/T-1' "$TMP/board" >/dev/null || fail "no group ticket URL in --urls"
-grep -F 'https://tickets.example/T-2' "$TMP/board" >/dev/null || fail "no item ticket URL in --urls"
+grep -F 'https://tickets.example/T-2' "$TMP/board" >/dev/null && fail "an item ticket URL is in --urls"
 expect_exit 2 orch board --nope
 pass
 
@@ -382,6 +385,150 @@ echo '{"run": {"run_state": "complete"}}' >"$D/decoy/state.json"
 echo 'decoy' >"$D/decoy/charter.md"
 python3 "$STATS_PY" --record-root "$CREW_RECORD_ROOT" >"$TMP/stats" 2>&1
 grep -i -F 'no records under' "$TMP/stats" >/dev/null || fail "crew-stats.py read the orchestrator record: $(head -5 "$TMP/stats")"
+pass
+
+# ---------------------------------------------------------------- patch round
+# A second record, so the C6 check above stays exact.
+orch2() { python3 "$ORCH_PY" --orch patch "$@"; }
+jcheck2() {
+  python3 "$ORCH_PY" --orch patch show >"$TMP/show2.json" || fail "show failed"
+  python3 - "$TMP/show2.json" "$1" <<'PY2' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PY2
+}
+expect_exit 0 orch2 init
+
+STEP="status word: a PR item at review or later shows the merge value"
+expect_exit 0 orch2 item add withpr --title "With PR" --repo owner/pat
+expect_exit 0 orch2 item add nopr --title "No PR" --repo owner/pat
+expect_exit 0 orch2 item withpr pr 501
+cat >"$TMP/gh/pr-501.json" <<'EOF'
+{"state": "OPEN", "isDraft": false, "reviewDecision": "APPROVED", "mergeStateStatus": "CLEAN",
+ "statusCheckRollup": [{"__typename": "CheckRun", "name": "test", "status": "COMPLETED", "conclusion": "SUCCESS", "startedAt": "2026-11-16T10:00:00Z"}]}
+EOF
+cat >"$TMP/gh/queue-501.json" <<'EOF'
+{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}
+EOF
+expect_exit 0 orch2 refresh withpr
+expect_exit 0 orch2 stage withpr review
+expect_exit 0 orch2 stage nopr review
+orch2 board >"$TMP/board2" || fail "board failed"
+grep -E '^ *1 +withpr .*●●●◐○ +can merge +#501' "$TMP/board2" >/dev/null || fail "withpr at review does not show can merge: $(cat "$TMP/board2")"
+grep -E '^ *2 +nopr .*●●●◐○ +review *$' "$TMP/board2" >/dev/null || fail "nopr at review does not show review: $(cat "$TMP/board2")"
+expect_exit 0 orch2 stage withpr build
+orch2 board >"$TMP/board2"
+grep -E '^ *1 +withpr .*●●◐○○ +build ' "$TMP/board2" >/dev/null || fail "withpr at build does not show build"
+pass
+
+STEP="item pr: a URL of another repo exits 2 and writes nothing"
+before=$(cat "$CREW_RECORD_ROOT/orchestrators/patch/orchestrator.json")
+expect_exit 2 orch2 item nopr pr https://github.com/owner/elsewhere/pull/9
+one_line_err
+after=$(cat "$CREW_RECORD_ROOT/orchestrators/patch/orchestrator.json")
+[ "$before" = "$after" ] || fail "a refused pr URL changed the record"
+expect_exit 0 orch2 item nopr pr https://github.com/owner/pat/pull/9
+pass
+
+STEP="set group moves the item out of the old group's order and owners"
+expect_exit 0 orch2 group add g1 --title "Group one"
+expect_exit 0 orch2 group add g2 --title "Group two"
+expect_exit 0 orch2 item add mover --title "Mover" --repo owner/pat --group g1
+expect_exit 0 orch2 item add stayer --title "Stayer" --repo owner/pat --group g1
+expect_exit 0 orch2 group g1 order mover,stayer
+expect_exit 0 orch2 group g1 owner shared-file mover
+expect_exit 0 orch2 group g1 owner other-file stayer
+expect_exit 2 orch2 item mover set group '"nosuch"'
+expect_exit 0 orch2 item mover set group '"g2"'
+jcheck2 's["items"]["mover"]["group"] == "g2"'
+jcheck2 's["groups"]["g1"]["order"] == ["stayer"] and s["groups"]["g1"]["owners"] == {"other-file": "stayer"}'
+jcheck2 's["items"]["stayer"]["waits_on"] == []'
+pass
+
+STEP="the board removes control characters and escape sequences"
+expect_exit 0 orch2 group add dirty --title $'Dirty\e[31mRed\e[0m\atitle' --repo owner/pat --ticket $'T\e]8;;https://evil.example\e\\-9' --ticket-url $'https://tickets.example/\e]8;;https://evil.example\a9\x01'
+expect_exit 0 orch2 item add dirt --title "Dirt" --repo owner/pat --group dirty
+c1=$(printf '\302\233')  # U+009B, the one-character CSI, in UTF-8
+expect_exit 0 orch2 doing dirt $'runs\e[2J the\x7f suite\x01'"$c1"$' now\ttab\nline'
+expect_exit 2 orch2 doing dirt $'raw byte \x9b is not UTF-8'
+one_line_err
+expect_exit 0 orch2 inbox add notice --item dirt $'bell\a here\e[1m bold' --recommend $'rec\e[0m ok'
+orch2 board --urls >"$TMP/board2" || fail "board failed"
+python3 - "$TMP/board2" <<'PY2' || fail "the board has a control character: $(cat -v "$TMP/board2")"
+import re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+bad = re.findall(r"[\x00-\x09\x0b-\x1f\x7f-\x9f]", text)
+assert not bad, bad
+for want in ("DirtyRedtitle", "T-9", "https://tickets.example/9", "runs the suite now tab line", "bell here bold", "Recommended: rec ok"):
+    assert want in text, want
+PY2
+python3 - "$ORCH_PY" <<'PY2' || fail "Links.make on a tty does not wrap the cleaned text and URL"
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("crew_orch", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+got = m.Links(True).make("#1\x07", "https://x.example/\x1b]8;;https://evil.example\x07y")
+assert got == "\x1b]8;;https://x.example/y\x1b\\#1\x1b]8;;\x1b\\", repr(got)
+PY2
+pass
+
+STEP="checks: a run with no startedAt is the latest and reads pending"
+python3 - "$ORCH_PY" <<'PY2' || fail "a queued re-run does not read pending"
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("crew_orch", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+done = {"name": "test", "workflowName": "ci", "status": "COMPLETED", "conclusion": "FAILURE", "startedAt": "2026-11-16T10:00:00Z"}
+queued = {"name": "test", "workflowName": "ci", "status": "QUEUED", "conclusion": None}
+for rollup in ([done, queued], [queued, done]):
+    got = m.check_summary(rollup)
+    assert got == ("pending", []), (rollup, got)
+PY2
+pass
+
+STEP="every merge value, and the order where two rules match"
+python3 - "$ORCH_PY" <<'PY2' || fail "a merge value is wrong"
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("crew_orch", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+
+def item(stage="pr", pr=True, waits=(), **gh):
+    base = {"state": "OPEN", "is_draft": False, "review_decision": "APPROVED", "merge_state": "CLEAN",
+            "checks": "pass", "failed_checks": [], "in_queue": False, "queue_position": None}
+    base.update(gh)
+    return {"id": "x", "stage": stage, "pr": {"number": 1, "url": "u"} if pr else None,
+            "github": base if pr else None, "waits_on": list(waits)}
+
+cases = [
+    # (expected, item, what it proves)
+    ("merged", item(state="MERGED"), "PR merged"),
+    ("merged", item(stage="shipped", pr=False), "merged before no PR"),
+    ("no PR", item(pr=False), "no PR"),
+    ("closed", item(state="CLOSED", in_queue=True), "closed before in queue"),
+    ("closed", item(stage="closed"), "stage closed"),
+    ("in queue 2", item(in_queue=True, queue_position=2), "in queue with a position"),
+    ("in queue", item(in_queue=True), "in queue before can merge"),
+    ("can merge", item(), "can merge"),
+    ("can merge", item(checks="none"), "no checks pass"),
+    ("needs review", item(review_decision=None), "needs review, CLEAN"),
+    ("needs review", item(review_decision="REVIEW_REQUIRED", merge_state="BLOCKED"), "needs review, BLOCKED"),
+    ("needs review", item(review_decision=None, waits=["a"]), "needs review before waits on"),
+    ("waits on a, b", item(waits=["a", "b"]), "waits on stops can merge"),
+    ("waits on a", item(waits=["a"], merge_state="DIRTY"), "waits on before conflict"),
+    ("conflict", item(merge_state="DIRTY"), "conflict, DIRTY"),
+    ("conflict", item(merge_state="BEHIND", checks="fail"), "conflict before ci failing"),
+    ("ci failing", item(merge_state="BLOCKED", checks="fail", is_draft=True), "ci failing before draft"),
+    ("ci pending", item(merge_state="BLOCKED", checks="pending", is_draft=True), "ci pending before draft"),
+    ("draft", item(is_draft=True, review_decision="CHANGES_REQUESTED"), "draft before changes requested"),
+    ("changes requested", item(review_decision="CHANGES_REQUESTED", merge_state="BLOCKED"), "changes requested"),
+    ("blocked", item(merge_state="BLOCKED"), "approved but BLOCKED"),
+    ("blocked", item(merge_state="UNSTABLE"), "an unknown merge state"),
+]
+bad = [(want, m.merge_value(it), why) for want, it, why in cases if m.merge_value(it) != want]
+assert not bad, bad
+PY2
 pass
 
 echo "all checks passed"

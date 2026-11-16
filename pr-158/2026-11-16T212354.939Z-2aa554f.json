@@ -1,0 +1,1772 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 158,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Add the orchestrator launcher for iTerm2 tab groups and tmux",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/158"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "072e1f5a5816b0fcdfeb95d66ea120420c19f250",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-158/2026-11-16T205343.455Z-072e1f5.json",
+      "open": [],
+      "dismissed": [
+        "3c7546511f44b3b0",
+        "6dfab01ed61ccb8e",
+        "82657d63addcd776",
+        "8f516fee3b4542dd",
+        "a8c5891195fc0868",
+        "b4df31170f478771"
+      ],
+      "fetch_failed": false
+    },
+    "base": "4bdd67624a5f7a23a319531fe197bdac90c37f06",
+    "head": "2aa554f9b1c9888411df9f523d8b0552544e83fd",
+    "started_at": "2026-11-16T21:23:54.939Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Add the orchestrator launcher for iTerm2 tab groups and tmux\n\n## Summary\n\nThe orchestrator now has a launcher. One command starts an implementer: it makes a git worktree from the fetched remote default branch, opens a new iTerm2 tab (in a tab group) or a tmux window, and starts a `crew:project-lead` session there that waits for its goal from the orchestrator. Other commands list the open tab groups, bring an implementer's tab to the front, and stop an implementer while they keep its worktree. Before this, the orchestrator experiments launched each tab with a hand-written script, and the worktrees started from an old local main.\n\nCloses #152\n\n**Ticket:** [#152 — crew:orchestrator: the launcher for iTerm2 tab groups and tmux](https://github.com/jerridan/crew/issues/152)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\nIssue #150 (the agreed orchestrator design, rules 4, 5, 11, 15 and 16) and issue #149 (the experiments). `skills/orchestrator/references/launcher.md` is the one owner of the launcher's subcommands, arguments, start output and exit codes. `skills/project-lead/SKILL.md` \"Standing instructions\" owns the sections of the standing-instructions files. `docs/design.md` §15.140 holds the decisions and their reasons.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py` (new): `start`, `groups`, `focus` and `stop`. Python 3.9+, standard library only. `start` prints one JSON line with exactly nine fields: `session_name`, `repo`, `worktree`, `branch`, `base`, `model`, `terminal`, `tab`, `tab_group`. These names are agreed with the record part (#151), which stores the object unchanged.\n- `skills/orchestrator/scripts/iterm2-tabs.py` (new): the iTerm2 Python API helper, run through `uv run --with iterm2`. It opens the tab and adds it to a named group, or makes the group. When it fails, the launcher opens the tab with `osascript` and says on one line that it made no group. The launcher never opens a second tab after a partial failure.\n- `skills/orchestrator/scripts/test-launcher.sh` (new): the seeded test, with stub `tmux`, `osascript`, `uv` and `claude`, a throwaway repo whose local main is older than its origin, and a fake `iterm2` module for the helper. 111 checks.\n- `skills/orchestrator/references/launcher.md` (new): the interface.\n- `skills/project-lead/SKILL.md`: a `Checkouts` row in the standing-instructions table (twelve sections now). §15.138 removed it with the review queue; the launcher reads it now.\n- `CLAUDE.md`: the new scripts in the code list and the Layout table, and one Build state sentence.\n- `docs/design.md`: the entry §15.140.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: `version` is 0.1.107 in both, as the orchestrator assigned.\n\n### Constraints that applied\n\n- The launcher writes no record. The record command of #151 is the only writer; the start output is the launcher's interface.\n- The new `claude` always gets `--model` (default `opus`, never the machine default) and one `--settings` JSON with `\"remoteControlAtStartup\": false` merged into any object that the orchestrator passes (the usage part, #153, passes its status-line settings this way). An explicit `remoteControlAtStartup` in that object is kept.\n- No clone: the checkout comes from `--checkout` or from a `Checkouts` line in `~/.claude/crew/config.md`. Exact tmux session targets (`=name`) and a `cd` before the command (design §15.47, §15.89). A session name holds no `eval`, because a worktree-isolated session refuses a command that holds it.\n- `skills/project-lead/SKILL.md` is now 516 lines, over the 500-line target, and `CLAUDE.md` is 248 lines, over its 200-line target. This PR adds one table row and five lines; it does not split either file.\n- `skills/orchestrator/SKILL.md` is not in this PR: the skill part (#154) owns it.\n- The README does not change: the launcher is internal to the orchestrator until the skill of #154 exists.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 111 of 111 checks passed, also with the bash 3.2 that macOS ships. Each round's test commits failed before their fixes (3 of 77, 80 of 86, 88 of 98, and one red commit per review fix). With the fetch removed and the stale local main used, one check fails.\n- A live probe on iTerm2 3.7.7, with a stub in place of `claude`: two `start` calls with the same new `--group` put both tabs into one new group (the second joined the first); `groups` listed it (iTerm2 rounded `#3366cc` to `#3266cc`); `focus` and `stop` worked with no confirm dialog; a second `stop` said \"already gone\"; the worktrees stayed.\n- A live probe on tmux, on a separate server: `start` opened the window in the worktree, and the stub got `--name`, `--model`, `--settings {\"remoteControlAtStartup\": false}` and the wait prompt; `focus`, `stop` and a second `stop` behaved as stated. A socket path that was too long made `start` exit 6 and name the kept worktree.\n- Every probe tab, window, tmux server, worktree and branch was removed after.\n- A skeptical review of the whole diff (0 blocking, 2 suggestions, 2 nits, 1 unsure) and the CI review (0 blocking, 1 suggestion, 5 nits) were answered in one patch round: the helper runs in its own process group and has its own deadline, so a timeout leaves no helper that could open a second tab; the osascript fallback selects the orchestrator's tab again; tmux windows open unselected; every tmux call drops `CLAUDECODE` and `CLAUDE_CODE_*`, so an implementer does not get the orchestrator's session variables; exit 6 for focus and stop is documented; a `###` subheading no longer ends the Checkouts section; the Checkouts row points at launcher.md for the line format; the tests cover the helper's group join and create paths and watch the git calls for a clone. The probes ran before this round.\n\n### Known gaps\n\n- Remote Control off is not proven on a real `claude` session. The probes used a stub, because a test must not start `claude` with the user's plugins. The orchestrator checks it on its next real launch.\n- A session in a directory that `claude` does not trust yet shows the trust dialog and waits for a person.\n- No crew run has used the launcher. Resume after a restart and worktree removal belong to #156.\n\n<details><summary>spec.md</summary>\n\nThe spec as written before the merge values were assigned: TBD-152 below is now 0.1.107 and §15.140.\n\n# Spec: the orchestrator launcher (issue 152)\n\nTarget repo: `<repo>` (the crew plugin).\n\n## Goal\n\nBuild the launcher of `crew:orchestrator` for iTerm2 tab groups and tmux. The launcher is code. The orchestrator session runs it from Bash. It starts an implementer, lists groups, brings an implementer to the front, and stops an implementer. An implementer is a `crew:project-lead` session in its own git worktree. It waits for a goal that the orchestrator sends as a cross-session message.\n\nThe launcher does not write the orchestrator record. Issue 151 owns the record.\n\n## Deliverables (files)\n\nAll paths are relative to the repo root. Later parts (issues 154, 155 and 156) depend on these locations.\n\n- D1. `skills/orchestrator/scripts/launcher.py`. Python 3, standard library only. It has subcommands.\n- D2. `skills/orchestrator/scripts/iterm2-tabs.py`. The iTerm2 Python API helper. `launcher.py` runs it with `uv run --with iterm2 python <helper>`.\n- D3. `skills/orchestrator/scripts/test-launcher.sh`. The seeded test. A person runs it with `bash <path>`.\n- D4. `skills/orchestrator/references/launcher.md`. It states the subcommands, their arguments, the start output object and the exit codes. It follows `skills/project-lead/references/writing-standard.md`.\n- D5. `skills/project-lead/SKILL.md`: one new `Checkouts` row in the standing-instructions table, and the count word above the table updated.\n- D6. `CLAUDE.md`: the new scripts in the code list and in the Layout table, and one sentence in Build state.\n- D7. `docs/design.md` section 15: a new entry `15.TBD-152`.\n- D8. `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`: `version` set to the literal string `\"TBD-152\"` in both.\n- D9. `README.md`: no change. The launcher and its env names are internal to the orchestrator until the skill of issue 154 exists, and that part owns the README change.\n\n## Requirements\n\n### R1. start\n\nCommand line:\n\n```\nlauncher.py start --name <session-name> [--model <model>] [--settings <file-or-json>] --principal <orchestrator session name>\n                  [--repo <owner/repo>] [--checkout <path>]\n                  [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]\n```\n\nThe command makes a worktree, opens a terminal tab or window, and starts `claude` in it with a wait prompt.\n\nAcceptance criteria:\n\n- AC R1.1: A call with a missing required argument (`--name`, `--principal`, or neither of `--repo` and `--checkout`) exits 2 and prints a usage line on stderr. It creates no worktree.\n- AC R1.2: A name that does not match `[a-z0-9][a-z0-9-]*` exits 2 and creates no worktree. Names such as `Bad_Name`, `-x`, `a b` and `a;b` must fail.\n- AC R1.3: A name that contains the substring `eval` exits 2 and creates no worktree. `eval`, `my-eval-x` and `retrieval` fail; `review-x` passes. Reason: a worktree-isolated session refuses a shell command that holds `eval` (issue 149, experiment 2, F6).\n- AC R1.4: `--checkout <path>` selects the checkout. Both `--repo` and `--checkout` may be given. Then `--checkout` wins, and `--repo` sets only the `repo` field.\n- AC R1.5: Without `--checkout`, the launcher reads the file named by env `CREW_CONFIG`. When `CREW_CONFIG` is unset, it reads `~/.claude/crew/config.md`. `CREW_CONFIG` is for tests and probes only, and `launcher.md` is its one owner. The section starts at the heading `## Checkouts` and ends at the next `##` heading. A line is `<owner>/<repo>: <path>`, with an optional `- ` bullet before it. A leading `~` in the path expands to the home directory. Other lines are ignored. It uses the line for `--repo`. A test with two repo lines must select the right one.\n- AC R1.6: When the file has no `Checkouts` line for `--repo`, the command exits 3. It prints exactly one line on stderr. The line names the repo and the section `Checkouts`. It creates no worktree and runs no `git clone`.\n- AC R1.7: The launcher runs `git fetch origin` in the checkout. It finds the remote default branch from the remote itself, with `git ls-remote --symref origin HEAD`. It does not use a local ref. A test whose local `main` is older than `origin/main` must make a worktree whose HEAD sha equals the sha that origin's default branch has.\n- AC R1.8: The worktree is at `<checkout>/.claude/worktrees/<name>`. It is on a new branch `worktree-<name>` that starts at `origin/<default>`.\n- AC R1.9: When the worktree path or the branch `worktree-<name>` already exists, the command exits 5 and prints one line on stderr. It changes nothing: the existing worktree and branch keep their state, and no tab opens.\n- AC R1.10: A git failure (for example, no remote, or a failed fetch) exits 5 with one line on stderr. It opens no tab.\n- AC R1.11: The launch command has this form: `cd <worktree> && exec <claude> --name <name> --model <model> <wait prompt>`. The launcher shell-quotes every value. `<claude>` is the value of env `CREW_LAUNCHER_CLAUDE` when set, and `claude` otherwise. A test that passes a model or a principal that contains a single quote, a space and a `$` must show that the shell passes each value to the stub as one argument, unchanged.\n- AC R1.12: The wait prompt is this text, with `<orchestrator>` replaced by the `--principal` value, and no other change: \"You are an implementer session for the orchestrator session named <orchestrator>. The user started you through that orchestrator. Do nothing now. A goal arrives as a cross-session message from that session. When it arrives, run the crew:project-lead skill with that goal. The orchestrator is your principal: the user gave it the authority to decide for this work, so send your questions, your escalations and your reports to it with SendMessage, not to this tab. Answer this message with one line and then wait.\"\n- AC R1.13: Terminal detection, in this order. `--terminal` wins. Else, when `$TMUX` is set, the terminal is tmux. Else, when `$TERM_PROGRAM` is `iTerm.app` or `$ITERM_SESSION_ID` is set, the terminal is iterm2. A test must show each of the four cases.\n- AC R1.14: When no terminal is found, the command exits 4. It prints one line on stderr. The line says the terminal is unsupported, names the value of `$TERM_PROGRAM`, and names the supported terminals (`iterm2`, `tmux`). It creates no worktree.\n- AC R1.15: On tmux, the launcher makes one new window in a tmux session. `--group` names that tmux session. The default name is `crew`. When the session does not exist, the launcher creates it detached. Every tmux target that names a session uses the exact form `=name`. A pane id (`%7`) is used as is. The command that runs in the window starts with `cd <worktree>`, so it does not depend on the tmux server cwd. A tmux stub log must show these calls.\n- AC R1.16: On tmux, the output has `terminal` equal to `tmux`, `tab` equal to `tmux:<pane id>` (for example `tmux:%7`), and `tab_group` equal to the tmux session name.\n- AC R1.17: On iterm2, the launcher opens one new tab in the window of the orchestrator's own session. That window is the window that holds the session named by `$ITERM_SESSION_ID`. When that session is not known, it uses the current window.\n- AC R1.18: On iterm2 with `--group <name>`: when an open group of that name exists in that window, the tab joins it. When none exists, the launcher creates a group with that name and the `--group-color` color (or the color iTerm2 picks when the option is absent). The helper reads the app state again after it changes a group. The test must not compare a color for exact equality, because iTerm2 rounds colors.\n- AC R1.19: On iterm2 without `--group`, the tab joins no group and `tab_group` is null.\n- AC R1.20: The iTerm2 helper runs with `uv run --with iterm2 python <helper path>`. `launcher.py` itself imports no `iterm2` module and works when the `iterm2` package is not installed.\n- AC R1.21: When the helper fails (no `uv`, the Python API is off, or iTerm2 has no tab groups), the launcher opens the tab with `osascript`. It prints exactly one line on stderr that says it made no group, and why. The output has `tab_group` equal to null. The exit code is 0 if the tab opened.\n- AC R1.22: When the terminal step fails, and the AppleScript fallback also fails, the command exits 6. The worktree stays. The one error line on stderr contains the worktree path.\n- AC R1.23: Stdout carries exactly one line. That line is one JSON object with exactly these nine fields, and no other: `session_name`, `repo`, `worktree`, `branch`, `base`, `model`, `terminal`, `tab`, `tab_group`. A test parses stdout with a JSON parser and checks the key set and that stdout has one line.\n- AC R1.24: The field values are as follows. `session_name` is the `--name` value. `repo` is `<owner>/<repo>`, taken from `--repo`, or else from the origin URL of the checkout (both https and ssh URLs). `worktree` is the absolute worktree path. `branch` is `worktree-<name>`. `base` is `origin/<default branch>`. `model` is the `--model` value. `terminal` is `iterm2` or `tmux`. `tab` is one opaque string, `iterm2:<session unique id>` or `tmux:<pane id>`. `tab_group` is the group name, or null.\n- AC R1.25: The launcher writes no record file and runs no record command.\n- AC R1.26: `launcher.py` exits 0 on success.\n- AC R1.30: `start` takes an optional `--settings <value>`: a path to a JSON file or a JSON string. The launch command always passes exactly one `--settings <json string>` to `claude`, shell-quoted, after `--model`. That JSON is the given value's object (read from the file when the value is a path), with `\"remoteControlAtStartup\": false` added when the object has no `remoteControlAtStartup` key. With no `--settings`, the JSON is `{\"remoteControlAtStartup\": false}`. A value that is not a JSON object, or a file that does not hold one, exits 2 and creates no worktree. (Issue 150 rule 16: Remote Control is off by default whatever the user's settings say. Issue 153 passes its settings through this argument.)\n- AC R1.31: `--model` is optional. Its default is `opus`, never the machine's default model (issue 150 rule 15). The launch command always carries `--model`.\n- AC R1.29: When a call fails more than one check, the first in this order decides the exit: usage (2), terminal (4), checkout (3), git (5), terminal step (6).\n- AC R1.27: The new iTerm2 session, or the new tmux window, has the session name as its name, so that a person and part 156 can find it by name.\n- AC R1.28: A `--group-color` value that is not `#rrggbb` exits 2 and creates no worktree.\n\n### R2. groups\n\nCommand line: `launcher.py groups`.\n\nAcceptance criteria:\n\n- AC R2.1: On iterm2, the command prints one JSON line per open tab group. Each line is an object with exactly the fields `window_id`, `group_id`, `name` and `color`. It exits 0.\n- AC R2.2: On tmux, the command prints one line per tmux session in the same shape, with the session as the group. The line fields are still `window_id`, `group_id`, `name` and `color`. The `window_id` and `color` values are null. It exits 0.\n- AC R2.3: When the API is not available (no `uv`, API off, no tab groups), the command prints one line on stderr that says so, prints no group line on stdout, and exits 0.\n- AC R2.4: A terminal that is not supported makes the command exit 4 with the same one line as AC R1.14.\n\n### R3. focus\n\nCommand line: `launcher.py focus <handle>`. The handle is the `tab` value of the start output.\n\nAcceptance criteria:\n\n- AC R3.1: For `iterm2:<id>`, the command selects the tab, brings its window to the front, and activates the iTerm2 app. The stub log must show a call that addresses `<id>`.\n- AC R3.2: For `tmux:<pane id>`, the command selects the window that holds the pane. When a tmux client is attached, it also switches that client to that window. The stub log must show calls with the exact pane target.\n- AC R3.3: A handle that has an unknown prefix, or that names a tab or pane that does not exist, makes the command exit 7 with one line on stderr.\n- AC R3.4: A successful focus exits 0. It does not change the worktree.\n\n### R4. stop\n\nCommand line: `launcher.py stop <handle>`.\n\nAcceptance criteria:\n\n- AC R4.1: For `iterm2:<id>`, the command ends the session and closes its tab. For `tmux:<pane id>`, the command ends the pane and closes its window. The stub log must show a call that addresses the handle exactly.\n- AC R4.2: The command never removes or changes the worktree or the branch. A test checks that the worktree directory and the branch exist after stop.\n- AC R4.3: When the tab or window is already gone, the command exits 0 and prints one line that says it was gone.\n- AC R4.4: A handle with an unknown prefix exits 7 with one line on stderr.\n\n### R5. seeded test\n\nThe file is `skills/orchestrator/scripts/test-launcher.sh`. It follows the pattern of `skills/delivered-window/scripts/test-pr-watch-deploy.sh`.\n\nAcceptance criteria:\n\n- AC R5.1: `bash skills/orchestrator/scripts/test-launcher.sh` exits 0 when all checks pass. It prints a final line `N of M checks passed`. It exits 1 when any check fails.\n- AC R5.2: The test puts stub commands first in `PATH` for `tmux`, `osascript`, `uv` and `claude`. It builds a throwaway git repo and a bare origin in a temporary directory. The local `main` of the repo is older than the `main` of the origin. The test removes the temporary directory when it ends.\n- AC R5.3: The test does no network call, opens no real terminal tab, window or group, and starts no real `claude`. It runs with the iterm2 package absent.\n- AC R5.4: The test has at least one check for each of these: the worktree sha equals the remote default branch sha (AC R1.7); the built command has `--name`, `--model` and the wait prompt, and a quote in a value ",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/iterm2-tabs.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds new executable launcher code (git worktree creation, subprocess and process-group handling, shell command quoting, AppleScript/iTerm2/tmux control) plus a new config section that project-lead reads.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: iterm_start (fallback logic, risk of two tabs/duplicate claude), run() timeout and process-group kill",
+        "skills/orchestrator/scripts/launcher.py: launch_command and settings_json (shell quoting, injection, Remote Control default)",
+        "skills/orchestrator/scripts/launcher.py: make_worktree (fetch, ls-remote default branch, existing path/branch checks, --no-track)",
+        "skills/orchestrator/scripts/launcher.py: checkout_for (config parsing, ## vs ### sections)",
+        "skills/orchestrator/scripts/launcher.py: tmux() env scrubbing, tmux_start target handling, focus/stop exit codes",
+        "skills/orchestrator/scripts/iterm2-tabs.py: start (close-on-failure, group join/create, emitted lines)",
+        "skills/orchestrator/scripts/test-launcher.sh: stub fidelity and whether checks truly test behaviour",
+        "skills/project-lead/SKILL.md: section count and new Checkouts row"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump 0.1.106 to 0.1.107"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump, matches marketplace.json"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs: layout table rows and status note for the launcher"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 140 recording launcher decisions"
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "new interface spec: subcommands, output fields, exit codes; check it matches the code"
+        },
+        {
+          "file": "skills/orchestrator/scripts/iterm2-tabs.py",
+          "note": "new iTerm2 Python API helper that opens tabs, types commands and manages groups"
+        },
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "new main script, about 640 lines, with git, subprocess, tmux and osascript logic"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "new seeded test using stubs for tmux, osascript, uv, claude and git"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "adds a Checkouts section row and changes the count from eleven to twelve; a behavioural doc read by the agent"
+        }
+      ],
+      "summary": "Adds the orchestrator launcher: launcher.py with start, groups, focus and stop subcommands, an iTerm2 API helper, and a seeded test with stubs. start creates a git worktree at the remote default branch and runs claude in a new iTerm2 tab or tmux window. It also documents the interface and design, bumps the plugin version, and registers a Checkouts config section in project-lead."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds new executable launcher code (git worktree creation, subprocess and process-group handling, shell command quoting, AppleScript/iTerm2/tmux control) plus a new config section that project-lead reads.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7205,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49320,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049465,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 529,
+              "cacheReadInputTokens": 61941,
+              "cacheCreationInputTokens": 56062,
+              "webSearchRequests": 0,
+              "costUSD": 0.4714802,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 368,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.47642670000000004
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5307,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49314,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049459,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 416,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 55775,
+              "webSearchRequests": 0,
+              "costUSD": 0.4551398,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 189,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4600857
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 340,
+            "end_line": 348,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "`start` can fail with exit 5 when the checkout's fetch refspec does not cover the remote default branch.",
+            "evidence": "git(checkout, \"fetch\", \"-q\", \"origin\")",
+            "suggested_fix": "Fetch the default branch by name, for example `git fetch origin +refs/heads/<default>:refs/remotes/origin/<default>`, after `ls-remote`.",
+            "explanation": "`git ls-remote` reads the default branch from the remote, but `origin/<default>` exists locally only if the fetch refspec includes that branch. A single-branch clone, a narrowed refspec, or a remote whose default branch was renamed leaves no such ref, so `rev-parse` fails.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 18562,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49314,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049459,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1747,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 55720,
+              "webSearchRequests": 0,
+              "costUSD": 0.48131979999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1221,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.48626569999999997
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 241,
+            "end_line": 242,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "--group is only checked for emptiness, yet it is passed raw as a tmux session name, where '.' or ':' may be rewritten by tmux and break the later exact `=name` lookup.",
+            "evidence": "    if a.group is not None and not a.group.strip():\n        bad(\"--group is empty\")",
+            "suggested_fix": "Validate --group with NAME_RE (or reject '.' and ':') for tmux.",
+            "explanation": "tmux may rename a session that contains '.' or ':', so has-session -t =<group> would miss it and tab_group would not match the real session.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 17333,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49314,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049459,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1651,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 55720,
+              "webSearchRequests": 0,
+              "costUSD": 0.4793998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 944,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4843457
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8144,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49320,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049465,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 623,
+              "cacheReadInputTokens": 61851,
+              "cacheCreationInputTokens": 56140,
+              "webSearchRequests": 0,
+              "costUSD": 0.4739662,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 456,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.47891269999999997
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6342,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 54517,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0054662,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 446,
+              "cacheReadInputTokens": 67163,
+              "cacheCreationInputTokens": 61300,
+              "webSearchRequests": 0,
+              "costUSD": 0.5127686,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 283,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.5182348
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7790,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49308,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049453,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 709,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 55812,
+              "webSearchRequests": 0,
+              "costUSD": 0.4612958,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 197,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.46624109999999996
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7051,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49318,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049463,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 622,
+              "cacheReadInputTokens": 10059,
+              "cacheCreationInputTokens": 48822,
+              "webSearchRequests": 0,
+              "costUSD": 0.4050358,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 138,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4099821
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 622,
+            "end_line": 623,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The fake iterm2 module always returns None from get_session_by_id, so no test covers the helper opening the tab in the orchestrator's own window (AC R1.17).",
+            "evidence": "    def get_session_by_id(self, i):",
+            "suggested_fix": "Add a second fake window that holds a known session id, and check that create_tab runs in that window when --session is given.",
+            "explanation": "The --session branch of the helper's start can break, and no check would fail.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 545,
+            "end_line": 547,
+            "category": "test",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "Two paths have no test: groups on tmux with no server running, and the helper's own groups subcommand.",
+            "evidence": "            return OK  # no tmux server: no session, no group",
+            "suggested_fix": "Run groups with no tmux-sessions file and check for exit 0 and empty stdout. Run iterm2-tabs.py groups against the fake module.",
+            "explanation": "A regression on either path would pass the suite.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8521,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 49322,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0049467,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 838,
+              "cacheReadInputTokens": 62615,
+              "cacheCreationInputTokens": 57056,
+              "webSearchRequests": 0,
+              "costUSD": 0.48574700000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 228,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4906937
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 241,
+          "end_line": 242,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "--group is only checked for emptiness, yet it is passed raw as a tmux session name, where '.' or ':' may be rewritten by tmux and break the later exact `=name` lookup.",
+          "evidence": "    if a.group is not None and not a.group.strip():\n        bad(\"--group is empty\")",
+          "suggested_fix": "Validate --group with NAME_RE (or reject '.' and ':') for tmux.",
+          "explanation": "tmux may rename a session that contains '.' or ':', so has-session -t =<group> would miss it and tab_group would not match the real session.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if a.group is not None and not a.group.strip():\n        bad(\"--group is empty\")",
+            "session = group or \"crew\"\n    rc, _, _ = tmux([\"has-session\", \"-t\", \"=\" + session])",
+            "cmd = [\"new-session\", \"-d\", \"-s\", session, \"-n\", name, \"-P\", \"-F\", \"#{pane_id}\", command]"
+          ],
+          "rationale": "`--group` is only checked for emptiness and goes straight into tmux `-s` and `=name`. tmux rewrites '.' and ':' in session names to '_' (from my knowledge of tmux, not checked in the repo). So the exact has-session lookup would miss the real session, and the returned `tab_group` would differ from the real name. A second start with such a group would hit new-session again and fail with exit 6. This only happens with unusual group names.",
+          "score": 75,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if a.group is not None and not a.group.strip():\n        bad(\"--group is empty\")",
+            "    session = group or \"crew\"\n    rc, _, _ = tmux([\"has-session\", \"-t\", \"=\" + session])",
+            "        cmd = [\"new-session\", \"-d\", \"-s\", session, \"-n\", name, \"-P\", \"-F\", \"#{pane_id}\", command]",
+            "    return \"tmux:\" + pane, session"
+          ],
+          "rationale": "The finding holds. The only check on `--group` is that it is not empty, and the raw value goes to `new-session -s` and to `has-session -t =<group>`. Recent tmux versions replace '.' and ':' in session names with '_' (older ones reject the name). So the returned `tab_group` does not match the real session, and a second start with the same group misses the exact lookup and then fails with a duplicate-session error (exit 6). This needs a group name that contains '.' or ':', which is an uncommon path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if a.group is not None and not a.group.strip():\n        bad(\"--group is empty\")",
+            "    session = group or \"crew\"\n    rc, _, _ = tmux([\"has-session\", \"-t\", \"=\" + session])",
+            "        cmd = [\"new-session\", \"-d\", \"-s\", session, \"-n\", name, \"-P\", \"-F\", \"#{pane_id}\", command]",
+            "    return \"tmux:\" + pane, session"
+          ],
+          "rationale": "The finding holds. The only check on `--group` is that it is not empty, and the raw value goes to `new-session -s` and to `has-session -t =<group>`. Recent tmux versions replace '.' and ':' in session names with '_' (older ones reject the name). So the returned `tab_group` does not match the real session, and a second start with the same group misses the exact lookup and then fails with a duplicate-session error (exit 6). This needs a group name that contains '.' or ':', which is an uncommon path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 340,
+          "end_line": 348,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "`start` can fail with exit 5 when the checkout's fetch refspec does not cover the remote default branch.",
+          "evidence": "git(checkout, \"fetch\", \"-q\", \"origin\")",
+          "suggested_fix": "Fetch the default branch by name, for example `git fetch origin +refs/heads/<default>:refs/remotes/origin/<default>`, after `ls-remote`.",
+          "explanation": "`git ls-remote` reads the default branch from the remote, but `origin/<default>` exists locally only if the fetch refspec includes that branch. A single-branch clone, a narrowed refspec, or a remote whose default branch was renamed leaves no such ref, so `rev-parse` fails.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "git(checkout, \"fetch\", \"-q\", \"origin\")",
+            "base = \"origin/\" + m.group(1)",
+            "sha = git(checkout, \"rev-parse\", \"--verify\", \"-q\", base + \"^{commit}\").strip()"
+          ],
+          "rationale": "The code runs a plain `git fetch origin`, which uses only the configured refspec. It then takes the default branch name from `ls-remote` and resolves `origin/<default>` locally. If the refspec leaves out that branch (a single-branch clone of another branch, or a narrowed refspec), `rev-parse` fails and `start` exits 5 with a clear message. This is an edge case, not the normal path.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "git(checkout, \"fetch\", \"-q\", \"origin\")",
+            "out = git(checkout, \"ls-remote\", \"--symref\", \"origin\", \"HEAD\")",
+            "base = \"origin/\" + m.group(1)",
+            "sha = git(checkout, \"rev-parse\", \"--verify\", \"-q\", base + \"^{commit}\").strip()"
+          ],
+          "rationale": "The finding is correct. A plain `git fetch origin` updates only the refs that the configured refspec covers. The next `rev-parse` of `origin/<default>` depends on that ref existing locally, so a single-branch clone or a narrowed refspec that leaves out the default branch makes `start` fail with exit 5. This is an unusual setup, and the result is a clear git error, not a silent wrong result. Fetching the default branch by name would make the code more robust.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "git(checkout, \"fetch\", \"-q\", \"origin\")",
+            "out = git(checkout, \"ls-remote\", \"--symref\", \"origin\", \"HEAD\")",
+            "base = \"origin/\" + m.group(1)",
+            "sha = git(checkout, \"rev-parse\", \"--verify\", \"-q\", base + \"^{commit}\").strip()"
+          ],
+          "rationale": "The finding is correct. A plain `git fetch origin` updates only the refs that the configured refspec covers. The next `rev-parse` of `origin/<default>` depends on that ref existing locally, so a single-branch clone or a narrowed refspec that leaves out the default branch makes `start` fail with exit 5. This is an unusual setup, and the result is a clear git error, not a silent wrong result. Fetching the default branch by name would make the code more robust.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 622,
+          "end_line": 623,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The fake iterm2 module always returns None from get_session_by_id, so no test covers the helper opening the tab in the orchestrator's own window (AC R1.17).",
+          "evidence": "    def get_session_by_id(self, i):",
+          "suggested_fix": "Add a second fake window that holds a known session id, and check that create_tab runs in that window when --session is given.",
+          "explanation": "The --session branch of the helper's start can break, and no check would fail.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    def get_session_by_id(self, i):\n        return None",
+            "        session = app.get_session_by_id(args.session)\n        if session is not None:\n            window, _ = app.get_window_and_tab_for_session(session)"
+          ],
+          "rationale": "The fake App.get_session_by_id always returns None. The fake also has no get_window_and_tab_for_session, and no helper test passes --session. So the helper's session-to-window branch (AC R1.17) never runs against the fake, and a bug there would not fail any check.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    def get_session_by_id(self, i):\n        return None",
+            "        session = app.get_session_by_id(args.session)\n        if session is not None:\n            window, _ = app.get_window_and_tab_for_session(session)"
+          ],
+          "rationale": "The fake App.get_session_by_id always returns None. The fake also has no get_window_and_tab_for_session, and no helper test passes --session. So the helper's session-to-window branch (AC R1.17) never runs against the fake, and a bug there would not fail any check.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 545,
+          "end_line": 547,
+          "category": "test",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "Two paths have no test: groups on tmux with no server running, and the helper's own groups subcommand.",
+          "evidence": "            return OK  # no tmux server: no session, no group",
+          "suggested_fix": "Run groups with no tmux-sessions file and check for exit 0 and empty stdout. Run iterm2-tabs.py groups against the fake module.",
+          "explanation": "A regression on either path would pass the suite.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return OK  # no tmux server: no session, no group",
+            "rc, out, err = run(helper_cmd(\"groups\"), timeout=HELPER_TIMEOUT)"
+          ],
+          "rationale": "The test's only tmux `groups` runs set `tmux-sessions` first, so the \"no server\" return is never run. The helper tests run only the `start` subcommand against the fake module, and `groups` on iTerm2 uses the stubbed `uv-groups` file.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return OK  # no tmux server: no session, no group",
+            "rc, out, err = run(helper_cmd(\"groups\"), timeout=HELPER_TIMEOUT)",
+            "printf '$1\\tcrew\\n$4\\tgrp\\n' > \"$STUB_DIR/tmux-sessions\"",
+            "FAKE_FAIL=$f PYTHONPATH=\"$T/fake\" python3 \"$here/iterm2-tabs.py\" start --name h1 --command 'echo hi' \"$@\" > \"$T/out\" 2> \"$T/err\""
+          ],
+          "rationale": "Both tmux `groups` tests create a tmux-sessions file first, so the stub's \"no server running\" path is never run. The `helper()` test function always calls iterm2-tabs.py with `start`, so the helper's own `groups` subcommand is only reached through the uv stub, which prints canned output. Both gaps are real but small, and the tests to add are cheap.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return OK  # no tmux server: no session, no group",
+            "rc, out, err = run(helper_cmd(\"groups\"), timeout=HELPER_TIMEOUT)",
+            "printf '$1\\tcrew\\n$4\\tgrp\\n' > \"$STUB_DIR/tmux-sessions\"",
+            "FAKE_FAIL=$f PYTHONPATH=\"$T/fake\" python3 \"$here/iterm2-tabs.py\" start --name h1 --command 'echo hi' \"$@\" > \"$T/out\" 2> \"$T/err\""
+          ],
+          "rationale": "Both tmux `groups` tests create a tmux-sessions file first, so the stub's \"no server running\" path is never run. The `helper()` test function always calls iterm2-tabs.py with `start`, so the helper's own `groups` subcommand is only reached through the uv stub, which prints canned output. Both gaps are real but small, and the tests to add are cheap.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5927984394,
+      "review_url": "https://github.com/jerridan/crew/pull/158#pullrequestreview-5927984394",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133624062007
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/test-launcher.sh",
+        "start_line": 622,
+        "end_line": 623,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The fake iterm2 module always returns None from get_session_by_id, so no test covers the helper opening the tab in the orchestrator's own window (AC R1.17).",
+        "evidence": "    def get_session_by_id(self, i):",
+        "suggested_fix": "Add a second fake window that holds a known session id, and check that create_tab runs in that window when --session is given.",
+        "explanation": "The --session branch of the helper's start can break, and no check would fail.",
+        "needs_context": false,
+        "fingerprint": "3ebcf4dadf3eae7f",
+        "severity": "suggestion",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    def get_session_by_id(self, i):\n        return None",
+            "        session = app.get_session_by_id(args.session)\n        if session is not None:\n            window, _ = app.get_window_and_tab_for_session(session)"
+          ],
+          "rationale": "The fake App.get_session_by_id always returns None. The fake also has no get_window_and_tab_for_session, and no helper test passes --session. So the helper's session-to-window branch (AC R1.17) never runs against the fake, and a bug there would not fail any check.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "span_text": "def get_session_by_id(self, i): return None"
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 340,
+        "end_line": 348,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "`start` can fail with exit 5 when the checkout's fetch refspec does not cover the remote default branch.",
+        "evidence": "git(checkout, \"fetch\", \"-q\", \"origin\")",
+        "suggested_fix": "Fetch the default branch by name, for example `git fetch origin +refs/heads/<default>:refs/remotes/origin/<default>`, after `ls-remote`.",
+        "explanation": "`git ls-remote` reads the default branch from the remote, but `origin/<default>` exists locally only if the fetch refspec includes that branch. A single-branch clone, a narrowed refspec, or a remote whose default branch was renamed leaves no such ref, so `rev-parse` fails.",
+        "needs_context": false,
+        "fingerprint": "6d6b59c54526e495",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "git(checkout, \"fetch\", \"-q\", \"origin\")",
+            "out = git(checkout, \"ls-remote\", \"--symref\", \"origin\", \"HEAD\")",
+            "base = \"origin/\" + m.group(1)",
+            "sha = git(checkout, \"rev-parse\", \"--verify\", \"-q\", base + \"^{commit}\").strip()"
+          ],
+          "rationale": "The finding is correct. A plain `git fetch origin` updates only the refs that the configured refspec covers. The next `rev-parse` of `origin/<default>` depends on that ref existing locally, so a single-branch clone or a narrowed refspec that leaves out the default branch makes `start` fail with exit 5. This is an unusual setup, and the result is a clear git error, not a silent wrong result. Fetching the default branch by name would make the code more robust.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "% (\" \".join(args), checkout, one_line(err) or \"exit %d\" % rc), ) return out def make_worktree(checkout, name): \"\"\"Fetch, find the remote default branch, and add the worktree. Return (worktree path, branch, base). Raise Fail(GIT) and change nothing"
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 241,
+        "end_line": 242,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "--group is only checked for emptiness, yet it is passed raw as a tmux session name, where '.' or ':' may be rewritten by tmux and break the later exact `=name` lookup.",
+        "evidence": "    if a.group is not None and not a.group.strip():\n        bad(\"--group is empty\")",
+        "suggested_fix": "Validate --group with NAME_RE (or reject '.' and ':') for tmux.",
+        "explanation": "tmux may rename a session that contains '.' or ':', so has-session -t =<group> would miss it and tab_group would not match the real session.",
+        "needs_context": false,
+        "fingerprint": "965700c27a4363f0",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if a.group is not None and not a.group.strip():\n        bad(\"--group is empty\")",
+            "    session = group or \"crew\"\n    rc, _, _ = tmux([\"has-session\", \"-t\", \"=\" + session])",
+            "        cmd = [\"new-session\", \"-d\", \"-s\", session, \"-n\", name, \"-P\", \"-F\", \"#{pane_id}\", command]",
+            "    return \"tmux:\" + pane, session"
+          ],
+          "rationale": "The finding holds. The only check on `--group` is that it is not empty, and the raw value goes to `new-session -s` and to `has-session -t =<group>`. Recent tmux versions replace '.' and ':' in session names with '_' (older ones reject the name). So the returned `tab_group` does not match the real session, and a second start with the same group misses the exact lookup and then fails with a duplicate-session error (exit 6). This needs a group name that contains '.' or ':', which is an uncommon path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "bad(\"--repo %r is not <owner>/<repo>\" % a.repo) if a.group is not None and not a.group.strip():"
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 545,
+        "end_line": 547,
+        "category": "test",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "Two paths have no test: groups on tmux with no server running, and the helper's own groups subcommand.",
+        "evidence": "            return OK  # no tmux server: no session, no group",
+        "suggested_fix": "Run groups with no tmux-sessions file and check for exit 0 and empty stdout. Run iterm2-tabs.py groups against the fake module.",
+        "explanation": "A regression on either path would pass the suite.",
+        "needs_context": false,
+        "fingerprint": "4cd9251054d0f651",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return OK  # no tmux server: no session, no group",
+            "rc, out, err = run(helper_cmd(\"groups\"), timeout=HELPER_TIMEOUT)",
+            "printf '$1\\tcrew\\n$4\\tgrp\\n' > \"$STUB_DIR/tmux-sessions\"",
+            "FAKE_FAIL=$f PYTHONPATH=\"$T/fake\" python3 \"$here/iterm2-tabs.py\" start --name h1 --command 'echo hi' \"$@\" > \"$T/out\" 2> \"$T/err\""
+          ],
+          "rationale": "Both tmux `groups` tests create a tmux-sessions file first, so the stub's \"no server running\" path is never run. The `helper()` test function always calls iterm2-tabs.py with `start`, so the helper's own `groups` subcommand is only reached through the uv stub, which prints canned output. Both gaps are real but small, and the tests to add are cheap.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "rc, out, _ = tmux([\"list-sessions\", \"-F\", \"#{session_id}\\t#{session_name}\"]) if rc != 0: return OK # no tmux server: no session, no group"
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8125,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 42508,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0042633,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1189,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 42020,
+            "webSearchRequests": 0,
+            "costUSD": 0.18010020000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1843635
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5307,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49314,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049459,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 416,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 55775,
+            "webSearchRequests": 0,
+            "costUSD": 0.4551398,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 189,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4600857
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7205,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49320,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049465,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 529,
+            "cacheReadInputTokens": 61941,
+            "cacheCreationInputTokens": 56062,
+            "webSearchRequests": 0,
+            "costUSD": 0.4714802,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 368,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.47642670000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8144,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49320,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049465,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 623,
+            "cacheReadInputTokens": 61851,
+            "cacheCreationInputTokens": 56140,
+            "webSearchRequests": 0,
+            "costUSD": 0.4739662,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 456,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.47891269999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6342,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 54517,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0054662,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 446,
+            "cacheReadInputTokens": 67163,
+            "cacheCreationInputTokens": 61300,
+            "webSearchRequests": 0,
+            "costUSD": 0.5127686,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 283,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.5182348
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7790,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49308,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049453,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 709,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 55812,
+            "webSearchRequests": 0,
+            "costUSD": 0.4612958,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 197,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.46624109999999996
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7051,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49318,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049463,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 622,
+            "cacheReadInputTokens": 10059,
+            "cacheCreationInputTokens": 48822,
+            "webSearchRequests": 0,
+            "costUSD": 0.4050358,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 138,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4099821
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 17333,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49314,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049459,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1651,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 55720,
+            "webSearchRequests": 0,
+            "costUSD": 0.4793998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 944,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4843457
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 18562,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49314,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049459,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1747,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 55720,
+            "webSearchRequests": 0,
+            "costUSD": 0.48131979999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1221,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.48626569999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8521,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 49322,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0049467,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 838,
+            "cacheReadInputTokens": 62615,
+            "cacheCreationInputTokens": 57056,
+            "webSearchRequests": 0,
+            "costUSD": 0.48574700000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 228,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4906937
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6183,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 24995,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00251,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 705,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 24507,
+            "webSearchRequests": 0,
+            "costUSD": 0.1055187,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 283,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1080287
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9589,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 24167,
+            "outputTokens": 153,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024932000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 133,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 871,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 23679,
+            "webSearchRequests": 0,
+            "costUSD": 0.10386669999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 388,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1063599
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10353,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 36657,
+            "outputTokens": 393,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038622000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 365,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 741,
+            "cacheReadInputTokens": 86041,
+            "cacheCreationInputTokens": 37380,
+            "webSearchRequests": 0,
+            "costUSD": 0.16554609999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 108,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.16940829999999998
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7005,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25007,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025112000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 696,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 24511,
+            "webSearchRequests": 0,
+            "costUSD": 0.2108894,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 217,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2134006
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 14259,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23713,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023808,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1225,
+            "cacheReadInputTokens": 60954,
+            "cacheCreationInputTokens": 26366,
+            "webSearchRequests": 0,
+            "costUSD": 0.12382139999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 332,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1262022
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8892,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 24183,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024293,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 844,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 23687,
+            "webSearchRequests": 0,
+            "costUSD": 0.2072574,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 322,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2096867
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 14467,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23707,
+            "outputTokens": 301,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025212,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 280,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1286,
+            "cacheReadInputTokens": 93559,
+            "cacheCreationInputTokens": 28328,
+            "webSearchRequests": 0,
+            "costUSD": 0.2710878,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 226,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.273609
+      }
+    ],
+    "total_cost_usd": 5.6622471,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 44,
+      "gather": 136,
+      "scope": 11,
+      "triage": 9009,
+      "find_verify": 52458,
+      "merge": 7
+    },
+    "errors": []
+  }
+}

@@ -418,6 +418,10 @@ fail before the change. Reviewers do not raise them.
 A review run's directory is `pr-<owner>-<repo>-<n>-<hex>/`. Its drafts are
 `reviews/github-r<n>.md`, one per round.
 
+An orchestrator keeps its own record under the same root, in
+`orchestrators/<name>/`: its items, its groups and their merge order, the
+questions and notices for you, its plan and what it told each project lead.
+
 Set `CREW_RECORD_ROOT` to move the root.
 
 To see what runs cost, from a checkout of this repo:

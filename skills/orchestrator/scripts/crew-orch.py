@@ -982,7 +982,7 @@ def cmd_board(rec: Record, args: list) -> None:
 
     # Needs you: every open entry for the principal, oldest first.
     needs = [e for e in state["inbox"] if e["state"] == "open" and e["for"] == "principal"]
-    needs.sort(key=lambda e: (e["created_at"], e["id"]))
+    needs.sort(key=lambda e: e["created_at"])  # A stable sort keeps the add order inside one second.
     out.append(f" Needs you  {len(needs)}")
     rows = []
     for entry in needs:

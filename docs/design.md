@@ -9686,6 +9686,14 @@ Deliberately different:
        Round 2 of the skeptical review found it.
      - `lsof` failure is an error, never an empty answer, so `remove` and
        `find` never see an empty worktree by mistake.
+     - `remove --delete-branch` keeps a branch that holds a commit that no
+       other ref holds: no other local branch, no remote-tracking branch and
+       no tag. It lists those commits in `branch_only_commits`, and the
+       worktree removal stands. The principal found that a forced `git
+       branch -D` could lose an implementer's commit that it never pushed.
+       After a rebase merge whose remote branch was deleted, the
+       implementer's own commits are often on no other ref, so the branch
+       stays and the orchestrator reports it in the inbox.
      - `--delete-branch` is passed only for a merged PR. A run close removes
        a clean worktree of an unmerged item and keeps its branch.
      - The principal removed the one ask for actions that no allow rule

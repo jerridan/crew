@@ -145,9 +145,9 @@ also runs on the principal's word for an item that stops early: write
    lock of the output. Never force a removal. The principal decides.
 
    A removal can keep branches: each entry of `branches` with `deleted`
-   `false` and a non-empty `unproven_commits`. Put **one** notice in the
-   inbox for the item. It names the item, and each kept branch with its
-   unproven commits. Never delete a kept branch yourself. The principal
+   `false`. Put **one** notice in the inbox for the item. It names the item
+   and each kept branch, with its unproven commits or with its
+   `checked_out` path. Never delete a kept branch yourself. The principal
    decides.
 4. **The ticket.** A GitHub issue closes through the `Closes` line of the PR.
    Check that it closed, and close it when it did not. Close a Linear ticket,

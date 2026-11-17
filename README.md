@@ -278,10 +278,10 @@ run five at a time
 
 When an item ships, the orchestrator ends its project lead, closes its tab,
 removes its worktree and deletes its branches. A worktree with changed or
-untracked files, or with an app or an editor open in it, stays. A branch with
-commits that are on no remote, no tag and no PR head stays too. The
-orchestrator tells you of each one in the inbox. To end the whole run, say
-so:
+untracked files, or with an app or an editor open in it, stays. A branch
+stays too when it has commits that no branch or tag on the remote and no PR
+holds, or when another worktree has it checked out. The orchestrator tells
+you of each one in the inbox. To end the whole run, say so:
 
 ```
 close the run

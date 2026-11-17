@@ -136,6 +136,13 @@ also runs on the principal's word for an item that stops early: write
    On each other refusal, put a notice in the inbox, with `inbox add
    notice`, that names the item, the worktree, and each file and process of
    the output. Never force a removal. The principal decides.
+
+   A removal can keep the branch: `launcher.md`'s "remove" lists the
+   commits that no other ref holds. A rebase merge gives the merged commits
+   new shas, so after the merge deleted the remote branch, the implementer's
+   own commits can be on no other ref. Put a notice in the inbox that names
+   the item, the branch and the commits. Never delete the branch yourself.
+   The principal decides.
 4. **The ticket.** A GitHub issue closes through the `Closes` line of the PR.
    Check that it closed, and close it when it did not. Close a Linear ticket,
    or a ticket in a ticket file, as the standing instructions say. For an

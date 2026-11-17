@@ -104,6 +104,8 @@ later than the clock, or `round open` exits 2. A flag with no value exits 2.
 checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 """
 
+from __future__ import annotations
+
 import datetime
 import json
 import os

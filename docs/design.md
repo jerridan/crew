@@ -9582,3 +9582,25 @@ Deliberately different:
 
      The mod's 22 tests and `test-crew-orch.sh` pass. No session has opened
      the pane yet.
+
+NNN. **Python 3.9 for every script — 2026-11-16.** Issue 162. On macOS,
+     `/usr/bin/python3` is 3.9.6. Four scripts failed there at import:
+     `spend.py`, `crew-stats.py`, `crew-record.py` and the hook
+     `pre-compact.py`. Each annotates `X | None` in a function signature,
+     and Python 3.9 evaluates that annotation when it defines the function.
+     Entry 51 found the fault in `spend.py` and `crew-stats.py`; since then
+     `crew-record.py` and the hook took the same form.
+
+     Each of the four now starts with `from __future__ import annotations`,
+     so Python stores each annotation as text and never evaluates it. That
+     is the smallest change, and it keeps the `X | None` form that the other
+     scripts use. No script evaluates an annotation at run time.
+
+     The README states the lowest version once, in "What a run needs".
+     `launcher.md` also says 3.9 for `launcher.py`, and the two agree.
+
+     Checked on `/usr/bin/python3` 3.9.6: every `.py` file imports with no
+     error, except `iterm2-tabs.py`, whose `iterm2` package `uv` supplies at
+     run time; it parses on 3.9. `crew-stats.py` reads the whole record root
+     and exits 0. `crew-record.py init` and `run state` write a new record,
+     and the hook exits 0 on an empty payload.

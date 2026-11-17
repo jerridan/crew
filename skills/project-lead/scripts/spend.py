@@ -38,6 +38,8 @@ Prices are USD per million tokens at Anthropic list price, by model family.
 Cache writes are priced by TTL. Update the table when prices change.
 """
 
+from __future__ import annotations
+
 import datetime
 import glob
 import json

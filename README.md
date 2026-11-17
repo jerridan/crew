@@ -295,6 +295,7 @@ and press Enter to bring that implementer's tab to the front.
 |---|---|---|
 | Permissions that never stop for a human | `--permission-mode auto`, or your own allow rules | every run |
 | Agent teams | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, and an interactive session | required for a pane per dispatched agent; optional otherwise |
+| Python 3.9 or newer | `python3 --version`. Every script of crew runs on the `python3` that macOS ships | every run |
 | A remote to push to | The clone has an `origin` | every run |
 | The GitHub CLI, signed in | `gh auth status` passes | every run that opens a PR |
 | A checkout of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the checkout | every `/crew:review` run |

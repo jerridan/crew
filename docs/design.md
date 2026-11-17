@@ -9806,7 +9806,7 @@ Deliberately different:
      - A branch that was rebased and then changed stays unproven. A proof
        by patch id (`git cherry`) could match it, but the ticket accepts the
        kept branch, and the close reports it in one inbox notice per item.
-     - `branch_deleted` and `branch_only_commits` gave way to `branches`,
+     - The two branch fields of §15.145's output gave way to `branches`,
        one object per candidate, and `lock` is new.
 
      Only the seeded test has run the changes. No orchestrator has closed an

@@ -1,0 +1,1273 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 164,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Load every Python script on Python 3.9",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/164"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "d2d3cebefec7dddc9f7227dcedfd683a9b2d5510",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-164/2026-11-17T014841.313Z-d2d3ceb.json",
+      "open": [],
+      "dismissed": [
+        "e8d491367b0a049b"
+      ],
+      "fetch_failed": false
+    },
+    "base": "22b14e2bbe6121323f1dce89bb4139fb57aee2d7",
+    "head": "d860c8e0e1519a14419552d38690f99eb1b9ca86",
+    "started_at": "2026-11-17T01:51:36.849Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Load every Python script on Python 3.9\n\n## Summary\n\nOn macOS, the `python3` that ships with the system is Python 3.9. Four crew scripts stopped at import on it, because their type hints use a form that Python 3.9 cannot read at run time. `crew-stats.py`, the script a person runs, was one of them. Now every script of the plugin loads and runs on Python 3.9, and the README states Python 3.9 as the lowest version a run needs.\n\nCloses #162\n\n**Ticket:** [Issue 162](https://github.com/jerridan/crew/issues/162)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15 entry 51 (found the fault in `spend.py` and `crew-stats.py`) and the new §15 entry 144.\n- `.claude/rules/readme.md`: a new launch requirement goes in \"What a run needs\".\n\n### What changed, by file\n\n- `skills/project-lead/scripts/spend.py`, `crew-stats.py`, `crew-record.py`, `hooks/pre-compact.py`: each starts with `from __future__ import annotations`, so Python 3.9 stores each `X | None` annotation as text and does not evaluate it.\n- `README.md`: a \"Python 3.9 or newer\" row in \"What a run needs\".\n- `docs/design.md`: new §15 entry 144 that records the fault, the fix and the check.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.111.\n\n### Constraints that applied\n\n- A change under `hooks/` and `skills/` bumps the version in both manifests. Both are 0.1.111.\n- No file of the concurrent orchestrator work (`launcher.py`, `crew-orch.py`, their tests, the orchestrator references) changed. `launcher.md` also says that `launcher.py` needs Python 3.9 or newer. It agrees with the README, so it stays as it is.\n\n### How this was verified\n\nOn `/usr/bin/python3` 3.9.6:\n- Every `.py` file of the plugin imports with no error. Before the change, `spend.py`, `crew-stats.py`, `crew-record.py` and `pre-compact.py` failed with `TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'`. The one exception is `iterm2-tabs.py`: its `iterm2` package comes from `uv run --with iterm2` at run time. It parses on 3.9.\n- `crew-stats.py` reads the whole record root and exits 0. `crew-stats.py --help` exits 0.\n- `crew-record.py init` and `run state blocked` write a new record in a scratch directory.\n- `pre-compact.py` exits 0 on the payload `{}`.\n- A search for other features newer than 3.9 (`match`, `zip(strict=)`, `slots=True`, `tomllib` and similar) found none.\n\n### Known gaps\n\nNone\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/pre-compact.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/spend.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "fast",
+      "reason": "The change adds the same `from __future__ import annotations` line after the module docstring in four scripts, plus a version bump and docs, so logic is unchanged unless a script reads annotations at run time.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/project-lead/scripts/crew-record.py",
+        "skills/project-lead/scripts/spend.py",
+        "skills/project-lead/scripts/crew-stats.py",
+        "hooks/pre-compact.py"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump 0.1.110 to 0.1.111."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump 0.1.110 to 0.1.111. It matches marketplace.json."
+        },
+        {
+          "file": "README.md",
+          "note": "Adds a Python 3.9+ row to the requirements table."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "Adds entry 144, which explains the fix and how it was checked."
+        },
+        {
+          "file": "hooks/pre-compact.py",
+          "note": "Adds the future import after the docstring. It is the first statement, so it is valid."
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-record.py",
+          "note": "Adds the future import after the docstring. Check for runtime annotation use such as dataclasses or get_type_hints."
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "Adds the future import after the docstring."
+        },
+        {
+          "file": "skills/project-lead/scripts/spend.py",
+          "note": "Adds the future import after the docstring."
+        }
+      ],
+      "summary": "Four Python scripts failed at import on macOS Python 3.9 because of `X | None` annotations in function signatures. Each now starts with `from __future__ import annotations`, so Python stores annotations as text and never evaluates them. The change also bumps the plugin version and documents the Python 3.9 minimum in the README and design notes."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: The change adds the same `from __future__ import annotations` line after the module docstring in four scripts, plus a version bump and docs, so logic is unchanged unless a script reads annotations at run time. The tier stays full from the prior record.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3437,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3748,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003863,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 273,
+              "cacheReadInputTokens": 10127,
+              "cacheCreationInputTokens": 3253,
+              "webSearchRequests": 0,
+              "costUSD": 0.0335174,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 85,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0339037
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6528,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3754,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003869,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 496,
+              "cacheReadInputTokens": 23429,
+              "cacheCreationInputTokens": 3699,
+              "webSearchRequests": 0,
+              "costUSD": 0.0442138,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 265,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.04460070000000001
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6634,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3752,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003882,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 466,
+              "cacheReadInputTokens": 23317,
+              "cacheCreationInputTokens": 3552,
+              "webSearchRequests": 0,
+              "costUSD": 0.0424154,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 327,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0428036
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5507,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3762,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.00038920000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 357,
+              "cacheReadInputTokens": 23327,
+              "cacheCreationInputTokens": 3560,
+              "webSearchRequests": 0,
+              "costUSD": 0.0403014,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 221,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0406906
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6171,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3752,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003882,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 470,
+              "cacheReadInputTokens": 23331,
+              "cacheCreationInputTokens": 3750,
+              "webSearchRequests": 0,
+              "costUSD": 0.0440822,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 283,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0444704
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8436,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8165,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008280000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 623,
+              "cacheReadInputTokens": 46131,
+              "cacheCreationInputTokens": 8225,
+              "webSearchRequests": 0,
+              "costUSD": 0.0875102,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 337,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.08833819999999999
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2423,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3752,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003882,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 218,
+              "cacheReadInputTokens": 10128,
+              "cacheCreationInputTokens": 3257,
+              "webSearchRequests": 0,
+              "costUSD": 0.0324496,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 24,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0328378
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3362,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3752,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003882,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 219,
+              "cacheReadInputTokens": 10128,
+              "cacheCreationInputTokens": 3257,
+              "webSearchRequests": 0,
+              "costUSD": 0.0324696,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 26,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0328578
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-stats.py",
+            "start_line": 89,
+            "end_line": 89,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Nothing in the repo checks that the scripts still import on Python 3.9, so the same fault can come back without anyone noticing.",
+            "evidence": "from __future__ import annotations",
+            "suggested_fix": "Add a seeded check that runs `python3.9 -c 'import ast'` or compiles and imports each script with a 3.9 interpreter. If no 3.9 interpreter is available, the check can flag any file that uses `X | None` without the future import.",
+            "explanation": "The fix was checked only by hand, and entry 51 shows that this fault already came back once.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6221,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3758,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.00038730000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 507,
+              "cacheReadInputTokens": 24861,
+              "cacheCreationInputTokens": 3665,
+              "webSearchRequests": 0,
+              "costUSD": 0.0444482,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 91,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0448355
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "start_line": 89,
+          "end_line": 89,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Nothing in the repo checks that the scripts still import on Python 3.9, so the same fault can come back without anyone noticing.",
+          "evidence": "from __future__ import annotations",
+          "suggested_fix": "Add a seeded check that runs `python3.9 -c 'import ast'` or compiles and imports each script with a 3.9 interpreter. If no 3.9 interpreter is available, the check can flag any file that uses `X | None` without the future import.",
+          "explanation": "The fix was checked only by hand, and entry 51 shows that this fault already came back once.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "from __future__ import annotations",
+            "Checked on `/usr/bin/python3` 3.9.6: every `.py` file imports with no"
+          ],
+          "rationale": "The change adds the future import to four scripts and records only a manual check on 3.9.6 in design entry 144. The repo has test scripts for other scripts but none that imports or compiles the scripts under 3.9, and design entry 144 itself says the fault already came back once after entry 51. The gap is real but a minor, optional improvement.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "from __future__ import annotations",
+            "Entry 51 found the fault in `spend.py` and `crew-stats.py`; since then\n     `crew-record.py` and the hook took the same form.",
+            "Checked on `/usr/bin/python3` 3.9.6: every `.py` file imports with no\n     error"
+          ],
+          "rationale": "The repo has no test, workflow or script that imports the plugin's scripts on Python 3.9. The fix was checked only by hand, and design entry 144 says the same fault already came back after entry 51. A cheap regression check is worth suggesting, but the author can decide whether to add one.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "from __future__ import annotations",
+            "Entry 51 found the fault in `spend.py` and `crew-stats.py`; since then\n     `crew-record.py` and the hook took the same form.",
+            "Checked on `/usr/bin/python3` 3.9.6: every `.py` file imports with no\n     error"
+          ],
+          "rationale": "The repo has no test, workflow or script that imports the plugin's scripts on Python 3.9. The fix was checked only by hand, and design entry 144 says the same fault already came back after entry 51. A cheap regression check is worth suggesting, but the author can decide whether to add one.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5931356783,
+      "review_url": "https://github.com/jerridan/crew/pull/164#pullrequestreview-5931356783",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133757461922
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/project-lead/scripts/crew-stats.py",
+        "start_line": 89,
+        "end_line": 89,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "Nothing in the repo checks that the scripts still import on Python 3.9, so the same fault can come back without anyone noticing.",
+        "evidence": "from __future__ import annotations",
+        "suggested_fix": "Add a seeded check that runs `python3.9 -c 'import ast'` or compiles and imports each script with a 3.9 interpreter. If no 3.9 interpreter is available, the check can flag any file that uses `X | None` without the future import.",
+        "explanation": "The fix was checked only by hand, and entry 51 shows that this fault already came back once.",
+        "needs_context": false,
+        "fingerprint": "5c857022003ec222",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "from __future__ import annotations",
+            "Entry 51 found the fault in `spend.py` and `crew-stats.py`; since then\n     `crew-record.py` and the hook took the same form.",
+            "Checked on `/usr/bin/python3` 3.9.6: every `.py` file imports with no\n     error"
+          ],
+          "rationale": "The repo has no test, workflow or script that imports the plugin's scripts on Python 3.9. The fix was checked only by hand, and design entry 144 says the same fault already came back after entry 51. A cheap regression check is worth suggesting, but the author can decide whether to add one.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "from __future__ import annotations"
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6300,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3718,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00038480000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 955,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 3231,
+            "webSearchRequests": 0,
+            "costUSD": 0.022604199999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 163,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.022989
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3437,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3748,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003863,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 273,
+            "cacheReadInputTokens": 10127,
+            "cacheCreationInputTokens": 3253,
+            "webSearchRequests": 0,
+            "costUSD": 0.0335174,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 85,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0339037
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5507,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3762,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00038920000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 357,
+            "cacheReadInputTokens": 23327,
+            "cacheCreationInputTokens": 3560,
+            "webSearchRequests": 0,
+            "costUSD": 0.0403014,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 221,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0406906
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6171,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3752,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003882,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 470,
+            "cacheReadInputTokens": 23331,
+            "cacheCreationInputTokens": 3750,
+            "webSearchRequests": 0,
+            "costUSD": 0.0440822,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 283,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0444704
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6528,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3754,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003869,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 496,
+            "cacheReadInputTokens": 23429,
+            "cacheCreationInputTokens": 3699,
+            "webSearchRequests": 0,
+            "costUSD": 0.0442138,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 265,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.04460070000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6634,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3752,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003882,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 466,
+            "cacheReadInputTokens": 23317,
+            "cacheCreationInputTokens": 3552,
+            "webSearchRequests": 0,
+            "costUSD": 0.0424154,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 327,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0428036
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2423,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3752,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003882,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 218,
+            "cacheReadInputTokens": 10128,
+            "cacheCreationInputTokens": 3257,
+            "webSearchRequests": 0,
+            "costUSD": 0.0324496,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 24,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0328378
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3362,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3752,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003882,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 219,
+            "cacheReadInputTokens": 10128,
+            "cacheCreationInputTokens": 3257,
+            "webSearchRequests": 0,
+            "costUSD": 0.0324696,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 26,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0328578
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8436,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8165,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008280000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 623,
+            "cacheReadInputTokens": 46131,
+            "cacheCreationInputTokens": 8225,
+            "webSearchRequests": 0,
+            "costUSD": 0.0875102,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 337,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08833819999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6221,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3758,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00038730000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 507,
+            "cacheReadInputTokens": 24861,
+            "cacheCreationInputTokens": 3665,
+            "webSearchRequests": 0,
+            "costUSD": 0.0444482,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 91,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0448355
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8968,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8870,
+            "outputTokens": 509,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011415,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 491,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1103,
+            "cacheReadInputTokens": 45307,
+            "cacheCreationInputTokens": 10552,
+            "webSearchRequests": 0,
+            "costUSD": 0.05778470000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 243,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.058926200000000005
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12580,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8864,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008989000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1229,
+            "cacheReadInputTokens": 30604,
+            "cacheCreationInputTokens": 10262,
+            "webSearchRequests": 0,
+            "costUSD": 0.1128208,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 391,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1137197
+      }
+    ],
+    "total_cost_usd": 0.6009732,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 42,
+      "gather": 180,
+      "scope": 8,
+      "triage": 7254,
+      "find_verify": 37218,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

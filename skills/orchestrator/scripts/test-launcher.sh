@@ -908,6 +908,45 @@ stop_live 300 1
 r=1; sj 'o["rc"] == 0 and o["at_close"] is True and o["took"] < 10' && [ "$(grep -c "$pc" "$T/err")" = 1 ] && alive_pid "$pc" && r=0
 check 'stop with a claude that never ends: exit 0, one stderr line names the pid, and stop sends it no signal' $r
 kill -9 "$pc" 2>/dev/null
+# The iTerm2 path: a claude on the tty of the session ends 3 seconds after
+# stop starts, after the 1 second wait for it and after the tab close. stop
+# returns only after it ended, and the close came first.
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys961' > "$STUB_DIR/osa-ttys"
+(bash -c "exec -a claude sleep 3" < /dev/null > /dev/null 2>&1 & echo $! > "$T/cl")
+pc=$(cat "$T/cl"); echo "$pc" >> "$T/pids"
+echo "$pc ttys961" > "$STUB_DIR/ps-tty"
+python3 - "$here" "$pc" > "$T/stop.json" 2> "$T/err" <<'PY'
+import json, os, sys, time
+sys.path.insert(0, sys.argv[1])
+import launcher
+pc = int(sys.argv[2])
+launcher.STOP_WAIT = 1
+launcher.STOP_CLOSE_WAIT = 15
+launcher.KEY_WAIT = 0
+def runs(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+at_close = [None]
+real_script = launcher.iterm_script
+def iterm_script(script, verb, ref):
+    if verb == "stop":
+        at_close[0] = runs(pc)
+    return real_script(script, verb, ref)
+launcher.iterm_script = iterm_script
+t = time.time()
+rc = launcher.main(["stop", "iterm2:SESS-1"])
+print(json.dumps({"rc": rc, "at_close": at_close[0], "took": time.time() - t, "after": runs(pc)}))
+PY
+r=1; sj 'o["rc"] == 0 and o["at_close"] is True and o["after"] is False and o["took"] >= 2.5' \
+  && grep -sq '^-|stop|SESS-1|$' "$STUB_DIR/osa.log" && [ "$(lines "$T/err")" = 1 ] && ! grep -sq 'still runs' "$T/err" && ! alive_pid "$pc" && r=0
+check 'stop iterm2:<id> with a claude that ends after the close: the tab is closed while it runs, and stop returns only after ps stops showing it' $r
+kill -9 "$pc" 2>/dev/null
+
 # The pane closes when claude ends: stop does not kill it and exits 0.
 reset_stub
 echo '%7' > "$STUB_DIR/tmux-panes"
@@ -1226,6 +1265,27 @@ sys.exit(launcher.main(["remove", sys.argv[2], "--stop-processes"]))
 PY
 check 'remove --stop-processes sends KILL to a process that outlives TERM' \
   $([ "$r" = 0 ] && ! alive "$p1" && [ ! -e "$RM" ] && rjson "[s['pid'] for s in o['stopped']] == [$p1]"; echo $?)
+# A claude with no terminal that does not end inside REMOVE_END_WAIT (2 seconds
+# here): remove waits the whole time, then refuses with exit 9 and keeps it.
+reset_stub
+rm_wt rm-noend
+(cd "$RM" && { bash -c 'exec -a claude sleep 300' < /dev/null > /dev/null 2>&1 & echo $! > "$T/orphan"; })
+p1=$(cat "$T/orphan"); echo "$p1" >> "$T/pids"
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+t0=$(now_ms)
+python3 - "$here" "$RM" > "$T/out" 2> "$T/err" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.REMOVE_END_WAIT = 2
+sys.exit(launcher.main(["remove", sys.argv[2]]))
+PY
+rc=$?
+t1=$(now_ms)
+r=1; [ "$rc" = 9 ] && [ -d "$RM" ] && alive "$p1" && [ $((t1 - t0)) -ge 2000 ] && grep -sqF "$p1" "$T/err" \
+  && rjson "o['removed'] is False and o['stopped'] == [] and [(k['pid'], k['tty']) for k in o['kept']] == [($p1, None)]" && r=0
+check 'remove with no flag and a no-tty claude in the worktree that does not end in REMOVE_END_WAIT waits the whole time, then exits 9, keeps the worktree, lists the process in kept and stops nothing' $r
+kill -9 "$p1" 2>/dev/null
 
 # rm_signal <mode> <worktree> <pid>: remove --stop-processes with os.kill
 # wrapped. It logs each signal to <pid> in $T/sigs. Modes: changed-before-term
@@ -1392,8 +1452,10 @@ check 'remove with a failed lsof exits 6 with one line and keeps the worktree' $
 rm -f "$STUB_DIR/lsof-fail"
 
 # -- remove --delete-branch: the candidates and the proof -------------------
-# A candidate is deleted only when --remotes, --tags or the verified PR head
-# hold each of its commits. A local branch never counts. rm_wt0 <name>: a
+# A candidate is deleted only when the branches and tags that `git ls-remote
+# origin` lists, or the verified PR head, hold each of its commits. No local
+# ref is a keeper: not a branch, not a tag, not a remote-tracking ref.
+# rm_wt0 <name>: a
 # worktree from start with no commit of its own: its branch is at origin/main.
 rm_wt0() {
   TMUX=/tmp/t,1,0 run start --name "$1" --principal p --checkout "$CO"
@@ -1420,7 +1482,7 @@ r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && has_branch worktree-rm-br \
 check 'remove --delete-branch keeps a branch with a commit that no remote and no tag holds, lists the sha, prints one line, removes the worktree and exits 0' $r
 (cd "$CO" && git branch -D -q worktree-rm-br)
 
-# The same commit on a remote-tracking ref: the branch holds nothing of its own.
+# The commit is on a branch on origin, which ls-remote lists: the branch holds nothing of its own.
 rm_wt rm-br2
 (cd "$RM" && git commit -q --allow-empty -m rm-br2 && git push -q origin worktree-rm-br2 2>/dev/null)
 run remove "$RM" --delete-branch

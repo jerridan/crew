@@ -119,8 +119,8 @@ on that item. In order:
 3. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch".
 4. Report the merge to the principal in one sentence that says the deploy
    watch runs. Never say the work shipped.
-5. Write the stage `merged`, as `project-lead`'s `SKILL.md` "Report to an
-   orchestrator" says.
+5. Write the stage `merged`, as `project-lead`'s
+   `references/orchestrator-report.md` says.
 
 With `none`, the `merged` item is the ship word, and you write no
 `run.deploy`. With `manual`, write no `run.deploy`. The item is a notice:

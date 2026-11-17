@@ -21,8 +21,9 @@ value and procedure that you use. Name the command, then read its owner:
 | `references/resume-and-close.md` | the resume after a compaction or a restart, the close of an item after its end, and the close of a run |
 
 `skills/project-lead/references/autonomy-contract.md` owns who a principal is
-and how a project lead escalates. `skills/project-lead/SKILL.md`'s "Report to
-an orchestrator" owns what a project lead writes into your record. Every
+and how a project lead escalates.
+`skills/project-lead/references/orchestrator-report.md` owns what a project
+lead writes into your record. Every
 script runs from `scripts/` beside this file.
 
 ## The manager rule

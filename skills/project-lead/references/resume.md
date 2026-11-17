@@ -2,11 +2,11 @@
 
 This file owns what a project lead does when its argument is `--resume
 <goal-slug>`: which record it reopens, which work it re-enters, and which path
-it takes again. `SKILL.md`'s "Take the goal" sends you here, and you read it
-in place of the rest of that section.
+it takes again. `SKILL.md`'s "Take the goal" sends you here.
 
-**`--resume <goal-slug>` skips the rest of `SKILL.md`'s "Take the goal".** It
-reopens the existing record, never a new directory. Append this session's id to
+A resume reopens the existing record, never a new directory. A `--resume`
+argument carries no `Orchestrator:` line, so when `run.orchestrator` is set,
+read `orchestrator-report.md` before you re-enter. Append this session's id to
 `run.session_ids`, reconcile, re-enter at the first unfinished work, and
 re-run nothing already finished. With `worktrees.json`, `full-path.md`'s
 "Resume after a kill" owns the reconciliation; without it, `git log` on the

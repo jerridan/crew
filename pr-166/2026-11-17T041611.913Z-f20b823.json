@@ -1,0 +1,1327 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 166,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Shorten the project lead skill to under 500 lines",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/166"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "71a5d3588a87dce5b92b30bc920969f84e20e61b",
+    "head": "f20b823db9a0b75a8424a0415ea7e67a7b2f02c0",
+    "started_at": "2026-11-17T04:16:11.913Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Shorten the project lead skill to under 500 lines\n\n## Summary\n\nThe project lead skill had grown to 565 lines, over its 500-line target, and it loads into every project-lead run. This change moves two parts that only some runs need into their own reference files: the rules for a run that an orchestrator started, and the rules for a resumed run. It also removes two passages that repeated a rule another file already owns. The skill is now 488 lines, and a project lead takes the same steps as before.\n\nCloses #163\n\n**Ticket:** [#163](https://github.com/jerridan/crew/issues/163)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/project-lead/references/writing-standard.md` \"Size\": the 500-line target of a `SKILL.md` body.\n- `CLAUDE.md` \"Authority\": a rule lives in exactly one file.\n- `docs/design.md` §15.146 records this change; §15.20d, §15.89e and §12 are why no sub-skill was used.\n\n### What changed, by file\n\n- `skills/project-lead/SKILL.md`: \"Report to an orchestrator\" and the five resume paragraphs of \"Take the goal\" moved out; the default deploy signal paragraph is now a pointer to `pr-watch.md`'s \"Arm the deploy watch\"; the section \"A step the principal replaced\" is removed; two new rows in \"Where the rules live\". 565 to 488 lines.\n- `skills/project-lead/references/orchestrator-report.md`: new. The moved \"Report to an orchestrator\" section, word for word, with a title and an opening paragraph.\n- `skills/project-lead/references/resume.md`: new. The moved resume paragraphs. The bold skip sentence stays in `SKILL.md`. One added sentence sends a resumed run with `run.orchestrator` set to `orchestrator-report.md`, because the moved section was in context on every resume before.\n- `skills/project-lead/references/autonomy-contract.md`, `record-format.md`, `simple-path.md`, `skeptical-review.md`: pointers now name the new files.\n- `skills/delivered-window/SKILL.md`, `skills/orchestrator/SKILL.md`, `skills/orchestrator/references/orchestrator-record.md`, `skills/review/SKILL.md`: pointers now name the new files.\n- `CLAUDE.md`: fourteen references; the Authority list names the two new files.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.113.\n- `docs/design.md`: entry 146.\n\n### Constraints that applied\n\n- One copy of each rule: the moved text exists only in its new file. The removed deploy paragraph and the removed section were second copies: `pr-watch.md` owns the default deploy signal, and the `substitution.md` row, \"Have the spec reviewed\" and `simple-path.md`'s \"The skeptical review\" route each replaced step.\n- No sub-skill: a teammate does not apply `skills:`, and the `Skill` tool is refused in headless `claude -p`.\n- The version bump: the change touches `skills/`.\n- The repo is public: the diff names no employer, colleague or private repo.\n\n### How this was verified\n\n- `wc -l skills/project-lead/SKILL.md` prints 488.\n- A scan of every file outside `docs/`, with line breaks joined, finds no pointer to \"Report to an orchestrator\", and \"A step the principal replaced\" only as `substitution.md`'s own title. Every quoted `SKILL.md` section name outside `docs/` matches a heading that exists.\n- A spec critic ran two rounds on the plan. A headless skeptical review ran two rounds on the local head before the first push. Round 1 found two pointers broken across lines, a resume that no longer reached the orchestrator rules, and a second copy of the resume skip sentence; all three are fixed. Round 2 was accepted with one nit, which is fixed in the last commit.\n\n### Known gaps\n\nNo run has used the shorter skill yet. PR 165 merges first and can add pointers to the moved parts; this branch is rebased and searched again after it merges.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Skill files are prompt instructions that agents execute, so moving sections into new references and rewriting pointers changes runtime behavior, and a dropped or broken rule would change how runs behave.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/project-lead/references/resume.md",
+        "skills/project-lead/SKILL.md",
+        "skills/project-lead/references/orchestrator-report.md",
+        "skills/project-lead/SKILL.md (deploy default signal removal; substitution.md section removal)"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "Removes the orchestrator-report and resume sections and the deploy-signal paragraph. It also removes the 'A step the principal replaced' section, and it adds two reference-table rows. Check that no rule was lost and that the pointers are still reachable."
+        },
+        {
+          "file": "skills/project-lead/references/resume.md",
+          "note": "New file holding the moved resume paragraphs, plus one added route to orchestrator-report.md when run.orchestrator is set. The path-test wording changed to point at SKILL.md."
+        },
+        {
+          "file": "skills/project-lead/references/orchestrator-report.md",
+          "note": "New file, moved verbatim from the SKILL.md section, with an added intro."
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "Pointer updates only."
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "Pointer update only."
+        },
+        {
+          "file": "skills/project-lead/references/simple-path.md",
+          "note": "Pointer update only."
+        },
+        {
+          "file": "skills/project-lead/references/skeptical-review.md",
+          "note": "Pointer update only."
+        },
+        {
+          "file": "skills/delivered-window/SKILL.md",
+          "note": "Pointer updates only."
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "Pointer updates only."
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "Pointer update only."
+        },
+        {
+          "file": "skills/review/SKILL.md",
+          "note": "Pointer update only."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 146."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Reference count changed to fourteen, and two reference entries were added."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.113."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.113."
+        }
+      ],
+      "summary": "The change shrinks project-lead SKILL.md below 500 lines. It moves the \"Report to an orchestrator\" section and the resume paragraphs into new references, orchestrator-report.md and resume.md. It also drops two duplicate passages, the deploy default signal and the substitution section, and it updates every pointer to the new files. The plugin version goes to 0.1.113, and design.md and CLAUDE.md get matching entries."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Skill files are prompt instructions that agents execute, so moving sections into new references and rewriting pointers changes runtime behavior, and a dropped or broken rule would change how runs behave.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3994,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15239,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015359000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 361,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 21812,
+              "webSearchRequests": 0,
+              "costUSD": 0.18233580000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 86,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.18387170000000003
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6124,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15249,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015379,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 603,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 24839,
+              "webSearchRequests": 0,
+              "costUSD": 0.21078,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 181,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2123179
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/resume.md",
+            "start_line": 8,
+            "end_line": 10,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A resumed run is sent to orchestrator-report.md, but that file's first steps tell the run to copy the line to charter.md and write run.orchestrator again, and a resumed run must not write a charter.",
+            "evidence": "read `orchestrator-report.md` before you re-enter.",
+            "suggested_fix": "Say that a resumed run skips the three setup steps and only follows the stage-call and question rules.",
+            "explanation": "The new route does not say which part of orchestrator-report.md applies on a resume, so a resumed run may redo the setup steps or rewrite charter.md.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7218,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15241,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015371,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 721,
+              "cacheReadInputTokens": 24776,
+              "cacheCreationInputTokens": 25424,
+              "webSearchRequests": 0,
+              "costUSD": 0.22278320000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 277,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.22432030000000003
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5276,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15255,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015375,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 477,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 24790,
+              "webSearchRequests": 0,
+              "costUSD": 0.207868,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 135,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2094055
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4257,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15253,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015383,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 333,
+              "cacheReadInputTokens": 27854,
+              "cacheCreationInputTokens": 22186,
+              "webSearchRequests": 0,
+              "costUSD": 0.18973479999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 160,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.19127309999999997
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/orchestrator-report.md",
+            "start_line": 18,
+            "end_line": 19,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The script path is relative to \"this skill's dir\", but the text now lives in `references/`. A reader may resolve the path from the file's own directory and get `references/../orchestrator/scripts/crew-orch.py`, which does not exist.",
+            "evidence": "3. Call the script as `<this skill's dir>/../orchestrator/scripts/crew-orch.py",
+            "suggested_fix": "Write `skills/project-lead/` (the directory of the project-lead `SKILL.md`) in place of \"this skill's dir\".",
+            "explanation": "Commit 0b12ed5 wrote this path for SKILL.md. Now the file is one level deeper, so \"this skill's dir\" is easier to misread.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6925,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 33473,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0033598000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 667,
+              "cacheReadInputTokens": 46189,
+              "cacheCreationInputTokens": 40478,
+              "webSearchRequests": 0,
+              "costUSD": 0.3464178,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 182,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3497776
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2468,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15241,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015371,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 88,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 21815,
+              "webSearchRequests": 0,
+              "costUSD": 0.1768998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1784369
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2169,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15247,
+              "outputTokens": 29,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015392000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 94,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 21821,
+              "webSearchRequests": 0,
+              "costUSD": 0.1770678,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.178607
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2212,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 15255,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0015385,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 146,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 22500,
+              "webSearchRequests": 0,
+              "costUSD": 0.1835398,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 32,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1850783
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/references/resume.md",
+          "start_line": 8,
+          "end_line": 10,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A resumed run is sent to orchestrator-report.md, but that file's first steps tell the run to copy the line to charter.md and write run.orchestrator again, and a resumed run must not write a charter.",
+          "evidence": "read `orchestrator-report.md` before you re-enter.",
+          "suggested_fix": "Say that a resumed run skips the three setup steps and only follows the stage-call and question rules.",
+          "explanation": "The new route does not say which part of orchestrator-report.md applies on a resume, so a resumed run may redo the setup steps or rewrite charter.md.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "read `orchestrator-report.md` before you re-enter.",
+            "A resumed run writes no charter, no spec"
+          ],
+          "rationale": "The ambiguity exists: orchestrator-report.md says to do three setup steps \"in the turn you take the goal\", including copying to charter.md, and resume.md only says to read the file. But resume.md also says a resumed run writes no charter, and the resume case already has run.orchestrator set. A careful reader will resolve the conflict, and step 3 still applies, so the harm is small.",
+          "score": 50,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "read `orchestrator-report.md` before you re-enter.",
+            "A resumed run writes no charter, no spec"
+          ],
+          "rationale": "The ambiguity exists: orchestrator-report.md says to do three setup steps \"in the turn you take the goal\", including copying to charter.md, and resume.md only says to read the file. But resume.md also says a resumed run writes no charter, and the resume case already has run.orchestrator set. A careful reader will resolve the conflict, and step 3 still applies, so the harm is small.",
+          "score": 50,
+          "severity": "nit"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/orchestrator-report.md",
+          "start_line": 18,
+          "end_line": 19,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The script path is relative to \"this skill's dir\", but the text now lives in `references/`. A reader may resolve the path from the file's own directory and get `references/../orchestrator/scripts/crew-orch.py`, which does not exist.",
+          "evidence": "3. Call the script as `<this skill's dir>/../orchestrator/scripts/crew-orch.py",
+          "suggested_fix": "Write `skills/project-lead/` (the directory of the project-lead `SKILL.md`) in place of \"this skill's dir\".",
+          "explanation": "Commit 0b12ed5 wrote this path for SKILL.md. Now the file is one level deeper, so \"this skill's dir\" is easier to misread.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "3. Call the script as `<this skill's dir>/../orchestrator/scripts/crew-orch.py"
+          ],
+          "rationale": "\"This skill's dir\" means the project-lead skill directory, which is unchanged by moving the text into references/. `<skill dir>/../orchestrator/scripts/crew-orch.py` still resolves correctly. The finding only guesses that a reader might misread the path. The text was moved word for word, and the file says it is the project-lead skill's reference.",
+          "score": 12,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "3. Call the script as `<this skill's dir>/../orchestrator/scripts/crew-orch.py"
+          ],
+          "rationale": "\"This skill's dir\" means the project-lead skill directory, which is unchanged by moving the text into references/. `<skill dir>/../orchestrator/scripts/crew-orch.py` still resolves correctly. The finding only guesses that a reader might misread the path. The text was moved word for word, and the file says it is the project-lead skill's reference.",
+          "score": 12,
+          "severity": "dont_post"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5932748294,
+      "review_url": "https://github.com/jerridan/crew/pull/166#pullrequestreview-5932748294",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133814135137
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 7073,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13746,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013841,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1124,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 14521,
+            "webSearchRequests": 0,
+            "costUSD": 0.069328,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0707121
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 3994,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15239,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015359000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 361,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 21812,
+            "webSearchRequests": 0,
+            "costUSD": 0.18233580000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 86,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18387170000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4257,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15253,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015383,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 333,
+            "cacheReadInputTokens": 27854,
+            "cacheCreationInputTokens": 22186,
+            "webSearchRequests": 0,
+            "costUSD": 0.18973479999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 160,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.19127309999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5276,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15255,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015375,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 477,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 24790,
+            "webSearchRequests": 0,
+            "costUSD": 0.207868,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 135,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2094055
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6124,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15249,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015379,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 603,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 24839,
+            "webSearchRequests": 0,
+            "costUSD": 0.21078,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 181,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2123179
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7218,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15241,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015371,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 721,
+            "cacheReadInputTokens": 24776,
+            "cacheCreationInputTokens": 25424,
+            "webSearchRequests": 0,
+            "costUSD": 0.22278320000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 277,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.22432030000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2468,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15241,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015371,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 88,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 21815,
+            "webSearchRequests": 0,
+            "costUSD": 0.1768998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1784369
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2169,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15247,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015392000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 94,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 21821,
+            "webSearchRequests": 0,
+            "costUSD": 0.1770678,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.178607
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 2212,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15255,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015385,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 146,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 22500,
+            "webSearchRequests": 0,
+            "costUSD": 0.1835398,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 32,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1850783
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6925,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 33473,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0033598000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 667,
+            "cacheReadInputTokens": 46189,
+            "cacheCreationInputTokens": 40478,
+            "webSearchRequests": 0,
+            "costUSD": 0.3464178,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 182,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3497776
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 5278,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4944,
+            "outputTokens": 16,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005024,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 641,
+            "cacheReadInputTokens": 8824,
+            "cacheCreationInputTokens": 9956,
+            "webSearchRequests": 0,
+            "costUSD": 0.0471244,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 198,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0476268
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 3949,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5358,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005448,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 533,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 4871,
+            "webSearchRequests": 0,
+            "costUSD": 0.0252547,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 185,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.025799500000000003
+      }
+    ],
+    "total_cost_usd": 2.0572267000000006,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 56,
+      "gather": 387,
+      "triage": 7994,
+      "find_verify": 18238,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

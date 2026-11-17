@@ -375,9 +375,9 @@ worktree, so `remove` refuses while it runs.
      unlocks the worktree.
    - Any other lock refuses: a lock with no reason, a reason with no pid or
      with more than one, or a pid that runs. A pid that another user owns
-     counts as running. A pid that the system cannot test, such as one too large, refuses
-     too. A new process with the owner's pid refuses, because `remove`
-     cannot prove the owner dead.
+     counts as running. A pid that the system cannot test, such as one too
+     large, refuses too. A new process with the owner's pid refuses, because
+     `remove` cannot prove the owner dead.
 3. With `--stop-processes`, it stops each process in the worktree. Each has
    no terminal. `resume-and-close.md` says when to give the flag.
    - Right before each signal, it reads `ps` and `lsof` again. It sends the
@@ -410,11 +410,19 @@ worktree, so `remove` refuses while it runs.
    3. each branch that a goal record of the worktree names: each
       `deliverables[].branch` of its `state.json`, then each `branch` value
       of the `worktrees.json` beside it. A goal record of the worktree is a
-      `<record-root>/*/state.json` whose `run.repo`, made real, is the real
-      worktree path, and whose `run.kind` is absent or not `review`. The
-      record root is `$CREW_RECORD_ROOT`, else `~/.claude/crew`. A record
-      file that cannot be read or parsed is skipped, with one stderr line
-      that names it.
+      `<record-root>/*/state.json` with all three of these:
+      - its `run.repo`, with each symlink resolved, is the worktree path;
+      - its `run.kind` is absent or not `review`;
+      - its `run.created_at` is at or after the time git made the worktree:
+        the mtime of `commondir` in the worktree's git dir, read before the
+        removal. git writes that file once, at `worktree add`. An older
+        record is of an earlier item at the same path, and its branches are
+        not this item's.
+
+      The record root is `$CREW_RECORD_ROOT`, else `~/.claude/crew`. A
+      record file that cannot be read or parsed is skipped, with one stderr
+      line that names it. So is a record of the worktree with no
+      `run.created_at`, or one that does not parse.
 
    A name is a candidate only when `refs/heads/<name>` exists. The default
    branch is never a candidate: the branch that `refs/remotes/origin/HEAD`
@@ -422,19 +430,27 @@ worktree, so `remove` refuses while it runs.
    When neither names one, `main` and `master` are never candidates, and one
    stderr line says so.
 2. **The fetch.** `git fetch -q --no-prune origin`. A failed fetch is not an
-   error: one stderr line says so, and the proof uses the refs that exist.
-3. **The PR head.** With `--pr <number>`, `git ls-remote origin
+   error: one stderr line says so, and the proof uses the commits that are
+   already in the local object store.
+3. **The keepers of origin.** `git ls-remote origin` lists the branches and
+   the tags that origin holds now. Each sha under `refs/heads/` or
+   `refs/tags/` is a keeper when its commit is in the local object store.
+   For an annotated tag, the keeper is the peeled `^{}` sha. A failed
+   `ls-remote` gives no keeper from origin, and one stderr line says so.
+4. **The PR head.** With `--pr <number>`, `git ls-remote origin
    refs/pull/<number>/head` gives a sha. When that commit is not in the
    local object store, `remove` runs `git fetch -q origin
    refs/pull/<number>/head`, and checks again with `git cat-file -e
    <sha>^{commit}`. A sha that is then present is a keeper. Any failure
    gives no keeper, and one stderr line says so.
-4. **The proof.** A candidate is proven kept when
-   `git rev-list refs/heads/<candidate> --not --remotes --tags [<PR sha>]`
-   prints nothing. The keepers are the remote-tracking refs, the tags and
-   the PR head. A local branch is never a keeper, so one candidate never
-   proves another.
-5. **The delete.** It reads `git worktree list --porcelain` again. It
+5. **The proof.** A candidate is proven kept when `git rev-list
+   refs/heads/<candidate> --stdin` prints nothing, with one `^<keeper sha>`
+   line on stdin for each keeper. Stdin holds a long list that the argument
+   list cannot. No local ref is a keeper: not a local branch, not a
+   remote-tracking ref and not a local tag. A remote-tracking ref of a
+   branch that origin deleted is no copy elsewhere, and the next prune
+   drops it. So one candidate never proves another.
+6. **The delete.** It reads `git worktree list --porcelain` again. It
    deletes each proven candidate that no worktree has checked out, with `git
    branch -D`. Each commit is on a keeper, so the delete loses nothing. `git
    branch -d` is not enough: it refuses a branch after a rebase merge,
@@ -442,7 +458,8 @@ worktree, so `remove` refuses while it runs.
 
 Every other candidate stays. A candidate with commits that no keeper holds
 gets one stderr line that names it and the count. A candidate that another
-worktree has checked out stays, and that is not an error. A rebased branch
+worktree has checked out stays, and that is not an error. It gets one
+stderr line that names it and that worktree. A rebased branch
 that was then changed stays unproven, because `remove` compares commits,
 not patches. Push the branch or merge the commits, then delete the branch
 yourself.

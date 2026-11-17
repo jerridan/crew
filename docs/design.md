@@ -9789,20 +9789,39 @@ Deliberately different:
        names. A goal record ties a branch to the worktree with no guess: its
        `run.repo` is the worktree. A review record is left out, because its
        branches are a colleague's. The default branch is never a candidate.
-     - A local branch is never a keeper. §15.145 counted every other local
-       branch, so two candidates at the same commit proved each other, and
-       both went. A local branch is no copy elsewhere, and two closes that
-       run at the same time could each prove the other's branches. The
-       keepers are the remote-tracking refs, the tags and the PR head. A
-       remote-tracking ref still counts, as §15.145 decided: its commits
-       stay in the local repo under that ref. `remove` fetches with
-       `--no-prune` first, so a ref that the merge deleted on the remote
-       stays a keeper here.
+     - A goal record counts only when its `run.created_at` is at or after
+       the time git made the worktree, the mtime of `commondir` in its git
+       dir. `start` reuses a path once a close removed the worktree and its
+       branch, and goal records are never deleted. So without the time, the
+       close of a later item at the same path would take the branches of
+       the earlier item. The skeptical review found this case. git writes
+       `commondir` once, at `worktree add`, and nothing in the worktree
+       changes it.
+     - No local ref is a keeper. §15.145 counted every other local branch,
+       so two candidates at the same commit proved each other, and both
+       went. A local branch is no copy elsewhere, and two closes that run at
+       the same time could each prove the other's branches. The keepers are
+       the branches and tags that `git ls-remote origin` lists now, and the
+       PR head. This proves more than §15.145, which also counted the
+       remote-tracking refs and the local tags. A remote-tracking ref of a
+       branch that origin deleted is no copy elsewhere, and the next prune
+       or `fetch.prune` drops it, and gc then drops its commits. A local tag
+       is no copy elsewhere either. The skeptical review found the stale
+       ref. A failed `ls-remote` gives no keeper from origin, so each
+       branch that only origin could prove stays. `rev-list` reads the
+       keepers on stdin as `^<sha>` lines, because a repo with many tags
+       could overflow the argument list. On git 2.54, `--not` does not
+       apply to the revisions that `--stdin` reads.
      - `--pr <number>` adds the PR head as a keeper, because GitHub keeps
        `refs/pull/<n>/head` after the head branch is deleted. `remove` reads
        it with `ls-remote`, and fetches the commit when it is not local. A
        rebase merge gives the merged commits new shas, so without the PR
        head an implementer's own commits are often on no keeper.
+     - A candidate that another worktree has checked out stays, with one
+       stderr line, and the close names it in the same inbox notice as an
+       unproven branch. The goal is that no branch of a merged item stays
+       unheard of, and the likely case is a package worktree of a full-path
+       run that was not removed.
      - A branch that was rebased and then changed stays unproven. A proof
        by patch id (`git cherry`) could match it, but the ticket accepts the
        kept branch, and the close reports it in one inbox notice per item.

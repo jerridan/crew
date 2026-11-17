@@ -601,5 +601,5 @@ On the word:
 
 A session that dies in this window is resumed like any other: `SessionEnd`
 marks the run `interrupted`, and `--resume` finds every deliverable terminal
-and invokes this skill again with `run_state: delivered` (`SKILL.md`, "Take
-the goal").
+and invokes this skill again with `run_state: delivered` (`project-lead`'s
+`references/resume.md`).

@@ -1,0 +1,2174 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 168,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Close an orchestrator item in one pass, unlock dead locks and delete each proven branch",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/168"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "3ac178948c82491b2d871ebeb898e0867cb8438a",
+    "head": "3a6b621a62413e1ddd896a3f8bcd8f1a34e9ff2b",
+    "started_at": "2026-11-17T15:44:36.609Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Close an orchestrator item in one pass, unlock dead locks and delete each proven branch\n\n## Summary\n\nThe close of an orchestrator item now needs one pass and leaves nothing behind. `stop` waits after it closes the tab until the session process has ended, and `remove` waits a short time for a session that is still ending, so the orchestrator does not have to run `remove` a second time. `remove` now removes a worktree whose git lock names a process that no longer runs, and still refuses a lock whose owner runs or cannot be proven dead. With `--delete-branch`, `remove` now deletes every local branch of the item (the launcher's `worktree-<name>` branch, the branch the project lead moved the worktree to, and the deliverable and package branches of the project lead's goal record), but only a branch whose every commit is on a branch or tag that origin lists now, or on the merged PR's head. Each other branch stays, and the close puts one notice in the inbox that names it.\n\nCloses #167\n\n**Ticket:** [#167 — Orchestrator close-out: one pass, dead locks, and no merged branch left behind](https://github.com/jerridan/crew/issues/167)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.145 (why `remove` forces nothing) and the new §15.147 (each choice of this change, with its reason).\n- `skills/orchestrator/references/launcher.md` owns `stop` and `remove`: the waits, the lock rule, the branch candidates, the proof and the output.\n- `skills/orchestrator/references/resume-and-close.md` owns the close of an item: which flags step 3 gives, and the one inbox notice.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: `stop` waits up to 15 seconds after the close for each `claude` pid that was still on the tty, and sends no signal. `remove` waits up to 15 seconds when each blocker is a `claude` with no terminal. `remove` reads the worktree lock after that wait: it unlocks only a lock whose reason names exactly one pid that is not running, tests that pid again right before `git worktree unlock`, and refuses every other lock with exit 9. `--delete-branch` takes candidates from the checked-out branch, `worktree-<name>` and the goal records whose `run.repo` is the worktree and whose `run.created_at` is not before the worktree was made (review records excluded). It never takes the default branch. It proves each candidate with `git rev-list refs/heads/<c> --stdin` against keepers that are only the shas that `git ls-remote origin` lists under `refs/heads/` and `refs/tags/` (present locally after a `fetch --no-prune`) and the head of `refs/pull/<n>/head` with `--pr <n>`. No local ref is a keeper. It deletes a proven candidate only when no worktree has it checked out. The output drops `branch_deleted` and `branch_only_commits`, and adds `branches` and `lock`.\n- `skills/orchestrator/scripts/test-launcher.sh`: 218 checks, with new checks for each wait, each lock case, each candidate source, each keeper and non-keeper, and the usage errors of `--pr`.\n- `skills/orchestrator/references/launcher.md`: states the new `stop` wait, the `remove` wait, the lock rule, the candidates, the proof, the output fields and the exit codes.\n- `skills/orchestrator/references/resume-and-close.md`: step 2 needs no second `remove`; step 3 gives `--delete-branch --pr <pr.number>` for a merged PR and `--delete-branch` alone when `pr` is `null`, and puts one notice for every branch that stays. The close of a run points at step 3 for its flags.\n- `README.md`: the close also deletes the item's branches, and a branch whose commits are not on origin or a PR head stays.\n- `docs/design.md`: entry 15.147.\n- `CLAUDE.md`: one Build state sentence.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.114.\n\n### Constraints that applied\n\n- Issue 156's rule: no command deletes a commit that exists nowhere else. This change proves more than §15.145 did: a local branch, a stale remote-tracking ref and a local tag are no longer proof, so one candidate cannot prove another and two closes at the same time cannot prove each other's branches.\n- No force anywhere: no `--force` on `git worktree remove`, no unlock without the dead-owner proof, no `git branch -D` of an unproven candidate. `stop` signals no process.\n- Python 3.9: both tests run on `/usr/bin/python3` (3.9.6).\n- The test makes its own repos, worktrees, branches, `$HOME` and `$CREW_RECORD_ROOT`, and starts no real `claude`.\n- A rule lives in one file: `resume-and-close.md` points at `launcher.md` for the proof and copies none of it.\n- Version bump in both manifests, equal values.\n\n### How this was verified\n\n- `PATH=/usr/bin:$PATH bash skills/orchestrator/scripts/test-launcher.sh`: 218 of 218 checks passed. The red commits (`efd84ef`, `8e78be4`) failed 28 and 7 of the new checks before each fix.\n- `PATH=/usr/bin:$PATH bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed.\n- A spec critic read the spec, and a skeptical review read the finished diff on the local head before the first push: 0 blocking, 3 suggestions and 1 nit, all four fixed in the second round (`8e78be4` to `3a6b621`). The project lead read the whole `launcher.py` diff.\n\n### Known gaps\n\n- Only the seeded test has run the new code. No orchestrator has closed an item with it.\n- The `stop` and `remove` waits are not proven against a live `claude` that ends after its tab closes.\n- A package branch of a run whose PR was rebased and later changed by fix commits cannot be proven, and stays with a notice, as the ticket accepts.\n- `CLAUDE.md` was over its 200-line target before this change; this change adds one sentence.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 20
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 8
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Substantial logic changes to launcher.py's destructive worktree removal, branch deletion proof, lock unlocking, process waiting and the output schema, where a bug can lose work.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: delete_branches (candidate selection, keepers, rev-list --stdin proof, git branch -D)",
+        "skills/orchestrator/scripts/launcher.py: remove (lock handling, unlock with pid re-test, commondir mtime read before removal)",
+        "skills/orchestrator/scripts/launcher.py: origin_keepers and pr_keeper (ls-remote parsing, cat-file --batch-check, annotated tag peeling)",
+        "skills/orchestrator/scripts/launcher.py: record_branches (created_at vs made, symlink resolution, review kind exclusion)",
+        "skills/orchestrator/scripts/launcher.py: pid_dead, lock_owner and PID_RE",
+        "skills/orchestrator/scripts/launcher.py: wait_claude_gone, wait_pids_gone and stop (tmux kill-pane restructure)",
+        "skills/orchestrator/scripts/launcher.py: all_ending wait loop and scan refactor",
+        "skills/orchestrator/references/resume-and-close.md: flag selection for --delete-branch --pr"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "Core logic change: new remove flow with lock handling, wait for ending claude, multi-candidate branch deletion proven against origin keepers and PR head; stop waits for pids after close. The output JSON changed: branch_deleted and branch_only_commits became branches and lock."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "Many new tests for the proof, the lock, the records and the stop wait. Adds a git stub for network failure and a CREW_RECORD_ROOT export."
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "Spec of the new remove and stop behavior, output fields and exit codes. It must match the code."
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "The close procedure now does one remove pass. It chooses --delete-branch and --pr by PR state."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 147 that records the rationale."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "One line of status."
+        },
+        {
+          "file": "README.md",
+          "note": "User-facing text on branch deletion."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.114."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.114."
+        }
+      ],
+      "summary": "The change makes the close of an orchestrator item run in one pass. `stop` now waits for the claude pids to end after the tab closes. `remove` waits for an ending no-tty claude and unlocks a worktree whose lock owner is provably dead. `remove` also deletes several candidate branches, each proven kept by origin branches and tags or by the PR head, and it reports them in a new `branches` and `lock` output. Docs, tests and the version are updated to match."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Substantial logic changes to launcher.py's destructive worktree removal, branch deletion proof, lock unlocking, process waiting and the output schema, where a bug can lose work.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 1395,
+            "end_line": 1396,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The new test comment says --remotes and --tags prove a candidate, which contradicts the new rule that no local ref is a keeper.",
+            "evidence": "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "suggested_fix": "Say: a candidate is deleted only when a branch or tag that origin lists, or the verified PR head, holds each of its commits.",
+            "explanation": "launcher.md now says the keepers are only the refs that ls-remote origin lists and the PR head, so the comment restates the old §15.145 rule.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8123,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39846,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.003998600000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 775,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 49502,
+              "webSearchRequests": 0,
+              "costUSD": 0.411524,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 163,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4155226
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6144,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39832,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0039962,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 522,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 49446,
+              "webSearchRequests": 0,
+              "costUSD": 0.406016,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 266,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4100122
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 989,
+            "end_line": 996,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A `ps` failure during the wait after the close can make `stop` exit with an error, even though the tab or pane is already closed.",
+            "evidence": "        procs = processes()\n        still = sorted(pid for pid in left if pid in procs and procs[pid][\"argv\"] == left[pid])",
+            "suggested_fix": "Catch `Fail` from `processes()` in `wait_pids_gone`, print one stderr line and return.",
+            "explanation": "`wait_pids_gone` runs after the close, and a `Fail` raised by `processes()` there goes to the caller. Both the doc and the docstring say this wait can only warn and that `stop` exits 0.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 13583,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39834,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.003997400000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1168,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 49393,
+              "webSearchRequests": 0,
+              "costUSD": 0.418512,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 792,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4225094
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 13284,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39838,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0039978,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1155,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 49397,
+              "webSearchRequests": 0,
+              "costUSD": 0.41828400000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 828,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.42228180000000004
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 1395,
+            "end_line": 1396,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "high",
+            "claim": "The new test comment says remote-tracking refs (--remotes) and local tags (--tags) prove a candidate, but the change removed both as keepers.",
+            "evidence": "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "suggested_fix": "# A candidate is deleted only when a branch or tag that origin lists, or the verified PR head, holds each of its commits.",
+            "explanation": "Only the branches and tags that `git ls-remote origin` lists, plus the PR head, are keepers now, and the tests in this section check that stale remote-tracking refs and local tags prove nothing.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7752,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39848,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0039988,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 720,
+              "cacheReadInputTokens": 52473,
+              "cacheCreationInputTokens": 46837,
+              "webSearchRequests": 0,
+              "costUSD": 0.3996066,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 219,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4036054
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7625,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 65735,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.006587,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 624,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 72357,
+              "webSearchRequests": 0,
+              "costUSD": 0.5919558,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 297,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.5985428
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7313,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39832,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0039972,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 623,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 46430,
+              "webSearchRequests": 0,
+              "costUSD": 0.38451979999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 168,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.38851699999999995
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1473,
+            "end_line": 1473,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "Branch names read from goal record JSON reach `git branch -D` without a `--` separator, so a name that starts with `-` could be read as an option.",
+            "evidence": "git_step(\"branch\", \"-D\", e[\"name\"])",
+            "suggested_fix": "Add \"--\" before the name, or reject names that start with '-' when you build the candidates.",
+            "explanation": "The goal record files supply the candidate names, and nothing checks those names before they reach git's argv. A `rev-parse --verify refs/heads/<name>` check only partly limits this.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7331,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39846,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0039966,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 657,
+              "cacheReadInputTokens": 52562,
+              "cacheCreationInputTokens": 46873,
+              "webSearchRequests": 0,
+              "costUSD": 0.39865239999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 228,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.402649
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 1434,
+            "end_line": 1436,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The test checks the git argument lists (rev-list --stdin, no --branches/--remotes/--tags) instead of the observable result.",
+            "evidence": "check 'remove --delete-branch reads the keepers with ls-remote origin, proves with rev-list --stdin and no local ref, and deletes with branch -D' \\",
+            "suggested_fix": "Drop the argument-list check and rely on the tests that a local branch, a stale ref and a local tag prove nothing.",
+            "explanation": "A different but equivalent git call would break this test while the behaviour stays the same, and the stale-ref and local-tag tests already cover the outcome.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1086,
+            "end_line": 1090,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The new wait after the close on the iTerm2 path of stop has no test. Only the tmux path is covered by stop_live.",
+            "evidence": "        if left:",
+            "suggested_fix": "Add a stop_live variant for an iterm2 handle with a stubbed osascript.",
+            "explanation": "If the iTerm2 branch stopped waiting, no test would fail, and the next remove would then refuse.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1500,
+            "end_line": 1510,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "No test covers a no-tty claude that does not end inside REMOVE_END_WAIT. In that case remove should refuse with exit 9 after the wait.",
+            "evidence": "if not changed and all_ending(blockers, mine):",
+            "suggested_fix": "Set REMOVE_END_WAIT to 1 through a python harness, run remove against a long-lived no-tty claude, and assert exit 9 with the process listed in kept.",
+            "explanation": "The timeout branch of the new wait loop is untested, so a loop that never ends or one that removes too early would go unnoticed.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11469,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 39840,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0039975,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1108,
+              "cacheReadInputTokens": 53227,
+              "cacheCreationInputTokens": 47633,
+              "webSearchRequests": 0,
+              "costUSD": 0.4138854,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 183,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4178829
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 1395,
+          "end_line": 1396,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The new test comment says --remotes and --tags prove a candidate, which contradicts the new rule that no local ref is a keeper.",
+          "evidence": "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+          "suggested_fix": "Say: a candidate is deleted only when a branch or tag that origin lists, or the verified PR head, holds each of its commits.",
+          "explanation": "launcher.md now says the keepers are only the refs that ls-remote origin lists and the PR head, so the comment restates the old §15.145 rule.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "&& ! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\""
+          ],
+          "rationale": "The new comment names --remotes and --tags as proof. The same file's new test asserts rev-list never uses --remotes or --tags, and the PR makes only refs that origin lists count, so the comment is stale and wrong. The only harm is a misleading comment.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "&& ! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\""
+          ],
+          "rationale": "The new comment names --remotes and --tags as proof. The same file's new test asserts rev-list never uses --remotes or --tags, and the PR makes only refs that origin lists count, so the comment is stale and wrong. The only harm is a misleading comment.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 1395,
+          "end_line": 1396,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "high",
+          "claim": "The new test comment says remote-tracking refs (--remotes) and local tags (--tags) prove a candidate, but the change removed both as keepers.",
+          "evidence": "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+          "suggested_fix": "# A candidate is deleted only when a branch or tag that origin lists, or the verified PR head, holds each of its commits.",
+          "explanation": "Only the branches and tags that `git ls-remote origin` lists, plus the PR head, are keepers now, and the tests in this section check that stale remote-tracking refs and local tags prove nothing.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\""
+          ],
+          "rationale": "The new comment names --remotes and --tags as keepers. The tests below it, and the description, show that stale remote-tracking refs and local tags prove nothing, and that the proof uses ls-remote origin branches and tags plus the PR head. The comment is wrong but only a comment.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\""
+          ],
+          "rationale": "The new comment names --remotes and --tags as keepers. The tests below it, and the description, show that stale remote-tracking refs and local tags prove nothing, and that the proof uses ls-remote origin branches and tags plus the PR head. The comment is wrong but only a comment.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 989,
+          "end_line": 996,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A `ps` failure during the wait after the close can make `stop` exit with an error, even though the tab or pane is already closed.",
+          "evidence": "        procs = processes()\n        still = sorted(pid for pid in left if pid in procs and procs[pid][\"argv\"] == left[pid])",
+          "suggested_fix": "Catch `Fail` from `processes()` in `wait_pids_gone`, print one stderr line and return.",
+          "explanation": "`wait_pids_gone` runs after the close, and a `Fail` raised by `processes()` there goes to the caller. Both the doc and the docstring say this wait can only warn and that `stop` exits 0.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        procs = processes()\n        still = sorted(pid for pid in left if pid in procs and procs[pid][\"argv\"] == left[pid])",
+            "raise Fail(TERMINAL_STEP, \"launcher: ps failed: %s\" % (one_line(err) or \"exit %d\" % rc))"
+          ],
+          "rationale": "`processes()` raises `Fail` when `ps` fails, and `wait_pids_gone` doesn't catch it. A `ps` failure after the close therefore makes `stop` exit nonzero. The docs only promise exit 0 when a pid still runs, not on a `ps` failure, and `ps` is unlikely to fail in that window.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        procs = processes()\n        still = sorted(pid for pid in left if pid in procs and procs[pid][\"argv\"] == left[pid])",
+            "        raise Fail(TERMINAL_STEP, \"launcher: ps failed: %s\" % (one_line(err) or \"exit %d\" % rc))",
+            "When one still runs at the end, one stderr line names each pid, and `stop`\n  exits 0."
+          ],
+          "rationale": "`processes()` raises Fail when ps exits non-zero, and the new `wait_pids_gone` does not catch it after the close, so `stop` would exit with an error. This only happens when ps fails right after it worked moments before in `wait_claude_gone`, which is very unlikely. The outcome is also recoverable, because a second `stop` reports the handle as already gone.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        procs = processes()\n        still = sorted(pid for pid in left if pid in procs and procs[pid][\"argv\"] == left[pid])",
+            "        raise Fail(TERMINAL_STEP, \"launcher: ps failed: %s\" % (one_line(err) or \"exit %d\" % rc))",
+            "When one still runs at the end, one stderr line names each pid, and `stop`\n  exits 0."
+          ],
+          "rationale": "`processes()` raises Fail when ps exits non-zero, and the new `wait_pids_gone` does not catch it after the close, so `stop` would exit with an error. This only happens when ps fails right after it worked moments before in `wait_claude_gone`, which is very unlikely. The outcome is also recoverable, because a second `stop` reports the handle as already gone.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1473,
+          "end_line": 1473,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "Branch names read from goal record JSON reach `git branch -D` without a `--` separator, so a name that starts with `-` could be read as an option.",
+          "evidence": "git_step(\"branch\", \"-D\", e[\"name\"])",
+          "suggested_fix": "Add \"--\" before the name, or reject names that start with '-' when you build the candidates.",
+          "explanation": "The goal record files supply the candidate names, and nothing checks those names before they reach git's argv. A `rev-parse --verify refs/heads/<name>` check only partly limits this.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "git_step(\"branch\", \"-D\", e[\"name\"])",
+            "if n not in never and run([\"git\", \"-C\", top, \"rev-parse\", \"-q\", \"--verify\", \"refs/heads/\" + n])[0] == 0"
+          ],
+          "rationale": "The call has no `--` separator and the names come from goal record JSON, so the claim is literally true. But a candidate must pass `rev-parse --verify refs/heads/<n>`, which needs a local branch whose name starts with `-`. `git branch` refuses to create such a branch, so a hit is very unlikely and the harm is small. Adding `--` would be cheap hardening.",
+          "score": 60,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "git_step(\"branch\", \"-D\", e[\"name\"])",
+            "if n not in never and run([\"git\", \"-C\", top, \"rev-parse\", \"-q\", \"--verify\", \"refs/heads/\" + n])[0] == 0",
+            "names.append(d[\"branch\"])"
+          ],
+          "rationale": "The argv has no `--` before the name, and this change adds names from goal records. But a name only becomes a candidate if `refs/heads/<name>` already exists. Git does not create branch names that start with `-` on normal paths. The goal records are the user's own local files. Even with such a name, the likely result is that git rejects it as an unknown option and the step fails, not that it does harm.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "git_step(\"branch\", \"-D\", e[\"name\"])",
+            "if n not in never and run([\"git\", \"-C\", top, \"rev-parse\", \"-q\", \"--verify\", \"refs/heads/\" + n])[0] == 0",
+            "names.append(d[\"branch\"])"
+          ],
+          "rationale": "The argv has no `--` before the name, and this change adds names from goal records. But a name only becomes a candidate if `refs/heads/<name>` already exists. Git does not create branch names that start with `-` on normal paths. The goal records are the user's own local files. Even with such a name, the likely result is that git rejects it as an unknown option and the step fails, not that it does harm.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 1434,
+          "end_line": 1436,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The test checks the git argument lists (rev-list --stdin, no --branches/--remotes/--tags) instead of the observable result.",
+          "evidence": "check 'remove --delete-branch reads the keepers with ls-remote origin, proves with rev-list --stdin and no local ref, and deletes with branch -D' \\",
+          "suggested_fix": "Drop the argument-list check and rely on the tests that a local branch, a stale ref and a local tag prove nothing.",
+          "explanation": "A different but equivalent git call would break this test while the behaviour stays the same, and the stale-ref and local-tag tests already cover the outcome.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'remove --delete-branch reads the keepers with ls-remote origin, proves with rev-list --stdin and no local ref, and deletes with branch -D' \\",
+            "&& ! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\""
+          ],
+          "rationale": "The check does grep the git call log for argument lists, so the claim is literally true. The suite does this on purpose (the git wrapper logs calls, and an earlier commit moved a check to the git calls), and the check pins the safety rule that no local ref is proof. Other tests already cover the outcome, so a comment on this would not help the author.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'remove --delete-branch reads the keepers with ls-remote origin, proves with rev-list --stdin and no local ref, and deletes with branch -D' \\",
+            "&& ! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\" && grep -sq '|branch|-D|worktree-rm-br2|' \"$T/git.log\"; echo $?)",
+            "check 'remove --delete-branch keeps a branch whose commits only a stale remote-tracking ref holds' $r",
+            "check 'remove --delete-branch keeps a branch whose commits only a local tag holds' $r"
+          ],
+          "rationale": "The check does grep the git call log for exact argument lists, so the claim is accurate. However, the test file already checks git call logs elsewhere, for example \"remove runs git worktree remove with no force\". Here the check is a deliberate guard on the safety rule that no local ref counts as a keeper. That makes this a test-style preference with no wrong outcome, so it is not worth posting.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check 'remove --delete-branch reads the keepers with ls-remote origin, proves with rev-list --stdin and no local ref, and deletes with branch -D' \\",
+            "&& ! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\" && grep -sq '|branch|-D|worktree-rm-br2|' \"$T/git.log\"; echo $?)",
+            "check 'remove --delete-branch keeps a branch whose commits only a stale remote-tracking ref holds' $r",
+            "check 'remove --delete-branch keeps a branch whose commits only a local tag holds' $r"
+          ],
+          "rationale": "The check does grep the git call log for exact argument lists, so the claim is accurate. However, the test file already checks git call logs elsewhere, for example \"remove runs git worktree remove with no force\". Here the check is a deliberate guard on the safety rule that no local ref counts as a keeper. That makes this a test-style preference with no wrong outcome, so it is not worth posting.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1086,
+          "end_line": 1090,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The new wait after the close on the iTerm2 path of stop has no test. Only the tmux path is covered by stop_live.",
+          "evidence": "        if left:",
+          "suggested_fix": "Add a stop_live variant for an iterm2 handle with a stubbed osascript.",
+          "explanation": "If the iTerm2 branch stopped waiting, no test would fail, and the next remove would then refuse.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        left = wait_claude_gone(norm_tty(tty), a.handle)\n        iterm_script(OSA_STOP, \"stop\", ref)  # \"gone\" here: the tab closed when claude ended\n        if left:\n            wait_pids_gone(left, a.handle)"
+          ],
+          "rationale": "The iTerm2 branch of stop in launcher.py calls wait_pids_gone after the close. In test-launcher.sh, only the tmux path has a live-claude test (stop_live and the tmux ps-extra test). The iTerm2 stop tests run with no claude process on the tty, so `left` is empty and the new wait never runs.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        left = wait_claude_gone(norm_tty(tty), a.handle)\n        iterm_script(OSA_STOP, \"stop\", ref)  # \"gone\" here: the tab closed when claude ended\n        if left:\n            wait_pids_gone(left, a.handle)",
+            "rc = launcher.main([\"stop\", \"tmux:%7\"])",
+            "check 'stop iterm2:<id> --name on the session of that claude types /exit, then closes the tab' \\",
+            "check 'stop with a claude that ends after the close: the pane is killed while it runs, and stop exits 0 only after ps stops showing it' $r"
+          ],
+          "rationale": "The tests for the wait after the close (stop_live and the \"did not end in time\" check) only run `stop tmux:%7`. The iTerm2 stop tests check only the exit code and the osascript log, so no test would fail if the iTerm2 branch stopped calling wait_pids_gone. This is a real coverage gap for new code on what is likely the main terminal path, but it is a test gap, not a bug.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        left = wait_claude_gone(norm_tty(tty), a.handle)\n        iterm_script(OSA_STOP, \"stop\", ref)  # \"gone\" here: the tab closed when claude ended\n        if left:\n            wait_pids_gone(left, a.handle)",
+            "rc = launcher.main([\"stop\", \"tmux:%7\"])",
+            "check 'stop iterm2:<id> --name on the session of that claude types /exit, then closes the tab' \\",
+            "check 'stop with a claude that ends after the close: the pane is killed while it runs, and stop exits 0 only after ps stops showing it' $r"
+          ],
+          "rationale": "The tests for the wait after the close (stop_live and the \"did not end in time\" check) only run `stop tmux:%7`. The iTerm2 stop tests check only the exit code and the osascript log, so no test would fail if the iTerm2 branch stopped calling wait_pids_gone. This is a real coverage gap for new code on what is likely the main terminal path, but it is a test gap, not a bug.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1500,
+          "end_line": 1510,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "No test covers a no-tty claude that does not end inside REMOVE_END_WAIT. In that case remove should refuse with exit 9 after the wait.",
+          "evidence": "if not changed and all_ending(blockers, mine):",
+          "suggested_fix": "Set REMOVE_END_WAIT to 1 through a python harness, run remove against a long-lived no-tty claude, and assert exit 9 with the process listed in kept.",
+          "explanation": "The timeout branch of the new wait loop is untested, so a loop that never ends or one that removes too early would go unnoticed.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "end = time.time() + REMOVE_END_WAIT",
+            "if not all_ending(blockers, mine):",
+            "refused = bool(changed or blockers or lock_refuses)"
+          ],
+          "rationale": "The only test of the new wait uses a claude that ends after 2 seconds. Nothing in test-launcher.sh sets REMOVE_END_WAIT or runs a long-lived no-tty claude, so the timeout path is untested. That path should reach the exit 9 refusal with the process in kept.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if not changed and all_ending(blockers, mine):",
+            "end = time.time() + REMOVE_END_WAIT",
+            "check 'remove with no flag waits for a no-tty claude in the worktree that ends 2 seconds later, then removes the worktree' $r",
+            "launcher.REMOVE_WAIT = 1"
+          ],
+          "rationale": "The tests start only one no-tty claude in a worktree, and it ends after 2 seconds, so they cover only the path where the wait succeeds. No test sets REMOVE_END_WAIT, so the timeout path that should refuse with exit 9 never runs in a test. This new branch has no test, and it is worth a suggestion.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if not changed and all_ending(blockers, mine):",
+            "end = time.time() + REMOVE_END_WAIT",
+            "check 'remove with no flag waits for a no-tty claude in the worktree that ends 2 seconds later, then removes the worktree' $r",
+            "launcher.REMOVE_WAIT = 1"
+          ],
+          "rationale": "The tests start only one no-tty claude in a worktree, and it ends after 2 seconds, so they cover only the path where the wait succeeds. No test sets REMOVE_END_WAIT, so the timeout path that should refuse with exit 9 never runs in a test. This new branch has no test, and it is worth a suggestion.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          0,
+          1
+        ],
+        "result": {
+          "kind": "timeout",
+          "message": "The query did not end in 120000 ms."
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 1500,
+        "end_line": 1510,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "No test covers a no-tty claude that does not end inside REMOVE_END_WAIT. In that case remove should refuse with exit 9 after the wait.",
+        "evidence": "if not changed and all_ending(blockers, mine):",
+        "suggested_fix": "Set REMOVE_END_WAIT to 1 through a python harness, run remove against a long-lived no-tty claude, and assert exit 9 with the process listed in kept.",
+        "explanation": "The timeout branch of the new wait loop is untested, so a loop that never ends or one that removes too early would go unnoticed.",
+        "needs_context": false,
+        "fingerprint": "caa6b035a0b60603",
+        "severity": "suggestion",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if not changed and all_ending(blockers, mine):",
+            "end = time.time() + REMOVE_END_WAIT",
+            "check 'remove with no flag waits for a no-tty claude in the worktree that ends 2 seconds later, then removes the worktree' $r",
+            "launcher.REMOVE_WAIT = 1"
+          ],
+          "rationale": "The tests start only one no-tty claude in a worktree, and it ends after 2 seconds, so they cover only the path where the wait succeeds. No test sets REMOVE_END_WAIT, so the timeout path that should refuse with exit 9 never runs in a test. This new branch has no test, and it is worth a suggestion.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "span_text": "time.sleep(0.5) procs, where, in_tree, blockers, mine = scan(worktree, a.stop_processes) if not all_ending(blockers, mine): break # The lock, read after the wait: a session that held it can end there. reason = None for b in worktree_list(git(main_tree, \"worktree\", \"list\", \"--porcelain\")): if os.path.realpath(b[\"worktree\"]) == worktree: reason = b.get(\"locked\") lock = None"
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 1086,
+        "end_line": 1090,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The new wait after the close on the iTerm2 path of stop has no test. Only the tmux path is covered by stop_live.",
+        "evidence": "        if left:",
+        "suggested_fix": "Add a stop_live variant for an iterm2 handle with a stubbed osascript.",
+        "explanation": "If the iTerm2 branch stopped waiting, no test would fail, and the next remove would then refuse.",
+        "needs_context": true,
+        "fingerprint": "17baf22ab40f4949",
+        "severity": "suggestion",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        left = wait_claude_gone(norm_tty(tty), a.handle)\n        iterm_script(OSA_STOP, \"stop\", ref)  # \"gone\" here: the tab closed when claude ended\n        if left:\n            wait_pids_gone(left, a.handle)",
+            "rc = launcher.main([\"stop\", \"tmux:%7\"])",
+            "check 'stop iterm2:<id> --name on the session of that claude types /exit, then closes the tab' \\",
+            "check 'stop with a claude that ends after the close: the pane is killed while it runs, and stop exits 0 only after ps stops showing it' $r"
+          ],
+          "rationale": "The tests for the wait after the close (stop_live and the \"did not end in time\" check) only run `stop tmux:%7`. The iTerm2 stop tests check only the exit code and the osascript log, so no test would fail if the iTerm2 branch stopped calling wait_pids_gone. This is a real coverage gap for new code on what is likely the main terminal path, but it is a test gap, not a bug.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "span_text": "left = wait_claude_gone(norm_tty(tty), a.handle) iterm_script(OSA_STOP, \"stop\", ref) # \"gone\" here: the tab closed when claude ended if left: wait_pids_gone(left, a.handle) return OK"
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-launcher.sh",
+        "start_line": 1395,
+        "end_line": 1396,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "high",
+        "claim": "The new test comment says remote-tracking refs (--remotes) and local tags (--tags) prove a candidate, but the change removed both as keepers.",
+        "evidence": "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+        "suggested_fix": "# A candidate is deleted only when a branch or tag that origin lists, or the verified PR head, holds each of its commits.",
+        "explanation": "Only the branches and tags that `git ls-remote origin` lists, plus the PR head, are keepers now, and the tests in this section check that stale remote-tracking refs and local tags prove nothing.",
+        "needs_context": false,
+        "fingerprint": "98c67d908e069b8c",
+        "severity": "nit",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\""
+          ],
+          "rationale": "The new comment names --remotes and --tags as keepers. The tests below it, and the description, show that stale remote-tracking refs and local tags prove nothing, and that the proof uses ls-remote origin branches and tags plus the PR head. The comment is wrong but only a comment.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "span_text": "# A candidate is deleted only when --remotes, --tags or the verified PR head # hold each of its commits. A local branch never counts. rm_wt0 <name>: a"
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-launcher.sh",
+        "start_line": 1395,
+        "end_line": 1396,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The new test comment says --remotes and --tags prove a candidate, which contradicts the new rule that no local ref is a keeper.",
+        "evidence": "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+        "suggested_fix": "Say: a candidate is deleted only when a branch or tag that origin lists, or the verified PR head, holds each of its commits.",
+        "explanation": "launcher.md now says the keepers are only the refs that ls-remote origin lists and the PR head, so the comment restates the old §15.145 rule.",
+        "needs_context": false,
+        "fingerprint": "98c67d908e069b8c",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# A candidate is deleted only when --remotes, --tags or the verified PR head",
+            "&& ! grep -sqE '\\|rev-list\\|.*(--branches|--remotes|--tags|--all)' \"$T/git.log\""
+          ],
+          "rationale": "The new comment names --remotes and --tags as proof. The same file's new test asserts rev-list never uses --remotes or --tags, and the PR makes only refs that origin lists count, so the comment is stale and wrong. The only harm is a misleading comment.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "# A candidate is deleted only when --remotes, --tags or the verified PR head # hold each of its commits. A local branch never counts. rm_wt0 <name>: a"
+      }
+    ],
+    "github": {
+      "review_id": 5941692168,
+      "review_url": "https://github.com/jerridan/crew/pull/168#pullrequestreview-5941692168",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "caa6b035a0b60603",
+          "comment_id": 4601997940
+        },
+        {
+          "fingerprint": "17baf22ab40f4949",
+          "comment_id": 4601997959
+        },
+        {
+          "fingerprint": "98c67d908e069b8c",
+          "comment_id": 4601997971
+        },
+        {
+          "fingerprint": "98c67d908e069b8c",
+          "comment_id": 4601997991
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 134162712430
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8958,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 37199,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0037324000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1241,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 37973,
+            "webSearchRequests": 0,
+            "costUSD": 0.164306,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1680384
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6144,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39832,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039962,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 522,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 49446,
+            "webSearchRequests": 0,
+            "costUSD": 0.406016,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 266,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4100122
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8123,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39846,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.003998600000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 775,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 49502,
+            "webSearchRequests": 0,
+            "costUSD": 0.411524,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 163,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4155226
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7752,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39848,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039988,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 720,
+            "cacheReadInputTokens": 52473,
+            "cacheCreationInputTokens": 46837,
+            "webSearchRequests": 0,
+            "costUSD": 0.3996066,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 219,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4036054
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13583,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39834,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.003997400000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1168,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 49393,
+            "webSearchRequests": 0,
+            "costUSD": 0.418512,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 792,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4225094
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13284,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39838,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039978,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1155,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 49397,
+            "webSearchRequests": 0,
+            "costUSD": 0.41828400000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 828,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.42228180000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7625,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 65735,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.006587,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 624,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 72357,
+            "webSearchRequests": 0,
+            "costUSD": 0.5919558,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 297,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.5985428
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7313,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39832,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039972,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 623,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 46430,
+            "webSearchRequests": 0,
+            "costUSD": 0.38451979999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 168,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.38851699999999995
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7331,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39846,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039966,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 657,
+            "cacheReadInputTokens": 52562,
+            "cacheCreationInputTokens": 46873,
+            "webSearchRequests": 0,
+            "costUSD": 0.39865239999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 228,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.402649
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4907,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 34526,
+            "outputTokens": 431,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0036681,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 411,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 537,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 38405,
+            "webSearchRequests": 0,
+            "costUSD": 0.158994,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 178,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1626621
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 4792,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 34544,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0034649,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 584,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 34056,
+            "webSearchRequests": 0,
+            "costUSD": 0.1425047,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1459696
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11469,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 39840,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0039975,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1108,
+            "cacheReadInputTokens": 53227,
+            "cacheCreationInputTokens": 47633,
+            "webSearchRequests": 0,
+            "costUSD": 0.4138854,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 183,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4178829
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8667,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29563,
+            "outputTokens": 412,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031623000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 390,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 987,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 29075,
+            "webSearchRequests": 0,
+            "costUSD": 0.1266107,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 578,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.129773
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10392,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29215,
+            "outputTokens": 289,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030660000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 263,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1135,
+            "cacheReadInputTokens": 71193,
+            "cacheCreationInputTokens": 30087,
+            "webSearchRequests": 0,
+            "costUSD": 0.1388293,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 298,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1418953
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6301,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 35281,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0035416,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 646,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 34793,
+            "webSearchRequests": 0,
+            "costUSD": 0.1460727,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 233,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1496143
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9025,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28898,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029018,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 877,
+            "cacheReadInputTokens": 72018,
+            "cacheCreationInputTokens": 34586,
+            "webSearchRequests": 0,
+            "costUSD": 0.15432780000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 167,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.15722960000000002
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 10425,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29370,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029460000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1039,
+            "cacheReadInputTokens": 105546,
+            "cacheCreationInputTokens": 31779,
+            "webSearchRequests": 0,
+            "costUSD": 0.1480766,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 217,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1510226
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10393,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29567,
+            "outputTokens": 340,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031267,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 320,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 979,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 33438,
+            "webSearchRequests": 0,
+            "costUSD": 0.287092,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 556,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2902187
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11724,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29213,
+            "outputTokens": 309,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030758,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 286,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1178,
+            "cacheReadInputTokens": 71697,
+            "cacheCreationInputTokens": 30698,
+            "webSearchRequests": 0,
+            "costUSD": 0.2835074,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 316,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.28658320000000004
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6211,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 35281,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0035421000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 668,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 34785,
+            "webSearchRequests": 0,
+            "costUSD": 0.29252140000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 125,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.29606350000000003
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13099,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1395,
+            "cacheReadInputTokens": 72060,
+            "cacheCreationInputTokens": 35724,
+            "webSearchRequests": 0,
+            "costUSD": 0.328128,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 554,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 28880,
+            "outputTokens": 386,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.003081,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 360,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.331209
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12758,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29390,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029505,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1146,
+            "cacheReadInputTokens": 107252,
+            "cacheCreationInputTokens": 31887,
+            "webSearchRequests": 0,
+            "costUSD": 0.2994984,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 142,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3024489
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 120025,
+        "stop_reason": null,
+        "subtype": "timeout",
+        "usage": null,
+        "cost_usd": null
+      }
+    ],
+    "total_cost_usd": 6.594251299999999,
+    "queries_without_cost": 1,
+    "stage_ms": {
+      "config": 45,
+      "gather": 249,
+      "triage": 10052,
+      "find_verify": 51582,
+      "merge": 120035
+    },
+    "errors": [
+      {
+        "stage": "merge",
+        "message": "group 0,1: timeout: The query did not end in 120000 ms."
+      }
+    ]
+  }
+}

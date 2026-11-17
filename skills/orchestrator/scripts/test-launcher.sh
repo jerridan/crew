@@ -30,7 +30,8 @@ unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID
 # tmux stub. It logs each call as one line, args joined by `|`, and each
 # CLAUDECODE or CLAUDE_CODE_* variable it gets to tmux-env. Files under
 # $STUB_DIR set its answers: tmux-has (the session exists), tmux-fail (new
-# windows fail), tmux-kill-fail (kill-pane fails), tmux-panes (one known pane id per line), tmux-sessions (the
+# windows fail), tmux-kill-fail (kill-pane fails), tmux-panes (one known pane id per line),
+# tmux-close-on-enter (send-keys Enter closes the pane, as when claude ends), tmux-sessions (the
 # list-sessions output), tmux-clients (the list-clients output), tmux-list-panes
 # (the list-panes output), tmux-ttys (`<pane id> <tty>` lines: the #{pane_tty}
 # answer).
@@ -66,6 +67,10 @@ case "$1" in
     exit 0 ;;
   send-keys)
     grep -sqxF -- "$target" "$D/tmux-panes" 2>/dev/null || { echo "can't find pane: $target" >&2; exit 1; }
+    for a in "$@"; do last=$a; done
+    if [ "$last" = Enter ] && [ -e "$D/tmux-close-on-enter" ]; then
+      grep -vxF -- "$target" "$D/tmux-panes" > "$D/tmux-panes.new"; mv "$D/tmux-panes.new" "$D/tmux-panes"
+    fi
     exit 0 ;;
   list-panes) [ -e "$D/tmux-list-panes" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-list-panes" ;;
   list-sessions) [ -e "$D/tmux-sessions" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-sessions" ;;
@@ -841,6 +846,15 @@ sys.exit(0 if rc == 0 and time.time() - t < 10 else 1)
 PY
 r2=1; [ "$r" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log" && r2=0
 check 'a claude that did not end in time: one stderr line, exit 0, and the pane is still killed' $r2
+# The pane closes when claude ends: stop does not kill it and exits 0.
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+: > "$STUB_DIR/tmux-close-on-enter"
+run stop 'tmux:%7'
+r=1; [ "$rc" = 0 ] && grep -sq '^send-keys|-t|%7|Enter|$' "$STUB_DIR/tmux.log" && ! grep -sq '^kill-pane|' "$STUB_DIR/tmux.log" \
+  && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
+check 'stop tmux:<pane> whose pane closed when claude ended exits 0 and sends no kill-pane' $r
 
 # -- find ------------------------------------------------------------------
 reset_stub
@@ -953,6 +967,15 @@ echo '900001 1 ttys901 claude --name rs-1 --model opus' > "$STUB_DIR/ps-extra"
 TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
 check 'resume of a session that find sees exits 8, names the tab, and opens no tab' \
   $([ "$rc" = 8 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'tmux:%7' "$T/err" && ! grep -sq '^new-' "$STUB_DIR/tmux.log"; echo $?)
+# A claude with no --name, as a restore tool starts it: find matches it by its cwd.
+printf '%%7 /dev/ttys901\n' > "$STUB_DIR/tmux-list-panes"
+echo '900001 1 ttys901 claude --resume new-2222 --model opus' > "$STUB_DIR/ps-extra"
+printf 'p900001\nfcwd\nn%s\n' "$RWT" > "$STUB_DIR/lsof-extra"
+: > "$STUB_DIR/tmux.log"
+TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
+check 'resume of a session that find sees by its cwd (no --name) exits 8, names the tab, and opens no tab' \
+  $([ "$rc" = 8 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'tmux:%7' "$T/err" && ! grep -sq '^new-' "$STUB_DIR/tmux.log"; echo $?)
+rm -f "$STUB_DIR/lsof-extra" "$STUB_DIR/ps-extra"
 TMUX=/tmp/t,1,0 run resume --name Bad_Name --worktree "$RWT"
 check 'resume with a bad --name exits 2' $([ "$rc" = 2 ]; echo $?)
 unset CLAUDE_CONFIG_DIR
@@ -1029,6 +1052,84 @@ sys.exit(launcher.main(["remove", sys.argv[2], "--stop-processes"]))
 PY
 check 'remove --stop-processes sends KILL to a process that outlives TERM' \
   $([ "$r" = 0 ] && ! alive "$p1" && [ ! -e "$RM" ] && rjson "[s['pid'] for s in o['stopped']] == [$p1]"; echo $?)
+
+# rm_signal <mode> <worktree> <pid>: remove --stop-processes with os.kill
+# wrapped. It logs each signal to <pid> in $T/sigs. Modes: changed-before-term
+# (after the scan, ps shows another command for the pid), changed-before-kill
+# (ps shows another command after the TERM; the TERM goes nowhere), eperm (each
+# signal to the pid fails with PermissionError), survive (the KILL goes
+# nowhere). Each git call goes to $T/git.log.
+rm_signal() {
+  : > "$T/git.log.sig"
+  GIT_LOG="$T/git.log.sig" python3 - "$here" "$@" "$T/sigs" > "$T/out" 2> "$T/err" <<'PY'
+import os, signal, sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.REMOVE_WAIT = 1
+launcher.KILL_WAIT = 1
+mode, wt, target, logfile = sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5]
+sigs = []
+changed = [False]
+real_kill = os.kill
+def kill(pid, sig):
+    if pid == target and sig != 0:
+        sigs.append(int(sig))
+        if mode == "eperm":
+            raise PermissionError(1, "Operation not permitted")
+        if mode == "survive" and sig == signal.SIGKILL:
+            return None
+        if mode == "changed-before-kill" and sig == signal.SIGTERM:
+            changed[0] = True
+            return None
+    return real_kill(pid, sig)
+real_processes = launcher.processes
+calls = [0]
+def processes():
+    calls[0] += 1
+    procs = real_processes()
+    if mode == "changed-before-term" and calls[0] > 1:
+        changed[0] = True
+    if changed[0] and target in procs:
+        procs[target] = dict(procs[target], argv=["other-program", "--x"])
+    return procs
+os.kill = kill
+launcher.processes = processes
+rc = launcher.main(["remove", wt, "--stop-processes"])
+open(logfile, "w").write(" ".join(str(s) for s in sigs))
+sys.exit(rc)
+PY
+  rc=$?
+}
+# A pid that runs another command at the signal is not ours: no signal.
+reset_stub
+rm_wt rm-reuse1
+p1=$(orphan "$RM")
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+rm_signal changed-before-term "$RM" "$p1"
+check 'remove --stop-processes sends no TERM to a pid whose command changed after the scan' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/sigs" ] && alive "$p1" && rjson "$p1 not in [k['pid'] for k in o['kept']]"; echo $?)
+kill -9 "$p1" 2>/dev/null
+reset_stub
+rm_wt rm-reuse2
+p1=$(orphan "$RM" ignore-term)
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+rm_signal changed-before-kill "$RM" "$p1"
+check 'remove --stop-processes sends no KILL to a pid whose command changed after the TERM' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/sigs")" = 15 ] && alive "$p1"; echo $?)
+kill -9 "$p1" 2>/dev/null
+# A process that remove cannot stop: exit 9, no git step, the pid in kept.
+for mode in eperm survive; do
+  reset_stub
+  rm_wt "rm-$mode"
+  p1=$(orphan "$RM" ignore-term)
+  echo "$p1 ??" > "$STUB_DIR/ps-tty"
+  rm_signal "$mode" "$RM" "$p1"
+  r=1; [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF "$p1" "$T/err" && [ -d "$RM" ] && alive "$p1" \
+    && ! grep -sq '|worktree|remove|' "$T/git.log.sig" && ! grep -sq '|branch|' "$T/git.log.sig" \
+    && rjson "o['removed'] is False and [k['pid'] for k in o['kept']] == [$p1] and $p1 not in [s['pid'] for s in o['stopped']]" && r=0
+  check "remove --stop-processes with a process it cannot stop ($mode) exits 9, runs no git step, and lists the pid in kept, not in stopped" $r
+  kill -9 "$p1" 2>/dev/null
+done
 
 reset_stub
 rm_wt rm-tty

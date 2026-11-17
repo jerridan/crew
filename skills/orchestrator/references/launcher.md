@@ -329,10 +329,21 @@ its working directory in the worktree, so `remove` refuses while it runs.
      tab. `remove` never stops it.
    - The process that runs `remove`, or a process above it, has its working
      directory in the worktree.
-3. With `--stop-processes`, it sends `TERM` to each process in the worktree.
-   Each has no terminal. It waits up to 10 seconds, and sends `KILL` to each
-   process that is still there. `resume-and-close.md` says when to give the
-   flag.
+3. With `--stop-processes`, it stops each process in the worktree. Each has
+   no terminal. `resume-and-close.md` says when to give the flag.
+   - Right before each signal, it reads `ps` and `lsof` again. It sends the
+     signal only to a pid with the same command and the same working
+     directory as in step 1. A pid can go to a new process at any time, and
+     `remove` never signals that process.
+   - It sends `TERM` and waits up to 10 seconds. Then it sends `KILL` to each
+     process that is still there, and waits up to 2 seconds.
+   - It reads `ps` and `lsof` again. A process that is still there, with the
+     same command and working directory, did not stop. A process that
+     `remove` could not signal is such a process. When one did not stop,
+     `remove` refuses with exit 9 and runs no git step. The stderr line names
+     each pid that did not stop.
+   - A failed `ps` or `lsof` in this step exits 6. `remove` runs no git
+     step.
 4. It runs `git worktree remove <path>`, with no force.
 5. With `--delete-branch`, it deletes the branch that the worktree had
    checked out, with `git branch -D`.
@@ -344,14 +355,14 @@ seven fields. A refusal prints it too.
 |---|---|
 | `worktree` | the real worktree path |
 | `removed` | `true` when the worktree is gone |
-| `stopped` | one `{"pid", "command"}` object for each process that got `TERM` |
-| `kept` | on a refusal, one `{"pid", "tty", "command"}` object for each process in the worktree, because a refusal stops none. `tty` is `null` for a process with no terminal. An empty list when `remove` did not refuse |
+| `stopped` | one `{"pid", "command"}` object for each process that step 3 stopped: the pid is gone, or it has another command or working directory now |
+| `kept` | one `{"pid", "tty", "command"}` object for each process that `remove` did not stop. On a refusal in step 2: each process in the worktree, because that refusal stops none. On a refusal in step 3: each process that did not stop. On a failed `ps` or `lsof` in step 3: each process in the worktree, because `remove` cannot tell which ones stopped. `tty` is `null` for a process with no terminal. An empty list when `remove` removed the worktree |
 | `changed` | each line of `git status --porcelain`, unchanged |
 | `branch` | the branch that the worktree had checked out, or `null` when its `HEAD` was detached |
 | `branch_deleted` | `true` when `--delete-branch` deleted the branch |
 
-A refusal exits 9, and one line on stderr names each reason. The line names
-only the processes that caused the refusal, not each process in `kept`.
+A refusal exits 9, and one line on stderr names each reason. A refusal in
+step 2 names only the processes that caused it, not each process in `kept`.
 Remove each reason, then run `remove` again. A path that is not the top
 level of a linked worktree exits 2: a missing path, a plain directory, or the
 main worktree. A failed git step exits 5. When `git worktree remove` or `git
@@ -359,8 +370,19 @@ branch -D` fails, the stdout line still lists what `stopped` holds.
 
 ## Exit codes
 
-Each failure prints one line on stderr. When a call fails more than one
-check, the first in this order decides the exit: 2, 4, 3, 5, 8, 9, 6.
+Each failure prints one line on stderr. Each subcommand runs its checks in
+a fixed order, and the first check that fails decides the exit:
+
+- `start`: 2, 4, 3, 5, 6.
+- `resume`: 2, 4, 5. Then 6 when `ps`, `lsof` or `osascript` cannot list
+  the tabs, then 8. Then 6 when the tab does not open.
+- `find`: 2, 4, 6.
+- `groups`: 2, 4.
+- `focus` and `stop`: 2, 7 for an unknown prefix. Then the terminal step: 6
+  or 7.
+- `remove`: 2, 5 when `git status` fails. Then 6 when `ps` or `lsof` fails,
+  then 9 for a refusal in step 2. Then, in step 3, 6 or 9. Then 5 when a git
+  step fails.
 
 | Code | Meaning |
 |---|---|
@@ -372,7 +394,7 @@ check, the first in this order decides the exit: 2, 4, 3, 5, 8, 9, 6.
 | 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
-| 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), or the caller's own working directory in the worktree. Nothing changed |
+| 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), or the caller's own working directory in the worktree. Nothing changed. With `--stop-processes`, also a process that did not stop after `TERM` and `KILL`, or that `remove` could not signal. The worktree and the branch stay |
 
 ## Test
 

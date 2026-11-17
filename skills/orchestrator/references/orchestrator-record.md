@@ -4,7 +4,8 @@ This file owns the orchestrator record: where it lives, every field of
 `orchestrator.json`, the ids, the stages, the merge value, the board and every
 command of `crew-orch.py`. No other file defines a field of it. A project
 lead's reports into the record are in
-`skills/project-lead/references/orchestrator-report.md`. A goal's own record is `record-format.md`.
+`skills/project-lead/references/orchestrator-report.md`. A goal's own record
+is `record-format.md`.
 
 An orchestrator is a session that runs many goals, each under its own project
 lead. The record is its one shared state: the items it runs, the groups

@@ -9718,3 +9718,32 @@ Deliberately different:
      Only the seeded tests have run the scripts. No orchestrator has resumed
      or closed an item with them yet. The tests do not prove how Claude Code's
      input box takes the keys: Escape, Ctrl-U, then `/exit` and Enter.
+
+146. **The project lead skill back under 500 lines — 2026-11-16.** Issue
+     163. `skills/project-lead/SKILL.md` had grown to 565 lines, over the
+     500-line target of `writing-standard.md`'s "Size". The orchestrator
+     build (issue 150) added a section and rows to the standing-instructions
+     table. The skill loads into every project-lead run, so each line costs
+     context in each run.
+
+     Of the three ways the ticket named, the run moved parts into references.
+     A sub-skill fails in two places: a teammate does not apply `skills:`
+     (§15.20d, §15.89e), and the `Skill` tool is refused in headless
+     `claude -p` (§12). The parts that grew are prose rules, not mechanics
+     that a script can own.
+
+     Two sections moved whole, with only their pointers changed. "Report to
+     an orchestrator" is now `references/orchestrator-report.md`, read when
+     the goal carries an `Orchestrator:` line. The five resume paragraphs of
+     "Take the goal" are now `references/resume.md`, read on `--resume`.
+     Neither applies to a plain new run, so neither loads there. Two second
+     copies went: the default deploy signal, which
+     `skills/delivered-window/references/pr-watch.md`'s "Arm the deploy
+     watch" owns, and the section "A step the principal replaced", whose
+     rule the "Where the rules live" row for `substitution.md`, "Have the
+     spec reviewed" and `simple-path.md`'s "The skeptical review" each hold
+     for their own step. Every pointer outside `docs/` now names the new
+     file. Entry 139's pointer to "Report to an orchestrator" is history and
+     stays as written.
+
+     No rule changed. The file has 488 lines.

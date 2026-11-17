@@ -1,0 +1,1686 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 165,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Resume an orchestrator after a restart, and close items and runs cleanly",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/165"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "163251d6210526741ba14d8b368de46d3f61beec",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-165/2026-11-17T020134.894Z-163251d.json",
+      "open": [],
+      "dismissed": [
+        "3c248da3e7007574",
+        "c3bed3629e49d86d",
+        "c88621d4917f11a4",
+        "d6a9092444eec2d5",
+        "e46e331af6e046cf"
+      ],
+      "fetch_failed": false
+    },
+    "base": "71a5d3588a87dce5b92b30bc920969f84e20e61b",
+    "head": "760574f0a2b29e05b422fc2b796bffd008f31e82",
+    "started_at": "2026-11-17T04:38:08.764Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Resume an orchestrator after a restart, and close items and runs cleanly\n\n## Summary\n\nAn orchestrator can now come back after a compaction, a closed session or a restart of the machine: it reads its record, finds the project leads that still run, joins them again, resumes the conversation of each one that is gone in its own worktree, and arms its usage watch and its GitHub waits again. When an item ends, the orchestrator closes it cleanly: the project lead stops what it started, the session ends and its tab closes, the worktree goes, and the ticket closes. A worktree with changed or untracked files, or with any process still in it, is kept and reported in the inbox, never forced; the orchestrator stops leftover processes only when it can see that the work started them. A close of the whole run does this for each item and marks the record closed as its history. The orchestrator also no longer asks about actions at the start: the allow rules are the authority, and a refused action goes to the inbox.\n\nCloses #156\n\n**Ticket:** [#156 — crew:orchestrator: resume after a restart, and the close-out](https://github.com/jerridan/crew/issues/156)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.145 (new): the decisions of this change and their reasons. §15.140 (launcher), §15.142 (skill), §15.143 (board) for the parts it builds on.\n- `skills/orchestrator/references/resume-and-close.md` (new) owns the resume, the close of an item and the close of a run.\n- `skills/orchestrator/references/launcher.md` owns `start`, `resume`, `find`, `stop` and `remove`, their output and exit codes.\n- `skills/orchestrator/references/orchestrator-record.md` owns `closed_at`, `close` and `launch.session_id`.\n- `skills/orchestrator/SKILL.md` owns \"The authority\" and points at the reference above.\n\n### What changed, by file\n\n- `skills/orchestrator/references/resume-and-close.md`: new. The three resume cases (compaction, reopened session, new session), the seven resume steps, the four close steps of an item and their order, the close of a run, and how crew works beside the `cc-restore` plugin.\n- `skills/orchestrator/scripts/launcher.py`: `start` passes `claude --session-id <uuid>` and prints a tenth field `session_id`. New `resume` opens a tab in an existing worktree with `claude --resume <id>`, with the same model, settings and one-tab guarantees as `start`; with no id it takes the newest transcript of the worktree; exit 8 when the session is already open. New `find` prints the handle of each tab or pane whose `claude` process has `--name <name>` (match `name`), the record's session id after `--resume` or `--session-id` (match `id`), or its cwd in the worktree (match `cwd`). New `remove` refuses with exit 9 and no change on changed or untracked files or on any process in the worktree, and lists each one; with `--stop-processes` it stops each process with no terminal and names it, signals a pid only when a fresh `ps` and `lsof` read shows the same argv and cwd, scans the worktree again after the stop and refuses while any process is still there, and still refuses on a process with a terminal or on its own cwd or an ancestor's; it deletes the branch only with `--delete-branch`. A failed `lsof` exits 6. `stop` sends Escape and Ctrl-U, then `/exit`, before it closes the tab; with `--name` or `--session-id` it acts only when a `claude` on the handle's tty matches by name or id, because a new tmux server reuses pane ids.\n- `skills/orchestrator/scripts/test-launcher.sh`: checks for all of the above, with stub `ps` and `lsof`. 184 checks.\n- `skills/orchestrator/references/launcher.md`: documents the new subcommands, the tenth field, exit codes 8 and 9, and what `remove` does with a person's shell or editor.\n- `skills/orchestrator/scripts/crew-orch.py`: `closed_at` (null from `init`, null for an old record), the `close` command, and `session_id` in `LAUNCH_KEYS`.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: checks for `close`, a second `close`, an old record, and `launch.session_id`.\n- `skills/orchestrator/references/orchestrator-record.md`: `closed_at`, ten `launch` keys, \"Closing the record\".\n- `skills/orchestrator/SKILL.md`: points at the new reference for the compaction, the resume and the close; a trigger for \"resume orchestrator <name>\"; \"The authority at the start\" becomes \"The authority\", with no ask and a notice for a refused action; the goal message rule \"Uncovered actions\" becomes \"A refused action\"; `--ticket-url` at `item add` and `group add`.\n- `CLAUDE.md`, `README.md`: the new reference, the launcher's new subcommands, the build state, and how a person resumes or closes a run.\n- `docs/design.md`: §15.145; §15.140 now says that the Remote Control default held on real sessions; §15.143 says 29 tests.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: 0.1.112.\n\n### Constraints that applied\n\n- One owner per rule: each command's arguments, output and exit codes stay in `launcher.md` or `orchestrator-record.md`; the reference names the command and points there.\n- No test starts a real `claude`: `test-launcher.sh` uses `CREW_LAUNCHER_CLAUDE` and stubs for `tmux`, `osascript`, `uv`, `ps` and `lsof`.\n- Issue 150 rules 15 and 16: `resume` passes `--model` (default `opus`) and the one merged `--settings` with `\"remoteControlAtStartup\": false`.\n- `remove` ends no process by default and none silently, never ends its caller or a process above it, keeps a person's shell or editor, and has no force flag.\n- `find` matches exactly: a token pair or an equal cwd, never a substring and never a tab title, which Claude Code decorates.\n- Version 0.1.112 and §15.145 come from the orchestrator.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 184 of 184 checks passed, on `/usr/bin/python3` 3.9.6.\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed, on `/usr/bin/python3` 3.9.6, after the rebase on the board and Python 3.9 PRs.\n- A probe: one `claude` in a tmux pane with no setting sources and a `SessionEnd` hook in `--settings`. `/exit` gave the reason `prompt_input_exit`. That is the reason on which `cc-restore` forgets a session.\n- `ps` on a live session: a process that Claude Code's Bash tool starts in the background has no controlling terminal, and the `claude` process has the tab's tty.\n- `osascript` on live iTerm2 sessions: session names read as \"✳ orch-record (claude)\", so `find` does not use them.\n- A skeptical review of the local head before the first push: 2 blocking, 4 suggestions, 2 nits, 1 unsure. Fixed all: `remove` no longer stops a process by default, because a GUI editor started with `code .` looks the same as a left-behind server; `stop` clears an open permission dialog before `/exit`; the rejoin message no longer duplicates live watches; a run close marks unmerged items `closed`; `lsof` failure is an error; a session that `cc-restore` resumed is restarted by the launcher; `find` accepts an npm `claude`; a stale line and long lines. Round 2 (on `remove` and `stop`, after the CI review's five findings were fixed): 1 blocking, 2 suggestions, all fixed: `stop` checks its target, `remove` scans again after the stop, and a match by cwd alone is never stopped. The round 2 fixes had no third local round; the CI review reads them.\n\n### Known gaps\n\n- No orchestrator has resumed or closed an item with these scripts yet. The orchestrator of this build plans to run the close-out on its idle implementers.\n- The tests do not prove how Claude Code's input box takes Escape, Ctrl-U, then `/exit` and Enter. The probe proved only `/exit` and Enter on tmux.\n- `remove` finds a process by its cwd only. A container or a server that runs from another directory is the project lead's to stop, at close step 1.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 11
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 10
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds new launcher subcommands (resume, find, remove with process signalling and worktree deletion, stop with keystroke injection) and a crew-orch close command, which change logic, destructive operations and public interfaces.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: remove() (process scan, signalling, pid reuse, refusal logic, git worktree remove / branch -D)",
+        "skills/orchestrator/scripts/launcher.py: stop() and OSA_EXIT (key sequence, target check holds_target, wait_claude_gone)",
+        "skills/orchestrator/scripts/launcher.py: find_tabs/match_kind/processes/cwds (ps and lsof parsing, tty normalisation, is_claude)",
+        "skills/orchestrator/scripts/launcher.py: resume() and newest_transcript (path encoding, exit 8 check)",
+        "skills/orchestrator/scripts/launcher.py: start() now passes --session-id and prints ten fields",
+        "skills/orchestrator/scripts/crew-orch.py: cmd_close and Record.load setdefault",
+        "skills/orchestrator/references/resume-and-close.md and SKILL.md: procedures that drive the destructive commands, with the removal of the authority-at-start ask"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "Large new logic: resume, find, remove (kills processes, deletes worktree/branch), stop sends keys, new exit codes 8/9; start gains session_id."
+        },
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "New close command; load() defaults closed_at; LAUNCH_KEYS gains session_id."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "Many new seeded tests with ps/lsof stubs; check that they cover the refusal and process-signal paths."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "New tests for close, closed_at and launch.session_id."
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "Behavioural change: removes the ask for uncovered actions, adds resume and close pointers and --ticket-url instruction."
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "New procedure doc that the orchestrator follows; needs to match launcher behaviour."
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "Interface doc for the new subcommands, output and exit codes."
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "Documents closed_at, close and launch.session_id."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 145 and small edits to earlier entries."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "File table and status text updates."
+        },
+        {
+          "file": "README.md",
+          "note": "User docs for close and resume."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.112."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.112."
+        }
+      ],
+      "summary": "Adds the orchestrator's resume and close-out. launcher.py gains `resume`, `find` and `remove`. `stop` now types Escape, Ctrl-U and `/exit` and can check its target. `start` passes `--session-id` and reports it. crew-orch.py gains a `close` command and a `closed_at` field. A new resume-and-close.md procedure drives these commands, SKILL.md drops the up-front authority ask, and the tests, docs and version are updated."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds new launcher subcommands (resume, find, remove with process signalling and worktree deletion, stop with keystroke injection) and a crew-orch close command, which change logic, destructive operations and public interfaces.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5493,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46219,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004634400000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 455,
+              "cacheReadInputTokens": 10127,
+              "cacheCreationInputTokens": 45724,
+              "webSearchRequests": 0,
+              "costUSD": 0.3769254,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 130,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3815598
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7135,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46227,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004636199999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 656,
+              "cacheReadInputTokens": 10085,
+              "cacheCreationInputTokens": 45732,
+              "webSearchRequests": 0,
+              "costUSD": 0.38100100000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 236,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3856372
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11711,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46219,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004632400000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 973,
+              "cacheReadInputTokens": 65784,
+              "cacheCreationInputTokens": 46684,
+              "webSearchRequests": 0,
+              "costUSD": 0.4061128,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 503,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4107452
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10964,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46229,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046334,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 936,
+              "cacheReadInputTokens": 10030,
+              "cacheCreationInputTokens": 45734,
+              "webSearchRequests": 0,
+              "costUSD": 0.386606,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 599,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3912394
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "docs/design.md",
+            "start_line": 9635,
+            "end_line": 9636,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "§15.145 says a cc-restore session is found by cwd, but a later bullet and the code say it matches by `id`, and a cwd-only match is never treated as the implementer.",
+            "evidence": "`--name` in its argv, and the cwd finds it. A restart of the machine",
+            "suggested_fix": "Say that the session id (`--resume <id>`) finds it, with the match `id`.",
+            "explanation": "match_kind checks the id before the cwd, and resume-and-close.md treats a cwd-only match as a person's session, so this sentence contradicts the later bullet.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8789,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46229,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046334,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 686,
+              "cacheReadInputTokens": 121799,
+              "cacheCreationInputTokens": 46261,
+              "webSearchRequests": 0,
+              "costUSD": 0.4081918,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 166,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4128252
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8202,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 77963,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.007808300000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 742,
+              "cacheReadInputTokens": 10152,
+              "cacheCreationInputTokens": 77468,
+              "webSearchRequests": 0,
+              "costUSD": 0.6366223999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 287,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.6444306999999999
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 996,
+            "end_line": 997,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Without --name or --session-id, `stop` does not check its target. It types Escape, Ctrl-U and `/exit` and Enter into whatever pane or tab the handle names, and then kills that pane or tab.",
+            "evidence": "if not a.name and not a.session_id:",
+            "suggested_fix": "Make --name or --session-id required for `stop`, or refuse when the pane holds no claude process.",
+            "explanation": "After a tmux server restart, an old handle can name a person's shell or the orchestrator's own pane, and `stop` would then type into it and close it without any check.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7465,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46231,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004635600000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 666,
+              "cacheReadInputTokens": 65992,
+              "cacheCreationInputTokens": 46163,
+              "webSearchRequests": 0,
+              "costUSD": 0.3958384,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 232,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.400474
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 991,
+            "end_line": 999,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "`stop` checks its target only when the caller passes an optional flag. Without `--name` or `--session-id`, it types `/exit` and Enter into a tab and then kills it, even when a stale tmux handle now names an unrelated pane.",
+            "evidence": "    if not a.name and not a.session_id:\n        return True",
+            "suggested_fix": "Make `--name` or `--session-id` required for `stop`, or add a separate explicit flag that skips the target check.",
+            "explanation": "After a tmux server restarts, pane ids start again at `%0`, so an old handle can name a person's shell or the orchestrator. That pane then gets keystrokes and is killed.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7270,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46229,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046334,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 654,
+              "cacheReadInputTokens": 65990,
+              "cacheCreationInputTokens": 46374,
+              "webSearchRequests": 0,
+              "costUSD": 0.397286,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 164,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4019194
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 1063,
+            "end_line": 1070,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "high",
+            "claim": "The 'by its cwd' resume check passes because of the id match, not the cwd match. The stub process has `--resume new-2222`, and that equals the session id that resume took from the newest transcript.",
+            "evidence": "echo '900001 1 ttys901 claude --resume new-2222 --model opus' > \"$STUB_DIR/ps-extra\"",
+            "suggested_fix": "Give the stub process argv with no --resume or --session-id (for example `claude --model opus`), so that only its cwd in the worktree can match.",
+            "explanation": "If the cwd branch of find_tabs/match_kind broke, resume would still exit 8 here, so this check cannot catch that break.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9732,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46223,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046328,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 883,
+              "cacheReadInputTokens": 126302,
+              "cacheCreationInputTokens": 48739,
+              "webSearchRequests": 0,
+              "costUSD": 0.4328564,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 229,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.43748919999999997
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 9635,
+          "end_line": 9636,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "§15.145 says a cc-restore session is found by cwd, but a later bullet and the code say it matches by `id`, and a cwd-only match is never treated as the implementer.",
+          "evidence": "`--name` in its argv, and the cwd finds it. A restart of the machine",
+          "suggested_fix": "Say that the session id (`--resume <id>`) finds it, with the match `id`.",
+          "explanation": "match_kind checks the id before the cwd, and resume-and-close.md treats a cwd-only match as a person's session, so this sentence contradicts the later bullet.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`--name` in its argv, and the cwd finds it. A restart of the machine",
+            "record's session id) or `cwd`. A session that `cc-restore` resumed\n       matches by `id`.",
+            "A match by `cwd` alone is a person's or another tool's\n       session in the worktree: it goes to the inbox and is never stopped.",
+            "if session_id and any(has_id(p[\"argv\"], session_id) for p in mine):\n        return \"id\""
+          ],
+          "rationale": "The new §15.145 text says the cwd finds a `cc-restore` session. A later bullet says it matches by `id`, and a cwd-only match is never stopped. `match_kind` checks the id before the cwd, so the earlier sentence is wrong and misleading.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`--name` in its argv, and the cwd finds it. A restart of the machine",
+            "record's session id) or `cwd`. A session that `cc-restore` resumed\n       matches by `id`.",
+            "A match by `cwd` alone is a person's or another tool's\n       session in the worktree: it goes to the inbox and is never stopped.",
+            "if session_id and any(has_id(p[\"argv\"], session_id) for p in mine):\n        return \"id\""
+          ],
+          "rationale": "The new §15.145 text says the cwd finds a `cc-restore` session. A later bullet says it matches by `id`, and a cwd-only match is never stopped. `match_kind` checks the id before the cwd, so the earlier sentence is wrong and misleading.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 996,
+          "end_line": 997,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Without --name or --session-id, `stop` does not check its target. It types Escape, Ctrl-U and `/exit` and Enter into whatever pane or tab the handle names, and then kills that pane or tab.",
+          "evidence": "if not a.name and not a.session_id:",
+          "suggested_fix": "Make --name or --session-id required for `stop`, or refuse when the pane holds no claude process.",
+          "explanation": "After a tmux server restart, an old handle can name a person's shell or the orchestrator's own pane, and `stop` would then type into it and close it without any check.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if not a.name and not a.session_id:\n        return True"
+          ],
+          "rationale": "With neither flag, holds_target returns True. stop then sends Escape, C-u, /exit and Enter and kills the pane with no check. The PR added the key-typing, and the plain kill was already unconditional. The flags are optional on purpose, and the documented close path passes --name, so the harm is small.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "if not a.name and not a.session_id:\n        return True",
+            "tmux([\"send-keys\", \"-t\", ref, \"-l\", \"/exit\"])",
+            "rc, _, err = tmux([\"kill-pane\", \"-t\", ref])",
+            "2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name\n   <launch.session_name> --session-id <launch.session_id>`."
+          ],
+          "rationale": "The claim is true: with neither flag, `holds_target` returns True, so `stop` sends the keys and then kills the pane without checking it. But `stop <handle>` already killed panes with no check before this change, so the unchecked path is not new. This change adds the opt-in check, and the documented close flow always passes `--name`. Typing `/exit` into a shell before the kill that already existed does no real extra harm.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "if not a.name and not a.session_id:\n        return True",
+            "tmux([\"send-keys\", \"-t\", ref, \"-l\", \"/exit\"])",
+            "rc, _, err = tmux([\"kill-pane\", \"-t\", ref])",
+            "2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name\n   <launch.session_name> --session-id <launch.session_id>`."
+          ],
+          "rationale": "The claim is true: with neither flag, `holds_target` returns True, so `stop` sends the keys and then kills the pane without checking it. But `stop <handle>` already killed panes with no check before this change, so the unchecked path is not new. This change adds the opt-in check, and the documented close flow always passes `--name`. Typing `/exit` into a shell before the kill that already existed does no real extra harm.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 991,
+          "end_line": 999,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "`stop` checks its target only when the caller passes an optional flag. Without `--name` or `--session-id`, it types `/exit` and Enter into a tab and then kills it, even when a stale tmux handle now names an unrelated pane.",
+          "evidence": "    if not a.name and not a.session_id:\n        return True",
+          "suggested_fix": "Make `--name` or `--session-id` required for `stop`, or add a separate explicit flag that skips the target check.",
+          "explanation": "After a tmux server restarts, pane ids start again at `%0`, so an old handle can name a person's shell or the orchestrator. That pane then gets keystrokes and is killed.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "if not a.name and not a.session_id:\n        return True",
+            "    if not holds_target(a, tty):\n        return not_target(a)\n    tmux([\"send-keys\", \"-t\", ref, \"Escape\"])"
+          ],
+          "rationale": "The code does skip the target check when neither flag is given, so `stop` sends keys and kills the pane. launcher.md documents this (\"Without either flag, `stop` does no check. Give a flag every time the caller knows the session\"), and resume-and-close.md has the orchestrator pass `--name`. The old `stop` killed any pane with no check, so this change narrows the risk. The finding is a design preference, not a defect.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "    if not a.name and not a.session_id:\n        return True",
+            "    rc, _, err = tmux([\"kill-pane\", \"-t\", ref])",
+            "2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name\n   <launch.session_name> --session-id <launch.session_id>`."
+          ],
+          "rationale": "The claim is true: without `--name` or `--session-id`, `stop` skips the target check, then sends keys and kills the pane. But the old `stop` already killed the pane with no check, so the change did not create this risk. It adds an opt-in check, and every documented orchestrator call to `stop` passes `--name`.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "    if not a.name and not a.session_id:\n        return True",
+            "    rc, _, err = tmux([\"kill-pane\", \"-t\", ref])",
+            "2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name\n   <launch.session_name> --session-id <launch.session_id>`."
+          ],
+          "rationale": "The claim is true: without `--name` or `--session-id`, `stop` skips the target check, then sends keys and kills the pane. But the old `stop` already killed the pane with no check, so the change did not create this risk. It adds an opt-in check, and every documented orchestrator call to `stop` passes `--name`.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 1063,
+          "end_line": 1070,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "high",
+          "claim": "The 'by its cwd' resume check passes because of the id match, not the cwd match. The stub process has `--resume new-2222`, and that equals the session id that resume took from the newest transcript.",
+          "evidence": "echo '900001 1 ttys901 claude --resume new-2222 --model opus' > \"$STUB_DIR/ps-extra\"",
+          "suggested_fix": "Give the stub process argv with no --resume or --session-id (for example `claude --model opus`), so that only its cwd in the worktree can match.",
+          "explanation": "If the cwd branch of find_tabs/match_kind broke, resume would still exit 8 here, so this check cannot catch that break.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "echo '900001 1 ttys901 claude --resume new-2222 --model opus' > \"$STUB_DIR/ps-extra\"",
+            "if session_id and any(has_id(p[\"argv\"], session_id) for p in mine):\n        return \"id\"\n    if worktree and any(where.get(p[\"pid\"]) == worktree for p in mine):\n        return \"cwd\""
+          ],
+          "rationale": "`resume` passes the transcript's session id `new-2222` to `find_tabs`. `match_kind` checks the id before the cwd, and the stub argv has `--resume new-2222`. So the 'by its cwd' check passes on the id match and cannot catch a cwd regression.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "echo '900001 1 ttys901 claude --resume new-2222 --model opus' > \"$STUB_DIR/ps-extra\"",
+            "if session_id and any(has_id(p[\"argv\"], session_id) for p in mine):\n        return \"id\"\n    if worktree and any(where.get(p[\"pid\"]) == worktree for p in mine):\n        return \"cwd\""
+          ],
+          "rationale": "`resume` passes the transcript's session id `new-2222` to `find_tabs`. `match_kind` checks the id before the cwd, and the stub argv has `--resume new-2222`. So the 'by its cwd' check passes on the id match and cannot catch a cwd regression.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "passed": true
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5932961326,
+      "review_url": "https://github.com/jerridan/crew/pull/165#pullrequestreview-5932961326",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133822560570
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "docs/design.md",
+        "start_line": 9635,
+        "end_line": 9636,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "§15.145 says a cc-restore session is found by cwd, but a later bullet and the code say it matches by `id`, and a cwd-only match is never treated as the implementer.",
+        "evidence": "`--name` in its argv, and the cwd finds it. A restart of the machine",
+        "suggested_fix": "Say that the session id (`--resume <id>`) finds it, with the match `id`.",
+        "explanation": "match_kind checks the id before the cwd, and resume-and-close.md treats a cwd-only match as a person's session, so this sentence contradicts the later bullet.",
+        "needs_context": false,
+        "fingerprint": "d8143ad2539874a2",
+        "severity": "nit",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`--name` in its argv, and the cwd finds it. A restart of the machine",
+            "record's session id) or `cwd`. A session that `cc-restore` resumed\n       matches by `id`.",
+            "A match by `cwd` alone is a person's or another tool's\n       session in the worktree: it goes to the inbox and is never stopped.",
+            "if session_id and any(has_id(p[\"argv\"], session_id) for p in mine):\n        return \"id\""
+          ],
+          "rationale": "The new §15.145 text says the cwd finds a `cc-restore` session. A later bullet says it matches by `id`, and a cwd-only match is never stopped. `match_kind` checks the id before the cwd, so the earlier sentence is wrong and misleading.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "span_text": "\"✳ orch-record (claude)\". A session that `cc-restore` resumed has no `--name` in its argv, and the cwd finds it. A restart of the machine"
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-launcher.sh",
+        "start_line": 1063,
+        "end_line": 1070,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "high",
+        "claim": "The 'by its cwd' resume check passes because of the id match, not the cwd match. The stub process has `--resume new-2222`, and that equals the session id that resume took from the newest transcript.",
+        "evidence": "echo '900001 1 ttys901 claude --resume new-2222 --model opus' > \"$STUB_DIR/ps-extra\"",
+        "suggested_fix": "Give the stub process argv with no --resume or --session-id (for example `claude --model opus`), so that only its cwd in the worktree can match.",
+        "explanation": "If the cwd branch of find_tabs/match_kind broke, resume would still exit 8 here, so this check cannot catch that break.",
+        "needs_context": false,
+        "fingerprint": "b36132b144d03a7b",
+        "severity": "nit",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "echo '900001 1 ttys901 claude --resume new-2222 --model opus' > \"$STUB_DIR/ps-extra\"",
+            "if session_id and any(has_id(p[\"argv\"], session_id) for p in mine):\n        return \"id\"\n    if worktree and any(where.get(p[\"pid\"]) == worktree for p in mine):\n        return \"cwd\""
+          ],
+          "rationale": "`resume` passes the transcript's session id `new-2222` to `find_tabs`. `match_kind` checks the id before the cwd, and the stub argv has `--resume new-2222`. So the 'by its cwd' check passes on the id match and cannot catch a cwd regression.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "span_text": "# A claude with no --name, as a restore tool starts it: find matches it by its cwd. printf '%%7 /dev/ttys901\\n' > \"$STUB_DIR/tmux-list-panes\" echo '900001 1 ttys901 claude --resume new-2222 --model opus' > \"$STUB_DIR/ps-extra\" printf 'p900001\\nfcwd\\nn%s\\n' \"$RWT\" > \"$STUB_DIR/lsof-extra\" : > \"$STUB_DIR/tmux.log\" TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree \"$RWT\" check 'resume of a session that find sees by its cwd (no --name) exits 8, names the tab, and opens no tab' \\ $([ \"$rc\" = 8 ] && [ \"$(lines \"$T/err\")\" = 1 ] && grep -sqF 'tmux:%7' \"$T/err\" && ! grep -sq '^new-' \"$STUB_DIR/tmux.log\"; echo $?)"
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9972,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 61177,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0061282,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1394,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 60690,
+            "webSearchRequests": 0,
+            "costUSD": 0.2568302,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.26295840000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 5493,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46219,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004634400000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 455,
+            "cacheReadInputTokens": 10127,
+            "cacheCreationInputTokens": 45724,
+            "webSearchRequests": 0,
+            "costUSD": 0.3769254,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 130,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3815598
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7135,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46227,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004636199999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 656,
+            "cacheReadInputTokens": 10085,
+            "cacheCreationInputTokens": 45732,
+            "webSearchRequests": 0,
+            "costUSD": 0.38100100000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 236,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3856372
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8789,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46229,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046334,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 686,
+            "cacheReadInputTokens": 121799,
+            "cacheCreationInputTokens": 46261,
+            "webSearchRequests": 0,
+            "costUSD": 0.4081918,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 166,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4128252
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10964,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46229,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046334,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 936,
+            "cacheReadInputTokens": 10030,
+            "cacheCreationInputTokens": 45734,
+            "webSearchRequests": 0,
+            "costUSD": 0.386606,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 599,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3912394
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11711,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46219,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004632400000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 973,
+            "cacheReadInputTokens": 65784,
+            "cacheCreationInputTokens": 46684,
+            "webSearchRequests": 0,
+            "costUSD": 0.4061128,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 503,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4107452
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8202,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 77963,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.007808300000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 742,
+            "cacheReadInputTokens": 10152,
+            "cacheCreationInputTokens": 77468,
+            "webSearchRequests": 0,
+            "costUSD": 0.6366223999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 287,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.6444306999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7465,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46231,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004635600000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 666,
+            "cacheReadInputTokens": 65992,
+            "cacheCreationInputTokens": 46163,
+            "webSearchRequests": 0,
+            "costUSD": 0.3958384,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 232,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.400474
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7270,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46229,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046334,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 654,
+            "cacheReadInputTokens": 65990,
+            "cacheCreationInputTokens": 46374,
+            "webSearchRequests": 0,
+            "costUSD": 0.397286,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 164,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4019194
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 6554,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14447,
+            "outputTokens": 256,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015727000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 231,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 875,
+            "cacheReadInputTokens": 41503,
+            "cacheCreationInputTokens": 15111,
+            "webSearchRequests": 0,
+            "costUSD": 0.0733563,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 95,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07492900000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9732,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46223,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046328,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 883,
+            "cacheReadInputTokens": 126302,
+            "cacheCreationInputTokens": 48739,
+            "webSearchRequests": 0,
+            "costUSD": 0.4328564,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 229,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.43748919999999997
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9359,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25918,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0026018,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1139,
+            "cacheReadInputTokens": 64572,
+            "cacheCreationInputTokens": 27078,
+            "webSearchRequests": 0,
+            "costUSD": 0.12617119999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 441,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.128773
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11892,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 26090,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0026175,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1377,
+            "cacheReadInputTokens": 97029,
+            "cacheCreationInputTokens": 28644,
+            "webSearchRequests": 0,
+            "costUSD": 0.1380649,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 457,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.14068239999999999
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8619,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38975,
+            "outputTokens": 234,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004014500000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 209,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1012,
+            "cacheReadInputTokens": 47222,
+            "cacheCreationInputTokens": 40521,
+            "webSearchRequests": 0,
+            "costUSD": 0.17693419999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 410,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18094870000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11569,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 25922,
+            "outputTokens": 314,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027492000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 294,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1199,
+            "cacheReadInputTokens": 61425,
+            "cacheCreationInputTokens": 33708,
+            "webSearchRequests": 0,
+            "costUSD": 0.30595300000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 473,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.30870220000000004
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 12433,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 26072,
+            "outputTokens": 275,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027447000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 256,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1124,
+            "cacheReadInputTokens": 64957,
+            "cacheCreationInputTokens": 28351,
+            "webSearchRequests": 0,
+            "costUSD": 0.26230339999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 465,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2650481
+      }
+    ],
+    "total_cost_usd": 5.2283618999999995,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 36,
+      "gather": 266,
+      "scope": 16,
+      "triage": 10699,
+      "find_verify": 43299,
+      "merge": 10
+    },
+    "errors": []
+  }
+}

@@ -9639,8 +9639,8 @@ Deliberately different:
      - `resume` refuses a second copy of a session that `find` sees open
        (exit 8), so crew works beside `cc-restore` and does not depend on it.
      - The close order is: the implementer stops what it started, `stop`
-       ends the session and closes the tab, `remove` stops what is left and
-       removes the worktree, then the ticket. The implementer alone knows a
+       ends the session and closes the tab, `remove` removes the worktree,
+       then the ticket. The implementer alone knows a
        container or a service outside the worktree. A live session holds its
        worktree, and `gh pr merge --delete-branch` fails on one (experiment
        1, F11). A stack that still ran in a removed worktree had to be
@@ -9650,14 +9650,28 @@ Deliberately different:
        `/exit` ends a session with the reason `prompt_input_exit`.
        `cc-restore` forgets a session on that reason only, or on `logout`,
        so a closed implementer does not come back at the next iTerm2 launch.
-     - `remove` finds a process by its cwd. A process that Claude Code's
-       Bash tool started in the background has no controlling terminal. The
-       `claude` process, and a person's shell or editor, have one. So
-       `remove` stops each process with no terminal, names each one, and
-       refuses with no change while a process with a terminal is in the
-       worktree. It also refuses when it, or a process above it such as a
-       worktree-isolated orchestrator, works in the worktree. Changed or
-       untracked files refuse too, with no force flag. Ignored files do not.
+     - `stop` sends Escape and Ctrl-U before `/exit`. Enter on an open
+       permission dialog would approve it, and text in the input line would
+       go to the model with `/exit`. Escape rejects a dialog or interrupts a
+       turn, and Ctrl-U clears the line. The skeptical review of this change
+       found the risk.
+     - `remove` stops no process by default. It finds a process by its cwd,
+       and on macOS nothing tells a stack that the implementer left from a
+       person's GUI editor: both have no controlling terminal and the parent
+       pid 1, and `ps` shows no environment of another process. So `remove`
+       refuses with no change while any process is in the worktree, and
+       lists each one. The orchestrator reads each command. Only for a
+       process that the work started, such as a server or a watcher, does it
+       run `remove --stop-processes`, which stops each process with no
+       terminal and names each one. A process with a terminal, and `remove`
+       itself or a process above it, still refuse. Changed or untracked
+       files refuse too, with no force flag. Ignored files do not.
+     - `find` prints how it matched: `name` or `cwd`. A session that
+       `cc-restore` resumed matches by `cwd` only. It runs without the
+       launcher's model, settings and Remote Control default, so the resume
+       stops it and resumes it with the launcher.
+     - `lsof` failure is an error, never an empty answer, so `remove` and
+       `find` never see an empty worktree by mistake.
      - `--delete-branch` is passed only for a merged PR. A run close removes
        a clean worktree of an unmerged item and keeps its branch.
      - The principal removed the one ask for actions that no allow rule
@@ -9680,5 +9694,5 @@ Deliberately different:
      started with the principal's own settings did.
 
      Only the seeded tests have run the scripts. No orchestrator has resumed
-     or closed an item with them yet. The tests do not prove that iTerm2's
-     `write text "/exit"` submits the command in Claude Code's input box.
+     or closed an item with them yet. The tests do not prove how Claude Code's
+     input box takes the keys: Escape, Ctrl-U, then `/exit` and Enter.

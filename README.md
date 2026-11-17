@@ -277,8 +277,9 @@ run five at a time
 ```
 
 When an item ships, the orchestrator ends its project lead, closes its tab
-and removes its worktree. A worktree with changed or untracked files stays,
-and the orchestrator tells you in the inbox. To end the whole run, say so:
+and removes its worktree. A worktree with changed or untracked files, or
+with an app or an editor open in it, stays, and the orchestrator tells you in
+the inbox. To end the whole run, say so:
 
 ```
 close the run

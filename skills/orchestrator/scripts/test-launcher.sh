@@ -1102,11 +1102,11 @@ alive() { kill -0 "$1" 2>/dev/null; }
 reset_stub
 rm_wt rm-clean
 run remove "$RM"
-r=1; [ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && [ ! -e "$RM" ] && rjson 'set(o) == {"worktree", "removed", "stopped", "kept", "changed", "branch", "branch_deleted"}' \
+r=1; [ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && [ ! -e "$RM" ] && rjson 'set(o) == {"worktree", "removed", "stopped", "kept", "changed", "branch", "branch_deleted", "branch_only_commits"}' \
   && rjson 'o["removed"] is True and o["stopped"] == [] and o["kept"] == [] and o["changed"] == []' \
   && rjson 'o["branch"] == "worktree-rm-clean" and o["branch_deleted"] is False' \
   && (cd "$CO" && git rev-parse -q --verify refs/heads/worktree-rm-clean > /dev/null) && r=0
-check 'remove of a clean worktree removes it, keeps the branch, and prints the seven fields' $r
+check 'remove of a clean worktree removes it, keeps the branch, and prints the eight fields' $r
 check 'remove runs git worktree remove with no force' \
   $(grep -sq '|worktree|remove|' "$T/git.log" && ! grep -sqE '\|worktree\|remove\|.*(--force|-f)\|' "$T/git.log"; echo $?)
 
@@ -1316,11 +1316,29 @@ r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq lsof "$T/err" && [
 check 'remove with a failed lsof exits 6 with one line and keeps the worktree' $r
 rm -f "$STUB_DIR/lsof-fail"
 
+# rm_wt makes the same commit f on each branch, so another branch can hold
+# it. A commit with the branch name in its message is on that branch only.
 rm_wt rm-br
+(cd "$RM" && git commit -q --allow-empty -m rm-br)
+sha=$(cd "$RM" && git rev-parse HEAD)
+n=$(lines "$T/git.log")
 run remove "$RM" --delete-branch
-r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && ! (cd "$CO" && git rev-parse -q --verify refs/heads/worktree-rm-br > /dev/null) \
-  && rjson 'o["branch"] == "worktree-rm-br" and o["branch_deleted"] is True' && r=0
-check 'remove --delete-branch deletes the branch the worktree had' $r
+r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && (cd "$CO" && git rev-parse -q --verify refs/heads/worktree-rm-br > /dev/null) \
+  && [ "$(lines "$T/err")" = 1 ] && grep -sq 'worktree-rm-br' "$T/err" \
+  && grep -sqw "$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["branch_only_commits"]))' "$T/out")" "$T/err" \
+  && ! tail -n +"$((n + 1))" "$T/git.log" | grep -sq '|branch|' \
+  && rjson "o['removed'] is True and o['branch'] == 'worktree-rm-br' and o['branch_deleted'] is False and '$sha' in o['branch_only_commits']" && r=0
+check 'remove --delete-branch keeps a branch with a commit that no other ref holds, lists the sha, prints one line, removes the worktree and exits 0' $r
+(cd "$CO" && git branch -D -q worktree-rm-br)
+
+# The same commit on a remote-tracking ref: the branch holds nothing of its own.
+rm_wt rm-br2
+(cd "$RM" && git commit -q --allow-empty -m rm-br2 && git push -q origin worktree-rm-br2 2>/dev/null)
+run remove "$RM" --delete-branch
+r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && ! (cd "$CO" && git rev-parse -q --verify refs/heads/worktree-rm-br2 > /dev/null) \
+  && [ ! -s "$T/err" ] && (cd "$CO" && git rev-parse -q --verify refs/remotes/origin/worktree-rm-br2 > /dev/null) \
+  && rjson 'o["removed"] is True and o["branch"] == "worktree-rm-br2" and o["branch_deleted"] is True and o["branch_only_commits"] == []' && r=0
+check 'remove --delete-branch deletes a branch whose commits a remote-tracking ref holds, and removes the worktree' $r
 
 rm_wt rm-lock
 (cd "$CO" && git worktree lock "$RM")

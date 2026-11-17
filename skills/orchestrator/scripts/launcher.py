@@ -1173,6 +1173,7 @@ def remove(a):
         "changed": changed,
         "branch": branch,
         "branch_deleted": False,
+        "branch_only_commits": [],
     }
     if refused:
         why = []
@@ -1244,7 +1245,7 @@ def remove(a):
 
     def git_step(*args):
         try:
-            git(main_tree, *args)
+            return git(main_tree, *args)
         except Fail:
             print(json.dumps(result))
             raise
@@ -1252,6 +1253,29 @@ def remove(a):
     git_step("worktree", "remove", worktree)
     result["removed"] = True
     if a.delete_branch and branch:
+        # The commits of the branch that no other ref holds: no other local
+        # branch, no remote-tracking branch and no tag. An --exclude pattern
+        # for --branches has no refs/heads/ prefix; with the prefix it
+        # excludes nothing, and the branch then holds each of its commits.
+        only = git_step(
+            "rev-list", "refs/heads/" + branch, "--not",
+            "--exclude=" + branch, "--branches", "--remotes", "--tags",
+        ).split()
+        result["branch_only_commits"] = only
+        if only:
+            # Deleting the branch would lose these commits. The worktree is
+            # already gone, and that step succeeded, so remove exits 0.
+            print(json.dumps(result))
+            print(
+                "launcher: kept the branch %s: it holds %d commits that no other ref holds"
+                % (branch, len(only)),
+                file=sys.stderr,
+            )
+            return OK
+        # Each commit of the branch is on another ref, so -D loses nothing.
+        # -d is not enough: it refuses a branch that is not merged into HEAD
+        # or its upstream, and after a rebase merge the merged commits have
+        # other shas than the commits of the branch.
         git_step("branch", "-D", branch)
         result["branch_deleted"] = True
     print(json.dumps(result))

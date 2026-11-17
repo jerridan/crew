@@ -86,6 +86,8 @@ the record is still counted, and one line names what was skipped.
 The script only reads. It writes nothing into the record root.
 """
 
+from __future__ import annotations
+
 import argparse
 import datetime
 import json

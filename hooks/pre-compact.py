@@ -13,6 +13,8 @@ means the project lead's own session compacted. Writes only; deletes
 nothing; fails open (design §15.50).
 """
 
+from __future__ import annotations
+
 import datetime
 import json
 import os

@@ -25,6 +25,7 @@ iTerm2 Python API runs in iterm2-tabs.py, through `uv run --with iterm2`.
 """
 
 import argparse
+import calendar
 import glob
 import json
 import os
@@ -1114,7 +1115,7 @@ def stop(a):
 
 
 def linked_worktree(path):
-    """(real worktree path, main worktree path) of a linked worktree.
+    """(real worktree path, main worktree path, git dir) of a linked worktree.
 
     Raise Fail(USAGE) when the path is not the top level of a linked
     worktree: a missing path, a plain directory, or the main worktree.
@@ -1142,7 +1143,7 @@ def linked_worktree(path):
     m = re.match(r"worktree (.+)", out)
     if not m:
         raise Fail(GIT, "launcher: git worktree list named no main worktree for %s" % path)
-    return top, m.group(1)
+    return top, m.group(1), gitdir
 
 
 def proc_row(p, keys):
@@ -1281,11 +1282,28 @@ def load_json(path):
         return None
 
 
-def record_branches(worktree):
+def utc_seconds(text):
+    """Seconds since the epoch of an ISO-8601 UTC time such as
+    2026-11-17T14:53:32Z, with or without fractional seconds, or None."""
+    if not isinstance(text, str):
+        return None
+    m = re.fullmatch(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d+)?(Z|\+00:00)", text)
+    if not m:
+        return None
+    try:
+        return calendar.timegm(time.strptime(m.group(1), "%Y-%m-%dT%H:%M:%S"))
+    except ValueError:
+        return None
+
+
+def record_branches(worktree, made):
     """Each branch that a goal record of the worktree names: each
     deliverables[].branch of its state.json, then each branch value of the
     worktrees.json beside it. A goal record of the worktree has run.repo,
-    made real, equal to the worktree, and run.kind absent or not review."""
+    with each symlink resolved, equal to the worktree; run.kind absent or not
+    review; and run.created_at at or after made, the time git made the
+    worktree. An older record is of an earlier item at the same path. made
+    is None when that time cannot be read: then no record counts."""
     names = []
     for path in sorted(glob.glob(os.path.join(glob.escape(record_root()), "*", "state.json"))):
         state = load_json(path)
@@ -1295,6 +1313,13 @@ def record_branches(worktree):
         if not isinstance(run_, dict) or not isinstance(run_.get("repo"), str):
             continue
         if os.path.realpath(os.path.expanduser(run_["repo"])) != worktree or run_.get("kind") == "review":
+            continue
+        created = utc_seconds(run_.get("created_at"))
+        if created is None:
+            print("launcher: skipped the goal record %s: its run.created_at is missing or does not parse" % path, file=sys.stderr)
+            continue
+        # created_at has whole seconds, so compare with the whole second of made.
+        if made is None or created < int(made):
             continue
         deliverables = state.get("deliverables")
         for d in deliverables if isinstance(deliverables, list) else []:
@@ -1351,11 +1376,51 @@ def pr_keeper(top, number):
     return None
 
 
-def delete_branches(a, worktree, top, branch, result, git_step):
+def origin_keepers(top):
+    """The sha of each branch and tag that `git ls-remote origin` lists, when
+    the commit is in the local object store. For an annotated tag, the
+    peeled sha. On a failed ls-remote: no keeper, after one stderr line."""
+    rc, out, err = run(["git", "-C", top, "ls-remote", "origin"])
+    if rc != 0:
+        print(
+            "launcher: git ls-remote origin failed (%s); no ref of origin is a keeper" % (one_line(err) or "exit %d" % rc),
+            file=sys.stderr,
+        )
+        return []
+    shas = {}
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{40}([0-9a-f]{24})?", parts[0]):
+            continue
+        sha, ref = parts
+        if ref.startswith("refs/heads/"):
+            shas[ref] = sha
+        elif ref.startswith("refs/tags/"):
+            if ref.endswith("^{}"):
+                shas[ref[: -len("^{}")]] = sha  # the peeled commit wins
+            else:
+                shas.setdefault(ref, sha)
+    wanted = sorted(set(shas.values()))
+    if not wanted:
+        return []
+    rc, out, _ = run(
+        ["git", "-C", top, "cat-file", "--batch-check"],
+        stdin="".join("%s^{commit}\n" % s for s in wanted),
+    )
+    if rc != 0:
+        return []
+    found = []
+    for sha, line in zip(wanted, out.splitlines()):
+        if not line.endswith(" missing"):
+            found.append(sha)
+    return found
+
+
+def delete_branches(a, worktree, top, branch, made, result, git_step):
     """Step 6: find the candidates, prove each one, and delete each proven one
     that no worktree has checked out. launcher.md's "remove" owns the rules."""
     names = []
-    for n in [branch, "worktree-" + os.path.basename(worktree)] + record_branches(worktree):
+    for n in [branch, "worktree-" + os.path.basename(worktree)] + record_branches(worktree, made):
         if n and n not in names:
             names.append(n)
     default = default_branch(top)
@@ -1374,14 +1439,25 @@ def delete_branches(a, worktree, top, branch, result, git_step):
             "launcher: git fetch origin failed (%s); the proof uses the refs that exist" % (one_line(err) or "exit %d" % rc),
             file=sys.stderr,
         )
-    keeper = pr_keeper(top, a.pr) if a.pr else None
-    # The keepers: each remote-tracking ref, each tag and the PR head. Never a
-    # local branch: it is no copy elsewhere, and one candidate cannot prove
+    # The keepers: each branch and tag that origin lists now, and the PR
+    # head. Never a local ref: a local branch, a stale remote-tracking ref or
+    # a local tag is no copy elsewhere, and one candidate cannot prove
     # another.
+    keepers = origin_keepers(top) if cands else []
+    keeper = pr_keeper(top, a.pr) if a.pr else None
+    if keeper:
+        keepers.append(keeper)
+    # rev-list reads the keepers on stdin, each as ^<sha>, so a long list
+    # does not overflow the argument list. --not does not apply to --stdin.
+    excludes = "".join("^%s\n" % k for k in keepers)
     for n in cands:
-        args = ["rev-list", "refs/heads/" + n, "--not", "--remotes", "--tags"] + ([keeper] if keeper else [])
+        args = ["rev-list", "refs/heads/" + n, "--stdin"]
+        rc, out, err = run(["git", "-C", top] + args, stdin=excludes)
+        if rc != 0:
+            print(json.dumps(result))
+            raise Fail(GIT, "launcher: git %s failed in %s: %s" % (" ".join(args), top, one_line(err) or "exit %d" % rc))
         result["branches"].append(
-            {"name": n, "deleted": False, "unproven_commits": git_step(*args).split(), "checked_out": None}
+            {"name": n, "deleted": False, "unproven_commits": out.split(), "checked_out": None}
         )
     held = {}
     listing = git_step("worktree", "list", "--porcelain") if result["branches"] else ""
@@ -1398,15 +1474,20 @@ def delete_branches(a, worktree, top, branch, result, git_step):
             e["deleted"] = True
         elif e["unproven_commits"]:
             print(
-                "launcher: kept the branch %s: it holds %d commits that no remote-tracking ref, no tag and no PR head holds"
+                "launcher: kept the branch %s: it holds %d commits that no branch or tag of origin and no PR head holds"
                 % (e["name"], len(e["unproven_commits"])),
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "launcher: kept the branch %s: the worktree %s has it checked out" % (e["name"], e["checked_out"]),
                 file=sys.stderr,
             )
 
 
 def remove(a):
     path = os.path.abspath(os.path.expanduser(a.worktree))
-    worktree, main_tree = linked_worktree(path)
+    worktree, main_tree, gitdir = linked_worktree(path)
     rc, out, _ = run(["git", "-C", worktree, "symbolic-ref", "-q", "--short", "HEAD"])
     branch = one_line(out) if rc == 0 and one_line(out) else None
     changed = [l for l in git(worktree, "status", "--porcelain").splitlines() if l.strip()]
@@ -1533,10 +1614,18 @@ def remove(a):
             )
         git_step("worktree", "unlock", worktree)
         lock["unlocked"] = True
+    made = None
+    if a.delete_branch:
+        # git writes commondir once, at `worktree add`, so its mtime is when
+        # the worktree was made. remove deletes the git dir, so read it first.
+        try:
+            made = os.path.getmtime(os.path.join(gitdir, "commondir"))
+        except OSError as e:
+            print("launcher: cannot read when git made the worktree (%s); no goal record counts" % e, file=sys.stderr)
     git_step("worktree", "remove", worktree)
     result["removed"] = True
     if a.delete_branch:
-        delete_branches(a, worktree, main_tree, branch, result, git_step)
+        delete_branches(a, worktree, main_tree, branch, made, result, git_step)
     print(json.dumps(result))
     return OK
 

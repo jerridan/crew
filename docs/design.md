@@ -9746,4 +9746,10 @@ Deliberately different:
      file. Entry 139's pointer to "Report to an orchestrator" is history and
      stays as written.
 
+     `resume.md` adds one route. A `--resume` argument carries no
+     `Orchestrator:` line, and the moved section was in context on every
+     resume before. So `resume.md` sends a resumed run whose
+     `run.orchestrator` is set to `orchestrator-report.md`. Its skip
+     sentence stayed in `SKILL.md`, so the rule has one copy.
+
      No rule changed. The file has 488 lines.

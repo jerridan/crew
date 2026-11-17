@@ -2,7 +2,8 @@
 
 This file owns what a project lead writes and calls when its goal carries an
 `Orchestrator:` line. `SKILL.md`'s "Take the goal" sends you here, and you read
-it in the turn you take such a goal.
+it in the turn you take such a goal. `resume.md` sends a resumed run here when
+`run.orchestrator` is set.
 
 A goal message with the line `Orchestrator: <name>, item <id>` means an
 orchestrator session started this run. That session is `run.principal`.

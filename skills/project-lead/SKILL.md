@@ -36,6 +36,8 @@ agent is absolute: its cwd is not yours.
 | `investigation-path.md` | the loop from a symptom to a diagnosis | when the goal names a symptom |
 | `simple-path.md` | the rest of the run for one package, and the light path for a small one | at "Size the work", and again when the shape is one package |
 | `full-path.md` | the rest of the run for more than one | when the shape is more than one |
+| `orchestrator-report.md` | what a project lead writes and calls when its goal carries an `Orchestrator:` line | when the goal carries that line |
+| `resume.md` | the rules of `--resume`: the record it reopens, the work it re-enters, and the path it takes again | when the argument is `--resume` |
 
 ## Before anything
 
@@ -53,8 +55,8 @@ envelope's `from-name` for the record step below. `autonomy-contract.md` owns
 how you reach it, and its "How to escalate" owns what you check before any
 ask.
 
-**A goal with an `Orchestrator:` line** has its own reporting rules: see
-"Report to an orchestrator" below.
+**A goal with an `Orchestrator:` line** has its own reporting rules:
+`references/orchestrator-report.md` says what to write and call.
 
 **Then look for a live run on the same ticket**, unless the argument is
 `--resume`. A ticket id is any token in the goal that matches `[A-Z]+-[0-9]+`.
@@ -68,36 +70,8 @@ out a review of a colleague's PR. A sibling record whose `run_state` is not
 slug>`, and wait for the answer before you write `charter.md`. Never start a
 second run on the same ticket without saying so.
 
-**`--resume <goal-slug>` skips the rest of this rule.** It reopens the existing
-record, never a new directory. Append this session's id to `run.session_ids`,
-reconcile, re-enter at the first unfinished work, and re-run nothing already
-finished. With `worktrees.json`, `full-path.md`'s "Resume after a kill" owns
-the reconciliation; without it, `git log` on the deliverable branch is the
-whole job. A resumed run writes no charter, no spec and no new branch, and
-creates no record directory.
-
-**A record whose `run_state` is already `complete` is closed.** Resume
-nothing, and say so in the closing message.
-
-**A record whose every deliverable holds a terminal state has no deliverable
-left to make**: set `run_state: delivered` — or `blocked`, when an escalation
-is open — and invoke the skill `crew:delivered-window` again. Which step
-of that window you enter at is decided by one list, and only by it:
-`skeptical-review.md`'s "Resume in the delivered window". It covers every
-state this window can die in, and each entry names the file that owns the
-work it sends you to.
-
-**Read `run.review_pending` before you recover a package.** A head there
-means a skeptical review is owed or half adjudicated, and its reply file may
-already name packages that `packages[]` does not hold yet — recover blind and
-you create one twice. Which comes first depends on the state, so take
-`skeptical-review.md`'s resume list from the top and do what the first
-matching entry says.
-
-**A resume picks the path too.** Read the reopened `charter.md` by the test
-below. A record holding `diagnosis.md` took the investigation path and got as
-far as the artifact, so re-enter by that file's `## Outcome`. A record with
-none re-enters at `investigation-path.md`'s first unfinished phase.
+**`--resume <goal-slug>` skips the rest of this rule.** Read
+`references/resume.md` and follow it.
 
 **A path that exists on disk** becomes `charter.md` unchanged. **Any other
 string** you expand into `charter.md`: the goal, and one falsifiable acceptance
@@ -159,44 +133,6 @@ crew-record.py <record-dir> decision precedent "Which path does this goal take?"
 Nothing else in the record says an investigation run was
 chosen rather than fallen into.
 
-## Report to an orchestrator
-
-A goal message with the line `Orchestrator: <name>, item <id>` means an
-orchestrator session started this run. That session is `run.principal`.
-`skills/orchestrator/references/orchestrator-record.md` owns the record you
-report into, and every command below.
-
-When the line is there, do three things in the turn you take the goal:
-
-1. Copy the line to `charter.md`.
-2. Write `run.orchestrator` with `crew-record.py <record-dir> run set
-   orchestrator '{"name": "<name>", "item": "<id>"}'`.
-3. Call the script as `<this skill's dir>/../orchestrator/scripts/crew-orch.py
-   --orch <name> <command>`.
-
-Call `stage <id> <stage>` at each phase change. The path decides which calls
-you make:
-
-| Path | Stage calls |
-|---|---|
-| Change path | `spec` when you start the spec; `split` (full path only); `build` at each IC dispatch, with `--detail <k>/<n>` for package k of n; `item <id> pr <pr_url>` and `review` when the PR opens and the first skeptical round starts; `pr` when the skeptical review stops (`skeptical-review.md`'s "Mark the PR ready"), also when `PR: draft` keeps the PR a draft |
-| Light path | `build` at each IC dispatch; then `review` and `pr` as on the change path |
-| Investigation path | `spec` while you diagnose; then the change path's calls for a fix ending, or `closed` for a report ending |
-
-A later skeptical round writes no stage. The delivered window writes `merged`
-at the merge, `shipped` at the ship word, and `closed` when the watch reports
-the PR closed with no merge. A `crew:review` run writes no stage call.
-
-Write each question with `ask <id> "<text>"` before you send it to the
-principal. `ask` prints a question id. Send the question by `SendMessage`, as
-`autonomy-contract.md`'s "Reach the principal the way the goal arrived" says,
-and name that id in it. The answer arrives as a message, and the orchestrator
-records it with `answer`. If no session is addressable, the failed-send rule
-of `autonomy-contract.md` holds.
-
-A failed `crew-orch.py` call never stops the run. Note it in `decisions.md`
-and go on. A record with no `run.orchestrator` behaves as before.
-
 ## Standing instructions
 
 Two files tell every run what the principal wants it to know about a repo:
@@ -250,17 +186,10 @@ model`, and you act on the other eleven:
 - `timeout: <minutes>`: a positive integer, how long the watch waits after it
   arms. The default is 180.
 
-With no `Deploy` section in any source, the deploy watch reads the repo's
-GitHub deployments. With some, the signal is the newest deployment of the
-merge commit whose `production_environment` is true, or whose environment is
-named `production` or `prod`, with the latest status `success`. With none, the
-signal is the newest Actions run on the merge commit whose name holds `deploy`
-or `release`. With none, with no active workflow whose name or path holds
-`deploy` or `release`, and with no file that the merged PR added or renamed
-under `.github/workflows/`, the repo has no deploy, and the ship word is the
-`no-deploy` line 2 minutes after the merge. With such a workflow or such a
-file, and no run, the repo has no deploy 10 minutes after the merge. The delivered window arms the deploy watch
-from the winning source (`crew:delivered-window`'s "The deploy watch").
+With no `Deploy` section in any source, the default signal is the one
+`skills/delivered-window/references/pr-watch.md`'s "Arm the deploy watch"
+owns. The delivered window arms the deploy watch from the winning source (`crew:delivered-window`'s "The deploy
+watch").
 
 A file with no `##` heading is one `Reviewers` section. Act on no other
 section yourself, and pass it through to ICs and reviewers unread.
@@ -528,12 +457,6 @@ ledger line names the label. After the hand-over, the label decides only
 whether a finding takes action, and `skeptical-review.md`'s dispositions then
 decide what it becomes. A review run
 (`run.kind: review`) uses `github-review.md`'s label rule instead.
-
-## A step the principal replaced
-
-`references/substitution.md` owns this case: the spec critic or the skeptical
-review that the principal named another reviewer for. Read it before you
-dispatch that step.
 
 ## Sweep for preference questions
 

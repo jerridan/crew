@@ -59,7 +59,7 @@ in a goal run arms the deploy watch, or is the ship word under `Deploy: none`
 are the ship word, and `Done: rolled out` changes `merged` (see "The word that
 the work shipped"). In a goal run, a `closed` item is a notice that asks the
 principal for the ship word or for a new goal. Write the stage `closed` for
-it, as `project-lead`'s `SKILL.md` "Report to an orchestrator" says.
+it, as `project-lead`'s `references/orchestrator-report.md` says.
 
 **A `queued` item is a notice on every run**, and the watch goes on. Write
 `run.watch.queued` `true` with the cursor.
@@ -571,7 +571,7 @@ On the word:
 
 1. `crew-record.py ship`. It sets `run_state: complete` and stamps
    `completed_at`. Then write the stage `shipped`, as `project-lead`'s
-   `SKILL.md` "Report to an orchestrator" says.
+   `references/orchestrator-report.md` says.
 2. Close each issue that an `Issue:` line of `charter.md` names, when the
    deliverable's PR merged. A merge into a branch that is not the default
    leaves the issue open, so this step catches it. Read the state first, and

@@ -188,8 +188,8 @@ model`, and you act on the other eleven:
 
 With no `Deploy` section in any source, the default signal is the one
 `skills/delivered-window/references/pr-watch.md`'s "Arm the deploy watch"
-owns. The delivered window arms the deploy watch from the winning source (`crew:delivered-window`'s "The deploy
-watch").
+owns. The delivered window arms the deploy watch from the winning source
+(`crew:delivered-window`'s "The deploy watch").
 
 A file with no `##` heading is one `Reviewers` section. Act on no other
 section yourself, and pass it through to ICs and reviewers unread.

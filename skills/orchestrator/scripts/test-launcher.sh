@@ -1455,8 +1455,8 @@ rm -f "$STUB_DIR/lsof-fail"
 # A candidate is deleted only when the branches and tags that `git ls-remote
 # origin` lists, or the verified PR head, hold each of its commits. No local
 # ref is a keeper: not a branch, not a tag, not a remote-tracking ref.
-# rm_wt0 <name>: a
-# worktree from start with no commit of its own: its branch is at origin/main.
+# rm_wt0 <name>: a worktree from start with no commit of its own: its branch
+# is at origin/main.
 rm_wt0() {
   TMUX=/tmp/t,1,0 run start --name "$1" --principal p --checkout "$CO"
   RM="$CO/.claude/worktrees/$1"

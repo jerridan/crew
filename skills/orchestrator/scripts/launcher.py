@@ -16,7 +16,8 @@ usage:
   launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
   launcher.py focus <handle>
   launcher.py stop <handle> [--name <session-name>] [--session-id <id>]
-  launcher.py remove <worktree> [--delete-branch] [--stop-processes]
+  launcher.py remove <worktree> [--delete-branch [--pr <number>]]
+                     [--stop-processes]
 
 skills/orchestrator/references/launcher.md owns the arguments, the start
 output and the exit codes. This file uses the standard library only. The
@@ -24,6 +25,7 @@ iTerm2 Python API runs in iterm2-tabs.py, through `uv run --with iterm2`.
 """
 
 import argparse
+import glob
 import json
 import os
 import re
@@ -44,6 +46,12 @@ HELPER_TIMEOUT = 120
 HELPER_MARGIN = 20
 # stop waits this many seconds for the claude of the tab to end after /exit.
 STOP_WAIT = 15
+# After the close, stop waits this many seconds for each claude that was still
+# on the tty to end.
+STOP_CLOSE_WAIT = 15
+# remove waits this many seconds for a claude with no terminal in the
+# worktree to end, such as a session that /exit is ending.
+REMOVE_END_WAIT = 15
 # remove waits this many seconds after TERM before it sends KILL.
 REMOVE_WAIT = 10
 # Seconds remove waits after KILL before it reads the processes again.
@@ -63,6 +71,7 @@ RESUME_USAGE = (
     "[--repo <owner/repo>] [--group <name>] [--group-color <#rrggbb>] "
     "[--terminal iterm2|tmux]"
 )
+REMOVE_USAGE = "usage: launcher.py remove <worktree> [--delete-branch [--pr <number>]] [--stop-processes]"
 USAGE_LINE = (
     "usage: launcher.py start ... | resume ... | groups | find <session-name> "
     "| focus <handle> | stop <handle> | remove <worktree>"
@@ -83,6 +92,8 @@ NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
 REPO_RE = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 PANE_RE = re.compile(r"%[0-9]+")
+# The pid in a worktree lock reason: the word pid, a space and 1 to 10 digits.
+PID_RE = re.compile(r"\bpid ([0-9]{1,10})\b")
 ITERM_ID_RE = re.compile(r"[A-Za-z0-9-]+")
 
 # Every AppleScript scans windows, tabs and sessions for one unique id.
@@ -305,9 +316,10 @@ def parse(argv):
     h.add_argument("--name")
     h.add_argument("--session-id")
     m = sub.add_parser("remove", add_help=False)
-    m.usage_line = "usage: launcher.py remove <worktree> [--delete-branch] [--stop-processes]"
+    m.usage_line = REMOVE_USAGE
     m.add_argument("worktree")
     m.add_argument("--delete-branch", action="store_true")
+    m.add_argument("--pr")
     m.add_argument("--stop-processes", action="store_true")
     args = top.parse_args(argv)
     if args.cmd is None:
@@ -316,6 +328,8 @@ def parse(argv):
         check_start(args)
     if args.cmd == "resume":
         check_resume(args)
+    if args.cmd == "remove":
+        check_remove(args)
     return args
 
 
@@ -335,6 +349,18 @@ def check_resume(a):
     if a.session_id is not None and not a.session_id.strip():
         bad("--session-id is empty")
     check_common(a, bad)
+
+
+def check_remove(a):
+    def bad(why):
+        raise Fail(USAGE, "launcher: %s; %s" % (why, REMOVE_USAGE))
+
+    if a.pr is not None:
+        if not a.delete_branch:
+            bad("--pr needs --delete-branch")
+        if not re.fullmatch(r"[0-9]{1,10}", a.pr) or int(a.pr) == 0:
+            bad("--pr %r is not a positive integer" % a.pr)
+        a.pr = int(a.pr)
 
 
 def check_common(a, bad):
@@ -937,19 +963,45 @@ def tmux_pane_tty(pane):
 
 
 def wait_claude_gone(tty, handle):
-    """Wait up to STOP_WAIT seconds until no claude process has the tty."""
+    """Wait up to STOP_WAIT seconds until no claude process has the tty.
+
+    Return {pid: argv} of each claude process on the tty at the last read.
+    """
     end = time.time() + STOP_WAIT
     while True:
-        if not any(p["tty"] == tty and is_claude(p["argv"]) for p in processes().values()):
-            return
+        left = {
+            p["pid"]: p["argv"] for p in processes().values() if p["tty"] == tty and is_claude(p["argv"])
+        }
+        if not left:
+            return left
         if time.time() >= end:
             print(
                 "launcher: the claude session in %s did not end %d seconds after /exit; the tab closes now"
                 % (handle, STOP_WAIT),
                 file=sys.stderr,
             )
-            return
+            return left
         time.sleep(0.5)
+
+
+def wait_pids_gone(left, handle):
+    """After the close, wait up to STOP_CLOSE_WAIT seconds until each pid of
+    left ({pid: argv}) is gone. A pid is gone when ps does not show it, or
+    shows it with another argv: a new process with a reused pid. stop sends
+    no signal. One stderr line names each pid that still runs at the end."""
+    end = time.time() + STOP_CLOSE_WAIT
+    while True:
+        procs = processes()
+        still = sorted(pid for pid in left if pid in procs and procs[pid]["argv"] == left[pid])
+        if not still or time.time() >= end:
+            break
+        time.sleep(0.5)
+    for pid in still:
+        print(
+            "launcher: the claude process %d of %s still runs %d seconds after the close; stop sent it no signal"
+            % (pid, handle, STOP_CLOSE_WAIT),
+            file=sys.stderr,
+        )
 
 
 def iterm_script(script, verb, ref):
@@ -1007,7 +1059,8 @@ def not_target(a):
 
 
 def stop(a):
-    """Type /exit, wait for claude to end, then close the tab or kill the pane.
+    """Type /exit, wait for claude to end, close the tab or kill the pane,
+    then wait for each claude that was still on the tty to end.
 
     /exit ends the session with the reason prompt_input_exit, so a tool that
     restores closed sessions does not start it again. Escape and Ctrl-U come
@@ -1029,8 +1082,10 @@ def stop(a):
         if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
             return OK
-        wait_claude_gone(norm_tty(tty), a.handle)
+        left = wait_claude_gone(norm_tty(tty), a.handle)
         iterm_script(OSA_STOP, "stop", ref)  # "gone" here: the tab closed when claude ended
+        if left:
+            wait_pids_gone(left, a.handle)
         return OK
     tty = tmux_pane_tty(ref)
     if tty is None:
@@ -1044,12 +1099,14 @@ def stop(a):
     time.sleep(KEY_WAIT)
     tmux(["send-keys", "-t", ref, "-l", "/exit"])
     tmux(["send-keys", "-t", ref, "Enter"])
-    wait_claude_gone(tty, a.handle)
-    if not tmux_pane_exists(ref):
-        return OK  # the pane closed when claude ended
-    rc, _, err = tmux(["kill-pane", "-t", ref])
-    if rc != 0:
-        raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane failed for tmux:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
+    left = wait_claude_gone(tty, a.handle)
+    if tmux_pane_exists(ref):
+        rc, _, err = tmux(["kill-pane", "-t", ref])
+        if rc != 0:
+            raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane failed for tmux:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
+    # else: the pane closed when claude ended.
+    if left:
+        wait_pids_gone(left, a.handle)
     return OK
 
 
@@ -1065,8 +1122,7 @@ def linked_worktree(path):
     def bad(why):
         raise Fail(
             USAGE,
-            "launcher: %s is not a linked worktree (%s); usage: launcher.py remove <worktree> "
-            "[--delete-branch] [--stop-processes]" % (path, why),
+            "launcher: %s is not a linked worktree (%s); %s" % (path, why, REMOVE_USAGE),
         )
 
     if not os.path.isdir(path):
@@ -1134,17 +1190,15 @@ def signal_found(found, sig):
             pass
 
 
-def remove(a):
-    path = os.path.abspath(os.path.expanduser(a.worktree))
-    worktree, main_tree = linked_worktree(path)
-    rc, out, _ = run(["git", "-C", worktree, "symbolic-ref", "-q", "--short", "HEAD"])
-    branch = one_line(out) if rc == 0 and one_line(out) else None
-    changed = [l for l in git(worktree, "status", "--porcelain").splitlines() if l.strip()]
+def scan(worktree, stop_processes):
+    """Read the processes of the worktree, by the rule of step 1.
 
+    Return (procs, where, in_tree, blockers, mine). mine holds the launcher
+    and each process above it.
+    """
     procs = processes()
     where = cwds()
     where[os.getpid()] = os.path.realpath(os.getcwd())
-    # The launcher and each process above it.
     mine = set()
     pid = os.getpid()
     while pid and pid not in mine:
@@ -1159,10 +1213,227 @@ def remove(a):
     # refuse. Without --stop-processes, every process in the worktree does: a
     # GUI editor has no terminal either, and nothing tells it apart from a
     # server that the implementer left.
-    blockers = [
-        p for p in in_tree if not a.stop_processes or p["tty"] is not None or p["pid"] in mine
+    blockers = [p for p in in_tree if not stop_processes or p["tty"] is not None or p["pid"] in mine]
+    return procs, where, in_tree, blockers, mine
+
+
+def all_ending(blockers, mine):
+    """True when each blocker is a claude with no terminal that is not the
+    launcher or above it: an implementer session that /exit is ending."""
+    return bool(blockers) and all(
+        p["tty"] is None and is_claude(p["argv"]) and p["pid"] not in mine for p in blockers
+    )
+
+
+def worktree_list(text):
+    """The blocks of `git worktree list --porcelain` text: one dict per
+    worktree, with "worktree", and "branch" and "locked" when the block has
+    them. "locked" is the reason, or "" for a lock with no reason."""
+    blocks = []
+    cur = None
+    for line in text.splitlines():
+        if line.startswith("worktree "):
+            cur = {"worktree": line[len("worktree "):]}
+            blocks.append(cur)
+        elif cur is None:
+            continue
+        elif line.startswith("branch refs/heads/"):
+            cur["branch"] = line[len("branch refs/heads/"):]
+        elif line == "locked":
+            cur["locked"] = ""
+        elif line.startswith("locked "):
+            cur["locked"] = line[len("locked "):]
+    return blocks
+
+
+def lock_owner(reason):
+    """The pid that the lock reason names, or None when it names none or more
+    than one. A pid is the word pid, a space and 1 to 10 digits."""
+    pids = PID_RE.findall(reason)
+    return int(pids[0]) if len(pids) == 1 else None
+
+
+def pid_dead(pid):
+    """True only when no process has the pid. Signal 0 sends nothing. A pid
+    that runs, that another user owns, or that the system cannot test, is
+    not proven dead."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except (OSError, OverflowError, ValueError):
+        return False
+    return False
+
+
+def record_root():
+    return os.environ.get("CREW_RECORD_ROOT") or os.path.expanduser("~/.claude/crew")
+
+
+def load_json(path):
+    """The parsed file, or None after one stderr line when it cannot be read
+    or parsed."""
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError) as e:
+        print("launcher: skipped the goal record file %s: it cannot be read or parsed (%s)" % (path, e), file=sys.stderr)
+        return None
+
+
+def record_branches(worktree):
+    """Each branch that a goal record of the worktree names: each
+    deliverables[].branch of its state.json, then each branch value of the
+    worktrees.json beside it. A goal record of the worktree has run.repo,
+    made real, equal to the worktree, and run.kind absent or not review."""
+    names = []
+    for path in sorted(glob.glob(os.path.join(glob.escape(record_root()), "*", "state.json"))):
+        state = load_json(path)
+        if state is None:
+            continue
+        run_ = state.get("run") if isinstance(state, dict) else None
+        if not isinstance(run_, dict) or not isinstance(run_.get("repo"), str):
+            continue
+        if os.path.realpath(os.path.expanduser(run_["repo"])) != worktree or run_.get("kind") == "review":
+            continue
+        deliverables = state.get("deliverables")
+        for d in deliverables if isinstance(deliverables, list) else []:
+            if isinstance(d, dict) and isinstance(d.get("branch"), str):
+                names.append(d["branch"])
+        wpath = os.path.join(os.path.dirname(path), "worktrees.json")
+        if not os.path.exists(wpath):
+            continue
+        entries = load_json(wpath)
+        for e in entries.values() if isinstance(entries, dict) else []:
+            if isinstance(e, dict) and isinstance(e.get("branch"), str):
+                names.append(e["branch"])
+    return names
+
+
+def default_branch(top):
+    """The branch that refs/remotes/origin/HEAD names, else the one that
+    `git ls-remote --symref origin HEAD` names, else None."""
+    rc, out, _ = run(["git", "-C", top, "symbolic-ref", "-q", "refs/remotes/origin/HEAD"])
+    ref = one_line(out)
+    if rc == 0 and ref.startswith("refs/remotes/origin/"):
+        return ref[len("refs/remotes/origin/"):]
+    rc, out, _ = run(["git", "-C", top, "ls-remote", "--symref", "origin", "HEAD"])
+    m = re.search(r"^ref: refs/heads/(\S+)\s+HEAD$", out, re.M) if rc == 0 else None
+    return m.group(1) if m else None
+
+
+def has_commit(top, sha):
+    rc, _, _ = run(["git", "-C", top, "cat-file", "-e", sha + "^{commit}"])
+    return rc == 0
+
+
+def pr_keeper(top, number):
+    """The sha of refs/pull/<number>/head on origin when that commit is in
+    the local object store, after a fetch when it was not. Else None, after
+    one stderr line."""
+    ref = "refs/pull/%d/head" % number
+    rc, out, err = run(["git", "-C", top, "ls-remote", "origin", ref])
+    sha = None
+    for line in out.splitlines() if rc == 0 else []:
+        parts = line.split()
+        if len(parts) == 2 and parts[1] == ref and re.fullmatch(r"[0-9a-f]{40}([0-9a-f]{24})?", parts[0]):
+            sha = parts[0]
+    if sha is None:
+        why = "git ls-remote origin %s failed: %s" % (ref, one_line(err) or "exit %d" % rc) if rc != 0 else "origin has no %s" % ref
+    elif not has_commit(top, sha):
+        rc, _, err = run(["git", "-C", top, "fetch", "-q", "origin", ref])
+        if has_commit(top, sha):
+            return sha
+        why = "the commit %s of %s is not here after a fetch (%s)" % (sha, ref, one_line(err) or "exit %d" % rc)
+    else:
+        return sha
+    print("launcher: the PR head %s is no keeper: %s" % (ref, why), file=sys.stderr)
+    return None
+
+
+def delete_branches(a, worktree, top, branch, result, git_step):
+    """Step 6: find the candidates, prove each one, and delete each proven one
+    that no worktree has checked out. launcher.md's "remove" owns the rules."""
+    names = []
+    for n in [branch, "worktree-" + os.path.basename(worktree)] + record_branches(worktree):
+        if n and n not in names:
+            names.append(n)
+    default = default_branch(top)
+    if default is None:
+        never = ("main", "master")
+        print("launcher: origin names no default branch, so main and master are never candidates", file=sys.stderr)
+    else:
+        never = (default,)
+    cands = [
+        n for n in names
+        if n not in never and run(["git", "-C", top, "rev-parse", "-q", "--verify", "refs/heads/" + n])[0] == 0
     ]
-    refused = bool(changed or blockers)
+    rc, _, err = run(["git", "-C", top, "fetch", "-q", "--no-prune", "origin"])
+    if rc != 0:
+        print(
+            "launcher: git fetch origin failed (%s); the proof uses the refs that exist" % (one_line(err) or "exit %d" % rc),
+            file=sys.stderr,
+        )
+    keeper = pr_keeper(top, a.pr) if a.pr else None
+    # The keepers: each remote-tracking ref, each tag and the PR head. Never a
+    # local branch: it is no copy elsewhere, and one candidate cannot prove
+    # another.
+    for n in cands:
+        args = ["rev-list", "refs/heads/" + n, "--not", "--remotes", "--tags"] + ([keeper] if keeper else [])
+        result["branches"].append(
+            {"name": n, "deleted": False, "unproven_commits": git_step(*args).split(), "checked_out": None}
+        )
+    held = {}
+    listing = git_step("worktree", "list", "--porcelain") if result["branches"] else ""
+    for b in worktree_list(listing):
+        if "branch" in b:
+            held[b["branch"]] = os.path.realpath(b["worktree"])
+    for e in result["branches"]:
+        e["checked_out"] = held.get(e["name"])
+    for e in result["branches"]:
+        if not e["unproven_commits"] and e["checked_out"] is None:
+            # Each commit is on a keeper, so -D loses nothing. -d is not
+            # enough: after a rebase merge the merged commits have other shas.
+            git_step("branch", "-D", e["name"])
+            e["deleted"] = True
+        elif e["unproven_commits"]:
+            print(
+                "launcher: kept the branch %s: it holds %d commits that no remote-tracking ref, no tag and no PR head holds"
+                % (e["name"], len(e["unproven_commits"])),
+                file=sys.stderr,
+            )
+
+
+def remove(a):
+    path = os.path.abspath(os.path.expanduser(a.worktree))
+    worktree, main_tree = linked_worktree(path)
+    rc, out, _ = run(["git", "-C", worktree, "symbolic-ref", "-q", "--short", "HEAD"])
+    branch = one_line(out) if rc == 0 and one_line(out) else None
+    changed = [l for l in git(worktree, "status", "--porcelain").splitlines() if l.strip()]
+
+    procs, where, in_tree, blockers, mine = scan(worktree, a.stop_processes)
+    if not changed and all_ending(blockers, mine):
+        # A session that /exit is ending still has its cwd here. Wait for it.
+        end = time.time() + REMOVE_END_WAIT
+        while time.time() < end:
+            time.sleep(0.5)
+            procs, where, in_tree, blockers, mine = scan(worktree, a.stop_processes)
+            if not all_ending(blockers, mine):
+                break
+
+    # The lock, read after the wait: a session that held it can end there.
+    reason = None
+    for b in worktree_list(git(main_tree, "worktree", "list", "--porcelain")):
+        if os.path.realpath(b["worktree"]) == worktree:
+            reason = b.get("locked")
+    lock = None
+    owner = None
+    if reason is not None:
+        lock = {"reason": reason, "pid": lock_owner(reason), "unlocked": False}
+        if lock["pid"] is not None and pid_dead(lock["pid"]):
+            owner = lock["pid"]
+    lock_refuses = lock is not None and owner is None
+    refused = bool(changed or blockers or lock_refuses)
 
     result = {
         "worktree": worktree,
@@ -1172,8 +1443,8 @@ def remove(a):
         "kept": [proc_row(p, ("pid", "tty", "command")) for p in in_tree] if refused else [],
         "changed": changed,
         "branch": branch,
-        "branch_deleted": False,
-        "branch_only_commits": [],
+        "branches": [],
+        "lock": lock,
     }
     if refused:
         why = []
@@ -1186,6 +1457,8 @@ def remove(a):
                 else "processes in the worktree; add --stop-processes to stop the ones with no terminal"
             )
             why.append("%d %s (pids %s)" % (len(blockers), what, ", ".join(str(p["pid"]) for p in blockers)))
+        if lock_refuses:
+            why.append("a lock whose owner remove cannot prove dead (reason %s)" % json.dumps(reason))
         print(json.dumps(result))
         raise Fail(REFUSED, "launcher: kept the worktree %s: %s" % (worktree, "; ".join(why)))
 
@@ -1250,34 +1523,20 @@ def remove(a):
             print(json.dumps(result))
             raise
 
+    if owner is not None:
+        # Test the owner again right before the unlock: the pid can run again.
+        if not pid_dead(owner):
+            print(json.dumps(result))
+            raise Fail(
+                REFUSED,
+                "launcher: kept the worktree %s: the pid %d of its lock runs again; unlocked nothing" % (worktree, owner),
+            )
+        git_step("worktree", "unlock", worktree)
+        lock["unlocked"] = True
     git_step("worktree", "remove", worktree)
     result["removed"] = True
-    if a.delete_branch and branch:
-        # The commits of the branch that no other ref holds: no other local
-        # branch, no remote-tracking branch and no tag. An --exclude pattern
-        # for --branches has no refs/heads/ prefix; with the prefix it
-        # excludes nothing, and the branch then holds each of its commits.
-        only = git_step(
-            "rev-list", "refs/heads/" + branch, "--not",
-            "--exclude=" + branch, "--branches", "--remotes", "--tags",
-        ).split()
-        result["branch_only_commits"] = only
-        if only:
-            # Deleting the branch would lose these commits. The worktree is
-            # already gone, and that step succeeded, so remove exits 0.
-            print(json.dumps(result))
-            print(
-                "launcher: kept the branch %s: it holds %d commits that no other ref holds"
-                % (branch, len(only)),
-                file=sys.stderr,
-            )
-            return OK
-        # Each commit of the branch is on another ref, so -D loses nothing.
-        # -d is not enough: it refuses a branch that is not merged into HEAD
-        # or its upstream, and after a rebase merge the merged commits have
-        # other shas than the commits of the branch.
-        git_step("branch", "-D", branch)
-        result["branch_deleted"] = True
+    if a.delete_branch:
+        delete_branches(a, worktree, main_tree, branch, result, git_step)
     print(json.dumps(result))
     return OK
 

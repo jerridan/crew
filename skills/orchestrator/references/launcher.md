@@ -180,8 +180,9 @@ worktree>` is the real worktree path with each character outside
 1. The worktree does not exist, or is not in a git work tree: exit 5.
 2. No `--session-id` and no transcript: exit 5.
 3. The base cannot be read: exit 5.
-4. `find` sees an open tab or pane for `--name` or the worktree: exit 8. The
-   line names each handle. No tab opens. Focus that tab, or stop it first.
+4. `find` sees an open tab or pane for `--name`, for the session id or for
+   the worktree: exit 8. The line names each handle. No tab opens. Focus that
+   tab, or stop it first.
 
 **The tab.** The command that runs in the tab is:
 
@@ -220,7 +221,7 @@ API is not available, it prints one line on stderr, no group line, and exits
 ## find
 
 ```
-launcher.py find <session-name> [--worktree <path>]
+launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
 ```
 
 `find` prints one line for each open tab or pane that holds this
@@ -228,12 +229,18 @@ implementer, and exits 0. With no such tab or pane, it prints no line. A tab
 or pane holds the implementer when a `claude` process on its tty has:
 
 - the two arguments `--name <session-name>`, next to each other, or
+- with `--session-id`, the two arguments `--resume <id>` or `--session-id
+  <id>`, next to each other, or
 - with `--worktree`, its working directory equal to the real worktree path.
 
-Each line is `<handle> <match>`. `<match>` is `name` when a `claude` process
-on the tty has `--name <session-name>`, and `cwd` when only the working
-directory matched. A session with no `--name` did not come from the
-launcher: `cc-restore` or a person started it.
+Each line is `<handle> <match>`. `<match>` is the first kind in this list
+that holds for a `claude` process on the tty:
+
+| Match | The process |
+|---|---|
+| `name` | has `--name <session-name>` |
+| `id` | has `--resume <id>` or `--session-id <id>`. A tool such as `cc-restore` starts a session again this way, with no `--name` |
+| `cwd` | has its working directory in the worktree, and neither argument above. A person can start such a session |
 
 Each match is exact. `find a` never matches the session `a-2`, and a working
 directory below the worktree does not match. A `claude` process is one of
@@ -259,10 +266,21 @@ Code changes the title of its tab.
 
 ```
 launcher.py focus <handle>
-launcher.py stop <handle>
+launcher.py stop <handle> [--name <session-name>] [--session-id <id>]
 ```
 
 `<handle>` is the `tab` value of the start output.
+
+**The target check.** A tmux pane id is unique only while its tmux server
+runs. After a restart of the machine, a new server gives its panes the ids
+from `%0` again, so an old handle can name another pane. With `--name` or
+`--session-id`, `stop` first reads the tty of the tab or pane. It sends no
+key and closes nothing unless a `claude` process on that tty has the match
+`name` or `id`, as `find` matches it. A `cwd` match never counts, because a
+person can start a `claude` in the worktree. When no process matches,
+`stop` prints one line on stdout and exits 0, as for a tab that is already
+gone. Without either flag, `stop` does no check. Give a flag every time the
+caller knows the session.
 
 - `focus iterm2:<id>` selects the tab, brings its window to the front and
   activates iTerm2. `focus tmux:<pane>` selects the window that holds the
@@ -337,11 +355,13 @@ its working directory in the worktree, so `remove` refuses while it runs.
      `remove` never signals that process.
    - It sends `TERM` and waits up to 10 seconds. Then it sends `KILL` to each
      process that is still there, and waits up to 2 seconds.
-   - It reads `ps` and `lsof` again. A process that is still there, with the
-     same command and working directory, did not stop. A process that
-     `remove` could not signal is such a process. When one did not stop,
-     `remove` refuses with exit 9 and runs no git step. The stderr line names
-     each pid that did not stop.
+   - It reads `ps` and `lsof` again, and finds each process in the worktree
+     by the rule of step 1, whatever its command. This finds a process that
+     did not stop, a process that `remove` could not signal, a process that
+     changed its command, and a new process that started during the wait.
+     A pid of step 1 that `ps` shows with no working directory that `lsof`
+     can read counts too. When one such process runs, `remove` refuses with
+     exit 9 and runs no git step. The stderr line names each pid.
    - A failed `ps` or `lsof` in this step exits 6. `remove` runs no git
      step.
 4. It runs `git worktree remove <path>`, with no force.
@@ -355,8 +375,8 @@ seven fields. A refusal prints it too.
 |---|---|
 | `worktree` | the real worktree path |
 | `removed` | `true` when the worktree is gone |
-| `stopped` | one `{"pid", "command"}` object for each process that step 3 stopped: the pid is gone, or it has another command or working directory now |
-| `kept` | one `{"pid", "tty", "command"}` object for each process that `remove` did not stop. On a refusal in step 2: each process in the worktree, because that refusal stops none. On a refusal in step 3: each process that did not stop. On a failed `ps` or `lsof` in step 3: each process in the worktree, because `remove` cannot tell which ones stopped. `tty` is `null` for a process with no terminal. An empty list when `remove` removed the worktree |
+| `stopped` | one `{"pid", "command"}` object for each process of step 1 that step 3 stopped: the pid is gone, or its working directory is now outside the worktree |
+| `kept` | one `{"pid", "tty", "command"}` object for each process that `remove` did not stop. On a refusal in step 2: each process in the worktree, because that refusal stops none. On a refusal in step 3: each process that the last read of step 3 found. On a failed `ps` or `lsof` in step 3: each process in the worktree, because `remove` cannot tell which ones stopped. `tty` is `null` for a process with no terminal. An empty list when `remove` removed the worktree |
 | `changed` | each line of `git status --porcelain`, unchanged |
 | `branch` | the branch that the worktree had checked out, or `null` when its `HEAD` was detached |
 | `branch_deleted` | `true` when `--delete-branch` deleted the branch |
@@ -379,7 +399,8 @@ a fixed order, and the first check that fails decides the exit:
 - `find`: 2, 4, 6.
 - `groups`: 2, 4.
 - `focus` and `stop`: 2, 7 for an unknown prefix. Then the terminal step: 6
-  or 7.
+  or 7. `stop` with `--name` or `--session-id`: 6 when `osascript` or `ps`
+  fails in the target check.
 - `remove`: 2, 5 when `git status` fails. Then 6 when `ps` or `lsof` fails,
   then 9 for a refusal in step 2. Then, in step 3, 6 or 9. Then 5 when a git
   step fails.
@@ -394,7 +415,7 @@ a fixed order, and the first check that fails decides the exit:
 | 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
-| 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), or the caller's own working directory in the worktree. Nothing changed. With `--stop-processes`, also a process that did not stop after `TERM` and `KILL`, or that `remove` could not signal. The worktree and the branch stay |
+| 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), or the caller's own working directory in the worktree. Nothing changed. With `--stop-processes`, also a process in the worktree after `TERM` and `KILL`: one that did not stop, that `remove` could not signal, that changed its command, or that started during the stop. The worktree and the branch stay |
 
 ## Test
 

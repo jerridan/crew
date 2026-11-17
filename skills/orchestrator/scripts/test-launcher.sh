@@ -856,6 +856,79 @@ r=1; [ "$rc" = 0 ] && grep -sq '^send-keys|-t|%7|Enter|$' "$STUB_DIR/tmux.log" &
   && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
 check 'stop tmux:<pane> whose pane closed when claude ended exits 0 and sends no kill-pane' $r
 
+# -- stop --name and --session-id: no key unless the target holds the implementer --
+# A tmux pane id restarts at %0 with a new server, so an old handle can name
+# another pane. stop_py <args...>: stop with no wait, in this process.
+stop_py() {
+  python3 - "$here" "$@" > "$T/out" 2> "$T/err" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.STOP_WAIT = 0
+launcher.KEY_WAIT = 0
+sys.exit(launcher.main(sys.argv[2:]))
+PY
+  rc=$?
+}
+no_keys_tmux() { ! grep -sq '^send-keys|' "$STUB_DIR/tmux.log" && ! grep -sq '^kill-pane|' "$STUB_DIR/tmux.log"; }
+reset_stub
+echo '%2' > "$STUB_DIR/tmux-panes"
+echo '%2 /dev/ttys970' > "$STUB_DIR/tmux-ttys"
+echo '900020 1 ttys970 claude --name other --model opus' > "$STUB_DIR/ps-extra"
+printf 'p900020\nfcwd\nn/elsewhere\n' > "$STUB_DIR/lsof-extra"
+stop_py stop 'tmux:%2' --name a --session-id s-1
+check 'stop tmux:<pane> --name --session-id on a pane with another claude sends no key, kills nothing, prints one line and exits 0' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && no_keys_tmux; echo $?)
+reset_stub
+echo '%2' > "$STUB_DIR/tmux-panes"
+echo '%2 /dev/ttys970' > "$STUB_DIR/tmux-ttys"
+stop_py stop 'tmux:%2' --name a
+check 'stop tmux:<pane> --name on a pane with no claude (a shell) sends no key and exits 0 with one line' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && no_keys_tmux; echo $?)
+stop_py stop 'tmux:%9' --name a
+check 'stop --name on a gone tmux pane exits 0 with one line' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sqi gone "$T/out" && no_keys_tmux; echo $?)
+reset_stub
+echo '%2' > "$STUB_DIR/tmux-panes"
+echo '%2 /dev/ttys970' > "$STUB_DIR/tmux-ttys"
+echo '900020 1 ttys970 claude --name a --model opus' > "$STUB_DIR/ps-extra"
+stop_py stop 'tmux:%2' --name a --session-id s-1
+check 'stop tmux:<pane> --name on the pane of that session sends the keys and kills the pane' \
+  $([ "$rc" = 0 ] && grep -sq '^send-keys|-t|%2|-l|/exit|' "$STUB_DIR/tmux.log" && grep -sq '^kill-pane|-t|%2|' "$STUB_DIR/tmux.log"; echo $?)
+reset_stub
+echo '%2' > "$STUB_DIR/tmux-panes"
+echo '%2 /dev/ttys970' > "$STUB_DIR/tmux-ttys"
+echo '900020 1 ttys970 claude --resume s-9 --model opus' > "$STUB_DIR/ps-extra"
+stop_py stop 'tmux:%2' --name a --session-id s-9
+check 'stop tmux:<pane> --session-id on a claude with --resume <id> sends the keys and kills the pane' \
+  $([ "$rc" = 0 ] && grep -sq '^send-keys|-t|%2|-l|/exit|' "$STUB_DIR/tmux.log" && grep -sq '^kill-pane|-t|%2|' "$STUB_DIR/tmux.log"; echo $?)
+# A claude with only its cwd in the worktree is not the implementer: a person
+# can start one there. stop never acts on a cwd match.
+reset_stub
+echo '%2' > "$STUB_DIR/tmux-panes"
+echo '%2 /dev/ttys970' > "$STUB_DIR/tmux-ttys"
+echo '900020 1 ttys970 claude --model opus' > "$STUB_DIR/ps-extra"
+printf 'p900020\nfcwd\nn%s\n' "$(cd "$WT" && pwd -P)" > "$STUB_DIR/lsof-extra"
+stop_py stop 'tmux:%2' --name a --session-id s-9
+check 'stop tmux:<pane> --name --session-id on a claude that matches only by its cwd in the worktree sends no key and kills nothing' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && no_keys_tmux; echo $?)
+stop_py stop 'tmux:%2' --name a --worktree "$WT"
+check 'stop has no --worktree flag: exit 2, no key' $([ "$rc" = 2 ] && no_keys_tmux; echo $?)
+reset_stub
+echo 'S-2' > "$STUB_DIR/osa-sessions"
+echo 'S-2 /dev/ttys971' > "$STUB_DIR/osa-ttys"
+echo '900021 1 ttys971 claude --name other --model opus' > "$STUB_DIR/ps-extra"
+stop_py stop iterm2:S-2 --name a --session-id s-1
+check 'stop iterm2:<id> --name --session-id on a session with another claude sends no key, closes nothing, prints one line and exits 0' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && ! grep -sq '^-|exit|' "$STUB_DIR/osa.log" && ! grep -sq '^-|stop|' "$STUB_DIR/osa.log"; echo $?)
+stop_py stop iterm2:S-9 --name a
+check 'stop --name on a gone iTerm2 session exits 0 with one line and sends no key' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sqi gone "$T/out" && ! grep -sq '^-|exit|' "$STUB_DIR/osa.log"; echo $?)
+: > "$STUB_DIR/osa.log"
+stop_py stop iterm2:S-2 --name other
+check 'stop iterm2:<id> --name on the session of that claude types /exit, then closes the tab' \
+  $([ "$rc" = 0 ] && grep -sq '^-|exit|S-2|$' "$STUB_DIR/osa.log" && grep -sq '^-|stop|S-2|$' "$STUB_DIR/osa.log"; echo $?)
+
 # -- find ------------------------------------------------------------------
 reset_stub
 WTREAL=$(cd "$WT" && pwd -P)
@@ -911,6 +984,26 @@ rm -f "$STUB_DIR/lsof-fail"
 rm -f "$STUB_DIR/tmux-list-panes"
 TMUX=/tmp/t,1,0 run find a
 check 'find with no tmux server prints no line and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
+
+# find --session-id: the kind id is a claude whose argv holds --resume <id>
+# or --session-id <id>. A person's own claude in the worktree has neither.
+reset_stub
+printf '%%7 /dev/ttys911\n%%8 /dev/ttys912\n%%9 /dev/ttys913\n%%10 /dev/ttys914\n' > "$STUB_DIR/tmux-list-panes"
+cat > "$STUB_DIR/ps-extra" <<PS
+900031 1 ttys911 claude --resume sid-1 --model opus
+900032 1 ttys912 claude --session-id sid-1 --model opus
+900033 1 ttys913 claude --name a --resume sid-1
+900034 1 ttys914 claude --model opus
+PS
+printf 'p900034\nfcwd\nn%s\n' "$WTREAL" > "$STUB_DIR/lsof-extra"
+TMUX=/tmp/t,1,0 run find zz --session-id sid-1
+check 'find --session-id matches --resume <id> and --session-id <id>, with the kind id' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = "$(printf 'tmux:%%7 id\ntmux:%%8 id\ntmux:%%9 id')" ]; echo $?)
+TMUX=/tmp/t,1,0 run find a --session-id sid-1 --worktree "$WT"
+check 'find: name wins over id, and a claude with neither and its cwd in the worktree is cwd' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = "$(printf 'tmux:%%7 id\ntmux:%%8 id\ntmux:%%9 name\ntmux:%%10 cwd')" ]; echo $?)
+TMUX=/tmp/t,1,0 run find zz --session-id sid-2
+check 'find --session-id with another id prints no line' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
 
 # -- resume ----------------------------------------------------------------
 reset_stub
@@ -975,6 +1068,12 @@ printf 'p900001\nfcwd\nn%s\n' "$RWT" > "$STUB_DIR/lsof-extra"
 TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
 check 'resume of a session that find sees by its cwd (no --name) exits 8, names the tab, and opens no tab' \
   $([ "$rc" = 8 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'tmux:%7' "$T/err" && ! grep -sq '^new-' "$STUB_DIR/tmux.log"; echo $?)
+# A claude that resumed the conversation, with no --name and its cwd unread.
+rm -f "$STUB_DIR/lsof-extra"
+: > "$STUB_DIR/tmux.log"
+TMUX=/tmp/t,1,0 run resume --name rs-1 --worktree "$RWT"
+check 'resume of a session that find sees by its id (--resume <id>, no --name, no cwd) exits 8 and opens no tab' \
+  $([ "$rc" = 8 ] && grep -sqF 'tmux:%7' "$T/err" && ! grep -sq '^new-' "$STUB_DIR/tmux.log"; echo $?)
 rm -f "$STUB_DIR/lsof-extra" "$STUB_DIR/ps-extra"
 TMUX=/tmp/t,1,0 run resume --name Bad_Name --worktree "$RWT"
 check 'resume with a bad --name exits 2' $([ "$rc" = 2 ]; echo $?)
@@ -1058,11 +1157,14 @@ check 'remove --stop-processes sends KILL to a process that outlives TERM' \
 # (after the scan, ps shows another command for the pid), changed-before-kill
 # (ps shows another command after the TERM; the TERM goes nowhere), eperm (each
 # signal to the pid fails with PermissionError), survive (the KILL goes
-# nowhere). Each git call goes to $T/git.log.
+# nowhere), spawn (the TERM to the pid also starts a new process in the
+# worktree, whose pid goes to $T/spawned), moved (after the TERM, lsof shows
+# the pid with its cwd outside the worktree; the TERM goes nowhere). Each git
+# call goes to $T/git.log.sig.
 rm_signal() {
   : > "$T/git.log.sig"
   GIT_LOG="$T/git.log.sig" python3 - "$here" "$@" "$T/sigs" > "$T/out" 2> "$T/err" <<'PY'
-import os, signal, sys
+import os, signal, subprocess, sys
 sys.path.insert(0, sys.argv[1])
 import launcher
 launcher.REMOVE_WAIT = 1
@@ -1081,7 +1183,23 @@ def kill(pid, sig):
         if mode == "changed-before-kill" and sig == signal.SIGTERM:
             changed[0] = True
             return None
+        if mode == "moved" and sig == signal.SIGTERM:
+            moved[0] = True
+            return None
+        if mode == "spawn" and sig == signal.SIGTERM:
+            # sh exits at once, so the new sleep has init as its parent.
+            out = subprocess.run(["sh", "-c", "sleep 300 < /dev/null > /dev/null 2>&1 & echo $!"],
+                                 cwd=wt, stdout=subprocess.PIPE, text=True).stdout
+            open(os.path.join(os.path.dirname(logfile), "spawned"), "w").write(out.strip())
     return real_kill(pid, sig)
+moved = [False]
+real_cwds = launcher.cwds
+def cwds():
+    where = real_cwds()
+    if moved[0] and target in where:
+        where[target] = "/elsewhere"
+    return where
+launcher.cwds = cwds
 real_processes = launcher.processes
 calls = [0]
 def processes():
@@ -1100,22 +1218,52 @@ sys.exit(rc)
 PY
   rc=$?
 }
-# A pid that runs another command at the signal is not ours: no signal.
+# A pid that runs another command at the signal is not ours: no signal. It
+# still has its cwd in the worktree, so remove keeps the worktree.
+# kept_not_stopped <pid>: exit 9, no git step, the worktree stays, the pid in
+# kept and not in stopped.
+kept_not_stopped() {
+  [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF "$1" "$T/err" && [ -d "$RM" ] \
+    && ! grep -sq '|worktree|remove|' "$T/git.log.sig" \
+    && rjson "o['removed'] is False and $1 in [k['pid'] for k in o['kept']] and $1 not in [s['pid'] for s in o['stopped']]"
+}
 reset_stub
 rm_wt rm-reuse1
 p1=$(orphan "$RM")
 echo "$p1 ??" > "$STUB_DIR/ps-tty"
 rm_signal changed-before-term "$RM" "$p1"
-check 'remove --stop-processes sends no TERM to a pid whose command changed after the scan' \
-  $([ "$rc" = 0 ] && [ ! -s "$T/sigs" ] && alive "$p1" && rjson "$p1 not in [k['pid'] for k in o['kept']]"; echo $?)
+check 'remove --stop-processes sends no TERM to a pid whose command changed after the scan, and keeps the worktree while it runs there (exit 9, the pid in kept)' \
+  $([ ! -s "$T/sigs" ] && alive "$p1" && kept_not_stopped "$p1"; echo $?)
 kill -9 "$p1" 2>/dev/null
 reset_stub
 rm_wt rm-reuse2
 p1=$(orphan "$RM" ignore-term)
 echo "$p1 ??" > "$STUB_DIR/ps-tty"
 rm_signal changed-before-kill "$RM" "$p1"
-check 'remove --stop-processes sends no KILL to a pid whose command changed after the TERM' \
-  $([ "$rc" = 0 ] && [ "$(cat "$T/sigs")" = 15 ] && alive "$p1"; echo $?)
+check 'remove --stop-processes sends no KILL to a pid whose command changed after the TERM, and keeps the worktree while it runs there (exit 9, the pid in kept)' \
+  $([ "$(cat "$T/sigs")" = 15 ] && alive "$p1" && kept_not_stopped "$p1"; echo $?)
+kill -9 "$p1" 2>/dev/null
+# A process that starts in the worktree during the stop keeps the worktree.
+reset_stub
+rm_wt rm-spawn
+p1=$(orphan "$RM")
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+rm -f "$T/spawned"
+rm_signal spawn "$RM" "$p1"
+p2=$(cat "$T/spawned" 2>/dev/null)
+[ -n "$p2" ] && echo "$p2" >> "$T/pids"
+r=1; [ -n "$p2" ] && alive "$p2" && ! alive "$p1" && kept_not_stopped "$p2" \
+  && rjson "[s['pid'] for s in o['stopped']] == [$p1]" && r=0
+check 'remove --stop-processes with a new process in the worktree after the stop exits 9, runs no git step, and lists the new pid in kept' $r
+[ -n "$p2" ] && kill -9 "$p2" 2>/dev/null
+# A pid whose cwd is now outside the worktree is stopped for remove.
+reset_stub
+rm_wt rm-moved
+p1=$(orphan "$RM" ignore-term)
+echo "$p1 ??" > "$STUB_DIR/ps-tty"
+rm_signal moved "$RM" "$p1"
+check 'remove --stop-processes lists a pid whose cwd is now outside the worktree in stopped, and removes the worktree' \
+  $([ "$rc" = 0 ] && [ ! -e "$RM" ] && rjson "[s['pid'] for s in o['stopped']] == [$p1] and o['kept'] == []"; echo $?)
 kill -9 "$p1" 2>/dev/null
 # A process that remove cannot stop: exit 9, no git step, the pid in kept.
 for mode in eperm survive; do

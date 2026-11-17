@@ -225,9 +225,9 @@ value is `waits on <ids>` or `blocked` until then.
 `board` reads the record alone and never writes it. `board --json` prints the
 board as one JSON object, described under "The board JSON" below. That object
 is the one source of the board's content. The text view of `board` and the
-board pane (`hooks/orch-board.tsx`) draw from it. The resume part (#156) is
-not built; it is to read the same object. Each value is made once, in the object,
-and a reader computes no value of its own.
+board pane (`hooks/orch-board.tsx`) draw from it. The resume of
+`resume-and-close.md` reads the board from the same object. Each value is
+made once, in the object, and a reader computes no value of its own.
 
 The text view prints, in this order:
 

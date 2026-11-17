@@ -157,7 +157,7 @@ STUB
 # ps and lsof stubs: they run the real tool, so the launcher sees each real
 # process. Files: ps-tty (`<pid> <tty>` lines: the tty that ps shows for that
 # pid), ps-extra (more ps lines, of processes that do not exist), lsof-extra
-# (more lsof lines).
+# (more lsof lines), lsof-fail (lsof fails).
 REAL_PS=$(command -v ps)
 REAL_LSOF=$(command -v lsof)
 export REAL_PS REAL_LSOF
@@ -171,6 +171,7 @@ exit 0
 STUB
 cat > "$T/bin/lsof" <<'STUB'
 #!/bin/bash
+[ -e "$STUB_DIR/lsof-fail" ] && { echo "lsof: WARNING: can't stat() file system" >&2; exit 1; }
 "$REAL_LSOF" "$@"
 cat "$STUB_DIR/lsof-extra" 2>/dev/null
 exit 0
@@ -802,6 +803,15 @@ r=1; [ "$rc" = 0 ] && [ "$(sed -n 1p "$STUB_DIR/osa.log")" = '-|exit|SESS-1|' ] 
   && [ "$(sed -n 2p "$STUB_DIR/osa.log")" = '-|stop|SESS-1|' ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
 check 'stop iterm2:<id> types /exit into the session first, then closes the tab' $r
 check 'the iTerm2 exit step types /exit with write text' $(grep -sqF 'write text "/exit"' "$STUB_DIR/osa-scripts"; echo $?)
+r=1; python3 - "$STUB_DIR/osa-scripts" <<'PY' && r=0
+import sys
+s = open(sys.argv[1]).read()
+esc = s.find("write text (ASCII character 27) newline NO")
+clr = s.find("write text (ASCII character 21) newline NO")
+ext = s.find('write text "/exit"')
+sys.exit(0 if -1 < esc < clr < ext else 1)
+PY
+check 'the iTerm2 exit step sends Escape, then Ctrl-U with no newline, then /exit' $r
 reset_stub
 echo '%7' > "$STUB_DIR/tmux-panes"
 echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
@@ -811,9 +821,10 @@ import sys
 s = [l.rstrip("\n") for l in open(sys.argv[1])]
 def at(line):
     return s.index(line) if line in s else -1
-sys.exit(0 if -1 < at("send-keys|-t|%7|-l|/exit|") < at("send-keys|-t|%7|Enter|") < at("kill-pane|-t|%7|") else 1)
+sys.exit(0 if -1 < at("send-keys|-t|%7|Escape|") < at("send-keys|-t|%7|C-u|") < at("send-keys|-t|%7|-l|/exit|")
+         < at("send-keys|-t|%7|Enter|") < at("kill-pane|-t|%7|") else 1)
 PY
-check 'stop tmux:<pane> sends /exit literally, then Enter, then kills the pane' $r
+check 'stop tmux:<pane> sends Escape, then C-u, then /exit literally, then Enter, then kills the pane' $r
 # A claude on the tab's tty that does not end: one stderr line, the tab still closes.
 reset_stub
 echo '%7' > "$STUB_DIR/tmux-panes"
@@ -834,36 +845,55 @@ check 'a claude that did not end in time: one stderr line, exit 0, and the pane 
 # -- find ------------------------------------------------------------------
 reset_stub
 WTREAL=$(cd "$WT" && pwd -P)
-printf '%%7 /dev/ttys901\n%%8 /dev/ttys902\n%%9 /dev/ttys903\n%%10 /dev/ttys904\n' > "$STUB_DIR/tmux-list-panes"
+printf '%%7 /dev/ttys901\n%%8 /dev/ttys902\n%%9 /dev/ttys903\n%%10 /dev/ttys904\n%%11 /dev/ttys906\n%%12 /dev/ttys907\n%%13 /dev/ttys908\n' > "$STUB_DIR/tmux-list-panes"
 cat > "$STUB_DIR/ps-extra" <<PS
 900001 1 ttys901 claude --name a --model opus
 900002 1 ttys902 /usr/local/bin/claude --resume x --name a-2 --model opus
 900003 1 ttys903 vim --name a
 900004 1 ttys904 claude --name zz-other --model opus
 900005 1 ttys905 claude --name a --model opus
+900006 1 ttys906 node /opt/lib/node_modules/@anthropic-ai/claude-code/cli.js --name nn --model opus
+900007 1 ttys907 node /usr/local/bin/claude --name nb --model opus
+900008 1 ttys908 node /srv/app.js --name nx --model opus
 PS
 printf 'p900002\nfcwd\nn%s\np900003\nfcwd\nn%s\np900004\nfcwd\nn%s-x\n' "$WTREAL" "$WTREAL" "$WTREAL" > "$STUB_DIR/lsof-extra"
 TMUX=/tmp/t,1,0 run find a
-check 'find a on tmux prints only the pane of the claude with --name a, not a-2' \
-  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%7' ]; echo $?)
+check 'find a on tmux prints only the pane of the claude with --name a, not a-2, and the match kind name' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%7 name' ]; echo $?)
 TMUX=/tmp/t,1,0 run find a-2
 check 'find a-2 on tmux prints only the pane of the claude with --name a-2' \
-  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%8' ]; echo $?)
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%8 name' ]; echo $?)
+TMUX=/tmp/t,1,0 run find a-2 --worktree "$WT"
+check 'find with a match by name and by cwd prints the kind name' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%8 name' ]; echo $?)
+TMUX=/tmp/t,1,0 run find nn
+check 'find matches an npm claude: node with the script @anthropic-ai/claude-code/cli.js' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%11 name' ]; echo $?)
+TMUX=/tmp/t,1,0 run find nb
+check 'find matches node with a script path that ends in /claude' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%12 name' ]; echo $?)
+TMUX=/tmp/t,1,0 run find nx
+check 'find does not match node with another script' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
 TMUX=/tmp/t,1,0 run find zz
 check 'find with no match prints no line and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
 TMUX=/tmp/t,1,0 run find zz --worktree "$WT"
-check 'find --worktree matches a claude whose cwd is the worktree, not another program, not a longer path' \
-  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%8' ]; echo $?)
+check 'find --worktree matches a claude whose cwd is the worktree, not another program, not a longer path; the kind is cwd' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'tmux:%8 cwd' ]; echo $?)
 check 'find on tmux lists the panes with list-panes -a' \
   $(grep -sqF 'list-panes|-a|-F|#{pane_id} #{pane_tty}|' "$STUB_DIR/tmux.log"; echo $?)
 printf 'S-1 /dev/ttys901\nS-2 /dev/ttys902\nS-3 /dev/ttys903\n' > "$STUB_DIR/osa-ttys"
 TERM_PROGRAM=iTerm.app run find a
 check 'find a on iTerm2 prints only the session of the claude with --name a' \
-  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'iterm2:S-1' ]; echo $?)
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'iterm2:S-1 name' ]; echo $?)
 TERM_PROGRAM=iTerm.app run find nobody --worktree "$WT"
-check 'find --worktree on iTerm2 matches by the cwd' $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'iterm2:S-2' ]; echo $?)
+check 'find --worktree on iTerm2 matches by the cwd' $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'iterm2:S-2 cwd' ]; echo $?)
 check 'find on iTerm2 reads the unique id and the tty of each session' \
   $(grep -sq 'unique id of s' "$STUB_DIR/osa-script" && grep -sq 'tty of s' "$STUB_DIR/osa-script" && ! grep -sq 'name of s' "$STUB_DIR/osa-script"; echo $?)
+: > "$STUB_DIR/lsof-fail"
+TMUX=/tmp/t,1,0 run find zz --worktree "$WT"
+check 'find --worktree with a failed lsof exits 6 with one line and prints no handle' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq lsof "$T/err" && [ ! -s "$T/out" ]; echo $?)
+rm -f "$STUB_DIR/lsof-fail"
 rm -f "$STUB_DIR/tmux-list-panes"
 TMUX=/tmp/t,1,0 run find a
 check 'find with no tmux server prints no line and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
@@ -979,9 +1009,13 @@ rm_wt rm-proc
 p1=$(orphan "$RM")
 echo "$p1 ??" > "$STUB_DIR/ps-tty"
 run remove "$RM"
+r=1; [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF "$p1" "$T/err" && [ -d "$RM" ] && alive "$p1" \
+  && rjson "o['removed'] is False and o['stopped'] == [] and [(k['pid'], k['tty']) for k in o['kept']] == [($p1, None)]" && r=0
+check 'remove with no flag and a no-tty process in the worktree (a GUI editor) exits 9, stops nothing, and lists it in kept' $r
+run remove "$RM" --stop-processes
 r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && ! alive "$p1" \
-  && rjson "o['removed'] is True and [s['pid'] for s in o['stopped']] == [$p1] and 'sleep' in o['stopped'][0]['command']" && r=0
-check 'remove stops a process with no terminal in the worktree, names it, then removes the worktree' $r
+  && rjson "o['removed'] is True and o['kept'] == [] and [s['pid'] for s in o['stopped']] == [$p1] and 'sleep' in o['stopped'][0]['command']" && r=0
+check 'remove --stop-processes stops a process with no terminal in the worktree, names it, then removes the worktree' $r
 reset_stub
 rm_wt rm-kill
 p1=$(orphan "$RM" ignore-term)
@@ -991,9 +1025,9 @@ import sys
 sys.path.insert(0, sys.argv[1])
 import launcher
 launcher.REMOVE_WAIT = 1
-sys.exit(launcher.main(["remove", sys.argv[2]]))
+sys.exit(launcher.main(["remove", sys.argv[2], "--stop-processes"]))
 PY
-check 'remove sends KILL to a process that outlives TERM' \
+check 'remove --stop-processes sends KILL to a process that outlives TERM' \
   $([ "$r" = 0 ] && ! alive "$p1" && [ ! -e "$RM" ] && rjson "[s['pid'] for s in o['stopped']] == [$p1]"; echo $?)
 
 reset_stub
@@ -1001,11 +1035,11 @@ rm_wt rm-tty
 p1=$(orphan "$RM")
 p2=$(orphan "$RM")
 printf '%s ttys950\n%s ??\n' "$p1" "$p2" > "$STUB_DIR/ps-tty"
-run remove "$RM"
+run remove "$RM" --stop-processes
 r=1; [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && [ -d "$RM" ] && alive "$p1" && alive "$p2" \
   && grep -sqF "$p1" "$T/err" && ! grep -sqF "$p2" "$T/err" \
   && rjson "o['removed'] is False and o['stopped'] == [] and sorted((k['pid'], k['tty'] or '') for k in o['kept']) == sorted([($p1, 'ttys950'), ($p2, '')])" && r=0
-check 'remove with a terminal process in the worktree exits 9, stops nothing, keeps both processes, and the line names only the terminal one' $r
+check 'remove --stop-processes with a terminal process in the worktree exits 9, stops nothing, keeps both processes, and the line names only the terminal one' $r
 kill "$p1" "$p2" 2>/dev/null
 
 reset_stub
@@ -1013,18 +1047,25 @@ rm_wt rm-keep
 echo n > "$RM/new.txt"
 p1=$(orphan "$RM")
 echo "$p1 ??" > "$STUB_DIR/ps-tty"
-run remove "$RM"
+run remove "$RM" --stop-processes
 r=1; [ "$rc" = 9 ] && [ -d "$RM" ] && alive "$p1" && ! grep -sqF "$p1" "$T/err" \
   && rjson "o['stopped'] == [] and [(k['pid'], k['tty']) for k in o['kept']] == [($p1, None)]" && r=0
-check 'a refused worktree (an untracked file) lists a no-tty process in kept, with tty null, and does not stop it' $r
+check 'remove --stop-processes on a refused worktree (an untracked file) lists a no-tty process in kept, with tty null, and does not stop it' $r
 kill "$p1" 2>/dev/null
 
 reset_stub
 rm_wt rm-anc
-(cd "$RM/" && GIT_LOG="$T/git.log" python3 "$L" remove "$RM" > "$T/out" 2> "$T/err")
+(cd "$RM/" && GIT_LOG="$T/git.log" python3 "$L" remove "$RM" --stop-processes > "$T/out" 2> "$T/err")
 rc=$?
 r=1; [ "$rc" = 9 ] && [ "$(lines "$T/err")" = 1 ] && [ -d "$RM" ] && rjson 'o["removed"] is False and len(o["kept"]) >= 1' && r=0
-check 'remove run from inside the worktree (its own or an ancestor cwd) exits 9 and keeps it' $r
+check 'remove --stop-processes run from inside the worktree (its own or an ancestor cwd) exits 9 and keeps it' $r
+
+rm_wt rm-lsof
+: > "$STUB_DIR/lsof-fail"
+run remove "$RM"
+r=1; [ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq lsof "$T/err" && [ -d "$RM" ] && r=0
+check 'remove with a failed lsof exits 6 with one line and keeps the worktree' $r
+rm -f "$STUB_DIR/lsof-fail"
 
 rm_wt rm-br
 run remove "$RM" --delete-branch

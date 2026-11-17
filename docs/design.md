@@ -9583,7 +9583,7 @@ Deliberately different:
      The mod's 22 tests and `test-crew-orch.sh` pass. No session has opened
      the pane yet.
 
-NNN. **Python 3.9 for every script — 2026-11-16.** Issue 162. On macOS,
+144. **Python 3.9 for every script — 2026-11-16.** Issue 162. On macOS,
      `/usr/bin/python3` is 3.9.6. Four scripts failed there at import:
      `spend.py`, `crew-stats.py`, `crew-record.py` and the hook
      `pre-compact.py`. Each annotates `X | None` in a function signature,

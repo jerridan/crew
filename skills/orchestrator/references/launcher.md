@@ -325,8 +325,8 @@ launcher.py remove <worktree> [--delete-branch] [--stop-processes]
 ```
 
 `remove` removes a worktree. With `--stop-processes`, it first stops what
-the implementer left running in it. It never forces a step. It has no force
-flag. Stop the implementer's tab with `stop` first: a `claude` in a tab has
+the implementer left running in it. It never forces a step that can lose
+work. It has no force flag. Stop the implementer's tab with `stop` first: a `claude` in a tab has
 its working directory in the worktree, so `remove` refuses while it runs.
 
 1. It finds each process whose working directory is the real worktree path
@@ -365,11 +365,22 @@ its working directory in the worktree, so `remove` refuses while it runs.
    - A failed `ps` or `lsof` in this step exits 6. `remove` runs no git
      step.
 4. It runs `git worktree remove <path>`, with no force.
-5. With `--delete-branch`, it deletes the branch that the worktree had
-   checked out, with `git branch -D`.
+5. With `--delete-branch`, it finds the commits of the branch that the
+   worktree had checked out and that no other ref holds: no other local
+   branch, no remote-tracking branch and no tag. It runs
+   `git rev-list refs/heads/<branch> --not --exclude=<branch> --branches --remotes --tags`.
+   - When it finds one or more such commits, it keeps the branch. The
+     `branch_only_commits` field lists their shas, and one stderr line names
+     the branch and the count. The worktree stays removed, and `remove`
+     exits 0. Push the branch or merge the commits, then delete the branch
+     yourself.
+   - When it finds none, it deletes the branch with `git branch -D`. Each
+     commit is on another ref, so the delete loses nothing. `git branch -d`
+     refuses a branch after a rebase merge, because the merged commits have
+     other shas.
 
 **The output.** Stdout carries one line: one JSON object with exactly these
-seven fields. A refusal prints it too.
+eight fields. A refusal prints it too.
 
 | Field | Value |
 |---|---|
@@ -380,13 +391,16 @@ seven fields. A refusal prints it too.
 | `changed` | each line of `git status --porcelain`, unchanged |
 | `branch` | the branch that the worktree had checked out, or `null` when its `HEAD` was detached |
 | `branch_deleted` | `true` when `--delete-branch` deleted the branch |
+| `branch_only_commits` | with `--delete-branch`, the sha of each commit of the branch that no other ref holds. When it is not empty, the branch stays. An empty list without `--delete-branch` or before step 5 |
 
 A refusal exits 9, and one line on stderr names each reason. A refusal in
 step 2 names only the processes that caused it, not each process in `kept`.
 Remove each reason, then run `remove` again. A path that is not the top
 level of a linked worktree exits 2: a missing path, a plain directory, or the
-main worktree. A failed git step exits 5. When `git worktree remove` or `git
-branch -D` fails, the stdout line still lists what `stopped` holds.
+main worktree. A failed git step exits 5. When `git worktree remove`, `git
+rev-list` or `git branch -D` fails, the stdout line still lists what
+`stopped` holds. A branch that step 5 keeps is not a failure: `remove` exits
+0, and `branch_deleted` is `false`.
 
 ## Exit codes
 

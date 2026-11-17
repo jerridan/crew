@@ -71,9 +71,12 @@ adds to the same record. Work arrives in one of four forms:
 | A milestone, a project, or another ticket list | Read the list where it lives, such as Linear or GitHub issues. Then do as for a group of tickets. |
 | One large ticket | Split it, as below. Its parts are one group. |
 
-Write each item with `item add` and each group with `group add`. Write the
-plan, and each later change to it, with `plan change` and its reason. Work
-that arrives later is a plan change too.
+Write each item with `item add` and each group with `group add`. Give each
+ticket its link with `--ticket-url`: the issue or Linear URL, or the blob URL
+of the ticket file on the default branch for a ticket in a repo file. The
+board's ticket link reads it. Write the plan, and each later change to it,
+with `plan change` and its reason. Work that arrives later is a plan change
+too.
 
 ## Split and start
 
@@ -82,43 +85,28 @@ Create each sub-ticket where the tickets live: Linear, GitHub issues, or a
 ticket file in the repo. Each sub-ticket follows the manager rule. Then start
 the items.
 
-Only three things wait on the principal before a split or a launch:
+Only two things wait on the principal before a split or a launch:
 
 - a gate that the principal named for this session;
 - the one `Checkouts` question of "Launch an implementer". Only the items of
-  that repo wait for the answer;
-- the one ask for uncovered actions of "The authority at the start". The
-  launch goes on, and only those actions wait for the answer.
+  that repo wait for the answer.
 
-## The authority at the start
+## The authority
 
-The allow rules are the authority. Never ask the principal to confirm an
-action that an allow rule covers: mark a PR ready, push, rebase, force push a
-feature branch with a lease, reply on a PR, or merge.
+The allow rules are the authority. Ask the principal nothing about an action
+before a start, and list or check no action at the start. Never ask the
+principal to confirm an action: mark a PR ready, push, rebase, force push a
+feature branch with a lease, reply on a PR, merge, or close an issue.
 
-At the start of a piece of work, before its first implementer starts:
+The only ask about an action is a gate that the principal named for this
+session.
 
-1. List the outward actions that the work implies. Examples: mark ready,
-   push, force push with a lease after a rebase, reply on a PR, merge, close
-   an issue, start a paid run. Include your own actions, such as the merge.
-2. Check each action against the allow rules of the sessions that take it:
-   your own, and the implementer's, which starts in a worktree of the item's
-   repo.
-3. Ask the principal one time, for the whole set of actions that no rule
-   covers. Put the ask in the inbox first ("Questions and the inbox").
+When a permission check refuses an action, yours or an implementer's, put a
+notice in the inbox at once, with the action and the item ("Questions and the
+inbox"). The work that does not need the action goes on.
 
-The only other ask about an action is a gate that the principal named.
-
-Never tell an implementer that it can take an action that its permission
-check then refuses. Until the principal answers, the goal message names each
-uncovered action as one the implementer does not take.
-
-When the principal says yes to an uncovered action, do one of two things:
-
-- Take the action yourself, when you can and your own allow rules cover it.
-  An example is to close an issue.
-- Else the principal adds the allow rule. Tell the implementer that it can
-  take the action only after its allow rule is present.
+Never tell an implementer that an action is done or permitted before it is
+("Message discipline", rule 2).
 
 ## Concurrency
 
@@ -141,13 +129,12 @@ ends ("After the merge").
 
 ## Launch an implementer
 
-Launch the next item when all four hold:
+Launch the next item when all three hold:
 
 - its intake is done: the ticket or the sub-ticket exists;
 - `pace.slots.busy` is below `pace.slots.max`;
 - `pace.mode` lets a new implementer start (`usage.md`'s "The slow-down
-  rule");
-- "The authority at the start" is done for its piece of work.
+  rule").
 
 An item in a group can start before the items before it merge. The group order
 decides only the merge.
@@ -222,8 +209,9 @@ The rules for the run:
   in the line.
 - **A GitHub event.** Send one line when an approval, a review, or a merge
   queue event needs you.
-- **Uncovered actions.** Name each action that no allow rule covers, and say
-  that the implementer does not take it.
+- **A refused action.** When a permission check refuses an action, send
+  one line that names the action and the item, and go on with the work that
+  does not need it.
 - **Review threads.** Reply in each review thread with your fix or your
   decline, then resolve that thread. The command is in
   `skills/review/references/github-review.md`'s "The resolve command".

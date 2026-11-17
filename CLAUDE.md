@@ -209,7 +209,7 @@ Each reference owns one subject and is canonical for it:
 - `skills/orchestrator/references/resume-and-close.md` — the resume of an
   orchestrator, the close of an item and the close of a run.
 - `skills/orchestrator/SKILL.md` — the orchestrator's own rules: the manager
-  rule, the authority at the start, the goal message, the inbox rule, the
+  rule, the authority, the goal message, the inbox rule, the
   merge procedure and its `Merge` section, and the concurrency number.
 
 A rule lives in exactly one file. Point at that file from anywhere else. A

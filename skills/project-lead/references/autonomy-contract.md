@@ -22,7 +22,7 @@ file names the human as the only principal.
   transcript, so the record is the only place it can learn who to answer, and
   the pane it would otherwise fall back to is the unwatched one.
 
-When `run.orchestrator` is set, `SKILL.md`'s "Report to an orchestrator" says
+When `run.orchestrator` is set, `orchestrator-report.md` says
 what you write before you send the question.
 
 `SendMessage`'s own contract says to copy an incoming `from` into `to`, and a

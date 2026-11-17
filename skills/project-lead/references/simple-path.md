@@ -452,5 +452,5 @@ adjudication, the grouping, the patch and the reply.
 
 The skill `crew:delivered-window` owns the session after the hand-over, on
 every path: the watch on the PR, every message, the patch rounds, the
-go-ahead gate and the ship word. "End the run" invokes it, and `SKILL.md`'s
-"Take the goal" invokes it on a resume.
+go-ahead gate and the ship word. "End the run" invokes it, and `resume.md`
+invokes it on a resume.

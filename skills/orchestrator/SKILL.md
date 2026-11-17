@@ -189,7 +189,7 @@ The goal message carries:
 - the charter line `Gate: off`;
 - the line `PR: ready`;
 - the line `Orchestrator: <your name>, item <id>`
-  (`skills/project-lead/SKILL.md`'s "Report to an orchestrator");
+  (`skills/project-lead/references/orchestrator-report.md`);
 - the line `Usage limit: <pct>` (`usage.md`'s "The limit");
 - the rules for the run, below.
 

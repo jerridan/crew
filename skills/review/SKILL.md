@@ -412,7 +412,7 @@ the record.
 ## A resume
 
 `--resume <record slug>` reads `run.kind`, and re-enters
-`crew:delivered-window` as `<project-lead-dir>/SKILL.md`'s "Take the goal"
+`crew:delivered-window` as `<project-lead-dir>/references/resume.md`
 does for a delivered run. `skeptical-review.md`'s "Resume in the delivered
 window" owns the rest. Its entries 1a and 7 hold the review-run case. Entry
 1a says when an accepted line with no package is complete: it carries its

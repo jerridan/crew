@@ -9381,7 +9381,7 @@ Deliberately different:
      The seeded test passes. One live probe ran on iTerm2 3.7.7 and on
      tmux, with a stub in place of `claude`. It started two tabs into one
      new group, focused them, stopped them and kept the worktrees. Later,
-     the Remote Control default held on real sessions (§15.144). No crew run
+     the Remote Control default held on real sessions (§15.145). No crew run
      has used the launcher.
 
 141. **The plan usage figures and the slow-down of the orchestrator —
@@ -9605,7 +9605,7 @@ Deliberately different:
      and exits 0. `crew-record.py init` and `run state` write a new record,
      and the hook exits 0 on an empty payload.
 
-144. **The resume of an orchestrator, and the close-out — 2026-11-16.**
+145. **The resume of an orchestrator, and the close-out — 2026-11-16.**
      Issue 156, part 6 of issue 150. `skills/orchestrator/references/
      resume-and-close.md` owns three procedures: the resume after a
      compaction, a reopened session or a restart of the machine; the close

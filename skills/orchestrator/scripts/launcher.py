@@ -16,7 +16,7 @@ usage:
   launcher.py find <session-name> [--worktree <path>]
   launcher.py focus <handle>
   launcher.py stop <handle>
-  launcher.py remove <worktree> [--delete-branch]
+  launcher.py remove <worktree> [--delete-branch] [--stop-processes]
 
 skills/orchestrator/references/launcher.md owns the arguments, the start
 output and the exit codes. This file uses the standard library only. The
@@ -46,6 +46,8 @@ HELPER_MARGIN = 20
 STOP_WAIT = 15
 # remove waits this many seconds after TERM before it sends KILL.
 REMOVE_WAIT = 10
+# stop waits this many seconds after Escape and after Ctrl-U.
+KEY_WAIT = 0.5
 
 START_USAGE = (
     "usage: launcher.py start --name <session-name> [--model <model>] "
@@ -130,13 +132,19 @@ OSA_TTYS = """on run argv
 end run
 """
 
-# Type /exit into the session. Return its tty, or "gone".
+# Send Escape, then Ctrl-U, then type /exit into the session. Escape rejects a
+# permission dialog or interrupts a turn; Ctrl-U clears the input line. Return
+# its tty, or "gone". stop puts KEY_WAIT in place of {pause}.
 OSA_EXIT = """on run argv
   tell application "iTerm2"
     repeat with w in windows
       repeat with t in tabs of w
         repeat with s in sessions of t
           if unique id of s is item 2 of argv then
+            tell s to write text (ASCII character 27) newline NO
+            delay {pause}
+            tell s to write text (ASCII character 21) newline NO
+            delay {pause}
             tell s to write text "/exit"
             return tty of s
           end if
@@ -290,9 +298,10 @@ def parse(argv):
         h.usage_line = "usage: launcher.py %s <handle>" % verb
         h.add_argument("handle")
     m = sub.add_parser("remove", add_help=False)
-    m.usage_line = "usage: launcher.py remove <worktree> [--delete-branch]"
+    m.usage_line = "usage: launcher.py remove <worktree> [--delete-branch] [--stop-processes]"
     m.add_argument("worktree")
     m.add_argument("--delete-branch", action="store_true")
+    m.add_argument("--stop-processes", action="store_true")
     args = top.parse_args(argv)
     if args.cmd is None:
         raise Fail(USAGE, "launcher: no subcommand; " + USAGE_LINE)
@@ -703,7 +712,8 @@ def resume(a):
     if tabs:
         raise Fail(
             OPEN_TAB,
-            "launcher: the session %s is open in %s; focus that tab, or stop it first" % (a.name, ", ".join(tabs)),
+            "launcher: the session %s is open in %s; focus that tab, or stop it first"
+            % (a.name, ", ".join(h for h, _ in tabs)),
         )
     repo = a.repo
     if not repo:
@@ -742,8 +752,14 @@ def processes():
 
 
 def cwds():
-    """The cwd of each process lsof can read, by pid."""
-    _, out, _ = run(["lsof", "-n", "-P", "-w", "-d", "cwd", "-F", "pn"])
+    """The cwd of each process lsof can read, by pid.
+
+    A failed lsof is an error, never an empty answer: an empty answer would
+    let remove and find see no process in a worktree.
+    """
+    rc, out, err = run(["lsof", "-n", "-P", "-w", "-d", "cwd", "-F", "pn"])
+    if rc != 0:
+        raise Fail(TERMINAL_STEP, "launcher: lsof failed: %s" % (one_line(err) or "exit %d" % rc))
     found = {}
     pid = None
     for line in out.splitlines():
@@ -759,10 +775,17 @@ def norm_tty(tty):
 
 
 def is_claude(argv):
+    """A claude process: the program claude or $CREW_LAUNCHER_CLAUDE, or node
+    that runs an npm install of claude."""
     if not argv:
         return False
     names = {"claude", os.path.basename(claude_program())}
-    return os.path.basename(argv[0]) in names
+    if os.path.basename(argv[0]) in names:
+        return True
+    if os.path.basename(argv[0]) == "node" and len(argv) > 1:
+        script = argv[1]
+        return script.endswith("/claude") or script.endswith("@anthropic-ai/claude-code/cli.js")
+    return False
 
 
 def has_name(argv, name):
@@ -800,7 +823,10 @@ def terminal_ttys(terminal):
 
 
 def find_tabs(name, worktree, terminal):
-    """The handle of each open tab or pane that holds this implementer."""
+    """[(handle, how)] of each open tab or pane that holds this implementer.
+
+    how is "name" when the claude has --name <name>, else "cwd".
+    """
     tabs = terminal_ttys(terminal)
     if not tabs:
         return []
@@ -808,20 +834,19 @@ def find_tabs(name, worktree, terminal):
     where = cwds() if worktree else {}
     found = []
     for handle, tty in tabs:
-        for p in procs.values():
-            if p["tty"] != tty or not is_claude(p["argv"]):
-                continue
-            if has_name(p["argv"], name) or (worktree and where.get(p["pid"]) == worktree):
-                found.append(handle)
-                break
+        mine = [p for p in procs.values() if p["tty"] == tty and is_claude(p["argv"])]
+        if any(has_name(p["argv"], name) for p in mine):
+            found.append((handle, "name"))
+        elif worktree and any(where.get(p["pid"]) == worktree for p in mine):
+            found.append((handle, "cwd"))
     return found
 
 
 def find(a):
     terminal = detect_terminal()
     worktree = os.path.realpath(os.path.expanduser(a.worktree)) if a.worktree else None
-    for handle in find_tabs(a.session_name, worktree, terminal):
-        print(handle)
+    for handle, how in find_tabs(a.session_name, worktree, terminal):
+        print("%s %s" % (handle, how))
     return OK
 
 
@@ -928,11 +953,13 @@ def stop(a):
     """Type /exit, wait for claude to end, then close the tab or kill the pane.
 
     /exit ends the session with the reason prompt_input_exit, so a tool that
-    restores closed sessions does not start it again.
+    restores closed sessions does not start it again. Escape and Ctrl-U come
+    first: Enter on a permission dialog would approve it, and text in the
+    input line would go to the model with /exit.
     """
     kind, ref = split_handle(a.handle)
     if kind == "iterm2":
-        tty = iterm_script(OSA_EXIT, "exit", ref)
+        tty = iterm_script(OSA_EXIT.replace("{pause}", str(KEY_WAIT)), "exit", ref)
         if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
             return OK
@@ -943,6 +970,10 @@ def stop(a):
     if tty is None:
         print("launcher: %s was already gone" % a.handle)
         return OK
+    tmux(["send-keys", "-t", ref, "Escape"])
+    time.sleep(KEY_WAIT)
+    tmux(["send-keys", "-t", ref, "C-u"])
+    time.sleep(KEY_WAIT)
     tmux(["send-keys", "-t", ref, "-l", "/exit"])
     tmux(["send-keys", "-t", ref, "Enter"])
     wait_claude_gone(tty, a.handle)
@@ -964,7 +995,11 @@ def linked_worktree(path):
     worktree: a missing path, a plain directory, or the main worktree.
     """
     def bad(why):
-        raise Fail(USAGE, "launcher: %s is not a linked worktree (%s); usage: launcher.py remove <worktree> [--delete-branch]" % (path, why))
+        raise Fail(
+            USAGE,
+            "launcher: %s is not a linked worktree (%s); usage: launcher.py remove <worktree> "
+            "[--delete-branch] [--stop-processes]" % (path, why),
+        )
 
     if not os.path.isdir(path):
         bad("no such directory")
@@ -1030,8 +1065,13 @@ def remove(a):
         for pid in sorted(where)
         if pid in procs and inside(where[pid], worktree) and procs[pid]["ppid"] != os.getpid()
     ]
-    # A process with a terminal, or the launcher and its ancestors, makes remove refuse.
-    blockers = [p for p in in_tree if p["tty"] is not None or p["pid"] in mine]
+    # A process with a terminal, or the launcher and its ancestors, makes remove
+    # refuse. Without --stop-processes, every process in the worktree does: a
+    # GUI editor has no terminal either, and nothing tells it apart from a
+    # server that the implementer left.
+    blockers = [
+        p for p in in_tree if not a.stop_processes or p["tty"] is not None or p["pid"] in mine
+    ]
     refused = bool(changed or blockers)
 
     result = {
@@ -1049,10 +1089,12 @@ def remove(a):
         if changed:
             why.append("%d changed or untracked files" % len(changed))
         if blockers:
-            why.append(
-                "%d processes with a terminal or that run this command (pids %s)"
-                % (len(blockers), ", ".join(str(p["pid"]) for p in blockers))
+            what = (
+                "processes with a terminal or that run this command"
+                if a.stop_processes
+                else "processes in the worktree; add --stop-processes to stop the ones with no terminal"
             )
+            why.append("%d %s (pids %s)" % (len(blockers), what, ", ".join(str(p["pid"]) for p in blockers)))
         print(json.dumps(result))
         raise Fail(REFUSED, "launcher: kept the worktree %s: %s" % (worktree, "; ".join(why)))
 

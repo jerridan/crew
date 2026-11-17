@@ -39,9 +39,14 @@ Do these steps in this order.
 4. **Each implementer.** Do this for each item that has a
    `launch.session_name` and a stage before `shipped`:
    - **Alive.** `ListAgents` shows its name. Run `launcher.py find <name>
-     --worktree <launch.worktree>`. When the handle differs from
-     `launch.tab`, write it with `item <id> set launch.tab`. A restart of the
-     machine gives each iTerm2 tab a new id.
+     --worktree <launch.worktree>`. Its match is `name`. When the handle
+     differs from `launch.tab`, write it with `item <id> set launch.tab`. A
+     restart of the machine gives each iTerm2 tab a new id.
+   - **Alive, matched by `cwd` only.** The launcher did not start that
+     session, so it can run with another model, with Remote Control on, and
+     with no usage status line. `cc-restore` starts a session this way. Run
+     `launcher.py stop` on its handle, then do the step "Gone, and its
+     worktree exists".
    - **Gone, and its worktree exists.** Compute the settings value as
      SKILL.md's "Launch an implementer" says. Run `launcher.py resume` with
      the item's `launch` values: the name, the worktree, `session_id` when the
@@ -50,15 +55,22 @@ Do these steps in this order.
      worktree. Write its output with `item <id> set launch`. Exit 8 means that
      `find` saw the session open: treat it as alive.
    - **Gone, and its worktree is gone.** Nothing can resume it. Put a notice
-     with the item in the inbox (`inbox add notice --item <id>`), and leave the item as it is. The principal
-     decides.
+     with the item in the inbox (`inbox add notice --item <id>`), and leave
+     the item as it is. The principal decides.
    - **The rejoin message.** Send one message, with `told`, to each
      implementer that is alive or that you resumed. It says that the
-     orchestrator restarted. It tells the implementer to arm its background
-     tasks and watches again, because a restart ended them. It asks for its
-     ready line, its stage and each open question again. Send it to a resumed
-     implementer when `ListAgents` shows its name. A resumed tab can wait on
-     the trust dialog, as SKILL.md's "The goal message" says for a new tab.
+     orchestrator restarted. It asks for its ready line, its stage and each
+     open question again. The part about its background tasks and watches
+     depends on its process:
+     - Its process restarted: you resumed it, or its handle differs from
+       `launch.tab`. Tell it to arm its background tasks and watches again,
+       because the restart ended them.
+     - Any other live implementer kept its tasks. Tell it to arm only a
+       watch that it does not hold now.
+
+     Send it to a resumed implementer when `ListAgents` shows its name. A
+     resumed tab can wait on the trust dialog, as SKILL.md's "The goal
+     message" says for a new tab.
    - **No goal.** An item with a `launch` and an empty `told` never got its
      goal. Send the goal now, as SKILL.md's "The goal message" says. Never
      send a second goal to an item whose `told` holds one.
@@ -76,7 +88,8 @@ Do these steps in this order.
    implementer reports, such as a human approval. No scheduled job comes back
    after a restart, so a wait never lives only in a session.
 7. **The inbox.** Answer each open entry with `for: orchestrator` that is
-   yours, with `answer`, and send the answer with `told`. Name each open entry for the principal in one message.
+   yours, with `answer`, and send the answer with `told`. Name each open
+   entry for the principal in one message.
 
 ## The close of an item
 
@@ -93,11 +106,18 @@ also runs on the principal's word for an item that stops early: write
    the session with `/exit`, then closes the tab or the window. A tab that is
    already gone is not an error.
 3. **The worktree.** Run `launcher.py remove <launch.worktree>`. Add
-   `--delete-branch` only when the item's PR merged. `remove` stops each
-   process still in the worktree that has no terminal. When `remove` refuses,
-   it keeps the worktree and changes nothing. Put a notice in the inbox, with
-   `inbox add notice`, that names the item, the worktree, and each file and
-   process of the output. Never force a removal. The principal decides.
+   `--delete-branch` only when the item's PR merged. `launcher.md`'s
+   "remove" says when it refuses. When it refuses only for processes, and
+   each process in `kept` has `tty` `null`, read the `command` of each one:
+   - Each one is something that the implementer's work started, such as a
+     server, a watcher, a test runner or a database. Run `remove` again with
+     `--stop-processes`.
+   - Any other one, such as an app, an editor or a language server: keep the
+     worktree, and go to the notice below.
+
+   On each other refusal, put a notice in the inbox, with `inbox add
+   notice`, that names the item, the worktree, and each file and process of
+   the output. Never force a removal. The principal decides.
 4. **The ticket.** A GitHub issue closes through the `Closes` line of the PR.
    Check that it closed, and close it when it did not. Close a Linear ticket,
    or a ticket in a ticket file, as the standing instructions say. For an
@@ -119,10 +139,11 @@ The record keeps the item at `shipped` or `closed`, with its `launch` and
 The close of a run starts on the principal's word.
 
 1. **Each item.** Tell each item before `merged` to stop, with `told`: commit,
-   and start no new step. Then run "The close of an item" for each item. An
-   item that did not merge keeps its branch: run `remove` without
-   `--delete-branch`. A clean worktree with committed work is still removed,
-   because the branch keeps the work.
+   and start no new step. Write `stage <item> closed` for each item before
+   `merged`. Then run "The close of an item" for each item. An item that did
+   not merge keeps its branch: run `remove` without `--delete-branch`. A
+   clean worktree with committed work is still removed, because the branch
+   keeps the work.
 2. **Your watches and waits.** Stop the usage watch and each GitHub wait with
    `TaskStop`.
 3. **The record.** Write `pace.slots.busy` as 0. Write a last `plan change`

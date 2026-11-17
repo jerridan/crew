@@ -1,10 +1,11 @@
 # The launcher
 
 The orchestrator starts, resumes, finds, lists, focuses, stops and removes
-its implementers with `scripts/launcher.py` in this skill's directory. An implementer is a
-`crew:project-lead` session in its own git worktree. It waits for a goal that
-the orchestrator sends as a cross-session message. This file owns the
-subcommands, their arguments, the start output and the exit codes.
+its implementers with `scripts/launcher.py` in this skill's directory. An
+implementer is a `crew:project-lead` session in its own git worktree. It
+waits for a goal that the orchestrator sends as a cross-session message. This
+file owns the subcommands, their arguments, the start output and the exit
+codes.
 
 Run the script from the plugin with `python3 <skill dir>/scripts/launcher.py`.
 It needs Python 3.9 or newer and no package. On iTerm2 it runs
@@ -222,16 +223,26 @@ API is not available, it prints one line on stderr, no group line, and exits
 launcher.py find <session-name> [--worktree <path>]
 ```
 
-`find` prints one handle per line for each open tab or pane that holds this
+`find` prints one line for each open tab or pane that holds this
 implementer, and exits 0. With no such tab or pane, it prints no line. A tab
 or pane holds the implementer when a `claude` process on its tty has:
 
 - the two arguments `--name <session-name>`, next to each other, or
 - with `--worktree`, its working directory equal to the real worktree path.
 
+Each line is `<handle> <match>`. `<match>` is `name` when a `claude` process
+on the tty has `--name <session-name>`, and `cwd` when only the working
+directory matched. A session with no `--name` did not come from the
+launcher: `cc-restore` or a person started it.
+
 Each match is exact. `find a` never matches the session `a-2`, and a working
-directory below the worktree does not match. A `claude` process is one whose
-program name is `claude`, or the program name of `$CREW_LAUNCHER_CLAUDE`.
+directory below the worktree does not match. A `claude` process is one of
+these:
+
+- a process whose program name is `claude`, or the program name of
+  `$CREW_LAUNCHER_CLAUDE`;
+- `node` whose first argument, the script, ends in `/claude` or in
+  `@anthropic-ai/claude-code/cli.js`. That is an npm install of Claude Code.
 
 The launcher reads the tty of each tab and pane:
 
@@ -241,7 +252,8 @@ The launcher reads the tty of each tab and pane:
   server, `find` prints no line.
 
 It reads the processes with `ps` and their working directories with `lsof`.
-It never reads a tab title, because Claude Code changes the title of its tab.
+A failed `ps` or `lsof` exits 6. It never reads a tab title, because Claude
+Code changes the title of its tab.
 
 ## focus and stop
 
@@ -256,16 +268,27 @@ launcher.py stop <handle>
   activates iTerm2. `focus tmux:<pane>` selects the window that holds the
   pane. When a tmux client is attached, it switches that client to the
   window.
-- `stop` first ends the `claude` session in the tab. It types `/exit` and
-  Enter into the tab: `write text` on iTerm2, and `send-keys -l /exit` then
-  `send-keys Enter` on tmux. Then it waits up to 15 seconds until no
-  `claude` process has the tab's tty. When one is still there, one line on
-  stderr says so, and the stop continues.
+- `stop` first ends the `claude` session in the tab. It sends these keys to
+  the tab, in this order:
+  1. Escape. It rejects a permission dialog, and it interrupts a turn. Enter
+     on a permission dialog would approve the command.
+  2. Ctrl-U, half a second later. It clears the input line, so that text
+     already there does not go to the model with `/exit`.
+  3. `/exit` and Enter, half a second later.
+
+  On iTerm2, `write text` sends each key: Escape and Ctrl-U with `newline
+  NO`. On tmux, `send-keys` sends `Escape`, `C-u`, `-l /exit` and `Enter`.
+  Then `stop` waits up to 15 seconds until no `claude` process has the tab's
+  tty. When one is still there, one line on stderr says so, and the stop
+  continues.
 - Then `stop iterm2:<id>` closes the tab, and `stop tmux:<pane>` kills the
   pane, and its window closes with it. A tab or pane that closed when
   `claude` ended is not an error.
 - A tab or pane that is already gone before the stop prints one line on
   stdout and exits 0.
+
+**Limit: the keys.** The seeded test checks only the order of the keys. No
+run has shown how a live `claude` takes Escape, Ctrl-U and `/exit`.
 
 `/exit` makes Claude Code end the session with the reason
 `prompt_input_exit`. A tool that restores closed sessions, such as
@@ -280,32 +303,36 @@ On iTerm2, both run `osascript` and need no Python API.
 ## remove
 
 ```
-launcher.py remove <worktree> [--delete-branch]
+launcher.py remove <worktree> [--delete-branch] [--stop-processes]
 ```
 
-`remove` stops what the implementer left running in a worktree, and then
-removes the worktree. It never forces a step. It has no force flag. Stop the
-implementer's tab with `stop` first: a `claude` in a tab has a terminal, so
-`remove` refuses while it runs.
+`remove` removes a worktree. With `--stop-processes`, it first stops what
+the implementer left running in it. It never forces a step. It has no force
+flag. Stop the implementer's tab with `stop` first: a `claude` in a tab has
+its working directory in the worktree, so `remove` refuses while it runs.
 
 1. It finds each process whose working directory is the real worktree path
    or below it. It reads the processes with `ps` and their working
-   directories with `lsof`. It finds a process by its working directory
-   only. A process with its working directory outside the worktree, such as
-   a container or a server started from another directory, stays running.
-   The implementer stops that process itself.
+   directories with `lsof`. A failed `ps` or `lsof` exits 6. It finds a
+   process by its working directory only. A process with its working
+   directory outside the worktree, such as a container or a server started
+   from another directory, stays running. The implementer stops that
+   process itself.
 2. It refuses, and changes nothing, when one of these holds:
    - `git status --porcelain` in the worktree prints a line: a changed or
      untracked file. An ignored file does not count.
-   - A process in the worktree has a controlling terminal. That is a
-     person's shell or editor, or a live session in a tab. `remove` never
-     stops it.
+   - Without `--stop-processes`: a process is in the worktree. Nothing tells
+     a person's GUI editor or language server from a server that the
+     implementer left. Each has no terminal.
+   - With `--stop-processes`: a process in the worktree has a controlling
+     terminal. That is a person's shell or editor, or a live session in a
+     tab. `remove` never stops it.
    - The process that runs `remove`, or a process above it, has its working
      directory in the worktree.
-3. Else it sends `TERM` to each process in the worktree. Each has no
-   terminal: it is what the implementer's tools left running, such as a dev
-   server. It waits up to 10 seconds, and sends `KILL` to each process that
-   is still there.
+3. With `--stop-processes`, it sends `TERM` to each process in the worktree.
+   Each has no terminal. It waits up to 10 seconds, and sends `KILL` to each
+   process that is still there. `resume-and-close.md` says when to give the
+   flag.
 4. It runs `git worktree remove <path>`, with no force.
 5. With `--delete-branch`, it deletes the branch that the worktree had
    checked out, with `git branch -D`.
@@ -324,11 +351,11 @@ seven fields. A refusal prints it too.
 | `branch_deleted` | `true` when `--delete-branch` deleted the branch |
 
 A refusal exits 9, and one line on stderr names each reason. The line names
-only the processes that caused the refusal, not each process in `kept`. Remove each
-reason, then run `remove` again. A path that is not the top level of a linked
-worktree exits 2: a missing path, a plain directory, or the main worktree. A
-failed git step exits 5. When `git worktree remove` or `git branch -D`
-fails, the stdout line still lists what `stopped` holds.
+only the processes that caused the refusal, not each process in `kept`.
+Remove each reason, then run `remove` again. A path that is not the top
+level of a linked worktree exits 2: a missing path, a plain directory, or the
+main worktree. A failed git step exits 5. When `git worktree remove` or `git
+branch -D` fails, the stdout line still lists what `stopped` holds.
 
 ## Exit codes
 
@@ -342,13 +369,13 @@ check, the first in this order decides the exit: 2, 4, 3, 5, 8, 9, 6.
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal. The line names `$TERM_PROGRAM` and the supported terminals. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab. `resume`: a missing worktree, or no transcript and no `--session-id` |
-| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` failed |
+| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
-| 9 | `remove` refused: changed or untracked files, a process with a terminal, or the caller's own working directory in the worktree. Nothing changed |
+| 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), or the caller's own working directory in the worktree. Nothing changed |
 
 ## Test
 
 `bash scripts/test-launcher.sh` runs the seeded test with stub `tmux`,
-`osascript`, `uv`, `claude`, `ps` and `lsof`. It ends with `N of M checks passed` and exits
-0 when every check passes.
+`osascript`, `uv`, `claude`, `ps` and `lsof`. It ends with `N of M checks
+passed` and exits 0 when every check passes.

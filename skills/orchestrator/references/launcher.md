@@ -297,11 +297,17 @@ caller knows the session.
   On iTerm2, `write text` sends each key: Escape and Ctrl-U with `newline
   NO`. On tmux, `send-keys` sends `Escape`, `C-u`, `-l /exit` and `Enter`.
   Then `stop` waits up to 15 seconds until no `claude` process has the tab's
-  tty. When one is still there, one line on stderr says so, and the stop
-  continues.
+  tty. It reads the pid and the argv of each one. When one is still there,
+  one line on stderr says so, and the stop continues.
 - Then `stop iterm2:<id>` closes the tab, and `stop tmux:<pane>` kills the
   pane, and its window closes with it. A tab or pane that closed when
   `claude` ended is not an error.
+- After the close, `stop` waits up to 15 more seconds until each `claude`
+  pid that was still there is gone. A pid is gone when `ps` does not show
+  it, or shows it with another argv, because a new process can get the pid.
+  When one still runs at the end, one stderr line names each pid, and `stop`
+  exits 0. `stop` sends no signal to a process. So after `stop` returns, the
+  session no longer holds its worktree, and `remove` can run at once.
 - A tab or pane that is already gone before the stop prints one line on
   stdout and exits 0.
 
@@ -321,13 +327,15 @@ On iTerm2, both run `osascript` and need no Python API.
 ## remove
 
 ```
-launcher.py remove <worktree> [--delete-branch] [--stop-processes]
+launcher.py remove <worktree> [--delete-branch [--pr <number>]] [--stop-processes]
 ```
 
 `remove` removes a worktree. With `--stop-processes`, it first stops what
-the implementer left running in it. It never forces a step that can lose
-work. It has no force flag. Stop the implementer's tab with `stop` first: a `claude` in a tab has
-its working directory in the worktree, so `remove` refuses while it runs.
+the implementer left running in it. With `--delete-branch`, it then deletes
+each branch of the item that it can prove is kept elsewhere. It never forces
+a step that can lose work. It has no force flag. Stop the implementer's tab
+with `stop` first: a `claude` in a tab has its working directory in the
+worktree, so `remove` refuses while it runs.
 
 1. It finds each process whose working directory is the real worktree path
    or below it. It reads the processes with `ps` and their working
@@ -347,6 +355,29 @@ its working directory in the worktree, so `remove` refuses while it runs.
      tab. `remove` never stops it.
    - The process that runs `remove`, or a process above it, has its working
      directory in the worktree.
+   - The worktree has a lock that `remove` cannot prove dead. See "The
+     lock", below.
+
+   **An ending session.** When no file refuses, and each process that
+   refuses is a `claude` process with no terminal, `remove` reads the
+   processes again every half second, for up to 15 seconds. A session that
+   `/exit` is ending still has its working directory in the worktree. When
+   no process refuses any more, `remove` goes on. Otherwise it refuses, from
+   the last read. No other refusal waits.
+
+   **The lock.** `remove` reads the lock after that wait, from the `locked`
+   line of the worktree's block in `git worktree list --porcelain`. A lock
+   reason can name the pid of its owner, such as `claude session <id> (pid
+   <n> start <t>)`.
+   - No lock: no refusal.
+   - A reason that names exactly one pid, as the word `pid`, a space and 1
+     to 10 digits, where no process has that pid: the owner is dead. Step 4
+     unlocks the worktree.
+   - Any other lock refuses: a lock with no reason, a reason with no pid or
+     with more than one, or a pid that runs. A pid that another user owns
+     counts as running. A pid that the system cannot test, such as one too large, refuses
+     too. A new process with the owner's pid refuses, because `remove`
+     cannot prove the owner dead.
 3. With `--stop-processes`, it stops each process in the worktree. Each has
    no terminal. `resume-and-close.md` says when to give the flag.
    - Right before each signal, it reads `ps` and `lsof` again. It sends the
@@ -364,20 +395,57 @@ its working directory in the worktree, so `remove` refuses while it runs.
      exit 9 and runs no git step. The stderr line names each pid.
    - A failed `ps` or `lsof` in this step exits 6. `remove` runs no git
      step.
-4. It runs `git worktree remove <path>`, with no force.
-5. With `--delete-branch`, it finds the commits of the branch that the
-   worktree had checked out and that no other ref holds: no other local
-   branch, no remote-tracking branch and no tag. It runs
-   `git rev-list refs/heads/<branch> --not --exclude=<branch> --branches --remotes --tags`.
-   - When it finds one or more such commits, it keeps the branch. The
-     `branch_only_commits` field lists their shas, and one stderr line names
-     the branch and the count. The worktree stays removed, and `remove`
-     exits 0. Push the branch or merge the commits, then delete the branch
-     yourself.
-   - When it finds none, it deletes the branch with `git branch -D`. Each
-     commit is on another ref, so the delete loses nothing. `git branch -d`
-     refuses a branch after a rebase merge, because the merged commits have
-     other shas.
+4. With a dead lock owner, it tests the pid again. When a process has the
+   pid now, it refuses with exit 9 and unlocks nothing. Otherwise it runs
+   `git worktree unlock <path>`.
+5. It runs `git worktree remove <path>`, with no force.
+6. With `--delete-branch`, it deletes the branches of the item that it can
+   prove are kept: "The branches", below.
+
+**The branches.** Step 6 runs in this order.
+
+1. **The candidates.** Each name below, once, in this order:
+   1. the branch that the worktree had checked out;
+   2. `worktree-<basename of the worktree path>`, the branch of `start`;
+   3. each branch that a goal record of the worktree names: each
+      `deliverables[].branch` of its `state.json`, then each `branch` value
+      of the `worktrees.json` beside it. A goal record of the worktree is a
+      `<record-root>/*/state.json` whose `run.repo`, made real, is the real
+      worktree path, and whose `run.kind` is absent or not `review`. The
+      record root is `$CREW_RECORD_ROOT`, else `~/.claude/crew`. A record
+      file that cannot be read or parsed is skipped, with one stderr line
+      that names it.
+
+   A name is a candidate only when `refs/heads/<name>` exists. The default
+   branch is never a candidate: the branch that `refs/remotes/origin/HEAD`
+   names, else the one that `git ls-remote --symref origin HEAD` names.
+   When neither names one, `main` and `master` are never candidates, and one
+   stderr line says so.
+2. **The fetch.** `git fetch -q --no-prune origin`. A failed fetch is not an
+   error: one stderr line says so, and the proof uses the refs that exist.
+3. **The PR head.** With `--pr <number>`, `git ls-remote origin
+   refs/pull/<number>/head` gives a sha. When that commit is not in the
+   local object store, `remove` runs `git fetch -q origin
+   refs/pull/<number>/head`, and checks again with `git cat-file -e
+   <sha>^{commit}`. A sha that is then present is a keeper. Any failure
+   gives no keeper, and one stderr line says so.
+4. **The proof.** A candidate is proven kept when
+   `git rev-list refs/heads/<candidate> --not --remotes --tags [<PR sha>]`
+   prints nothing. The keepers are the remote-tracking refs, the tags and
+   the PR head. A local branch is never a keeper, so one candidate never
+   proves another.
+5. **The delete.** It reads `git worktree list --porcelain` again. It
+   deletes each proven candidate that no worktree has checked out, with `git
+   branch -D`. Each commit is on a keeper, so the delete loses nothing. `git
+   branch -d` is not enough: it refuses a branch after a rebase merge,
+   because the merged commits have other shas.
+
+Every other candidate stays. A candidate with commits that no keeper holds
+gets one stderr line that names it and the count. A candidate that another
+worktree has checked out stays, and that is not an error. A rebased branch
+that was then changed stays unproven, because `remove` compares commits,
+not patches. Push the branch or merge the commits, then delete the branch
+yourself.
 
 **The output.** Stdout carries one line: one JSON object with exactly these
 eight fields. A refusal prints it too.
@@ -390,17 +458,18 @@ eight fields. A refusal prints it too.
 | `kept` | one `{"pid", "tty", "command"}` object for each process that `remove` did not stop. On a refusal in step 2: each process in the worktree, because that refusal stops none. On a refusal in step 3: each process that the last read of step 3 found. On a failed `ps` or `lsof` in step 3: each process in the worktree, because `remove` cannot tell which ones stopped. `tty` is `null` for a process with no terminal. An empty list when `remove` removed the worktree |
 | `changed` | each line of `git status --porcelain`, unchanged |
 | `branch` | the branch that the worktree had checked out, or `null` when its `HEAD` was detached |
-| `branch_deleted` | `true` when `--delete-branch` deleted the branch |
-| `branch_only_commits` | with `--delete-branch`, the sha of each commit of the branch that no other ref holds. When it is not empty, the branch stays. An empty list without `--delete-branch` or before step 5 |
+| `branches` | one `{"name", "deleted", "unproven_commits", "checked_out"}` object for each candidate, in the order of "The candidates". `deleted` is `true` when step 6 deleted it. `unproven_commits` lists the sha of each commit that no keeper holds. `checked_out` is the real path of the worktree that has it checked out, or `null`. An empty list without `--delete-branch`, and before step 6 |
+| `lock` | `null` when the worktree has no lock. Else `{"reason", "pid", "unlocked"}`: the lock reason, `""` for no reason; the one pid that it names, or `null`; and `true` when step 4 unlocked the worktree |
 
 A refusal exits 9, and one line on stderr names each reason. A refusal in
 step 2 names only the processes that caused it, not each process in `kept`.
 Remove each reason, then run `remove` again. A path that is not the top
 level of a linked worktree exits 2: a missing path, a plain directory, or the
-main worktree. A failed git step exits 5. When `git worktree remove`, `git
-rev-list` or `git branch -D` fails, the stdout line still lists what
-`stopped` holds. A branch that step 5 keeps is not a failure: `remove` exits
-0, and `branch_deleted` is `false`.
+main worktree. `--pr` without `--delete-branch`, or a `--pr` value that is
+not a positive integer, exits 2. A failed git step exits 5: `git worktree
+unlock`, `git worktree remove`, `git rev-list` or `git branch -D`. The
+stdout line still prints, with what `stopped` and `branches` hold. A branch
+that step 6 keeps is not a failure: `remove` exits 0.
 
 ## Exit codes
 
@@ -416,20 +485,20 @@ a fixed order, and the first check that fails decides the exit:
   or 7. `stop` with `--name` or `--session-id`: 6 when `osascript` or `ps`
   fails in the target check.
 - `remove`: 2, 5 when `git status` fails. Then 6 when `ps` or `lsof` fails,
-  then 9 for a refusal in step 2. Then, in step 3, 6 or 9. Then 5 when a git
-  step fails.
+  then 5 when `git worktree list` fails, then 9 for a refusal in step 2.
+  Then, in step 3, 6 or 9. Then 9 in step 4. Then 5 when a git step fails.
 
 | Code | Meaning |
 |---|---|
 | 0 | done |
-| 2 | usage: a missing or bad argument. No worktree. `remove`: a path that is not a linked worktree |
+| 2 | usage: a missing or bad argument. No worktree. `remove`: a path that is not a linked worktree, or a bad `--pr` |
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal. The line names `$TERM_PROGRAM` and the supported terminals. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab. `resume`: a missing worktree, or no transcript and no `--session-id` |
 | 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
-| 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), or the caller's own working directory in the worktree. Nothing changed. With `--stop-processes`, also a process in the worktree after `TERM` and `KILL`: one that did not stop, that `remove` could not signal, that changed its command, or that started during the stop. The worktree and the branch stay |
+| 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), the caller's own working directory in the worktree, or a lock that `remove` cannot prove dead. Nothing changed. With `--stop-processes`, also a process in the worktree after `TERM` and `KILL`: one that did not stop, that `remove` could not signal, that changed its command, or that started during the stop. Also a dead lock owner whose pid runs again right before the unlock. The worktree, its lock and the branches stay |
 
 ## Test
 

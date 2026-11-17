@@ -9753,3 +9753,61 @@ Deliberately different:
      sentence stayed in `SKILL.md`, so the rule has one copy.
 
      No rule changed. The file has 488 lines.
+
+147. **One pass of the close of an item — 2026-11-17.** Issue 167. The first
+     real close of an orchestrator item needed a second pass, and left a
+     locked worktree and two branches behind. Three faults caused it:
+     `stop` returned while the `claude` of the tab was still ending, so the
+     first `remove` refused for that process; a worktree lock whose owner was
+     dead stopped `git worktree remove`; and `--delete-branch` looked only at
+     the branch that the worktree had checked out. The project lead had moved
+     the worktree to its own branch, so the launcher's `worktree-<name>`
+     branch stayed. `launcher.md` owns the new rules, and
+     `resume-and-close.md` runs steps 2 and 3 as one pass. This entry
+     changes part of §15.145.
+
+     Each choice, with its reason:
+
+     - After the close, `stop` waits up to 15 more seconds for each `claude`
+       pid that was still on the tty, and sends no signal. A signal could
+       cut short the session's own end, such as its `SessionEnd` hook. A pid
+       with another argv is a new process, so it counts as gone. A session
+       that still runs at the end gets one stderr line, and `stop` exits 0,
+       because the tab is closed and the caller can do nothing more.
+     - `remove` waits up to 15 seconds only when each process that refuses
+       is a `claude` with no terminal. That is the session that `/exit` or
+       the close is ending. Every other refusal comes at once, because a
+       wait does not change a file, an editor or a shell.
+     - A lock refuses unless its reason names exactly one pid and no process
+       has that pid. The lock is read after the wait, because the ending
+       session can be its owner. `remove` tests the pid again right before
+       the unlock. A pid that runs, that another user owns, or that the
+       system cannot test, refuses: `remove` cannot prove that owner dead.
+       A new process with the owner's pid refuses too, for the same reason.
+     - `--delete-branch` now has candidates: the checked-out branch,
+       `worktree-<name>`, and each branch that a goal record of the worktree
+       names. A goal record ties a branch to the worktree with no guess: its
+       `run.repo` is the worktree. A review record is left out, because its
+       branches are a colleague's. The default branch is never a candidate.
+     - A local branch is never a keeper. §15.145 counted every other local
+       branch, so two candidates at the same commit proved each other, and
+       both went. A local branch is no copy elsewhere, and two closes that
+       run at the same time could each prove the other's branches. The
+       keepers are the remote-tracking refs, the tags and the PR head. A
+       remote-tracking ref still counts, as §15.145 decided: its commits
+       stay in the local repo under that ref. `remove` fetches with
+       `--no-prune` first, so a ref that the merge deleted on the remote
+       stays a keeper here.
+     - `--pr <number>` adds the PR head as a keeper, because GitHub keeps
+       `refs/pull/<n>/head` after the head branch is deleted. `remove` reads
+       it with `ls-remote`, and fetches the commit when it is not local. A
+       rebase merge gives the merged commits new shas, so without the PR
+       head an implementer's own commits are often on no keeper.
+     - A branch that was rebased and then changed stays unproven. A proof
+       by patch id (`git cherry`) could match it, but the ticket accepts the
+       kept branch, and the close reports it in one inbox notice per item.
+     - `branch_deleted` and `branch_only_commits` gave way to `branches`,
+       one object per candidate, and `lock` is new.
+
+     Only the seeded test has run the changes. No orchestrator has closed an
+     item with them yet.

@@ -122,10 +122,17 @@ also runs on the principal's word for an item that stops early: write
    key to a tab or a pane that holds another session, because an old tmux
    handle can name another pane after a restart. `launcher.md`'s "focus and
    stop" owns the check. A tab that is already gone, or that holds another
-   session, is not an error.
-3. **The worktree.** Run `launcher.py remove <launch.worktree>`. Add
-   `--delete-branch` only when the item's PR merged. `launcher.md`'s
-   "remove" says when it refuses. When it refuses only for processes, and
+   session, is not an error. `stop` returns after the session ended, or
+   after its wait ran out, so step 3 runs at once. It needs no second
+   `remove` for a session that was still ending.
+3. **The worktree and the branches.** Run `launcher.py remove
+   <launch.worktree>` once:
+   - When the item's PR merged, add `--delete-branch --pr <pr.number>`.
+   - When the item's `pr` is `null`, add `--delete-branch` alone.
+   - Otherwise, such as for a PR closed with no merge, add neither.
+
+   `launcher.md`'s "remove" owns the rules: when it refuses, the lock, the
+   branch candidates and the proof. When it refuses only for processes, and
    each process in `kept` has `tty` `null`, read the `command` of each one:
    - Each one is something that the implementer's work started, such as a
      server, a watcher, a test runner or a database. Run `remove` again with
@@ -134,15 +141,14 @@ also runs on the principal's word for an item that stops early: write
      worktree, and go to the notice below.
 
    On each other refusal, put a notice in the inbox, with `inbox add
-   notice`, that names the item, the worktree, and each file and process of
-   the output. Never force a removal. The principal decides.
+   notice`, that names the item, the worktree, and each file, process and
+   lock of the output. Never force a removal. The principal decides.
 
-   A removal can keep the branch: `launcher.md`'s "remove" lists the
-   commits that no other ref holds. A rebase merge gives the merged commits
-   new shas, so after the merge deleted the remote branch, the implementer's
-   own commits can be on no other ref. Put a notice in the inbox that names
-   the item, the branch and the commits. Never delete the branch yourself.
-   The principal decides.
+   A removal can keep branches: each entry of `branches` with `deleted`
+   `false` and a non-empty `unproven_commits`. Put **one** notice in the
+   inbox for the item. It names the item, and each kept branch with its
+   unproven commits. Never delete a kept branch yourself. The principal
+   decides.
 4. **The ticket.** A GitHub issue closes through the `Closes` line of the PR.
    Check that it closed, and close it when it did not. Close a Linear ticket,
    or a ticket in a ticket file, as the standing instructions say. For an
@@ -165,10 +171,9 @@ The close of a run starts on the principal's word.
 
 1. **Each item.** Tell each item before `merged` to stop, with `told`: commit,
    and start no new step. Write `stage <item> closed` for each item before
-   `merged`. Then run "The close of an item" for each item. An item that did
-   not merge keeps its branch: run `remove` without `--delete-branch`. A
-   clean worktree with committed work is still removed, because the branch
-   keeps the work.
+   `merged`. Then run "The close of an item" for each item. Its step 3 says
+   which flags to give. A clean worktree with committed work is still
+   removed, because a branch with unproven commits stays.
 2. **Your watches and waits.** Stop the usage watch and each GitHub wait with
    `TaskStop`.
 3. **The record.** Write `pace.slots.busy` as 0. Write a last `plan change`

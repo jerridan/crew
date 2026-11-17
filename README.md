@@ -276,10 +276,12 @@ To change the number that work at one time, say so:
 run five at a time
 ```
 
-When an item ships, the orchestrator ends its project lead, closes its tab
-and removes its worktree. A worktree with changed or untracked files, or
-with an app or an editor open in it, stays, and the orchestrator tells you in
-the inbox. To end the whole run, say so:
+When an item ships, the orchestrator ends its project lead, closes its tab,
+removes its worktree and deletes its branches. A worktree with changed or
+untracked files, or with an app or an editor open in it, stays. A branch with
+commits that are on no remote, no tag and no PR head stays too. The
+orchestrator tells you of each one in the inbox. To end the whole run, say
+so:
 
 ```
 close the run

@@ -160,6 +160,7 @@ The resume of an orchestrator and the close-out are built (§15.145):
 `resume-and-close.md`, with `launcher.py resume`, `find` and `remove`, the
 `/exit` of `stop`, and `crew-orch.py close`. Only the seeded tests have run
 the scripts, and no orchestrator has resumed or closed an item with them.
+The close-out changed to one pass (§15.147), and only the seeded test ran it.
 
 T57 removed the tier above the project lead: the principal hands each goal
 over itself (§15.95). Its own kill and forced-compaction probes have run

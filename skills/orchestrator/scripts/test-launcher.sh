@@ -237,6 +237,7 @@ run() {
 lines() { grep -c . "$1" | tr -d ' '; }
 alive_pid() { kill -0 "$1" 2>/dev/null; }
 now_ms() { python3 -c 'import time; print(int(time.time() * 1000))'; }
+now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 wtcount() { (cd "$T/co" && git worktree list | wc -l | tr -d ' '); }
 reset_stub() { rm -rf "$STUB_DIR"; mkdir -p "$STUB_DIR"; }
 # field <name>: one field of the start output, as JSON.
@@ -1427,12 +1428,38 @@ r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && ! has_branch worktree-rm-br2 \
   && [ ! -s "$T/err" ] && (cd "$CO" && git rev-parse -q --verify refs/remotes/origin/worktree-rm-br2 > /dev/null) \
   && rjson 'o["removed"] is True and o["branch"] == "worktree-rm-br2"' \
   && bjson "n == ['worktree-rm-br2'] and b['worktree-rm-br2']['deleted'] is True and b['worktree-rm-br2']['unproven_commits'] == []" && r=0
-check 'remove --delete-branch deletes a branch whose commits a remote-tracking ref holds, and removes the worktree' $r
+check 'remove --delete-branch deletes a branch whose commits a branch on origin holds, and removes the worktree' $r
 check 'remove --delete-branch fetches origin with --no-prune before the proof' \
   $(grep -sq '|fetch|-q|--no-prune|origin|' "$T/git.log"; echo $?)
-check 'remove --delete-branch proves with rev-list --not --remotes --tags, never --branches, and deletes with branch -D' \
-  $(grep -sq '|rev-list|refs/heads/worktree-rm-br2|--not|--remotes|--tags|' "$T/git.log" \
-    && ! grep -sq '|rev-list|.*--branches' "$T/git.log" && grep -sq '|branch|-D|worktree-rm-br2|' "$T/git.log"; echo $?)
+check 'remove --delete-branch reads the keepers with ls-remote origin, proves with rev-list --stdin and no local ref, and deletes with branch -D' \
+  $(grep -sq '|ls-remote|origin|$' "$T/git.log" && grep -sq '|rev-list|refs/heads/worktree-rm-br2|--stdin|$' "$T/git.log" \
+    && ! grep -sqE '\|rev-list\|.*(--branches|--remotes|--tags|--all)' "$T/git.log" && grep -sq '|branch|-D|worktree-rm-br2|' "$T/git.log"; echo $?)
+
+# The remote branch was deleted: only a stale refs/remotes/origin/<b> holds the commit. It proves nothing.
+rm_wt0 rm-stale
+(cd "$RM" && git switch -q -c crew/st/b)
+sha=$(unpushed "$RM" stale)
+(cd "$RM" && git push -q origin crew/st/b 2>/dev/null)
+git --git-dir="$T/origin.git" branch -q -D crew/st/b
+run remove "$RM" --delete-branch
+r=1; [ "$rc" = 0 ] && has_branch crew/st/b && (cd "$CO" && git rev-parse -q --verify refs/remotes/origin/crew/st/b > /dev/null) \
+  && ! has_branch worktree-rm-stale \
+  && bjson "b['crew/st/b']['deleted'] is False and b['crew/st/b']['unproven_commits'] == ['$sha'] and b['worktree-rm-stale']['deleted'] is True" && r=0
+check 'remove --delete-branch keeps a branch whose commits only a stale remote-tracking ref holds' $r
+(cd "$CO" && git branch -D -q crew/st/b)
+# A tag only in the local repo proves nothing; a tag on origin proves.
+rm_wt0 rm-ltag
+sha=$(unpushed "$RM" ltag)
+(cd "$RM" && git tag ltag-x)
+run remove "$RM" --delete-branch
+r=1; [ "$rc" = 0 ] && has_branch worktree-rm-ltag && bjson "b['worktree-rm-ltag']['deleted'] is False and b['worktree-rm-ltag']['unproven_commits'] == ['$sha']" && r=0
+check 'remove --delete-branch keeps a branch whose commits only a local tag holds' $r
+(cd "$CO" && git branch -D -q worktree-rm-ltag && git tag -d ltag-x > /dev/null)
+rm_wt0 rm-otag
+(cd "$RM" && git commit -q --allow-empty -m otag && git tag -a otag-x -m otag && git push -q origin otag-x 2>/dev/null)
+run remove "$RM" --delete-branch
+r=1; [ "$rc" = 0 ] && ! has_branch worktree-rm-otag && bjson "b['worktree-rm-otag']['deleted'] is True and b['worktree-rm-otag']['unproven_commits'] == []" && r=0
+check 'remove --delete-branch deletes a branch whose commits an annotated tag on origin holds' $r
 
 # The project lead moved the worktree to crew/x/d1 and pushed it; worktree-<name> stays at origin/main.
 rm_wt0 rm-mv
@@ -1492,8 +1519,8 @@ c2=$(cd "$CO" && git commit-tree -p origin/main -m d2 'origin/main^{tree}')
 # run.repo through /var, not /private/var: remove makes it real.
 lnk="$T/link-co"; ln -s "$CO" "$lnk"
 mkdir -p "$T/records/a-goal" "$T/records/b-review" "$T/records/c-other" "$T/records/d-bad"
-printf '{"run": {"repo": "%s"}, "deliverables": [{"id": "d1", "branch": "crew/rec/d1"}, {"id": "d2", "branch": "crew/rec/d2"}, {"id": "d3", "branch": "main"}]}\n' \
-  "$lnk/.claude/worktrees/rm-rec" > "$T/records/a-goal/state.json"
+printf '{"run": {"repo": "%s", "created_at": "%s"}, "deliverables": [{"id": "d1", "branch": "crew/rec/d1"}, {"id": "d2", "branch": "crew/rec/d2"}, {"id": "d3", "branch": "main"}]}\n' \
+  "$lnk/.claude/worktrees/rm-rec" "$(now_iso)" > "$T/records/a-goal/state.json"
 printf '{"t1": {"worktree": "/x", "branch": "crew/rec/t1", "session_ids": [], "orphaned": false}}\n' > "$T/records/a-goal/worktrees.json"
 printf '{"run": {"repo": "%s", "kind": "review"}, "deliverables": [{"id": "d1", "branch": "crew/rev/b"}]}\n' "$RM" > "$T/records/b-review/state.json"
 printf '{"run": {"repo": "%s"}, "deliverables": [{"id": "d1", "branch": "crew/oth/b"}]}\n' "$CO" > "$T/records/c-other/state.json"
@@ -1510,6 +1537,24 @@ check 'an unreadable state.json under the record root gives one stderr line that
 rm -rf "$T/records/"*
 (cd "$CO" && git branch -D -q crew/rec/d2 crew/rev/b crew/oth/b)
 
+# An earlier item had a worktree at the same path. Its record is older than
+# the worktree, so its branches are no candidates. A record with no
+# run.created_at is skipped with one stderr line.
+rm_wt0 rm-again
+(cd "$CO" && git branch -q crew/old/b origin/main && git branch -q crew/new/b origin/main && git branch -q crew/noc/b origin/main)
+mkdir -p "$T/records/old" "$T/records/new" "$T/records/noc"
+printf '{"run": {"repo": "%s", "created_at": "2000-01-01T00:00:00Z"}, "deliverables": [{"id": "d1", "branch": "crew/old/b"}]}\n' "$RM" > "$T/records/old/state.json"
+printf '{"run": {"repo": "%s", "created_at": "%s"}, "deliverables": [{"id": "d1", "branch": "crew/new/b"}]}\n' "$RM" "$(now_iso)" > "$T/records/new/state.json"
+printf '{"run": {"repo": "%s"}, "deliverables": [{"id": "d1", "branch": "crew/noc/b"}]}\n' "$RM" > "$T/records/noc/state.json"
+run remove "$RM" --delete-branch
+r=1; [ "$rc" = 0 ] && has_branch crew/old/b && ! has_branch crew/new/b && has_branch crew/noc/b \
+  && bjson "n == ['worktree-rm-again', 'crew/new/b']" && r=0
+check 'two records of the same worktree path: only the record made after the worktree names candidates' $r
+check 'a record of the worktree with no run.created_at is skipped with one stderr line that names it' \
+  $([ "$(grep -c 'noc/state.json' "$T/err")" = 1 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+rm -rf "$T/records/"*
+(cd "$CO" && git branch -D -q crew/old/b crew/noc/b)
+
 # A proven candidate that another worktree has checked out stays.
 rm_wt0 rm-co
 (cd "$RM" && git switch -q -c crew/co/x)
@@ -1519,6 +1564,8 @@ run remove "$RM" --delete-branch
 r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && has_branch worktree-rm-co && ! has_branch crew/co/x \
   && bjson "b['worktree-rm-co']['deleted'] is False and b['worktree-rm-co']['unproven_commits'] == [] and b['worktree-rm-co']['checked_out'] == '$owt' and b['crew/co/x']['deleted'] is True" && r=0
 check 'remove --delete-branch keeps a proven candidate that another worktree has checked out, and checked_out names that path' $r
+check 'a candidate kept because another worktree has it checked out gets one stderr line that names the branch and the path' \
+  $([ "$(lines "$T/err")" = 1 ] && grep -sqF 'worktree-rm-co' "$T/err" && grep -sqF "$owt" "$T/err"; echo $?)
 (cd "$CO" && git worktree remove "$T/other-wt" && git branch -D -q worktree-rm-co)
 
 # --pr needs --delete-branch and a positive integer.
@@ -1533,19 +1580,20 @@ done
 # are never candidates.
 (cd "$CO" && git branch -q master origin/main)
 mkdir -p "$T/records/net"
-printf '{"run": {"repo": "%s"}, "deliverables": [{"id": "d1", "branch": "master"}]}\n' "$RM" > "$T/records/net/state.json"
+printf '{"run": {"repo": "%s", "created_at": "%s"}, "deliverables": [{"id": "d1", "branch": "master"}]}\n' "$RM" "$(now_iso)" > "$T/records/net/state.json"
 (cd "$CO" && git remote set-head origin -d)
 : > "$STUB_DIR/git-net-fail"
 run remove "$RM" --delete-branch --pr 7
 rm -f "$STUB_DIR/git-net-fail"
 (cd "$CO" && git remote set-head origin main)
-r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && ! has_branch worktree-rm-usage && has_branch master \
-  && [ "$(lines "$T/err")" = 3 ] && [ "$(grep -c 'fetch' "$T/err")" = 1 ] && [ "$(grep -c 'refs/pull/7/head' "$T/err")" = 1 ] \
-  && [ "$(grep -c 'master' "$T/err")" = 1 ] \
-  && bjson "n == ['worktree-rm-usage'] and b['worktree-rm-usage']['deleted'] is True" && r=0
-check 'a failed fetch, a failed ls-remote and no default branch: one stderr line each, exit 0, and the proof uses the refs that exist' $r
+r=1; [ "$rc" = 0 ] && [ ! -e "$RM" ] && has_branch worktree-rm-usage && has_branch master \
+  && [ "$(lines "$T/err")" = 5 ] && [ "$(grep -c 'fetch' "$T/err")" = 1 ] && [ "$(grep -c 'refs/pull/7/head' "$T/err")" = 1 ] \
+  && [ "$(grep -c 'master' "$T/err")" = 1 ] && [ "$(grep -c 'no ref of origin is a keeper' "$T/err")" = 1 ] \
+  && [ "$(grep -c 'kept the branch worktree-rm-usage' "$T/err")" = 1 ] \
+  && bjson "n == ['worktree-rm-usage'] and b['worktree-rm-usage']['deleted'] is False and b['worktree-rm-usage']['unproven_commits'] != []" && r=0
+check 'a failed fetch, a failed ls-remote and no default branch: one stderr line each, exit 0, and with no keeper from origin the branch stays' $r
 rm -rf "$T/records/"*
-(cd "$CO" && git branch -D -q master)
+(cd "$CO" && git branch -D -q master worktree-rm-usage)
 
 # -- remove and the lock of a worktree --------------------------------------
 # dead_pid: a pid that ran and ended. The test waits for it, so no process has it.

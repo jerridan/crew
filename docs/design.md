@@ -9380,9 +9380,9 @@ Deliberately different:
 
      The seeded test passes. One live probe ran on iTerm2 3.7.7 and on
      tmux, with a stub in place of `claude`. It started two tabs into one
-     new group, focused them, stopped them and kept the worktrees. No probe
-     has proven the Remote Control default on a real `claude` session yet.
-     No crew run has used the launcher.
+     new group, focused them, stopped them and kept the worktrees. Later,
+     the Remote Control default held on real sessions (§15.144). No crew run
+     has used the launcher.
 
 141. **The plan usage figures and the slow-down of the orchestrator —
      2026-11-16.**
@@ -9660,9 +9660,24 @@ Deliberately different:
        untracked files refuse too, with no force flag. Ignored files do not.
      - `--delete-branch` is passed only for a merged PR. A run close removes
        a clean worktree of an unmerged item and keeps its branch.
+     - The principal removed the one ask for actions that no allow rule
+       covers (§15.142). The orchestrator lists and checks no action at the
+       start. When a permission check refuses an action, the refusal goes
+       to the inbox as a notice with the action and the item, and the work
+       that does not need it goes on. The only ask about an action is a gate
+       that the principal named. The principal wants no authority question,
+       and names a gate when it wants one (issue 150, rule 6).
+     - `SKILL.md` tells the orchestrator to pass `--ticket-url` at `item add`
+       and `group add`, with a blob URL for a ticket in a repo file, because
+       the board's ticket link reads it (§15.143).
      - `crew-orch.py close` marks the record closed and changes nothing else.
        The record stays as the history of the run, and a resume of a closed
        record stops at once.
+
+     The Remote Control default of the launcher (§15.140) held on real
+     sessions. The principal checked the mobile app: the three implementers
+     that the launcher started did not show in it, and three sessions that
+     started with the principal's own settings did.
 
      Only the seeded tests have run the scripts. No orchestrator has resumed
      or closed an item with them yet. The tests do not prove that iTerm2's

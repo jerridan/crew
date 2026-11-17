@@ -1,0 +1,1886 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 165,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Resume an orchestrator after a restart, and close items and runs cleanly",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/165"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "760574f0a2b29e05b422fc2b796bffd008f31e82",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-165/2026-11-17T043808.764Z-760574f.json",
+      "open": [],
+      "dismissed": [
+        "3c248da3e7007574",
+        "c3bed3629e49d86d",
+        "c88621d4917f11a4",
+        "d6a9092444eec2d5",
+        "e46e331af6e046cf"
+      ],
+      "fetch_failed": false
+    },
+    "base": "71a5d3588a87dce5b92b30bc920969f84e20e61b",
+    "head": "df2bd6ed054860218a40a0f42d69156bcafbcf8b",
+    "started_at": "2026-11-17T04:57:11.952Z",
+    "tool_version": "0.5.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Resume an orchestrator after a restart, and close items and runs cleanly\n\n## Summary\n\nAn orchestrator can now come back after a compaction, a closed session or a restart of the machine: it reads its record, finds the project leads that still run, joins them again, resumes the conversation of each one that is gone in its own worktree, and arms its usage watch and its GitHub waits again. When an item ends, the orchestrator closes it cleanly: the project lead stops what it started, the session ends and its tab closes, the worktree goes, and the ticket closes. A worktree with changed or untracked files, or with any process still in it, is kept and reported in the inbox, never forced; the orchestrator stops leftover processes only when it can see that the work started them. A close of the whole run does this for each item and marks the record closed as its history. The orchestrator also no longer asks about actions at the start: the allow rules are the authority, and a refused action goes to the inbox.\n\nCloses #156\n\n**Ticket:** [#156 — crew:orchestrator: resume after a restart, and the close-out](https://github.com/jerridan/crew/issues/156)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.145 (new): the decisions of this change and their reasons. §15.140 (launcher), §15.142 (skill), §15.143 (board) for the parts it builds on.\n- `skills/orchestrator/references/resume-and-close.md` (new) owns the resume, the close of an item and the close of a run.\n- `skills/orchestrator/references/launcher.md` owns `start`, `resume`, `find`, `stop` and `remove`, their output and exit codes.\n- `skills/orchestrator/references/orchestrator-record.md` owns `closed_at`, `close` and `launch.session_id`.\n- `skills/orchestrator/SKILL.md` owns \"The authority\" and points at the reference above.\n\n### What changed, by file\n\n- `skills/orchestrator/references/resume-and-close.md`: new. The three resume cases (compaction, reopened session, new session), the seven resume steps, the four close steps of an item and their order, the close of a run, and how crew works beside the `cc-restore` plugin.\n- `skills/orchestrator/scripts/launcher.py`: `start` passes `claude --session-id <uuid>` and prints a tenth field `session_id`. New `resume` opens a tab in an existing worktree with `claude --resume <id>`, with the same model, settings and one-tab guarantees as `start`; with no id it takes the newest transcript of the worktree; exit 8 when the session is already open. New `find` prints the handle of each tab or pane whose `claude` process has `--name <name>` (match `name`), the record's session id after `--resume` or `--session-id` (match `id`), or its cwd in the worktree (match `cwd`). New `remove` refuses with exit 9 and no change on changed or untracked files or on any process in the worktree, and lists each one; with `--stop-processes` it stops each process with no terminal and names it, signals a pid only when a fresh `ps` and `lsof` read shows the same argv and cwd, scans the worktree again after the stop and refuses while any process is still there, and still refuses on a process with a terminal or on its own cwd or an ancestor's; it deletes the branch only with `--delete-branch`, and keeps it, with its commits listed in `branch_only_commits`, when it holds a commit that no other branch, remote-tracking ref or tag holds. A failed `lsof` exits 6. `stop` sends Escape and Ctrl-U, then `/exit`, before it closes the tab; with `--name` or `--session-id` it acts only when a `claude` on the handle's tty matches by name or id, because a new tmux server reuses pane ids.\n- `skills/orchestrator/scripts/test-launcher.sh`: checks for all of the above, with stub `ps` and `lsof`. 185 checks.\n- `skills/orchestrator/references/launcher.md`: documents the new subcommands, the tenth field, exit codes 8 and 9, and what `remove` does with a person's shell or editor.\n- `skills/orchestrator/scripts/crew-orch.py`: `closed_at` (null from `init`, null for an old record), the `close` command, and `session_id` in `LAUNCH_KEYS`.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: checks for `close`, a second `close`, an old record, and `launch.session_id`.\n- `skills/orchestrator/references/orchestrator-record.md`: `closed_at`, ten `launch` keys, \"Closing the record\".\n- `skills/orchestrator/SKILL.md`: points at the new reference for the compaction, the resume and the close; a trigger for \"resume orchestrator <name>\"; \"The authority at the start\" becomes \"The authority\", with no ask and a notice for a refused action; the goal message rule \"Uncovered actions\" becomes \"A refused action\"; `--ticket-url` at `item add` and `group add`.\n- `CLAUDE.md`, `README.md`: the new reference, the launcher's new subcommands, the build state, and how a person resumes or closes a run.\n- `docs/design.md`: §15.145; §15.140 now says that the Remote Control default held on real sessions; §15.143 says 29 tests.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: 0.1.112.\n\n### Constraints that applied\n\n- One owner per rule: each command's arguments, output and exit codes stay in `launcher.md` or `orchestrator-record.md`; the reference names the command and points there.\n- No test starts a real `claude`: `test-launcher.sh` uses `CREW_LAUNCHER_CLAUDE` and stubs for `tmux`, `osascript`, `uv`, `ps` and `lsof`.\n- Issue 150 rules 15 and 16: `resume` passes `--model` (default `opus`) and the one merged `--settings` with `\"remoteControlAtStartup\": false`.\n- `remove` ends no process by default and none silently, never ends its caller or a process above it, keeps a person's shell or editor, and has no force flag.\n- `find` matches exactly: a token pair or an equal cwd, never a substring and never a tab title, which Claude Code decorates.\n- Version 0.1.112 and §15.145 come from the orchestrator.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 185 of 185 checks passed, on `/usr/bin/python3` 3.9.6.\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed, on `/usr/bin/python3` 3.9.6, after the rebase on the board and Python 3.9 PRs.\n- A probe: one `claude` in a tmux pane with no setting sources and a `SessionEnd` hook in `--settings`. `/exit` gave the reason `prompt_input_exit`. That is the reason on which `cc-restore` forgets a session.\n- `ps` on a live session: a process that Claude Code's Bash tool starts in the background has no controlling terminal, and the `claude` process has the tab's tty.\n- `osascript` on live iTerm2 sessions: session names read as \"✳ orch-record (claude)\", so `find` does not use them.\n- A skeptical review of the local head before the first push: 2 blocking, 4 suggestions, 2 nits, 1 unsure. Fixed all: `remove` no longer stops a process by default, because a GUI editor started with `code .` looks the same as a left-behind server; `stop` clears an open permission dialog before `/exit`; the rejoin message no longer duplicates live watches; a run close marks unmerged items `closed`; `lsof` failure is an error; a session that `cc-restore` resumed is restarted by the launcher; `find` accepts an npm `claude`; a stale line and long lines. Round 2 (on `remove` and `stop`, after the CI review's five findings were fixed): 1 blocking, 2 suggestions, all fixed: `stop` checks its target, `remove` scans again after the stop, and a match by cwd alone is never stopped. The round 2 fixes had no third local round; the CI review reads them.\n\n### Known gaps\n\n- No orchestrator has resumed or closed an item with these scripts yet. The orchestrator of this build plans to run the close-out on its idle implementers.\n- The tests do not prove how Claude Code's input box takes Escape, Ctrl-U, then `/exit` and Enter. The probe proved only `/exit` and Enter on tmux.\n- `remove` finds a process by its cwd only. A container or a server that runs from another directory is the project lead's to stop, at close step 1.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 11
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 10
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds new launcher subcommands that signal processes, send keystrokes to terminals and remove git worktrees and branches, plus a new record command and public interface changes.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: remove() (process signalling, pid reuse, refusal logic, branch deletion with rev-list --not)",
+        "skills/orchestrator/scripts/launcher.py: stop() and holds_target() (keys sent to the right pane/tab, /exit flow)",
+        "skills/orchestrator/scripts/launcher.py: match_kind(), find_tabs(), processes() and cwds() (ps/lsof parsing, tty matching)",
+        "skills/orchestrator/scripts/launcher.py: resume() and newest_transcript() (session id, transcript path encoding, open-tab check)",
+        "skills/orchestrator/scripts/launcher.py: linked_worktree() (path checks)",
+        "skills/orchestrator/scripts/crew-orch.py: cmd_close() and the load() default for closed_at",
+        "skills/orchestrator/references/resume-and-close.md (procedure consistency with the launcher behaviour)"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "New resume, find and remove subcommands. stop now sends keys and takes --name/--session-id. start passes --session-id and prints a tenth field."
+        },
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "New close command, closed_at field and session_id launch key. Old records get a closed_at default on load."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "Many new seeded tests with ps and lsof stubs. Check that they exercise the real risk paths."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "Tests for close and session_id."
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "New procedure doc for resume, item close and run close."
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "Documents the new subcommands, exit codes 8 and 9, and the changed stop."
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "Documents closed_at, the close command and launch.session_id."
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "Removes the authority-at-start ask and points at the resume and close procedures. This changes the orchestrator's behaviour."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New design entry 145 and small number updates."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Doc table and status updates."
+        },
+        {
+          "file": "README.md",
+          "note": "User docs for close and resume."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump."
+        }
+      ],
+      "summary": "The change adds resume, find and remove subcommands to the orchestrator launcher. It also changes stop to type /exit, adds crew-orch.py close, and adds a session_id field to the launch record. A new resume-and-close reference describes the procedures, and SKILL.md drops the ask about uncovered actions at the start. Docs, tests and the version are updated to match."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds new launcher subcommands that signal processes, send keystrokes to terminals and remove git worktrees and branches, plus a new record command and public interface changes.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "description-drift",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "high"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    }
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/resume-and-close.md",
+            "start_line": 111,
+            "end_line": 119,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "Close step 2 restates stop's behaviour, which launcher.md owns, so a rule now has a second copy.",
+            "evidence": "It ends the session with\n   `/exit`, then closes the tab or the window.",
+            "suggested_fix": "Keep only the pointer to launcher.md's \"focus and stop\" and cut the restated behaviour.",
+            "explanation": "CLAUDE.md says a rule lives in exactly one file and other files point at it. This file's header says launcher.md owns stop.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8104,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40142,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040267,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 650,
+              "cacheReadInputTokens": 10127,
+              "cacheCreationInputTokens": 39647,
+              "webSearchRequests": 0,
+              "costUSD": 0.3322094,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 131,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3362361
+        }
+      },
+      {
+        "name": "description-drift",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6951,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40142,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040247,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 522,
+              "cacheReadInputTokens": 10085,
+              "cacheCreationInputTokens": 39647,
+              "webSearchRequests": 0,
+              "costUSD": 0.329641,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 233,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3336657
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10582,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40144,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040249000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1000,
+              "cacheReadInputTokens": 10030,
+              "cacheCreationInputTokens": 39649,
+              "webSearchRequests": 0,
+              "costUSD": 0.33920599999999995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 507,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.34323089999999995
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11061,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40140,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040245,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 985,
+              "cacheReadInputTokens": 10030,
+              "cacheCreationInputTokens": 39645,
+              "webSearchRequests": 0,
+              "costUSD": 0.338874,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 531,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3428985
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7923,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40142,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040257,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 652,
+              "cacheReadInputTokens": 10037,
+              "cacheCreationInputTokens": 39647,
+              "webSearchRequests": 0,
+              "costUSD": 0.3322314,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 389,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.33625710000000003
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4866,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 71866,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0071971000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 391,
+              "cacheReadInputTokens": 10152,
+              "cacheCreationInputTokens": 71371,
+              "webSearchRequests": 0,
+              "costUSD": 0.5808264000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 122,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.5880235
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 997,
+            "end_line": 998,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Without --name or --session-id, stop does no target check and types /exit and Enter into whatever pane or tab the handle names now, which can be a person's shell or the orchestrator after a tmux restart.",
+            "evidence": "    if not a.name and not a.session_id:\n        return True",
+            "suggested_fix": "Make the target check required: refuse stop when neither --name nor --session-id is given, or require an explicit opt-out flag.",
+            "explanation": "A reused tmux pane id makes an unchecked stop send keystrokes to, and kill, a pane that is not the implementer's.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7431,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40134,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004025900000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 692,
+              "cacheReadInputTokens": 59895,
+              "cacheCreationInputTokens": 40851,
+              "webSearchRequests": 0,
+              "costUSD": 0.352643,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 234,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3566689
+        }
+      },
+      {
+        "name": "security",
+        "pass": 2,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7978,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40146,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040251,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 611,
+              "cacheReadInputTokens": 59907,
+              "cacheCreationInputTokens": 40101,
+              "webSearchRequests": 0,
+              "costUSD": 0.3450254,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 430,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3490505
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1230,
+            "end_line": 1230,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "No test covers the branch where a pid from the first scan still runs after the stop but `lsof` can no longer read its working directory. In that case `remove` must keep the worktree.",
+            "evidence": "    unknown = set(pid for pid in pids if pid in procs and pid not in where)",
+            "suggested_fix": "In `rm_signal`, add a mode that drops the target pid from the `cwds()` result after the TERM. Assert exit 9, that no git step runs, and that the pid is in `kept`.",
+            "explanation": "If this branch broke, `remove` could delete files out from under a live process, and no test would fail.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1261,
+            "end_line": 1263,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The `--delete-branch` tests cover only a commit that a remote-tracking ref also holds. No test covers a commit held by another local branch or by a tag, and no test checks that the `--exclude` pattern works for `--branches`.",
+            "evidence": "            \"--exclude=\" + branch, \"--branches\", \"--remotes\", \"--tags\",",
+            "suggested_fix": "Add a case where another local branch holds the commit, and a case where only a tag holds it. Assert that the branch is deleted in both.",
+            "explanation": "The code comment itself says the exclude pattern is easy to get wrong. If it breaks, a branch held only by another local branch or a tag is wrongly kept, or the branch's own commits are wrongly counted as held elsewhere.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 990,
+            "end_line": 998,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The iTerm2 target check in `stop` is tested only with `--name`. No test covers a match by `--session-id` alone, or a claude that matches only by its working directory.",
+            "evidence": "def holds_target(a, tty):",
+            "suggested_fix": "Mirror the tmux tests for `--resume <id>` and for a match by working directory only on `iterm2:S-2`.",
+            "explanation": "The iTerm2 path reads the tty differently from the tmux path (through `iterm_tty`). A break in matching by session id on iTerm2 would go unnoticed.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 13113,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 40146,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0040261,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1348,
+              "cacheReadInputTokens": 61249,
+              "cacheCreationInputTokens": 40130,
+              "webSearchRequests": 0,
+              "costUSD": 0.36026579999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 305,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.36429189999999995
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "start_line": 111,
+          "end_line": 119,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "Close step 2 restates stop's behaviour, which launcher.md owns, so a rule now has a second copy.",
+          "evidence": "It ends the session with\n   `/exit`, then closes the tab or the window.",
+          "suggested_fix": "Keep only the pointer to launcher.md's \"focus and stop\" and cut the restated behaviour.",
+          "explanation": "CLAUDE.md says a rule lives in exactly one file and other files point at it. This file's header says launcher.md owns stop.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "It ends the session with\n   `/exit`, then closes the tab or the window. With the flags, it sends no\n   key to a tab or a pane that holds another session, because an old tmux\n   handle can name another pane after a restart.",
+            "`launcher.md`'s \"focus and\n   stop\" owns the check."
+          ],
+          "rationale": "Step 2 restates stop's behaviour (/exit then close, the target check and its tmux-handle reason), which launcher.md's \"focus and stop\" already documents. CLAUDE.md says a rule lives in exactly one file. The restatement is short and accurate, and it gives the orchestrator context, so the harm is small.",
+          "score": 70,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "It ends the session with\n   `/exit`, then closes the tab or the window. With the flags, it sends no\n   key to a tab or a pane that holds another session, because an old tmux\n   handle can name another pane after a restart.",
+            "| `launcher.md` | `launcher.py find`, `resume`, `stop` and `remove` |",
+            "A rule lives in exactly one file. Point at that file from anywhere else. A\nsecond copy is worse than no copy, because nothing decides which copy wins.",
+            "3. `/exit` and Enter, half a second later."
+          ],
+          "rationale": "The finding is correct. Close step 2 in the new file restates what `stop` does: it sends `/exit`, closes the tab and checks the target. launcher.md already documents this, and the file's own header says launcher.md owns `stop`. CLAUDE.md says a rule lives in exactly one file. The restated text matches launcher.md today, so nothing is wrong yet, but the two copies can drift apart, and cutting the copy is cheap.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "It ends the session with\n   `/exit`, then closes the tab or the window. With the flags, it sends no\n   key to a tab or a pane that holds another session, because an old tmux\n   handle can name another pane after a restart.",
+            "| `launcher.md` | `launcher.py find`, `resume`, `stop` and `remove` |",
+            "A rule lives in exactly one file. Point at that file from anywhere else. A\nsecond copy is worse than no copy, because nothing decides which copy wins.",
+            "3. `/exit` and Enter, half a second later."
+          ],
+          "rationale": "The finding is correct. Close step 2 in the new file restates what `stop` does: it sends `/exit`, closes the tab and checks the target. launcher.md already documents this, and the file's own header says launcher.md owns `stop`. CLAUDE.md says a rule lives in exactly one file. The restated text matches launcher.md today, so nothing is wrong yet, but the two copies can drift apart, and cutting the copy is cheap.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 997,
+          "end_line": 998,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Without --name or --session-id, stop does no target check and types /exit and Enter into whatever pane or tab the handle names now, which can be a person's shell or the orchestrator after a tmux restart.",
+          "evidence": "    if not a.name and not a.session_id:\n        return True",
+          "suggested_fix": "Make the target check required: refuse stop when neither --name nor --session-id is given, or require an explicit opt-out flag.",
+          "explanation": "A reused tmux pane id makes an unchecked stop send keystrokes to, and kill, a pane that is not the implementer's.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if not a.name and not a.session_id:\n        return True",
+            "Without either flag, `stop` does no check. Give a flag every time the\ncaller knows the session."
+          ],
+          "rationale": "The code does skip the target check when neither flag is given, so keys can reach a reused pane. This is a documented opt-in design. The orchestrator's close steps always pass --name and --session-id, and the old bare `stop` already killed the pane unchecked. Making the flags mandatory would break that contract.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "    if not a.name and not a.session_id:\n        return True",
+            "    tmux([\"send-keys\", \"-t\", ref, \"-l\", \"/exit\"])",
+            "2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name\n   <launch.session_name> --session-id <launch.session_id>`."
+          ],
+          "rationale": "The claim is accurate: without --name or --session-id, holds_target returns True, so stop types /exit and Enter and then kills the pane without checking it. But before this change, stop already ran kill-pane on any pane the handle named. The change adds the check as an option, and every documented caller in resume-and-close.md passes --name, so the change lowers the risk rather than adding it.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "    if not a.name and not a.session_id:\n        return True",
+            "    tmux([\"send-keys\", \"-t\", ref, \"-l\", \"/exit\"])",
+            "2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name\n   <launch.session_name> --session-id <launch.session_id>`."
+          ],
+          "rationale": "The claim is accurate: without --name or --session-id, holds_target returns True, so stop types /exit and Enter and then kills the pane without checking it. But before this change, stop already ran kill-pane on any pane the handle named. The change adds the check as an option, and every documented caller in resume-and-close.md passes --name, so the change lowers the risk rather than adding it.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1230,
+          "end_line": 1230,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "No test covers the branch where a pid from the first scan still runs after the stop but `lsof` can no longer read its working directory. In that case `remove` must keep the worktree.",
+          "evidence": "    unknown = set(pid for pid in pids if pid in procs and pid not in where)",
+          "suggested_fix": "In `rm_signal`, add a mode that drops the target pid from the `cwds()` result after the TERM. Assert exit 9, that no git step runs, and that the pid is in `kept`.",
+          "explanation": "If this branch broke, `remove` could delete files out from under a live process, and no test would fail.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "unknown = set(pid for pid in pids if pid in procs and pid not in where)",
+            "if mode == \"moved\" and sig == signal.SIGTERM:",
+            "where[target] = \"/elsewhere\""
+          ],
+          "rationale": "The `unknown` branch (pid in ps, absent from lsof after the stop) is new code. In test-launcher.sh, `rm_signal` modes only change argv, move the cwd to \"/elsewhere\", or spawn a process. None of them drops the pid from the `cwds()` result, so no check exercises this branch.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "unknown = set(pid for pid in pids if pid in procs and pid not in where)",
+            "kept = left + [p for p in in_tree if p[\"pid\"] in unknown]",
+            "if moved[0] and target in where:\n        where[target] = \"/elsewhere\"",
+            "# (after the scan, ps shows another command for the pid), changed-before-kill"
+          ],
+          "rationale": "The `rm_signal` modes in test-launcher.sh are changed-before-term, changed-before-kill, eperm, survive, spawn and moved. None of them removes the target pid from the `cwds()` result: `moved` only changes its cwd to /elsewhere. So no test reaches the safety branch in `remove` that keeps the worktree when a live pid has no cwd that lsof can read. This is new code, and adding a mode to `rm_signal` would cover it cheaply.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "unknown = set(pid for pid in pids if pid in procs and pid not in where)",
+            "kept = left + [p for p in in_tree if p[\"pid\"] in unknown]",
+            "if moved[0] and target in where:\n        where[target] = \"/elsewhere\"",
+            "# (after the scan, ps shows another command for the pid), changed-before-kill"
+          ],
+          "rationale": "The `rm_signal` modes in test-launcher.sh are changed-before-term, changed-before-kill, eperm, survive, spawn and moved. None of them removes the target pid from the `cwds()` result: `moved` only changes its cwd to /elsewhere. So no test reaches the safety branch in `remove` that keeps the worktree when a live pid has no cwd that lsof can read. This is new code, and adding a mode to `rm_signal` would cover it cheaply.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "passed": true
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1261,
+          "end_line": 1263,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The `--delete-branch` tests cover only a commit that a remote-tracking ref also holds. No test covers a commit held by another local branch or by a tag, and no test checks that the `--exclude` pattern works for `--branches`.",
+          "evidence": "            \"--exclude=\" + branch, \"--branches\", \"--remotes\", \"--tags\",",
+          "suggested_fix": "Add a case where another local branch holds the commit, and a case where only a tag holds it. Assert that the branch is deleted in both.",
+          "explanation": "The code comment itself says the exclude pattern is easy to get wrong. If it breaks, a branch held only by another local branch or a tag is wrongly kept, or the branch's own commits are wrongly counted as held elsewhere.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"--exclude=\" + branch, \"--branches\", \"--remotes\", \"--tags\",",
+            "# rm_wt makes the same commit f on each branch, so another branch can hold",
+            "check 'remove --delete-branch keeps a branch with a commit that no other ref holds, lists the sha, prints one line, removes the worktree and exits 0' $r"
+          ],
+          "rationale": "The claim is partly wrong: the keep test (rm-br) would fail if `--exclude` did not work for `--branches`, because the branch would then hold its own commit and `branch_only_commits` would be empty. Another local branch also holds the shared commit f. The remaining gap is a tag-only case, which is a minor test gap.",
+          "score": 30,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"--exclude=\" + branch, \"--branches\", \"--remotes\", \"--tags\",",
+            "# rm_wt makes the same commit f on each branch, so another branch can hold",
+            "check 'remove --delete-branch keeps a branch with a commit that no other ref holds, lists the sha, prints one line, removes the worktree and exits 0' $r"
+          ],
+          "rationale": "The claim is partly wrong: the keep test (rm-br) would fail if `--exclude` did not work for `--branches`, because the branch would then hold its own commit and `branch_only_commits` would be empty. Another local branch also holds the shared commit f. The remaining gap is a tag-only case, which is a minor test gap.",
+          "score": 30,
+          "severity": "dont_post"
+        },
+        "passed": false
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 990,
+          "end_line": 998,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The iTerm2 target check in `stop` is tested only with `--name`. No test covers a match by `--session-id` alone, or a claude that matches only by its working directory.",
+          "evidence": "def holds_target(a, tty):",
+          "suggested_fix": "Mirror the tmux tests for `--resume <id>` and for a match by working directory only on `iterm2:S-2`.",
+          "explanation": "The iTerm2 path reads the tty differently from the tmux path (through `iterm_tty`). A break in matching by session id on iTerm2 would go unnoticed.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "def holds_target(a, tty):",
+            "return match_kind(processes(), {}, tty, a.name, None, a.session_id) in (\"name\", \"id\")"
+          ],
+          "rationale": "The iTerm2 positive test uses `--name other` only, and the one `--session-id` iTerm2 test is a negative case. There is no iTerm2 test for a match by id alone or a cwd-only match. Both iTerm2 and tmux go through the same `holds_target`, and tmux covers those cases, so the gap is small.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return match_kind(processes(), {}, tty, a.name, None, a.session_id) in (\"name\", \"id\")",
+            "tty = iterm_tty(ref)",
+            "stop_py stop iterm2:S-2 --name other",
+            "stop_py stop 'tmux:%2' --name a --session-id s-9"
+          ],
+          "rationale": "The coverage gap is real. The only iTerm2 stop test that expects a match uses `--name other`. The `--resume <id>` match and the cwd-only refusal are tested only on tmux. The gap matters little, though. Both paths call the same `holds_target`/`match_kind`, and the `--name` test already exercises the iTerm2 tty lookup through `iterm_tty`, so matching by session id on iTerm2 could not break unnoticed in a way that differs from tmux.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return match_kind(processes(), {}, tty, a.name, None, a.session_id) in (\"name\", \"id\")",
+            "tty = iterm_tty(ref)",
+            "stop_py stop iterm2:S-2 --name other",
+            "stop_py stop 'tmux:%2' --name a --session-id s-9"
+          ],
+          "rationale": "The coverage gap is real. The only iTerm2 stop test that expects a match uses `--name other`. The `--resume <id>` match and the cwd-only refusal are tested only on tmux. The gap matters little, though. Both paths call the same `holds_target`/`match_kind`, and the `--name` test already exercises the iTerm2 tty lookup through `iterm_tty`, so matching by session id on iTerm2 could not break unnoticed in a way that differs from tmux.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "description-drift",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 5933139008,
+      "review_url": "https://github.com/jerridan/crew/pull/165#pullrequestreview-5933139008",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 133829473695
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 1230,
+        "end_line": 1230,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "No test covers the branch where a pid from the first scan still runs after the stop but `lsof` can no longer read its working directory. In that case `remove` must keep the worktree.",
+        "evidence": "    unknown = set(pid for pid in pids if pid in procs and pid not in where)",
+        "suggested_fix": "In `rm_signal`, add a mode that drops the target pid from the `cwds()` result after the TERM. Assert exit 9, that no git step runs, and that the pid is in `kept`.",
+        "explanation": "If this branch broke, `remove` could delete files out from under a live process, and no test would fail.",
+        "needs_context": false,
+        "fingerprint": "cd5187efb2994dbc",
+        "severity": "suggestion",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "unknown = set(pid for pid in pids if pid in procs and pid not in where)",
+            "kept = left + [p for p in in_tree if p[\"pid\"] in unknown]",
+            "if moved[0] and target in where:\n        where[target] = \"/elsewhere\"",
+            "# (after the scan, ps shows another command for the pid), changed-before-kill"
+          ],
+          "rationale": "The `rm_signal` modes in test-launcher.sh are changed-before-term, changed-before-kill, eperm, survive, spawn and moved. None of them removes the target pid from the `cwds()` result: `moved` only changes its cwd to /elsewhere. So no test reaches the safety branch in `remove` that keeps the worktree when a live pid has no cwd that lsof can read. This is new code, and adding a mode to `rm_signal` would cover it cheaply.",
+          "score": 90,
+          "severity": "suggestion"
+        },
+        "span_text": "unknown = set(pid for pid in pids if pid in procs and pid not in where)"
+      },
+      {
+        "file": "skills/orchestrator/references/resume-and-close.md",
+        "start_line": 111,
+        "end_line": 119,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "Close step 2 restates stop's behaviour, which launcher.md owns, so a rule now has a second copy.",
+        "evidence": "It ends the session with\n   `/exit`, then closes the tab or the window.",
+        "suggested_fix": "Keep only the pointer to launcher.md's \"focus and stop\" and cut the restated behaviour.",
+        "explanation": "CLAUDE.md says a rule lives in exactly one file and other files point at it. This file's header says launcher.md owns stop.",
+        "needs_context": false,
+        "fingerprint": "615ba5f69a1d981e",
+        "severity": "nit",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "It ends the session with\n   `/exit`, then closes the tab or the window. With the flags, it sends no\n   key to a tab or a pane that holds another session, because an old tmux\n   handle can name another pane after a restart.",
+            "| `launcher.md` | `launcher.py find`, `resume`, `stop` and `remove` |",
+            "A rule lives in exactly one file. Point at that file from anywhere else. A\nsecond copy is worse than no copy, because nothing decides which copy wins.",
+            "3. `/exit` and Enter, half a second later."
+          ],
+          "rationale": "The finding is correct. Close step 2 in the new file restates what `stop` does: it sends `/exit`, closes the tab and checks the target. launcher.md already documents this, and the file's own header says launcher.md owns `stop`. CLAUDE.md says a rule lives in exactly one file. The restated text matches launcher.md today, so nothing is wrong yet, but the two copies can drift apart, and cutting the copy is cheap.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "span_text": "`stage <item> closed` for it first. Do these steps in this order. 1. **The implementer's processes.** Tell the implementer, with `told`, to stop each process and service that it started for the item, such as a server, a container, a watcher or a local stack. It answers with what it stopped. Only the implementer can stop a container or a service outside the worktree. Wait for the answer. When its session is gone, go on. 2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name <launch.session_name> --session-id <launch.session_id>`. Give"
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9637,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 63084,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0063189000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1275,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 62597,
+            "webSearchRequests": 0,
+            "costUSD": 0.2632682,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2695871
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "description-drift",
+        "model": "claude-opus-5-5",
+        "duration_ms": 6951,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40142,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040247,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 522,
+            "cacheReadInputTokens": 10085,
+            "cacheCreationInputTokens": 39647,
+            "webSearchRequests": 0,
+            "costUSD": 0.329641,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 233,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3336657
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8104,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40142,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040267,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 650,
+            "cacheReadInputTokens": 10127,
+            "cacheCreationInputTokens": 39647,
+            "webSearchRequests": 0,
+            "costUSD": 0.3322094,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 131,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3362361
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7923,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40142,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040257,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 652,
+            "cacheReadInputTokens": 10037,
+            "cacheCreationInputTokens": 39647,
+            "webSearchRequests": 0,
+            "costUSD": 0.3322314,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 389,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.33625710000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10582,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40144,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040249000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1000,
+            "cacheReadInputTokens": 10030,
+            "cacheCreationInputTokens": 39649,
+            "webSearchRequests": 0,
+            "costUSD": 0.33920599999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 507,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.34323089999999995
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11061,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40140,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040245,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 985,
+            "cacheReadInputTokens": 10030,
+            "cacheCreationInputTokens": 39645,
+            "webSearchRequests": 0,
+            "costUSD": 0.338874,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 531,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3428985
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "model": "claude-opus-5-5",
+        "duration_ms": 4866,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 71866,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0071971000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 391,
+            "cacheReadInputTokens": 10152,
+            "cacheCreationInputTokens": 71371,
+            "webSearchRequests": 0,
+            "costUSD": 0.5808264000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 122,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.5880235
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7431,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40134,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004025900000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 692,
+            "cacheReadInputTokens": 59895,
+            "cacheCreationInputTokens": 40851,
+            "webSearchRequests": 0,
+            "costUSD": 0.352643,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 234,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3566689
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "model": "claude-opus-5-5",
+        "duration_ms": 7978,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40146,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040251,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 611,
+            "cacheReadInputTokens": 59907,
+            "cacheCreationInputTokens": 40101,
+            "webSearchRequests": 0,
+            "costUSD": 0.3450254,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 430,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3490505
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 8578,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13108,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013248,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1134,
+            "cacheReadInputTokens": 38943,
+            "cacheCreationInputTokens": 15096,
+            "webSearchRequests": 0,
+            "costUSD": 0.07563030000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 217,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0769551
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "model": "claude-opus-5-5",
+        "duration_ms": 13113,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40146,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040261,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1348,
+            "cacheReadInputTokens": 61249,
+            "cacheCreationInputTokens": 40130,
+            "webSearchRequests": 0,
+            "costUSD": 0.36026579999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 305,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.36429189999999995
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9807,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21163,
+            "outputTokens": 376,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023043,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 357,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1058,
+            "cacheReadInputTokens": 55880,
+            "cacheCreationInputTokens": 22876,
+            "webSearchRequests": 0,
+            "costUSD": 0.107684,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 416,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1099883
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 10182,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13110,
+            "outputTokens": 31,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013265000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1058,
+            "cacheReadInputTokens": 38922,
+            "cacheCreationInputTokens": 13698,
+            "webSearchRequests": 0,
+            "costUSD": 0.1385524,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 244,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1398789
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 9061,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21329,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021454,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 893,
+            "cacheReadInputTokens": 56724,
+            "cacheCreationInputTokens": 25928,
+            "webSearchRequests": 0,
+            "costUSD": 0.11832640000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 223,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1204718
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11886,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1134,
+            "cacheReadInputTokens": 50951,
+            "cacheCreationInputTokens": 21319,
+            "webSearchRequests": 0,
+            "costUSD": 0.10172310000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 458,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 19253,
+            "outputTokens": 223,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020368,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 198,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10375990000000002
+      },
+      {
+        "role": "verifier",
+        "model": "claude-sonnet-5-5",
+        "duration_ms": 11718,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19690,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0019809999999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1118,
+            "cacheReadInputTokens": 81924,
+            "cacheCreationInputTokens": 24925,
+            "webSearchRequests": 0,
+            "costUSD": 0.11908840000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 228,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1210694
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 11876,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21187,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021302,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1049,
+            "cacheReadInputTokens": 56211,
+            "cacheCreationInputTokens": 24489,
+            "webSearchRequests": 0,
+            "costUSD": 0.22815819999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 364,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2302884
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 9151,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21309,
+            "outputTokens": 238,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022499000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 212,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 900,
+            "cacheReadInputTokens": 56276,
+            "cacheCreationInputTokens": 25353,
+            "webSearchRequests": 0,
+            "costUSD": 0.2321032,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 172,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.23435309999999998
+      },
+      {
+        "role": "verifier-escalation",
+        "model": "claude-opus-5-5",
+        "duration_ms": 8844,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19698,
+            "outputTokens": 348,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021438000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 319,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 886,
+            "cacheReadInputTokens": 52984,
+            "cacheCreationInputTokens": 25419,
+            "webSearchRequests": 0,
+            "costUSD": 0.23169280000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 135,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2338366
+      }
+    ],
+    "total_cost_usd": 4.9905117,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 50,
+      "gather": 367,
+      "scope": 21,
+      "triage": 10692,
+      "find_verify": 48333,
+      "merge": 9
+    },
+    "errors": []
+  }
+}

@@ -46,6 +46,8 @@ HELPER_MARGIN = 20
 STOP_WAIT = 15
 # remove waits this many seconds after TERM before it sends KILL.
 REMOVE_WAIT = 10
+# Seconds remove waits after KILL before it reads the processes again.
+KILL_WAIT = 2
 # stop waits this many seconds after Escape and after Ctrl-U.
 KEY_WAIT = 0.5
 
@@ -1027,6 +1029,7 @@ def proc_row(p, keys):
 
 
 def alive(pid):
+    """Signal 0 only tests the pid; it sends nothing to the process."""
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -1036,11 +1039,32 @@ def alive(pid):
     return True
 
 
-def signal_all(pids, sig):
-    for pid in pids:
+def still_found(found):
+    """The pids of found that ps and lsof show now with the same argv and cwd.
+
+    A pid that runs another command, or has another cwd, is a new process
+    with a reused pid, or the process changed. remove never signals it.
+    found: {pid: (argv, cwd)}.
+    """
+    procs = processes()
+    where = cwds()
+    return [
+        pid
+        for pid in sorted(found)
+        if pid in procs and procs[pid]["argv"] == found[pid][0] and where.get(pid) == found[pid][1]
+    ]
+
+
+def signal_found(found, sig):
+    """Read the processes again, then send sig to each pid that still matches.
+
+    A pid that cannot get the signal (PermissionError) stays running, and the
+    read after KILL finds it.
+    """
+    for pid in still_found(found):
         try:
             os.kill(pid, sig)
-        except OSError:
+        except (ProcessLookupError, PermissionError):
             pass
 
 
@@ -1098,13 +1122,42 @@ def remove(a):
         print(json.dumps(result))
         raise Fail(REFUSED, "launcher: kept the worktree %s: %s" % (worktree, "; ".join(why)))
 
-    pids = [p["pid"] for p in in_tree]
-    signal_all(pids, signal.SIGTERM)
-    end = time.time() + REMOVE_WAIT
-    while any(alive(pid) for pid in pids) and time.time() < end:
-        time.sleep(0.2)
-    signal_all([pid for pid in pids if alive(pid)], signal.SIGKILL)
-    result["stopped"] = [proc_row(p, ("pid", "command")) for p in in_tree]
+    # Each signal goes only to a pid that ps and lsof show again, right before
+    # the signal, with the argv and the cwd of the scan: a pid can go to a new
+    # process at any time.
+    found = {p["pid"]: (p["argv"], where[p["pid"]]) for p in in_tree}
+    pids = sorted(found)
+
+    def fail_mid_stop():
+        # remove cannot tell which processes stopped, so kept holds each one.
+        result["kept"] = [proc_row(p, ("pid", "tty", "command")) for p in in_tree]
+        print(json.dumps(result))
+
+    try:
+        signal_found(found, signal.SIGTERM)
+        end = time.time() + REMOVE_WAIT
+        while any(alive(pid) for pid in pids) and time.time() < end:
+            time.sleep(0.2)
+        if any(alive(pid) for pid in pids):
+            signal_found(found, signal.SIGKILL)
+            end = time.time() + KILL_WAIT
+            while any(alive(pid) for pid in pids) and time.time() < end:
+                time.sleep(0.2)
+        left = set(still_found(found)) if any(alive(pid) for pid in pids) else set()
+    except Fail:
+        fail_mid_stop()
+        raise
+    result["stopped"] = [proc_row(p, ("pid", "command")) for p in in_tree if p["pid"] not in left]
+    if left:
+        # A process that did not stop, or that remove could not signal, keeps
+        # the worktree: git would remove the files under a live process.
+        result["kept"] = [proc_row(p, ("pid", "tty", "command")) for p in in_tree if p["pid"] in left]
+        print(json.dumps(result))
+        raise Fail(
+            REFUSED,
+            "launcher: kept the worktree %s: %d processes did not stop after TERM and KILL (pids %s)"
+            % (worktree, len(left), ", ".join(str(pid) for pid in sorted(left))),
+        )
 
     def git_step(*args):
         try:

@@ -39,21 +39,29 @@ Do these steps in this order.
 4. **Each implementer.** Do this for each item that has a
    `launch.session_name` and a stage before `shipped`:
    - **Alive.** `ListAgents` shows its name. Run `launcher.py find <name>
-     --worktree <launch.worktree>`. Its match is `name`. When the handle
-     differs from `launch.tab`, write it with `item <id> set launch.tab`. A
-     restart of the machine gives each iTerm2 tab a new id.
-   - **Alive, matched by `cwd` only.** The launcher did not start that
-     session, so it can run with another model, with Remote Control on, and
-     with no usage status line. `cc-restore` starts a session this way. Run
-     `launcher.py stop` on its handle, then do the step "Gone, and its
-     worktree exists".
+     --worktree <launch.worktree> --session-id <launch.session_id>`. Give
+     `--session-id` only when the record holds one. Its match is `name`.
+     When the handle differs from `launch.tab`, write it with `item <id> set
+     launch.tab`. A restart of the machine gives each iTerm2 tab a new id,
+     and each tmux pane a new id.
+   - **Alive, matched by `id`.** The session resumed the implementer's
+     conversation, but the launcher did not start it, so it can run with
+     another model, with Remote Control on, and with no usage status line.
+     `cc-restore` starts a session this way. Run `launcher.py stop <handle>
+     --name <name> --session-id <launch.session_id>`, then do the step
+     "Gone, and its worktree exists".
+   - **Matched by `cwd` only.** The session is not the implementer: a person
+     or another tool started it in the worktree. Never stop it. Put a notice
+     in the inbox that names the item and the handle, and do nothing more
+     for the item. The principal decides.
    - **Gone, and its worktree exists.** Compute the settings value as
      SKILL.md's "Launch an implementer" says. Run `launcher.py resume` with
      the item's `launch` values: the name, the worktree, `session_id` when the
      record holds one, the model, the repo, the group and the terminal.
      Without a `session_id`, `resume` takes the newest transcript of the
      worktree. Write its output with `item <id> set launch`. Exit 8 means that
-     `find` saw the session open: treat it as alive.
+     `find` saw a session open. Run `find` as the step "Alive" says, and do
+     the step that its match names.
    - **Gone, and its worktree is gone.** Nothing can resume it. Put a notice
      with the item in the inbox (`inbox add notice --item <id>`), and leave
      the item as it is. The principal decides.
@@ -78,8 +86,13 @@ Do these steps in this order.
      implementer".
 
    An item at `shipped` or `closed` whose tab or worktree is still there
-   waits for its close. Run `launcher.py find` to get its current tab, then
-   run "The close of an item" again from step 1.
+   waits for its close. Run `launcher.py find` as the step "Alive" says:
+   - It prints a handle with the match `name` or `id`: write that handle
+     with `item <id> set launch.tab`. Then run "The close of an item" again
+     from step 1.
+   - It prints no handle, or only a `cwd` match: the session is gone. Run
+     "The close of an item" again from step 1, with no step 2. Never stop a
+     `cwd` match.
 5. **The slot count.** Write `pace.slots.busy` with `pace set`. The value is
    the count of implementers, alive or resumed, at a stage before `merged`.
 6. **The watches and waits.** Run `crew-usage.py check`, write its level, and
@@ -102,9 +115,14 @@ also runs on the principal's word for an item that stops early: write
    a container, a watcher or a local stack. It answers with what it stopped.
    Only the implementer can stop a container or a service outside the
    worktree. Wait for the answer. When its session is gone, go on.
-2. **The session and the tab.** Run `launcher.py stop <launch.tab>`. It ends
-   the session with `/exit`, then closes the tab or the window. A tab that is
-   already gone is not an error.
+2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name
+   <launch.session_name> --session-id <launch.session_id>`. Give
+   `--session-id` only when the record holds one. It ends the session with
+   `/exit`, then closes the tab or the window. With the flags, it sends no
+   key to a tab or a pane that holds another session, because an old tmux
+   handle can name another pane after a restart. `launcher.md`'s "focus and
+   stop" owns the check. A tab that is already gone, or that holds another
+   session, is not an error.
 3. **The worktree.** Run `launcher.py remove <launch.worktree>`. Add
    `--delete-branch` only when the item's PR merged. `launcher.md`'s
    "remove" says when it refuses. When it refuses only for processes, and

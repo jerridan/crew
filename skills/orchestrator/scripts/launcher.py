@@ -13,9 +13,9 @@ usage:
                      [--group <name>] [--group-color <#rrggbb>]
                      [--terminal iterm2|tmux]
   launcher.py groups
-  launcher.py find <session-name> [--worktree <path>]
+  launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
   launcher.py focus <handle>
-  launcher.py stop <handle>
+  launcher.py stop <handle> [--name <session-name>] [--session-id <id>]
   launcher.py remove <worktree> [--delete-branch] [--stop-processes]
 
 skills/orchestrator/references/launcher.md owns the arguments, the start
@@ -292,13 +292,18 @@ def parse(argv):
     g = sub.add_parser("groups", add_help=False)
     g.usage_line = "usage: launcher.py groups"
     f = sub.add_parser("find", add_help=False)
-    f.usage_line = "usage: launcher.py find <session-name> [--worktree <path>]"
+    f.usage_line = "usage: launcher.py find <session-name> [--worktree <path>] [--session-id <id>]"
     f.add_argument("session_name")
     f.add_argument("--worktree")
-    for verb in ("focus", "stop"):
-        h = sub.add_parser(verb, add_help=False)
-        h.usage_line = "usage: launcher.py %s <handle>" % verb
-        h.add_argument("handle")
+    f.add_argument("--session-id")
+    h = sub.add_parser("focus", add_help=False)
+    h.usage_line = "usage: launcher.py focus <handle>"
+    h.add_argument("handle")
+    h = sub.add_parser("stop", add_help=False)
+    h.usage_line = "usage: launcher.py stop <handle> [--name <session-name>] [--session-id <id>]"
+    h.add_argument("handle")
+    h.add_argument("--name")
+    h.add_argument("--session-id")
     m = sub.add_parser("remove", add_help=False)
     m.usage_line = "usage: launcher.py remove <worktree> [--delete-branch] [--stop-processes]"
     m.add_argument("worktree")
@@ -710,7 +715,7 @@ def resume(a):
     rc, out, _ = run(["git", "-C", worktree, "symbolic-ref", "-q", "--short", "HEAD"])
     branch = one_line(out) if rc == 0 and one_line(out) else None
     base = default_base(worktree)
-    tabs = find_tabs(a.name, worktree, terminal)
+    tabs = find_tabs(a.name, worktree, terminal, session_id)
     if tabs:
         raise Fail(
             OPEN_TAB,
@@ -790,8 +795,33 @@ def is_claude(argv):
     return False
 
 
+def has_pair(argv, flag, value):
+    return any(argv[i] == flag and argv[i + 1] == value for i in range(len(argv) - 1))
+
+
 def has_name(argv, name):
-    return any(argv[i] == "--name" and argv[i + 1] == name for i in range(len(argv) - 1))
+    return has_pair(argv, "--name", name)
+
+
+def has_id(argv, session_id):
+    return has_pair(argv, "--resume", session_id) or has_pair(argv, "--session-id", session_id)
+
+
+def match_kind(procs, where, tty, name, worktree, session_id=None):
+    """How a claude process on the tty matches the implementer, or None.
+
+    "name": it has --name <name>. "id": it has --resume <session_id> or
+    --session-id <session_id>. "cwd": its cwd is the worktree. The first
+    kind that holds wins.
+    """
+    mine = [p for p in procs.values() if p["tty"] == tty and is_claude(p["argv"])]
+    if name and any(has_name(p["argv"], name) for p in mine):
+        return "name"
+    if session_id and any(has_id(p["argv"], session_id) for p in mine):
+        return "id"
+    if worktree and any(where.get(p["pid"]) == worktree for p in mine):
+        return "cwd"
+    return None
 
 
 def inside(path, root):
@@ -824,10 +854,10 @@ def terminal_ttys(terminal):
     return rows
 
 
-def find_tabs(name, worktree, terminal):
+def find_tabs(name, worktree, terminal, session_id=None):
     """[(handle, how)] of each open tab or pane that holds this implementer.
 
-    how is "name" when the claude has --name <name>, else "cwd".
+    how is "name", "id" or "cwd", as match_kind says.
     """
     tabs = terminal_ttys(terminal)
     if not tabs:
@@ -836,18 +866,16 @@ def find_tabs(name, worktree, terminal):
     where = cwds() if worktree else {}
     found = []
     for handle, tty in tabs:
-        mine = [p for p in procs.values() if p["tty"] == tty and is_claude(p["argv"])]
-        if any(has_name(p["argv"], name) for p in mine):
-            found.append((handle, "name"))
-        elif worktree and any(where.get(p["pid"]) == worktree for p in mine):
-            found.append((handle, "cwd"))
+        how = match_kind(procs, where, tty, name, worktree, session_id)
+        if how:
+            found.append((handle, how))
     return found
 
 
 def find(a):
     terminal = detect_terminal()
     worktree = os.path.realpath(os.path.expanduser(a.worktree)) if a.worktree else None
-    for handle, how in find_tabs(a.session_name, worktree, terminal):
+    for handle, how in find_tabs(a.session_name, worktree, terminal, a.session_id):
         print("%s %s" % (handle, how))
     return OK
 
@@ -951,16 +979,52 @@ def focus(a):
     return OK
 
 
+def iterm_tty(ref):
+    """The tty of the iTerm2 session, or None when the session does not exist."""
+    for handle, tty in terminal_ttys("iterm2"):
+        if handle == "iterm2:" + ref:
+            return tty
+    return None
+
+
+def holds_target(a, tty):
+    """With --name or --session-id: True when a claude on the tty has the
+    match name or id, as find matches it. A cwd match never counts: a person
+    can start a claude in the worktree. Without either flag: True. A tmux
+    pane id restarts at %0 with a new tmux server, so an old handle can name
+    another pane."""
+    if not a.name and not a.session_id:
+        return True
+    return match_kind(processes(), {}, tty, a.name, None, a.session_id) in ("name", "id")
+
+
+def not_target(a):
+    want = " or ".join(
+        x for x in (a.name and "--name " + a.name, a.session_id and "the session id " + a.session_id) if x
+    )
+    print("launcher: %s holds no claude session with %s; stop sent no key and closed nothing" % (a.handle, want))
+    return OK
+
+
 def stop(a):
     """Type /exit, wait for claude to end, then close the tab or kill the pane.
 
     /exit ends the session with the reason prompt_input_exit, so a tool that
     restores closed sessions does not start it again. Escape and Ctrl-U come
     first: Enter on a permission dialog would approve it, and text in the
-    input line would go to the model with /exit.
+    input line would go to the model with /exit. With --name or --session-id,
+    stop sends no key and closes nothing unless the target holds that
+    session.
     """
     kind, ref = split_handle(a.handle)
     if kind == "iterm2":
+        if a.name or a.session_id:
+            tty = iterm_tty(ref)
+            if tty is None:
+                print("launcher: %s was already gone" % a.handle)
+                return OK
+            if not holds_target(a, tty):
+                return not_target(a)
         tty = iterm_script(OSA_EXIT.replace("{pause}", str(KEY_WAIT)), "exit", ref)
         if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
@@ -972,6 +1036,8 @@ def stop(a):
     if tty is None:
         print("launcher: %s was already gone" % a.handle)
         return OK
+    if not holds_target(a, tty):
+        return not_target(a)
     tmux(["send-keys", "-t", ref, "Escape"])
     time.sleep(KEY_WAIT)
     tmux(["send-keys", "-t", ref, "C-u"])
@@ -1143,20 +1209,37 @@ def remove(a):
             end = time.time() + KILL_WAIT
             while any(alive(pid) for pid in pids) and time.time() < end:
                 time.sleep(0.2)
-        left = set(still_found(found)) if any(alive(pid) for pid in pids) else set()
+        # Read the worktree again by the rule of the first scan, whatever the
+        # argv: a process can change its title, and a watcher can start a new
+        # child during the wait.
+        procs = processes()
+        where = cwds()
     except Fail:
         fail_mid_stop()
         raise
-    result["stopped"] = [proc_row(p, ("pid", "command")) for p in in_tree if p["pid"] not in left]
-    if left:
-        # A process that did not stop, or that remove could not signal, keeps
-        # the worktree: git would remove the files under a live process.
-        result["kept"] = [proc_row(p, ("pid", "tty", "command")) for p in in_tree if p["pid"] in left]
+    left = [
+        procs[pid]
+        for pid in sorted(where)
+        if pid in procs and inside(where[pid], worktree) and procs[pid]["ppid"] != os.getpid()
+    ]
+    left_pids = set(p["pid"] for p in left)
+    # A pid of the first scan stopped when it is gone, or when its cwd is now
+    # outside the worktree. A pid that ps shows with no cwd that lsof can read
+    # did not stop: remove cannot tell where it runs.
+    unknown = set(pid for pid in pids if pid in procs and pid not in where)
+    result["stopped"] = [
+        proc_row(p, ("pid", "command")) for p in in_tree if p["pid"] not in left_pids | unknown
+    ]
+    kept = left + [p for p in in_tree if p["pid"] in unknown]
+    if kept:
+        # A process in the worktree keeps it: git would remove the files under
+        # a live process.
+        result["kept"] = [proc_row(p, ("pid", "tty", "command")) for p in kept]
         print(json.dumps(result))
         raise Fail(
             REFUSED,
-            "launcher: kept the worktree %s: %d processes did not stop after TERM and KILL (pids %s)"
-            % (worktree, len(left), ", ".join(str(pid) for pid in sorted(left))),
+            "launcher: kept the worktree %s: %d processes still run in it after TERM and KILL (pids %s)"
+            % (worktree, len(kept), ", ".join(str(p["pid"]) for p in kept)),
         )
 
     def git_step(*args):

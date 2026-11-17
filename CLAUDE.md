@@ -156,7 +156,7 @@ board, and the mod `hooks/orch-board.tsx` draws it in a pane that
 `/orch-board` opens (§15.143). Only its tests and `test-crew-orch.sh` have run
 it, and no session has opened the pane.
 
-The resume of an orchestrator and the close-out are built (§15.144):
+The resume of an orchestrator and the close-out are built (§15.145):
 `resume-and-close.md`, with `launcher.py resume`, `find` and `remove`, the
 `/exit` of `stop`, and `crew-orch.py close`. Only the seeded tests have run
 the scripts, and no orchestrator has resumed or closed an item with them.

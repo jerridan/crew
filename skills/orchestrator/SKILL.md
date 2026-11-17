@@ -23,8 +23,8 @@ value and procedure that you use. Name the command, then read its owner:
 `skills/project-lead/references/autonomy-contract.md` owns who a principal is
 and how a project lead escalates.
 `skills/project-lead/references/orchestrator-report.md` owns what a project
-lead writes into your record. Every
-script runs from `scripts/` beside this file.
+lead writes into your record. Every script runs from `scripts/` beside this
+file.
 
 ## The manager rule
 

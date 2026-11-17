@@ -9663,13 +9663,27 @@ Deliberately different:
        lists each one. The orchestrator reads each command. Only for a
        process that the work started, such as a server or a watcher, does it
        run `remove --stop-processes`, which stops each process with no
-       terminal and names each one. A process with a terminal, and `remove`
+       terminal and names each one. It signals a pid only when `ps` and
+       `lsof`, read again right before the signal, show the same argv and
+       cwd as the scan, because a pid can go to a new process. After the
+       stop it scans the worktree again by cwd, whatever the argv: a process
+       still there, one it could not signal, or one whose cwd it cannot read
+       keeps the worktree, and `remove` exits 9 with no git step. A process with a terminal, and `remove`
        itself or a process above it, still refuse. Changed or untracked
        files refuse too, with no force flag. Ignored files do not.
-     - `find` prints how it matched: `name` or `cwd`. A session that
-       `cc-restore` resumed matches by `cwd` only. It runs without the
-       launcher's model, settings and Remote Control default, so the resume
-       stops it and resumes it with the launcher.
+     - `find` prints how it matched: `name` (the argv pair `--name
+       <name>`), `id` (`--resume <id>` or `--session-id <id>` with the
+       record's session id) or `cwd`. A session that `cc-restore` resumed
+       matches by `id`. It runs without the launcher's model, settings and
+       Remote Control default, so the resume stops it and resumes it with
+       the launcher. A match by `cwd` alone is a person's or another tool's
+       session in the worktree: it goes to the inbox and is never stopped.
+     - `stop` takes `--name` and `--session-id`, and with them sends no key
+       and closes nothing unless a `claude` on the handle's tty matches by
+       name or id. A new tmux server numbers its panes from `%0` again, so
+       after a restart of the machine an old `tmux:` handle can name another
+       pane: a resumed implementer, a person's shell, or the orchestrator.
+       Round 2 of the skeptical review found it.
      - `lsof` failure is an error, never an empty answer, so `remove` and
        `find` never see an empty worktree by mistake.
      - `--delete-branch` is passed only for a merged PR. A run close removes

@@ -1165,10 +1165,25 @@ def tmux_pane_exists(pane):
     return rc == 0
 
 
+def tmux_pane_gone(pane):
+    """True when tmux shows that the pane is gone: it lists every pane and
+    this one is not there, or no tmux server runs. False when the pane is
+    listed and when the read fails for any other reason."""
+    rc, out, err = tmux(["list-panes", "-a", "-F", "#{pane_id}"])
+    if rc != 0:
+        return "no server running" in (err or "")
+    return pane not in out.split()
+
+
 def tmux_pane_tty(pane):
     """The tty of the pane, or None when the pane does not exist."""
     rc, out, _ = tmux(["display-message", "-p", "-t", pane, "#{pane_tty}"])
     return norm_tty(one_line(out)) if rc == 0 and one_line(out) else None
+
+
+def claude_on_tty(tty):
+    """{pid: argv} of each claude process on the tty now."""
+    return {p["pid"]: p["argv"] for p in processes().values() if p["tty"] == tty and is_claude(p["argv"])}
 
 
 def wait_claude_gone(tty, handle):
@@ -1388,14 +1403,28 @@ def stop(a):
                 return OK
             if not holds_target(a, tty):
                 return not_target(a)
+        else:
+            # The tty before any key: a session that ends during the exit
+            # script leaves no other way to find its claude. A failed read
+            # leaves it unknown, and the script then decides.
+            try:
+                tty = iterm_tty(ref)
+            except Fail:
+                tty = None
         try:
-            tty = iterm_script(OSA_EXIT.replace("{pause}", str(KEY_WAIT)), "exit", ref)
+            tty_out = iterm_script(OSA_EXIT.replace("{pause}", str(KEY_WAIT)), "exit", ref)
         except Fail:
             # The session can end between the keys and the end of the script.
-            # A session that is gone counts as stopped.
+            # A session that is gone counts as stopped, and a claude that is
+            # still on its tty gets the wait after the close.
             if iterm_gone(ref):
+                if tty:
+                    left = claude_on_tty(tty)
+                    if left:
+                        wait_pids_gone(left, a.handle)
                 return OK
             raise
+        tty = tty_out
         if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
             return OK
@@ -1427,7 +1456,7 @@ def stop(a):
     left = wait_claude_gone(tty, a.handle)
     if tmux_pane_exists(ref):
         rc, _, err = tmux(["kill-pane", "-t", ref])
-        if rc != 0 and tmux_pane_exists(ref):
+        if rc != 0 and not tmux_pane_gone(ref):
             raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane failed for tmux:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
     # else: the pane closed when claude ended, or before kill-pane ran.
     if left:

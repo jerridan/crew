@@ -150,7 +150,13 @@ STUB
 # `ls` JSON), herdr-terminals (one running terminal address per line, for
 # agent.focus), herdr-tabs (one known tab id per line, for tab.close),
 # herdr-close-fail (tab.close fails with an error that is not "no tab"),
-# herdr-do-fail (tab.new and space.new fail). hc files: hc-ls (the `ls --json`
+# herdr-do-fail (tab.new and space.new fail), herdr-usage (every call exits 2
+# with a usage message and no window line), herdr-focus-err (agent.focus fails
+# with an error that does not name an unknown terminal), herdr-slow (tab.new and
+# space.new answer after 3 seconds), herdr-close-down (tab.close takes the
+# window down: it exits 2 and sets herdr-down). hc files: hc-ls-fail (`ls`
+# fails), hc-get-fail-<address> (`get` fails with an error that is not
+# not_found), hc-keys-fail and hc-send-fail (`keys` and `send` fail). hc files: hc-ls (the `ls --json`
 # output), hc-get-<address>.json (the `get` output; a missing file is not_found).
 cat > "$T/bin/herdr-app" <<'STUB'
 #!/bin/bash
@@ -162,20 +168,28 @@ if [ -e "$D/herdr-down" ]; then
   echo "herdr-app: no Herdr window at /x/herdr-app.sock: No such file or directory (os error 2)" >&2
   exit 2
 fi
+if [ -e "$D/herdr-usage" ]; then
+  echo "herdr-app: usage: herdr-app ls | status | do <command> [args]" >&2
+  exit 2
+fi
 case "$1" in
   ls) cat "$D/herdr-ls" 2>/dev/null || echo '{"spaces":[]}' ;;
   do)
     case "$2" in
       tab.new)
+        [ -e "$D/herdr-slow" ] && sleep 3
         [ -e "$D/herdr-do-fail" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
         echo '{"space":"spaNEW","tab":"tbNEW","terminal":"t9"}' ;;
       space.new)
+        [ -e "$D/herdr-slow" ] && sleep 3
         [ -e "$D/herdr-do-fail" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
         echo '{"space":"spaMADE","tab":"tbNEW","terminal":"t9"}' ;;
       agent.focus)
+        [ -e "$D/herdr-focus-err" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
         if grep -sqxF -- "$4" "$D/herdr-terminals"; then echo '{"ok":true}'
         else echo "{\"error\":\"no running terminal \\\"$4\\\"\"}"; exit 1; fi ;;
       tab.close)
+        [ -e "$D/herdr-close-down" ] && { : > "$D/herdr-down"; echo "herdr-app: no Herdr window at /x/herdr-app.sock: No such file or directory (os error 2)" >&2; exit 2; }
         [ -e "$D/herdr-close-fail" ] && { echo '{"error":"the window refused"}'; exit 1; }
         if grep -sqxF -- "$4" "$D/herdr-tabs"; then echo '{"ok":true}'
         else echo "{\"error\":\"no tab \\\"$4\\\"\"}"; exit 1; fi ;;
@@ -191,8 +205,12 @@ line=''
 for a in "$@"; do line="$line$a|"; done
 printf '%s\n' "$line" >> "$D/hc.log"
 case "$1" in
-  ls) cat "$D/hc-ls" 2>/dev/null || echo '{"hidden_finished":0,"terminals":[]}' ;;
+  ls) [ -e "$D/hc-ls-fail" ] && { echo '{"error":{"kind":"internal","message":"core busy"}}'; exit 1; }
+    cat "$D/hc-ls" 2>/dev/null || echo '{"hidden_finished":0,"terminals":[]}' ;;
+  keys) [ -e "$D/hc-keys-fail" ] && { echo '{"error":{"kind":"internal","message":"keys refused"}}'; exit 1; } ;;
+  send) [ -e "$D/hc-send-fail" ] && { echo '{"error":{"kind":"internal","message":"send refused"}}'; exit 1; } ;;
   get)
+    [ -e "$D/hc-get-fail-$2" ] && { echo '{"error":{"kind":"internal","message":"core busy"}}'; exit 1; }
     if [ -e "$D/hc-get-$2.json" ]; then cat "$D/hc-get-$2.json"
     else echo "{\"error\":{\"kind\":\"not_found\",\"message\":\"no terminal \\\"$2\\\"\"}}"; exit 3; fi ;;
 esac
@@ -2001,6 +2019,41 @@ check 'focus herdr:7 (no t) exits 7 with one line' $([ "$rc" = 7 ] && [ "$(lines
 run focus herdr:t3
 check 'focus on Herdr with no window answer exits 6 with a line that names Herdr' $([ "$rc" = 6 ] && grep -sq Herdr "$T/err"; echo $?)
 
+reset_stub
+hc_get t3 900041 spaA tb3
+: > "$STUB_DIR/herdr-focus-err"
+run focus herdr:t3
+check 'focus with a herdr-app failure that does not name an unknown terminal exits 6 with one line that names the handle' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF herdr:t3 "$T/err"; echo $?)
+rm -f "$STUB_DIR/hc-get-t3.json"
+run focus herdr:t3
+check 'focus with a herdr-app failure, when hc get says not_found, exits 7' $([ "$rc" = 7 ]; echo $?)
+reset_stub
+: > "$STUB_DIR/herdr-usage"
+run focus herdr:t3
+check 'herdr-app exit 2 with a usage message is no dead window: exit 6, and the line does not say the window fails to answer' \
+  $([ "$rc" = 6 ] && ! grep -sqi 'does not answer' "$T/err" && grep -sqi usage "$T/err"; echo $?)
+
+# find on Herdr: hc ls and hc get failures.
+reset_stub
+: > "$STUB_DIR/hc-ls-fail"
+__CFBundleIdentifier=$HERDR run find hd-a
+check 'find on Herdr with a failing hc ls exits 6 with a line that names hc' $([ "$rc" = 6 ] && grep -sq 'hc ls' "$T/err"; echo $?)
+reset_stub
+cat > "$STUB_DIR/hc-ls" <<'JSON'
+{"hidden_finished":0,"terminals":[{"address":"t3","state":"finished"},{"address":"t4","state":"live"},{"address":"t5","state":"live"}]}
+JSON
+printf '{"address":"t4","state":"live","labels":{}}\n' > "$STUB_DIR/hc-get-t4.json"
+printf '{"address":"t5","pid":900099,"state":"live","labels":{}}\n' > "$STUB_DIR/hc-get-t5.json"
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+__CFBundleIdentifier=$HERDR run find hd-a
+check 'find on Herdr skips a terminal that is not live, one with no pid and one with no tty: exit 0, no line, no hc get of the finished one' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/out" ] && ! grep -sq '^get|t3|' "$STUB_DIR/hc.log"; echo $?)
+: > "$STUB_DIR/hc-get-fail-t4"
+__CFBundleIdentifier=$HERDR run find hd-a
+check 'find on Herdr with an hc get failure that is not not_found exits 6 with a line that names the terminal' \
+  $([ "$rc" = 6 ] && grep -sqF t4 "$T/err"; echo $?)
+
 # R7: stop. herdr_stop <args...>: stop in this process with no wait.
 herdr_stop() {
   python3 - "$here" "$@" > "$T/out" 2> "$T/err" <<'PY'
@@ -2010,6 +2063,7 @@ import launcher
 launcher.STOP_WAIT = 0
 launcher.STOP_CLOSE_WAIT = 0
 launcher.KEY_WAIT = 0
+launcher.HERDR_TIMEOUT = 1
 sys.exit(launcher.main(sys.argv[2:]))
 PY
   rc=$?
@@ -2039,6 +2093,8 @@ echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
 herdr_stop stop herdr:t3
 check 'stop when tab.close says the tab is gone prints no failure and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/err" ]; echo $?)
 echo 'tb3' > "$STUB_DIR/herdr-tabs"
+HERDR_LS_T3='{"spaces":[{"id":"spaA","name":"grp","tabs":[{"id":"tb3","name":"hd-a","terminals":[{"terminal":"t3"}]}]}]}'
+printf '%s\n' "$HERDR_LS_T3" > "$STUB_DIR/herdr-ls"
 : > "$STUB_DIR/herdr-close-fail"
 herdr_stop stop herdr:t3
 check 'a failed tab.close exits 6 with one line that names Herdr and the handle' \
@@ -2054,8 +2110,62 @@ printf '900041 1 ttys921 /bin/zsh -l\n900042 900041 ttys921 claude --name hd-a -
 herdr_stop stop herdr:t3 --name hd-a
 check 'stop --name on the terminal of that session sends the keys and closes the tab' \
   $([ "$rc" = 0 ] && grep -sq '^send|t3|/exit|' "$STUB_DIR/hc.log" && grep -sq 'tab.close|--id|tb3|' "$STUB_DIR/herdr.log"; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+: > "$STUB_DIR/herdr-close-fail"
+herdr_stop stop herdr:t3
+check 'a failed tab.close, with the tab gone from herdr-app ls, counts as closed: exit 0, no failure line' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/err" ]; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+printf '%s\n' "$HERDR_LS_T3" > "$STUB_DIR/herdr-ls"
+: > "$STUB_DIR/herdr-close-down"
+herdr_stop stop herdr:t3
+check 'a tab.close that fails with the window down exits 6 with one line that names the handle' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF herdr:t3 "$T/err"; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+: > "$STUB_DIR/hc-keys-fail"
+herdr_stop stop herdr:t3
+check 'stop with a failing hc keys exits 6 with one line that names the handle, and closes no tab' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF herdr:t3 "$T/err" && ! grep -sq 'tab.close' "$STUB_DIR/herdr.log"; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+: > "$STUB_DIR/hc-send-fail"
+herdr_stop stop herdr:t3
+check 'stop with a failing hc send exits 6 with one line that names the handle, and closes no tab' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF herdr:t3 "$T/err" && ! grep -sq 'tab.close' "$STUB_DIR/herdr.log"; echo $?)
+# A terminal with no herdr.tab label: the tab comes from herdr-app ls.
+reset_stub
+printf '{"address":"t3","pid":900041,"state":"live","labels":{"herdr.space":"spaA"}}\n' > "$STUB_DIR/hc-get-t3.json"
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+echo 'tbX' > "$STUB_DIR/herdr-tabs"
+printf '%s\n' '{"spaces":[{"id":"spaA","name":"grp","tabs":[{"id":"tbY","name":"o","terminals":[{"terminal":"t4"}]},{"id":"tbX","name":"hd-a","terminals":[{"terminal":"t3"}]}]}]}' > "$STUB_DIR/herdr-ls"
+herdr_stop stop herdr:t3
+check 'stop with no herdr.tab label finds the tab in herdr-app ls and closes it' \
+  $([ "$rc" = 0 ] && grep -sq 'tab.close|--id|tbX|' "$STUB_DIR/herdr.log" && grep -sq '^send|t3|/exit|' "$STUB_DIR/hc.log"; echo $?)
+printf '%s\n' '{"spaces":[{"id":"spaA","name":"grp","tabs":[{"id":"tbY","name":"o","terminals":[{"terminal":"t4"}]}]}]}' > "$STUB_DIR/herdr-ls"
+: > "$STUB_DIR/herdr.log"; : > "$STUB_DIR/hc.log"
+herdr_stop stop herdr:t3
+check 'stop with no herdr.tab label and no tab in herdr-app ls exits 6 with one line that names the handle, and sends no key' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF herdr:t3 "$T/err" && ! grep -sqE '^(keys|send)\|' "$STUB_DIR/hc.log"; echo $?)
+# A herdr-app timeout during tab.new or space.new: the tab may have opened.
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+: > "$STUB_DIR/herdr-slow"
+hbase=$(wtcount)
+__CFBundleIdentifier=$HERDR herdr_stop start --name hd-7 --group grp --principal p --checkout "$CO"
+check 'a tab.new timeout exits 6 with one line that says the tab may have opened, names find and the worktree path' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqi 'may have opened' "$T/err" && grep -sqF find "$T/err" && grep -sqF "$CO/.claude/worktrees/hd-7" "$T/err" && [ "$(wtcount)" != "$hbase" ]; echo $?)
+__CFBundleIdentifier=$HERDR herdr_stop start --name hd-8 --group newgrp --principal p --checkout "$CO"
+check 'a space.new timeout says the same' \
+  $([ "$rc" = 6 ] && grep -sqi 'may have opened' "$T/err" && grep -sqF find "$T/err"; echo $?)
 # The Herdr start cases leave their worktrees: remove them.
-for n in hd-0 hd-2 hd-3 hd-4 hd-5 hd-6; do
+for n in hd-0 hd-2 hd-3 hd-4 hd-5 hd-6 hd-7 hd-8; do
   git -C "$CO" worktree remove --force "$CO/.claude/worktrees/$n" > /dev/null 2>&1
   git -C "$CO" branch -q -D "worktree-$n" > /dev/null 2>&1
 done

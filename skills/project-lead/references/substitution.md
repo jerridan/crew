@@ -2,9 +2,11 @@
 
 The principal can name another reviewer for a review step, in plain
 language: "use Codex for the spec review". Two steps take a replacement, and
-no other step does — the spec critic, and the skeptical review (design
-§15.94d). `SKILL.md`'s "Standing instructions" resolved each one from five
-sources and recorded it in `run.substitutions_requested`. This file runs it.
+no other step does — the spec critic, and the review of the finished diff
+(design §15.94d). That review is the goal check on a goal run, and the
+skeptical review on a review run (`run.kind: review`). `SKILL.md`'s "Standing
+instructions" resolved each one from five sources and recorded it in
+`run.substitutions_requested`. This file runs it.
 
 ## What the replacement is told
 
@@ -13,7 +15,7 @@ Give the replacement what the step's own reviewer would have had:
 | The step | What the replacement gets |
 |---|---|
 | spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` and `skills/review/references/severity-rubric.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
-| skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, `severity-rubric.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
+| goal check, skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, `severity-rubric.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
 
 **The spec critic's whole body, never the seven checks alone.** The scope
 limit, the over-specification checks, the rule against `re-spec needed` for
@@ -23,8 +25,9 @@ a replacement given the checks by themselves loses every one of them.
 **Add one sentence, and only this one**: it names the absolute report path
 that "Read or write the report file" below gives, and tells the replacement
 to write the complete report there and to return it as its output too. For
-the skeptical review, it is the sentence in `review-runner.md`'s "Reviewer
-instructions", and the block is otherwise unchanged. Write the whole of what
+the goal check and the skeptical review, it is the sentence in
+`review-runner.md`'s "Reviewer instructions", and the block is otherwise
+unchanged. Write the whole of what
 you assembled to `<record-dir>/reviews/<prefix>-r<n>-instructions.md`, the
 shape `review-runner.md` already defines for its own file.
 
@@ -33,11 +36,19 @@ shape `review-runner.md` already defines for its own file.
 | The step | `<prefix>` |
 |---|---|
 | `spec-critic` | `spec-critic` |
+| `goal-check` | `skeptical` |
 | `skeptical-review` | `skeptical` |
 
-Every file this file names uses `<prefix>`, so a substituted skeptical
-review writes the same names the rest of the run already looks for
+Every file this file names uses `<prefix>`, so a substituted goal check or
+skeptical review writes the same names the rest of the run already looks for
 (`record-format.md`, and `skeptical-review.md`'s resume list).
+
+**The step name follows the run kind.** On a goal run, the step is
+`goal-check`, and the `Reviewers` words "goal check" and "skeptical review"
+both name it. A goal run's record from before T90 names it
+`skeptical-review`: read that entry as `goal-check`. On a review run, the
+step is `skeptical-review`. Write the step name of the run kind to
+`run.substitutions_requested` and to each `run.steps_substituted` entry.
 
 ## Running it
 
@@ -55,7 +66,7 @@ the retries and the escalation for this check.
 
 Write this script to `<record-dir>/reviews/<prefix>-r<n>-run.sh`, with
 `<dir>` set to `run.repo` for a spec review and to the review worktree
-`review-runner.md` names for a skeptical review:
+`review-runner.md` names for a goal check or a skeptical review:
 
 ```
 cd <dir> || exit 1
@@ -85,8 +96,10 @@ kill "$tail_pid"
 
 The runner writes its output to `-result.txt` and its progress to
 `-result.stderr`, where it prints its session id. `tail -f` shows the
-progress in a pane. A later skeptical round changes only the `codex exec`
-line, as `review-runner.md`'s "Resume the reviewer" says.
+progress in a pane. A later round of a review run changes only the `codex
+exec` line, as `review-runner.md`'s "Resume the reviewer" says. **A goal
+check runs one round**, so it has no `codex exec resume` line: an extra
+goal check that the principal asks for runs this script as round 1 does.
 
 **The watchdog stops a hung runner.** When `-result.txt` and `-result.stderr`
 both stay unchanged for 600 seconds, the script kills the runner and its
@@ -179,7 +192,7 @@ entry: `tmux-split`, `iterm2-split`, `tmux-session` or `headless`. This rule
 is for a replacement alone. The default Claude runner stays headless.
 
 **`-result.txt` and `-result.exit` sit where `-result.json` would.** A
-skeptical review the Claude runner ran saves its own JSON output; a
+review the Claude runner ran saves its own JSON output; a
 replacement saves the runner's output as text and its status beside it, under
 the round's name, and a retry retires all of them the same way
 (`record-format.md`). A resumed session reads the same list in
@@ -191,8 +204,9 @@ and retry the round.
 
 ## The lifecycle holds; three checks change
 
-`skeptical-review.md` owns that step whole, and `review-runner.md` owns its
-mechanics. A replacement changes none of it: the detached worktree, the
+`skeptical-review.md` owns the rounds of that step, `goal-check.md` owns the
+goal check's one round, and `review-runner.md` owns the mechanics. A
+replacement changes none of it: the detached worktree, the
 pending head, the round reserved before the review starts, the `Reviewed:`
 first line, the three closing lines, the one retry on a failure, and the
 adjudication that clears `review_pending`. Three of the four checks in
@@ -202,14 +216,15 @@ runner's own. Map them:
 | The Claude runner | Any other runner |
 |---|---|
 | exit 0, with `is_error` false | the runner's own exit status, read from `-result.exit` |
-| check 2 reads `permission_denials` for a denied suite component and fills `denied` from it | `denied: "not applicable: <runner>"`. Check 2's other cases hold |
+| check 2 fills `denied` from `permission_denials` | `denied: "not applicable: <runner>"`. Check 2's cases hold |
 | `--session-id`, appended to `run.review_session_ids` | the `session id:` line of `-result.stderr`, written to `run.review_sessions` alone; the cost goes in the substitution entry's `usage` |
 
 The other two checks hold word for word for every runner: the report file
 exists, and its last two lines are the verdict pair while its first line is
 `Reviewed: <sha>`, matching `run.review_pending.head`.
 
-**A substituted skeptical review still writes `run.review_results[<n>]`**,
+**A substituted goal check or skeptical review still writes
+`run.review_results[<n>]`**,
 because that entry is what lets a later session adjudicate the report. `exit`
 is the runner's exit status, `denials_ok` is check 2 over the cases that
 hold, `denied` is the string above, and `report_ok` is the report check.
@@ -219,17 +234,19 @@ Nothing else about the round changes.
 
 The report path is `<record-dir>/reviews/<prefix>-r<n>.md`. `<n>` is one more
 than the highest on disk for a spec review, and the round
-`skeptical-review.md` reserved for a skeptical one.
+`skeptical-review.md` reserved for a goal check or a skeptical review.
 
 First, read the file the runner wrote at that path. When it is missing, or
 does not end with the step's verdict pair, transcribe the output in
 `<prefix>-r<n>-result.txt` to that path instead. Open the report with
 `Reviewed: <sha>` when the runner did not. Put `Source: <runner> file` or
 `Source: <runner> output` on the next line, for the source you used. A spec
-review reads no sha, so it carries the source line alone. End the report with
-the three closing lines `review-output.md` gives, with the step's own verdict
-— `ready to split` or `re-spec needed` for the spec critic, `accepted` or
-`patch round needed` for the skeptical review.
+review reads no sha, so it carries the source line alone. On a goal check,
+write `Check: goal` after the `Source:` line when the report lacks it. End
+the report with the three closing lines `review-output.md` gives, with the
+step's own verdict — `ready to split` or `re-spec needed` for the spec
+critic, `accepted` or `patch round needed` for the goal check and the
+skeptical review.
 Adjudicate the findings as you adjudicate any review's. Nothing else in the
 run changes.
 
@@ -263,7 +280,7 @@ and append the entry:
 **Two harness limits.** The `Skill` tool is auto-rejected under `claude -p`
 (design §12), so a replacement cannot invoke a slash command from inside a
 headless session. A slash command passed as the positional prompt does still
-run under `-p` — the skeptical review's old default did exactly that, until
+run under `-p` — the old default of the review did exactly that, until
 §15.98 found it read the wrong ref and wrote no report, and retired it for a
 prompt piped on stdin (`review-runner.md`'s "The default command"). And a
 replacement you run inside this session spends your own context. A separate

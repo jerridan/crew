@@ -151,7 +151,7 @@ instructions and hooks. Then:
    repo. Write the answer as a new line in that section.
 2. **The tab group.** On iTerm2, each implementer gets a tab in an iTerm2 tab
    group. tmux and Herdr are the other supported terminals; `launcher.md`'s
-   "Terminals" says what a group is on each. Read the open groups with
+   "groups" says what a group is on each. Read the open groups with
    `launcher.py groups`. Put the implementer in a group that fits, such as
    the group of its item group or its repo. Name a new group when none fits.
 3. **The settings value.** Compute the worktree path as `launcher.md`'s

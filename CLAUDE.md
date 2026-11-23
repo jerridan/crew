@@ -114,9 +114,10 @@ it.
 T79 closed eleven audit issues (§15.111 onwards): the runner's checks and
 allow list, standing instructions from `.claude/crew.md`, a red-test baseline
 per deliverable, a gate decided by each item's author, a review that stops on
-an accepted verdict, a delta re-review, a round cap on the spec critic (one round since §15.148), whole-class
-fix rounds, and `crew-record.py`'s `decision` and `round` subcommands. No run
-has read any of it yet. T80 lets a worktree-isolated session run the full
+an accepted verdict, a delta re-review, a round cap on the spec critic,
+whole-class fix rounds, and `crew-record.py`'s `decision` and `round`
+subcommands. No run has read any of it yet. T88 cut the spec critic to one
+round (§15.148). T80 lets a worktree-isolated session run the full
 path: launch check 1 probes one worktree base for every worktree of a run
 (§15.126). No run has
 exercised it.

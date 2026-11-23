@@ -66,8 +66,8 @@ solution.
 
 A constraint that enumerates a file's contents as a closed list is the same
 finding. Report the missing item as a `suggestion` and the enumeration as the
-cause; do not return `re-spec needed` for it. One spec took three critic rounds, each
-for one item missing from one list (design §15.50).
+cause; do not return `re-spec needed` for it. One spec took three critic
+rounds, each for one item missing from one list (design §15.50).
 
 ## Findings
 

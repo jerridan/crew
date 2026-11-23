@@ -16,9 +16,9 @@ Give the replacement what the step's own reviewer would have had:
 | skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, `severity-rubric.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
 
 **The spec critic's whole body, never the seven checks alone.** The scope
-limit, the over-specification checks, the rule against `re-spec needed` for one
-missed item and the two verdict strings all sit around those checks, and a
-replacement given the checks by themselves loses every one of them.
+limit, the over-specification checks, the rule against `re-spec needed` for
+one missed item and the two verdict strings all sit around those checks, and
+a replacement given the checks by themselves loses every one of them.
 
 **Add one sentence, and only this one**: it names the absolute report path
 that "Read or write the report file" below gives, and tells the replacement

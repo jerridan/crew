@@ -1,0 +1,1515 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 174,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Make the end-of-run review one goal check",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/174"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "510f0043917e011228f03f7b66f6d99e7acf94ca",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-174/2026-11-23T091158.038Z-510f004.json",
+      "open": [],
+      "dismissed": [
+        "058ee831de6c7a0e",
+        "201e32cc24d9cf74",
+        "3fd45c5bd39f00b2",
+        "9bf8ae4a06001c2d",
+        "a81ed253ddb81cce"
+      ],
+      "fetch_failed": false
+    },
+    "base": "e157d670f83c06e81e465f701280dfce05d01412",
+    "head": "972e453a744836cb68080621d1798f99d56ad25e",
+    "started_at": "2026-11-23T09:16:34.092Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Make the end-of-run review one goal check\n\n## Summary\n\nAt the end of a goal run, crew no longer runs a skeptical code review for up to three rounds. It runs one **goal check**: a single review that asks whether the finished change does what the goal asked, with every constraint the user stated. The repo's own review (CI, a bot or a person) owns code defects, so the goal check reports one only as a suggestion. It runs once, runs no test suite, and uses a cheaper model with a shorter time limit. The review of a colleague's PR (`/crew:review`) keeps its full skeptical review on every push. Records showed that 34 of 53 runs went to the three-round cap, and only 7 of 43 blocking findings were goal misses, which is the part only crew can check.\n\n**Ticket:** [T90 — Make the end-of-run review one goal check](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t90--make-the-end-of-run-review-one-goal-check)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.151 (new): the decision, the user's words, the figures, and each choice below. It replaces the three-round cap of the earlier entries, which now point to it.\n- `skills/project-lead/references/goal-check.md` (new) owns the goal check: the question, the one round, the labels and verdict, what follows a goal miss, and \"Mark the PR ready\".\n- `skills/project-lead/references/skeptical-review.md` owns the round machinery both run kinds share (arming, `review_pending`, the launch order, the resume list, the ledger) and a review run's skeptical review.\n- `skills/project-lead/references/review-runner.md` owns the mechanics, with one value table per run kind.\n\n### Decisions\n\n- **Name:** the step on a goal run is the goal check. A review run keeps the skeptical review. Record file names do not change: a goal check writes `reviews/skeptical-r<n>.md`, and `rounds[].source.kind` stays `skeptical`, so old and new records read the same. A goal check report carries `Check: goal` after `Reviewed:`.\n- **Suite:** the goal check runs no suite and no gate. What is lost is a second suite run at the final head, in a separate process. Each package's criterion, the project lead's suite run at \"Integrate\", and CI on the PR still cover it. `reviews/baseline.md` is still written, because delivered-window ICs and CI adjudication read it.\n- **Runner:** the goal check runs `claude -p --model sonnet --effort high` under `timeout 900` (15 minutes). A round at Opus took about 4 minutes, 8 at the 90th percentile, and the goal check reads less. A review run keeps `opus`, `high` and `timeout 2700`.\n- **Labels:** only a goal miss can be `blocking`, in the report and in the project lead's own label. A code defect is a `suggestion` at most.\n- **One round:** after the goal check, a head move on a goal run arms nothing: `crew-record.py` lists the head in `run.unreviewed_heads` with the reason `goal-check-done`, and no message names it. A goal-miss patch package gets no second check. `arm-review --past-cap` still runs one more check when the principal asks for it in words.\n- **Mark the PR ready:** a `pr_url`; no `PR: draft`; `review_pending` is `null` (the goal check is adjudicated); no package `pending` or `in-flight` (a goal-miss patch has integrated); every `run.rounds` entry replied. The orchestrator's ready line and stage `pr` go at that point, not at the report.\n- **Substitution:** the goal check is a goal run's replaceable step. The `Reviewers` words \"goal check\" and \"skeptical review\" both name it on a goal run. A replacement gets the goal-check instructions and runs one round, with no `codex exec resume` line. `run.steps_substituted` writes `goal-check`; `skeptical-review` stays valid in old records and on a review run.\n- **Stats:** `crew-stats.py` prints a new table: goal checks run, goal checks with a goal miss (the project lead's verdict after labels), the blocking findings in those reports (the reviewer's own count, because no ledger format records the project lead's labels for a script), and goal checks accepted. Older skeptical reports keep their counting. `test-crew-stats.py` covers the new counts.\n- **`skills/review` keeps** its skeptical review whole: every head reviewed, no cap, the reviewer resume and the later-round block, the suite, Opus at high effort and the 45-minute limit. Its files changed only in pointers and names.\n\n### What changed, by file\n\n- `skills/project-lead/references/goal-check.md`: new; owns the goal check.\n- `skeptical-review.md`: keeps the shared round machinery and the review run's stance; the three-round cap, the accepted-verdict stop and \"Mark the PR ready\" left it.\n- `review-runner.md`: one command with a value table per run kind; a goal-check instructions block (no suite, no baseline part, no later-round part, read-only tools); \"Resume the reviewer\" applies to a review run only.\n- `substitution.md`, `record-format.md`, `simple-path.md`, `full-path.md`, `resume.md`, `review-output.md`, `band-rubric.md`, `autonomy-contract.md`, `orchestrator-report.md`, `plan-review.md`, `SKILL.md`: point at the goal check where they named a goal run's skeptical review.\n- `skills/project-lead/scripts/crew-record.py`: `GOAL_CHECK_ROUNDS = 1` in place of the cap of 3; a goal run's arming after round 1 lists the head as `goal-check-done`; `--past-cap` arms one more; a review run arms every head.\n- `skills/project-lead/scripts/crew-stats.py`: the goal checks table; `goal-check` is a substitutable step.\n- `skills/delivered-window/SKILL.md`, `references/pr-watch.md`: a goal run's head move runs no review; a review run's rules are unchanged.\n- `skills/orchestrator/SKILL.md`, `references/usage.md`: the ready line goes when \"Mark the PR ready\" runs; a `goal-check-done` head is not an unreviewed head for the merge.\n- `skills/review/SKILL.md`, `references/later-round.md`, `references/github-review.md`: pointers and names only.\n- `README.md`, `CLAUDE.md`: the goal check, the model table and the layout.\n- `docs/design.md`: new §15.151; earlier entries that stated the cap point to it; §15.149's \"the skeptical review still read the code\" gains the goal check's split of the work.\n- `docs/tickets.md`: new T90.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.118.\n\n### Constraints that applied\n\n- Version rule: both manifests at 0.1.118; the orchestrator assigned 0.1.116 to the plan review and 0.1.117 to the split critic.\n- One rule, one file: `goal-check.md` owns the goal run's rules, and `skeptical-review.md` keeps the shared machinery once.\n- `SKILL.md` stays under 500 lines (496).\n- `skills/delivered-window/SKILL.md` (612 lines) and `CLAUDE.md` (314 lines) were already over their size targets before this change and grew by a few lines each for the goal-check rules and the build state. Cutting them is outside this change.\n\n### How this was verified\n\n- `grep -rn -i -E 'three rounds is the cap|REVIEW_ROUND_CAP *= *3' skills` prints nothing.\n- `crew-record.py` against seeded temporary records: a goal run's hand-over arms round 1; after the check, `integrate --review-head B` leaves `review_pending` null and lists B as `goal-check-done`; `arm-review --head C --past-cap` arms round 2; a review run at round 3 arms round 4.\n- `python3 -m py_compile` passes for both scripts. `crew-stats.py` exits 0 on the real record root and prints the goal checks table (all zero, as no run has used it); a seeded record set gave the expected counts.\n- Every pointer from `skills/review` to `skeptical-review.md` and `review-runner.md` was checked against its target section.\n- Every remaining `skeptical` hit in `skills`, `agents`, `README.md` and `CLAUDE.md` names a review run, a kept file name or field, or history.\n\n### Known gaps\n\n- No real run has used the goal check: not its runner at Sonnet with the 15-minute limit, not the `Check: goal` line, not the `goal-check-done` listing in a delivered window, not the orchestrator's ready line at \"Mark the PR ready\", and not a substituted goal check.\n- `skills/project-lead/scripts/spend.py` still labels every headless review session \"skeptical review\" in its output. It prices them correctly.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZgYWHHNhRSy3s6RFPj\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": true
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "README.md",
+        "hunks": 8
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 5
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/band-rubric.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/full-path.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/goal-check.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/plan-review.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 14
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/review-output.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/review-runner.md",
+        "hunks": 23
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 17
+      },
+      {
+        "path": "skills/project-lead/references/substitution.md",
+        "hunks": 11
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 9
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-stats.py",
+        "hunks": 3
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/references/later-round.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes workflow logic: a goal run's review becomes a single goal check, with new round-arming logic in crew-record.py, new stats counting in crew-stats.py, and rewritten agent instructions and runner commands.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "docs",
+        "test",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/project-lead/scripts/crew-record.py: arm_review (GOAL_CHECK_ROUNDS=1, goal-check-done reason, --past-cap, accepted-round handling)",
+        "skills/project-lead/scripts/crew-stats.py: read_goal_checks, CHECK_GOAL header regex, verdict and Blocking count parsing, SUBSTITUTABLE_STEPS",
+        "skills/project-lead/references/review-runner.md: model and cap table, removal of gate permissions from --allowedTools, goal-check and review blocks, part renumbering",
+        "skills/project-lead/references/goal-check.md: one-round rule, Mark the PR ready conditions, verdict rules",
+        "skills/project-lead/references/skeptical-review.md: removed cap and accepted-round text, resume list entries 9 and 13 still consistent",
+        "skills/project-lead/references/record-format.md: unreviewed_heads reasons, steps_substituted step names",
+        "skills/project-lead/scripts/test-crew-stats.py: new goal-check seeds"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/project-lead/scripts/crew-record.py",
+          "note": "Behavior change: REVIEW_ROUND_CAP=3 becomes GOAL_CHECK_ROUNDS=1, and the reason string changes from cap to goal-check-done. Check that review runs and --past-cap are unaffected."
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "New goal-check counting and a table. It reads a header line and verdicts with regexes. Check edge cases and that the --json key goal_checks is included."
+        },
+        {
+          "file": "skills/project-lead/scripts/test-crew-stats.py",
+          "note": "New seeded cases for goal-check counts. Verify they match the script's logic."
+        },
+        {
+          "file": "skills/project-lead/references/review-runner.md",
+          "note": "The runner command is now parameterised by model and cap per run kind. The gate permission rules and the suite paragraphs are removed. The instruction blocks are split in two. Part numbers change from 5 to 4."
+        },
+        {
+          "file": "skills/project-lead/references/goal-check.md",
+          "note": "New file that owns the goal check: its question, the one-round rule, the verdict labels, and the Mark the PR ready section moved from skeptical-review.md."
+        },
+        {
+          "file": "skills/project-lead/references/skeptical-review.md",
+          "note": "Narrowed to the shared round machinery and the review run. The cap, accepted-round and Mark the PR ready text is removed."
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "Field docs updated for the new step name goal-check, the new unreviewed_heads reason, and the Check: goal header line."
+        },
+        {
+          "file": "skills/project-lead/references/substitution.md",
+          "note": "Adds goal-check as a substitutable step name, with a back-compat reading of old skeptical-review entries."
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "Reference table and label action table updated for the goal check."
+        },
+        {
+          "file": "skills/delivered-window/SKILL.md",
+          "note": "The window's behavior after the goal check is changed: no review runs on a later head move, and a package integrates with --review-head."
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "Ready-line timing and the merge rule for goal-check-done heads."
+        },
+        {
+          "file": "README.md",
+          "note": "User-facing description is updated to match the goal check."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New section 15.151 plus cross-reference notes."
+        },
+        {
+          "file": "docs/tickets.md",
+          "note": "New ticket T90."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.118."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.118."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Docs update."
+        },
+        {
+          "file": "skills/review/SKILL.md",
+          "note": "Pointer and name updates only."
+        },
+        {
+          "file": "skills/review/references/github-review.md",
+          "note": "Pointer and name updates only."
+        },
+        {
+          "file": "skills/review/references/later-round.md",
+          "note": "Pointer and name updates only."
+        },
+        {
+          "file": "skills/project-lead/references/simple-path.md",
+          "note": "Renamed the section and call site to the goal check."
+        },
+        {
+          "file": "skills/project-lead/references/full-path.md",
+          "note": "Renamed the section and call site to the goal check."
+        },
+        {
+          "file": "skills/project-lead/references/resume.md",
+          "note": "Wording update."
+        },
+        {
+          "file": "skills/project-lead/references/review-output.md",
+          "note": "Wording update."
+        },
+        {
+          "file": "skills/project-lead/references/band-rubric.md",
+          "note": "Wording update."
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "Wording update."
+        },
+        {
+          "file": "skills/project-lead/references/orchestrator-report.md",
+          "note": "Stage timing change: pr is written after a goal-miss patch is pushed."
+        },
+        {
+          "file": "skills/project-lead/references/plan-review.md",
+          "note": "Wording update."
+        },
+        {
+          "file": "skills/orchestrator/references/usage.md",
+          "note": "Wording update."
+        }
+      ],
+      "summary": "The change replaces a goal run's multi-round skeptical review with a single goal check. It runs on sonnet under a 15-minute cap, runs no suite, and only a goal miss can be blocking. crew-record.py now arms only one round on goal runs, and lists later heads as goal-check-done. crew-stats.py gains a goal-check table. Many reference docs and skill instructions are rewritten to match, and review runs keep the skeptical review."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes workflow logic: a goal run's review becomes a single goal check, with new round-arming logic in crew-record.py, new stats counting in crew-stats.py, and rewritten agent instructions and runner commands.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2662,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21309,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021414000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 143,
+              "cacheReadInputTokens": 10153,
+              "cacheCreationInputTokens": 20817,
+              "webSearchRequests": 0,
+              "costUSD": 0.1714346,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 45,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.17357599999999998
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 21546,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21305,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.002143,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 14,
+              "outputTokens": 2102,
+              "cacheReadInputTokens": 237426,
+              "cacheCreationInputTokens": 33372,
+              "webSearchRequests": 0,
+              "costUSD": 0.3565572000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 664,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.3587002000000001
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7327,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21305,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.002143,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 676,
+              "cacheReadInputTokens": 10063,
+              "cacheCreationInputTokens": 20813,
+              "webSearchRequests": 0,
+              "costUSD": 0.1820446,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 232,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1841876
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-stats.py",
+            "start_line": 556,
+            "end_line": 559,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The goal-check table row \"blocking findings in those reports\" adds the Blocking count only for checks whose verdict is patch round needed, so a report that held blocking findings but was relabelled to accepted adds nothing.",
+            "evidence": "            blocking = BLOCKING_COUNT.findall(text)\n            counts[\"misses\"] += int(blocking[-1]) if blocking else 0",
+            "suggested_fix": "Add the report's Blocking count for every goal check, or rename the row to say it counts missed checks only.",
+            "explanation": "The row label and the design entry say it counts the blocking findings in all goal-check reports, but the code counts them only in missed checks.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 10796,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 50178,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.005030300000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 1454,
+              "cacheReadInputTokens": 193895,
+              "cacheCreationInputTokens": 52072,
+              "webSearchRequests": 0,
+              "costUSD": 0.2422335,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 414,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.24726379999999998
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2119,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21295,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021415,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 95,
+              "cacheReadInputTokens": 10347,
+              "cacheCreationInputTokens": 20803,
+              "webSearchRequests": 0,
+              "costUSD": 0.17040139999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.17254289999999997
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/test-crew-stats.py",
+            "start_line": 78,
+            "end_line": 92,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The goal-check seeds miss several new branches: no reply file (the report's own Verdict fallback), an accepted verdict with no reply file, a `Check: goal` line after any `Source:` line, and the `goal-check` substitutable step.",
+            "evidence": "seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+            "suggested_fix": "Add seeds for a report with no reply file (patch round needed and accepted), a `Check: goal` line at the header boundary, and a `goal-check` entry in steps_substituted.",
+            "explanation": "The report-only verdict path, the direct `accepted` count and the HEADER_LINES window can break without any test failing.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/test-crew-stats.py",
+            "start_line": 138,
+            "end_line": 140,
+            "category": "test",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The text-output check looks only for substrings in the table, so it cannot fail when the printed counts are wrong.",
+            "evidence": "\"Goal checks\" in out and \"blocking findings in those reports\" in out)",
+            "suggested_fix": "Assert the printed row values for the seeded totals.",
+            "explanation": "A wrong or missing count value in the table would still pass the check.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 6344,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 21313,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0021418,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 863,
+              "cacheReadInputTokens": 43069,
+              "cacheCreationInputTokens": 21674,
+              "webSearchRequests": 0,
+              "costUSD": 0.0996409,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 114,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1017827
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-stats.py",
+          "start_line": 78,
+          "end_line": 92,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The goal-check seeds miss several new branches: no reply file (the report's own Verdict fallback), an accepted verdict with no reply file, a `Check: goal` line after any `Source:` line, and the `goal-check` substitutable step.",
+          "evidence": "seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+          "suggested_fix": "Add seeds for a report with no reply file (patch round needed and accepted), a `Check: goal` line at the header boundary, and a `goal-check` entry in steps_substituted.",
+          "explanation": "The report-only verdict path, the direct `accepted` count and the HEADER_LINES window can break without any test failing.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+            "HEADER_LINES = 5",
+            "SUBSTITUTABLE_STEPS = [\"spec-critic\", \"goal-check\", \"skeptical-review\"]"
+          ],
+          "rationale": "The tests seed only goal reports with reply files (or no Check line), so the report-only verdict path, header boundary, and goal-check substitution are untested; the corresponding code branches exist in crew-stats.py.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+            "if not CHECK_GOAL.search(\"\\n\".join(text.splitlines()[:HEADER_LINES])):",
+            "        if after:\n            verdict = after[-1].strip().lower()",
+            "SUBSTITUTABLE_STEPS = [\"spec-critic\", \"goal-check\", \"skeptical-review\"]"
+          ],
+          "rationale": "Every seeded goal check with `Check: goal` has a reply file, and the only report with no reply file also has no `Check: goal` line. So nothing tests the fallback to the report's own Verdict line, a `Source:` line before `Check: goal` within HEADER_LINES, or `goal-check` in steps_substituted. The finding describes a real coverage gap in new code, but the logic under it looks correct.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+            "if not CHECK_GOAL.search(\"\\n\".join(text.splitlines()[:HEADER_LINES])):",
+            "        if after:\n            verdict = after[-1].strip().lower()",
+            "SUBSTITUTABLE_STEPS = [\"spec-critic\", \"goal-check\", \"skeptical-review\"]"
+          ],
+          "rationale": "Every seeded goal check with `Check: goal` has a reply file, and the only report with no reply file also has no `Check: goal` line. So nothing tests the fallback to the report's own Verdict line, a `Source:` line before `Check: goal` within HEADER_LINES, or `goal-check` in steps_substituted. The finding describes a real coverage gap in new code, but the logic under it looks correct.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-stats.py",
+          "start_line": 138,
+          "end_line": 140,
+          "category": "test",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The text-output check looks only for substrings in the table, so it cannot fail when the printed counts are wrong.",
+          "evidence": "\"Goal checks\" in out and \"blocking findings in those reports\" in out)",
+          "suggested_fix": "Assert the printed row values for the seeded totals.",
+          "explanation": "A wrong or missing count value in the table would still pass the check.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"Goal checks\" in out and \"blocking findings in those reports\" in out)"
+          ],
+          "rationale": "The text check only looks for two substrings, so wrong printed values would still pass. The JSON checks cover the counts, so the gap is small.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"the text report has a Goal checks table with the reviewer's count row\",",
+            "\"Goal checks\" in out and \"blocking findings in those reports\" in out)",
+            "[\"blocking findings in those reports\", sum(r[\"goal_checks\"][\"misses\"] for r in records)],"
+          ],
+          "rationale": "The new text check only looks for the table title and one row label, so a wrong sum in the summed table rows in crew-stats.py would still pass. The per-record counts are covered by the JSON checks, so the untested part is only the summing and printing, which is small.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"the text report has a Goal checks table with the reviewer's count row\",",
+            "\"Goal checks\" in out and \"blocking findings in those reports\" in out)",
+            "[\"blocking findings in those reports\", sum(r[\"goal_checks\"][\"misses\"] for r in records)],"
+          ],
+          "rationale": "The new text check only looks for the table title and one row label, so a wrong sum in the summed table rows in crew-stats.py would still pass. The per-record counts are covered by the JSON checks, so the untested part is only the summing and printing, which is small.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "start_line": 556,
+          "end_line": 559,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The goal-check table row \"blocking findings in those reports\" adds the Blocking count only for checks whose verdict is patch round needed, so a report that held blocking findings but was relabelled to accepted adds nothing.",
+          "evidence": "            blocking = BLOCKING_COUNT.findall(text)\n            counts[\"misses\"] += int(blocking[-1]) if blocking else 0",
+          "suggested_fix": "Add the report's Blocking count for every goal check, or rename the row to say it counts missed checks only.",
+          "explanation": "The row label and the design entry say it counts the blocking findings in all goal-check reports, but the code counts them only in missed checks.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if verdict and verdict.startswith(\"patch round needed\"):\n            counts[\"missed\"] += 1\n            blocking = BLOCKING_COUNT.findall(text)",
+            "adds its\n    last `Blocking count:` to `misses`: the reviewer's count, not the\n    project lead's labels."
+          ],
+          "rationale": "The code counts blocking only in missed checks, but that is documented intent: the row follows \\\"goal checks with a goal miss\\\", so \\\"those reports\\\" means the missed ones. The finding misreads the label.",
+          "score": 12,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if verdict and verdict.startswith(\"patch round needed\"):\n            counts[\"missed\"] += 1\n            blocking = BLOCKING_COUNT.findall(text)",
+            "adds its\n    last `Blocking count:` to `misses`: the reviewer's count, not the\n    project lead's labels."
+          ],
+          "rationale": "The code counts blocking only in missed checks, but that is documented intent: the row follows \\\"goal checks with a goal miss\\\", so \\\"those reports\\\" means the missed ones. The finding misreads the label.",
+          "score": 12,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6019060052,
+      "review_url": "https://github.com/jerridan/crew/pull/174#pullrequestreview-6019060052",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137594154643
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/project-lead/scripts/test-crew-stats.py",
+        "start_line": 78,
+        "end_line": 92,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The goal-check seeds miss several new branches: no reply file (the report's own Verdict fallback), an accepted verdict with no reply file, a `Check: goal` line after any `Source:` line, and the `goal-check` substitutable step.",
+        "evidence": "seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+        "suggested_fix": "Add seeds for a report with no reply file (patch round needed and accepted), a `Check: goal` line at the header boundary, and a `goal-check` entry in steps_substituted.",
+        "explanation": "The report-only verdict path, the direct `accepted` count and the HEADER_LINES window can break without any test failing.",
+        "needs_context": false,
+        "fingerprint": "d76e3d56110b214b",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+            "if not CHECK_GOAL.search(\"\\n\".join(text.splitlines()[:HEADER_LINES])):",
+            "        if after:\n            verdict = after[-1].strip().lower()",
+            "SUBSTITUTABLE_STEPS = [\"spec-critic\", \"goal-check\", \"skeptical-review\"]"
+          ],
+          "rationale": "Every seeded goal check with `Check: goal` has a reply file, and the only report with no reply file also has no `Check: goal` line. So nothing tests the fallback to the report's own Verdict line, a `Source:` line before `Check: goal` within HEADER_LINES, or `goal-check` in steps_substituted. The finding describes a real coverage gap in new code, but the logic under it looks correct.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "def goal_report(verdict, blocking, check=True): return (\"Reviewed: abc123\\n\" + (\"Check: goal\\n\" if check else \"\") + \"\\n### F1. A\\nSeverity: blocking\\n\\nFindings: %d blocking, 0 suggestion, 0 nit, 0 unsure\\n\" \"Verdict: %s\\nBlocking count: %d\\n\" % (blocking, verdict, blocking)) # The goal checks (goal-check.md): a miss the project lead kept, a miss the # project lead relabelled to accepted, and an older skeptical report with no # `Check: goal` line, which is no goal check. seed(\"goal-miss-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 2), \"skeptical-r1-reply.md\": \"ledger\\n\\nVerdict after labels: patch round needed\\n\"}) seed(\"goal-relabel-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1), \"skeptical-r1-reply.md\": \"ledger\\n\\nVerdict after labels: accepted\\n\"}) seed(\"old-skeptical-run\", {}, {\"skeptical-r1.md\": goal_report(\"patch round needed\", 1, check=False)})",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/test-crew-stats.py",
+        "start_line": 138,
+        "end_line": 140,
+        "category": "test",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The text-output check looks only for substrings in the table, so it cannot fail when the printed counts are wrong.",
+        "evidence": "\"Goal checks\" in out and \"blocking findings in those reports\" in out)",
+        "suggested_fix": "Assert the printed row values for the seeded totals.",
+        "explanation": "A wrong or missing count value in the table would still pass the check.",
+        "needs_context": false,
+        "fingerprint": "bcc5aa8c6f63687e",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"the text report has a Goal checks table with the reviewer's count row\",",
+            "\"Goal checks\" in out and \"blocking findings in those reports\" in out)",
+            "[\"blocking findings in those reports\", sum(r[\"goal_checks\"][\"misses\"] for r in records)],"
+          ],
+          "rationale": "The new text check only looks for the table title and one row label, so a wrong sum in the summed table rows in crew-stats.py would still pass. The per-record counts are covered by the JSON checks, so the untested part is only the summing and printing, which is small.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "out = t.stdout check(\"the text report has a Goal checks table with the reviewer's count row\", \"Goal checks\" in out and \"blocking findings in those reports\" in out)",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 13286,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 75604,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.007570900000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 2111,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 75116,
+            "webSearchRequests": 0,
+            "costUSD": 0.3217042,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3292751
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 2119,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21295,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021415,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 95,
+            "cacheReadInputTokens": 10347,
+            "cacheCreationInputTokens": 20803,
+            "webSearchRequests": 0,
+            "costUSD": 0.17040139999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.17254289999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 2662,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21309,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021414000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 143,
+            "cacheReadInputTokens": 10153,
+            "cacheCreationInputTokens": 20817,
+            "webSearchRequests": 0,
+            "costUSD": 0.1714346,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 45,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.17357599999999998
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7327,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21305,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.002143,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 676,
+            "cacheReadInputTokens": 10063,
+            "cacheCreationInputTokens": 20813,
+            "webSearchRequests": 0,
+            "costUSD": 0.1820446,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 232,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1841876
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6344,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21313,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021418,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 863,
+            "cacheReadInputTokens": 43069,
+            "cacheCreationInputTokens": 21674,
+            "webSearchRequests": 0,
+            "costUSD": 0.0996409,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 114,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1017827
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10796,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 50178,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.005030300000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1454,
+            "cacheReadInputTokens": 193895,
+            "cacheCreationInputTokens": 52072,
+            "webSearchRequests": 0,
+            "costUSD": 0.2422335,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 414,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.24726379999999998
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 2874,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10942,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011067,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 360,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 10450,
+            "webSearchRequests": 0,
+            "costUSD": 0.0458407,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0469474
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4851,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11085,
+            "outputTokens": 248,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012324999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 224,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 664,
+            "cacheReadInputTokens": 19327,
+            "cacheCreationInputTokens": 11487,
+            "webSearchRequests": 0,
+            "costUSD": 0.0545287,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 125,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0557612
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4139,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 16591,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0016696000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 563,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 16099,
+            "webSearchRequests": 0,
+            "costUSD": 0.0704667,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 195,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07213629999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 7353,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10942,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011042,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 719,
+            "cacheReadInputTokens": 19180,
+            "cacheCreationInputTokens": 11642,
+            "webSearchRequests": 0,
+            "costUSD": 0.111368,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 187,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1124722
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 21546,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21305,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.002143,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 14,
+            "outputTokens": 2102,
+            "cacheReadInputTokens": 237426,
+            "cacheCreationInputTokens": 33372,
+            "webSearchRequests": 0,
+            "costUSD": 0.3565572000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 664,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3587002000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 8455,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 920,
+            "cacheReadInputTokens": 35789,
+            "cacheCreationInputTokens": 13420,
+            "webSearchRequests": 0,
+            "costUSD": 0.1329418,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 157,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 11097,
+            "outputTokens": 385,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013021999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 360,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.134244
+      }
+    ],
+    "total_cost_usd": 1.9888894000000001,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 50,
+      "gather": 1043,
+      "scope": 21,
+      "triage": 14092,
+      "find_verify": 25324,
+      "merge": 9
+    },
+    "errors": []
+  }
+}

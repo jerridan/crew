@@ -39,8 +39,9 @@ obtained the standard.
 ## Your loop
 
 1. Read your brief and your interface contract.
-2. Write your implementation plan, then continue, as the contract's "Write
-   your plan first" says.
+2. Write your implementation plan. Then stop and wait for the start word, or
+   continue, as the contract's "Write your plan first" says for your brief's
+   `Plan stop:` line.
 3. Work in small steps:
    - Pick the cheapest container that still reaches the intended reader.
    - Draft.

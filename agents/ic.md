@@ -19,8 +19,9 @@ shape. Do not write it yourself.
 ## Your loop
 
 1. Read your brief and your interface contract.
-2. Write your implementation plan, then continue, as the contract's "Write
-   your plan first" says.
+2. Write your implementation plan. Then stop and wait for the start word, or
+   continue, as the contract's "Write your plan first" says for your brief's
+   `Plan stop:` line.
 3. Work test-first, one small step at a time. On a review run, the contract's
    "Write the failing test first" names an exception: run no test.
    - Write one failing test.

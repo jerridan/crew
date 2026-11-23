@@ -31,6 +31,7 @@ agent is absolute: its cwd is not yours.
 | `skeptical-review.md` | the review of the finished diff, and when it runs | at the hand-over, and on each later branch head |
 | `review-runner.md` | the mechanics of a headless review: the detached worktree, the instructions file, the runner, the checks and the session id | when `skeptical-review.md` sends you to it |
 | `substitution.md` | a review step the principal named another reviewer for | before you dispatch that step |
+| `plan-review.md` | the review of every IC's plan before code: the planning stop, the reviewer run, the skips, the adjudication, the start word and its resume | before the first dispatch of a simple-path or full-path run |
 | `writing-standard.md` | any instruction file you draft | before you draft one |
 | `ic-contract.md` | the IC's rules | you do not follow it |
 | `investigation-path.md` | the loop from a symptom to a diagnosis | when the goal names a symptom |
@@ -151,9 +152,9 @@ differs from the base branch's, or exists where the base branch has none, tell
 the principal once that the review reads the committed file. A resumed
 session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** Sixteen exist. The orchestrator
+**Each file holds optional `##` sections.** Seventeen exist. The orchestrator
 reads `Checkouts`, `Usage limit`, `Merge`, `Concurrency` and `Implementer
-model`, and you act on the other eleven:
+model`, and you act on the other twelve:
 
 | Section | What you do with it |
 |---|---|
@@ -167,6 +168,7 @@ model`, and you act on the other eleven:
 | `Done` | `merged` or `rolled out`. `crew:delivered-window`'s "The word that the work shipped" reads it |
 | `Branch names` | the rule for a branch name. It replaces crew's default, `crew/<goal-slug>/<deliverable-id>`, at `simple-path.md`'s "Create the branch" |
 | `Go-ahead` | `on` or `off`. `off` adds `Gate: off` to `charter.md` |
+| `Plan review` | `on` or `off`. `off` adds `Plan review: off` to `charter.md`. `references/plan-review.md`'s "When the plan review runs" acts on it |
 | `Checkouts` | one line per repo, the principal's checkout of that repo. The orchestrator launcher reads it from the machine file. `skills/orchestrator/references/launcher.md` owns the line format |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
 | `Usage limit` | the plan usage limit of an orchestrator, a percent of the five-hour window. Only an orchestrator reads it; `skills/orchestrator/references/usage.md`'s "The limit" owns it |

@@ -187,8 +187,15 @@ package id, and the dispatch mode (`SKILL.md`'s "Every dispatch is named").
 The standing instructions go in after the contract and
 before the brief, as `SKILL.md`'s "Standing instructions" says.
 
-**One dispatch carries the package.** The IC writes `plans/<id>.md`, then
-continues per `ic-contract.md`'s "Write your plan first".
+**Read `plan-review.md`'s "When the plan review runs" before you write the
+brief.** It decides whether this dispatch carries `Plan stop: on`. The run's
+first dispatch carries it, unless that section names the case otherwise:
+`Plan review: off`, the light path, a promotion after the IC's first
+commit, a fix round and a package the delivered window adds. With `Plan stop: on`, the IC writes `plans/<id>.md` and
+stops with the final message `Plans written: <absolute paths>`
+(`ic-contract.md`'s "Write your plan first"). Then run `plan-review.md` from
+"The planning stop" to "The start word". With no `Plan stop: on` line, the IC
+writes its plan and goes on, and you wait for no stop.
 
 **Expect the contents instead of the file.** A dispatch shape that denies the
 IC every record write (§15.26b, §15.31b) puts the plan or report in its
@@ -294,6 +301,9 @@ and on every path. Every other file points here rather than keep a second copy:
   whatever the tests say;
 - a criterion that passes at the red commit, when the package adds the test
   its criterion names (a goal run only);
+- an accepted `blocking` plan review finding that neither the diff nor the
+  plan's `## Changed at start` answers (`plan-review.md`'s "Adjudicate the
+  findings");
 - a commit outside the IC's own branch or worktree, which only the full path
   can produce (`full-path.md`'s "Verify before you believe" runs that check).
 
@@ -425,7 +435,10 @@ left registered is work for a human (design §15.88g, §15.90).
 why not in `checkout_restored`. A run that cut its own checkout switched
 nothing, so `checkout_branch` is `null` and this step is already done. Name
 both branches in your closing report, and list in it every decision taken on
-a recommendation (`autonomy-contract.md`'s "The preference sweep"). Send it to
+a recommendation (`autonomy-contract.md`'s "The preference sweep"). It also
+carries the plan review line, and the reviewer's refactor recommendations
+under the heading `Refactor recommendations`: `plan-review.md`'s "The
+hand-over" gives both. Send it to
 the principal the way the goal arrived (`autonomy-contract.md`). A pane is
 not a report when nobody is watching it.
 

@@ -19,8 +19,11 @@ it against your worktree.
   `--no-verify`. If the acceptance test looks wrong, report it and stop — do
   not edit it.
 - Do not write `state.json`, `split.md`, `worktrees.json`, `decisions.md`, or
-  any other package's file under `reports/` or `plans/`.
-- Edit only the files in your file set, plus two exceptions: your plan and
+  any other package's file under `reports/` or `plans/`. One exception: the
+  plan of each package that your spawn prompt lists for your territory is
+  yours to write and revise. Your code and your report stay with the package
+  you work on now.
+- Edit only the files in your file set, plus two exceptions: your plans and
   your report (see below). Touch no other file, in your worktree or in the
   record.
 - Commit only to your own branch, only in your own worktree. Do not merge,
@@ -32,7 +35,7 @@ it against your worktree.
   file set does name is yours to edit, like every other file in the set. Name
   every shared file you edited in your report, so your dispatcher sees it
   without reading the diff.
-- Read and write nothing outside your own worktree, except your plan and
+- Read and write nothing outside your own worktree, except your plans and
   your report in the record.
 
 ### Scope
@@ -102,7 +105,9 @@ findings on your plans, each with the project lead's label. Act on each one
 before you write code:
 
 - **`blocking`**: revise that plan. Append `## Revised after the plan review`
-  to `plans/<id>.md`, and name each finding and what changed.
+  to `plans/<id>.md`, and name each finding and what changed. When that write
+  is denied, `SendMessage` the section's text to the project lead, put it in
+  your report too, and go on.
 - **`suggestion` or `nit`**: apply it as you write the package. Do not revise
   the plan for it.
 

@@ -102,15 +102,16 @@ all — see the section below.
 
 ## What the light path skips
 
-The light path is a path, not a band. It takes the spec critic away at every
-band it carries (design §15.88). `simple-path.md`'s "The light path" states
-when a run takes it; this file states what it drops.
+The light path is a path, not a band. It takes the spec critic and the plan
+review away at every band it carries (design §15.88). `simple-path.md`'s "The
+light path" states when a run takes it; this file states what it drops.
 
 | Step | On the light path |
 |---|---|
 | spec critic | skipped — the run writes no `spec.md`, so the critic has nothing to read |
+| plan review | skipped — the IC writes its plan with no stop; step `plan-review` (`plan-review.md`'s "When the plan review runs") |
 
-**Your own verification of the package is what makes the spec critic safe to
+**Your own verification of the package is what makes both steps safe to
 drop.** You verify every package yourself, at every band and on every path.
 `simple-path.md`'s "Verify before you believe" owns what that runs, for a code
 package and for a prose one, and its "Fix rounds" owns what a failure costs.

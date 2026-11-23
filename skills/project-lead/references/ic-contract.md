@@ -71,10 +71,58 @@ reports no error.
 
 Before you write any code, write your implementation plan to
 `<record-root>/plans/<id>.md` — this is your `plan_path`, and `<id>` is your
-package's id. Then keep going. Nothing approves the plan, so wait for nothing
-and start the work.
+package's id.
 
-If the write is denied, put the plan at the top of your report instead.
+**Your brief carries one line, `Plan stop: on` or `Plan stop: off`.** An
+absent line means `off`.
+
+**With `Plan stop: off`**, write the plan, then start the work. Nothing
+approves the plan, so wait for nothing. If the write is denied, put the plan
+at the top of your report instead. A fix round and a package that the
+delivered window adds carry no plan stop. They are small patches to code that
+exists, with no new design.
+
+**With `Plan stop: on`**, write the plan, then stop. A reviewer reads every
+plan of the run together before any code exists (`plan-review.md`). On the
+full path your spawn prompt lists every package of your territory, in order.
+Write one `plans/<id>.md` for each of them. Write no code, and make no commit.
+Then make your final message exactly this line, with the absolute path of
+each plan:
+
+```
+Plans written: <absolute paths>
+```
+
+When the record write is denied, open your final message with `Plans written:
+denied`, then put each plan whole under its package id. The project lead
+transcribes them.
+
+Then wait for the message `Start <package id>`. It can carry plan review
+findings on your plans, each with the project lead's label. Act on each one
+before you write code:
+
+- **`blocking`**: revise that plan. Append `## Revised after the plan review`
+  to `plans/<id>.md`, and name each finding and what changed.
+- **`suggestion` or `nit`**: apply it as you write the package. Do not revise
+  the plan for it.
+
+Then start the package that the message names. A finding that arrives later
+by message, on a package you have not finished, takes the same action.
+
+**A later package's plan is less exact.** You write it before the packages
+ahead of it exist. Plan its design against the code as it stands now and
+against the interface contracts. You may leave exact lines to the start of
+that package.
+
+**At the start of any package, you may change its plan** when the code then
+shows the plan wrong. Before you write code, append `## Changed at start` to
+`plans/<id>.md`, with what changed and why. A change that alters an interface
+contract's `produces` is not yours to make. Ask the project lead, as
+"Questions" below says.
+
+**A package with no plan on disk at its start**, because the stop ended
+before you wrote it: write its plan first, with no stop, then start the
+work.
 
 ## Write the failing test first
 
@@ -215,6 +263,8 @@ Include:
   checked, and for each one whether you fixed it or why it needs no fix.
 - Both outputs of a mutation check, when "Write the failing test first" asks
   for one.
+- `Plan changes`: each `## Changed at start` change to your plan, and why.
+- Each accepted plan review finding you got, and how you answered it.
 - Every assumption you took, from the Questions protocol.
 - Every question you raised, and how you resolved it or why it is still
   open.

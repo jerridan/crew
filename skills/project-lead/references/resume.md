@@ -30,7 +30,8 @@ state this window can die in, and each entry names the file that owns the
 work it sends you to.
 
 **Read `run.review_pending` before you recover a package.** A head there
-means a skeptical review is owed or half adjudicated, and its reply file may
+means a review round is owed or half adjudicated, the goal check on a goal
+run, and its reply file may
 already name packages that `packages[]` does not hold yet — recover blind and
 you create one twice. Which comes first depends on the state, so take
 `skeptical-review.md`'s resume list from the top and do what the first

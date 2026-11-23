@@ -1,17 +1,19 @@
 # Review output
 
 Every crew review agent reports in this shape: `crew:spec-critic` and
-`crew:split-critic`. So does the skeptical review of the finished diff, which
-is a headless process and not an agent (`skeptical-review.md`).
+`crew:split-critic`. So does the review of the finished diff, which is a
+headless process and not an agent: the goal check on a goal run
+(`goal-check.md`), and the skeptical review on a review run
+(`skeptical-review.md`).
 This file owns the shape. A reader of this file keeps no copy of it.
 
 The project lead injects this file whole into every review dispatch, and into
-the skeptical review's instructions file (`review-runner.md`). A path would
+that review's instructions file (`review-runner.md`). A path would
 not resolve: a reviewer's cwd is the target repo, not the plugin.
 
 This file owns the format and nothing else. What a reviewer looks for, and
-the stance it takes, belong to its own agent definition or to
-`skeptical-review.md`.
+the stance it takes, belong to its own agent definition, to `goal-check.md`
+or to `skeptical-review.md`.
 
 ## Severity labels
 
@@ -83,18 +85,18 @@ When the write is denied, your final message is the whole report. Say so in
 its first line and name the denied path. Never say you wrote a file you
 could not write.
 
-**This first-line rule is for a dispatched agent, and the skeptical review is
-exempt from it.** Its own instructions give it a different first line —
+**This first-line rule is for a dispatched agent, and the review of the
+finished diff is exempt from it.** Its own instructions give it a different first line —
 `Reviewed: <sha>`, the same line an unimpeded report opens with — and
 `review-runner.md`'s check 4 reads that line whichever way the report
 reached it. Follow whichever first-line rule the dispatch you are reading
 actually states.
 
 **This fallback is for a dispatched agent**, whose final message the project
-lead reads. The skeptical review is a separate process with no caller, so
-nothing it prints to the terminal is collected — except its last message,
-which `--output-format json` saves into the result JSON's own `result` field,
-and which is what a denied report write falls back to there
+lead reads. The review of the finished diff is a separate process with no
+caller, so nothing it prints to the terminal is collected — except its last
+message, which `--output-format json` saves into the result JSON's own
+`result` field, and which is what a denied report write falls back to there
 (`review-runner.md`).
 
 You carry no `SendMessage`, so a finding you leave out of the report reaches
@@ -102,8 +104,8 @@ nobody.
 
 ## The three closing lines
 
-End your report file with these three lines. The skeptical review has no
-four-line return, and it ends its report with them too:
+End your report file with these three lines. The review of the finished
+diff has no four-line return, and it ends its report with them too:
 
 ```
 Findings: <n> blocking, <n> suggestion, <n> nit, <n> unsure
@@ -113,5 +115,6 @@ Blocking count: <n>
 
 The last two of the three lines are the verdict pair: `Verdict:` and
 `Blocking count:`. Your own agent definition names your two verdict
-strings, and `skeptical-review.md` names the skeptical review's. Use one of
+strings. `goal-check.md` names the goal check's, and `skeptical-review.md`
+names the skeptical review's. Use one of
 those two word for word. Always include every count, even when it is zero.

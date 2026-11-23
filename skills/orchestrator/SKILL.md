@@ -203,11 +203,12 @@ The rules for the run:
   Then wait for your next message, or for the reset that `usage.md` names.
 - **The ready line.** Send one line that names the current head sha and
   the latest answer to each finding outside a review thread, for example
-  "ready <sha>: fixed ..., declined ...". Send it each time the skeptical
-  review stops with `accepted`, also after a round with no finding. Send it
-  at the end of every round on PR comments or CI. Send it again when you ask
-  for it. When a head stays unreviewed, such as past the review cap, say so
-  in the line.
+  "ready <sha>: fixed ..., declined ...". Send it when the check of
+  `goal-check.md`'s "Mark the PR ready" passes, or, with `PR: draft`, when
+  its other conditions hold: after the goal check, and after its goal-miss
+  patch is pushed. Send it at the end of every round on
+  PR comments or CI. Send it again when you ask for it. A head after the goal
+  check is not unreviewed, so do not call it so.
 - **A GitHub event.** Send one line when an approval, a review, or a merge
   queue event needs you.
 - **A refused action.** When a permission check refuses an action, send
@@ -310,7 +311,8 @@ first. Each check names what decides it.
 A finding that the ready line does not name is not answered yet. Ask the
 implementer for its ready line again. A ready line that reports the head as
 unreviewed approves nothing. Put a notice in the inbox, and do not merge that
-PR on the line alone.
+PR on the line alone. A head that the record lists as `goal-check-done` is
+not unreviewed: the goal check ran on the goal run's hand-over head.
 
 **The method.** Merge by rebase when the repo allows it. Else use the one
 method that the repo allows. `gh repo view --json

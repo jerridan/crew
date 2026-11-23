@@ -209,7 +209,7 @@ adds it is the head that group starts from, which is later.
 
 **The two bases answer two questions.** The package's `base` is what
 verification and recovery read, so each package is judged on its own commits.
-The deliverable's `base` is what the cumulative diff and the skeptical review
+The deliverable's `base` is what the cumulative diff and the goal check
 read, because both want the whole change.
 
 **`base` stays `null` until the dispatch.** A `null` there is what says the
@@ -385,12 +385,12 @@ what you send to GitHub (`writing-standard.md`).
 `Closes <owner>/<repo>#<n>` on a line of its own in the body. GitHub then
 closes the issue when the PR merges into the default branch.
 
-`gh pr create --draft`. The PR stays a draft until the skeptical review
-stops. `skeptical-review.md`'s "Mark the PR ready" owns that step. Then one
+`gh pr create --draft`. The PR stays a draft until the goal check is done.
+`goal-check.md`'s "Mark the PR ready" owns that step. Then one
 write: `crew-record.py deliver <deliverable-id> draft-pr-opened --pr-url
 <url> --review-head <sha>`. It records `pr_url`, sets the deliverable
 `draft-pr-opened` and `run_state: delivered`, stamps `delivered_at`, and
-writes `run.review_pending` with the head the skeptical review is owed on — one write, so a session that dies here still
+writes `run.review_pending` with the head the goal check is owed on — one write, so a session that dies here still
 owes the review (`skeptical-review.md`). A human merges it. Then run
 `scripts/spend.py --write`
 (`autonomy-contract.md`), and stop every process the run left listening —
@@ -412,7 +412,7 @@ for the answer**: `blocked` until it lands, then `active`. One who already
 refused the PR has answered; do not ask twice. Then `crew-record.py deliver
 <deliverable-id> work-complete --review-head <sha>`: it records `work-complete`,
 `run_state: delivered` and `review_pending` in one write, with `pr_url` left
-`null`. Hand over the branch. **This ending takes the skeptical review too.**
+`null`. Hand over the branch. **This ending takes the goal check too.**
 The review reads the branch, and a PR is only how a human reaches it
 (`skeptical-review.md`).
 
@@ -443,16 +443,16 @@ the principal the way the goal arrived (`autonomy-contract.md`). A pane is
 not a report when nobody is watching it.
 
 **The report ends the work, not the session.** Invoke the skill
-`crew:delivered-window` with the `Skill` tool, then read "The skeptical
-review" below.
+`crew:delivered-window` with the `Skill` tool, then read "The goal check"
+below.
 
-## The skeptical review
+## The goal check
 
 The work is handed over and `run_state` is `delivered`. Read
-`skeptical-review.md` and do what it says. It owns the step whole, on every
-path and at every band: when a review runs, the stance, the inputs, the
-verdicts, and when the record clears. `review-runner.md` owns the mechanics:
-the worktree, the command, the instructions and the session id.
+`goal-check.md` and do what it says. It owns the step, on every path and at
+every band: the question, the one round, the verdicts and "Mark the PR
+ready". `skeptical-review.md` owns the round machinery it shares with a
+review run, and `review-runner.md` owns the mechanics.
 
 **A replacement named for this step runs in its place.** `substitution.md`
 owns that case.

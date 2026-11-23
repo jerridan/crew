@@ -31,12 +31,9 @@ you create one twice. Which comes first depends on the state, so take
 `skeptical-review.md`'s resume list from the top and do what the first
 matching entry says.
 
-**A resume re-dispatches no spec critic that left a report.** A record whose
-`reviews/` holds a spec critic report holds its one round. When `decisions.md`
-holds no adjudication of that report, adjudicate it, then go on. A record
-whose `reviews/` holds a spec critic reservation file and no report for it
-holds no report: dispatch the critic again at the next reserved number.
-`SKILL.md`'s "Have the spec reviewed" owns both rules.
+**A resume before the sweep re-enters the spec review by `SKILL.md`'s "Have
+the spec reviewed".** That section owns which spec critic report counts, and
+when the critic is dispatched again.
 
 **A resume picks the path too.** Read the reopened `charter.md` by the path
 test in `SKILL.md`'s "Take the goal". A record holding `diagnosis.md` took the

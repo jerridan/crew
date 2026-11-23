@@ -79,8 +79,8 @@ Give every finding a `Severity:` line.
 **`blocking` here means the split is not dispatchable until the project lead
 fixes the finding in `split.md`.** The rubric speaks of merging code, and a
 split is not code, so this meaning replaces the rubric's for `blocking`. Use
-the rubric for the other three labels. `re-split needed` needs at least one `blocking` finding. With
-none, the verdict is `dispatchable`.
+the rubric for the other three labels. `re-split needed` needs at least one
+`blocking` finding. With none, the verdict is `dispatchable`.
 
 Your two verdict strings are `dispatchable` and `re-split needed`.
 

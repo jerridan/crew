@@ -119,10 +119,9 @@ per deliverable, a gate decided by each item's author, a review that stops on
 an accepted verdict, a delta re-review, a round cap on the spec critic,
 whole-class fix rounds, and `crew-record.py`'s `decision` and `round`
 subcommands. No run has read any of it yet. T88 cut the spec critic to one
-round (§15.148). T80 lets a worktree-isolated session run the full
-path: launch check 1 probes one worktree base for every worktree of a run
-(§15.126). No run has
-exercised it.
+round (§15.148), and T89 did the same for the split critic (§15.150). T80
+lets a worktree-isolated session run the full path: launch check 1 probes one
+worktree base for every worktree of a run (§15.126). No run has exercised it.
 
 T83 is built: after a merge, the project lead arms a deploy watch, and a
 successful deploy of the merge commit is the ship word. A repo with

@@ -425,7 +425,7 @@ export const register: Register = on => {
       return (
         <Box flexDirection="column">
           <Box key="line">
-            <Text color="yellow">{MISSING}</Text>
+            <Text color="yellow" wrap="truncate">{fit(MISSING, columns)}</Text>
           </Box>
         </Box>
       )
@@ -460,7 +460,7 @@ export const register: Register = on => {
       )
     }
     if (!b) {
-      if (!v.error) parts.push(<Box key="wait"><Text dimColor>Reading the board…</Text></Box>)
+      if (!v.error) parts.push(<Box key="wait"><Text dimColor wrap="truncate">{fit('Reading the board…', columns)}</Text></Box>)
       return <Box flexDirection="column">{parts}</Box>
     }
 
@@ -505,13 +505,13 @@ export const register: Register = on => {
         if (word) parts.push(...wrapped(`plan-${w.key}-word`, INDENT * 2, word, { color: 'yellow' }))
       }
     }
-    if (b.plan) parts.push(<Box key="gap-plan"><Text> </Text></Box>)
+    if (b.plan) parts.push(<Box key="gap-plan"><Text wrap="truncate"> </Text></Box>)
 
     // Needs you.
     const entries = b.needs_you.entries
     parts.push(
       <Box key="needs">
-        <Text bold color={b.needs_you.count > 0 ? 'magenta' : undefined}>
+        <Text bold wrap="truncate" color={b.needs_you.count > 0 ? 'magenta' : undefined}>
           {`Needs you ${b.needs_you.count}`}
         </Text>
       </Box>,
@@ -566,7 +566,7 @@ export const register: Register = on => {
         }
       }
     }
-    parts.push(<Box key="gap-needs"><Text> </Text></Box>)
+    parts.push(<Box key="gap-needs"><Text wrap="truncate"> </Text></Box>)
 
     // The groups, then the single items, in the order of the data.
     const w = layout(b, columns)
@@ -593,18 +593,22 @@ export const register: Register = on => {
             {s.title}
           </Text>
           {s.ticket ? (
-            s.ticket.url ? (
-              <Link href={s.ticket.url}>{s.ticket.id}</Link>
-            ) : (
-              <Text>{s.ticket.id}</Text>
-            )
+            <Box width={Math.min(columns, cellCount(s.ticket.id))} flexShrink={0}>
+              {s.ticket.url ? (
+                <Link href={s.ticket.url}>{fit(s.ticket.id, columns)}</Link>
+              ) : (
+                <Text wrap="truncate">{fit(s.ticket.id, columns)}</Text>
+              )}
+            </Box>
           ) : null}
-          {s.repo ? <Text dimColor>{`· ${s.repo}`}</Text> : null}
-          {s.kind === 'group' ? <Text dimColor>{`· ${s.merged} of ${s.total} merged`}</Text> : null}
+          {s.repo ? <Text dimColor wrap="truncate">{`· ${s.repo}`}</Text> : null}
+          {s.kind === 'group' ? (
+            <Text dimColor wrap="truncate">{`· ${s.merged} of ${s.total} merged`}</Text>
+          ) : null}
         </Box>,
       )
       for (const r of s.rows) parts.push(rowView(s, r))
-      parts.push(<Box key={`gap-${key}`}><Text> </Text></Box>)
+      parts.push(<Box key={`gap-${key}`}><Text wrap="truncate"> </Text></Box>)
     }
 
     // The result line and the footer.

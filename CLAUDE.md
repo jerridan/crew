@@ -168,7 +168,7 @@ it, and no session has opened the pane.
 
 The rename procedure of the orchestrator session is built: the record name
 is fixed at `init`, and the orchestrator tells each live implementer a new
-session name (§15.NNN). No run has exercised it.
+session name (§15.152). No run has exercised it.
 
 The resume of an orchestrator and the close-out are built (§15.145):
 `resume-and-close.md`, with `launcher.py resume`, `find` and `remove`, the

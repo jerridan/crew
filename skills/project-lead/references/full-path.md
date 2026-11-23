@@ -130,12 +130,21 @@ the standing instructions as `SKILL.md`'s "Standing instructions" says, and
 the absolute path it writes its findings to:
 `reviews/<deliverable-id>-split-critic-r<n>.md`.
 
-Adjudicate and label each finding as `SKILL.md`'s "Every review in this run
-is adjudicated the same way" says. Its map decides the action. A finding you
-label `blocking` is a failed invariant, not a style note — fix the split and
-dispatch again. Three re-splits is the cap; escalate at it. **A round with
-no finding you label `blocking` is the last.** Apply each finding you accept
-to `split.md` yourself, and the split goes to dispatch.
+**The split critic runs one round per split.** After its report, adjudicate
+and label each finding as `SKILL.md`'s "Every review in this run is
+adjudicated the same way" says. Your labels decide, not the critic's verdict.
+Apply every finding you accept to `split.md` yourself, `blocking` ones
+included. Then write one `decisions.md` entry titled `Split critic
+<deliverable-id> r<n>: adjudication`, with the label of each finding and the
+reason for each one you decline, and the split goes to dispatch. No second
+critic round follows. Do not ask the principal whether to go on. A re-plan
+(design §10) is a new split, and it gets its own one round at the next `<n>`.
+
+**A report counts, a reserved number does not.** A critic that leaves no
+report file and no report in its final message produced no round. Dispatch it
+at the next reserved number. On a resume, a report on disk for the current
+split is that one round: adjudicate it when `decisions.md` holds no entry for
+its `<n>`, and dispatch no critic.
 
 ## Create the branch and the worktrees
 

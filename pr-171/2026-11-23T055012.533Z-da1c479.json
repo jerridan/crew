@@ -1,0 +1,197 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 171,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Run the spec critic for one round",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/171"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "c58c658c3b19728c394b5c3e27ea35c3657f7c4f",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-171/2026-11-23T054340.837Z-c58c658.json",
+      "open": [],
+      "dismissed": [
+        "70d356502e082e3c"
+      ],
+      "fetch_failed": false
+    },
+    "base": "b73fe5092c583019f689442df71971e76771a112",
+    "head": "da1c47953368b85a2fefea6eeee68727264c5f32",
+    "started_at": "2026-11-23T05:50:12.533Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Run the spec critic for one round\n\n## Summary\n\nCrew's spec critic now reviews a spec once. Before, a blocking finding sent the spec back to a writer and to a second critic round, up to two rounds. Records of 81 reviewed specs show that the second round found a blocking problem in about 1 report of 7, and each one cost a writer, an Opus critic and about 5 more findings to sort. Now the project lead fixes every accepted finding in the spec itself, blocking ones included, logs the declined ones with reasons, and goes on.\n\n**Ticket:** [T88 — Run the spec critic for one round](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t88--run-the-spec-critic-for-one-round)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.148 (new): the decision, its figures, and the split critic open question. It replaces §15.118's two-round cap; the rest of §15.118 holds.\n- `skills/project-lead/SKILL.md`, \"Have the spec reviewed\": owns the one-round rule and the rule that a report counts and a reserved number does not.\n- `skills/project-lead/references/record-format.md` owns the `reviews/` names; `resume.md` owns the resume; `substitution.md` owns a replaced spec review.\n\n### What changed, by file\n\n- `skills/project-lead/SKILL.md`: \"Have the spec reviewed\" states one critic round. The project lead applies every accepted finding to `spec.md`, blocking ones included, logs the declined ones, and goes to the sweep with no writer round, no second critic round and no question. A critic that returned no report is dispatched again; a run adjudicates one report. The label table's `blocking` row names the project lead's own edit of `spec.md` for a spec critic finding.\n- `skills/project-lead/references/record-format.md`: `reviews/spec-critic-r<n>.md` is round 1 on a new run; a higher `<n>` comes only from a re-dispatch; `-r2` and `-r3` in older records stay valid history.\n- `skills/project-lead/references/resume.md`: a resume re-dispatches no spec critic that left a report, and adjudicates it if no adjudication is on record; a reservation file with no report means dispatch again.\n- `skills/project-lead/references/substitution.md`: names the verdict string `re-spec needed` in place of \"a re-spec\".\n- `agents/spec-critic.md`: says that no second round follows, and that the project lead fixes each accepted finding itself. Both verdict strings stay.\n- `skills/project-lead/scripts/crew-stats.py`: one comment; no code change.\n- `docs/design.md`: new §15.148; §15.118 points to it.\n- `docs/tickets.md`: new T88.\n- `CLAUDE.md`: Build state names T88's one-round rule.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.115.\n\n### Constraints that applied\n\n- Version rule: the change touches `skills/` and `agents/`, so both manifests go to 0.1.115, the same value.\n- One rule, one file: `SKILL.md` owns the round rule; `record-format.md`, `resume.md` and design §15.148 point at it.\n- The split critic is unchanged: `git diff origin/main -- agents/split-critic.md skills/project-lead/references/full-path.md` is empty.\n- The verdict strings stay, because `crew-stats.py` and old records read them.\n- `docs/implementation-plan.md` and `docs/stage-2-run/` are untouched.\n\n### How this was verified\n\n- `grep -rn -i -E 'two rounds is the cap|dispatch .spec-writer-r<n>. again|critic.s next round' skills agents` prints nothing.\n- `grep -rn -i -E 'two-round spec|spec critic .{0,40}two rounds|two rounds is the cap'` over the repo, less the frozen docs, `design.md` history and the new ticket, prints nothing.\n- `crew-stats.py` at `origin/main` and at this head, run on one frozen copy of the record root, print the same 244 lines except the USD figure of one live run, which `spend.py` prices from transcripts outside the copy. The script change is a comment.\n- `SKILL.md` is 490 lines, under its 500-line target.\n- A read of each changed file against the spec's eleven requirements and `writing-standard.md`'s \"Before you open the PR\".\n- The run that built this change used the rule on its own spec: the one critic report held 2 blocking and 8 other findings, and the project lead applied all 10 to the spec with no second round.\n\n### Known gaps\n\n- The split critic keeps its rounds. §15.148 records its figures as an open question: round 2 sends a split back in 3 of 16 reports, against 16 of 33 at round 1.\n- No other run has used the one-round rule yet.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZgYWHHNhRSy3s6RFPj\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "agents/spec-critic.md",
+        "hunks": 4
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/substitution.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "No new hunks since c58c658.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": null,
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 49,
+      "gather": 545,
+      "scope": 15,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

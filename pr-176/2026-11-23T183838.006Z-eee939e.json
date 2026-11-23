@@ -1,0 +1,192 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 176,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Open and close implementer tabs in Herdr",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/176"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "665c7343225ebd388b5d5bc4af771f906a9d4d6e",
+    "head": "eee939e06f4d7aeb214e8ac4ca5b97a234a2bac9",
+    "started_at": "2026-11-23T18:38:38.006Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Open and close implementer tabs in Herdr\n\n## Summary\n\nAn orchestrator that runs in the Herdr terminal app can now start its implementers in Herdr tabs, with no terminal argument. Before this change, the launcher supported only iTerm2 and tmux, so an orchestrator in Herdr could not open an implementer tab there. The launcher now starts, resumes, finds, lists the groups of, focuses and stops implementer tabs in Herdr, through Herdr's own command-line programs. Where Herdr differs from the other terminals, the launcher reference names the limit, and iTerm2 and tmux work as before.\n\n**Ticket:** N/A (orchestrator item herdr-terminal, no GitHub issue)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/launcher.md` owns the launcher's interface, and its new \"Herdr\" section owns the Herdr mapping and limits.\n- `docs/design.md` §15.<n> (number assigned by the orchestrator at merge) records the live probe, the decisions and what is unexercised.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: detects Herdr (`__CFBundleIdentifier=dev.herdr.app`, after `$TMUX` and iTerm2), takes `--terminal herdr`, finds `herdr-app` and `hc` on `PATH` or in `~/.local/bin`, and implements start and resume (`herdr-app do tab.new`, or `space.new` for a new group), `groups` (one line per Herdr space), `find` (tty of each live `hc` terminal), `focus` (`do agent.focus`) and `stop` (`hc keys esc`, `hc keys ctrl+u`, `hc send /exit --force`, then `do tab.close`). The handle is `herdr:<terminal address>`.\n- `skills/orchestrator/scripts/test-launcher.sh`: stub `herdr-app` and `hc`, and Herdr cases for detection, the three failing limits, start, resume, groups, find, focus and stop. The shared setup also unsets `__CFBundleIdentifier` and `HC_TERMINAL_ID`. No existing check line changed.\n- `skills/orchestrator/references/launcher.md`: Herdr in Terminals, a new Herdr section with its limits, and Herdr values in start, groups, find, focus and stop, exit codes and Test.\n- `skills/orchestrator/SKILL.md`, `references/orchestrator-record.md`, `references/resume-and-close.md`, `README.md`, `CLAUDE.md`: name Herdr where they list the launcher's terminals, and point at `launcher.md`.\n- `docs/design.md`: new finding §15.<n>.\n\n### Constraints that applied\n\n- Python 3.9 and no package: satisfied, standard library only (`shutil.which`).\n- No live Herdr call from a test: the test hides the real programs and uses stubs only.\n- The person's live Herdr sessions: one live probe ran, on a space it made and then closed. `herdr-app status` showed the person's space and tab unchanged.\n- The plugin `version` and the §15 number belong to the orchestrator: both manifests are unchanged, and the finding uses the placeholder `§15.<n>`.\n- The `--principal` path is unchanged, so this PR does not clash with item orch-rename (PR 175) in behavior. It shares files with that PR, so the second PR to merge needs a rebase.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 258 of 258 checks passed at the head. At the red commit 9e9849d, 225 of 258 passed, so the Herdr cases failed before the code.\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed.\n- Live probe (read-write, own space only): `do space.new` and `do tab.new --focus false` printed `{\"space\",\"tab\",\"terminal\"}` and did not move the person's view. A killed program left the terminal live with a shell, so `stop` closes the tab. `tab.close` on a gone tab and `agent.focus` on an unknown terminal printed `{\"error\": ...}` and exited 1.\n- The project lead read the whole diff against the spec. One fix round named the first tab of a new space and added a missing statement about handles after a restart.\n\n### Known gaps\n\n- No run has sent the stop keys and `/exit` to a live `claude` in Herdr.\n- No run has focused a real Herdr tab, because that changes the person's view. Focus does not raise the macOS window.\n- No run has checked that a new tab takes its environment from the Herdr core and not from the launcher.\n- The behavior of a handle after a restart of the Herdr core comes from Herdr's docs only.\n- No orchestrator run has used the Herdr path yet.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "CLAUDE.md",
+        "hunks": 2
+      },
+      {
+        "path": "README.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 14
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 17
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 3
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6027361200,
+      "review_url": "https://github.com/jerridan/crew/pull/176#pullrequestreview-6027361200",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137923765935
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 36,
+      "gather": 30,
+      "find_verify": 2,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

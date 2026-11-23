@@ -1,0 +1,212 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 175,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let the principal rename the orchestrator session",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/175"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "665c7343225ebd388b5d5bc4af771f906a9d4d6e",
+    "head": "eb750e1708f5d8be62fa95e3c7590062ccb26e4d",
+    "started_at": "2026-11-23T18:30:26.804Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let the principal rename the orchestrator session\n\n## Summary\n\nYou can now rename an orchestrator session at any time, and its project leads still reach it. Before, the session name was both the name of the orchestrator's record and the address that project leads sent to, so a rename cut them off. Now the record keeps the name it got at the start, and after a rename the orchestrator tells each running project lead the new name. A project lead then sends to the new name. The README says how to rename.\n\n**Ticket:** N/A\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.NNN (new finding; the orchestrator assigns the number).\n- `skills/orchestrator/SKILL.md` owns the record-name rule and the new \"A rename\" procedure.\n- `skills/project-lead/references/orchestrator-report.md` owns the project lead's new \"A new orchestrator name\" rule.\n- `skills/orchestrator/references/resume-and-close.md` owns the resume and compaction steps.\n\n### What changed, by file\n\n- `skills/orchestrator/SKILL.md`: the record name is fixed at `init`; `--principal` takes the current session name from the first line of `ListAgents`; the `Orchestrator:` line takes the record name; new section \"A rename\"; description trigger \"I renamed the orchestrator\".\n- `skills/orchestrator/references/resume-and-close.md`: resume step 1 runs under any session name and never renames back; the duplicate check looks at the record name and each rename's new name in `told`, and asks the principal when it cannot decide; the compaction row gets the record name first; the rejoin message carries the `Orchestrator:` line; \"No goal\" asks whether `told` holds the goal itself, not whether it is empty.\n- `skills/orchestrator/references/launcher.md`: `--principal` is the current session name, not the record name.\n- `skills/orchestrator/scripts/launcher.py`: the wait prompt says that a later message from the orchestrator can come from a new name.\n- `skills/orchestrator/scripts/test-launcher.sh`: expects the new wait prompt.\n- `skills/project-lead/references/orchestrator-report.md`: new section \"A new orchestrator name\": a message with a matching `Orchestrator:` line and a new envelope `from-name` updates `run.principal`.\n- `skills/project-lead/references/autonomy-contract.md`: a goal by message writes `run.principal` at once, and every send goes to `run.principal`; points at the new rule.\n- `skills/project-lead/references/record-format.md`, `skills/project-lead/SKILL.md`: point at the new rule for a later change of `run.principal`.\n- `README.md`: how to rename the orchestrator; resume under any name by the record name.\n- `docs/design.md`: finding §15.NNN, with the four options weighed and the facts found.\n- `CLAUDE.md`: one build-state paragraph.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version placeholder `0.1.NNN-orch-rename`.\n\n### Constraints that applied\n\n- One rule, one file: the procedure lives in the orchestrator's `SKILL.md`, and the project lead's rule in `orchestrator-report.md`; every other file points at them.\n- No new hook, no new `crew-orch.py` command, no new record field, and no session id stored anywhere.\n- Version and §15 number left as placeholders: the orchestrator owns them.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 220 of 220 checks passed.\n- The project lead read the whole diff against the acceptance sequence: init, rename, notice, implementer sends to the new name with the same record name, then a compaction or a resume of either side.\n- The status sweep of `writing-standard.md` found two \"No run has\" lines, both true.\n- A spec critic round (5 findings, all applied) and a Codex plan review (3 blocking, 2 suggestions, all applied) ran before the build.\n\n### Known gaps\n\n- No run has exercised the rename procedure.\n- The orchestrator learns of a rename only from the person's word. A hook could detect it later (`session_title` in `UserPromptSubmit`), and the person ruled that out for now.\n\n<details><summary>spec.md</summary>\n\n# Spec: orch-rename (path B)\n\nRepo: /Users/jerridan/src/crew/.claude/worktrees/orch-rename (jerridan/crew).\n\n## The problem\n\nThe orchestrator's session name does two jobs today. It names the orchestrator record (`<record-root>/orchestrators/<name>/`, every `crew-orch.py --orch <name>`, the goal's `Orchestrator: <name>, item <id>` line, `/orch-board`, `$CREW_ORCH`). It is also the `SendMessage` address of the orchestrator: the launcher's wait prompt (`launcher.py start --principal`), the goal envelope's `from-name`, and each project lead's `run.principal`. After `/rename`, the old name leaves `ListAgents`, every implementer send to it fails, and nothing tells the implementer the new name. `skills/orchestrator/SKILL.md` and `references/resume-and-close.md` also say that the record name is the session name, so after a rename a resume looks for the wrong record, or tells the orchestrator to rename back.\n\n## The chosen fix (the person's decision in the project lead's tab)\n\nPath B: when the orchestrator is renamed, it tells each implementer the new name. The record name and the address become two separate values.\n\n## Requirements\n\nR1. **The record name is fixed at `init`.** The orchestrator names its record once, at `init`, and never changes it. Every `--orch`, every `Orchestrator:` line and every board call uses the record name for the life of the run. The record name may equal the session name at `init`, but no rule may say that the two stay equal.\n  - AC1: these lines no longer say that the record name is, or must stay, the session name: `skills/orchestrator/SKILL.md:50-54`, `skills/orchestrator/references/resume-and-close.md:28-33`, `README.md:291-300`. `skills/orchestrator/SKILL.md`'s record rule names the record name as fixed at `init`. A `grep -n -i \"session name\"` over `skills/orchestrator/` and `README.md` shows no other line that equates the two.\n\nR2. **The address is the orchestrator's current session name.** `launcher.py start --principal` takes the orchestrator's current session name, not the record name. The goal's `Orchestrator:` line keeps the record name. The orchestrator reads its current session name from the first line of `ListAgents` output (\"This session is <name> ...\"), at each launch, so a compaction or a resume cannot leave it with an old name. It keeps no copy of the name in its context or its record.\n  - AC2: `skills/orchestrator/SKILL.md`'s launch step and goal-message list say which name goes where (current session name, read from `ListAgents`, to `--principal`; record name to `Orchestrator:`), and `skills/orchestrator/references/launcher.md`'s `--principal` row says the same.\n\nR3. **The rename procedure.** The orchestrator owns one procedure for a rename. The person renames the session with `/rename <new>` and tells the orchestrator the new name. The orchestrator then sends one message, recorded with `told`, to each implementer that is alive. The message carries the line `Orchestrator: <record name>, item <id>` for that implementer's item, and says the new name. The orchestrator can learn the new name only from the person; the procedure says so.\n  - AC3: exactly one file under `skills/orchestrator/` holds the rename procedure, and it names: the trigger (the person's word), the recipients (each item with a live implementer), the `told` write, and the content (the `Orchestrator:` line and the new name). Every other mention points at it.\n\nR4. **An implementer follows the new name.** A project lead whose `run.orchestrator` is set writes a new `run.principal` when a cross-session message from its orchestrator arrives with a `from-name` that differs from `run.principal`, and sends to the new name from then on. \"From its orchestrator\" means that the message carries the line `Orchestrator: <name>, item <id>` with both values equal to `run.orchestrator`. A session that knows both values could still pass this test; the run accepts that risk, because every session on the machine works for the same person. The envelope's `from-name` is the source of the new value, never a name in the message text alone.\n  - AC4: `skills/project-lead/references/orchestrator-report.md` (the owner for runs with `run.orchestrator`) holds this rule. Each other line that says when `run.principal` is written points at it rather than copying it: `skills/project-lead/references/autonomy-contract.md` (its routing section and lines 34-35), `skills/project-lead/references/record-format.md` (the `principal` field), and `skills/project-lead/SKILL.md` (\"Take the goal\").\n  - AC4b: the launcher's wait prompt (`WAIT_PROMPT` in `skills/orchestrator/scripts/launcher.py`) tells the waiting session that a later message from the orchestrator can come from a new name, and to send to that name. `skills/orchestrator/scripts/test-launcher.sh` checks the new prompt text and passes.\n\nR5. **Resume and compaction keep working.**\n  - The orchestrator's resume no longer requires the same session name. `resume-and-close.md`'s \"The resume\" step 1 asks for the record name when the principal's words do not give it, and does not tell the orchestrator to rename back. Its duplicate check still exists: when `ListAgents` shows another live session whose name is the record name, or a new name that a rename message in the record's `told` log gave, a second orchestrator can hold the record, and the orchestrator stops and tells the principal.\n  - The rejoin message that the resume sends to each live or resumed implementer carries the `Orchestrator:` line of R3, so R4 updates an implementer that missed a rename.\n  - A project lead's own `--resume` reads `run.principal` from its record, as today; R4 keeps that value current.\n  - AC5: a reader can trace the sequence in `charter.md`'s acceptance criterion through `skills/orchestrator/SKILL.md`, `resume-and-close.md`, `orchestrator-report.md` and `autonomy-contract.md` with no step that sends to the old name or reads a record under the new name.\n\nR6. **The README.** `README.md`'s \"Run many goals with an orchestrator\" says how to rename the orchestrator, and its resume text no longer says to start a session with the same name. `.claude/rules/readme.md` owns the shape.\n  - AC6: the README section holds a rename instruction with the command lines a person types, and the resume instruction names the record name.\n\nR7. **The design record.** `docs/design.md` §15 gets one new finding, numbered with a placeholder `§15.NNN`, that states the problem, the options the person weighed (A: a stored address read before each send; B: tell each implementer; C: a fixed handle; D: name before `init` only), the choice B, and the facts found: no hook event fires on a rename; `UserPromptSubmit` and `SessionStart` carry `session_title`; the status line carries `session_name`. `CLAUDE.md`'s \"Build state\" gets one sentence that says the rename procedure is built and no run has exercised it.\n  - AC7: the §15 finding and the CLAUDE.md sentence exist; the finding number is the literal placeholder `§15.NNN`.\n\n## Global constraints\n\n- Every prose rule in `skills/project-lead/references/writing-standard.md`, and its \"Before you open the PR\" checklist. ASD-STE100 prose. \"Writing for a person\" for the README.\n- `CLAUDE.md`'s \"A rule lives in exactly one file\": each new rule has one owner, and other files point at it.\n- `CLAUDE.md`'s \"Constraints that are easy to get wrong\": the version bump. The orchestrator owns `version` in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`. Write the literal placeholder `0.1.NNN` in both, the same value.\n- Write \"project lead\" in full.\n- No new hook, no new `crew-orch.py` command and no new record field.\n\n## Non-goals\n\n- Detecting a rename automatically (a hook, the status line). The person's decision ruled it out for now.\n- Storing the orchestrator's session id anywhere.\n- Changing `crew-orch.py`, `orch-board.tsx` or the record schema.\n- Renaming an implementer session.\n\n</details>\n\n<details><summary>decisions.md</summary>\n\n## Which path does this goal take?\nRoute: precedent\nAnswer: change path\nCitation: the goal: 'let the principal rename the orchestrator session and keep every implementer able to reach it'\nConfidence: high\nTimestamp: 2026-11-23T17:53:42Z\n\n## Which fix for an orchestrator rename?\nRoute: precedent\nAnswer: B: the orchestrator sends the new name to each implementer; record name fixed at init; implementers take the sender name of each orchestrator message into run.principal\nCitation: the person in the project lead's tab: 'Maybe it would be simpler just to let the implementers know what the new name is when we do a rename'\nConfidence: high\nTimestamp: 2026-11-23T18:08:57Z\n\n## Does the work take the light path?\nRoute: precedent\nAnswer: no: the change edits rules in instruction files (orchestrator SKILL.md, resume-and-close.md, autonomy-contract.md), which simple-path.md says promotes a run\nCitation: simple-path.md 'The light path': 'A rule change in an instruction file ... promote the run instead'\nConfidence: high\nTimestamp: 2026-11-23T18:09:40Z\n\n## Spec critic r1: adjudication\nRoute: precedent\nAnswer: all five accepted and applied to spec.md\nCitation: reviews/spec-critic-r1.md\nConfidence: high\nFinding one: blocking (critic blocking), accepted; the orchestrator reads its current name from the first line of ListAgents at each launch (R2)\nFinding two: suggestion, accepted; duplicate check names the record name and each rename's new name from told (R5)\nFinding three: suggestion, accepted; record-format.md, SKILL.md and autonomy-contract.md lines point at the R4 owner (AC4)\nFinding four: suggestion, accepted; the test is the full Orchestrator: line with name and item, and the residual risk is stated\nFinding five: nit, accepted; AC1 names the lines\nTimestamp: 2026-11-23T18:11:51Z\n\n## Preference sweep: what does the principal want that the repo cannot say?\nRoute: preference\nAnswer: none\nCitation: charter.md and spec.md; the person chose path B in the project lead's tab\nConfidence: high\nTimestamp: 2026-11-23T18:11:51Z\n\n## Plan review: which findings does the run act on?\nRoute: precedent\nAnswer: 5 of 5 findings sent to the ICs\nCitation: reviews/plan-review-r1.md\nConfidence: high\nFinding: F1 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F2 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F3 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F4 suggestion (reviewer: suggestion) — sent to ic-p1-r1\nFinding: F5 suggestion (reviewer: suggestion) — sent to ic-p1-r1\nTimestamp: 2026-11-23T18:20:33Z\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6027248971,
+      "review_url": "https://github.com/jerridan/crew/pull/175#pullrequestreview-6027248971",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137918695416
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 47,
+      "gather": 32,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

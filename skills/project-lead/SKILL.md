@@ -419,7 +419,9 @@ Do not ask the principal whether to go on.
 **A report counts, a reserved number does not.** A critic that leaves no
 report file and no report in its final message produced no round. Dispatch it
 again at the next reserved number. A run adjudicates exactly one spec critic
-report, and never a second.
+report, and never a second. On a resume, a report on disk is that one round:
+adjudicate it when `decisions.md` holds no adjudication of it, and dispatch
+no critic.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,

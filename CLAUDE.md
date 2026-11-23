@@ -143,10 +143,10 @@ implementer feeds one shared file, a fresh reading covers idle time, and
 (§15.141). The wrapper and the fresh reading ran live once each. No
 orchestrator run has used them yet.
 
-The plan review is built (issue 170): every simple-path and full-path run
-stops its ICs after their plans, and Codex reviews all the plans together
-before any code. This run's own two later packages ran it once. Only
-`test-crew-stats.py` has run its `crew-stats.py` report.
+The plan review is built: every simple-path and full-path run stops its ICs
+after their plans, and Codex reviews all the plans together before any code.
+It ran once, on two packages of the run that built it (§15.149). Its skips,
+its resume and subagent mode are unexercised.
 
 Subagent mode is built and on trial: with the teams flag unset, every
 dispatch is a background subagent. One probe passed its four checks, and no

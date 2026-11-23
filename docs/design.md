@@ -9894,3 +9894,69 @@ Deliberately different:
      the one report held 2 `blocking` findings and 8 others, and the project
      lead applied all 10 to `spec.md` with no second round. No other run has
      used the one-round rule.
+148. **The plan review — 2026-11-23.** Issue 170. Before this entry, nobody
+     read the design of a run before its code existed. The IC wrote its plan
+     and started at once. The spec critic checks the form of the spec, and
+     the split critic checks that packages can be dispatched. A design
+     problem showed only in the skeptical review of the finished diff, where
+     it costs the most. 73 of the principal's 89 run records had more than
+     one package. In an experiment on 28 pull requests, a skeptical staff
+     engineer prompt on `gpt-6.2-sol` at medium effort found 8 known
+     problems that six specialist reviewers missed, 7 of them blocking. Its
+     precision was 0.65, against 0.41 to 0.43 for the others. None of its
+     84 findings named a principle with no concrete cost.
+     `plan-review.md` owns the step, `plan-reviewer.md` is the reviewer's
+     prompt, and `ic-contract.md` owns the IC's side.
+
+     Each choice, with its reason:
+
+     - Every simple-path and full-path run gets the review, whatever the
+       size of the work. A single-package IC otherwise gets no feedback until
+       the end. The light path gets none, although its IC writes a plan: a
+       light item has no design to review. A fix round and a package that
+       the delivered window adds get none either. They are small patches to
+       code that exists, with no new design.
+     - The reviewer reads all the plans of the run together, with the
+       charter, the spec and the split, and not a summary by the project
+       lead. Two of the review's questions compare plans: the two sides of
+       one interface, and a dependency that no plan provides. So on the full
+       path each IC writes the plan of every package of its territory, then
+       stops. A later package's plan is written before its base exists, so
+       it may leave exact lines to the start. The IC records a change to a
+       plan under `## Changed at start`, and in `Plan changes` in its report.
+     - One review and no second round. A blocking finding makes the IC revise
+       its plan before code, and nothing reviews the revision. The verify
+       step and the skeptical review still read the code.
+     - The reviewer is the Codex CLI in a read-only sandbox, and not a Claude
+       agent. That is the model and effort of the experiment. The step never
+       blocks a run: an absent CLI, a failed `codex login status`, a quota
+       error, a failed run or a run not done after 600 seconds is a skip with
+       a reason, a `decisions.md` entry and a hand-over line.
+     - The brief line `Plan stop: on` carries the stop. An absent line means
+       no stop, so a fix round, a respawn and a delivered-window package
+       need no change. The step is on by default. Only `Plan review: off`,
+       from any standing-instruction source, turns it off.
+
+     This run ran the step on itself, once. The first package wrote the step
+     and took no stop. Then the two later packages planned under `Plan stop:
+     on`. The review read 2 plans, one of 185 lines (10.9 KB) and one of 45
+     lines (5.0 KB), in an instructions file of 739 lines (65.6 KB), with a
+     30.2 KB spec as the largest part. It took 94 seconds and 118,961 tokens.
+     It made 16 read-only shell reads of the code around the plans, most of
+     them long line ranges of the path references and about 600 lines of
+     `crew-stats.py`. Each turn sends the context again, so the tokens grow
+     with the code read. That is twice the tokens of a diff review in the
+     experiment. It returned 6 findings, 5 of them proposed as blocking, and
+     the project lead accepted all 6, 4 as blocking. A planned resume rule
+     would have sent records with no `run.plan_review` into planning
+     recovery. The contract forbade an IC to write its later packages'
+     plans. A dispatch site would wait for a stop that `Plan review: off`
+     never sends. A crash between two writes would have lost the outcome.
+     The run of the step also found a defect in the step itself: Codex
+     echoes the whole prompt to stderr, so the token read must take the last
+     line that is exactly `tokens used`.
+
+     The 600-second limit stays. This run used about a sixth of it, and a
+     run with five or six plans can plausibly take three to five minutes. A
+     timeout stays a skip that the hand-over names, because a longer wait
+     holds every IC idle.

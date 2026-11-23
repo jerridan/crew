@@ -2029,6 +2029,7 @@ rm -f "$STUB_DIR/hc-get-t3.json"
 run focus herdr:t3
 check 'focus with a herdr-app failure, when hc get says not_found, exits 7' $([ "$rc" = 7 ]; echo $?)
 reset_stub
+hc_get t3 900041 spaA tb3
 : > "$STUB_DIR/herdr-usage"
 run focus herdr:t3
 check 'herdr-app exit 2 with a usage message is no dead window: exit 6, and the line does not say the window fails to answer' \

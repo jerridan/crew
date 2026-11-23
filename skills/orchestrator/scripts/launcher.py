@@ -466,13 +466,20 @@ def herdr_error(out):
     return one_line(out)
 
 
+HERDR_TIMEOUT = 60
+
+
 def herdr_app(args, what):
     """Run herdr-app with args. Return the parsed JSON answer. A window that
-    does not answer exits 6. what names the step in the line."""
+    does not answer exits 6: only stderr that names "no Herdr window" says so.
+    Any other failure, an exit 2 with a usage message too, is a HerdrError.
+    A timeout is a HerdrTimeout. what names the step in the line."""
     app, _ = herdr_programs()
-    rc, out, err = run([app] + args, timeout=60)
-    if rc == 2 or (rc != 0 and "no Herdr window" in (err or "")):
-        raise Fail(TERMINAL_STEP, "launcher: the Herdr window does not answer (%s); %s needs it" % (one_line(err) or "exit %d" % rc, what))
+    rc, out, err = run([app] + args, timeout=HERDR_TIMEOUT)
+    if rc != 0 and "no Herdr window" in (err or ""):
+        raise Fail(TERMINAL_STEP, "launcher: the Herdr window does not answer (%s); %s needs it" % (one_line(err), what))
+    if rc == 124:
+        raise HerdrTimeout(one_line(err) or "timed out")
     if rc != 0:
         raise HerdrError(herdr_error(out) or one_line(err) or "exit %d" % rc)
     obj = herdr_json(out)
@@ -483,6 +490,10 @@ def herdr_app(args, what):
 
 class HerdrError(Exception):
     """herdr-app ran and reported one error."""
+
+
+class HerdrTimeout(HerdrError):
+    """herdr-app did not answer in time. The command may have run."""
 
 
 def herdr_do(verb, args, what):
@@ -505,7 +516,10 @@ def hc_get(address):
 
 
 def herdr_spaces():
-    obj = herdr_app(["ls"], "this command")
+    try:
+        obj = herdr_app(["ls"], "this command")
+    except HerdrError as e:
+        raise Fail(TERMINAL_STEP, "launcher: herdr-app ls failed: %s" % e)
     spaces = obj.get("spaces") if isinstance(obj, dict) else None
     return [s for s in spaces or [] if isinstance(s, dict)]
 
@@ -554,6 +568,12 @@ def herdr_start(a, command, worktree, target):
             )
         # Both calls name the tab a.name: tab.new with --name, and space.new,
         # for its first tab, with --tab.
+    except HerdrTimeout as e:
+        raise Fail(
+            TERMINAL_STEP,
+            "launcher: herdr-app gave no answer to the new tab (%s); the tab may have opened: run find for %s before a retry; the worktree stays at %s"
+            % (e, a.name, worktree),
+        )
     except HerdrError as e:
         raise Fail(TERMINAL_STEP, "launcher: Herdr opened no tab (%s); the worktree stays at %s" % (e, worktree))
     except Fail as f:
@@ -1211,7 +1231,12 @@ def focus(a):
         try:
             herdr_do("agent.focus", [("terminal", ref)], "focus")
         except HerdrError as e:
-            raise Fail(BAD_HANDLE, "launcher: no running Herdr terminal %s (%s)" % (ref, e))
+            # Exit 7 only when Herdr says the terminal is unknown.
+            if "no running terminal" in str(e) or hc_get(ref) is None:
+                raise Fail(BAD_HANDLE, "launcher: no running Herdr terminal %s (%s)" % (ref, e))
+            raise Fail(TERMINAL_STEP, "launcher: Herdr could not focus %s (%s)" % (a.handle, e))
+        except Fail as f:
+            raise Fail(f.code, "%s; the handle is %s" % (f.line, a.handle))
         return OK
     if not tmux_pane_exists(ref):
         raise Fail(BAD_HANDLE, "launcher: no tmux pane %s" % ref)
@@ -1254,6 +1279,21 @@ def not_target(a):
     return OK
 
 
+def herdr_tab_ids(ref):
+    """(ids of every tab, id of the tab that holds the terminal ref or None),
+    from herdr-app ls."""
+    ids, holder = set(), None
+    for sp in herdr_spaces():
+        for tb in sp.get("tabs") or []:
+            if not isinstance(tb, dict):
+                continue
+            ids.add(tb.get("id"))
+            for t in tb.get("terminals") or []:
+                if isinstance(t, dict) and t.get("terminal") == ref and holder is None:
+                    holder = tb.get("id")
+    return ids, holder
+
+
 def herdr_stop(a, ref):
     """stop on Herdr: the same keys as on tmux, then the close of the tab. The
     shell of a Herdr terminal stays open after claude ends, so the tab must
@@ -1269,6 +1309,15 @@ def herdr_stop(a, ref):
     if a.name or a.session_id:
         if tty is None or not holds_target(a, tty):
             return not_target(a)
+    if not tab:
+        # No herdr.tab label: the tab that holds the terminal, from ls. Read
+        # before any key, so a stop that cannot close the tab ends nothing.
+        try:
+            tab = herdr_tab_ids(ref)[1]
+        except Fail as f:
+            raise Fail(f.code, "%s; the handle is %s" % (f.line, a.handle))
+        if not tab:
+            raise Fail(TERMINAL_STEP, "launcher: Herdr shows no tab that holds %s; stop sent no key and closed nothing" % a.handle)
     for cmd in (["keys", ref, "esc"], ["keys", ref, "ctrl+u"]):
         rc, out, err = run([hc] + cmd, timeout=60)
         if rc != 0:
@@ -1280,14 +1329,19 @@ def herdr_stop(a, ref):
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: hc send failed for %s: %s" % (a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
     left = wait_claude_gone(tty, a.handle) if tty else {}
-    if tab:
+    try:
+        herdr_do("tab.close", [("id", tab), ("confirmed", "true")], "stop")
+    except HerdrError as e:
+        # A close that failed is no failure when the tab is gone. Read ls for
+        # that; never match the error text.
         try:
-            herdr_do("tab.close", [("id", tab), ("confirmed", "true")], "stop")
-        except HerdrError as e:
-            if not str(e).startswith("no tab"):
-                raise Fail(TERMINAL_STEP, "launcher: Herdr did not close the tab %s of %s (%s)" % (tab, a.handle, e))
+            ids, holder = herdr_tab_ids(ref)
         except Fail as f:
             raise Fail(f.code, "%s; the handle is %s" % (f.line, a.handle))
+        if tab in ids and holder is not None:
+            raise Fail(TERMINAL_STEP, "launcher: Herdr did not close the tab %s of %s (%s)" % (tab, a.handle, e))
+    except Fail as f:
+        raise Fail(f.code, "%s; the handle is %s" % (f.line, a.handle))
     if left:
         wait_pids_gone(left, a.handle)
     return OK

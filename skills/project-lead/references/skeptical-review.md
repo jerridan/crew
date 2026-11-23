@@ -90,7 +90,7 @@ could fail**:
   its goal check, the same write records the head as `goal-check-done`
   instead (`goal-check.md`).
 
-**A review run arms every head, and has no round limit.** On a `run.kind:
+**A review run arms every head, and has no round cap.** On a `run.kind:
 review` run, an accepted verdict stops nothing, and `--no-review
 accepted-round` exits 2. Crew's own assist push is a head like any other: its
 integration takes `--review-head`, and the next round reviews it.

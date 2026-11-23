@@ -38,7 +38,7 @@ the base is the new merge base that the second prints, and the round's range
 is the whole PR diff again. A round that is not resumed takes that merge base
 too, for every fresh-launch reason that `review-runner.md`'s "Resume the
 reviewer" names. A fresh reviewer has no context from the earlier rounds, so
-its range is the whole PR. Part 5 of "Reviewer instructions" says what the
+its range is the whole PR. Part 4 of "Reviewer instructions" says what the
 reviewer reads first. Write the base to the deliverable before the launch:
 
 ```bash

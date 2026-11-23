@@ -46,9 +46,11 @@ writes the head key beside the state key it already writes. `arm_review` is
 that shared step. The value
 is `{head, round}`, and `round` is one more than `run.review_rounds`: the
 round the owed review will run at, so the sha and the report name it expects
-are written together. At the round cap it writes no pending head at all and
-appends the head to `run.unreviewed_heads` instead. A review run, with
-`run.kind` set to `"review"`, has no cap: every head is armed. `ship` sets
+are written together. On a goal run the goal check runs once: when
+`run.review_rounds` is 1 or more, the arming writes no pending head and
+appends the head to `run.unreviewed_heads` with the reason `goal-check-done`
+instead. A review run, with `run.kind` set to `"review"`, has no round limit:
+every head is armed. `ship` sets
 `run_state: complete`. The first write that sets `run_state` to `delivered`
 stamps `run.delivered_at`, and a later one never moves it. A write that sets
 `run_state` to `complete` — `ship`, `run state complete`, or
@@ -87,9 +89,10 @@ removes a round. `round go-ahead` and `round replied` stamp `go_ahead_at` and
 `replied_at` from the clock. `replied` exits 2 on a gated round that has no
 `go_ahead_at`. Each `round` form but `open` exits 2 on a round id that is
 absent, and `open` exits 2 on an id that exists.
-`--past-cap` on `arm-review` arms the head when `review_rounds` is at the
-cap, and appends nothing to `unreviewed_heads`. `--no-review accepted-round`
-on `integrate` or `deliver` does not arm the head at any round count. It
+`--past-cap` on `arm-review` arms the head after the goal check, for one more
+check the principal asked for, and appends nothing to `unreviewed_heads`.
+`--no-review accepted-round` on `integrate` or `deliver` does not arm the head
+at any round count. Old records and callers use it; no goal run needs it. It
 appends `{head, reason: "accepted-round", at}` to `unreviewed_heads` and needs
 `--review-head`. It exits 2 when `run.kind` is `"review"`: a review run arms
 every head.
@@ -172,30 +175,32 @@ def set_dotted(target: dict, dotted: str, value) -> None:
     target[keys[-1]] = value
 
 
-# `skeptical-review.md` owns the review-round cap and states the same number.
+# `goal-check.md` owns the one-round rule: a goal run runs one goal check.
 # This constant is where the record enforces it, so the two move together.
-REVIEW_ROUND_CAP = 3
+GOAL_CHECK_ROUNDS = 1
 
 
 def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap: bool = False) -> None:
-    """Record the head a skeptical review is owed on, or record that none is.
+    """Record the head a review round is owed on, or record that none is.
 
     Every arming in the run comes through here: `deliver --review-head` folds
     it into the hand-over write, and `integrate --review-head` folds it into
     a follow-up package's own integration write, atomically. `arm-review
     --head` on its own is for recovery and supersession, never a follow-up's
-    ordinary path (`skeptical-review.md`). At the cap no further review runs,
-    so the head is logged as unreviewed instead of armed, and the next report
-    to the principal names it. A review run (`run.kind` is `"review"`) has no
-    cap and arms every head. `past_cap` arms the head at the cap too, for one
-    more round the principal asked for, and logs nothing.
+    ordinary path (`skeptical-review.md`). On a goal run, once the goal check
+    has run, no further round runs, so the head is logged as unreviewed with
+    the reason `goal-check-done` instead of armed (`goal-check.md`). A review
+    run (`run.kind` is `"review"`) arms every head. `past_cap` arms the head
+    after the goal check too, for one more check the principal asked for, and
+    logs nothing.
 
     `reason` names why a caller does not arm a head. `None` means the caller
-    wants the review, and the cap may still stop it with the reason `cap`.
+    wants the review, and the one-round rule may still stop it with the
+    reason `goal-check-done`.
     `accepted-round` means an accepted verdict stopped the review, so the head
     is never armed, at any round count. Both reasons leave a pending review
-    of another head running. For `cap` the head is listed and the pending
-    review stays. For `accepted-round`, a pending round not yet entered
+    of another head running. For `goal-check-done` the head is listed and
+    the pending review stays. For `accepted-round`, a pending round not yet entered
     (`review_rounds < pending["round"]`) moves to the given head and keeps
     its number, and nothing is listed. An entered round keeps its head, and
     the given head is listed, so a resume owes nothing for it.
@@ -206,16 +211,16 @@ def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap:
         die("a review run arms every head: --no-review accepted-round is not allowed")
     rounds = run.get("review_rounds")
     rounds = rounds if isinstance(rounds, int) and not isinstance(rounds, bool) else 0
-    at_cap = rounds >= REVIEW_ROUND_CAP and run.get("kind") != "review" and not past_cap
-    if reason is None and at_cap:
-        reason = "cap"
+    checked = rounds >= GOAL_CHECK_ROUNDS and run.get("kind") != "review" and not past_cap
+    if reason is None and checked:
+        reason = "goal-check-done"
     if reason is not None:
         # A pending head other than this one still owes its review: this
-        # head's accepted verdict or the cap says nothing about it. For an
-        # accepted round, a pending round not yet entered moves to this head
-        # and keeps its number, so one review covers both changes, and
-        # nothing is listed. An entered round keeps its head, and this head
-        # is listed, so a resume owes nothing for it.
+        # head's accepted verdict or the one-round rule says nothing about
+        # it. For an accepted round, a pending round not yet entered moves to
+        # this head and keeps its number, so one review covers both changes,
+        # and nothing is listed. An entered round keeps its head, and this
+        # head is listed, so a resume owes nothing for it.
         pending = run.get("review_pending")
         other = isinstance(pending, dict) and pending.get("head") != head
         if not other:

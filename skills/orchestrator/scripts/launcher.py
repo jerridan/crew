@@ -549,11 +549,11 @@ def herdr_start(a, command, worktree, target):
         else:
             made = herdr_do(
                 "space.new",
-                [("name", group), ("folder", worktree), ("argv", argv), ("focus", "false")],
+                [("name", group), ("tab", a.name), ("folder", worktree), ("argv", argv), ("focus", "false")],
                 "start",
             )
-        # tab.new runs in the one space, with the tab named a.name. A new space
-        # takes its first tab's name from the program.
+        # Both calls name the tab a.name: tab.new with --name, and space.new,
+        # for its first tab, with --tab.
     except HerdrError as e:
         raise Fail(TERMINAL_STEP, "launcher: Herdr opened no tab (%s); the worktree stays at %s" % (e, worktree))
     except Fail as f:

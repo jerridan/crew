@@ -52,7 +52,8 @@ reaches it. No run has checked this on a live tab.
 
 **The space.** With `--group <name>`, the tab goes into the first space of
 that name, in `herdr-app ls` order. With no such space, `do space.new` makes
-it without focus, and its first tab is the implementer's. With no `--group`,
+it without focus, with `--tab` set to the session name. Its first tab is the
+implementer's. With no `--group`,
 the tab goes into the space of the caller: the `herdr.space` label that `hc get
 $HC_TERMINAL_ID --json` gives. With neither, the command exits 2.
 `--group-color` has no Herdr equivalent. The launcher ignores it and prints one
@@ -67,6 +68,12 @@ line on stderr that says so.
 - The shell of a Herdr terminal stays open after `claude` ends. So `stop`
   closes the tab.
 - The tab takes its environment from the Herdr core. See "The tab", above.
+- A handle after a restart. The Herdr core keeps a terminal address. After a
+  crash or a reboot, a lost terminal gets a shell in its last folder with the
+  same address, and its original command does not run again. So after a
+  restart the old handle can name a terminal with no `claude`, and `find` and
+  the target check of `stop` see no match. This is from the Herdr docs. No run
+  has checked it.
 - Unexercised: the keys that `stop` sends to a live `claude`, and `focus` on a
   real tab. Only the seeded test, with stub `herdr-app` and `hc`, ran them.
   One live probe made a tab and a space, and closed them.

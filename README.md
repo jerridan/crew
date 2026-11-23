@@ -329,6 +329,20 @@ needs you, each group of items and the single items. It reads the board again
 every 5 seconds, and a new item for you shows a toast. Type a row's number
 and press Enter to bring that implementer's tab to the front.
 
+Long text wraps in the pane, and you can read all of it. When the board is
+longer than the pane, a dim line at the top or bottom of the pane tells you
+how many lines are out of view. Type one of these words in the `Row` input and
+press Enter:
+
+| Word | What it does |
+|---|---|
+| `u` | Go up one page |
+| `d` | Go down one page |
+| `t` | Go to the top |
+| `b` | Go to the bottom |
+
+The mouse wheel also scrolls the pane in terminals that pass it on.
+
 ## What a run needs
 
 | Requirement | How | Which runs |

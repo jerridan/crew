@@ -62,7 +62,12 @@ line on stderr that says so.
 **Limits.**
 
 - The Herdr window must run for `start`, `resume`, `groups`, `focus` and
-  `stop`. A window that does not answer exits 6. `find` needs only `hc`.
+  `stop`. A window that does not answer exits 6. Only a `herdr-app` error that
+  names "no Herdr window" means that. Any other `herdr-app` failure, such as a
+  usage error, exits 6 with its own text. `find` needs only `hc`.
+- A `herdr-app` timeout during `tab.new` or `space.new` exits 6. The tab may
+  have opened. The line says so, and the caller runs `find` for the session
+  before a retry. The worktree stays.
 - A Herdr space has no color.
 - `focus` shows the tab in Herdr. It does not raise the macOS window.
 - The shell of a Herdr terminal stays open after `claude` ends. So `stop`
@@ -343,8 +348,9 @@ caller knows the session.
   activates iTerm2. `focus tmux:<pane>` selects the window that holds the
   pane. When a tmux client is attached, it switches that client to the
   window. `focus herdr:<address>` runs `herdr-app do agent.focus --terminal
-  <address>`, which shows the tab in Herdr. A terminal that is unknown or
-  ended exits 7.
+  <address>`, which shows the tab in Herdr. A terminal that Herdr names as
+  unknown (`no running terminal`), or that `hc get` does not find, exits 7.
+  Any other `herdr-app` failure exits 6, and the line names the handle.
 - `stop` first ends the `claude` session in the tab. It sends these keys to
   the tab, in this order:
   1. Escape. It rejects a permission dialog, and it interrupts a turn. Enter
@@ -364,8 +370,12 @@ caller knows the session.
 - Then `stop iterm2:<id>` closes the tab, and `stop tmux:<pane>` kills the
   pane, and its window closes with it. `stop herdr:<address>` runs
   `herdr-app do tab.close --id <tab> --confirmed true`. The tab id is the
-  `herdr.tab` label of the terminal. The close is required, because the shell
-  stays open after `claude` ends. A tab or pane that closed when
+  `herdr.tab` label of the terminal. With no such label, `stop` reads the tab
+  that holds the terminal from `herdr-app ls`, before it sends a key. When no
+  tab holds it, `stop` sends no key and exits 6. When the close fails, `stop`
+  reads `herdr-app ls` again: a tab that is gone counts as closed, and any
+  other tab stays a failure with exit 6. The close is required, because the
+  shell stays open after `claude` ends. A tab or pane that closed when
   `claude` ended is not an error.
 - After the close, `stop` waits up to 15 more seconds until each `claude`
   pid that was still there is gone. A pid is gone when `ps` does not show
@@ -579,8 +589,8 @@ a fixed order, and the first check that fails decides the exit:
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal, or on Herdr no `herdr-app` or no `hc`. The line names `$TERM_PROGRAM` and the supported terminals, or the missing program. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab. `resume`: a missing worktree, or no transcript and no `--session-id` |
-| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. On Herdr: the window does not answer, `tab.new` or `space.new` failed, `hc` failed, or `tab.close` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
-| 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab, pane or Herdr terminal that does not exist |
+| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. On Herdr: the window does not answer, `tab.new` or `space.new` failed or timed out, `hc` failed, `herdr-app` failed in any other way (`focus`), no tab holds the terminal (`stop`), or `tab.close` failed and the tab is still there. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
+| 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab, pane or Herdr terminal that does not exist (on Herdr, one that Herdr names as unknown or that `hc get` does not find) |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
 | 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), the caller's own working directory in the worktree, or a lock that `remove` cannot prove dead. Nothing changed. With `--stop-processes`, also a process in the worktree after `TERM` and `KILL`: one that did not stop, that `remove` could not signal, that changed its command, or that started during the stop. Also a dead lock owner whose pid runs again right before the unlock. The worktree, its lock and the branches stay |
 

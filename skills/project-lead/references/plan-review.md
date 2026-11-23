@@ -219,7 +219,7 @@ Read `reviews/plan-review-r1.md`. Adjudicate each finding and label it again
 yourself, as `SKILL.md`'s "Every review in this run is adjudicated the same
 way" says. The labels come from `severity-rubric.md`, and `plan-reviewer.md`
 gives what `blocking` means for a plan. That section's action table names the
-actions for a critic and for the skeptical review. This section owns the
+actions for a critic and for the goal check. This section owns the
 actions for the plan review in its place:
 
 - **An accepted `blocking` finding.** The IC revises that plan before it

@@ -84,7 +84,7 @@ two review steps, moved the last to after the hand-over, gave the window a
 patch mode, added the substitution rule, and named every dispatch. §15.98 ran
 T58 through T62's changes once each, with `ic_name: null`, so T66 stays
 unexercised. T69 marks a
-run's PR ready for review when the skeptical review stops, and no run has
+run's PR ready for review when its review stops, and no run has
 done that yet (§15.99). T63 lets a machine file or a repo file name a
 review replacement for every run, and no run has read one yet (§15.100).
 T70 keeps a delivered run's cache warm with a recurring job, and no crew run
@@ -119,9 +119,12 @@ per deliverable, a gate decided by each item's author, a review that stops on
 an accepted verdict, a delta re-review, a round cap on the spec critic,
 whole-class fix rounds, and `crew-record.py`'s `decision` and `round`
 subcommands. No run has read any of it yet. T88 cut the spec critic to one
-round (§15.148), and T89 did the same for the split critic (§15.150). T80
-lets a worktree-isolated session run the full path: launch check 1 probes one
-worktree base for every worktree of a run (§15.126). No run has exercised it.
+round (§15.148), and T89 did the same for the split critic (§15.150). T90
+made a goal run's end-of-run review one **goal check**: one question, one
+round, no suite (§15.151). No run has used it. A review run keeps the
+skeptical review. T80 lets a worktree-isolated session run the full path:
+launch check 1 probes one worktree base for every worktree of a run
+(§15.126). No run has exercised it.
 
 T83 is built: after a merge, the project lead arms a deploy watch, and a
 successful deploy of the merge commit is the ship word. A repo with
@@ -206,7 +209,10 @@ Each reference owns one subject and is canonical for it:
   skips, the adjudication, the start word and its resume.
 - `plan-reviewer.md` — the plan reviewer's own instructions, which the
   project lead pipes into `codex exec` and does not follow.
-- `skeptical-review.md` — the review of the finished diff, and when it runs.
+- `goal-check.md` — a goal run's one review of the finished diff: its
+  question, its one round, and when the PR leaves draft.
+- `skeptical-review.md` — the review rounds both run kinds share, and a
+  review run's skeptical review.
 - `review-runner.md` — the mechanics of a headless review: the detached
   worktree, the instructions file, the runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.

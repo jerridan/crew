@@ -7,13 +7,13 @@ your go-ahead before it pushes or replies.
 
 You hand a goal to a project lead. It reads its repo, writes the spec, splits
 the work, picks a model for each piece, dispatches implementers, checks each
-piece itself, integrates the work and hands it over as a PR. Only then
-is the whole diff reviewed. A separate session reads it against your goal and
-assumes it is wrong. What that session finds comes back as patch rounds on the
-same PR. When that review is done, the PR leaves draft. Merge it when you
-are ready, or tell the project lead to merge it. The project lead stays until
-its work ships, so you can ask it about the change before the merge, or ask
-for a change to the PR after. The work ships when its deploy succeeds, or soon
+piece itself, integrates the work and hands it over as a PR. Only then is
+the whole diff checked, once. A separate session reads it against your goal
+and asks one question: does it do what you asked? A goal miss comes back as a
+patch on the same PR. When that check is done, the PR leaves draft. Merge it
+when you are ready, or tell the project lead to merge it. The project lead
+stays until its work ships, so you can ask it about the change before the
+merge, or ask for a change to the PR after. The work ships when its deploy succeeds, or soon
 after the merge when the repo has no deploy.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
@@ -106,12 +106,13 @@ To name a reviewer for every run, write the same words in a file:
 | `.claude/crew.md` in the repo | every run in that repo |
 
 ```
-use Codex via tmux for the skeptical review
+use Codex via tmux for the goal check
 ```
 
 Words with the goal win over the repo file, and the repo file wins over the
 machine file. To turn off a replacement from a file for one run, say "use the
-default skeptical review" with the goal.
+default goal check" with the goal. On `/crew:review`, the same step is the
+skeptical review.
 
 The run sizes the work itself and picks a path:
 
@@ -123,7 +124,7 @@ The run sizes the work itself and picks a path:
 | Investigation | A symptom | Reproduce, gather evidence, diagnose. Then a spec and a fix, or a report with no change. |
 
 The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a
-draft PR from it. The PR leaves draft when crew's own review of it is done,
+draft PR from it. The PR leaves draft when crew's goal check of it is done,
 so your automated reviewers start after that. To keep it a draft, say so in
 the goal. The run restores your checkout to the branch it started on, and the
 session stays. In that session you can ask about the change, or ask for a
@@ -414,12 +415,13 @@ yarn check-types-strict
       │
       ▼
    ┌───────────────────────────────────────────────┐
-   │ SKEPTICAL      reads the whole diff against   │
-   │ REVIEW         your goal, in its own checkout │
+   │ GOAL CHECK     does the diff do what your     │
+   │                goal asked? once, in its own   │
+   │                checkout                       │
    └───────────────────────────────────────────────┘
       │                  │
-      │ accepted         └──▶  patch rounds on the same PR,
-      ▼                        up to three reviews, unless you ask
+      │ accepted         └──▶  a goal miss: one patch on the same PR,
+      ▼                        and no second check, unless you ask
    you merge it, or tell the run to, and say when it shipped
 ```
 
@@ -443,9 +445,10 @@ Plan review: off
 
 The project lead checks every package itself. It runs the acceptance test and
 the suite, and a failure sends the package back, up to five times. Review
-comes after the work is handed over: a separate session reads the whole diff
-against your goal, assumes it is wrong, and runs the tests in a checkout of
-its own. What it finds goes on the same PR as a patch round. So does what
+comes after the work is handed over: a separate session checks once that
+the diff does what your goal asked, with every constraint you stated, in a
+checkout of its own. It runs no tests, and it leaves bugs to your repo's own
+review. A goal miss it finds goes on the same PR as a patch round. So does what
 your reviewers and CI post on the PR, and anything you send yourself. Each
 finding gets a reply that says what changed or why the run disagreed. The
 project lead patches the branch at once. It waits for your go-ahead before it
@@ -500,7 +503,8 @@ else: every package takes the same steps.
 | Spec critic | opus | high |
 | Decomposition critic | opus | high |
 | Plan review | `gpt-6.2-sol`, through the Codex CLI | medium |
-| Skeptical review | opus | high |
+| Goal check | sonnet | high |
+| Skeptical review, in `/crew:review` | opus | high |
 
 The project lead, the ICs and the scouts take your session's effort, so set
 it before the run starts.
@@ -524,7 +528,7 @@ to see every judgment call with its citation.
 ```
 
 In a goal run, `reviews/baseline.md` lists the tests and checks that already
-fail before the change. Reviewers do not raise them.
+fail before the change. A patch round does not count them as its own.
 
 A review run's directory is `pr-<owner>-<repo>-<n>-<hex>/`. Its drafts are
 `reviews/github-r<n>.md`, one per round.
@@ -556,7 +560,8 @@ review kind, over every record.
 | Spec critic | Reviews the spec before any work starts. |
 | Decomposition critic | Reviews the work split before any IC starts. |
 | Plan review | Reads all the implementers' plans together before any code is written, through the Codex CLI. |
-| Skeptical review | Reads the whole diff against your goal once the work is handed over, in a checkout of its own. |
+| Goal check | Checks once that the whole diff does what your goal asked, after the work is handed over, in a checkout of its own. |
+| Skeptical review | In `/crew:review`, reviews a colleague's PR on every new push. |
 | Researcher | Answers one open question across several hops, with citations. |
 | Scout | Answers one lookup for the project lead, then exits. |
 | Advocate | Argues one assigned position in a council. |

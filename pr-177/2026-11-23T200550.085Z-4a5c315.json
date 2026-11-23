@@ -1,0 +1,1183 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 177,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Count a tab or pane that is gone at the close as closed in launcher stop",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/177"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "475a6ec173af6d118a33c8a723d50c3fad8c3953",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-177/2026-11-23T195032.763Z-475a6ec.json",
+      "open": [
+        "1a9d9aebbd80da41"
+      ],
+      "dismissed": [
+        "040b8ee90e832bcd",
+        "3122a111e87a8f3f",
+        "f9f46ee54d2be8c3"
+      ],
+      "fetch_failed": false
+    },
+    "base": "953531ddaf7999802c1ec9345999e9668a7a2a1a",
+    "head": "4a5c315559cf4d3317bd573cb74910f1dffe7e4b",
+    "started_at": "2026-11-23T20:05:50.085Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Count a tab or pane that is gone at the close as closed in launcher stop\n\n## Summary\n\nWhen an orchestrator closes an item, `launcher.py stop` types `/exit` into the implementer session and then closes its tab or pane. Sometimes the tab or pane closes by itself between the check that it exists and the close, and `stop` then exited 6 for a stop that worked. Now `stop` reads the tab or pane again when the close fails: when it is gone, the stop counts as done and exits 0. A failure on a tab or pane that still exists keeps exit 6 and its stderr line.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/orchestrator/references/launcher.md` owns the interface of `launcher.py`, and its \"focus and stop\" section already said that a tab or pane that closed when `claude` ended is not an error.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: tmux: when `kill-pane` fails, `stop` checks the pane again, and a pane that is gone is no failure. iTerm2: when the close script (`OSA_STOP`) or the exit script (`OSA_EXIT`) fails, the new `iterm_gone` reads the sessions, and a session that is gone is no failure. A failed read keeps the failure. Herdr: when `hc send /exit` fails, the new `hc_ended` reads `hc get`, and a terminal that is gone or not live is no failure: `stop` goes on and closes the tab. The close of a Herdr tab already read `herdr-app ls` after a failure.\n- `skills/orchestrator/scripts/test-launcher.sh`: new stub switches `tmux-kill-gone`, `osa-stop-gone`, `osa-exit-gone`, `osa-stop-keep` and `hc-send-gone`, and five checks: four gone cases (tmux close, iTerm2 close, iTerm2 exit, Herdr `hc send`) and one iTerm2 close failure on a session that still exists, which exits 6.\n- `skills/orchestrator/references/launcher.md`: \"focus and stop\" says per terminal which failure counts as closed and which exits 6.\n\n### Constraints that applied\n\n- The plugin `version` is not bumped here. The orchestrator owns it and sets it when this PR is next to merge.\n- No `docs/design.md` §15 entry: the orchestrator owns the numbers.\n\n### How this was verified\n\n`bash skills/orchestrator/scripts/test-launcher.sh`: 277 of 277 checks passed at the branch head. Before the fix, the new checks failed (273 of 277).\n\nWhich terminals had the race: tmux had it, as seen once on 0.1.118 (`kill-pane` failed with \"can't find pane\" and exit 6). iTerm2 can have it inside its close script and its exit script. Herdr's close already counted a gone tab as closed, and its shell stays open after `claude` ends, so its tab does not close by itself in normal use. Only `hc send` could fail for a terminal that ended during the send.\n\n### Known gaps\n\nNo live run reproduced the race on any terminal. Only the stubbed test covers the timing.\n\n## Charter\n\nGoal: `launcher.py stop` reports success when the tab or pane closed by itself after `/exit`.\n\nAcceptance criterion: `bash skills/orchestrator/scripts/test-launcher.sh` passes, and holds new checks that `stop` exits 0 with no stderr failure line when the tab or pane is gone at the close step, and that a close failure on a tab or pane that still exists keeps exit 6 and its stderr line.\n\n## Decisions\n\n- Which path does this goal take? The change path (precedent, high).\n- Does the work take the light path? Yes: one package, a runnable criterion, a light band and no open preference (precedent, high).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 9
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes error-handling logic in launcher stop paths for tmux, iTerm2 and Herdr, so failures that were exit 6 can now become success; this needs logic review.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: stop() iTerm2 branch (tty read before exit script, Fail handling, iterm_gone)",
+        "skills/orchestrator/scripts/launcher.py: herdr_stop hc_ended gating of hc send failure",
+        "skills/orchestrator/scripts/launcher.py: tmux_pane_gone ('no server running' match) and kill-pane handling",
+        "skills/orchestrator/scripts/launcher.py: claude_on_tty / wait_pids_gone use after session gone",
+        "skills/orchestrator/scripts/test-launcher.sh: stub changes (list-panes #{pane_id} handling, osa -keep/-gone, osa.log filtering)"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump 0.1.120 -> 0.1.121"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump 0.1.120 -> 0.1.121"
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "documents new tolerance of failures when the terminal, tab or pane is already gone"
+        },
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "new helpers tmux_pane_gone, claude_on_tty, iterm_gone and hc_ended; stop now tolerates failures on a terminal that is gone, and iTerm2 reads the tty before the exit script"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "stub extensions and new tests for gone and kept sessions on tmux, iTerm2 and Herdr; an existing osa.log assertion is changed to filter out ttys lines"
+        }
+      ],
+      "summary": "Makes `stop` in the launcher treat a failed send, exit script or close as success when the terminal, tab or pane is already gone. This covers tmux, iTerm2 and Herdr. Failures on terminals that still exist, and failed re-check reads, still exit 6. iTerm2 now reads the tty before the exit script so it can still wait for a leftover claude. Tests, stubs and docs are updated, and the plugin version is bumped."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes error-handling logic in launcher stop paths for tmux, iTerm2 and Herdr, so failures that were exit 6 can now become success; this needs logic review.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4528,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 9156,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0009270999999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 383,
+              "cacheReadInputTokens": 10158,
+              "cacheCreationInputTokens": 8665,
+              "webSearchRequests": 0,
+              "costUSD": 0.07901960000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 107,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.07994670000000001
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 30302,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 9162,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0009277,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 12,
+              "outputTokens": 2913,
+              "cacheReadInputTokens": 135126,
+              "cacheCreationInputTokens": 23721,
+              "webSearchRequests": 0,
+              "costUSD": 0.2751012,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1503,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2760289
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7655,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 9162,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0009277,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 582,
+              "cacheReadInputTokens": 48440,
+              "cacheCreationInputTokens": 10194,
+              "webSearchRequests": 0,
+              "costUSD": 0.102904,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 224,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1038317
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1420,
+            "end_line": 1425,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "When the exit script fails and the session is gone, the code snapshots claude processes once with no wait for claude to end, and a failing `ps` there would turn a stop that counts as done into exit 6.",
+            "evidence": "                    left = claude_on_tty(tty)\n                    if left:\n                        wait_pids_gone(left, a.handle)",
+            "suggested_fix": "Call wait_claude_gone(tty, a.handle) here, or catch Fail from the process read.",
+            "explanation": "claude_on_tty calls processes(), which raises Fail when ps fails, so the new gone-session path can still exit 6; the claude process is also not given the STOP_WAIT window that the normal path gives it.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 10723,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 19472,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0019587,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 1395,
+              "cacheReadInputTokens": 104680,
+              "cacheCreationInputTokens": 25921,
+              "webSearchRequests": 0,
+              "costUSD": 0.12811799999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 550,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1300767
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2885,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 9154,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0009289000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 202,
+              "cacheReadInputTokens": 10352,
+              "cacheCreationInputTokens": 8663,
+              "webSearchRequests": 0,
+              "costUSD": 0.0754224,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 18,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0763513
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1168,
+            "end_line": 1175,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The 'no server running' branch of tmux_pane_gone, which counts the pane as gone, has no test.",
+            "evidence": "return \"no server running\" in (err or \"\")",
+            "suggested_fix": "Add a stub case where kill-pane fails and list-panes fails with 'no server running', and expect exit 0.",
+            "explanation": "The only tests are the pane-not-listed case and a failed read with a different error. A change to the 'no server running' match would pass the suite.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 8076,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 9150,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0009265,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1007,
+              "cacheReadInputTokens": 51392,
+              "cacheCreationInputTokens": 11957,
+              "webSearchRequests": 0,
+              "costUSD": 0.0630492,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 325,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0639757
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1420,
+          "end_line": 1425,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "When the exit script fails and the session is gone, the code snapshots claude processes once with no wait for claude to end, and a failing `ps` there would turn a stop that counts as done into exit 6.",
+          "evidence": "                    left = claude_on_tty(tty)\n                    if left:\n                        wait_pids_gone(left, a.handle)",
+          "suggested_fix": "Call wait_claude_gone(tty, a.handle) here, or catch Fail from the process read.",
+          "explanation": "claude_on_tty calls processes(), which raises Fail when ps fails, so the new gone-session path can still exit 6; the claude process is also not given the STOP_WAIT window that the normal path gives it.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "left = claude_on_tty(tty)",
+            "raise Fail(TERMINAL_STEP, \"launcher: ps failed: %s\" % (one_line(err) or \"exit %d\" % rc))"
+          ],
+          "rationale": "claude_on_tty calls processes(), which raises Fail when ps fails, so this path can exit 6. It is true but rare, because every other stop path also depends on ps, and wait_pids_gone still waits after the snapshot.",
+          "score": 75,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "left = claude_on_tty(tty)\n                    if left:\n                        wait_pids_gone(left, a.handle)",
+            "end = time.time() + STOP_CLOSE_WAIT\n    while True:\n        procs = processes()",
+            "left = wait_claude_gone(norm_tty(tty), a.handle)",
+            "raise Fail(TERMINAL_STEP, \"launcher: ps failed: %s\" % (one_line(err) or \"exit %d\" % rc))"
+          ],
+          "rationale": "The finding says there is no wait, but the snapshot goes straight into wait_pids_gone, which polls for up to STOP_CLOSE_WAIT. That is the same wait the normal path runs after the close, and here the session is already gone. A failing ps raising Fail is not special to this path: wait_claude_gone and wait_pids_gone also call processes() on every normal path, and the suggested fix would call processes() too.",
+          "score": 25,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "left = claude_on_tty(tty)\n                    if left:\n                        wait_pids_gone(left, a.handle)",
+            "end = time.time() + STOP_CLOSE_WAIT\n    while True:\n        procs = processes()",
+            "left = wait_claude_gone(norm_tty(tty), a.handle)",
+            "raise Fail(TERMINAL_STEP, \"launcher: ps failed: %s\" % (one_line(err) or \"exit %d\" % rc))"
+          ],
+          "rationale": "The finding says there is no wait, but the snapshot goes straight into wait_pids_gone, which polls for up to STOP_CLOSE_WAIT. That is the same wait the normal path runs after the close, and here the session is already gone. A failing ps raising Fail is not special to this path: wait_claude_gone and wait_pids_gone also call processes() on every normal path, and the suggested fix would call processes() too.",
+          "score": 25,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1168,
+          "end_line": 1175,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The 'no server running' branch of tmux_pane_gone, which counts the pane as gone, has no test.",
+          "evidence": "return \"no server running\" in (err or \"\")",
+          "suggested_fix": "Add a stub case where kill-pane fails and list-panes fails with 'no server running', and expect exit 0.",
+          "explanation": "The only tests are the pane-not-listed case and a failed read with a different error. A change to the 'no server running' match would pass the suite.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return \"no server running\" in (err or \"\")"
+          ],
+          "rationale": "The stub's list-panes call with only #{pane_id} always exits 0, or fails with \"protocol version mismatch\" under tmux-list-fail. No test makes it fail with \"no server running\", so that branch is untested.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return \"no server running\" in (err or \"\")",
+            "[ -e \"$D/tmux-list-fail\" ] && { echo \"tmux: protocol version mismatch\" >&2; exit 1; }",
+            "case \"$*\" in *'#{pane_id}'*'#{pane_tty}'*) ;; *'#{pane_id}'*) cat \"$D/tmux-panes\" 2>/dev/null; exit 0 ;; esac"
+          ],
+          "rationale": "The tmux stub answers a `#{pane_id}`-only list-panes call in two ways only: it prints tmux-panes and exits 0, or it fails with \"protocol version mismatch\". So no test reaches the new \"no server running\" branch of tmux_pane_gone. The gap is real but small, and a test for it is cheap to add.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return \"no server running\" in (err or \"\")",
+            "[ -e \"$D/tmux-list-fail\" ] && { echo \"tmux: protocol version mismatch\" >&2; exit 1; }",
+            "case \"$*\" in *'#{pane_id}'*'#{pane_tty}'*) ;; *'#{pane_id}'*) cat \"$D/tmux-panes\" 2>/dev/null; exit 0 ;; esac"
+          ],
+          "rationale": "The tmux stub answers a `#{pane_id}`-only list-panes call in two ways only: it prints tmux-panes and exits 0, or it fails with \"protocol version mismatch\". So no test reaches the new \"no server running\" branch of tmux_pane_gone. The gap is real but small, and a test for it is cheap to add.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6028636988,
+      "review_url": "https://github.com/jerridan/crew/pull/177#pullrequestreview-6028636988",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137977443077
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 1168,
+        "end_line": 1175,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The 'no server running' branch of tmux_pane_gone, which counts the pane as gone, has no test.",
+        "evidence": "return \"no server running\" in (err or \"\")",
+        "suggested_fix": "Add a stub case where kill-pane fails and list-panes fails with 'no server running', and expect exit 0.",
+        "explanation": "The only tests are the pane-not-listed case and a failed read with a different error. A change to the 'no server running' match would pass the suite.",
+        "needs_context": true,
+        "fingerprint": "f81467d7d56d58ba",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return \"no server running\" in (err or \"\")",
+            "[ -e \"$D/tmux-list-fail\" ] && { echo \"tmux: protocol version mismatch\" >&2; exit 1; }",
+            "case \"$*\" in *'#{pane_id}'*'#{pane_tty}'*) ;; *'#{pane_id}'*) cat \"$D/tmux-panes\" 2>/dev/null; exit 0 ;; esac"
+          ],
+          "rationale": "The tmux stub answers a `#{pane_id}`-only list-panes call in two ways only: it prints tmux-panes and exits 0, or it fails with \"protocol version mismatch\". So no test reaches the new \"no server running\" branch of tmux_pane_gone. The gap is real but small, and a test for it is cheap to add.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "def tmux_pane_gone(pane): \"\"\"True when tmux shows that the pane is gone: it lists every pane and this one is not there, or no tmux server runs. False when the pane is listed and when the read fails for any other reason.\"\"\" rc, out, err = tmux([\"list-panes\", \"-a\", \"-F\", \"#{pane_id}\"]) if rc != 0: return \"no server running\" in (err or \"\") return pane not in out.split()",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6242,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10794,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010889,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 960,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 10307,
+            "webSearchRequests": 0,
+            "costUSD": 0.0509582,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0520471
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 2885,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9154,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009289000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 202,
+            "cacheReadInputTokens": 10352,
+            "cacheCreationInputTokens": 8663,
+            "webSearchRequests": 0,
+            "costUSD": 0.0754224,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 18,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0763513
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 4528,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9156,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009270999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 383,
+            "cacheReadInputTokens": 10158,
+            "cacheCreationInputTokens": 8665,
+            "webSearchRequests": 0,
+            "costUSD": 0.07901960000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 107,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07994670000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7655,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9162,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009277,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 582,
+            "cacheReadInputTokens": 48440,
+            "cacheCreationInputTokens": 10194,
+            "webSearchRequests": 0,
+            "costUSD": 0.102904,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 224,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1038317
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10723,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 19472,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0019587,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1395,
+            "cacheReadInputTokens": 104680,
+            "cacheCreationInputTokens": 25921,
+            "webSearchRequests": 0,
+            "costUSD": 0.12811799999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 550,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1300767
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8076,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9150,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009265,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1007,
+            "cacheReadInputTokens": 51392,
+            "cacheCreationInputTokens": 11957,
+            "webSearchRequests": 0,
+            "costUSD": 0.0630492,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 325,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0639757
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4585,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13375,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013510000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 650,
+            "cacheReadInputTokens": 21618,
+            "cacheCreationInputTokens": 14457,
+            "webSearchRequests": 0,
+            "costUSD": 0.0664978,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 130,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0678488
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5669,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 719,
+            "cacheReadInputTokens": 38967,
+            "cacheCreationInputTokens": 14845,
+            "webSearchRequests": 0,
+            "costUSD": 0.07047869999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 120,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 13196,
+            "outputTokens": 289,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014640999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 266,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0719428
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 7999,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13202,
+            "outputTokens": 286,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014632,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 259,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 775,
+            "cacheReadInputTokens": 21441,
+            "cacheCreationInputTokens": 19414,
+            "webSearchRequests": 0,
+            "costUSD": 0.1751162,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 159,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1765794
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12386,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13381,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013506,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1379,
+            "cacheReadInputTokens": 21620,
+            "cacheCreationInputTokens": 15658,
+            "webSearchRequests": 0,
+            "costUSD": 0.157184,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 589,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1585346
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 30302,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9162,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009277,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 12,
+            "outputTokens": 2913,
+            "cacheReadInputTokens": 135126,
+            "cacheCreationInputTokens": 23721,
+            "webSearchRequests": 0,
+            "costUSD": 0.2751012,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1503,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2760289
+      }
+    ],
+    "total_cost_usd": 1.2571637,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 52,
+      "gather": 152,
+      "scope": 5,
+      "triage": 7245,
+      "find_verify": 31669,
+      "merge": 2
+    },
+    "errors": []
+  }
+}

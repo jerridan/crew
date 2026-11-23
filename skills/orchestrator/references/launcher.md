@@ -368,7 +368,9 @@ caller knows the session.
   the terminal is gone or not live: `stop` goes on and closes the tab. When
   `hc get` fails too, or the terminal is live, the failure stands with exit
   6. On iTerm2, an exit script that fails is no failure when the session is
-  gone: `stop` exits 0 with no line.
+  gone: `stop` exits 0 with no line. It reads the tty of the session before
+  the keys, so it still waits for a `claude` that stays on that tty, as the
+  other stops do.
   Then `stop` waits up to 15 seconds until no `claude` process has the tab's
   tty. It reads the pid and the argv of each one. When one is still there,
   one line on stderr says so, and the stop continues.
@@ -384,7 +386,9 @@ caller knows the session.
   `claude` ended is not an error. A close that fails on iTerm2 or tmux is
   not an error either when the tab or pane is gone at that moment: `stop`
   reads the session or the pane again. A failure on a tab or pane that still
-  exists, or a read of the iTerm2 sessions that fails, exits 6.
+  exists, or a read of the iTerm2 sessions that fails, exits 6. On tmux, the
+  pane is gone when the list of panes does not show it, or when no tmux
+  server runs. Any other failed read keeps the failure.
 - After the close, `stop` waits up to 15 more seconds until each `claude`
   pid that was still there is gone. A pid is gone when `ps` does not show
   it, or shows it with another argv, because a new process can get the pid.

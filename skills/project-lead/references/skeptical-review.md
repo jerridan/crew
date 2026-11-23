@@ -3,9 +3,9 @@
 This file owns the review rounds of the finished diff that both run kinds
 share: when a round is armed, `review_pending`, the launch, the resume list,
 the ledger and the recovery of a killed round. "When the review runs" below
-owns the arming, and nothing else decides it. `review-runner.md` owns the
-mechanics: the detached worktree, the instructions file, the runner, the
-checks and the session id.
+owns the arming, with `goal-check.md`'s one-round rule on a goal run.
+`review-runner.md` owns the mechanics: the detached worktree, the
+instructions file, the runner, the checks and the session id.
 
 The review has a different name and job on each run kind:
 
@@ -55,8 +55,8 @@ nothing.
 
 ## When the review runs
 
-This file is the only place that decides it. On a review run, two moments
-start a review:
+This section decides it, with `goal-check.md`'s "One round" on a goal run.
+On a review run, two moments start a review:
 
 1. **The `deliver` write hands the work over**, whether or not a PR opened.
    A local-only ending gets the same review: the branch is what it reviews,
@@ -64,8 +64,8 @@ start a review:
 2. **The branch head moves in the delivered window** — a push, or a new
    commit on the branch when the run has no remote.
 
-**On a goal run, only the first moment starts a round.** `goal-check.md`'s
-"One round" owns that rule, and what an arming after the goal check writes.
+**On a goal run, only the first moment starts a round.** `goal-check.md`
+owns what an arming after the goal check writes.
 
 **A deliverable whose `branch` is `null` is the only exclusion.** An
 investigation run that ended in a report produced no diff.

@@ -200,10 +200,10 @@ def arm_review(run: dict, head: str | None, reason: str | None = None, past_cap:
     `accepted-round` means an accepted verdict stopped the review, so the head
     is never armed, at any round count. Both reasons leave a pending review
     of another head running. For `goal-check-done` the head is listed and
-    the pending review stays. For `accepted-round`, a pending round not yet entered
-    (`review_rounds < pending["round"]`) moves to the given head and keeps
-    its number, and nothing is listed. An entered round keeps its head, and
-    the given head is listed, so a resume owes nothing for it.
+    the pending review stays. For `accepted-round`, a pending round not yet
+    entered (`review_rounds < pending["round"]`) moves to the given head and
+    keeps its number, and nothing is listed. An entered round keeps its head,
+    and the given head is listed, so a resume owes nothing for it.
     """
     if not head:
         return

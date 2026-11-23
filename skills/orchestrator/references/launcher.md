@@ -364,6 +364,11 @@ caller knows the session.
   Herdr, `hc keys <t> esc`, `hc keys <t> ctrl+u` and `hc send <t> /exit
   --force`; `hc send` presses Enter, and `--force` covers a status that still
   reads blocked after Escape.
+  On Herdr, an `hc send` that fails is no failure when `hc get` shows that
+  the terminal is gone or not live: `stop` goes on and closes the tab. When
+  `hc get` fails too, or the terminal is live, the failure stands with exit
+  6. On iTerm2, an exit script that fails is no failure when the session is
+  gone: `stop` exits 0 with no line.
   Then `stop` waits up to 15 seconds until no `claude` process has the tab's
   tty. It reads the pid and the argv of each one. When one is still there,
   one line on stderr says so, and the stop continues.
@@ -376,7 +381,10 @@ caller knows the session.
   reads `herdr-app ls` again: a tab that is gone counts as closed, and any
   other tab stays a failure with exit 6. The close is required, because the
   shell stays open after `claude` ends. A tab or pane that closed when
-  `claude` ended is not an error.
+  `claude` ended is not an error. A close that fails on iTerm2 or tmux is
+  not an error either when the tab or pane is gone at that moment: `stop`
+  reads the session or the pane again. A failure on a tab or pane that still
+  exists, or a read of the iTerm2 sessions that fails, exits 6.
 - After the close, `stop` waits up to 15 more seconds until each `claude`
   pid that was still there is gone. A pid is gone when `ps` does not show
   it, or shows it with another argv, because a new process can get the pid.

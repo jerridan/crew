@@ -1260,6 +1260,15 @@ def iterm_tty(ref):
     return None
 
 
+def iterm_gone(ref):
+    """True when the iTerm2 session is gone. False when it exists, and when
+    the list of sessions cannot be read."""
+    try:
+        return iterm_tty(ref) is None
+    except Fail:
+        return False
+
+
 def holds_target(a, tty):
     """With --name or --session-id: True when a claude on the tty has the
     match name or id, as find matches it. A cwd match never counts: a person
@@ -1294,6 +1303,15 @@ def herdr_tab_ids(ref):
     return ids, holder
 
 
+def hc_ended(ref):
+    """True when hc get shows the terminal is gone or not live."""
+    try:
+        rec = hc_get(ref)
+    except Fail:
+        return False
+    return rec is None or rec.get("state") != "live"
+
+
 def herdr_stop(a, ref):
     """stop on Herdr: the same keys as on tmux, then the close of the tab. The
     shell of a Herdr terminal stays open after claude ends, so the tab must
@@ -1326,7 +1344,10 @@ def herdr_stop(a, ref):
     # hc send pastes the text and presses Enter. --force: Escape has just
     # answered a dialog, and the status can still read blocked.
     rc, out, err = run([hc, "send", ref, "/exit", "--force"], timeout=90)
-    if rc != 0:
+    # A terminal that ended during hc send is no failure: the tab can still be
+    # open with a shell, so go on to close it. A failed read of the terminal
+    # keeps the failure of hc send.
+    if rc != 0 and not hc_ended(ref):
         raise Fail(TERMINAL_STEP, "launcher: hc send failed for %s: %s" % (a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
     left = wait_claude_gone(tty, a.handle) if tty else {}
     try:
@@ -1367,12 +1388,25 @@ def stop(a):
                 return OK
             if not holds_target(a, tty):
                 return not_target(a)
-        tty = iterm_script(OSA_EXIT.replace("{pause}", str(KEY_WAIT)), "exit", ref)
+        try:
+            tty = iterm_script(OSA_EXIT.replace("{pause}", str(KEY_WAIT)), "exit", ref)
+        except Fail:
+            # The session can end between the keys and the end of the script.
+            # A session that is gone counts as stopped.
+            if iterm_gone(ref):
+                return OK
+            raise
         if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
             return OK
         left = wait_claude_gone(norm_tty(tty), a.handle)
-        iterm_script(OSA_STOP, "stop", ref)  # "gone" here: the tab closed when claude ended
+        try:
+            iterm_script(OSA_STOP, "stop", ref)  # "gone" here: the tab closed when claude ended
+        except Fail:
+            # The tab can close between the find and the close. A tab that is
+            # gone counts as closed.
+            if not iterm_gone(ref):
+                raise
         if left:
             wait_pids_gone(left, a.handle)
         return OK
@@ -1393,9 +1427,9 @@ def stop(a):
     left = wait_claude_gone(tty, a.handle)
     if tmux_pane_exists(ref):
         rc, _, err = tmux(["kill-pane", "-t", ref])
-        if rc != 0:
+        if rc != 0 and tmux_pane_exists(ref):
             raise Fail(TERMINAL_STEP, "launcher: tmux kill-pane failed for tmux:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
-    # else: the pane closed when claude ended.
+    # else: the pane closed when claude ended, or before kill-pane ran.
     if left:
         wait_pids_gone(left, a.handle)
     return OK

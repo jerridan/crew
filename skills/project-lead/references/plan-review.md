@@ -168,11 +168,13 @@ count:` line. With no verdict pair, the run is a skip with reason `failed`.
 **Read the token count** after every run that launched, a skip included:
 
 ```
-awk '/tokens used/ {sub(/.*tokens used:?/, ""); if ($0 ~ /[0-9]/) {print; exit} getline; print; exit}' <record-dir>/reviews/plan-review-r1-result.stderr | tr -dc '0-9'
+awk '$0=="tokens used"{getline; v=$0} END{print v}' <record-dir>/reviews/plan-review-r1-result.stderr | tr -dc '0-9'
 ```
 
-It prints the integer that the runner wrote after `tokens used`. Empty output
-means `tokens: null`.
+It prints the integer on the line after the last line that is exactly `tokens
+used`. The runner echoes the whole prompt to `-result.stderr`, and the prompt
+holds that phrase too, so read only the last exact match. Empty output means
+`tokens: null`.
 
 **Transcribe the report.** The runner cannot write the record. Copy
 `-result.txt` to `<record-dir>/reviews/plan-review-r1.md`, from its `Plans
@@ -235,8 +237,9 @@ actions for the plan review in its place:
   you believe" then checks it. After the package is integrated, it is a
   finding from the principal in the delivered window.
 
-**Write one `decisions.md` entry**, with one `--line` for each finding and
-one for each refactor recommendation:
+**Write the record first**: `outcome: ran` and the counts, as "The record"
+point 4 says. **Then write one `decisions.md` entry**, with one `--line` for
+each finding and one for each refactor recommendation:
 
 ```
 python3 <skill-dir>/scripts/crew-record.py <record-dir> decision precedent "Plan review: which findings does the run act on?" --answer "<k> of <n> findings sent to the ICs" --citation "reviews/plan-review-r1.md" --confidence high --line "Finding: F1 blocking (reviewer: blocking) — sent to <ic name>" --line "Finding: F2 don't post (reviewer: suggestion) — declined: <reason>" --line "Refactor: <ticket title>"
@@ -264,6 +267,10 @@ Start <package id>
 `<package id>` is the first package of the IC's territory. An IC with no
 accepted finding gets `Start <package id>` alone. After a skip, every IC gets
 `Start <package id>` alone.
+
+**An IC whose record write is denied sends its revision by message.** It
+sends the text of `## Revised after the plan review` to you. Append that text
+to `plans/<id>.md`, under the transcription line of "The planning stop".
 
 Set `nudges_used` to 0 on each package that a start word names. When the start word has gone to every IC,
 write `status: started` ("The record").
@@ -293,9 +300,11 @@ Write it at these points:
 3. **Just before the launch**: `status: reviewing`, `at` the launch time, and
    `attempts` plus 1.
 4. **After the run exits**: the `tokens` count. On a skip, `outcome: skipped`
-   and the `reason`. On a review, after the `decisions.md` entry, `outcome:
-   ran`, the `labels` counts by your own label, `accepted` (the findings sent
-   to an IC) and `recommendations`.
+   and the `reason`. On a review, once you labelled every finding and before
+   the `decisions.md` entry: `outcome: ran`, the `labels` counts by your own
+   label, `accepted` (the findings you send to an IC) and `recommendations`.
+   A crash between this write and the entry leaves `status: reviewing` with
+   the exit file present, so the resume adjudicates again.
 5. **When the start word has gone to every IC**: `status: started` and
    `started_at`.
 
@@ -330,7 +339,9 @@ lines. Leave the heading out when the report has none.
 
 ## Resume in the planning step
 
-Read `run.plan_review` and `decisions.md`. Take the first case that matches:
+A record with no `run.plan_review` takes the ordinary resume of its path.
+Otherwise read `run.plan_review` and `decisions.md`, and take the first case
+that matches:
 
 1. **`status` is `started`.** The ordinary resume of the path:
    `full-path.md`'s "Resume after a kill", or `resume.md` on the simple path.

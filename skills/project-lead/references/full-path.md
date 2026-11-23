@@ -184,11 +184,11 @@ Pass the band's model at spawn time, as `band-rubric.md` says. Pass it for an
 IC and never for a critic or a reviewer.
 
 An IC inherits no conversation history in either mode, so the spawn prompt
-carries all of: `ic-contract.md`'s full text, the brief, the file set, **the
-absolute worktree path**, the interface contract, the acceptance criterion,
-the global constraints section, the package id, and **the dispatch mode** —
-`ic-contract.md`'s "Questions" names your address by mode, and an IC cannot
-tell its mode on its own.
+carries all of: `ic-contract.md`'s full text, **the absolute worktree path**,
+the global constraints section, **the dispatch mode** — `ic-contract.md`'s
+"Questions" names your address by mode, and an IC cannot tell its mode on its
+own — and **every package of the territory**, in `split.md` order, each with
+its id, brief, file set, interface contract and acceptance criterion.
 The standing instructions go in after the contract and before the brief, as
 `SKILL.md`'s "Standing instructions" says.
 
@@ -198,6 +198,16 @@ can write there (design §15.31b), so a full-path IC writes `plans/<id>.md` and
 subagent yet (design §15.131). If a write is denied, `ic-contract.md` makes
 the IC's final message its plan or its report, and that message reaches you
 as its result. Transcribe it, and say in the file that you transcribed it.
+
+**Read `plan-review.md`'s "When the plan review runs" before you write the
+prompt.** It decides whether the spawn carries `Plan stop: on`. The first
+spawn of each territory carries it, unless that section names the case
+otherwise. With `Plan stop: on`, each IC writes one `plans/<id>.md` for each
+package of its territory, and stops with the final message `Plans written:
+<absolute paths>` (`ic-contract.md`'s "Write your plan first"). Every
+territory plans in parallel. Wait until every territory has stopped, or until
+"The planning stop" gave up on it. Then run `plan-review.md` from "The
+inputs" to "The start word". With no `Plan stop: on` line, wait for no stop.
 
 Inject the contract as text. A teammate applies no `skills:` key and reads an
 agent body differently in each display mode (design §15.20d), so a link is not
@@ -226,6 +236,10 @@ An IC's result — its idle notification, or its hand-back in subagent mode —
 is what tells you it stopped. This section calls both an idle. Read the record before
 you answer one, and sort the idle into one of three kinds. No hook does
 this — a message does (design §13.1, §15.29).
+
+**While `run.plan_review.status` is `planning`, an idle is a planning
+stop.** `plan-review.md`'s "The planning stop" owns it, its one nudge
+included, in place of the table below.
 
 | What the record holds | The idle means | What you do |
 |---|---|---|
@@ -320,10 +334,11 @@ round's message or prompt asks for the whole defect class, as
   heading to tell this round's report from the last one's.
 - **Rounds 4 and 5** stand the IC down, then spawn a fresh one **one band
   up**, named as `SKILL.md`'s "Every dispatch is named" says for this
-  dispatch's own round. A fresh IC holds no context,
-  so its prompt describes what is already committed — `git -C <worktree>
-  log --oneline` plus `git -C <worktree> diff --stat` — and the failing
-  output word for word. A `deep` package cannot promote, so a `deep` package
+  dispatch's own round. A fresh IC holds no context, so its prompt describes
+  what is already committed — `git -C <worktree> log --oneline` plus `git -C
+  <worktree> diff --stat` — and the failing output word for word. It also
+  carries what `plan-review.md`'s "The start word" says a respawn after the
+  review carries. A `deep` package cannot promote, so a `deep` package
   reaching round 4 escalates instead: respawn it at `deep` only if the
   principal says to (`band-rubric.md`). **Write the new name to
   `worktrees.json`'s entry for this worktree, and to `ic_name` on every
@@ -343,10 +358,13 @@ not re-run is a claim. Leave this rule only when every check there passes.
 
 **An accepted package integrates before its territory gets another.** When you
 accept one, take it through "Integrate" first: the merge, and the suite green
-on the deliverable branch or the no-suite outcome. Only then, if that territory
-has another package in `split.md`, send the IC its next one. A package
-dispatched over an unmerged predecessor puts its own work on a base you have
-not proved, and a red suite then names two packages instead of one.
+on the deliverable branch or the no-suite outcome. Only then, if that
+territory has another package in `split.md`, send the IC its next one. The
+message says that the package's plan is already written and reviewed, and
+names each accepted plan review finding on that package that no message has
+sent yet. A package dispatched over an unmerged predecessor puts its own work
+on a base you have not proved, and a red suite then names two packages instead
+of one.
 
 An IC works its packages in the listed order. Write the new package's `base` as
 you send it — the worktree head as it stands now, which is the accepted
@@ -358,11 +376,13 @@ or when the IC has finished four packages. Neither you nor the IC can read its
 context, so the count is the proxy: one IC carried five packages to 66% of its
 window without compacting, and the next one may not (design §15.50). Stand the
 IC down, then spawn a fresh one at the new package's band, named for that
-package as `SKILL.md`'s "Every dispatch is named" says, with the brief rule
-3 of "Resume after a kill" describes: what its worktree already holds, and
-which work is done. Write the new name to `worktrees.json`'s entry for this
-worktree, and to `ic_name` on every package this IC owns, the same way
-"Create the branch and the worktrees" wrote them the first time.
+package as `SKILL.md`'s "Every dispatch is named" says, with the brief rule 3
+of "Resume after a kill" describes: what its worktree already holds, and which
+work is done. The brief also carries what `plan-review.md`'s "The start word"
+says a respawn after the review carries. Write the new name to
+`worktrees.json`'s entry for this worktree, and to `ic_name` on every package
+this IC owns, the same way "Create the branch and the worktrees" wrote them
+the first time.
 
 ## Integrate
 
@@ -483,6 +503,10 @@ IC over its worktree, check that no pane IC still runs there. What survives is e
 `/crew:project-lead --resume <goal-slug>` reconciles. Append this
 session's id to `run.session_ids` and to each worktree's `session_ids`; never
 overwrite them.
+
+**When `run.plan_review` exists and its `status` is `planning` or
+`reviewing`, the run died in the planning step.** Take `plan-review.md`'s
+"Resume in the planning step" first.
 
 For every **IC** worktree in `worktrees.json` — every entry keyed by an IC
 name. Skip the entry keyed by a deliverable id: that is this run's own

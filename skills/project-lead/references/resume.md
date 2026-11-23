@@ -16,6 +16,11 @@ and no new branch, and creates no record directory.
 **A record whose `run_state` is already `complete` is closed.** Resume
 nothing, and say so in the closing message.
 
+**A record whose `run.plan_review` exists with `status` `planning` or
+`reviewing` died in the planning step.** `plan-review.md`'s "Resume in the
+planning step" decides what you re-enter, before you recover any package. A
+record with no `run.plan_review` takes the rules below.
+
 **A record whose every deliverable holds a terminal state has no deliverable
 left to make**: set `run_state: delivered` — or `blocked`, when an escalation
 is open — and invoke the skill `crew:delivered-window` again. Which step

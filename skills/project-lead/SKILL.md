@@ -449,7 +449,7 @@ is final, and it alone decides whether the finding takes action:
 
 | Your label | The action |
 |---|---|
-| `blocking` | a fix: your own edit of `spec.md` on a spec critic's finding, a re-split on a split critic's, or a patch-round package on the skeptical review's, or on any finding after the hand-over |
+| `blocking` | a fix: your own edit of `spec.md` on a spec critic's finding, your own edit of `split.md` on a split critic's, or a patch-round package on the skeptical review's, or on any finding after the hand-over |
 | `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The skeptical review's, or any finding after the hand-over: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there. When the verdict after your labels is `accepted`, that package integrates with `--no-review accepted-round` |
 | `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
 | `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |

@@ -135,8 +135,10 @@ export const windowAt = (n: number, rows: number, from: number): Win => {
   const marks = rows >= 3
   if (!marks) return { start, end: Math.min(n, start + rows), up: false, down: false }
   const up = start > 0
-  const below = rows - (up ? 1 : 0) - 1
-  if (start + below >= n) return { start, end: n, up, down: false }
+  const room = rows - (up ? 1 : 0)
+  // The last page has no mark below it, so it uses that row for a line.
+  if (start + room >= n) return { start, end: n, up, down: false }
+  const below = room - 1
   return { start, end: start + below, up, down: true }
 }
 
@@ -152,6 +154,10 @@ export const lastStart = (n: number, rows: number): number => {
   for (let s = 0; s < n; s++) if (windowAt(n, rows, s).end >= n) return s
   return 0
 }
+
+// Hold a window start between 0 and the last start.
+export const clampTop = (n: number, rows: number, top: number): number =>
+  Math.min(Math.max(0, top), lastStart(n, rows))
 
 const allRows = (board: OrchBoard) => board.sections.flatMap(s => s.rows)
 
@@ -404,7 +410,8 @@ export const register: Register = on => {
   // The pane draws its own window, so a wheel tick or a page key moves it
   // here, and the engine's window does not move.
   on('ui.scroll', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    load.top = Math.max(0, load.top + e.by)
+    const shown = load.shown
+    load.top = shown ? clampTop(shown.n, shown.rows, load.top + e.by) : Math.max(0, load.top + e.by)
     await $.ui.invalidate('ui.render')
     return {}
   })
@@ -615,7 +622,7 @@ export const register: Register = on => {
     const extras: RenderChildren[] = []
     if (v.line) extras.push(textLine('line', 0, fit(v.line, columns), { color: 'yellow' }))
     extras.push(
-      ...wrapped('footer', 0, `Done ${b.done} · type a number and Enter to go to the tab · stages: ${b.legend}`, {
+      ...wrapped('footer', 0, `Done ${b.done} · type a number and Enter to go to the tab, or u d t b to scroll · stages: ${b.legend}`, {
         dim: true,
       }),
     )
@@ -648,7 +655,7 @@ export const register: Register = on => {
     const pinned = roomy ? [input, ...extras] : [input]
     const room = Math.max(1, rows - pinned.length)
     load.shown = { n: content.length, rows: room }
-    load.top = windowAt(content.length, room, load.top).start
+    load.top = clampTop(content.length, room, load.top)
     if (content.length <= room) return <Box flexDirection="column">{[...content, ...pinned]}</Box>
     const win = windowAt(content.length, room, load.top)
     const drawn: RenderChildren[] = []

@@ -252,8 +252,9 @@ naming convention. Do not mix their contents.
   than trusting the file name, and whose second line is `Source: result
   field` when the fallback supplied it. A goal check's report carries
   `Check: goal` after its `Reviewed:` line and after any `Source:` line; an
-  older report has none (`goal-check.md`); `reviews/skeptical-r<n>-instructions.md`,
-  the text the review was launched with; `reviews/skeptical-r<n>-result.json`,
+  older report has none (`goal-check.md`);
+  `reviews/skeptical-r<n>-instructions.md`, the text the review was launched
+  with; `reviews/skeptical-r<n>-result.json`,
   the child process's own JSON output, which the checks read;
   `reviews/skeptical-r<n>-result.stderr`, the runner's own stderr, redirected
   there by the same command; and `reviews/skeptical-r<n>-result.exit`, the
@@ -291,9 +292,9 @@ naming convention. Do not mix their contents.
   with the goal proposed for it. When the project lead's label differs from
   the reviewer's, the line names both. On a goal run, the file ends with one
   closing line, `Verdict after labels: <accepted | patch round needed>`, the
-  verdict of the round once the project lead's labels apply (`goal-check.md`'s
-  "Labels and the verdict"). A resumed session reads the verdict there, never from
-  the report. A report whose verdict is `accepted` and which states no
+  verdict of the round once the project lead's labels apply
+  (`goal-check.md`'s "Labels and the verdict"). A resumed session reads the
+  verdict there, never from the report. A report whose verdict is `accepted` and which states no
   findings needs no disposing of, so `skeptical-review.md`'s "Adjudication
   is a ledger" writes none. On a review run, a claim in the auto-review
   bot's review on the current head is also an item to dispose of, so a round
@@ -317,8 +318,8 @@ naming convention. Do not mix their contents.
 
   **`reviews/baseline.md` is one file per deliverable of a goal run**,
   written by the project lead before the goal check, and again before a
-  later round at a new base (`skeptical-review.md`'s "When the review runs"). Its
-  first line is `Base: <sha>`, the base it was measured at, so a resume can
+  later round at a new base (`skeptical-review.md`'s "When the review
+  runs"). Its first line is `Base: <sha>`, the base it was measured at, so a resume can
   tell a file from an old base. Then it holds one line per test or gate that
   fails at that base, with its cause when known, and starts from the standing
   instructions' `Known red tests` section. Under the no-suite outcome it

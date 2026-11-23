@@ -13,8 +13,8 @@ and asks one question: does it do what you asked? A goal miss comes back as a
 patch on the same PR. When that check is done, the PR leaves draft. Merge it
 when you are ready, or tell the project lead to merge it. The project lead
 stays until its work ships, so you can ask it about the change before the
-merge, or ask for a change to the PR after. The work ships when its deploy succeeds, or soon
-after the merge when the repo has no deploy.
+merge, or ask for a change to the PR after. The work ships when its deploy
+succeeds, or soon after the merge when the repo has no deploy.
 It watches the PR and CI the whole time. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
 you what it fixed or declined and why. When another person commented, it

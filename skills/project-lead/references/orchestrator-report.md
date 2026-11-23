@@ -29,7 +29,8 @@ you make:
 
 A goal run runs one goal check, so no later review writes a stage. The
 delivered window writes `merged` at the merge, `shipped` at the ship word,
-and `closed` when the watch reports the PR closed with no merge. A `crew:review` run writes no stage call.
+and `closed` when the watch reports the PR closed with no merge. A
+`crew:review` run writes no stage call.
 
 Write each question with `ask <id> "<text>"` before you send it to the
 principal. `ask` prints a question id. Send the question by `SendMessage`, as

@@ -1,0 +1,916 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 169,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Call pr-review v0.21.0 by its commit sha",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/169"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "c81aceab5a3f966f37f4aeb2ea0549f22f9d3cd3",
+    "head": "eb87356598aff1a11c58afeddf4d2ee24fae5b0c",
+    "started_at": "2026-11-23T05:29:16.749Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Call pr-review v0.21.0 by its commit sha\n\n## Summary\n\nCrew's pull request review now runs on the latest release of pr-review, v0.21.0, in place of v0.5.0. The workflow calls that release by its full commit SHA, with the tag in a comment, so the reference cannot move. Nothing else in the workflow needed a change: the triggers, the permissions and the secret are the same in v0.21.0.\n\n**Ticket:** N/A\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `jerridan/pr-review` README, \"Set up CI\" at commit `047fb726fe4f7cb50984e2d973048fc90e677cf7` (tag `v0.21.0`): the consumer workflow, and the SHA-pin form `review.yml@<sha> # v<version>`.\n- `jerridan/pr-review` `.github/workflows/review.yml` at the same commit: the reusable workflow this file calls.\n- `CLAUDE.md`, \"Constraints that are easy to get wrong\": the version rule. A `.github/` file never reaches a plugin user, so this PR bumps no version.\n\n### What changed, by file\n\n- `.github/workflows/pr-review.yml`: `uses:` calls `jerridan/pr-review/.github/workflows/review.yml@047fb726fe4f7cb50984e2d973048fc90e677cf7 # v0.21.0`, in place of `@v0.5.0`.\n\n### Constraints that applied\n\n- Change only what the new version needs. I compared the rest of the file with the two sources below, and nothing else differs.\n- No version bump: the change does not touch `agents/`, `skills/`, `hooks/` or the manifests.\n\n### How this was verified\n\n- `gh api repos/jerridan/pr-review/git/ref/tags/v0.21.0` gives the commit `047fb726fe4f7cb50984e2d973048fc90e677cf7`, and `gh api repos/jerridan/pr-review/releases/latest` gives `v0.21.0`.\n- Triggers: the README consumer workflow lists `pull_request` (opened, synchronize, reopened, ready_for_review), `pull_request_target` (labeled) and `issue_comment` (created). This file lists the same three, with the same types.\n- Permissions: the README and the reusable workflow's job both ask for `pull-requests: write`, `checks: write` and `contents: write`. This file grants the same three.\n- Secrets: the reusable workflow reads one secret, `CLAUDE_CODE_OAUTH_TOKEN`, and sets `GH_TOKEN` from the job token. This file passes `secrets: inherit`, and the repo holds `CLAUDE_CODE_OAUTH_TOKEN`.\n- The reusable workflow file at `v0.5.0` and at `v0.21.0` is byte for byte the same (`diff` printed nothing). The changes between the two releases are in the action code that the workflow checks out at its own commit.\n- `grep -c 'uses: jerridan/pr-review/.github/workflows/review.yml@047fb726fe4f7cb50984e2d973048fc90e677cf7 # v0.21.0' .github/workflows/pr-review.yml` prints 1, and the diff names only that file.\n- The \"PR review\" check on this PR is the live test: it runs the new version.\n\n### Known gaps\n\n- The README example in pr-review still shows the tag `v0.2.0`. That is pr-review's file, not this repo's.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZgYWHHNhRSy3s6RFPj\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".github/workflows/pr-review.yml",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [
+      ".github/workflows/pr-review.yml"
+    ],
+    "triage": {
+      "tier": "full",
+      "reason": "The change bumps a reusable CI workflow from v0.5.0 to a SHA-pinned v0.21.0 in a sensitive workflow that has write permissions and inherits secrets, so a big version jump could change behavior or introduce supply-chain risk.",
+      "confidence": "medium",
+      "categories": [
+        "security",
+        "other"
+      ],
+      "hotspots": [
+        "The .github/workflows/pr-review.yml `uses:` line: check the SHA 047fb726fe4f7cb50984e2d973048fc90e677cf7 really is the v0.21.0 tag.",
+        "The permissions block (pull-requests, checks and contents write) together with `secrets: inherit`: check the new version doesn't need different inputs or permissions.",
+        "The jump from v0.5.0 to v0.21.0: look for breaking changes in the reusable workflow's inputs and secrets."
+      ],
+      "file_notes": [
+        {
+          "file": ".github/workflows/pr-review.yml",
+          "note": "Reusable workflow ref changed from the tag v0.5.0 to a commit SHA with a v0.21.0 comment. Pinning to a SHA is good practice, but the SHA-to-tag match and the 16-minor-version jump need checking."
+        }
+      ],
+      "summary": "This updates the pr-review GitHub Actions workflow to call the reusable workflow at a pinned commit SHA (v0.21.0) instead of the v0.5.0 tag. The caller job has write permissions and inherits all secrets, so the referenced code runs with real privileges. The reviewer should check that the SHA matches the tag and that the version jump is compatible."
+    },
+    "tier": "full",
+    "tier_reason": "Sensitive paths set a floor of full: .github/workflows/pr-review.yml.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 1048,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 53,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 12983,
+              "webSearchRequests": 0,
+              "costUSD": 0.104932,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.104932
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6360,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3322,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003457,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 443,
+              "cacheReadInputTokens": 13210,
+              "cacheCreationInputTokens": 13562,
+              "webSearchRequests": 0,
+              "costUSD": 0.120014,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 24,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1203597
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2991,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3318,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.00034480000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 211,
+              "cacheReadInputTokens": 12889,
+              "cacheCreationInputTokens": 14397,
+              "webSearchRequests": 0,
+              "costUSD": 0.1219898,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1223346
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 890,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3754,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0003879,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 53,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 13721,
+              "webSearchRequests": 0,
+              "costUSD": 0.055418,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0558059
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": ".github/workflows/pr-review.yml",
+            "start_line": 5,
+            "end_line": 16,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The bump brings sixteen releases of third-party code into a workflow that runs on pull_request_target with write permissions and `secrets: inherit`, and nothing in this repo checks what that code does.",
+            "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@047fb726fe4f7cb50984e2d973048fc90e677cf7 # v0.21.0\n    secrets: inherit",
+            "suggested_fix": "Read the upstream changes from v0.5.0 to v0.21.0. Pass only CLAUDE_CODE_OAUTH_TOKEN explicitly in place of `secrets: inherit`.",
+            "explanation": "Code from v0.5.0 to v0.21.0 now runs with the repo's secrets and write token on pull_request_target and issue_comment triggers, so someone should read that upstream code before the merge.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6891,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3312,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.00034470000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 622,
+              "cacheReadInputTokens": 13167,
+              "cacheCreationInputTokens": 13571,
+              "webSearchRequests": 0,
+              "costUSD": 0.1236574,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 132,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1240021
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 771,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 3316,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.00034510000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 53,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 10891,
+              "webSearchRequests": 0,
+              "costUSD": 0.044403899999999996,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.044749
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": ".github/workflows/pr-review.yml",
+          "start_line": 5,
+          "end_line": 16,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The bump brings sixteen releases of third-party code into a workflow that runs on pull_request_target with write permissions and `secrets: inherit`, and nothing in this repo checks what that code does.",
+          "evidence": "uses: jerridan/pr-review/.github/workflows/review.yml@047fb726fe4f7cb50984e2d973048fc90e677cf7 # v0.21.0\n    secrets: inherit",
+          "suggested_fix": "Read the upstream changes from v0.5.0 to v0.21.0. Pass only CLAUDE_CODE_OAUTH_TOKEN explicitly in place of `secrets: inherit`.",
+          "explanation": "Code from v0.5.0 to v0.21.0 now runs with the repo's secrets and write token on pull_request_target and issue_comment triggers, so someone should read that upstream code before the merge.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@047fb726fe4f7cb50984e2d973048fc90e677cf7 # v0.21.0",
+            "secrets: inherit"
+          ],
+          "rationale": "The workflow does call upstream code with inherited secrets, but that was already true with v0.5.0. The change moves to a SHA pin, which is safer, and the upstream repo is the author's own. Reviewing upstream code is a process matter this review cannot judge.",
+          "score": 30,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@047fb726fe4f7cb50984e2d973048fc90e677cf7 # v0.21.0",
+            "secrets: inherit",
+            "pull_request_target:"
+          ],
+          "rationale": "The bump does run newer upstream code with the same permissions, and `secrets: inherit` was already in the file before this change. But calling it \"third-party\" is weak: the repo owner (Jerridan Quiring) also owns jerridan/pr-review. Pinning to a full commit SHA tightens supply-chain safety compared with the movable tag, and asking someone to review upstream code is a process point the review cannot judge from this repo's code.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": false,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "uses: jerridan/pr-review/.github/workflows/review.yml@047fb726fe4f7cb50984e2d973048fc90e677cf7 # v0.21.0",
+            "secrets: inherit",
+            "pull_request_target:"
+          ],
+          "rationale": "The bump does run newer upstream code with the same permissions, and `secrets: inherit` was already in the file before this change. But calling it \"third-party\" is weak: the repo owner (Jerridan Quiring) also owns jerridan/pr-review. Pinning to a full commit SHA tightens supply-chain safety compared with the movable tag, and asking someone to review upstream code is a process point the review cannot judge from this repo's code.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6016946339,
+      "review_url": "https://github.com/jerridan/crew/pull/169#pullrequestreview-6016946339",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137505521782
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4993,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 1580,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00016700000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 669,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 2355,
+            "webSearchRequests": 0,
+            "costUSD": 0.016114,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.016281
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 890,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3754,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003879,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 53,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 13721,
+            "webSearchRequests": 0,
+            "costUSD": 0.055418,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0558059
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 1048,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 53,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 12983,
+            "webSearchRequests": 0,
+            "costUSD": 0.104932,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.104932
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 771,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3316,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00034510000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 53,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 10891,
+            "webSearchRequests": 0,
+            "costUSD": 0.044403899999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.044749
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 2991,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3318,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00034480000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 211,
+            "cacheReadInputTokens": 12889,
+            "cacheCreationInputTokens": 14397,
+            "webSearchRequests": 0,
+            "costUSD": 0.1219898,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1223346
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 6360,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3322,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0003457,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 443,
+            "cacheReadInputTokens": 13210,
+            "cacheCreationInputTokens": 13562,
+            "webSearchRequests": 0,
+            "costUSD": 0.120014,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 24,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1203597
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6891,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3312,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00034470000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 622,
+            "cacheReadInputTokens": 13167,
+            "cacheCreationInputTokens": 13571,
+            "webSearchRequests": 0,
+            "costUSD": 0.1236574,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 132,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1240021
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3241,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3937,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00040620000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 461,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 7813,
+            "webSearchRequests": 0,
+            "costUSD": 0.035866,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.036272200000000004
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 5828,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3945,
+            "outputTokens": 315,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000552,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 290,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 615,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 7817,
+            "webSearchRequests": 0,
+            "costUSD": 0.074844,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 198,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07539599999999999
+      }
+    ],
+    "total_cost_usd": 0.7001325,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 42,
+      "gather": 31,
+      "triage": 5710,
+      "find_verify": 17858,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

@@ -70,7 +70,10 @@ Do these steps in this order.
      with the item in the inbox (`inbox add notice --item <id>`), and leave
      the item as it is. The principal decides.
    - **The rejoin message.** Send one message, with `told`, to each
-     implementer that is alive or that you resumed. It carries
+     implementer that is alive or that you resumed, and whose `told` holds
+     its goal message. Send none to an implementer with no goal: the step
+     "No goal" gives it the goal, and the goal's envelope gives it the name.
+     The message carries
      the line `Orchestrator: <record name>, item <id>` and your current session
      name from `ListAgents`, as SKILL.md's "A rename" says, so an implementer
      that missed a rename sends to the new name. It says that the
@@ -94,7 +97,8 @@ Do these steps in this order.
      implementer".
 
    An item at `shipped` or `closed` whose tab or worktree is still there
-   waits for its close. Run `launcher.py find` as the step "Alive" says:
+   waits for its close. It gets no rejoin message: step 1 of "The close of an
+   item" tells it the current name. Run `launcher.py find` as the step "Alive" says:
    - It prints a handle with the match `name` or `id`: write that handle
      with `item <id> set launch.tab`. Then run "The close of an item" again
      from step 1.
@@ -120,7 +124,10 @@ also runs on the principal's word for an item that stops early: write
 
 1. **The implementer's processes.** Tell the implementer, with `told`, to stop
    each process and service that it started for the item, such as a server,
-   a container, a watcher or a local stack. It answers with what it stopped.
+   a container, a watcher or a local stack. The message carries the
+   `Orchestrator:` line and your current session name, as SKILL.md's "A
+   rename" says, so an implementer that missed a rename answers to the
+   current name. It answers with what it stopped.
    Only the implementer can stop a container or a service outside the
    worktree. Wait for the answer. When its session is gone, go on.
 2. **The session and the tab.** Run `launcher.py stop <launch.tab> --name

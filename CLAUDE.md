@@ -33,8 +33,8 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
 | `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line |
 | `skills/delivered-window/scripts/test-pr-watch-deploy.sh` | the seeded test of the default deploy signal of `pr-watch.sh`, with a stub `gh` | a person |
-| `skills/orchestrator/scripts/launcher.py`, `skills/orchestrator/scripts/iterm2-tabs.py` | the orchestrator launcher: starts, resumes, finds, lists, focuses and stops implementer sessions in iTerm2 tabs or tmux windows, and removes their worktrees; its iTerm2 Python API helper. `skills/orchestrator/references/launcher.md` owns its interface | the orchestrator session, from Bash |
-| `skills/orchestrator/scripts/test-launcher.sh` | the seeded test of `launcher.py`, with stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` | a person |
+| `skills/orchestrator/scripts/launcher.py`, `skills/orchestrator/scripts/iterm2-tabs.py` | the orchestrator launcher: starts, resumes, finds, lists, focuses and stops implementer sessions in iTerm2 tabs, tmux windows or Herdr tabs, and removes their worktrees; its iTerm2 Python API helper. `skills/orchestrator/references/launcher.md` owns its interface | the orchestrator session, from Bash |
+| `skills/orchestrator/scripts/test-launcher.sh` | the seeded test of `launcher.py`, with stub `tmux`, `osascript`, `uv`, `herdr-app`, `hc`, `claude`, `ps` and `lsof` | a person |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
@@ -133,7 +133,8 @@ rule ships 2 minutes after it (§15.137). The watch ran only against a seeded re
 run has used it (§15.127).
 
 The orchestrator launcher is built and ran only against its seeded test, and
-no crew run has exercised it (§15.140).
+no crew run has exercised it (§15.140). Its Herdr support ran only against
+that test and one probe (§15.153).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

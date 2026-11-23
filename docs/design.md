@@ -10169,3 +10169,31 @@ Deliberately different:
      `orchestrator-report.md`, `autonomy-contract.md`, `record-format.md` and
      `skills/project-lead/SKILL.md`; `README.md`; `CLAUDE.md`. No run has
      exercised the procedure.
+
+153. **Herdr is a third terminal of the launcher — 2026-11-23, version
+     0.1.120.** Herdr is a macOS terminal app. Two programs control it:
+     `herdr-app` for the window (spaces, tabs, focus) and `hc` for the terminals
+     (keys, text, labels). The launcher maps a group to a Herdr space and an
+     implementer to one tab in it.
+
+     - **Probe.** One live probe ran on a space that the probe made, and closed
+       it after. `do space.new` and `do tab.new` with `--focus false` printed
+       `{"space","tab","terminal"}` and left the person's view as it was. The
+       terminal runs its argv inside the login shell, so killing the program
+       left the terminal `live` with a shell. So `stop` closes the tab, with `do
+       tab.close --confirmed true`. `tab.close` on a gone tab and `agent.focus`
+       on an unknown terminal printed `{"error": ...}` and exited 1.
+     - **Decisions.** `tab.new` has no environment argument, so the tab runs
+       `["/bin/sh", "-c", <the command of the tmux path>]`. `find` reads the
+       terminal's own pid with `hc get`, and the tty of that pid with `ps`, then
+       matches `claude` as on the other terminals. `stop` sends `hc keys esc`,
+       `hc keys ctrl+u` and `hc send /exit --force`. `hc send` presses Enter,
+       and `--force` covers a status that still reads blocked after Escape.
+       `--group` is a space name. With no `--group`, the tab goes into the space
+       of `$HC_TERMINAL_ID`. `--group-color` has no equivalent and is ignored.
+     - **Unexercised.** The keys and `/exit` to a live `claude`; `agent.focus`
+       on a real tab, which would change the person's view; that focus does not
+       raise the macOS window; that a new tab takes its environment from the
+       Herdr core and not from the launcher; a Herdr terminal address after a
+       restart of the core. Only the seeded test, with stub `herdr-app` and
+       `hc`, ran the code.

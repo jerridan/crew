@@ -9,7 +9,8 @@ codes.
 
 Run the script from the plugin with `python3 <skill dir>/scripts/launcher.py`.
 It needs Python 3.9 or newer and no package. On iTerm2 it runs
-`scripts/iterm2-tabs.py` with `uv run --with iterm2`.
+`scripts/iterm2-tabs.py` with `uv run --with iterm2`. On Herdr it runs
+`herdr-app` and `hc`.
 
 The launcher writes no record file. The orchestrator stores the start
 output, unchanged, as the item's `launch` object.
@@ -18,14 +19,57 @@ line.
 
 ## Terminals
 
-The launcher supports iTerm2 and tmux. It takes the first rule that holds:
+The launcher supports iTerm2, tmux and Herdr. It takes the first rule that
+holds:
 
-1. `--terminal iterm2` or `--terminal tmux`.
-2. `$TMUX` is set: tmux.
+1. `--terminal iterm2`, `--terminal tmux` or `--terminal herdr`.
+2. `$TMUX` is set: tmux. A tmux inside Herdr uses tmux.
 3. `$TERM_PROGRAM` is `iTerm.app`, or `$ITERM_SESSION_ID` is set: iterm2.
-4. Otherwise the command exits 4.
+4. `$__CFBundleIdentifier` is `dev.herdr.app`: herdr.
+5. Otherwise the command exits 4.
 
-`groups` and `find` use rules 2 to 4. They have no `--terminal`.
+`groups` and `find` use rules 2 to 5. They have no `--terminal`.
+
+## Herdr
+
+Herdr is a macOS terminal app. Two programs control it. `herdr-app` controls
+the window: spaces, tabs and focus. `hc` controls the terminals: keys, text
+and the state of each one. The launcher finds each one on `PATH`, and else in
+`~/.local/bin`.
+
+| Launcher term | On Herdr |
+|---|---|
+| tab | one Herdr tab with one terminal. Its handle is `herdr:<terminal address>`, such as `herdr:t9` |
+| group | a Herdr space |
+
+**The tab.** `start` and `resume` run `herdr-app do tab.new` with the space,
+the session name as the tab name, the worktree as the folder, and `--focus
+false`. The argv is `["/bin/sh", "-c", <command>]`, where `<command>` is the
+command of the tmux path. `tab.new` has no environment argument, and the
+command needs none. The tab gets its environment from the Herdr core, not from
+the launcher. So no `CLAUDECODE` or `CLAUDE_CODE_*` variable of the caller
+reaches it. No run has checked this on a live tab.
+
+**The space.** With `--group <name>`, the tab goes into the first space of
+that name, in `herdr-app ls` order. With no such space, `do space.new` makes
+it without focus, and its first tab is the implementer's. With no `--group`,
+the tab goes into the space of the caller: the `herdr.space` label that `hc get
+$HC_TERMINAL_ID --json` gives. With neither, the command exits 2.
+`--group-color` has no Herdr equivalent. The launcher ignores it and prints one
+line on stderr that says so.
+
+**Limits.**
+
+- The Herdr window must run for `start`, `resume`, `groups`, `focus` and
+  `stop`. A window that does not answer exits 6. `find` needs only `hc`.
+- A Herdr space has no color.
+- `focus` shows the tab in Herdr. It does not raise the macOS window.
+- The shell of a Herdr terminal stays open after `claude` ends. So `stop`
+  closes the tab.
+- The tab takes its environment from the Herdr core. See "The tab", above.
+- Unexercised: the keys that `stop` sends to a live `claude`, and `focus` on a
+  real tab. Only the seeded test, with stub `herdr-app` and `hc`, ran them.
+  One live probe made a tab and a space, and closed them.
 
 ## start
 
@@ -33,7 +77,7 @@ The launcher supports iTerm2 and tmux. It takes the first rule that holds:
 launcher.py start --name <session-name> [--model <model>] [--settings <file-or-json>]
                   --principal <orchestrator current session name>
                   [--repo <owner/repo>] [--checkout <path>]
-                  [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]
+                  [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr]
 ```
 
 | Argument | Meaning |
@@ -44,9 +88,9 @@ launcher.py start --name <session-name> [--model <model>] [--settings <file-or-j
 | `--principal` | the orchestrator's current session name, read from the first line of `ListAgents`. It is not the record name. The wait prompt names it |
 | `--repo` | `<owner>/<repo>`. Without `--checkout`, it selects the `Checkouts` line |
 | `--checkout` | the principal's checkout. It wins over `--repo`. Then `--repo` sets only the `repo` field |
-| `--group` | the iTerm2 tab group, or the tmux session. The tmux default is `crew`. iTerm2 with no `--group` puts the tab in no group |
-| `--group-color` | `#rrggbb`, the color of a new iTerm2 group. Without it, iTerm2 picks one. iTerm2 rounds colors, so never compare one for exact equality |
-| `--terminal` | `iterm2` or `tmux`. It wins over the environment |
+| `--group` | the iTerm2 tab group, the tmux session, or the Herdr space. The tmux default is `crew`. iTerm2 with no `--group` puts the tab in no group. Herdr with no `--group` uses the space of the caller |
+| `--group-color` | `#rrggbb`, the color of a new iTerm2 group. Without it, iTerm2 picks one. iTerm2 rounds colors, so never compare one for exact equality. Herdr ignores it |
+| `--terminal` | `iterm2`, `tmux` or `herdr`. It wins over the environment |
 
 Give `--repo` or `--checkout`, or both.
 
@@ -139,9 +183,9 @@ ten fields.
 | `branch` | `worktree-<name>` |
 | `base` | `origin/<default branch>` |
 | `model` | the `--model` value |
-| `terminal` | `iterm2` or `tmux` |
-| `tab` | the handle: `iterm2:<session unique id>` or `tmux:<pane id>`, such as `tmux:%7`. Treat it as one opaque string |
-| `tab_group` | the iTerm2 group or tmux session name, or `null` |
+| `terminal` | `iterm2`, `tmux` or `herdr` |
+| `tab` | the handle: `iterm2:<session unique id>`, `tmux:<pane id>`, such as `tmux:%7`, or `herdr:<terminal address>`, such as `herdr:t9`. Treat it as one opaque string |
+| `tab_group` | the iTerm2 group, tmux session or Herdr space name, or `null` |
 | `session_id` | the conversation id: the `--session-id` value of `claude` |
 
 Two fields have fixed readers. The board of issue 155 focuses an implementer
@@ -153,7 +197,7 @@ after a restart with `session_name`, `worktree`, `branch` and `session_id`.
 ```
 launcher.py resume --name <session-name> --worktree <path> [--session-id <id>]
                    [--model <model>] [--settings <file-or-json>] [--repo <owner/repo>]
-                   [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]
+                   [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr]
 ```
 
 `resume` opens one tab or window that resumes an implementer's conversation
@@ -192,7 +236,8 @@ cd <worktree> && exec <claude> --resume <id> --name <name> --model <model> --set
 ```
 
 It has no wait prompt. The tab rules of `start` apply whole: the tmux window,
-the iTerm2 helper, the `osascript` fallback, and the one-tab rule.
+the iTerm2 helper, the `osascript` fallback, the Herdr tab, and the one-tab
+rule.
 
 **The output.** The ten fields of `start`, with these values:
 
@@ -215,7 +260,8 @@ launcher.py groups
 It prints one JSON line per group, with exactly the fields `window_id`,
 `group_id`, `name` and `color`. On iTerm2 a group is an open tab group, and
 `color` is `#rrggbb`. On tmux a group is a tmux session: `group_id` is its id,
-such as `$3`, and `window_id` and `color` are `null`. When the iTerm2 Python
+such as `$3`, and `window_id` and `color` are `null`. On Herdr a group is a
+space: `group_id` is its id, and `window_id` and `color` are `null`. When the iTerm2 Python
 API is not available, it prints one line on stderr, no group line, and exits
 0.
 
@@ -258,6 +304,9 @@ The launcher reads the tty of each tab and pane:
   session. A failed `osascript` exits 6.
 - **tmux.** `tmux list-panes -a -F '#{pane_id} #{pane_tty}'`. With no tmux
   server, `find` prints no line.
+- **Herdr.** `hc ls --json` lists the live terminals. `hc get <address>
+  --json` gives the pid of each one, and `ps` gives the tty of that pid. A
+  failed `hc` exits 6.
 
 It reads the processes with `ps` and their working directories with `lsof`.
 A failed `ps` or `lsof` exits 6. It never reads a tab title, because Claude
@@ -286,7 +335,9 @@ caller knows the session.
 - `focus iterm2:<id>` selects the tab, brings its window to the front and
   activates iTerm2. `focus tmux:<pane>` selects the window that holds the
   pane. When a tmux client is attached, it switches that client to the
-  window.
+  window. `focus herdr:<address>` runs `herdr-app do agent.focus --terminal
+  <address>`, which shows the tab in Herdr. A terminal that is unknown or
+  ended exits 7.
 - `stop` first ends the `claude` session in the tab. It sends these keys to
   the tab, in this order:
   1. Escape. It rejects a permission dialog, and it interrupts a turn. Enter
@@ -296,12 +347,18 @@ caller knows the session.
   3. `/exit` and Enter, half a second later.
 
   On iTerm2, `write text` sends each key: Escape and Ctrl-U with `newline
-  NO`. On tmux, `send-keys` sends `Escape`, `C-u`, `-l /exit` and `Enter`.
+  NO`. On tmux, `send-keys` sends `Escape`, `C-u`, `-l /exit` and `Enter`. On
+  Herdr, `hc keys <t> esc`, `hc keys <t> ctrl+u` and `hc send <t> /exit
+  --force`; `hc send` presses Enter, and `--force` covers a status that still
+  reads blocked after Escape.
   Then `stop` waits up to 15 seconds until no `claude` process has the tab's
   tty. It reads the pid and the argv of each one. When one is still there,
   one line on stderr says so, and the stop continues.
 - Then `stop iterm2:<id>` closes the tab, and `stop tmux:<pane>` kills the
-  pane, and its window closes with it. A tab or pane that closed when
+  pane, and its window closes with it. `stop herdr:<address>` runs
+  `herdr-app do tab.close --id <tab> --confirmed true`. The tab id is the
+  `herdr.tab` label of the terminal. The close is required, because the shell
+  stays open after `claude` ends. A tab or pane that closed when
   `claude` ended is not an error.
 - After the close, `stop` waits up to 15 more seconds until each `claude`
   pid that was still there is gone. A pid is gone when `ps` does not show
@@ -313,7 +370,8 @@ caller knows the session.
   stdout and exits 0.
 
 **Limit: the keys.** The seeded test checks only the order of the keys. No
-run has shown how a live `claude` takes Escape, Ctrl-U and `/exit`.
+run has shown how a live `claude` takes Escape, Ctrl-U and `/exit`, on any
+terminal.
 
 `/exit` makes Claude Code end the session with the reason
 `prompt_input_exit`. A tool that restores closed sessions, such as
@@ -494,11 +552,12 @@ that step 6 keeps is not a failure: `remove` exits 0.
 Each failure prints one line on stderr. Each subcommand runs its checks in
 a fixed order, and the first check that fails decides the exit:
 
-- `start`: 2, 4, 3, 5, 6.
-- `resume`: 2, 4, 5. Then 6 when `ps`, `lsof` or `osascript` cannot list
+- `start`: 2, 4, 3, 5, 6. On Herdr, 4 means a missing program, and 2 and 6
+  come from the space check before any worktree.
+- `resume`: 2, 4, 5. Then 6 when `ps`, `lsof`, `osascript` or `hc` cannot list
   the tabs, then 8. Then 6 when the tab does not open.
 - `find`: 2, 4, 6.
-- `groups`: 2, 4.
+- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.
 - `focus` and `stop`: 2, 7 for an unknown prefix. Then the terminal step: 6
   or 7. `stop` with `--name` or `--session-id`: 6 when `osascript` or `ps`
   fails in the target check.
@@ -509,17 +568,17 @@ a fixed order, and the first check that fails decides the exit:
 | Code | Meaning |
 |---|---|
 | 0 | done |
-| 2 | usage: a missing or bad argument. No worktree. `remove`: a path that is not a linked worktree, or a bad `--pr` |
+| 2 | usage: a missing or bad argument, or on Herdr no `--group` from a terminal with no Herdr space. No worktree. `remove`: a path that is not a linked worktree, or a bad `--pr` |
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
-| 4 | unsupported terminal. The line names `$TERM_PROGRAM` and the supported terminals. No worktree |
+| 4 | unsupported terminal, or on Herdr no `herdr-app` or no `hc`. The line names `$TERM_PROGRAM` and the supported terminals, or the missing program. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab. `resume`: a missing worktree, or no transcript and no `--session-id` |
-| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
-| 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab or pane that does not exist |
+| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. On Herdr: the window does not answer, `tab.new` or `space.new` failed, `hc` failed, or `tab.close` failed. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
+| 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab, pane or Herdr terminal that does not exist |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
 | 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), the caller's own working directory in the worktree, or a lock that `remove` cannot prove dead. Nothing changed. With `--stop-processes`, also a process in the worktree after `TERM` and `KILL`: one that did not stop, that `remove` could not signal, that changed its command, or that started during the stop. Also a dead lock owner whose pid runs again right before the unlock. The worktree, its lock and the branches stay |
 
 ## Test
 
 `bash scripts/test-launcher.sh` runs the seeded test with stub `tmux`,
-`osascript`, `uv`, `claude`, `ps` and `lsof`. It ends with `N of M checks
+`osascript`, `uv`, `herdr-app`, `hc`, `claude`, `ps` and `lsof`. It ends with `N of M checks
 passed` and exits 0 when every check passes.

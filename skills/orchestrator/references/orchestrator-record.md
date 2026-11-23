@@ -125,8 +125,8 @@ alone. No command sets them.
 | `branch` | its branch |
 | `base` | `origin/<default branch>` |
 | `model` | the model it runs on |
-| `terminal` | `iterm2` or `tmux` |
-| `tab` | `iterm2:<session unique id>` or `tmux:<pane id>` |
+| `terminal` | `iterm2`, `tmux` or `herdr` |
+| `tab` | `iterm2:<session unique id>`, `tmux:<pane id>` or `herdr:<terminal address>` |
 | `tab_group` | a tab group name, or `null` for none |
 | `session_id` | the id of the project lead's conversation, which `launcher.py resume` takes |
 

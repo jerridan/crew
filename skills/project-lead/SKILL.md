@@ -111,7 +111,9 @@ once; `record-format.md` says where the root is. A goal that names a ticket id
 starts its slug with that id in lowercase, so the sibling match finds it.
 Write `charter.md`, then `crew-record.py init` with `$CLAUDE_CODE_SESSION_ID`
 — read it, never invent it — and `run set principal` with the `from-name` you
-kept above when the goal arrived by message.
+kept above when the goal arrived by message. A later message from an
+orchestrator can change it (`orchestrator-report.md`'s "A new orchestrator
+name").
 
 **Write `run.repo` in the same turn**: `git rev-parse --show-toplevel`, the
 clone this session was launched in. It is the path every worktree command of

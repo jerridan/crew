@@ -85,8 +85,9 @@ WAIT_PROMPT = (
     "run the crew:project-lead skill with that goal. The orchestrator is your "
     "principal: the user gave it the authority to decide for this work, so "
     "send your questions, your escalations and your reports to it with "
-    "SendMessage, not to this tab. Answer this message with one line and then "
-    "wait."
+    "SendMessage, not to this tab. A later message from the orchestrator can "
+    "come from a new name: send to that name from then on. Answer this "
+    "message with one line and then wait."
 )
 
 NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]*")

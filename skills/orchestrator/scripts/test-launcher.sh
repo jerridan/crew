@@ -353,7 +353,7 @@ check 'the tmux command execs claude' $(grep -sq '&& exec claude ' "$STUB_DIR/tm
 
 # The shell runs the command: each value reaches the claude stub as one arg.
 sh -c "$(cat "$STUB_DIR/tmux-cmd")"
-PROMPT="You are an implementer session for the orchestrator session named $PRINC. The user started you through that orchestrator. Do nothing now. A goal arrives as a cross-session message from that session. When it arrives, run the crew:project-lead skill with that goal. The orchestrator is your principal: the user gave it the authority to decide for this work, so send your questions, your escalations and your reports to it with SendMessage, not to this tab. Answer this message with one line and then wait."
+PROMPT="You are an implementer session for the orchestrator session named $PRINC. The user started you through that orchestrator. Do nothing now. A goal arrives as a cross-session message from that session. When it arrives, run the crew:project-lead skill with that goal. The orchestrator is your principal: the user gave it the authority to decide for this work, so send your questions, your escalations and your reports to it with SendMessage, not to this tab. A later message from the orchestrator can come from a new name: send to that name from then on. Answer this message with one line and then wait."
 expect_args=$(printf '%s\n' "$WT" --name review-x --session-id "$SID" --model "$MODEL" --settings '{"remoteControlAtStartup": false}' "$PROMPT")
 check 'claude runs in the worktree with --name, --session-id <session_id>, --model, the RC-off --settings and the wait prompt, quotes intact' \
   $([ "$(cat "$STUB_DIR/claude-args" 2>/dev/null)" = "$expect_args" ]; echo $?)

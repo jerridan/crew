@@ -10127,3 +10127,45 @@ Deliberately different:
 
      `crew-record.py`'s seeded checks and `crew-stats.py` over the record
      root ran. No run has used the goal check yet.
+
+NNN. **A rename of the orchestrator session keeps its implementers
+     reachable — 2026-11-23.** §15.NNN. The orchestrator's session name did
+     two jobs. It named the orchestrator record, with `--orch`, the
+     `Orchestrator:` line and the board. It was also the `SendMessage`
+     address: the launcher's wait prompt, the goal envelope's `from-name` and
+     each project lead's `run.principal`. After `/rename`, the old name left
+     `ListAgents`, every implementer send failed, and nothing told an
+     implementer the new name. The orchestrator's SKILL and its resume also
+     said that the record name is the session name.
+
+     **The options the person weighed.** A: a fixed record name and a stored
+     address that the orchestrator reads before each send. B: tell each
+     implementer the new name on a rename. C: send to a fixed handle, the
+     `ListAgents` ref or a session id. D: name the session before `init` and
+     never rename it. The person chose B as the simplest.
+
+     **The choice.** The record name is fixed at `init`. The address is the
+     current session name, read from the first line of `ListAgents` at each
+     launch. On a rename, the person tells the orchestrator, and it sends each
+     live implementer a message with the `Orchestrator: <record name>, item
+     <id>` line and the new name. A project lead whose `run.orchestrator`
+     matches that line takes the envelope `from-name` into `run.principal`.
+     The wait prompt tells a session that has no goal yet that the name can
+     change. A rename message goes only to an implementer that already got its
+     goal, so a resume still finds an item with no goal. The resume rejoin
+     message carries the same line, so an implementer that missed a rename
+     catches up. `orchestrator-report.md` owns the project lead's rule,
+     and the orchestrator's `SKILL.md` owns the procedure.
+
+     **The facts found.** No hook event and no mod event fires on a rename.
+     The `UserPromptSubmit` and `SessionStart` hook input carry
+     `session_title` when a custom name is set. The status line input carries
+     `session_name`. The docs do not say whether `/compact` keeps the session
+     id. These facts leave a detection of a rename possible later. The person
+     ruled it out for now.
+
+     Files changed: `skills/orchestrator/SKILL.md`, `resume-and-close.md`,
+     `launcher.md` and `launcher.py` (the wait prompt) with its test;
+     `orchestrator-report.md`, `autonomy-contract.md`, `record-format.md` and
+     `skills/project-lead/SKILL.md`; `README.md`; `CLAUDE.md`. No run has
+     exercised the procedure.

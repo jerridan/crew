@@ -184,7 +184,7 @@ const command = async ($: Json, args = '') => {
   } as never)
 }
 
-const pane = (columns = 200) => ({
+const pane = (columns = 200, bodyRows = 80) => ({
   plugin: PLUGIN,
   component: 'Pane',
   requestId: PANE_ID,
@@ -193,13 +193,13 @@ const pane = (columns = 200) => ({
     isFocused: true,
     bodyColumns: columns,
     placement: 'dock',
-    scroll: { offset: 0, bodyRows: 80 },
+    scroll: { offset: 0, bodyRows },
     view: {},
   },
 }) as const
 
-const mount = ($: Json, surface: (typeof SURFACES)[number] = 'terminal', columns = 200) =>
-  $.ui.mount({ ...pane(columns), surface })
+const mount = ($: Json, surface: (typeof SURFACES)[number] = 'terminal', columns = 200, bodyRows = 80) =>
+  $.ui.mount({ ...pane(columns, bodyRows), surface })
 
 // ---------------------------------------------------------------- tree reads
 
@@ -851,5 +851,233 @@ test('R16 at 200 columns the pane shows what the text view shows', async ($, on)
   const done = lineOf(/^ Done  1 /)
   next(done.i, 'Done')
   expect(words(byKey(tree, 'footer'))).toContain(`Done ${FIXTURE.done}`)
+  await ui.unmount()
+})
+
+// ---------------------------------------------------------------- full text and window
+
+// Terminal cells of a text, counted apart from the mod: a wide East Asian
+// character or an emoji takes 2.
+const cellsOf = (text: string) => {
+  let total = 0
+  for (const { segment } of new Intl.Segmenter().segment(text)) {
+    total += /\p{Extended_Pictographic}|[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/u.test(segment) ? 2 : 1
+  }
+  return total
+}
+
+const strip = (text: string) => text.replace(/\s+/g, '')
+
+// The lines of a drawn tree: the children of its root.
+const lineNodes = (tree: unknown) => ((tree as Node).children ?? []) as Node[]
+
+const lineKey = (n: Node) => String(n.props?.key ?? '')
+
+// The width of a drawn line, in cells.
+const lineWidth = (n: Node) => {
+  const kids = (n.children ?? []) as Node[]
+  const pad = Number(n.props?.paddingLeft ?? 0)
+  const gap = Number(n.props?.gap ?? 0)
+  if (n.type === 'Input') return 0
+  const sized = kids.length > 0 && kids.every(k => typeof k === 'object' && k?.props?.width !== undefined)
+  const parts = sized ? kids.map(k => Number(k.props?.width)) : kids.map(k => cellsOf(words(k)))
+  return pad + parts.reduce((a, b) => a + b, 0) + gap * Math.max(0, parts.length - 1)
+}
+
+const submit = ($ui: Json, text: string) => $ui.input({ key: 'go', text })
+
+const longBoard = (count: number, extra: object = {}) =>
+  board({
+    sections: [singles(Array.from({ length: count }, (_, i) => row(i + 1, `item-${i + 1}`, { launch_tab: `H${i + 1}` })))],
+    ...extra,
+  })
+
+const FAMILY = '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}'
+
+const TEXTS = {
+  words: Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ') + ' ' + 'x'.repeat(130),
+  wide: `${'\u6F22\u5B57'.repeat(70)} ${FAMILY.repeat(40)} end`,
+}
+
+for (const [what, text] of Object.entries(TEXTS)) {
+  for (const columns of [24, 40, 60, 80, 200]) {
+    test(`R1 at ${columns} columns the pane shows all of a ${what} text and recommendation, in lines no wider than the pane`, async ($, on) => {
+      const recommend = `${text} rec`
+      world(on, [board({ needs_you: needs(entry('e1', { text, recommend })) })])
+      await command($, 'x')
+      const ui = await mount($, 'terminal', columns, 400)
+      const tree = await ui.drawn()
+      const list = lineNodes(tree)
+      const first = list.findIndex(n => lineKey(n) === 'need-e1')
+      const last = list.findIndex(n => lineKey(n) === 'gap-needs')
+      expect(first).toBeGreaterThanOrEqual(0)
+      const mine = list.slice(first, last)
+      const texts = mine.map(n => words(n))
+      const joined = strip(texts.join(''))
+      expect(joined).toContain(strip(text))
+      expect(joined).toContain(strip(`Recommended: ${recommend}`))
+      for (const n of list) expect(lineWidth(n), `${lineKey(n)} fits ${columns}`).toBeLessThanOrEqual(columns)
+      // A break never falls inside a grapheme.
+      const bars = texts.join('|')
+      expect(bars).not.toContain('\u200D|')
+      expect(bars).not.toContain('|\u200D')
+      await ui.unmount()
+    })
+  }
+}
+
+const viewKeys = (tree: unknown) => lineNodes(tree).map(lineKey)
+
+// The keys of the whole board, with no window.
+const fullKeys = async ($: Json, columns: number) => {
+  const ui = await mount($, 'terminal', columns, 400)
+  const got = viewKeys(await ui.drawn())
+  await ui.unmount()
+  return got
+}
+
+// Page down until the lower mark goes; every view is kept.
+const walk = async (ui: Json, word: string, markKey: string) => {
+  const views: Json[] = [await ui.drawn()]
+  for (let i = 0; i < 80 && byKey(views.at(-1), markKey); i++) {
+    await submit(ui, word)
+    views.push(await ui.drawn())
+  }
+  return views
+}
+
+test('R2 d pages down until every board line has been drawn, and t returns to the top', async ($, on) => {
+  world(on, [longBoard(30)])
+  await command($, 'x')
+  const want = (await fullKeys($, 80)).filter(k => k !== 'go')
+  const ui = await mount($, 'terminal', 80, 10)
+  const views = await walk(ui, 'd', 'mark-down')
+  const seen = new Set<string>()
+  for (const v of views) {
+    expect(lineNodes(v).length).toBeLessThanOrEqual(10)
+    viewKeys(v).forEach(k => seen.add(k))
+  }
+  for (const k of want) expect(seen.has(k), `${k} is drawn in a view`).toBe(true)
+  expect(views.length).toBeGreaterThan(2)
+  await submit(ui, 't')
+  const top = await ui.drawn()
+  expect(viewKeys(top)[0]).toBe(want[0])
+  expect(byKey(top, 'mark-up')).toBeUndefined()
+  await ui.unmount()
+})
+
+test('R2 the marks show above, below, both or neither', async ($, on) => {
+  world(on, [longBoard(30)])
+  await command($, 'x')
+  const ui = await mount($, 'terminal', 80, 10)
+  let tree = await ui.drawn()
+  expect(byKey(tree, 'mark-up')).toBeUndefined()
+  expect(words(byKey(tree, 'mark-down'))).toMatch(/^↓ \d+ more · d$/)
+  await submit(ui, 'd')
+  tree = await ui.drawn()
+  expect(words(byKey(tree, 'mark-up'))).toMatch(/^↑ \d+ more · u$/)
+  expect(words(byKey(tree, 'mark-down'))).toMatch(/^↓ \d+ more · d$/)
+  expect(lineKey(lineNodes(tree)[0] as Node)).toBe('mark-up')
+  await submit(ui, 'b')
+  tree = await ui.drawn()
+  expect(words(byKey(tree, 'mark-up'))).toMatch(/^↑ \d+ more · u$/)
+  expect(byKey(tree, 'mark-down')).toBeUndefined()
+  await ui.unmount()
+  const fits = await mount($, 'terminal', 80, 200)
+  tree = await fits.drawn()
+  expect(byKey(tree, 'mark-up')).toBeUndefined()
+  expect(byKey(tree, 'mark-down')).toBeUndefined()
+  await fits.unmount()
+})
+
+for (const bodyRows of [6, 7, 8, 10]) {
+  test(`R2 with ${bodyRows} rows b then u walks to the top and every board line is drawn`, async ($, on) => {
+    world(on, [longBoard(25, { plan: FIXTURE.plan, needs_you: needs(entry('q1', { text: 'a question '.repeat(8) })) })])
+    await command($, 'x')
+    const want = (await fullKeys($, 40)).filter(k => k !== 'go')
+    const ui = await mount($, 'terminal', 40, bodyRows)
+    await submit(ui, 'b')
+    const seen = new Set<string>()
+    let tree = await ui.drawn()
+    for (let i = 0; i < 80; i++) {
+      expect(lineNodes(tree).length).toBeLessThanOrEqual(bodyRows)
+      viewKeys(tree).forEach(k => seen.add(k))
+      if (!byKey(tree, 'mark-up')) break
+      await submit(ui, 'u')
+      tree = await ui.drawn()
+    }
+    expect(byKey(tree, 'mark-up')).toBeUndefined()
+    for (const k of want) expect(seen.has(k), `${k} is drawn`).toBe(true)
+    await ui.unmount()
+  })
+}
+
+test('R2 at 24 columns the Plan details stay in the list, and paging reaches them', async ($, on) => {
+  world(on, [FIXTURE])
+  await command($, 'x')
+  const list = lineNodes(await (async () => {
+    const ui = await mount($, 'terminal', 24, 400)
+    const t = await ui.drawn()
+    await ui.unmount()
+    return t
+  })())
+  const plan = strip(list.filter(n => lineKey(n).startsWith('plan-')).map(n => words(n)).join(''))
+  for (const w of FIXTURE.plan.windows) {
+    expect(plan).toContain(strip(w.label + w.meter))
+    expect(plan).toContain(strip(w.resets ?? ''))
+    expect(plan).toContain(strip(w.full_at ? `full at about ${w.full_at}` : ''))
+  }
+  expect(plan).toContain(strip(FIXTURE.plan.word))
+  for (const n of list) expect(lineWidth(n)).toBeLessThanOrEqual(24)
+  const want = viewKeys(await (async () => {
+    const ui = await mount($, 'terminal', 24, 400)
+    const t = await ui.drawn()
+    await ui.unmount()
+    return t
+  })()).filter(k => k !== 'go')
+  const ui = await mount($, 'terminal', 24, 8)
+  const seen = new Set<string>()
+  for (const v of await walk(ui, 'd', 'mark-down')) {
+    expect(lineNodes(v).length).toBeLessThanOrEqual(8)
+    viewKeys(v).forEach(k => seen.add(k))
+  }
+  for (const k of want) expect(seen.has(k), `${k} is drawn`).toBe(true)
+  await ui.unmount()
+})
+
+test('R2 in a short, narrow pane the result line of a submission leaves room for a board line', async ($, on) => {
+  world(on, [longBoard(12)])
+  await command($, 'x')
+  const ui = await mount($, 'terminal', 24, 4)
+  await submit(ui, '99')
+  const tree = await ui.drawn()
+  expect(lineNodes(tree).length).toBeLessThanOrEqual(4)
+  expect(viewKeys(tree).some(k => k.startsWith('row-') || k === 'singles' || k === 'needs')).toBe(true)
+  const want = viewKeys(await (async () => {
+    const big = await mount($, 'terminal', 24, 400)
+    const t = await big.drawn()
+    await big.unmount()
+    return t
+  })()).filter(k => k !== 'go')
+  expect(want).toContain('line')
+  const seen = new Set<string>()
+  for (const v of await walk(ui, 'd', 'mark-down')) {
+    expect(lineNodes(v).length).toBeLessThanOrEqual(4)
+    viewKeys(v).forEach(k => seen.add(k))
+  }
+  for (const k of want) expect(seen.has(k), `${k} is drawn`).toBe(true)
+  await ui.unmount()
+})
+
+test('R3 a row number runs launcher.py focus for a row out of the current view', async ($, on) => {
+  const w = world(on, [longBoard(30)])
+  await command($, 'x')
+  const ui = await mount($, 'terminal', 80, 10)
+  await submit(ui, '28')
+  expect(w.launcher).toHaveLength(1)
+  expect(w.launcher[0]?.slice(2)).toEqual(['focus', 'H28'])
+  await submit(ui, 'b')
+  await submit(ui, '1')
+  expect(w.launcher[1]?.slice(2)).toEqual(['focus', 'H1'])
   await ui.unmount()
 })

@@ -1,0 +1,168 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 177,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Count a tab or pane that is gone at the close as closed in launcher stop",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/177"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "953531ddaf7999802c1ec9345999e9668a7a2a1a",
+    "head": "fd476f7aa9edde89fbe4237240bef322bf05ca4a",
+    "started_at": "2026-11-23T19:48:21.989Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Count a tab or pane that is gone at the close as closed in launcher stop\n\n## Summary\n\nWhen an orchestrator closes an item, `launcher.py stop` types `/exit` into the implementer session and then closes its tab or pane. Sometimes the tab or pane closes by itself between the check that it exists and the close, and `stop` then exited 6 for a stop that worked. Now `stop` reads the tab or pane again when the close fails: when it is gone, the stop counts as done and exits 0. A failure on a tab or pane that still exists keeps exit 6 and its stderr line.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/orchestrator/references/launcher.md` owns the interface of `launcher.py`, and its \"focus and stop\" section already said that a tab or pane that closed when `claude` ended is not an error.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: tmux: when `kill-pane` fails, `stop` checks the pane again, and a pane that is gone is no failure. iTerm2: when the close script (`OSA_STOP`) or the exit script (`OSA_EXIT`) fails, the new `iterm_gone` reads the sessions, and a session that is gone is no failure. A failed read keeps the failure. Herdr: when `hc send /exit` fails, the new `hc_ended` reads `hc get`, and a terminal that is gone or not live is no failure: `stop` goes on and closes the tab. The close of a Herdr tab already read `herdr-app ls` after a failure.\n- `skills/orchestrator/scripts/test-launcher.sh`: new stub switches `tmux-kill-gone`, `osa-stop-gone`, `osa-exit-gone`, `osa-stop-keep` and `hc-send-gone`, and five checks: four gone cases (tmux close, iTerm2 close, iTerm2 exit, Herdr `hc send`) and one iTerm2 close failure on a session that still exists, which exits 6.\n- `skills/orchestrator/references/launcher.md`: \"focus and stop\" says per terminal which failure counts as closed and which exits 6.\n\n### Constraints that applied\n\n- The plugin `version` is not bumped here. The orchestrator owns it and sets it when this PR is next to merge.\n- No `docs/design.md` §15 entry: the orchestrator owns the numbers.\n\n### How this was verified\n\n`bash skills/orchestrator/scripts/test-launcher.sh`: 277 of 277 checks passed at the branch head. Before the fix, the new checks failed (273 of 277).\n\nWhich terminals had the race: tmux had it, as seen once on 0.1.118 (`kill-pane` failed with \"can't find pane\" and exit 6). iTerm2 can have it inside its close script and its exit script. Herdr's close already counted a gone tab as closed, and its shell stays open after `claude` ends, so its tab does not close by itself in normal use. Only `hc send` could fail for a terminal that ended during the send.\n\n### Known gaps\n\nNo live run reproduced the race on any terminal. Only the stubbed test covers the timing.\n\n## Charter\n\nGoal: `launcher.py stop` reports success when the tab or pane closed by itself after `/exit`.\n\nAcceptance criterion: `bash skills/orchestrator/scripts/test-launcher.sh` passes, and holds new checks that `stop` exits 0 with no stderr failure line when the tab or pane is gone at the close step, and that a close failure on a tab or pane that still exists keeps exit 6 and its stderr line.\n\n## Decisions\n\n- Which path does this goal take? The change path (precedent, high).\n- Does the work take the light path? Yes: one package, a runnable criterion, a light band and no open preference (precedent, high).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 6
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6028368141,
+      "review_url": "https://github.com/jerridan/crew/pull/177#pullrequestreview-6028368141",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137966398359
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 58,
+      "gather": 28,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

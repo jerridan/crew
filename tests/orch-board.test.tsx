@@ -722,10 +722,12 @@ for (const columns of [40, 60]) {
       expect(rowWidth(node)).toBeLessThanOrEqual(columns)
       got.forEach((text, i) => expect(text.length).toBeLessThanOrEqual(widths(node)[i] ?? 0))
       expect(got).toContain(e.id)
-      // The question keeps at least 15 characters, or all of it.
+      // The question wraps: its lines hold all of it, and the first line
+      // starts it.
       const question = got.at(-1) ?? ''
-      expect(question.length).toBeGreaterThanOrEqual(Math.min(15, e.text.length))
-      expect(e.text.startsWith(question.replace(/…$/, ''))).toBe(true)
+      expect(e.text.startsWith(question)).toBe(true)
+      const textLines = lineNodes(tree).filter(n => lineKey(n).startsWith(`need-${e.id}-`))
+      expect(strip(question + textLines.map(n => words(n)).join(''))).toBe(strip(e.text))
       if (columns < 60) {
         expect(got).not.toContain(e.kind)
         expect(got).not.toContain(e.age)
@@ -733,7 +735,9 @@ for (const columns of [40, 60]) {
       if (e.recommend !== null) {
         const rec = byKey(tree, `recommend-${e.id}`)
         expect(Number(rec?.props?.paddingLeft ?? 0) + words(rec).length).toBeLessThanOrEqual(columns)
-        expect(words(rec).length).toBeGreaterThanOrEqual(15)
+        // The recommendation wraps: its lines hold all of it.
+        const recLines = lineNodes(tree).filter(n => /^recommend-/.test(lineKey(n)) && lineKey(n).startsWith(`recommend-${e.id}`))
+        expect(strip(recLines.map(n => words(n)).join(''))).toBe(strip(`Recommended: ${e.recommend}`))
       }
     }
     await ui.unmount()
@@ -1028,7 +1032,7 @@ test('R2 at 24 columns the Plan details stay in the list, and paging reaches the
     expect(plan).toContain(strip(w.full_at ? `full at about ${w.full_at}` : ''))
   }
   expect(plan).toContain(strip(FIXTURE.plan.word))
-  for (const n of list) expect(lineWidth(n)).toBeLessThanOrEqual(24)
+  for (const n of list.filter(n => lineKey(n).startsWith('plan-'))) expect(lineWidth(n), lineKey(n)).toBeLessThanOrEqual(24)
   const want = viewKeys(await (async () => {
     const ui = await mount($, 'terminal', 24, 400)
     const t = await ui.drawn()
@@ -1053,20 +1057,20 @@ test('R2 in a short, narrow pane the result line of a submission leaves room for
   const tree = await ui.drawn()
   expect(lineNodes(tree).length).toBeLessThanOrEqual(4)
   expect(viewKeys(tree).some(k => k.startsWith('row-') || k === 'singles' || k === 'needs')).toBe(true)
-  const want = viewKeys(await (async () => {
-    const big = await mount($, 'terminal', 24, 400)
-    const t = await big.drawn()
-    await big.unmount()
-    return t
-  })()).filter(k => k !== 'go')
+  const walked = await walk(ui, 'd', 'mark-down')
+  await submit(ui, 't')
+  await ui.unmount()
+  const big = await mount($, 'terminal', 24, 400)
+  await submit(big, '99')
+  const want = viewKeys(await big.drawn()).filter(k => k !== 'go')
+  await big.unmount()
   expect(want).toContain('line')
   const seen = new Set<string>()
-  for (const v of await walk(ui, 'd', 'mark-down')) {
+  for (const v of walked) {
     expect(lineNodes(v).length).toBeLessThanOrEqual(4)
     viewKeys(v).forEach(k => seen.add(k))
   }
   for (const k of want) expect(seen.has(k), `${k} is drawn`).toBe(true)
-  await ui.unmount()
 })
 
 test('R3 a row number runs launcher.py focus for a row out of the current view', async ($, on) => {

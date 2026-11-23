@@ -73,6 +73,86 @@ const fit = (text: string, width: number) =>
       ? text.slice(0, Math.max(0, width))
       : `${text.slice(0, width - 1)}…`
 
+// ---------------------------------------------------------------- wrapping
+
+const graphemes = (text: string): string[] =>
+  typeof Intl.Segmenter === 'function'
+    ? Array.from(new Intl.Segmenter().segment(text), part => part.segment)
+    : Array.from(text)
+
+const WIDE =
+  /\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]|[\u{20000}-\u{3FFFD}]/u
+
+// The terminal cells of one grapheme: a wide East Asian character or an
+// emoji takes 2.
+const graphemeCells = (g: string) => (WIDE.test(g) ? 2 : 1)
+
+export const cellCount = (text: string) => graphemes(text).reduce((sum, g) => sum + graphemeCells(g), 0)
+
+// Break a text into lines of at most `width` cells. A line breaks at the last
+// space that fits. A word longer than the room breaks at a grapheme boundary
+// at the column. Runs of white space count as one space.
+export const wrap = (text: string, width: number): string[] => {
+  const room = Math.max(1, width)
+  const lines: string[] = []
+  let cur = ''
+  let curCells = 0
+  const flush = () => {
+    if (cur) lines.push(cur)
+    cur = ''
+    curCells = 0
+  }
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const size = cellCount(word)
+    if (cur && curCells + 1 + size <= room) {
+      cur += ` ${word}`
+      curCells += 1 + size
+    } else if (size <= room) {
+      flush()
+      cur = word
+      curCells = size
+    } else {
+      flush()
+      for (const g of graphemes(word)) {
+        const gc = graphemeCells(g)
+        if (cur && curCells + gc > room) flush()
+        cur += g
+        curCells += gc
+      }
+    }
+  }
+  flush()
+  return lines.length > 0 ? lines : ['']
+}
+
+// The window over the content lines. `n` lines, `rows` rows to draw in. With
+// at least 3 rows, a mark takes a row at each edge that has lines beyond it.
+// The window is at least one line.
+export type Win = { start: number; end: number; up: boolean; down: boolean }
+
+export const windowAt = (n: number, rows: number, from: number): Win => {
+  const start = Math.min(Math.max(0, from), Math.max(0, n - 1))
+  const marks = rows >= 3
+  if (!marks) return { start, end: Math.min(n, start + rows), up: false, down: false }
+  const up = start > 0
+  const below = rows - (up ? 1 : 0) - 1
+  if (start + below >= n) return { start, end: n, up, down: false }
+  return { start, end: start + below, up, down: true }
+}
+
+// The start of the window that ends at or after `at` and shows the most lines
+// above it: no line falls between that page and the one below.
+export const pageUp = (n: number, rows: number, at: number): number => {
+  for (let s = 0; s < at; s++) if (windowAt(n, rows, s).end >= at) return s
+  return 0
+}
+
+// The first start whose window reaches the last line.
+export const lastStart = (n: number, rows: number): number => {
+  for (let s = 0; s < n; s++) if (windowAt(n, rows, s).end >= n) return s
+  return 0
+}
+
 const allRows = (board: OrchBoard) => board.sections.flatMap(s => s.rows)
 
 // ---------------------------------------------------------------- layout
@@ -200,7 +280,14 @@ const refresh = async ($: Engine) => {
 
 // The timer of one load of this module. Each `register` makes its own, so
 // a reload starts with none.
-type Load = { timer: { cancel: () => void } | undefined; busy: boolean }
+type Load = {
+  timer: { cancel: () => void } | undefined
+  busy: boolean
+  // The first content line of the window, and the window of the last draw.
+  // They live in this load only, so a reload starts at the top.
+  top: number
+  shown: { n: number; rows: number } | undefined
+}
 
 const stop = (load: Load) => {
   load.timer?.cancel()
@@ -259,11 +346,26 @@ const focusRow = async ($: Engine, typed: string) => {
   await update($, view, current => (current.name === name ? { ...current, line } : current))
 }
 
+// ---------------------------------------------------------------- the scroll words
+
+const SCROLL_WORDS = ['u', 'd', 't', 'b']
+
+// Move the window by a word, from the window of the last draw.
+const scrollBy = (load: Load, word: string) => {
+  const shown = load.shown
+  if (!shown) return
+  const win = windowAt(shown.n, shown.rows, load.top)
+  if (word === 't') load.top = 0
+  else if (word === 'b') load.top = lastStart(shown.n, shown.rows)
+  else if (word === 'd') load.top = win.down ? win.end : win.start
+  else load.top = win.start > 0 ? pageUp(shown.n, shown.rows, win.start) : 0
+}
+
 // ---------------------------------------------------------------- register
 
 export const register: Register = on => {
   // The timer of this load. A reload runs `register` again, with none.
-  const load: Load = { timer: undefined, busy: false }
+  const load: Load = { timer: undefined, busy: false, top: 0, shown: undefined }
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -297,6 +399,14 @@ export const register: Register = on => {
     }
     if (!placed.isPlaced) return { text: placed.reason || 'The board pane did not open.' }
     return { text: name ? `Board pane opened for ${name}.` : MISSING }
+  })
+
+  // The pane draws its own window, so a wheel tick or a page key moves it
+  // here, and the engine's window does not move.
+  on('ui.scroll', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    load.top = Math.max(0, load.top + e.by)
+    await $.ui.invalidate('ui.render')
+    return {}
   })
 
   on('ui.close', async ($, e, next) => {
@@ -354,28 +464,46 @@ export const register: Register = on => {
       return <Box flexDirection="column">{parts}</Box>
     }
 
+    // A text line: one row, cut to its width.
+    const textLine = (key: string, pad: number, text: string, style: { dim?: boolean; color?: string } = {}) => (
+      <Box key={key} paddingLeft={pad}>
+        <Text wrap="truncate" dimColor={style.dim} color={style.color}>
+          {text}
+        </Text>
+      </Box>
+    )
+    // A wrapped text: the first line keeps `key`, the next lines get `-k`.
+    const wrapped = (key: string, pad: number, text: string, style: { dim?: boolean; color?: string } = {}) =>
+      wrap(text, columns - pad).map((line, k) => textLine(k === 0 ? key : `${key}-${k}`, pad, line, style))
+
     // The Plan block.
     if (b.plan && b.plan.windows.length === 0 && b.plan.word) {
-      parts.push(
-        <Box key="plan-word">
-          <Text color="yellow">{b.plan.word}</Text>
-        </Box>,
-      )
+      parts.push(...wrapped('plan-word', 0, b.plan.word, { color: 'yellow' }))
     }
     for (const [i, w] of (b.plan?.windows ?? []).entries()) {
       const notes = [w.resets && `resets ${w.resets}`, w.full_at && `full at about ${w.full_at}`]
         .filter(Boolean)
         .join(' · ')
+      const word = i === 0 && b.plan?.word ? b.plan.word : ''
+      const head = ['Plan', w.label, w.meter, `${w.used_pct}%`.padStart(4)]
+      const whole = [...head, ...(notes ? [notes] : []), ...(word ? [word] : [])]
+      const fits = whole.reduce((sum, x) => sum + cellCount(x) + 1, -1) <= columns
       parts.push(
         <Box key={`plan-${w.key}`} gap={1}>
-          <Text bold>{i === 0 ? 'Plan' : '    '}</Text>
-          <Text>{w.label}</Text>
-          <Text color="cyan">{w.meter}</Text>
-          <Text>{`${w.used_pct}%`.padStart(4)}</Text>
-          {notes ? <Text dimColor>{notes}</Text> : null}
-          {i === 0 && b.plan?.word ? <Text color="yellow">{b.plan.word}</Text> : null}
+          <Text bold wrap="truncate">{i === 0 ? 'Plan' : '    '}</Text>
+          <Text wrap="truncate">{w.label}</Text>
+          <Text color="cyan" wrap="truncate">{w.meter}</Text>
+          <Text wrap="truncate">{`${w.used_pct}%`.padStart(4)}</Text>
+          {fits && notes ? <Text dimColor wrap="truncate">{notes}</Text> : null}
+          {fits && word ? <Text color="yellow" wrap="truncate">{word}</Text> : null}
         </Box>,
       )
+      // A Plan row wider than the pane gives its notes and its pace word
+      // lines of their own.
+      if (!fits) {
+        if (notes) parts.push(...wrapped(`plan-${w.key}-notes`, INDENT * 2, notes, { dim: true }))
+        if (word) parts.push(...wrapped(`plan-${w.key}-word`, INDENT * 2, word, { color: 'yellow' }))
+      }
     }
     if (b.plan) parts.push(<Box key="gap-plan"><Text> </Text></Box>)
 
@@ -408,23 +536,32 @@ export const register: Register = on => {
       }
       const room = Math.max(0, columns - textAt())
       for (const e of entries) {
-        const textWidth = Math.min(room, e.text.length)
+        // Where the text column has too little room, the text starts on the
+        // next line, indented, and wraps there.
+        const below = room < MIN_QUESTION && cellCount(e.text) > room
+        const lines = e.text === '' ? [] : wrap(e.text, below ? columns - 2 * INDENT : room)
         parts.push(
           <Box key={`need-${e.id}`} paddingLeft={INDENT} gap={GAP}>
             {cell(n.id, e.id, { color: 'magenta' })}
             {n.kind > 0 ? cell(n.kind, e.kind) : null}
             {n.age > 0 ? cell(n.age, e.age, { dim: true }) : null}
             {cell(n.item, e.item)}
-            {textWidth > 0 ? cell(textWidth, e.text) : null}
+            {!below && lines[0] && room > 0 ? (
+              <Box width={Math.min(room, cellCount(lines[0]))} flexShrink={0}>
+                <Text wrap="truncate">{lines[0]}</Text>
+              </Box>
+            ) : null}
           </Box>,
         )
+        const rest = below ? lines : lines.slice(1)
+        const restPad = below ? 2 * INDENT : textAt()
+        rest.forEach((line, k) => parts.push(textLine(`need-${e.id}-${k + 1}`, restPad, line)))
         if (e.recommend !== null) {
+          const recBelow = room < MIN_QUESTION && cellCount(`Recommended: ${e.recommend}`) > room
           parts.push(
-            <Box key={`recommend-${e.id}`} paddingLeft={textAt()}>
-              <Text dimColor wrap="truncate">
-                {fit(`Recommended: ${e.recommend}`, room)}
-              </Text>
-            </Box>,
+            ...wrapped(`recommend-${e.id}`, recBelow ? 2 * INDENT : textAt(), `Recommended: ${e.recommend}`, {
+              dim: true,
+            }),
           )
         }
       }
@@ -470,8 +607,15 @@ export const register: Register = on => {
       parts.push(<Box key={`gap-${key}`}><Text> </Text></Box>)
     }
 
-    // The key, its last result, and the footer.
-    parts.push(
+    // The result line and the footer.
+    const extras: RenderChildren[] = []
+    if (v.line) extras.push(textLine('line', 0, fit(v.line, columns), { color: 'yellow' }))
+    extras.push(
+      ...wrapped('footer', 0, `Done ${b.done} · type a number and Enter to go to the tab · stages: ${b.legend}`, {
+        dim: true,
+      }),
+    )
+    const input = (
       <Input
         key="go"
         label="Row"
@@ -479,25 +623,38 @@ export const register: Register = on => {
         submitLabel="go to tab"
         value=""
         autoFocus
-        onSubmit={value => focusRow($, value)}
-      />,
+        onSubmit={async value => {
+          const word = value.trim().toLowerCase()
+          if (SCROLL_WORDS.includes(word)) {
+            scrollBy(load, word)
+            await $.ui.invalidate('ui.render')
+            return
+          }
+          await focusRow($, value)
+        }}
+      />
     )
-    if (v.line) {
-      parts.push(
-        <Box key="line">
-          <Text color="yellow" wrap="truncate">
-            {fit(v.line, columns)}
-          </Text>
-        </Box>,
-      )
+
+    // The window. The Row input is always pinned. The result line and the
+    // footer are pinned only where the pane has room left for a window of 5
+    // lines; in a shorter pane they end the scrollable content.
+    const rows = e.props.scroll.bodyRows
+    const roomy = rows - 1 - extras.length >= 5
+    const content = roomy ? parts : [...parts, ...extras]
+    const pinned = roomy ? [input, ...extras] : [input]
+    const room = Math.max(1, rows - pinned.length)
+    load.shown = { n: content.length, rows: room }
+    load.top = windowAt(content.length, room, load.top).start
+    if (content.length <= room) return <Box flexDirection="column">{[...content, ...pinned]}</Box>
+    const win = windowAt(content.length, room, load.top)
+    const drawn: RenderChildren[] = []
+    if (win.up) {
+      drawn.push(textLine('mark-up', 0, fit(`↑ ${win.start} more · u`, columns), { dim: true }))
     }
-    parts.push(
-      <Box key="footer">
-        <Text dimColor>
-          {`Done ${b.done} · type a number and Enter to go to the tab · stages: ${b.legend}`}
-        </Text>
-      </Box>,
-    )
-    return <Box flexDirection="column">{parts}</Box>
+    drawn.push(...content.slice(win.start, win.end))
+    if (win.down) {
+      drawn.push(textLine('mark-down', 0, fit(`↓ ${content.length - win.end} more · d`, columns), { dim: true }))
+    }
+    return <Box flexDirection="column">{[...drawn, ...pinned]}</Box>
   })
 }

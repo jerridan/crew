@@ -10128,9 +10128,9 @@ Deliberately different:
      `crew-record.py`'s seeded checks and `crew-stats.py` over the record
      root ran. No run has used the goal check yet.
 
-NNN. **A rename of the orchestrator session keeps its implementers
-     reachable — 2026-11-23.** §15.NNN. The orchestrator's session name did
-     two jobs. It named the orchestrator record, with `--orch`, the
+152. **A rename of the orchestrator session keeps its implementers
+     reachable — 2026-11-23, version 0.1.119.** The orchestrator's session
+     name did two jobs. It named the orchestrator record, with `--orch`, the
      `Orchestrator:` line and the board. It was also the `SendMessage`
      address: the launcher's wait prompt, the goal envelope's `from-name` and
      each project lead's `run.principal`. After `/rename`, the old name left

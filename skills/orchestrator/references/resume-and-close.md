@@ -98,7 +98,8 @@ Do these steps in this order.
 
    An item at `shipped` or `closed` whose tab or worktree is still there
    waits for its close. It gets no rejoin message: step 1 of "The close of an
-   item" tells it the current name. Run `launcher.py find` as the step "Alive" says:
+   item" tells it the current name. Run `launcher.py find` as the step
+   "Alive" says:
    - It prints a handle with the match `name` or `id`: write that handle
      with `item <id> set launch.tab`. Then run "The close of an item" again
      from step 1.

@@ -1,0 +1,2191 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 172,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Review the implementers' plans before any code is written",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/172"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "18754e2dbf06bec8965968f82d1549a7eff8a110",
+    "head": "0a587bfd0e24440a223e76da608cd16326c9a469",
+    "started_at": "2026-11-23T06:04:20.420Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Review the implementers' plans before any code is written\n\n## Summary\n\nBefore this change, nobody read the design of a crew run before its code existed: each implementer wrote a plan and started at once, and design problems showed up only in the review of the finished diff. Now every run on the simple path and the full path stops its implementers after their plans, and one reviewer, run through the local Codex CLI as a skeptical staff engineer, reads all the plans of the run together. The project lead labels each finding, sends each implementer the findings it accepts, and then gives the word to start. The step never blocks a run: without Codex, or when Codex fails or is slow, the run continues and says so. `Plan review: off` turns it off.\n\nThis run used the new step on its own two later packages. The review took 94 seconds and found 4 real blocking problems in the plans, and all were fixed before any code was written.\n\nCloses #170\n\n**Ticket:** [#170](https://github.com/jerridan/crew/issues/170)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §9.2 step 3 and new entry §15.149.\n- `skills/project-lead/references/plan-review.md` (new) owns the step: when it runs, the planning stop, the inputs, the run script, the skips, the adjudication, the start word, the record writes, the hand-over and the resume.\n- `skills/project-lead/references/plan-reviewer.md` (new) is the reviewer's prompt, piped into `codex exec`. The project lead does not follow it.\n- `ic-contract.md` owns the IC's side: the `Plan stop:` line, `Plans written:`, the `Start <package id>` word, `## Changed at start`, `## Revised after the plan review` and `Plan changes`.\n- `record-format.md` owns `run.plan_review`, the `reviews/plan-review-r1*` files and the `plan-review` value of `steps_skipped`.\n\n### What changed, by file\n\n- `skills/project-lead/references/plan-review.md`: new. The whole step, with the run script (`codex exec --sandbox read-only -m gpt-6.2-sol -c model_reasoning_effort=medium`, 600-second wall-clock limit) and five skip reasons (`absent`, `not logged in`, `timeout`, `quota`, `failed`).\n- `skills/project-lead/references/plan-reviewer.md`: new. The staff engineer prompt adapted from a diff to plans: the nine design questions in order, two questions across plans, the guards, at most six findings, at most two refactor recommendations. Verdicts `plans sound` and `plan revision needed`.\n- `skills/project-lead/references/ic-contract.md`: \"Write your plan first\" now has the plan stop, the start word and the plan changes. An IC may write the plans of every package of its territory. Two new lines in the report contract.\n- `skills/project-lead/references/simple-path.md`: \"Dispatch the IC\" reads `plan-review.md` before the brief. \"Verify before you believe\" gains one send-back item. \"End the run\" carries the plan review line and the refactor recommendations.\n- `skills/project-lead/references/full-path.md`: \"Spawn the ICs\" carries every package of the territory and waits for every territory to plan. \"The idle nudge\", \"Fix rounds\", \"The territory's next package\" and \"Resume after a kill\" point at `plan-review.md`.\n- `skills/project-lead/references/record-format.md`: the `run.plan_review` row, the plan review files and their retired names, `plan-review` in `steps_skipped`, and the name inventory.\n- `skills/project-lead/references/band-rubric.md`: the light path skips the plan review.\n- `skills/project-lead/references/resume.md`: a record that died in the planning step goes to `plan-review.md` first.\n- `skills/project-lead/SKILL.md`: the `Plan review` standing-instructions row, its counts (seventeen sections, twelve acted on), and the `plan-review.md` row in \"Where the rules live\". No edit in \"Have the spec reviewed\".\n- `skills/project-lead/scripts/crew-stats.py`: the review kind `plan review`, a \"Plan reviews\" section (outcomes, skips by reason, findings by the project lead's label, accepted, recommendations, tokens), `plan_reviews` in `--json`, and `plan-review` as a skippable step.\n- `skills/project-lead/scripts/test-crew-stats.py`: new seeded test, 22 checks.\n- `agents/ic.md`, `agents/ic-instructions.md`: the plan step now says stop or continue, by the brief's `Plan stop:` line.\n- `README.md`: How it works, What a run needs (the Codex CLI, optional), the `Plan review` section, Models, Roles, and the crew-stats line.\n- `CLAUDE.md`: the test line, the layout row, the build state, and the two references in Authority.\n- `docs/design.md`: §9.2 step 3 and §15.149.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version bump.\n\n### Constraints that applied\n\n- One owner per rule: the path files point at `plan-review.md` and `ic-contract.md` and do not restate them. The blocking-finding action appears in both `plan-review.md` (the project lead's action) and `ic-contract.md` (the IC's action), because each reader needs it.\n- `SKILL.md` stays under 500 lines (490).\n- The source prompt's output schema is not copied, and its tool is not named.\n- No change to `skeptical-review.md`, `review-runner.md`, `substitution.md` or `crew-orch.py`.\n- Python 3.9: the test passes under `/usr/bin/python3` 3.9.6.\n- The version bump is in both manifests, with equal values.\n\n### How this was verified\n\n- `python3 skills/project-lead/scripts/test-crew-stats.py`: `22 of 22 checks passed`, on Python 3.9.6 too. At the red commit the test failed (`2 of 10 checks passed`). `crew-stats.py --json` over this run's real record prints `ran: 1`, 4 blocking, 2 suggestion, 6 accepted, 118961 tokens.\n- The step ran once, on this run: the two later packages planned under `Plan stop: on`, and `codex exec` read the charter, the spec, the split and both plans in 94 seconds (118,961 tokens). Its 6 findings were all accepted (4 blocking, 2 suggestion), and the ICs fixed them before code. The run also found a defect in the step's own token read (Codex echoes the prompt to stderr), which is fixed.\n- The spec critic (13 findings) and the split critic (4 findings) ran once each. Every finding was applied.\n- The project lead read each package's diff against the spec's acceptance lines and the `writing-standard.md` checklist, and ran the stale-status grep over the diff with no hit.\n\n### Known gaps\n\n- The skip paths (`absent`, `not logged in`, `timeout`, `quota`, `failed`), the resume rules of the planning step, a full-path run with more than one package per planning territory, and subagent mode are unexercised. Only reading checks them.\n- The run's first package wrote the step, so it ran with no plan stop and no review.\n\n<details><summary>spec.md</summary>\n\n# Spec: the plan review\n\nGoal: add one step to crew, the plan review. Before any code exists, one external reviewer reads the charter, the spec, the split and all implementer plans together. The project lead labels and routes each finding, then gives the start word. The step never blocks a run.\n\n## Requirements\n\nR1. Two new files own the step. `skills/project-lead/references/plan-review.md` owns the step for the project lead: when it runs, the planning stop, the inputs, the runner script, the skip rules, the adjudication, the start word, the record writes, the hand-over lines and the resume rules. `skills/project-lead/references/plan-reviewer.md` holds the reviewer's own instructions. It is not an agent definition. The step id is `plan-review`. The project lead injects `plan-reviewer.md` whole into the runner's stdin and does not follow it.\nAcceptance: both files exist. `plan-review.md` has a section for each item in the list above. `ls agents/` shows no new file. `plan-reviewer.md` tells its reader that the project lead injects it and that the reviewer is the Codex CLI.\n\nR2. The runner is `codex exec --sandbox read-only -m gpt-6.2-sol -c model_reasoning_effort=medium -C <run.checkout> -`. Instructions go on stdin. Stdout goes to `reviews/plan-review-r1-result.txt`, stderr to `plan-review-r1-result.stderr`, and the exit status to `plan-review-r1-result.exit`. One script, `reviews/plan-review-r1-run.sh`, does all of this. The project lead runs it headless as a background command. The script has a wall-clock limit of 600 seconds from launch, not an idle watchdog. At 600 seconds it kills the runner and writes 124 to `-result.exit`. The script reuses the shape of the run script in `substitution.md`. `substitution.md` is not edited.\nAcceptance: `grep -n 'gpt-6.2-sol' skills/project-lead/references/plan-review.md` prints the full command. The file states the 600-second limit and the value 124. `git diff --stat origin/main -- skills/project-lead/references/substitution.md` is empty.\n\nR3. The step never blocks a run. Before the run: an empty `command -v codex` skips with reason `absent`. A non-zero `timeout 15 codex login status` skips with reason `not logged in`. The `timeout` tool is the one `review-runner.md`'s \"The startup check and the cap\" names (`timeout` or `gtimeout`); with neither, the login check runs with no limit. The run script's 600-second limit uses its own loop, as the substitution script does, and needs no `timeout` tool. No instruction reads a credential file. After the run: exit 124 skips with reason `timeout`. A non-zero exit whose stderr names a usage or rate limit skips with reason `quota`: the project lead reads the last lines of `-result.stderr` and decides; no file holds a list of strings. Any other non-zero exit, or an output with no verdict pair, skips with reason `failed`. A skip writes the record, writes one `decisions.md` entry naming the reason, adds a hand-over line, then gives the start word with no findings. A skip asks the principal nothing.\nAcceptance: `plan-review.md` lists the five reasons with exactly these strings. It states that a skip asks no question. `grep -n 'credential' skills/project-lead/references/plan-review.md` prints a line that forbids reading one.\n\nR4. Every run that writes a spec and dispatches its first package gets the plan review. That covers the simple path and the full path, at any band and any size. The light path gets no plan review (its IC still writes a plan): it writes a `steps_skipped` entry with step `plan-review`. `band-rubric.md`'s \"What the light path skips\" and `record-format.md`'s `steps_skipped` row name it. A promotion off the light path before the IC's first commit removes that entry and runs the review. After the first commit the entry stays and no review runs. A package that the delivered window adds (a change request, a patch round) gets no plan review, and a fix-round dispatch gets no plan stop. The reason stated in the files is that these packages are small patches to code that exists, with no new design. No file gives the skeptical review as the reason. The step is on by default: the path files write `Plan stop: on` for the first dispatch of each implementer with no word from the principal, and only `Plan review: off` turns it off. The investigation path's fix package is a simple-path package and gets the review.\nAcceptance: `grep -n 'plan-review' skills/project-lead/references/band-rubric.md skills/project-lead/references/record-format.md` prints a line in each file. `plan-review.md` states each of the five cases above (light path, promotion before the first commit, promotion after it, delivered-window package, fix round) and the investigation-path rule.\n\nR5. A standing-instructions section `Plan review` takes the value `on` or `off`. The value `off` adds the line `Plan review: off` to `charter.md`, as `Go-ahead` does with `Gate: off`. The five sources apply in the existing order: launch, goal, charter, repo, machine. With `off`, the run has no plan stop and no review, and the project lead writes `run.plan_review` with `outcome: \"off\"`. `skills/project-lead/SKILL.md`'s standing-instructions table gains one row (the file says \"Sixteen exist\" and \"you act on the other eleven\"; these become seventeen and twelve). Its \"Where the rules live\" table gains one row for `plan-review.md`. `SKILL.md` has no other edit, none inside \"Have the spec reviewed\", and stays under 500 lines.\nAcceptance: `git diff origin/main -- skills/project-lead/SKILL.md` shows two added table rows, the counts change from sixteen to seventeen and from eleven to twelve, and no hunk inside \"Have the spec reviewed\". `wc -l skills/project-lead/SKILL.md` prints a number below 500. `grep -n 'Plan review: off' skills/project-lead/` prints a line.\n\nR6. The dispatch brief carries one line, `Plan stop: on` or `Plan stop: off`. An absent line means `off`. A fix round, a respawn after the review and a delivered-window package therefore stay unchanged. `ic-contract.md` owns the line and the IC's behaviour on it.\nAcceptance: `grep -n 'Plan stop:' skills/project-lead/references/ic-contract.md` prints a line. The line states that an absent line means `off`.\n\nR7. On the simple path, in \"Dispatch the IC\", the first dispatch of the run's one package carries `Plan stop: on`, unless the step is off. The IC writes `plans/<id>.md`, then stops with the final message `Plans written: <absolute paths>`.\nAcceptance: reading `simple-path.md`'s \"Dispatch the IC\", the first-dispatch brief carries `Plan stop: on` and names the final message `Plans written: <absolute paths>`. `ic-contract.md` describes the same stop.\n\nR8. On the full path, in \"Spawn the ICs\", each IC's spawn prompt carries the brief, file set, interface contract and acceptance criterion of every package of its territory, in order, plus `Plan stop: on`. The IC writes one `plans/<id>.md` per package, then stops with the final message `Plans written: <absolute paths>`. Every territory plans in parallel. The project lead waits until every territory has stopped, or until the nudge rule in R10 gave up on it.\nAcceptance: reading `full-path.md`'s \"Spawn the ICs\", the spawn prompt carries every package of the territory in order and `Plan stop: on`. The same section states that territories plan in parallel and that the project lead waits for all of them.\n\nR9. A later package's plan is written before its base exists. The IC plans its design against the code as it stands now and against the interface contracts. It may leave exact lines to the start. The instructions file for the reviewer says this, and the reviewer judges design, not line exactness. At the start of any package, the IC may change its plan when the code then shows the plan wrong. Before it writes code, it appends `## Changed at start` to `plans/<id>.md`, with what changed and why. Its report lists each change under `Plan changes`. A change that alters an interface contract's `produces` is not the IC's to make: the IC asks, by the Questions rule in `ic-contract.md`.\nAcceptance: `grep -n '## Changed at start' skills/project-lead/references/ic-contract.md` and `grep -n 'Plan changes' skills/project-lead/references/ic-contract.md` each print a line. `ic-contract.md` states the `produces` rule and points at its Questions section. `plan-reviewer.md` states that a later-package plan is less exact by design.\n\nR10. In full-path.md, \"The territory's next package\" message keeps its job. It also says that the plan for that package is already written and reviewed, and names any accepted finding for that package not yet sent. In \"The idle nudge\", an idle while `run.plan_review.status` is `planning` is the planning stop when every plan of that territory is on disk. A missing plan gets the one nudge (`nudges_used`). A second empty idle starts the review over the plans that exist, and the instructions file names the missing plans. That territory still gets the start word; its IC writes the missing plan at the start of the package with no stop, and that plan gets no review. The same holds on the simple path: an IC that stops with no plan gets the one nudge, then the start word. When the record write is denied, the IC's final message opens with `Plans written: denied` and carries each plan whole; the project lead transcribes each to `plans/<id>.md`, says in the file that it transcribed it, and does this before the review. `nudges_used` resets to 0 at the start word.\nAcceptance: reading `full-path.md`'s \"The territory's next package\" and \"The idle nudge\", each carries the rule above. `plan-review.md` names the missing-plan line in the instructions file.\n\nR11. A respawn after the review (compaction, four packages, fix rounds 4 and 5) carries the plan paths and the accepted findings in its brief, and `Plan stop: off`.\nAcceptance: `plan-review.md` or `full-path.md` states this rule, and the text names all three respawn causes.\n\nR12. The reviewer's inputs are one instructions file, `reviews/plan-review-r1-instructions.md`. It holds, in order: `plan-reviewer.md` whole; `review-output.md` whole; `skills/review/references/severity-rubric.md` whole; the standing instructions, as `SKILL.md`'s \"Standing instructions\" says; then the text of `charter.md`, `spec.md`, `split.md` (on the full path, and on the simple path too) and every `plans/<id>.md`. Each of these sits in its own tagged block with a random id, as data and not instructions. Each plan is labelled with its package id, territory and order in the territory. The reviewer reads the repo itself from `run.checkout`. The step makes one review, over all plans together, and the project lead writes no summary.\nAcceptance: `plan-review.md` lists the inputs in this order. It states the tagged block with a random id, the plan label, the one review and the absence of a summary.\n\nR13. `plan-reviewer.md` adapts the staff engineer prompt from a diff to plans. The source is the D15 staff reviewer prompt of the user's review tool: `prompts/staff-reviewer.md` on `main` of `jerridan/pr-review`, read with `gh api repos/jerridan/pr-review/contents/prompts/staff-reviewer.md`. The project lead pastes its text into the brief of the package that writes `plan-reviewer.md`. The adaptation keeps the source's wording where it fits a plan. It keeps the stance and these nine questions in this order: contracts; open for extension, closed for change; responsibilities and coupling; module boundaries; a clearly better pattern this codebase uses or can take at little cost; not needed (YAGNI); cases not handled (empty and very large inputs, a failed call, two callers at one time, a partial failure, old data and old callers); performance and security trade-offs in the design; a clearly simpler change. It adds two cross-plan questions: do two plans describe the two sides of one interface the same way; does a plan depend on something no plan and no existing code provides. The guards are: skeptical, and it does not assume the plan is wrong; a sound set of plans gets an empty list; a principle by its name is not a finding, so each finding names what breaks, what it costs, or what the next change will require; judge by the standards the codebase keeps; read the code around the planned change before judging; at most six findings. A later-package plan is less exact by design: an unstated line number, or a missing detail that the start can settle, is not a finding. Refactor recommendations: at most two, each a ticket title and two lines, in their own section, not counted as findings, and never a request for the refactor in this run. The file names nothing of the source tool's JSON schema (the file, start_line and evidence fields, `category`, `needs_context`, the verifier, \"return only JSON\"). It tells the reviewer to launch no subagent and to change no file. No shipped file names the source tool beyond \"the user's review tool\".\nAcceptance: reading `plan-reviewer.md`, the nine questions stand in the stated order, followed by the two cross-plan questions and every guard above. `grep -n -i 'needs_context\\|start_line\\|category\\|verifier\\|only JSON' skills/project-lead/references/plan-reviewer.md` prints nothing. `git diff origin/main | grep -n '^+.*pr-review'` prints no line that names the tool.\n\nR14. The reviewer's report follows `review-output.md`: one finding per `###` heading, with `Severity:` after the title. Each finding also carries `Plan: <package id",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": true,
+      "truncated": true
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 5
+      },
+      {
+        "path": "README.md",
+        "hunks": 7
+      },
+      {
+        "path": "agents/ic-instructions.md",
+        "hunks": 1
+      },
+      {
+        "path": "agents/ic.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/band-rubric.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/full-path.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/references/ic-contract.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/plan-review.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/plan-reviewer.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 9
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-stats.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new workflow step (plan review via Codex), changes IC contract and dispatch/resume logic, a new shell runner with timeout handling, and crew-stats.py logic, all of which are behavioral changes.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs",
+        "convention",
+        "other"
+      ],
+      "hotspots": [
+        "skills/project-lead/references/plan-review.md (run script, timeout/kill, resume cases, record write points)",
+        "skills/project-lead/references/ic-contract.md (Plan stop semantics, plan-write exception, Start word)",
+        "skills/project-lead/scripts/crew-stats.py (read_plan_review, plan_review_totals, new verdicts, REVIEW_KINDS regex)",
+        "skills/project-lead/references/full-path.md (spawn prompt change, idle handling, respawn/next-package rules)",
+        "skills/project-lead/references/record-format.md (run.plan_review schema vs. plan-review.md vs. crew-stats)",
+        "skills/project-lead/scripts/test-crew-stats.py (new test coverage)",
+        "skills/project-lead/references/simple-path.md and band-rubric.md (light path skip, promotion rules)"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump 0.1.115 to 0.1.116"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump, matches marketplace.json"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs of new references, test, and build state; reference count now sixteen"
+        },
+        {
+          "file": "README.md",
+          "note": "user docs for the Plan review section, the Codex requirement and the config key; contains a long unwrapped line"
+        },
+        {
+          "file": "agents/ic-instructions.md",
+          "note": "loop step 2 now depends on the Plan stop line"
+        },
+        {
+          "file": "agents/ic.md",
+          "note": "same loop change as ic-instructions.md"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new entry §15.149; design step 3 rewritten"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "new reference row and a new Plan review standing-instruction section; the section count goes from sixteen to seventeen"
+        },
+        {
+          "file": "skills/project-lead/references/band-rubric.md",
+          "note": "light path now also skips plan review"
+        },
+        {
+          "file": "skills/project-lead/references/full-path.md",
+          "note": "spawn prompt carries every package of the territory; plan stop wait; resume and respawn hooks"
+        },
+        {
+          "file": "skills/project-lead/references/ic-contract.md",
+          "note": "new Plan stop protocol, plan-write exception, report items"
+        },
+        {
+          "file": "skills/project-lead/references/plan-review.md",
+          "note": "new file: full step spec with the shell runner, skips, adjudication, record writes and resume"
+        },
+        {
+          "file": "skills/project-lead/references/plan-reviewer.md",
+          "note": "new file: the prompt for the Codex reviewer"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "new run.plan_review field, new files, steps_skipped extended"
+        },
+        {
+          "file": "skills/project-lead/references/resume.md",
+          "note": "routes planning-step resume"
+        },
+        {
+          "file": "skills/project-lead/references/simple-path.md",
+          "note": "dispatch reads the plan-review rule; verify check added; hand-over items"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "real code: plan_review parsing and totals, new verdicts, review kind, steps skippable, JSON output key, report section"
+        },
+        {
+          "file": "skills/project-lead/scripts/test-crew-stats.py",
+          "note": "new seeded test of the plan review stats"
+        }
+      ],
+      "summary": "Adds a plan review step: ICs write plans and stop, and Codex reads all the plans together before any code is written. The project lead adjudicates the findings, sends the start word, and records the outcome in run.plan_review. The step comes with an IC contract change, a resume path, new reference files, crew-stats.py reporting and a new seeded test."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new workflow step (plan review via Codex), changes IC contract and dispatch/resume logic, a new shell runner with timeout handling, and crew-stats.py logic, all of which are behavioral changes.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 146,
+            "end_line": 149,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The new Build state paragraph cites \"issue 170\" and \"This run\" instead of the design § entry that every other Build state paragraph cites.",
+            "evidence": "The plan review is built (issue 170): every simple-path and full-path run",
+            "suggested_fix": "Cite §15.149, and say \"The run that built it ran it once on its two later packages\".",
+            "explanation": "Every other Build state paragraph points at its §15 entry, and \"this run\" means nothing to a later reader of CLAUDE.md.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/references/plan-review.md",
+            "start_line": 194,
+            "end_line": 200,
+            "category": "convention",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The IC's action on a blocking finding (append `## Revised after the plan review`) is stated in plan-review.md and again in ic-contract.md.",
+            "evidence": "- **An accepted `blocking` finding.** The IC revises that plan before it\n  writes code. It appends `## Revised after the plan review` to",
+            "suggested_fix": "State the action in ic-contract.md only, and point to it from plan-review.md.",
+            "explanation": "CLAUDE.md says a rule lives in exactly one file, and ic-contract.md owns what the IC does.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7550,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46328,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046423,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 664,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 52931,
+              "webSearchRequests": 0,
+              "costUSD": 0.4373478,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 132,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4419901
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/plan-review.md",
+            "start_line": 127,
+            "end_line": 129,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "If the `cd` fails, the run script exits 1 without writing `-result.exit`. The project lead's exit check then finds no exit file, and the resume reads that as an attempt that died, not as a `failed` skip.",
+            "evidence": "cd <run.checkout> || exit 1\nr=<record-dir>/reviews/plan-review-r1\n: > \"$r-result.txt\"; : > \"$r-result.stderr\"; rm -f \"$r-result.exit\"",
+            "suggested_fix": "Set `r` first, then write `cd <run.checkout> || { echo 1 > \"$r-result.exit\"; exit 1; }`.",
+            "explanation": "Every exit path except this one writes `-result.exit`, and the step reads a missing exit file as a dead attempt.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/references/full-path.md",
+            "start_line": 362,
+            "end_line": 364,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The next-package message always says the plan was \"already written and reviewed\". That is false when the review was skipped or off, or when the plan was missing at the planning stop.",
+            "evidence": "message says that the package's plan is already written and reviewed, and",
+            "suggested_fix": "Make the claim depend on `run.plan_review.outcome` being `ran` and the plan having existed at the review.",
+            "explanation": "After a skip, an `off` run or a missing plan, no reviewer read the plan, so the message tells the IC something untrue.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 40406,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46334,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046429,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 14,
+              "outputTokens": 4242,
+              "cacheReadInputTokens": 366582,
+              "cacheCreationInputTokens": 62110,
+              "webSearchRequests": 0,
+              "costUSD": 0.6550924,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 2493,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.6597353
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 9,
+            "end_line": 9,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "CLAUDE.md still says there are three scripts under skills/project-lead/scripts/, but this change adds a fourth, test-crew-stats.py.",
+            "evidence": "two hooks, the three scripts under `skills/project-lead/scripts/`,",
+            "suggested_fix": "Say \"the three scripts under `skills/project-lead/scripts/` with their test `test-crew-stats.py`\", or change the count to four.",
+            "explanation": "The new test-crew-stats.py is code in that directory, so the count of three is now wrong.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8963,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46324,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046419,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 879,
+              "cacheReadInputTokens": 58955,
+              "cacheCreationInputTokens": 53510,
+              "webSearchRequests": 0,
+              "costUSD": 0.457467,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 483,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4621089
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/plan-review.md",
+            "start_line": 89,
+            "end_line": 90,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The inputs list says the simple path wrote a split.md, but the simple path writes none, so the instructions-file build would cat a missing file.",
+            "evidence": "5. `charter.md`, `spec.md` and `split.md`. The simple path wrote a",
+            "suggested_fix": "Make split.md conditional: send it on the full path only, or have the simple path write one.",
+            "explanation": "simple-path.md step 2 says \"Write no `split.md`\" for the one package; the `blk <record-dir>/split.md` line in the build script then fails on a simple-path run.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 17155,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 75145,
+              "outputTokens": 20,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0075245,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 2114,
+              "cacheReadInputTokens": 262143,
+              "cacheCreationInputTokens": 84520,
+              "webSearchRequests": 0,
+              "costUSD": 0.38545029999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1387,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.39297479999999996
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/plan-review.md",
+            "start_line": 96,
+            "end_line": 106,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The repo's standing instructions (`.claude/crew.md`, which anyone who can commit to the repo controls) go into the Codex prompt as plain instructions, with no tagged data block around them.",
+            "evidence": "  <the standing instructions>",
+            "suggested_fix": "Put the repo's standing instructions in their own `blk` tagged block too, or state that they are trusted on purpose.",
+            "explanation": "Text that a repo contributor controls reaches the reviewer as instructions, so it can steer or quiet the review. The impact is small because Codex runs in a read-only sandbox.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9077,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 46328,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0046423,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 729,
+              "cacheReadInputTokens": 59243,
+              "cacheCreationInputTokens": 53642,
+              "webSearchRequests": 0,
+              "costUSD": 0.4555806,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 293,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4602229
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/test-crew-stats.py",
+            "start_line": 112,
+            "end_line": 113,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "Text-report checks are weak substring matches that cannot fail meaningfully.",
+            "evidence": "check(\"the text report lists the plan review kind\", \"plan review\" in out)",
+            "suggested_fix": "Assert the specific table rows, such as 'outcome: ran' with its count and 'skipped, timeout'.",
+            "explanation": "\"plan review\" also appears in the 'Plan reviews' heading (case-insensitive aside) and other text; a missing kind row in the tables would likely not be caught, and the check does not assert any figures in the text report.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 4343,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 459,
+              "cacheReadInputTokens": 60036,
+              "cacheCreationInputTokens": 54390,
+              "webSearchRequests": 0,
+              "costUSD": 0.2281616,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-haiku-5-5": {
+              "inputTokens": 46342,
+              "outputTokens": 19,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.004643700000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2328053
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 146,
+          "end_line": 149,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The new Build state paragraph cites \"issue 170\" and \"This run\" instead of the design § entry that every other Build state paragraph cites.",
+          "evidence": "The plan review is built (issue 170): every simple-path and full-path run",
+          "suggested_fix": "Cite §15.149, and say \"The run that built it ran it once on its two later packages\".",
+          "explanation": "Every other Build state paragraph points at its §15 entry, and \"this run\" means nothing to a later reader of CLAUDE.md.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The plan review is built (issue 170): every simple-path and full-path run",
+            "before any code. This run's own two later packages ran it once."
+          ],
+          "rationale": "The new paragraph cites \\\"issue 170\\\" and says \\\"This run's own\\\", while the neighbouring Build state paragraphs cite §15.x entries. The description says the new design entry is §15.149.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The plan review is built (issue 170): every simple-path and full-path run",
+            "before any code. This run's own two later packages ran it once. Only",
+            "The `crew:orchestrator` skill is built (§15.142). No crew run has used it,",
+            "149. **The plan review — 2026-11-23.** Issue 170. Before this entry, nobody"
+          ],
+          "rationale": "The added paragraph cites \"issue 170\" and says \"This run's own two later packages\", while the neighbouring Build state paragraphs cite a §15 entry, and design.md has an entry §15.149 for this exact feature. \"This run\" will mean nothing to someone who reads CLAUDE.md later. The fix is a cheap wording change.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The plan review is built (issue 170): every simple-path and full-path run",
+            "before any code. This run's own two later packages ran it once. Only",
+            "The `crew:orchestrator` skill is built (§15.142). No crew run has used it,",
+            "149. **The plan review — 2026-11-23.** Issue 170. Before this entry, nobody"
+          ],
+          "rationale": "The added paragraph cites \"issue 170\" and says \"This run's own two later packages\", while the neighbouring Build state paragraphs cite a §15 entry, and design.md has an entry §15.149 for this exact feature. \"This run\" will mean nothing to someone who reads CLAUDE.md later. The fix is a cheap wording change.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/plan-review.md",
+          "start_line": 194,
+          "end_line": 200,
+          "category": "convention",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The IC's action on a blocking finding (append `## Revised after the plan review`) is stated in plan-review.md and again in ic-contract.md.",
+          "evidence": "- **An accepted `blocking` finding.** The IC revises that plan before it\n  writes code. It appends `## Revised after the plan review` to",
+          "suggested_fix": "State the action in ic-contract.md only, and point to it from plan-review.md.",
+          "explanation": "CLAUDE.md says a rule lives in exactly one file, and ic-contract.md owns what the IC does.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "It appends `## Revised after the plan review` to\n  `plans/<id>.md`, and names each finding and what changed.",
+            "- **`blocking`**: revise that plan. Append `## Revised after the plan review`"
+          ],
+          "rationale": "The IC's action is stated in both files, so the duplication is real. The PR description says it is deliberate because each reader needs it, and it is a small restatement, not a conflicting rule.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- **An accepted `blocking` finding.** The IC revises that plan before it\n  writes code. It appends `## Revised after the plan review` to\n  `plans/<id>.md`, and names each finding and what changed. No second review\n  runs.",
+            "- **`blocking`**: revise that plan. Append `## Revised after the plan review`\n  to `plans/<id>.md`, and name each finding and what changed.",
+            "A rule lives in exactly one file. Point at that file from anywhere else."
+          ],
+          "rationale": "The finding is accurate: both files state the IC's blocking-finding action, and CLAUDE.md says a rule lives in one file. But the two texts agree, so no reader gets a wrong result, and the change description says the duplication is deliberate, so this is a convention point the author already chose.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- **An accepted `blocking` finding.** The IC revises that plan before it\n  writes code. It appends `## Revised after the plan review` to\n  `plans/<id>.md`, and names each finding and what changed. No second review\n  runs.",
+            "- **`blocking`**: revise that plan. Append `## Revised after the plan review`\n  to `plans/<id>.md`, and name each finding and what changed.",
+            "A rule lives in exactly one file. Point at that file from anywhere else."
+          ],
+          "rationale": "The finding is accurate: both files state the IC's blocking-finding action, and CLAUDE.md says a rule lives in one file. But the two texts agree, so no reader gets a wrong result, and the change description says the duplication is deliberate, so this is a convention point the author already chose.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/plan-review.md",
+          "start_line": 96,
+          "end_line": 106,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The repo's standing instructions (`.claude/crew.md`, which anyone who can commit to the repo controls) go into the Codex prompt as plain instructions, with no tagged data block around them.",
+          "evidence": "  <the standing instructions>",
+          "suggested_fix": "Put the repo's standing instructions in their own `blk` tagged block too, or state that they are trusted on purpose.",
+          "explanation": "Text that a repo contributor controls reaches the reviewer as instructions, so it can steer or quiet the review. The impact is small because Codex runs in a read-only sandbox.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "Items 5 and 6 are data, not instructions.",
+            "  <the standing instructions>"
+          ],
+          "rationale": "The doc wraps only items 5 and 6 in tagged blocks, and item 4 (standing instructions, which can come from the repo) goes in unwrapped. Standing instructions are meant to be instructions and the Codex sandbox is read-only, so the impact is small.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "Items 5 and 6 are data, not instructions. Put each file in its own tagged",
+            "  <the standing instructions>",
+            "**Every IC dispatch and every reviewer's instructions carry both files'\ntext**, whole, the repo file first. It goes after the contract and before\nthe brief. Each dispatch site points here.",
+            "`.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path"
+          ],
+          "rationale": "The claim is literally true: only items 5 and 6 go in `blk` blocks, and the standing instructions go in as plain text. But SKILL.md says on purpose that every reviewer's instructions carry the standing instructions whole, since they are the principal's own guidance for the repo. Codex also runs with a read-only sandbox, so this matches the repo's trust model and the risk is small.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "Items 5 and 6 are data, not instructions. Put each file in its own tagged",
+            "  <the standing instructions>",
+            "**Every IC dispatch and every reviewer's instructions carry both files'\ntext**, whole, the repo file first. It goes after the contract and before\nthe brief. Each dispatch site points here.",
+            "`.claude/crew.md` in `run.repo`, and `~/.claude/crew/config.md`, at that path"
+          ],
+          "rationale": "The claim is literally true: only items 5 and 6 go in `blk` blocks, and the standing instructions go in as plain text. But SKILL.md says on purpose that every reviewer's instructions carry the standing instructions whole, since they are the principal's own guidance for the repo. Codex also runs with a read-only sandbox, so this matches the repo's trust model and the risk is small.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 9,
+          "end_line": 9,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "CLAUDE.md still says there are three scripts under skills/project-lead/scripts/, but this change adds a fourth, test-crew-stats.py.",
+          "evidence": "two hooks, the three scripts under `skills/project-lead/scripts/`,",
+          "suggested_fix": "Say \"the three scripts under `skills/project-lead/scripts/` with their test `test-crew-stats.py`\", or change the count to four.",
+          "explanation": "The new test-crew-stats.py is code in that directory, so the count of three is now wrong.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "two hooks, the three scripts under `skills/project-lead/scripts/`,",
+            "`skills/project-lead/scripts/test-crew-stats.py` tests `crew-stats.py`"
+          ],
+          "rationale": "The three scripts (crew-record.py, spend.py, crew-stats.py) are still three. The PR names the new test in its own sentence at lines 19-20, as the file does for other tests, so the count is not clearly wrong.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "two hooks, the three scripts under `skills/project-lead/scripts/`,",
+            "`skills/project-lead/scripts/test-crew-stats.py` tests `crew-stats.py`"
+          ],
+          "rationale": "The three scripts (crew-record.py, spend.py, crew-stats.py) are still three. The PR names the new test in its own sentence at lines 19-20, as the file does for other tests, so the count is not clearly wrong.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-stats.py",
+          "start_line": 112,
+          "end_line": 113,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "Text-report checks are weak substring matches that cannot fail meaningfully.",
+          "evidence": "check(\"the text report lists the plan review kind\", \"plan review\" in out)",
+          "suggested_fix": "Assert the specific table rows, such as 'outcome: ran' with its count and 'skipped, timeout'.",
+          "explanation": "\"plan review\" also appears in the 'Plan reviews' heading (case-insensitive aside) and other text; a missing kind row in the tables would likely not be caught, and the check does not assert any figures in the text report.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"the text report lists the plan review kind\", \"plan review\" in out)"
+          ],
+          "rationale": "The substring check is loose, but \\\"Plan reviews\\\" has a capital P and does not contain \\\"plan review\\\", so the heading does not satisfy it as the finding says. The JSON checks already assert the figures. The finding's line range is also wrong.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"the text report lists the plan review kind\", \"plan review\" in out)"
+          ],
+          "rationale": "The substring check is loose, but \\\"Plan reviews\\\" has a capital P and does not contain \\\"plan review\\\", so the heading does not satisfy it as the finding says. The JSON checks already assert the figures. The finding's line range is also wrong.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/plan-review.md",
+          "start_line": 89,
+          "end_line": 90,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The inputs list says the simple path wrote a split.md, but the simple path writes none, so the instructions-file build would cat a missing file.",
+          "evidence": "5. `charter.md`, `spec.md` and `split.md`. The simple path wrote a",
+          "suggested_fix": "Make split.md conditional: send it on the full path only, or have the simple path write one.",
+          "explanation": "simple-path.md step 2 says \"Write no `split.md`\" for the one package; the `blk <record-dir>/split.md` line in the build script then fails on a simple-path run.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The simple path wrote a\n   `split.md` too, so both paths send it.",
+            "Write no\n   `split.md` — one package has nothing to order, and no reader is left for\n   that file."
+          ],
+          "rationale": "simple-path.md step 2 explicitly writes no split.md, which contradicts plan-review.md's statement that the simple path wrote one. The build script's `blk` of a missing file would just error on `cat`, so the effect is small.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "5. `charter.md`, `spec.md` and `split.md`. The simple path wrote a",
+            "The light path gets no plan review. Its IC still writes a plan, and does not",
+            "Write `split.md` in `record-format.md`'s format, one deliverable and one",
+            "`split.md` — one package has nothing to order, and no reader is left for",
+            "Write no `split.md` yet. A fix writes one at `simple-path.md`'s \"Write the"
+          ],
+          "rationale": "The finding quotes the \"Write no `split.md`\" rule, but that rule belongs to the light path, and the light path gets no plan review. The simple path that does get the review writes `split.md` in its \"Write the split\" section, and the investigation fix package also writes one there, so the `blk` line for `split.md` always finds the file.",
+          "score": 5,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "5. `charter.md`, `spec.md` and `split.md`. The simple path wrote a",
+            "The light path gets no plan review. Its IC still writes a plan, and does not",
+            "Write `split.md` in `record-format.md`'s format, one deliverable and one",
+            "`split.md` — one package has nothing to order, and no reader is left for",
+            "Write no `split.md` yet. A fix writes one at `simple-path.md`'s \"Write the"
+          ],
+          "rationale": "The finding quotes the \"Write no `split.md`\" rule, but that rule belongs to the light path, and the light path gets no plan review. The simple path that does get the review writes `split.md` in its \"Write the split\" section, and the investigation fix package also writes one there, so the `blk` line for `split.md` always finds the file.",
+          "score": 5,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/plan-review.md",
+          "start_line": 127,
+          "end_line": 129,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "If the `cd` fails, the run script exits 1 without writing `-result.exit`. The project lead's exit check then finds no exit file, and the resume reads that as an attempt that died, not as a `failed` skip.",
+          "evidence": "cd <run.checkout> || exit 1\nr=<record-dir>/reviews/plan-review-r1\n: > \"$r-result.txt\"; : > \"$r-result.stderr\"; rm -f \"$r-result.exit\"",
+          "suggested_fix": "Set `r` first, then write `cd <run.checkout> || { echo 1 > \"$r-result.exit\"; exit 1; }`.",
+          "explanation": "Every exit path except this one writes `-result.exit`, and the step reads a missing exit file as a dead attempt.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "cd <run.checkout> || exit 1",
+            "r=<record-dir>/reviews/plan-review-r1",
+            "echo $? > \"$r-result.exit\""
+          ],
+          "rationale": "The script exits 1 on a failed `cd` before `r` is set and before any `-result.exit` write, so the exit file is missing. The file never says what the lead does when it is missing after the script exits normally. The resume path treats a missing exit file as a dead attempt. The case is rare, since `run.checkout` should exist.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "cd <run.checkout> || exit 1",
+            "r=<record-dir>/reviews/plan-review-r1",
+            "echo $? > \"$r-result.exit\"",
+            "When it is absent, check first that no\n   `plan-review-r1-run.sh` process still runs (`pgrep -f`).",
+            "When it exits, read `-result.exit`. A non-zero value is a skip"
+          ],
+          "rationale": "The claim holds. The script exits on a failed `cd` before it sets `r` and before it writes `-result.exit`, while every other exit path writes the file. The step's own text only covers a missing exit file as an attempt that died, so this case goes to a retry rather than a direct `failed` skip. A failing `cd` to the run checkout is an unusual path, and the run still ends in a skip, so this is not blocking.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "cd <run.checkout> || exit 1",
+            "r=<record-dir>/reviews/plan-review-r1",
+            "echo $? > \"$r-result.exit\"",
+            "When it is absent, check first that no\n   `plan-review-r1-run.sh` process still runs (`pgrep -f`).",
+            "When it exits, read `-result.exit`. A non-zero value is a skip"
+          ],
+          "rationale": "The claim holds. The script exits on a failed `cd` before it sets `r` and before it writes `-result.exit`, while every other exit path writes the file. The step's own text only covers a missing exit file as an attempt that died, so this case goes to a retry rather than a direct `failed` skip. A failing `cd` to the run checkout is an unusual path, and the run still ends in a skip, so this is not blocking.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/full-path.md",
+          "start_line": 362,
+          "end_line": 364,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The next-package message always says the plan was \"already written and reviewed\". That is false when the review was skipped or off, or when the plan was missing at the planning stop.",
+          "evidence": "message says that the package's plan is already written and reviewed, and",
+          "suggested_fix": "Make the claim depend on `run.plan_review.outcome` being `ran` and the plan having existed at the review.",
+          "explanation": "After a skip, an `off` run or a missing plan, no reviewer read the plan, so the message tells the IC something untrue.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "message says that the package's plan is already written and reviewed, and"
+          ],
+          "rationale": "The added text states unconditionally that the plan is \"already written and reviewed\". That is untrue after a skip, after `Plan review: off`, or when a plan was missing. The effect is a slightly inaccurate message to the IC, and the spec's R10 asks for this wording.",
+          "score": 70,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "message says that the package's plan is already written and reviewed, and",
+            "`off`, no dispatch carries a plan stop, no review runs, and \"The record\" below",
+            "It writes the missing plan at the start of the package, with\nno stop, and no review reads that plan.",
+            "`Start <package id>` alone. After a skip, every IC gets"
+          ],
+          "rationale": "The next-package message in `full-path.md` always says the plan is \"already written and reviewed\". That is false in three cases that `plan-review.md` describes: with `off` there is no plan stop and no review, a skip runs no review, and a plan still missing after the nudge is written at the package's start and never reviewed. The IC is told something untrue on these less common paths, and it may assume a plan exists when none does.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "message says that the package's plan is already written and reviewed, and",
+            "`off`, no dispatch carries a plan stop, no review runs, and \"The record\" below",
+            "It writes the missing plan at the start of the package, with\nno stop, and no review reads that plan.",
+            "`Start <package id>` alone. After a skip, every IC gets"
+          ],
+          "rationale": "The next-package message in `full-path.md` always says the plan is \"already written and reviewed\". That is false in three cases that `plan-review.md` describes: with `off` there is no plan stop and no review, a skip runs no review, and a plan still missing after the nudge is written at the package's start and never reviewed. The IC is told something untrue on these less common paths, and it may assume a plan exists when none does.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/project-lead/references/full-path.md",
+        "start_line": 362,
+        "end_line": 364,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The next-package message always says the plan was \"already written and reviewed\". That is false when the review was skipped or off, or when the plan was missing at the planning stop.",
+        "evidence": "message says that the package's plan is already written and reviewed, and",
+        "suggested_fix": "Make the claim depend on `run.plan_review.outcome` being `ran` and the plan having existed at the review.",
+        "explanation": "After a skip, an `off` run or a missing plan, no reviewer read the plan, so the message tells the IC something untrue.",
+        "needs_context": false,
+        "fingerprint": "4516eb894ea24cc4",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "message says that the package's plan is already written and reviewed, and",
+            "`off`, no dispatch carries a plan stop, no review runs, and \"The record\" below",
+            "It writes the missing plan at the start of the package, with\nno stop, and no review reads that plan.",
+            "`Start <package id>` alone. After a skip, every IC gets"
+          ],
+          "rationale": "The next-package message in `full-path.md` always says the plan is \"already written and reviewed\". That is false in three cases that `plan-review.md` describes: with `off` there is no plan stop and no review, a skip runs no review, and a plan still missing after the nudge is written at the package's start and never reviewed. The IC is told something untrue on these less common paths, and it may assume a plan exists when none does.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "territory has another package in `split.md`, send the IC its next one. The message says that the package's plan is already written and reviewed, and names each accepted plan review finding on that package that no message has",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/references/plan-review.md",
+        "start_line": 127,
+        "end_line": 129,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "If the `cd` fails, the run script exits 1 without writing `-result.exit`. The project lead's exit check then finds no exit file, and the resume reads that as an attempt that died, not as a `failed` skip.",
+        "evidence": "cd <run.checkout> || exit 1\nr=<record-dir>/reviews/plan-review-r1\n: > \"$r-result.txt\"; : > \"$r-result.stderr\"; rm -f \"$r-result.exit\"",
+        "suggested_fix": "Set `r` first, then write `cd <run.checkout> || { echo 1 > \"$r-result.exit\"; exit 1; }`.",
+        "explanation": "Every exit path except this one writes `-result.exit`, and the step reads a missing exit file as a dead attempt.",
+        "needs_context": false,
+        "fingerprint": "abe3e08556d286f4",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "cd <run.checkout> || exit 1",
+            "r=<record-dir>/reviews/plan-review-r1",
+            "echo $? > \"$r-result.exit\"",
+            "When it is absent, check first that no\n   `plan-review-r1-run.sh` process still runs (`pgrep -f`).",
+            "When it exits, read `-result.exit`. A non-zero value is a skip"
+          ],
+          "rationale": "The claim holds. The script exits on a failed `cd` before it sets `r` and before it writes `-result.exit`, while every other exit path writes the file. The step's own text only covers a missing exit file as an attempt that died, so this case goes to a retry rather than a direct `failed` skip. A failing `cd` to the run checkout is an unusual path, and the run still ends in a skip, so this is not blocking.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "script to `<record-dir>/reviews/plan-review-r1-run.sh`: ```",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "CLAUDE.md",
+        "start_line": 146,
+        "end_line": 149,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The new Build state paragraph cites \"issue 170\" and \"This run\" instead of the design § entry that every other Build state paragraph cites.",
+        "evidence": "The plan review is built (issue 170): every simple-path and full-path run",
+        "suggested_fix": "Cite §15.149, and say \"The run that built it ran it once on its two later packages\".",
+        "explanation": "Every other Build state paragraph points at its §15 entry, and \"this run\" means nothing to a later reader of CLAUDE.md.",
+        "needs_context": false,
+        "fingerprint": "4019903e14e19b99",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The plan review is built (issue 170): every simple-path and full-path run",
+            "before any code. This run's own two later packages ran it once. Only",
+            "The `crew:orchestrator` skill is built (§15.142). No crew run has used it,",
+            "149. **The plan review — 2026-11-23.** Issue 170. Before this entry, nobody"
+          ],
+          "rationale": "The added paragraph cites \"issue 170\" and says \"This run's own two later packages\", while the neighbouring Build state paragraphs cite a §15 entry, and design.md has an entry §15.149 for this exact feature. \"This run\" will mean nothing to someone who reads CLAUDE.md later. The fix is a cheap wording change.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "The plan review is built (issue 170): every simple-path and full-path run stops its ICs after their plans, and Codex reviews all the plans together before any code. This run's own two later packages ran it once. Only `test-crew-stats.py` has run its `crew-stats.py` report.",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "github": {
+      "review_id": 6017204550,
+      "review_url": "https://github.com/jerridan/crew/pull/172#pullrequestreview-6017204550",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "4516eb894ea24cc4",
+          "comment_id": 4662330431
+        },
+        {
+          "fingerprint": "abe3e08556d286f4",
+          "comment_id": 4662330439
+        },
+        {
+          "fingerprint": "4019903e14e19b99",
+          "comment_id": 4662330446
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 137517100827
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 9469,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 38693,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0038778,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1471,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 38205,
+            "webSearchRequests": 0,
+            "costUSD": 0.1676602,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.171538
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7550,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46328,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046423,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 664,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 52931,
+            "webSearchRequests": 0,
+            "costUSD": 0.4373478,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 132,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4419901
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 9077,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46328,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046423,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 729,
+            "cacheReadInputTokens": 59243,
+            "cacheCreationInputTokens": 53642,
+            "webSearchRequests": 0,
+            "costUSD": 0.4555806,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 293,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4602229
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 8963,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46324,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046419,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 879,
+            "cacheReadInputTokens": 58955,
+            "cacheCreationInputTokens": 53510,
+            "webSearchRequests": 0,
+            "costUSD": 0.457467,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 483,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4621089
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4343,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 459,
+            "cacheReadInputTokens": 60036,
+            "cacheCreationInputTokens": 54390,
+            "webSearchRequests": 0,
+            "costUSD": 0.2281616,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 46342,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004643700000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2328053
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3758,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22476,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022591,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 489,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21984,
+            "webSearchRequests": 0,
+            "costUSD": 0.0932667,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0955258
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6384,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23558,
+            "outputTokens": 257,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024843,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 233,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 891,
+            "cacheReadInputTokens": 31800,
+            "cacheCreationInputTokens": 23527,
+            "webSearchRequests": 0,
+            "costUSD": 0.106206,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 146,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10869029999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 17155,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 75145,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0075245,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 2114,
+            "cacheReadInputTokens": 262143,
+            "cacheCreationInputTokens": 84520,
+            "webSearchRequests": 0,
+            "costUSD": 0.38545029999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1387,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.39297479999999996
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4103,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23542,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023647000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 578,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 23050,
+            "webSearchRequests": 0,
+            "costUSD": 0.0984207,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 264,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1007854
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3753,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22488,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022608,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 528,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21996,
+            "webSearchRequests": 0,
+            "costUSD": 0.0937047,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 194,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0959655
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8487,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14741,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014851,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1109,
+            "cacheReadInputTokens": 42228,
+            "cacheCreationInputTokens": 15284,
+            "webSearchRequests": 0,
+            "costUSD": 0.07646080000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 243,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07794590000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 7670,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23544,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023669,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 846,
+            "cacheReadInputTokens": 31782,
+            "cacheCreationInputTokens": 24516,
+            "webSearchRequests": 0,
+            "costUSD": 0.21942040000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 180,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.22178730000000002
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7516,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23540,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023635,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1046,
+            "cacheReadInputTokens": 59490,
+            "cacheCreationInputTokens": 24339,
+            "webSearchRequests": 0,
+            "costUSD": 0.113777,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 144,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11614050000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10184,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22484,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022604,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1024,
+            "cacheReadInputTokens": 84234,
+            "cacheCreationInputTokens": 23023,
+            "webSearchRequests": 0,
+            "costUSD": 0.22154279999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 217,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.22380319999999998
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10728,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23558,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023663,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1137,
+            "cacheReadInputTokens": 59691,
+            "cacheCreationInputTokens": 26890,
+            "webSearchRequests": 0,
+            "costUSD": 0.2498222,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 282,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2521885
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 5,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10062,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23548,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023643,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1022,
+            "cacheReadInputTokens": 89623,
+            "cacheCreationInputTokens": 26318,
+            "webSearchRequests": 0,
+            "costUSD": 0.24894059999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 203,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2513049
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 40406,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46334,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046429,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 14,
+            "outputTokens": 4242,
+            "cacheReadInputTokens": 366582,
+            "cacheCreationInputTokens": 62110,
+            "webSearchRequests": 0,
+            "costUSD": 0.6550924,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 2493,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.6597353
+      },
+      {
+        "role": "verifier",
+        "verification": 7,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3665,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 26613,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0026698,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 467,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 26121,
+            "webSearchRequests": 0,
+            "costUSD": 0.10959469999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 164,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11226449999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4248,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23623,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023718000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 549,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 23131,
+            "webSearchRequests": 0,
+            "costUSD": 0.09845469999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 197,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10082649999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 6,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 8090,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23629,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023719,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 866,
+            "cacheReadInputTokens": 31867,
+            "cacheCreationInputTokens": 23598,
+            "webSearchRequests": 0,
+            "costUSD": 0.2124934,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 300,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2148653
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 7,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10769,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 26605,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.002669,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1079,
+            "cacheReadInputTokens": 66479,
+            "cacheCreationInputTokens": 33243,
+            "webSearchRequests": 0,
+            "costUSD": 0.3008438,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 289,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3035128
+      }
+    ],
+    "total_cost_usd": 5.0969817,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 51,
+      "gather": 803,
+      "triage": 10319,
+      "find_verify": 57597,
+      "merge": 10
+    },
+    "errors": []
+  }
+}

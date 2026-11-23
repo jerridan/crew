@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seeded test of the plan review figures of crew-stats.py (spec R20, R21, R23).
+"""Seeded test of the plan review and goal check figures of crew-stats.py.
 
 usage: python3 skills/project-lead/scripts/test-crew-stats.py
 
@@ -75,6 +75,22 @@ seed("badlabels-run", {"plan_review": {"outcome": "ran", "labels": "none"}})
 seed("sound-run", {}, {"plan-review-r1.md": report("plans sound", "0 blocking, 0 suggestion, 0 nit, 0 unsure")})
 
 
+def goal_report(verdict, blocking, check=True):
+    return ("Reviewed: abc123\n" + ("Check: goal\n" if check else "") +
+            "\n### F1. A\nSeverity: blocking\n\nFindings: %d blocking, 0 suggestion, 0 nit, 0 unsure\n"
+            "Verdict: %s\nBlocking count: %d\n" % (blocking, verdict, blocking))
+
+
+# The goal checks (goal-check.md): a miss the project lead kept, a miss the
+# project lead relabelled to accepted, and an older skeptical report with no
+# `Check: goal` line, which is no goal check.
+seed("goal-miss-run", {}, {"skeptical-r1.md": goal_report("patch round needed", 2),
+                           "skeptical-r1-reply.md": "ledger\n\nVerdict after labels: patch round needed\n"})
+seed("goal-relabel-run", {}, {"skeptical-r1.md": goal_report("patch round needed", 1),
+                              "skeptical-r1-reply.md": "ledger\n\nVerdict after labels: accepted\n"})
+seed("old-skeptical-run", {}, {"skeptical-r1.md": goal_report("patch round needed", 1, check=False)})
+
+
 def run(args):
     return subprocess.run([PY, SCRIPT, "--record-root", T] + args, capture_output=True, text=True)
 
@@ -112,8 +128,16 @@ def main():
               "badlabels-run" in skipped and "plan_review" in skipped)
         check("the unreadable records count nowhere",
               recs["bad-run"].get("plan_review") is None and recs["badlabels-run"].get("plan_review") is None)
+        check("a kept goal miss counts as run, missed, and its report's blocking count",
+              recs["goal-miss-run"]["goal_checks"] == {"run": 1, "missed": 1, "misses": 2, "accepted": 0})
+        check("the reply file's verdict after labels wins over the report's verdict",
+              recs["goal-relabel-run"]["goal_checks"] == {"run": 1, "missed": 0, "misses": 0, "accepted": 1})
+        check("a skeptical report with no Check: goal line is no goal check",
+              recs["old-skeptical-run"]["goal_checks"] == {"run": 0, "missed": 0, "misses": 0, "accepted": 0})
         t = run([])
         out = t.stdout
+        check("the text report has a Goal checks table with the reviewer's count row",
+              "Goal checks" in out and "blocking findings in those reports" in out)
         check("the text report exits 0", t.returncode == 0)
         check("the text report has a Plan reviews section", "Plan reviews" in out)
         check("the text report lists plan-review under steps skipped",

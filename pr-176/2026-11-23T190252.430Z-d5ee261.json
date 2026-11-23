@@ -1,0 +1,2104 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 176,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Open and close implementer tabs in Herdr",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/176"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "b06a37f763b11df817b0e88a48744a4d7e024891",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-176/2026-11-23T184936.265Z-b06a37f.json",
+      "open": [],
+      "dismissed": [
+        "016144c80b5b61a8",
+        "1642bd415adc5105",
+        "1d76ffd05b69a47a",
+        "1db35113070cb2fd",
+        "2fcf5a9b6c737ad5",
+        "95c24b8bdd1d48ed",
+        "b9e0c38dd20707ed",
+        "e9213ab39c4e8385",
+        "ff2aa08d8d48a7f2"
+      ],
+      "fetch_failed": false
+    },
+    "base": "7f31a3c69e8cbc22191103c2ff10ef97420c97cf",
+    "head": "d5ee2616e133cd4fb0c235a2c06b73186e0a19e8",
+    "started_at": "2026-11-23T19:02:52.430Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Open and close implementer tabs in Herdr\n\n## Summary\n\nAn orchestrator that runs in the Herdr terminal app can now start its implementers in Herdr tabs, with no terminal argument. Before this change, the launcher supported only iTerm2 and tmux, so an orchestrator in Herdr could not open an implementer tab there. The launcher now starts, resumes, finds, lists the groups of, focuses and stops implementer tabs in Herdr, through Herdr's own command-line programs. Where Herdr differs from the other terminals, the launcher reference names the limit, and iTerm2 and tmux work as before.\n\n**Ticket:** N/A (orchestrator item herdr-terminal, no GitHub issue)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/launcher.md` owns the launcher's interface, and its new \"Herdr\" section owns the Herdr mapping and limits.\n- `docs/design.md` §15.<n> (number assigned by the orchestrator at merge) records the live probe, the decisions and what is unexercised.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py`: detects Herdr (`__CFBundleIdentifier=dev.herdr.app`, after `$TMUX` and iTerm2), takes `--terminal herdr`, finds `herdr-app` and `hc` on `PATH` or in `~/.local/bin`, and implements start and resume (`herdr-app do tab.new`, or `space.new` for a new group), `groups` (one line per Herdr space), `find` (tty of each live `hc` terminal), `focus` (`do agent.focus`) and `stop` (`hc keys esc`, `hc keys ctrl+u`, `hc send /exit --force`, then `do tab.close`). The handle is `herdr:<terminal address>`.\n- `skills/orchestrator/scripts/test-launcher.sh`: stub `herdr-app` and `hc`, and Herdr cases for detection, the three failing limits, start, resume, groups, find, focus and stop. The shared setup also unsets `__CFBundleIdentifier` and `HC_TERMINAL_ID`. No existing check line changed.\n- `skills/orchestrator/references/launcher.md`: Herdr in Terminals, a new Herdr section with its limits, and Herdr values in start, groups, find, focus and stop, exit codes and Test.\n- `skills/orchestrator/SKILL.md`, `references/orchestrator-record.md`, `references/resume-and-close.md`, `README.md`, `CLAUDE.md`: name Herdr where they list the launcher's terminals, and point at `launcher.md`.\n- `docs/design.md`: new finding §15.<n>.\n\n### Constraints that applied\n\n- Python 3.9 and no package: satisfied, standard library only (`shutil.which`).\n- No live Herdr call from a test: the test hides the real programs and uses stubs only.\n- The person's live Herdr sessions: one live probe ran, on a space it made and then closed. `herdr-app status` showed the person's space and tab unchanged.\n- The plugin `version` and the §15 number belong to the orchestrator: both manifests are unchanged, and the finding uses the placeholder `§15.<n>`.\n- The `--principal` path is unchanged, so this PR does not clash with item orch-rename (PR 175) in behavior. It shares files with that PR, so the second PR to merge needs a rebase.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 258 of 258 checks passed at the head. At the red commit 9e9849d, 225 of 258 passed, so the Herdr cases failed before the code.\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed.\n- Live probe (read-write, own space only): `do space.new` and `do tab.new --focus false` printed `{\"space\",\"tab\",\"terminal\"}` and did not move the person's view. A killed program left the terminal live with a shell, so `stop` closes the tab. `tab.close` on a gone tab and `agent.focus` on an unknown terminal printed `{\"error\": ...}` and exited 1.\n- The project lead read the whole diff against the spec. One fix round named the first tab of a new space and added a missing statement about handles after a restart.\n\n### Known gaps\n\n- No run has sent the stop keys and `/exit` to a live `claude` in Herdr.\n- No run has focused a real Herdr tab, because that changes the person's view. Focus does not raise the macOS window.\n- No run has checked that a new tab takes its environment from the Herdr core and not from the launcher.\n- The behavior of a handle after a restart of the Herdr core comes from Herdr's docs only.\n- No orchestrator run has used the Herdr path yet.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 2
+      },
+      {
+        "path": "README.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 14
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 17
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 3
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new terminal backend (Herdr) to launcher.py with new logic for process control, error handling, exit codes, and terminal detection, plus a version bump and docs.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/launcher.py: herdr_stop (key sequence, tab close, tab-gone handling, exit codes)",
+        "skills/orchestrator/scripts/launcher.py: herdr_app (error classification, 'no Herdr window' matching, timeout handling)",
+        "skills/orchestrator/scripts/launcher.py: herdr_target and herdr_start (space selection, worktree left on failure)",
+        "skills/orchestrator/scripts/launcher.py: detect_terminal ordering and herdr_ttys / find",
+        "skills/orchestrator/scripts/launcher.py: focus herdr branch (exit 6 vs 7)",
+        "skills/orchestrator/scripts/test-launcher.sh: stubs and checks, worktree cleanup",
+        "skills/orchestrator/references/launcher.md: exit code and spec consistency with code"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "new Herdr backend: detection, start/resume tab and space creation, find via hc, focus, stop, groups"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "adds herdr-app and hc stubs and many new checks; unset of new env vars"
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "interface spec for Herdr, exit codes, limits; should match code"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump to 0.1.120"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump to 0.1.120"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 153"
+        },
+        {
+          "file": "README.md",
+          "note": "docs of Herdr as supported terminal"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "file table and status note updates"
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "mentions Herdr in group step"
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "adds herdr to terminal and tab field values"
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "pointer to Herdr handle behavior"
+        }
+      ],
+      "summary": "Adds Herdr as a third terminal of the orchestrator launcher, next to iTerm2 and tmux. A group maps to a Herdr space and an implementer to a tab. start, resume, find, focus, stop and groups all gain Herdr paths using the herdr-app and hc programs. The change includes stub-based tests, spec and docs updates, and a version bump to 0.1.120."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new terminal backend (Herdr) to launcher.py with new logic for process control, error handling, exit codes, and terminal detection, plus a version bump and docs.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-launcher.sh",
+            "start_line": 6,
+            "end_line": 6,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The test script's header comment still lists the old stubs and leaves out the new herdr-app and hc stubs.",
+            "evidence": "# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands",
+            "suggested_fix": "Name `herdr-app` and `hc` in the list of stubs.",
+            "explanation": "CLAUDE.md line 37 and the Test section of launcher.md now list herdr-app and hc as stubs, but this header comment does not.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 9125,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 27646,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027751000000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 914,
+              "cacheReadInputTokens": 47456,
+              "cacheCreationInputTokens": 27767,
+              "webSearchRequests": 0,
+              "costUSD": 0.2499232,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 277,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2526983
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1334,
+            "end_line": 1342,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "After a failed tab.close, stop counts the close as done when the tab id is still in `herdr-app ls` but the ls entry does not list the terminal under it, so a tab that is still open is reported as closed.",
+            "evidence": "        if tab in ids and holder is not None:\n            raise Fail(TERMINAL_STEP, \"launcher: Herdr did not close the tab %s of %s (%s)\" % (tab, a.handle, e))",
+            "suggested_fix": "Treat the close as failed whenever `tab in ids`, whatever `holder` is.",
+            "explanation": "The docs say only a gone tab counts as closed, but this check also needs a holder of `ref`. A tab that is still present, with no `terminals` list or with the terminal listed under another key, becomes a silent success and leaves the tab open.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1233,
+            "end_line": 1239,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "In focus, a Fail raised by `hc_get(ref)` inside the `except HerdrError` handler is not caught by the sibling `except Fail` clause, so its line does not name the handle.",
+            "evidence": "            if \"no running terminal\" in str(e) or hc_get(ref) is None:\n                raise Fail(BAD_HANDLE, \"launcher: no running Herdr terminal %s (%s)\" % (ref, e))\n            raise Fail(TERMINAL_STEP, \"launcher: Herdr could not focus %s (%s)\" % (a.handle, e))\n        except Fail as f:",
+            "suggested_fix": "Wrap the `hc_get(ref)` call in its own try/except Fail that appends the handle.",
+            "explanation": "An exception raised inside one except clause skips the other except clauses of the same try, so an hc get failure here exits 6 with a line that leaves out the handle, against the launcher.md contract.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 548,
+            "end_line": 550,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "When the caller's space id is missing from `herdr-app ls`, `tab_group` is set to the space id, not to a name. A later `--group <tab_group>` then makes a new space named after the id rather than reusing that space.",
+            "evidence": "    for sp in spaces:\n        if sp.get(\"id\") == sid:\n            return sid, sp.get(\"name\") or sid\n    return sid, sid",
+            "explanation": "`--group` matches spaces by name, so an id that is reported as the group name does not round-trip and leads to a duplicate space.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 38994,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 27658,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027763,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 4099,
+              "cacheReadInputTokens": 140006,
+              "cacheCreationInputTokens": 41820,
+              "webSearchRequests": 0,
+              "costUSD": 0.4445732,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 2501,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.44734950000000007
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6435,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 27652,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027757000000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 640,
+              "cacheReadInputTokens": 10060,
+              "cacheCreationInputTokens": 27162,
+              "webSearchRequests": 0,
+              "costUSD": 0.232116,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 310,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.23489169999999998
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 13739,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 50281,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.005039600000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1754,
+              "cacheReadInputTokens": 133482,
+              "cacheCreationInputTokens": 55470,
+              "webSearchRequests": 0,
+              "costUSD": 0.2527802,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1218,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.25781980000000004
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6380,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 27658,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027763,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 484,
+              "cacheReadInputTokens": 47856,
+              "cacheCreationInputTokens": 27639,
+              "webSearchRequests": 0,
+              "costUSD": 0.24038720000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 116,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.24316350000000003
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 590,
+            "end_line": 592,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The branch where herdr-app opens a tab but prints no valid terminal address has no test. The stubs always return a valid `t9`.",
+            "evidence": "raise Fail(TERMINAL_STEP, \"launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s\" % worktree)",
+            "suggested_fix": "Add a stub switch that makes `tab.new` print `{}` or non-JSON, and check for exit 6 and the worktree path.",
+            "explanation": "A new error path with exit 6 and a worktree left behind is not covered. The same holds for the 'printed no JSON' path in `herdr_app`.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 1340,
+            "end_line": 1348,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A Herdr stop that finds a `claude` process still on the tty has no test. Neither the wait before the close nor the wait for the leftover pids after it is exercised. The test sets the waits to 0 and the stub `ps` shows only a shell.",
+            "evidence": "left = wait_claude_gone(tty, a.handle) if tty else {}",
+            "suggested_fix": "Add a Herdr stop case where the stub `ps` lists a `claude` on the terminal's tty, and check the stderr line and the exit code.",
+            "explanation": "The branch that waits on `left` pids after `tab.close` is never reached by any Herdr test.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 486,
+            "end_line": 497,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A failure of `hc get` for `$HC_TERMINAL_ID`, and a failure of `herdr-app ls`, in the space selection of start have no test.",
+            "evidence": "rec = hc_get(own)\n    sid = ((rec or {}).get(\"labels\") or {}).get(\"herdr.space\")",
+            "explanation": "Only the not-found and no-label outcomes are tested for this path. The exit 6 outcome before any worktree is made is not.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 14284,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 27648,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027753,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1882,
+              "cacheReadInputTokens": 11119,
+              "cacheCreationInputTokens": 27162,
+              "webSearchRequests": 0,
+              "costUSD": 0.1285839,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1035,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1313592
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "start_line": 6,
+          "end_line": 6,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The test script's header comment still lists the old stubs and leaves out the new herdr-app and hc stubs.",
+          "evidence": "# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands",
+          "suggested_fix": "Name `herdr-app` and `hc` in the list of stubs.",
+          "explanation": "CLAUDE.md line 37 and the Test section of launcher.md now list herdr-app and hc as stubs, but this header comment does not.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands",
+            "# herdr-app and hc stubs: the Herdr window program and its core program."
+          ],
+          "rationale": "The header comment at line 6 omits the new herdr-app and hc stubs that this change added to the same file. It is a minor documentation staleness.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands",
+            "# herdr-app and hc stubs: the Herdr window program and its core program."
+          ],
+          "rationale": "The header comment at line 6 omits the new herdr-app and hc stubs that this change added to the same file. It is a minor documentation staleness.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 590,
+          "end_line": 592,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The branch where herdr-app opens a tab but prints no valid terminal address has no test. The stubs always return a valid `t9`.",
+          "evidence": "raise Fail(TERMINAL_STEP, \"launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s\" % worktree)",
+          "suggested_fix": "Add a stub switch that makes `tab.new` print `{}` or non-JSON, and check for exit 6 and the worktree path.",
+          "explanation": "A new error path with exit 6 and a worktree left behind is not covered. The same holds for the 'printed no JSON' path in `herdr_app`.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s\" % worktree)",
+            "echo '{\"space\":\"spaNEW\",\"tab\":\"tbNEW\",\"terminal\":\"t9\"}' ;;"
+          ],
+          "rationale": "The stubs in test-launcher.sh always print a valid terminal address. No check covers a missing address or non-JSON output from tab.new. The cited line range (590-592) points at herdr_ttys rather than the raise, but the quoted code is real.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s\" % worktree)",
+            "raise HerdrError(\"herdr-app printed no JSON: %s\" % one_line(out))",
+            "echo '{\"space\":\"spaNEW\",\"tab\":\"tbNEW\",\"terminal\":\"t9\"}' ;;",
+            "echo '{\"space\":\"spaMADE\",\"tab\":\"tbNEW\",\"terminal\":\"t9\"}' ;;"
+          ],
+          "rationale": "The herdr-app stub always prints a valid terminal \"t9\" for tab.new and space.new, and no stub switch makes it print `{}` or non-JSON. So the new \"printed no terminal address\" and \"printed no JSON\" error paths in this change have no test. These are small defensive branches, so the gap is minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s\" % worktree)",
+            "raise HerdrError(\"herdr-app printed no JSON: %s\" % one_line(out))",
+            "echo '{\"space\":\"spaNEW\",\"tab\":\"tbNEW\",\"terminal\":\"t9\"}' ;;",
+            "echo '{\"space\":\"spaMADE\",\"tab\":\"tbNEW\",\"terminal\":\"t9\"}' ;;"
+          ],
+          "rationale": "The herdr-app stub always prints a valid terminal \"t9\" for tab.new and space.new, and no stub switch makes it print `{}` or non-JSON. So the new \"printed no terminal address\" and \"printed no JSON\" error paths in this change have no test. These are small defensive branches, so the gap is minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1340,
+          "end_line": 1348,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A Herdr stop that finds a `claude` process still on the tty has no test. Neither the wait before the close nor the wait for the leftover pids after it is exercised. The test sets the waits to 0 and the stub `ps` shows only a shell.",
+          "evidence": "left = wait_claude_gone(tty, a.handle) if tty else {}",
+          "suggested_fix": "Add a Herdr stop case where the stub `ps` lists a `claude` on the terminal's tty, and check the stderr line and the exit code.",
+          "explanation": "The branch that waits on `left` pids after `tab.close` is never reached by any Herdr test.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "left = wait_claude_gone(tty, a.handle) if tty else {}",
+            "wait_pids_gone(left, a.handle)",
+            "herdr_stop stop herdr:t3 --name hd-a"
+          ],
+          "rationale": "No Herdr stop test asserts the leftover-claude stderr line from wait_pids_gone or the exit code. One case (--name hd-a) does leave a claude on the tty, but it only checks the keys and the tab close, so the claim is slightly overstated but mostly right.",
+          "score": 70,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "printf '900041 1 ttys921 /bin/zsh -l\\n900042 900041 ttys921 claude --name hd-a --model opus\\n' > \"$STUB_DIR/ps-extra\"",
+            "herdr_stop stop herdr:t3 --name hd-a",
+            "left = wait_claude_gone(tty, a.handle) if tty else {}",
+            "if left:\n        wait_pids_gone(left, a.handle)"
+          ],
+          "rationale": "The Herdr test 'stop --name on the terminal of that session' puts a static `claude --name hd-a` line on ttys921 in ps-extra. That line stays after /exit, so wait_claude_gone returns a non-empty `left` and wait_pids_gone runs after tab.close. The branch is reached, so the claim that no test covers it is false. The test does not check the stderr lines, but that is a smaller gap than the one the finding claims.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "printf '900041 1 ttys921 /bin/zsh -l\\n900042 900041 ttys921 claude --name hd-a --model opus\\n' > \"$STUB_DIR/ps-extra\"",
+            "herdr_stop stop herdr:t3 --name hd-a",
+            "left = wait_claude_gone(tty, a.handle) if tty else {}",
+            "if left:\n        wait_pids_gone(left, a.handle)"
+          ],
+          "rationale": "The Herdr test 'stop --name on the terminal of that session' puts a static `claude --name hd-a` line on ttys921 in ps-extra. That line stays after /exit, so wait_claude_gone returns a non-empty `left` and wait_pids_gone runs after tab.close. The branch is reached, so the claim that no test covers it is false. The test does not check the stderr lines, but that is a smaller gap than the one the finding claims.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 486,
+          "end_line": 497,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A failure of `hc get` for `$HC_TERMINAL_ID`, and a failure of `herdr-app ls`, in the space selection of start have no test.",
+          "evidence": "rec = hc_get(own)\n    sid = ((rec or {}).get(\"labels\") or {}).get(\"herdr.space\")",
+          "explanation": "Only the not-found and no-label outcomes are tested for this path. The exit 6 outcome before any worktree is made is not.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec = hc_get(own)",
+            "raise Fail(TERMINAL_STEP, \"launcher: herdr-app ls failed: %s\" % e)"
+          ],
+          "rationale": "The start-path tests cover no HC_TERMINAL_ID and a terminal with no space label. I found no test for an `hc get` failure other than not_found, or for a `herdr-app ls` failure, in the start path. The only `hc get` failure test is for find, and the only `herdr-app ls` test is for a missing window on groups. This is a minor coverage gap on an error path.",
+          "score": 70,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec = hc_get(own)",
+            "raise Fail(TERMINAL_STEP, \"launcher: hc get %s failed: %s\" % (address, one_line(err) or herdr_error(out) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: herdr-app ls failed: %s\" % e)",
+            ": > \"$STUB_DIR/herdr-down\"",
+            "check 'start on Herdr with no window answer exits 6 with one line that names Herdr and the window, and makes no worktree' \\",
+            ": > \"$STUB_DIR/hc-get-fail-t4\""
+          ],
+          "rationale": "No start test uses hc-get-fail for $HC_TERMINAL_ID (only find does), so that half holds. The herdr-app ls half is only partly true: the window-down ls failure in start is tested for exit 6 with no worktree, and only the non-window `herdr-app ls failed` path has no test. This is a small gap in tests for an error path.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec = hc_get(own)",
+            "raise Fail(TERMINAL_STEP, \"launcher: hc get %s failed: %s\" % (address, one_line(err) or herdr_error(out) or \"exit %d\" % rc))",
+            "raise Fail(TERMINAL_STEP, \"launcher: herdr-app ls failed: %s\" % e)",
+            ": > \"$STUB_DIR/herdr-down\"",
+            "check 'start on Herdr with no window answer exits 6 with one line that names Herdr and the window, and makes no worktree' \\",
+            ": > \"$STUB_DIR/hc-get-fail-t4\""
+          ],
+          "rationale": "No start test uses hc-get-fail for $HC_TERMINAL_ID (only find does), so that half holds. The herdr-app ls half is only partly true: the window-down ls failure in start is tested for exit 6 with no worktree, and only the non-window `herdr-app ls failed` path has no test. This is a small gap in tests for an error path.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1334,
+          "end_line": 1342,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "After a failed tab.close, stop counts the close as done when the tab id is still in `herdr-app ls` but the ls entry does not list the terminal under it, so a tab that is still open is reported as closed.",
+          "evidence": "        if tab in ids and holder is not None:\n            raise Fail(TERMINAL_STEP, \"launcher: Herdr did not close the tab %s of %s (%s)\" % (tab, a.handle, e))",
+          "suggested_fix": "Treat the close as failed whenever `tab in ids`, whatever `holder` is.",
+          "explanation": "The docs say only a gone tab counts as closed, but this check also needs a holder of `ref`. A tab that is still present, with no `terminals` list or with the terminal listed under another key, becomes a silent success and leaves the tab open.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if tab in ids and holder is not None:",
+            "reads `herdr-app ls` again: a tab that is gone counts as closed, and any"
+          ],
+          "rationale": "After a failed close, the code raises only when the tab id is in `ls` and a terminal list names `ref` under it. A tab still in `ls` but with no matching terminal entry is treated as closed, which contradicts the docs: only a gone tab counts as closed. This only happens after a failed close, and only if `ls` omits or renames the terminal list.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if tab in ids and holder is not None:",
+            "if isinstance(t, dict) and t.get(\"terminal\") == ref and holder is None:",
+            "reads `herdr-app ls` again: a tab that is gone counts as closed, and any\n  other tab stays a failure with exit 6."
+          ],
+          "rationale": "After a failed tab.close, the check only raises when the tab id is in ls and some tab still lists the terminal. A tab that is still present but does not list `ref` (no `terminals` key, or a different schema) is quietly treated as closed. The doc says only a gone tab counts as closed. This only matters after a failed close, which is an unusual path.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if tab in ids and holder is not None:",
+            "if isinstance(t, dict) and t.get(\"terminal\") == ref and holder is None:",
+            "reads `herdr-app ls` again: a tab that is gone counts as closed, and any\n  other tab stays a failure with exit 6."
+          ],
+          "rationale": "After a failed tab.close, the check only raises when the tab id is in ls and some tab still lists the terminal. A tab that is still present but does not list `ref` (no `terminals` key, or a different schema) is quietly treated as closed. The doc says only a gone tab counts as closed. This only matters after a failed close, which is an unusual path.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 1233,
+          "end_line": 1239,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "In focus, a Fail raised by `hc_get(ref)` inside the `except HerdrError` handler is not caught by the sibling `except Fail` clause, so its line does not name the handle.",
+          "evidence": "            if \"no running terminal\" in str(e) or hc_get(ref) is None:\n                raise Fail(BAD_HANDLE, \"launcher: no running Herdr terminal %s (%s)\" % (ref, e))\n            raise Fail(TERMINAL_STEP, \"launcher: Herdr could not focus %s (%s)\" % (a.handle, e))\n        except Fail as f:",
+          "suggested_fix": "Wrap the `hc_get(ref)` call in its own try/except Fail that appends the handle.",
+          "explanation": "An exception raised inside one except clause skips the other except clauses of the same try, so an hc get failure here exits 6 with a line that leaves out the handle, against the launcher.md contract.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if \"no running terminal\" in str(e) or hc_get(ref) is None:",
+            "except Fail as f:\n            raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))"
+          ],
+          "rationale": "A Fail raised by hc_get inside the `except HerdrError` body is not handled by the sibling `except Fail`, so the \\\"the handle is ...\\\" suffix is missing. The line still carries the terminal address from hc_get's own message, and the path is rare, so the impact is small.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            if \"no running terminal\" in str(e) or hc_get(ref) is None:",
+            "        except Fail as f:\n            raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))",
+            "        raise Fail(TERMINAL_STEP, \"launcher: hc get %s failed: %s\" % (address, one_line(err) or herdr_error(out) or \"exit %d\" % rc))",
+            "        try:\n            ids, holder = herdr_tab_ids(ref)\n        except Fail as f:\n            raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))"
+          ],
+          "rationale": "The claim is correct: in Python, a Fail raised inside the `except HerdrError` clause skips the sibling `except Fail`, so an hc get failure exits 6 without the \"; the handle is herdr:…\" suffix. herdr_stop wraps the same kind of call in a nested try, so focus is inconsistent with it. The impact is small because the hc_get line already names the terminal address, and launcher.md's rule that the line names the handle covers herdr-app failures, not hc failures.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            if \"no running terminal\" in str(e) or hc_get(ref) is None:",
+            "        except Fail as f:\n            raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))",
+            "        raise Fail(TERMINAL_STEP, \"launcher: hc get %s failed: %s\" % (address, one_line(err) or herdr_error(out) or \"exit %d\" % rc))",
+            "        try:\n            ids, holder = herdr_tab_ids(ref)\n        except Fail as f:\n            raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))"
+          ],
+          "rationale": "The claim is correct: in Python, a Fail raised inside the `except HerdrError` clause skips the sibling `except Fail`, so an hc get failure exits 6 without the \"; the handle is herdr:…\" suffix. herdr_stop wraps the same kind of call in a nested try, so focus is inconsistent with it. The impact is small because the hc_get line already names the terminal address, and launcher.md's rule that the line names the handle covers herdr-app failures, not hc failures.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 548,
+          "end_line": 550,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "When the caller's space id is missing from `herdr-app ls`, `tab_group` is set to the space id, not to a name. A later `--group <tab_group>` then makes a new space named after the id rather than reusing that space.",
+          "evidence": "    for sp in spaces:\n        if sp.get(\"id\") == sid:\n            return sid, sp.get(\"name\") or sid\n    return sid, sid",
+          "explanation": "`--group` matches spaces by name, so an id that is reported as the group name does not round-trip and leads to a duplicate space.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    for sp in spaces:\n        if sp.get(\"id\") == sid:\n            return sid, sp.get(\"name\") or sid\n    return sid, sid"
+          ],
+          "rationale": "The fallback does return the space id as the group name, but it is used only on an inconsistent `ls` versus label state, and the current start still works via tab.new. A duplicate space needs the orchestrator to record the printed group and pass it back as `--group`.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    for sp in spaces:\n        if sp.get(\"id\") == sid:\n            return sid, sp.get(\"name\") or sid\n    return sid, sid",
+            "            if sp.get(\"name\") == a.group and isinstance(sp.get(\"id\"), str):\n                return sp[\"id\"], a.group\n        return None, a.group",
+            "    return \"herdr:\" + term, group",
+            "                \"tab_group\": group,"
+          ],
+          "rationale": "The claim is correct. When the caller's space id is missing from `ls`, or the space has no name, `herdr_target` returns the id as the group, and `open_tab` prints that value as `tab_group`. `--group` matches spaces by name only, so passing that value back makes a new space instead of reusing this one. The path is unusual because the caller's own space normally appears in `ls`, and `tab.new` on a missing space would probably fail anyway, so the practical impact is small.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    for sp in spaces:\n        if sp.get(\"id\") == sid:\n            return sid, sp.get(\"name\") or sid\n    return sid, sid",
+            "            if sp.get(\"name\") == a.group and isinstance(sp.get(\"id\"), str):\n                return sp[\"id\"], a.group\n        return None, a.group",
+            "    return \"herdr:\" + term, group",
+            "                \"tab_group\": group,"
+          ],
+          "rationale": "The claim is correct. When the caller's space id is missing from `ls`, or the space has no name, `herdr_target` returns the id as the group, and `open_tab` prints that value as `tab_group`. `--group` matches spaces by name only, so passing that value back makes a new space instead of reusing this one. The path is unusual because the caller's own space normally appears in `ls`, and `tab.new` on a missing space would probably fail anyway, so the practical impact is small.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6027718516,
+      "review_url": "https://github.com/jerridan/crew/pull/176#pullrequestreview-6027718516",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137939330645
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 1334,
+        "end_line": 1342,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "After a failed tab.close, stop counts the close as done when the tab id is still in `herdr-app ls` but the ls entry does not list the terminal under it, so a tab that is still open is reported as closed.",
+        "evidence": "        if tab in ids and holder is not None:\n            raise Fail(TERMINAL_STEP, \"launcher: Herdr did not close the tab %s of %s (%s)\" % (tab, a.handle, e))",
+        "suggested_fix": "Treat the close as failed whenever `tab in ids`, whatever `holder` is.",
+        "explanation": "The docs say only a gone tab counts as closed, but this check also needs a holder of `ref`. A tab that is still present, with no `terminals` list or with the terminal listed under another key, becomes a silent success and leaves the tab open.",
+        "needs_context": true,
+        "fingerprint": "63a997f25a94805a",
+        "severity": "suggestion",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if tab in ids and holder is not None:",
+            "if isinstance(t, dict) and t.get(\"terminal\") == ref and holder is None:",
+            "reads `herdr-app ls` again: a tab that is gone counts as closed, and any\n  other tab stays a failure with exit 6."
+          ],
+          "rationale": "After a failed tab.close, the check only raises when the tab id is in ls and some tab still lists the terminal. A tab that is still present but does not list `ref` (no `terminals` key, or a different schema) is quietly treated as closed. The doc says only a gone tab counts as closed. This only matters after a failed close, which is an unusual path.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "span_text": "except HerdrError as e: # A close that failed is no failure when the tab is gone. Read ls for # that; never match the error text. try: ids, holder = herdr_tab_ids(ref) except Fail as f: raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle)) if tab in ids and holder is not None: raise Fail(TERMINAL_STEP, \"launcher: Herdr did not close the tab %s of %s (%s)\" % (tab, a.handle, e))",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-launcher.sh",
+        "start_line": 6,
+        "end_line": 6,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The test script's header comment still lists the old stubs and leaves out the new herdr-app and hc stubs.",
+        "evidence": "# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands",
+        "suggested_fix": "Name `herdr-app` and `hc` in the list of stubs.",
+        "explanation": "CLAUDE.md line 37 and the Test section of launcher.md now list herdr-app and hc as stubs, but this header comment does not.",
+        "needs_context": false,
+        "fingerprint": "d5b20a1b86253b84",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands",
+            "# herdr-app and hc stubs: the Herdr window program and its core program."
+          ],
+          "rationale": "The header comment at line 6 omits the new herdr-app and hc stubs that this change added to the same file. It is a minor documentation staleness.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "# It puts stub `tmux`, `osascript`, `uv`, `claude`, `ps` and `lsof` commands",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 590,
+        "end_line": 592,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The branch where herdr-app opens a tab but prints no valid terminal address has no test. The stubs always return a valid `t9`.",
+        "evidence": "raise Fail(TERMINAL_STEP, \"launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s\" % worktree)",
+        "suggested_fix": "Add a stub switch that makes `tab.new` print `{}` or non-JSON, and check for exit 6 and the worktree path.",
+        "explanation": "A new error path with exit 6 and a worktree left behind is not covered. The same holds for the 'printed no JSON' path in `herdr_app`.",
+        "needs_context": true,
+        "fingerprint": "5aad2cb14ed5b75f",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(TERMINAL_STEP, \"launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s\" % worktree)",
+            "raise HerdrError(\"herdr-app printed no JSON: %s\" % one_line(out))",
+            "echo '{\"space\":\"spaNEW\",\"tab\":\"tbNEW\",\"terminal\":\"t9\"}' ;;",
+            "echo '{\"space\":\"spaMADE\",\"tab\":\"tbNEW\",\"terminal\":\"t9\"}' ;;"
+          ],
+          "rationale": "The herdr-app stub always prints a valid terminal \"t9\" for tab.new and space.new, and no stub switch makes it print `{}` or non-JSON. So the new \"printed no terminal address\" and \"printed no JSON\" error paths in this change have no test. These are small defensive branches, so the gap is minor.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "_, hc = herdr_programs(need_app=False) rc, out, err = run([hc, \"ls\", \"--json\"], timeout=60) obj = herdr_json(out)",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 1233,
+        "end_line": 1239,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "In focus, a Fail raised by `hc_get(ref)` inside the `except HerdrError` handler is not caught by the sibling `except Fail` clause, so its line does not name the handle.",
+        "evidence": "            if \"no running terminal\" in str(e) or hc_get(ref) is None:\n                raise Fail(BAD_HANDLE, \"launcher: no running Herdr terminal %s (%s)\" % (ref, e))\n            raise Fail(TERMINAL_STEP, \"launcher: Herdr could not focus %s (%s)\" % (a.handle, e))\n        except Fail as f:",
+        "suggested_fix": "Wrap the `hc_get(ref)` call in its own try/except Fail that appends the handle.",
+        "explanation": "An exception raised inside one except clause skips the other except clauses of the same try, so an hc get failure here exits 6 with a line that leaves out the handle, against the launcher.md contract.",
+        "needs_context": false,
+        "fingerprint": "26d6b18226687958",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "            if \"no running terminal\" in str(e) or hc_get(ref) is None:",
+            "        except Fail as f:\n            raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))",
+            "        raise Fail(TERMINAL_STEP, \"launcher: hc get %s failed: %s\" % (address, one_line(err) or herdr_error(out) or \"exit %d\" % rc))",
+            "        try:\n            ids, holder = herdr_tab_ids(ref)\n        except Fail as f:\n            raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))"
+          ],
+          "rationale": "The claim is correct: in Python, a Fail raised inside the `except HerdrError` clause skips the sibling `except Fail`, so an hc get failure exits 6 without the \"; the handle is herdr:…\" suffix. herdr_stop wraps the same kind of call in a nested try, so focus is inconsistent with it. The impact is small because the hc_get line already names the terminal address, and launcher.md's rule that the line names the handle covers herdr-app failures, not hc failures.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "except HerdrError as e: # Exit 7 only when Herdr says the terminal is unknown. if \"no running terminal\" in str(e) or hc_get(ref) is None: raise Fail(BAD_HANDLE, \"launcher: no running Herdr terminal %s (%s)\" % (ref, e)) raise Fail(TERMINAL_STEP, \"launcher: Herdr could not focus %s (%s)\" % (a.handle, e)) except Fail as f: raise Fail(f.code, \"%s; the handle is %s\" % (f.line, a.handle))",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 548,
+        "end_line": 550,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "When the caller's space id is missing from `herdr-app ls`, `tab_group` is set to the space id, not to a name. A later `--group <tab_group>` then makes a new space named after the id rather than reusing that space.",
+        "evidence": "    for sp in spaces:\n        if sp.get(\"id\") == sid:\n            return sid, sp.get(\"name\") or sid\n    return sid, sid",
+        "explanation": "`--group` matches spaces by name, so an id that is reported as the group name does not round-trip and leads to a duplicate space.",
+        "needs_context": true,
+        "fingerprint": "cdc35005a1639695",
+        "severity": "nit",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    for sp in spaces:\n        if sp.get(\"id\") == sid:\n            return sid, sp.get(\"name\") or sid\n    return sid, sid",
+            "            if sp.get(\"name\") == a.group and isinstance(sp.get(\"id\"), str):\n                return sp[\"id\"], a.group\n        return None, a.group",
+            "    return \"herdr:\" + term, group",
+            "                \"tab_group\": group,"
+          ],
+          "rationale": "The claim is correct. When the caller's space id is missing from `ls`, or the space has no name, `herdr_target` returns the id as the group, and `open_tab` prints that value as `tab_group`. `--group` matches spaces by name only, so passing that value back makes a new space instead of reusing this one. The path is unusual because the caller's own space normally appears in `ls`, and `tab.new` on a missing space would probably fail anyway, so the practical impact is small.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "span_text": "if sp.get(\"id\") == sid: return sid, sp.get(\"name\") or sid return sid, sid",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6989,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 36469,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0036574000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1104,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 35983,
+            "webSearchRequests": 0,
+            "costUSD": 0.1551022,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1587596
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6435,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27652,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027757000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 640,
+            "cacheReadInputTokens": 10060,
+            "cacheCreationInputTokens": 27162,
+            "webSearchRequests": 0,
+            "costUSD": 0.232116,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 310,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.23489169999999998
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6380,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27658,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027763,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 484,
+            "cacheReadInputTokens": 47856,
+            "cacheCreationInputTokens": 27639,
+            "webSearchRequests": 0,
+            "costUSD": 0.24038720000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 116,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.24316350000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 9125,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27646,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027751000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 914,
+            "cacheReadInputTokens": 47456,
+            "cacheCreationInputTokens": 27767,
+            "webSearchRequests": 0,
+            "costUSD": 0.2499232,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 277,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2526983
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3486,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23040,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.002317,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 454,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22550,
+            "webSearchRequests": 0,
+            "costUSD": 0.09518070000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0974977
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 13739,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 50281,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.005039600000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1754,
+            "cacheReadInputTokens": 133482,
+            "cacheCreationInputTokens": 55470,
+            "webSearchRequests": 0,
+            "costUSD": 0.2527802,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1218,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.25781980000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 14284,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27648,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027753,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1882,
+            "cacheReadInputTokens": 11119,
+            "cacheCreationInputTokens": 27162,
+            "webSearchRequests": 0,
+            "costUSD": 0.1285839,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1035,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1313592
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6324,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21744,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021869,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 848,
+            "cacheReadInputTokens": 56596,
+            "cacheCreationInputTokens": 24413,
+            "webSearchRequests": 0,
+            "costUSD": 0.1118036,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 75,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1139905
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6322,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21674,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021793999999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 848,
+            "cacheReadInputTokens": 56412,
+            "cacheCreationInputTokens": 25954,
+            "webSearchRequests": 0,
+            "costUSD": 0.1179492,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 138,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1201286
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7115,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21871,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021981000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 924,
+            "cacheReadInputTokens": 56951,
+            "cacheCreationInputTokens": 26553,
+            "webSearchRequests": 0,
+            "costUSD": 0.1211591,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 236,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1233572
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 38994,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27658,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027763,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 4099,
+            "cacheReadInputTokens": 140006,
+            "cacheCreationInputTokens": 41820,
+            "webSearchRequests": 0,
+            "costUSD": 0.4445732,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 2501,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.44734950000000007
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10625,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21732,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021832,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1210,
+            "cacheReadInputTokens": 60323,
+            "cacheCreationInputTokens": 31032,
+            "webSearchRequests": 0,
+            "costUSD": 0.28454460000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 157,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.28672780000000003
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13369,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21879,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021989,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1501,
+            "cacheReadInputTokens": 90136,
+            "cacheCreationInputTokens": 29328,
+            "webSearchRequests": 0,
+            "costUSD": 0.28270320000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 396,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.28490210000000005
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4246,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22041,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022161,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 536,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21551,
+            "webSearchRequests": 0,
+            "costUSD": 0.09200470000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 170,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.09422080000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 17823,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21672,
+            "outputTokens": 249,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022917000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 226,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 1694,
+            "cacheReadInputTokens": 129573,
+            "cacheCreationInputTokens": 33113,
+            "webSearchRequests": 0,
+            "costUSD": 0.32473860000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 586,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.32703030000000005
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6764,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21757,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021887,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 867,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21267,
+            "webSearchRequests": 0,
+            "costUSD": 0.0941787,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 267,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0963674
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8728,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21959,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022074,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1078,
+            "cacheReadInputTokens": 56591,
+            "cacheCreationInputTokens": 22764,
+            "webSearchRequests": 0,
+            "costUSD": 0.1075071,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 301,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10971449999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 5,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13681,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22049,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022169,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1246,
+            "cacheReadInputTokens": 56667,
+            "cacheCreationInputTokens": 22698,
+            "webSearchRequests": 0,
+            "costUSD": 0.2178614,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 419,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2200783
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 6,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13178,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21757,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0021887,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1358,
+            "cacheReadInputTokens": 58131,
+            "cacheCreationInputTokens": 24417,
+            "webSearchRequests": 0,
+            "costUSD": 0.2341462,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 468,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2363349
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 4,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 15258,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 21939,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022053999999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1322,
+            "cacheReadInputTokens": 86698,
+            "cacheCreationInputTokens": 26103,
+            "webSearchRequests": 0,
+            "costUSD": 0.25263559999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 410,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.254841
+      }
+    ],
+    "total_cost_usd": 4.091232700000001,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 50,
+      "gather": 305,
+      "scope": 14,
+      "triage": 8005,
+      "find_verify": 66086,
+      "merge": 11
+    },
+    "errors": []
+  }
+}

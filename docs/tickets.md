@@ -3665,3 +3665,34 @@ own spec. No other run has used it.
 
 Read first: design §15.118 and §15.148;
 `skills/project-lead/SKILL.md`, "Have the spec reviewed".
+
+## T89 — Run the split critic for one round
+
+Status: done 2026-11-23
+Depends on: T88
+Stage: 8 (design §15.150)
+
+The principal decided that the split critic runs one round, as T88 did for the
+spec critic. Records show `re-split needed` in 16 of 33 reports at round 1, 3
+of 16 at round 2 and 1 of 4 at round 3, and a `blocking` finding in 6 of 8
+counted reports at round 1 and 1 of 6 at round 2. After the one report, the
+project lead adjudicates each finding, applies every accepted one to
+`split.md` itself, `blocking` ones included, and logs each label and each
+decline in one `decisions.md` entry. The split then goes to dispatch. A
+re-plan is a new split with its own one round. A resume adjudicates a report
+on disk and dispatches no critic. A `-r2` report in an older record stays
+valid.
+
+Scope: `skills/project-lead/references/full-path.md`, "Have the split
+reviewed"; `skills/project-lead/SKILL.md`, the `blocking` row of the label
+table; `references/record-format.md`; `agents/split-critic.md`; a comment in
+`scripts/crew-stats.py`; `CLAUDE.md`; design §15.150.
+
+Out of scope: the spec critic, the skeptical review, every verdict string,
+the split's four invariants and `crew-stats.py`'s output.
+
+Unexercised: no run has used the one-round rule for the split critic. Only a
+read of the files has checked it.
+
+Read first: design §15.148 and §15.150; `skills/project-lead/references/full-path.md`,
+"Have the split reviewed".

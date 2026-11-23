@@ -8280,7 +8280,8 @@ Deliberately different:
      `[Nit]` on the spec is a wording fix. The project lead applies it itself,
      with no writer and no critic round. The same holds for a split-critic
      round with no `[Critical]` finding. No run has exercised the cap.
-     §15.148 replaces the two-round cap with one round.
+     §15.148 replaces the two-round cap with one round, and §15.150 does the
+     same for the split critic.
 
 119. **Fix rounds patched the cited line only — 2026-10-25, T79.** Issue #116.
      Four records fixed one defect class in three successive rounds.
@@ -9895,6 +9896,8 @@ Deliberately different:
      lead applied all 10 to `spec.md` with no second round. No other run has
      used the one-round rule.
 
+     §15.150 closes this open question.
+
 149. **The plan review — 2026-11-23.** Issue 170. Before this entry, nobody
      read the design of a run before its code existed. The IC wrote its plan
      and started at once. The spec critic checks the form of the spec, and
@@ -9961,3 +9964,46 @@ Deliberately different:
      run with five or six plans can plausibly take three to five minutes. A
      timeout stays a skip that the hand-over names, because a longer wait
      holds every IC idle.
+
+150. **The split critic runs one round — 2026-11-23, T89.** The principal
+     decided that the split critic runs one round, as §15.148 did for the
+     spec critic. "Have the split reviewed" in `full-path.md` allowed up to
+     three re-splits, and a round with a `blocking` finding sent the split
+     back for a fix and a new critic round. The records give these figures:
+
+     - 17 of 33 splits ended at round 1, 12 at round 2 and 4 at round 3.
+     - `re-split needed` is the verdict of 16 of 33 reports at round 1,
+       3 of 16 at round 2 and 1 of 4 at round 3.
+     - Of the reports with a count line, 6 of 8 at round 1 hold a `blocking`
+       finding (12 blocking findings), against 1 of 6 at round 2 (1 blocking
+       finding).
+
+     So a second round finds a blocker in 1 report of 6, from a sample of 6.
+     The principal accepted the small sample that §15.148 named.
+
+     The new rule: after the one critic report, the project lead adjudicates
+     and labels each finding as before, applies every finding it accepts to
+     `split.md` itself, `blocking` ones included, and writes one
+     `decisions.md` entry, `Split critic <deliverable-id> r<n>:
+     adjudication`, with each label and the reason for each decline. The
+     split then goes to dispatch. No second critic round, no cap of three
+     re-splits and no question to the principal about whether to go on
+     follows. The `unsure` label still sends one question.
+
+     A re-plan (§10) is a new split and gets its own one round, at the next
+     `<n>`. A critic that leaves no report produced no round, and the project
+     lead dispatches it at the next reserved number. A resume adjudicates a
+     report on disk for the current split when `decisions.md` holds no
+     adjudication of it, and dispatches no critic. A `-r2` or `-r3` report in
+     an older record is valid history, and `crew-stats.py` still counts it.
+     The two verdict strings, `dispatchable` and `re-split needed`, stay,
+     because `crew-stats.py` and old records read them.
+
+     Files changed: `skills/project-lead/references/full-path.md` ("Have the
+     split reviewed"), `SKILL.md` (the `blocking` row of the label table),
+     `references/record-format.md`, `agents/split-critic.md`, a comment in
+     `skills/project-lead/scripts/crew-stats.py`, and `CLAUDE.md`. The spec
+     critic, the skeptical review and the split's four invariants are
+     unchanged.
+
+     No run has exercised the one-round rule for the split critic.

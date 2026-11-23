@@ -360,9 +360,10 @@ not re-run is a claim. Leave this rule only when every check there passes.
 accept one, take it through "Integrate" first: the merge, and the suite green
 on the deliverable branch or the no-suite outcome. Only then, if that
 territory has another package in `split.md`, send the IC its next one. The
-message says that the package's plan is already written and reviewed, and
-names each accepted plan review finding on that package that no message has
-sent yet. A package dispatched over an unmerged predecessor puts its own work
+message says that the package's plan is already written. It says the plan
+was reviewed only when `run.plan_review.outcome` is `ran` and the plan was on
+disk for that review. It names each accepted plan review finding on that
+package that no message has sent yet. A package dispatched over an unmerged predecessor puts its own work
 on a base you have not proved, and a red suite then names two packages instead
 of one.
 

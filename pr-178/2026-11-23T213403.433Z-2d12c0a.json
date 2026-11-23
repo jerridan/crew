@@ -1,0 +1,172 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 178,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Show the full text of board entries and scroll the board pane",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/178"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "cf1d30a7cafb172df3bfb26a0ce53606b006131e",
+    "head": "2d12c0a7aed0fa3b10edfd0a0e52f6766dcb76ea",
+    "started_at": "2026-11-23T21:34:03.433Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Show the full text of board entries and scroll the board pane\n\n## Summary\n\nThe orchestrator board pane now shows the whole text of each item that needs you, and of its recommendation: long text wraps onto more lines instead of being cut at the right edge. When the board is longer than the pane, the pane shows one page of it with a dim line at the top or bottom that says how many lines are out of view. Type `u`, `d`, `t` or `b` and Enter in the `Row` input to go up a page, down a page, to the top or to the bottom. A row number and Enter still brings that implementer's tab to the front.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/orchestrator-record.md` \"The board\" owns the board JSON; this change does not change it.\n- `docs/design.md` §15 (new entry, number left as `NNN` for the orchestrator to assign) records the cause and the decisions.\n\n### What changed, by file\n\n- `hooks/orch-board.tsx`: wraps a Needs-you text, its `Recommended:` line, the footer and a Plan row's notes in terminal cells (wide characters count 2, long words break at a grapheme); every `Text` truncates so each element is one row; draws its own window of at most `bodyRows` rows with up and down marks, and pins the `Row` input; `u`, `d`, `t`, `b` in the `Row` input page the window; a `ui.scroll` hook moves the same window on a wheel tick or a page key. The window position is kept in the module's memory of the load, not in `$.state`, so the atom shape tag is unchanged.\n- `tests/orch-board.test.tsx`: tests for the full text at 24 to 200 columns (wide characters included), the `d` walk, the `b`-then-`u` walk at 6 to 10 rows, the marks, the Plan block at 24 columns, a short pane after a row submission, a row out of view still focusing, and one row per `Text`. Two R11 asserts that required truncation now check the wrapped lines.\n- `README.md`: \"See an orchestrator's board\" says long text wraps and names the four scroll words.\n- `docs/design.md`: a §15 entry with a placeholder number.\n\n### Constraints that applied\n\n- The plugin `version` is not bumped: the orchestrator owns it and sets it when this PR is next to merge. A change to `hooks/` needs the bump in both manifests.\n- The mod reads and writes no file (test R12 passes).\n- ASD-STE100 prose in the README and design entry.\n\n### How this was verified\n\n`CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin test`: 50 pass, 0 fail. The new tests failed on the base commit `cf1d30a` (red commits `f1168a5`, `75196dd`); the R3 focus guard passes on the base by design. A Codex plan review ran before code and its four findings are in the tests.\n\n### Known gaps\n\n- The test harness cannot raise `ui.scroll`, so the wheel and page-key hook has no test.\n- No session has opened the pane in Herdr with this change.\n- Section header lines and item-row text still truncate (out of scope).\n\n<details><summary>spec.md</summary>\n\n# Spec: board-full-text\n\nThe board pane is the mod `hooks/orch-board.tsx`, opened by `/orch-board`. Its tests are `tests/orch-board.test.tsx`. `skills/orchestrator/references/orchestrator-record.md`'s \"The board\" owns the board JSON; this work does not change the JSON.\n\n## What the pane does now (the cause)\n\n- Every cell of the pane is `Text wrap=\"truncate\"`, cut by `fit()` to its column. A `Needs you` text and its `Recommended:` line are cut at the right edge.\n- The pane draws the whole board as one tree. The engine owns the window over a pane body: the person scrolls it with the arrow, page and Home/End keys while the pane has focus, or with the wheel (`ui.scroll`). But the `Row` `Input` has `autoFocus`, so the pane opens with the focus ring on the input, where Up and Down walk the input and then move the ring, and the engine keeps the focused element in view. The window stays at the bottom of the tree, and the top of the board is out of reach. The engine API types are in `/Users/jerridan/.claude/crew/gh-155-orchestrator-board-pane-b7d1/plugin-authoring-ref/types/claude-code.d.ts` (`Pane` props at about line 12985, `SiteScroll` at about 15050, `ui.scroll` event at about 4898 and `UiScrollInput` at about 18427, `$.ui.scroll` at about 2899, `Input` `autoFocus` and `rows` at about 6525).\n\n## Requirements\n\nR1. Full text of an entry. The pane shows every character of each `Needs you` entry's `text`, and of its `Recommended: <recommend>` line, at every width the pane supports (24 columns and up). A text longer than its room continues on the next lines of the pane. No line of the pane is wider than `bodyColumns`.\n  - The break rule: a line breaks at the last space that fits; a word longer than the room breaks at the column. A continued line starts under the first character of the text column. Where the text column has fewer than `MIN_QUESTION` (15) cells of room, the text starts on the next line instead, indented by `2 * INDENT`, and wraps there.\n  - Acceptance: a test with an entry `text` and a `recommend` each longer than 3 times the pane width, at 24, 40, 60, 80 and 200 columns, joins the drawn lines of that entry, removes all whitespace from them and from the expected text, and finds the whole text and the whole recommendation. It finds no drawn line wider than the columns. This test fails on the current main.\n\nR2. Every line in reach. When the board has more lines than the pane body shows (`props.scroll.bodyRows`), the person can bring every line of the board into view, and the `Row` input stays usable.\n  - The mechanism: the mod draws its own window. The tree it returns is at most `bodyRows` lines: a window over the board lines, then the lines pinned at the bottom (the `Row` input, its result line, the footer). The mod keeps the window's first line in module memory of the load, not in `$.state`, so the atom `shape` tag does not change; a reload starts at the top. Each drawn line is one row: the mod wraps text itself (R1) and every `Text` truncates, so its line count is exact.\n  - The keys: in the `Row` input, `u` and Enter moves the window up one page, `d` and Enter down one page, `t` and Enter to the top, `b` and Enter to the bottom. These need only typing, so they work while the input has the focus and in any terminal, Herdr included. The mod also hooks `ui.scroll` for its pane: a wheel tick, an arrow or a page key that the engine raises moves the mod's window by `e.by`, and the hook does not call `next`, as the `ui.scroll` doc says for a hook that draws its own rows.\n  - A mark: when lines are above the window, its first line is a dim mark that names how many and the key (for example `↑ 12 more · u`); when lines are below, its last line names how many and the key (`↓ 30 more · d`). With the whole board in the window, no mark shows.\n  - Acceptance: a test with a board of more lines than `bodyRows` (for example `bodyRows` 10 and 30 rows) submits `d` until the window reaches the end, and every board line (each `Needs you` line, each section title, each row) is drawn in at least one view, and no view draws more than `bodyRows` lines. Then `t` brings the first board line back. This test fails on the current main.\n  - Acceptance: a test checks the marks at the top (only the lower mark), in the middle (both), at the end (only the upper mark), and on a board that fits (neither). This test fails on the current main.\n\nR3. The focus key. A row number and Enter in the `Row` input still runs `launcher.py focus <launch_tab>` for that row, for a row out of the view too.\n  - Acceptance: the existing R9 tests pass; a new test focuses a row that is out of the current view. This new test is a regression guard and passes on the current main too, because main focuses any row by its number; the charter's item (3) says \"still runs\", which reads as a guard, not as a new failure.\n\nR4. Narrow widths. At 24, 40 and 60 columns each row of a section keeps its row number, and the column rules of `layout()` (what drops below `NARROW`, what shrinks first) are unchanged for the item rows.\n  - Acceptance: the existing R11 tests pass, changed only where they assert the truncation this work removes from a `Needs you` text or recommendation.\n\nR5. The rest of the pane is unchanged: the poll, the toasts, the links, the error and missing-name lines, the R16 match with the text view at 200 columns.\n  - Acceptance: every other existing test passes unchanged.\n\nR6. The README section \"See an orchestrator's board\" tells the person how to scroll the pane.\n  - Checklist: the section names `u`, `d`, `t` and `b` with Enter in the `Row` input, says that long text wraps, and follows `.claude/rules/readme.md` (no citation, no design reasoning).\n\n## Global constraints\n\n- Only `hooks/orch-board.tsx`, `tests/orch-board.test.tsx`, `tests/fixtures/` (only if a new fixture is needed) and `README.md` change. The board JSON, `crew-orch.py` and `types/index.d.ts` change only if a stored scroll value needs a field of `OrchBoardView`; if it does, bump the atom `shape` tag as the comment above `view` says.\n- The person's terminal is the Herdr app. The `Row` input words of R2 are the way that must work there; the `ui.scroll` hook is a second way and its keys may not reach the pane in every terminal.\n- The mod reads no file and writes no file (test R12).\n- `claude plugin test`, run with `CLAUDE_CONFIG_DIR` set to a new empty directory, passes.\n- The prose follows ASD-STE100 and `skills/project-lead/references/writing-standard.md`'s \"Writing for a person\" (README) and `.claude/rules/readme.md`.\n- Do not bump the plugin version and do not add a `docs/design.md` §15 number: the orchestrator assigns both.\n\n## Non-goals\n\n- The text view, `crew-orch.py board`.\n- Wrapping the text of an item row in a group or the single items: it keeps its truncation by `layout()`.\n- A change to what the board JSON holds.\n\n</details>\n\n<details><summary>decisions.md</summary>\n\n## Which path does this goal take?\nRoute: precedent\nAnswer: change path\nCitation: the pane shows the full text of each entry, and it scrolls\nConfidence: high\nTimestamp: 2026-11-23T21:16:05Z\n\n## Does the work take the light path?\nRoute: precedent\nAnswer: no: the criterion leaves the wrap and scroll mechanism to interpret (the engine's own pane scroll is held by the autofocused Row input)\nCitation: scout-1's report and charter.md\nConfidence: high\nTimestamp: 2026-11-23T21:20:49Z\n\n## Preference sweep: what does the principal want that the repo cannot say?\nRoute: preference\nAnswer: none\nCitation: spec.md R2 leaves the scroll key to the IC's plan; a key choice is reversible in one mod file\nConfidence: medium\nQuestions: which keys scroll the pane (decided reversibly: the IC's plan names them, reviewed at the plan review)\nTimestamp: 2026-11-23T21:21:04Z\n\n## Spec critic r1: adjudication\nRoute: precedent\nAnswer: accepted all 6 and applied them to spec.md\nCitation: reviews/spec-critic-r1.md\nConfidence: high\nLabels: 1 blocking (charter fail-on-main, accepted as blocking; charter item 3 read as a regression guard), 2 suggestion (shape tag: scroll offset kept in module memory, not $.state), 3 suggestion (mechanism and keys named: own window, u/d/t/b in the Row input, ui.scroll hook), 4 suggestion (Herdr constraint added), 5 suggestion (mark test and README checklist added), 6 nit (break rule and whitespace-free join added)\nTimestamp: 2026-11-23T21:22:37Z\n\n## Plan review: which findings does the run act on?\nRoute: precedent\nAnswer: 4 of 4 findings sent to the ICs\nCitation: reviews/plan-review-r1.md\nConfidence: high\nFinding: F1 suggestion (reviewer: blocking) — sent to ic-p1-r1: board text is mostly ASCII; measure in cells and break at graphemes as the IC writes, no plan revision\nFinding: F2 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F3 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F4 blocking (reviewer: blocking) — sent to ic-p1-r1\nTimestamp: 2026-11-23T21:25:36Z\n\n## Integrate: suite and shared files\nRoute: precedent\nAnswer: suite green (50 pass); version left for the orchestrator; design.md §15 entry added with placeholder number\nCitation: claude plugin test; goal message 'Shared values'\nConfidence: high\nTimestamp: 2026-11-23T21:32:37Z\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/orch-board.tsx",
+        "hunks": 9
+      },
+      {
+        "path": "tests/orch-board.test.tsx",
+        "hunks": 5
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6029887080,
+      "review_url": "https://github.com/jerridan/crew/pull/178#pullrequestreview-6029887080",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138030390475
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 45,
+      "gather": 43,
+      "find_verify": 2,
+      "merge": 0
+    },
+    "errors": []
+  }
+}

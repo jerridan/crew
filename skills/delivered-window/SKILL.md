@@ -6,8 +6,10 @@ user-invocable: false
 
 # The delivered window
 
-This window opens at the hand-over, when `run_state` goes `delivered`.
-`simple-path.md`'s "The skeptical review" is its first round. Stay in this
+This window opens at the hand-over, when `run_state` goes `delivered`. Its
+first round is the review of the hand-over head: on a goal run, the goal
+check that `simple-path.md`'s "The goal check" enters, and on a review run,
+the first skeptical round. Stay in this
 session until the work shipped. The principal says so, or the deploy watch
 sees the deploy. A question about the change, and every later change to the
 PR, come to you (design §15.92).
@@ -41,7 +43,7 @@ what the poll leaves out. It reports every other account, the principal's too.
 state is true. The command starts from `run.watch.draft`. A poll that reads
 `isDraft` true sets its state back to true, and so does every arming, so a PR
 returned to draft can fire `ready` again. **Your own flip is never
-reported**, because `skeptical-review.md`'s "Mark the PR ready" says how.
+reported**, because `goal-check.md`'s "Mark the PR ready" says how.
 
 **A `ready` item produces one sentence** in your next message to the
 principal, that the PR is ready for review, **and nothing else.** "Mark the
@@ -50,9 +52,12 @@ PR ready" stays the only place where crew marks the PR ready.
 **A `push` item is sorted by its sha.** A `push` is a notice when its sha
 equals `run.watch.head`, `run.review_pending.head`, or the `Reviewed:` sha of
 the latest `reviews/skeptical-r<n>.md`. Any other `push` is a head move. Run
-`crew-record.py <record-dir> arm-review --head <sha>`, and the skeptical
-review runs on it, as `skeptical-review.md`'s "When the review runs" says for
-a head that moves in the delivered window. Then write `run.watch.head` with
+`crew-record.py <record-dir> arm-review --head <sha>`. On a review run, the
+skeptical review runs on it, as `skeptical-review.md`'s "When the review
+runs" says for a head that moves in the delivered window. **On a goal run, a
+head move after the goal check runs no review.** The same write arms
+nothing and lists the head as `goal-check-done` (`goal-check.md`'s "One
+round"), and no message names it. Then write `run.watch.head` with
 `crew-record.py <record-dir> run set watch.head '"<sha>"'`. A `merged` item
 in a goal run arms the deploy watch, or is the ship word under `Deploy: none`
 (see "The deploy watch"). In a `run.kind: review` run, `merged` and `closed`
@@ -296,7 +301,9 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    after the status sweep, after the final verification and after the diff
    write. Read the head at that point. It marks the package `integrated` and
    arms the review for that head in one write, so the record never holds a
-   head that is integrated and unarmed (`skeptical-review.md`).
+   head that is integrated and unarmed (`skeptical-review.md`). On a goal run
+   after its goal check, the same write lists the head instead
+   (`goal-check.md`'s "One round").
 5. **Push, and never before that write** (`record-format.md`). A
    deliverable with a PR updates it; open no second one. A branch with no
    remote, or a push the remote refuses again, skips the push and keeps the
@@ -410,12 +417,10 @@ In order:
    Run its "Verify before you believe", which greps for the pattern each
    finding named, run its "Fix rounds" where a check fails, then run its
    "Integrate" in full, with the substitution "A change request" names.
-   On a goal run, a package that answers a skeptical round whose verdict
-   after your labels is `accepted` integrates with
-   `--no-review accepted-round`. Read that verdict from the reply file's
-   `Verdict after labels:` line (`skeptical-review.md`'s "The verdict pair").
-   A round with no reply file is `accepted`. A review run arms every head
-   instead (`skeptical-review.md`'s "When the review runs"). One checkout holds
+   On a goal run, a package that answers the goal check integrates with
+   `--review-head` like any other, and no second goal check follows it
+   (`goal-check.md`'s "One round"). A review run arms every head
+   (`skeptical-review.md`'s "When the review runs"). One checkout holds
    one writer, and a group that finishes before the next one starts is a group
    a resume can tell apart. **Then complete every accepted item line
    that names this group's package**, in the reply file: the commit sha, one
@@ -462,19 +467,20 @@ In order:
 new head, so it earns no new review. It still opens a round.
 
 **Adjudicating findings from outside clears no reservation.** Only
-adjudicating the skeptical review's own report clears the `review_pending` it
-reserved (`skeptical-review.md`). A round that patches something re-points
-that reservation at the new head, which the integration does for you. A round
-that declines everything moves no head, so the reserved review runs on the
-head it already named.
+adjudicating the review's own report, the goal check's or a skeptical
+round's, clears the `review_pending` it reserved (`skeptical-review.md`). A
+round that patches something re-points that reservation at the new head,
+which the integration does for you. A round that declines everything moves
+no head, so the reserved review runs on the head it already named.
 
-**When a source stops.** On a goal run, the skeptical review stops on an
-`accepted` verdict, as `skeptical-review.md` says, and CI is quiet on a green
-run. A quiet source ends its rounds. **A source a person drives is never
-quiet.** Nothing the principal or a bot sends ends it: the window stays open.
+**When a source stops.** On a goal run, the goal check runs once, as
+`goal-check.md` says, and CI is quiet on a green run. A quiet source ends its
+rounds. **A source a person drives is never quiet.** Nothing the principal or
+a bot sends ends it: the window stays open.
 
-**At the review cap.** `skeptical-review.md` owns the cap, what it clears and
-what you tell the principal. Reaching it ends the reviews, never the window.
+**After the goal check.** `goal-check.md` owns the one-round rule and what
+you tell the principal. The goal check ends a goal run's reviews, never the
+window.
 
 ## The go-ahead gate
 
@@ -509,7 +515,7 @@ group all the way through" and "Push once", in both procedures above. Push
 nothing and post nothing on a gated round until the principal answers. A push
 carries the whole branch, so no round pushes while one waits.
 
-**A loop breaker holds, like the review cap.** A `pr-comments` or `ci` round
+**A loop breaker holds.** A `pr-comments` or `ci` round
 that takes no gate takes it when `run.rounds` already holds three rounds of
 its `source.kind`. Its report says the breaker fired.
 
@@ -538,8 +544,9 @@ and can mark any item `no reply`. When the answer lands, in this order:
 Then go on at "Push once". A principal who declines every item still gets
 every reply posted, except for an item marked `no reply`.
 
-**A wake can arrive while a skeptical review is entered.** Its patch waits
-for the review's report (`skeptical-review.md`'s "When the review runs").
+**A wake can arrive while a goal check or a skeptical round is entered.**
+Its patch waits for the review's report (`skeptical-review.md`'s "When the
+review runs").
 
 ## A round killed mid-flight
 

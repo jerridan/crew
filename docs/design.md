@@ -10197,3 +10197,29 @@ Deliberately different:
        Herdr core and not from the launcher; a Herdr terminal address after a
        restart of the core. Only the seeded test, with stub `herdr-app` and
        `hc`, ran the code.
+
+NNN. **The board pane wraps its entries and draws its own window — 2026-11-23,
+     version X.Y.Z.** The orchestrator assigns the number and the version.
+     The person who runs an orchestrator could not read the full text of a
+     `Needs you` entry, and the pane did not scroll past the top of a long
+     board.
+
+     - **Cause.** Every cell was `Text wrap="truncate"`, cut by `fit()`. The
+       engine scrolls a pane body itself, but the autofocused `Row` input holds
+       the focus ring, the engine keeps that element in view, and Up and Down
+       walk the input. So the window stayed at the bottom of the tree.
+     - **Decisions.** The mod wraps a `Needs you` text, its recommendation,
+       the footer and a Plan row's notes itself, in terminal cells, and every
+       `Text` truncates, so each element is one row. The mod draws its own
+       window of at most `bodyRows` rows: a dim mark at each edge with lines
+       beyond it, then the `Row` input, pinned. `u`, `d`, `t` and `b` with Enter
+       in the `Row` input page the window, so scrolling needs only typing, in
+       any terminal. A `ui.scroll` hook moves the same window on a wheel tick
+       or a page key. The window's first line is in the module's memory of the
+       load, not in `$.state`, so the atom `shape` stays `orch-board-1` and a
+       reload starts at the top. A Codex plan review found that a page up must
+       end where the page below starts, and that a short pane must keep a
+       board line in view; both are tested.
+     - **Unexercised.** Only `tests/orch-board.test.tsx` ran the change. The
+       harness cannot raise `ui.scroll`, so the hook has no test, and no
+       session has opened the pane in Herdr with the change.

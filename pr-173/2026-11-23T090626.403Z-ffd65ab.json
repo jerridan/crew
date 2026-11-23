@@ -1,0 +1,1181 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 173,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Run the split critic for one round",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/173"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "e27f3aa2ea9ae003456b3475f8862b125a313e3b",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-173/2026-11-23T060556.622Z-e27f3aa.json",
+      "open": [],
+      "dismissed": [],
+      "fetch_failed": false
+    },
+    "base": "42c5e8f4c5561930787960c3caec2f65908de19d",
+    "head": "ffd65abdf1b1d7d3117aa052763e0812bed87611",
+    "started_at": "2026-11-23T09:06:26.403Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Run the split critic for one round\n\n## Summary\n\nCrew's split critic now reviews a split once, the same way the spec critic does since the last change. Before, a blocking finding sent the split back for a fix and a new critic round, up to three times. Records show that a second round found a blocking problem in 1 report of 6, against 6 of 8 at round 1. Now the project lead fixes every accepted finding in the split itself, blocking ones included, logs each label and decline in one entry, and dispatches the work. A re-plan later in a run is a new split and gets its own one review.\n\n**Ticket:** [T89 — Run the split critic for one round](https://github.com/jerridan/crew/blob/main/docs/tickets.md#t89--run-the-split-critic-for-one-round)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.150 (new): the decision and its figures. It closes the open question that §15.148 left on the split critic.\n- `skills/project-lead/references/full-path.md`, \"Have the split reviewed\": owns the one-round rule, the no-report rule and the resume case for the split critic.\n- `skills/project-lead/references/record-format.md` owns the `reviews/` names.\n\n### What changed, by file\n\n- `skills/project-lead/references/full-path.md`: \"Have the split reviewed\" states one critic round per split. The project lead applies every accepted finding to `split.md`, blocking ones included, writes one `decisions.md` entry titled `Split critic <deliverable-id> r<n>: adjudication`, and the split goes to dispatch, with no second round, no cap and no question. A critic with no report is dispatched at the next reserved number. A resume adjudicates a report on disk and dispatches no critic. A re-plan gets its own one round.\n- `skills/project-lead/SKILL.md`: the label table's `blocking` row names the project lead's own edit of `split.md` for a split critic finding.\n- `skills/project-lead/references/record-format.md`: `<n>` of a split critic report counts the deliverable's critic rounds, one per split; `-r2` and `-r3` for one split in older records stay valid.\n- `agents/split-critic.md`: says no second round follows and the project lead fixes each accepted finding. Both verdict strings stay.\n- `skills/project-lead/scripts/crew-stats.py`: one comment; no code change.\n- `docs/design.md`: new §15.150; §15.148 and §15.118 point to it.\n- `docs/tickets.md`: new T89.\n- `CLAUDE.md`: Build state names T89.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.117.\n\n### Constraints that applied\n\n- Version rule: the change touches `skills/` and `agents/`, so both manifests go to 0.1.117. The orchestrator assigned the numbers by merge order: the plan review PR takes 0.1.116 and §15.149.\n- One rule, one file: `full-path.md` owns the split critic's rules; `SKILL.md`'s spec critic paragraph speaks only of the spec critic.\n- Small edits in `full-path.md`, because another change edits the path files.\n- The verdict strings stay, because `crew-stats.py` and old records read them.\n\n### How this was verified\n\n- `grep -n -i -E 'three re-splits is the cap|dispatch again' skills/project-lead/references/full-path.md` prints nothing.\n- `grep re-split skills/project-lead/SKILL.md` prints nothing.\n- `python3 -m py_compile skills/project-lead/scripts/crew-stats.py` passes, and its diff is a comment.\n- A read of each changed file against the spec's seven requirements, with PR 171's diff as the pattern.\n\n### Known gaps\n\n- No run has used the one-round rule for the split critic yet. The round 2 sample is small (6 counted reports); the user accepted it.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZgYWHHNhRSy3s6RFPj\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "agents/split-critic.md",
+        "hunks": 2
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 3
+      },
+      {
+        "path": "docs/tickets.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/full-path.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-stats.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "The change rewrites the project lead's workflow rules (agent instructions in full-path.md, SKILL.md, split-critic.md) that change agent behavior: a one-round cap, no re-split escalation, and new resume/re-dispatch semantics.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/project-lead/references/full-path.md: 'Have the split reviewed' one-round rule, resume and no-report handling",
+        "skills/project-lead/references/record-format.md: <n> numbering semantics for split-critic reports",
+        "agents/split-critic.md: one-round wording and blocking definition",
+        "skills/project-lead/SKILL.md: blocking row of the label table",
+        "docs/design.md §15.150 consistency with §15.148 and the claimed file list"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump to 0.1.117"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump to 0.1.117; must match marketplace.json"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "status text update only"
+        },
+        {
+          "file": "agents/split-critic.md",
+          "note": "agent prompt changed: one round, the project lead fixes findings itself"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new §15.150 and cross-references"
+        },
+        {
+          "file": "docs/tickets.md",
+          "note": "new ticket T89"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "blocking action now an edit of split.md, not a re-split"
+        },
+        {
+          "file": "skills/project-lead/references/full-path.md",
+          "note": "core workflow logic change: removes the three re-split cap, adds the decisions.md entry, the resume rule and the no-report rule"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "redefines <n> for split-critic report names"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-stats.py",
+          "note": "comment only"
+        }
+      ],
+      "summary": "The change makes the split critic run one round per split, as the spec critic already does (T88, §15.148). After the one report, the project lead applies every accepted finding to split.md itself, including blocking ones, logs the labels in decisions.md, and dispatches. It removes the three re-split cap and the escalation question. It adds rules for re-plans, resumes and critics that return no report, and updates the agent prompt, the label table, the record format, the design doc, the ticket and the version number."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: The change rewrites the project lead's workflow rules (agent instructions in full-path.md, SKILL.md, split-critic.md) that change agent behavior: a one-round cap, no re-split escalation, and new resume/re-dispatch semantics.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "docs/design.md",
+            "start_line": 10002,
+            "end_line": 10007,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "§15.150 lists files as changed and describes the new rule as built, but this diff changes none of them: not full-path.md, SKILL.md, record-format.md, split-critic.md, crew-stats.py or CLAUDE.md.",
+            "evidence": "Files changed: `skills/project-lead/references/full-path.md` (\"Have the",
+            "suggested_fix": "Add the edits to the files it lists, including CLAUDE.md Build state and the T89 ticket, or reword §15.150 so it does not claim they are built.",
+            "explanation": "CLAUDE.md says \"Never write about an unbuilt stage as if it runs\", and here the design doc claims behavior that the diff does not contain.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6661,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4980,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005065000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 603,
+              "cacheReadInputTokens": 14646,
+              "cacheCreationInputTokens": 14995,
+              "webSearchRequests": 0,
+              "costUSD": 0.1349652,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 137,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1354717
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 13177,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4988,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005073000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 1217,
+              "cacheReadInputTokens": 49834,
+              "cacheCreationInputTokens": 15559,
+              "webSearchRequests": 0,
+              "costUSD": 0.1588108,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 355,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1593181
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 10257,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4986,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005071,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 953,
+              "cacheReadInputTokens": 45064,
+              "cacheCreationInputTokens": 15719,
+              "webSearchRequests": 0,
+              "costUSD": 0.1538568,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 156,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1543639
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "docs/design.md",
+            "start_line": 9973,
+            "end_line": 9978,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The design entry's figures do not agree with each other: 4 splits reached round 3, but only 3 round-2 reports are counted as `re-split needed`.",
+            "evidence": "`re-split needed` is the verdict of 16 of 33 reports at round 1,\n       3 of 16 at round 2 and 1 of 4 at round 3.",
+            "explanation": "A split reaches round 3 only after a round-2 `re-split needed`, so 4 round-3 splits do not fit 3 round-2 re-split verdicts (perhaps a cap or escalation path explains it).",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 6546,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 13658,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0013743000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 865,
+              "cacheReadInputTokens": 23630,
+              "cacheCreationInputTokens": 24039,
+              "webSearchRequests": 0,
+              "costUSD": 0.10717700000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 428,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1085513
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 1489,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4990,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005075,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 69,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 11791,
+              "webSearchRequests": 0,
+              "costUSD": 0.09632779999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.09683529999999999
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 1543,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4978,
+              "outputTokens": 17,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005063,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 142,
+              "cacheReadInputTokens": 3059,
+              "cacheCreationInputTokens": 12558,
+              "webSearchRequests": 0,
+              "costUSD": 0.0519619,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 88,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0524682
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 10002,
+          "end_line": 10007,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "§15.150 lists files as changed and describes the new rule as built, but this diff changes none of them: not full-path.md, SKILL.md, record-format.md, split-critic.md, crew-stats.py or CLAUDE.md.",
+          "evidence": "Files changed: `skills/project-lead/references/full-path.md` (\"Have the",
+          "suggested_fix": "Add the edits to the files it lists, including CLAUDE.md Build state and the T89 ticket, or reword §15.150 so it does not claim they are built.",
+          "explanation": "CLAUDE.md says \"Never write about an unbuilt stage as if it runs\", and here the design doc claims behavior that the diff does not contain.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**The split critic runs one round per split.** After its report, adjudicate"
+          ],
+          "rationale": "The finding assumes the PR changes only design.md, but the diff shown is just that one file. full-path.md already holds the new one-round rule, so the listed files were changed.",
+          "score": 5,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**The split critic runs one round per split.** After its report, adjudicate",
+            "second round follows yours, so the project lead fixes each accepted finding",
+            "| `blocking` | a fix: your own edit of `spec.md` on a spec critic's finding, your own edit of `split.md` on a split critic's, or a patch-round package on the skeptical review's, or on any finding after the hand-over |",
+            "round (§15.148), and T89 did the same for the split critic (§15.150). T80",
+            "`-r2` and `-r3` for one split in an older record are valid history from the",
+            "Files changed: `skills/project-lead/references/full-path.md` (\"Have the"
+          ],
+          "rationale": "At the head commit, every file that §15.150 lists has the one-round rule in it: full-path.md, split-critic.md, the blocking row in SKILL.md, record-format.md, the crew-stats.py comment, CLAUDE.md and ticket T89. The finding read only the design.md diff, so its claim is wrong.",
+          "score": 3,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "**The split critic runs one round per split.** After its report, adjudicate",
+            "second round follows yours, so the project lead fixes each accepted finding",
+            "| `blocking` | a fix: your own edit of `spec.md` on a spec critic's finding, your own edit of `split.md` on a split critic's, or a patch-round package on the skeptical review's, or on any finding after the hand-over |",
+            "round (§15.148), and T89 did the same for the split critic (§15.150). T80",
+            "`-r2` and `-r3` for one split in an older record are valid history from the",
+            "Files changed: `skills/project-lead/references/full-path.md` (\"Have the"
+          ],
+          "rationale": "At the head commit, every file that §15.150 lists has the one-round rule in it: full-path.md, split-critic.md, the blocking row in SKILL.md, record-format.md, the crew-stats.py comment, CLAUDE.md and ticket T89. The finding read only the design.md diff, so its claim is wrong.",
+          "score": 3,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 9973,
+          "end_line": 9978,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The design entry's figures do not agree with each other: 4 splits reached round 3, but only 3 round-2 reports are counted as `re-split needed`.",
+          "evidence": "`re-split needed` is the verdict of 16 of 33 reports at round 1,\n       3 of 16 at round 2 and 1 of 4 at round 3.",
+          "explanation": "A split reaches round 3 only after a round-2 `re-split needed`, so 4 round-3 splits do not fit 3 round-2 re-split verdicts (perhaps a cap or escalation path explains it).",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "3 of 16 at round 2 and 1 of 4 at round 3."
+          ],
+          "rationale": "The figures can agree: the old rule allowed up to three re-splits. A split could also reach round 3 by other paths, such as a critic that left no report or a re-split for another reason. The verdict count is not the only route. The same figures appear in §15.148, so this is a data note, not a contradiction.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "- 17 of 33 splits ended at round 1, 12 at round 2 and 4 at round 3.",
+            "3 of 16 at round 2 and 1 of 4 at round 3.",
+            "16 of 33 round 1 reports have the verdict `re-split needed`,\n     against 3 of 16 at round 2 and 1 of 4 at round 3."
+          ],
+          "rationale": "The figures do look inconsistent: 4 splits reached round 3, but only 3 round-2 reports have the verdict `re-split needed`. Round 1 matches (16 `re-split needed` reports and 16 splits at round 2). These numbers come from production records, though, and §15.148 already had them before this change, so the PR only copies them. The gap may also have a real cause, such as a missing verdict or a round started by a `blocking` finding, so this is not worth the author's time.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": false,
+          "quotes": [
+            "- 17 of 33 splits ended at round 1, 12 at round 2 and 4 at round 3.",
+            "3 of 16 at round 2 and 1 of 4 at round 3.",
+            "16 of 33 round 1 reports have the verdict `re-split needed`,\n     against 3 of 16 at round 2 and 1 of 4 at round 3."
+          ],
+          "rationale": "The figures do look inconsistent: 4 splits reached round 3, but only 3 round-2 reports have the verdict `re-split needed`. Round 1 matches (16 `re-split needed` reports and 16 splits at round 2). These numbers come from production records, though, and §15.148 already had them before this change, so the PR only copies them. The gap may also have a real cause, such as a missing verdict or a round started by a `blocking` finding, so this is not worth the author's time.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6018940350,
+      "review_url": "https://github.com/jerridan/crew/pull/173#pullrequestreview-6018940350",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137589150888
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6513,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 7409,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0007499000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 957,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 8184,
+            "webSearchRequests": 0,
+            "costUSD": 0.04231,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0430599
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 1489,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4990,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005075,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 69,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 11791,
+            "webSearchRequests": 0,
+            "costUSD": 0.09632779999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.09683529999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 1543,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4978,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005063,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 142,
+            "cacheReadInputTokens": 3059,
+            "cacheCreationInputTokens": 12558,
+            "webSearchRequests": 0,
+            "costUSD": 0.0519619,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 88,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0524682
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6661,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4980,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005065000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 603,
+            "cacheReadInputTokens": 14646,
+            "cacheCreationInputTokens": 14995,
+            "webSearchRequests": 0,
+            "costUSD": 0.1349652,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 137,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1354717
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6546,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13658,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013743000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 865,
+            "cacheReadInputTokens": 23630,
+            "cacheCreationInputTokens": 24039,
+            "webSearchRequests": 0,
+            "costUSD": 0.10717700000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 428,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1085513
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 10257,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4986,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005071,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 953,
+            "cacheReadInputTokens": 45064,
+            "cacheCreationInputTokens": 15719,
+            "webSearchRequests": 0,
+            "costUSD": 0.1538568,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 156,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1543639
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4345,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 593,
+            "cacheReadInputTokens": 13479,
+            "cacheCreationInputTokens": 13854,
+            "webSearchRequests": 0,
+            "costUSD": 0.0627019,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 79,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 9603,
+            "outputTokens": 298,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011093000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 281,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0638112
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 13177,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4988,
+            "outputTokens": 17,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005073000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1217,
+            "cacheReadInputTokens": 49834,
+            "cacheCreationInputTokens": 15559,
+            "webSearchRequests": 0,
+            "costUSD": 0.1588108,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 355,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1593181
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7729,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10228,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010337999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1048,
+            "cacheReadInputTokens": 8734,
+            "cacheCreationInputTokens": 19501,
+            "webSearchRequests": 0,
+            "costUSD": 0.08936540000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 320,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.09039920000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 8881,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 966,
+            "cacheReadInputTokens": 27507,
+            "cacheCreationInputTokens": 15439,
+            "webSearchRequests": 0,
+            "costUSD": 0.1483574,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 133,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 9601,
+            "outputTokens": 246,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010831,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 228,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1494405
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 9705,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10230,
+            "outputTokens": 256,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011510000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 238,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1050,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9735,
+            "webSearchRequests": 0,
+            "costUSD": 0.0997614,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 581,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1009124
+      }
+    ],
+    "total_cost_usd": 1.1546317,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 49,
+      "gather": 521,
+      "scope": 15,
+      "triage": 7369,
+      "find_verify": 26583,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

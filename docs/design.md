@@ -9890,4 +9890,7 @@ Deliberately different:
      sample grows past 6 counted round 2 reports or the principal accepts
      the small sample.
 
-     No run has exercised the one-round rule.
+     The run that built this change applied the rule to its own spec once:
+     the one report held 2 `blocking` findings and 8 others, and the project
+     lead applied all 10 to `spec.md` with no second round. No other run has
+     used the one-round rule.

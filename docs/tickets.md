@@ -3660,8 +3660,8 @@ Out of scope: the split critic, `agents/split-critic.md` and `full-path.md`,
 the skeptical review and its cap, every verdict string, and `crew-stats.py`'s
 output.
 
-Unexercised: no run has used the one-round rule. Only a read of the files has
-checked it.
+Unexercised: only the run that built this change used the rule, once, on its
+own spec. No other run has used it.
 
 Read first: design §15.118 and §15.148;
 `skills/project-lead/SKILL.md`, "Have the spec reviewed".

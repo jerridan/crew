@@ -774,7 +774,7 @@ has a diagnosis to build from.
    brief, the declared file set, the worktree path, the interface contracts, the
    acceptance test, and the global constraints. A teammate inherits no
    conversation history, so the prompt must be self-contained.
-3. The plan review (§15.148). Each IC writes the plan of every package of
+3. The plan review (§15.149). Each IC writes the plan of every package of
    its territory into the record and stops. One Codex reviewer reads all the
    plans of the run together, and the project lead routes its findings and
    sends each IC the start word by message. A run continues with no review
@@ -9894,7 +9894,8 @@ Deliberately different:
      the one report held 2 `blocking` findings and 8 others, and the project
      lead applied all 10 to `spec.md` with no second round. No other run has
      used the one-round rule.
-148. **The plan review — 2026-11-23.** Issue 170. Before this entry, nobody
+
+149. **The plan review — 2026-11-23.** Issue 170. Before this entry, nobody
      read the design of a run before its code existed. The IC wrote its plan
      and started at once. The spec critic checks the form of the spec, and
      the split critic checks that packages can be dispatched. A design

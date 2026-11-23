@@ -326,6 +326,7 @@ and press Enter to bring that implementer's tab to the front.
 | A checkout of the PR's repo, with `gh` signed in as you | Start `/crew:review` inside the checkout | every `/crew:review` run |
 | iTerm2 or tmux, for `/crew:orchestrator` | iTerm2 3.7.5 or newer with its Python API turned on, and `uv` installed, for tab groups. Or start the session inside tmux | every `/crew:orchestrator` run |
 | tmux, for a pane per dispatched agent | `--teammate-mode tmux` from inside tmux; without a split-pane display mode (tmux or iTerm2) every dispatched agent runs in the sidebar | optional, every path |
+| The Codex CLI, signed in | `codex login status` passes. Without it, a run skips the plan review and says so | optional, the simple and full paths |
 | Standing instructions | `.claude/crew.md` in the repo, or `~/.claude/crew/config.md` for every repo on this machine | optional, every run |
 
 Crew never widens your permissions itself. Without the teams variable, every
@@ -349,6 +350,7 @@ under a `##` heading with one of these names:
 | `Done` | `merged` or `rolled out`. In a review run, `rolled out` makes crew wait for the deploy of the merge, or for your word under `Deploy: manual`, not for the merge alone |
 | `Branch names` | your rule for a branch name |
 | `Go-ahead` | `on` or `off`: whether crew waits for you before it pushes and replies on the PR |
+| `Plan review` | `on` or `off`: whether a reviewer reads the implementers' plans before any code is written. The default is `on` |
 | `Merge` | your own merge steps for an orchestrator, in plain words, such as "post the PR link in the review channel and wait for an approval, then use the merge queue" |
 | `Concurrency` | how many project leads an orchestrator runs at one time. Only the machine file sets it |
 | `Implementer model` | the model of each project lead that an orchestrator starts, such as `sonnet`. Only the machine file sets it |
@@ -388,6 +390,14 @@ yarn check-types-strict
    │ worktree   │  │ worktree   │  │ worktree   │
    └────────────┘  └────────────┘  └────────────┘
       │                │                │
+      │   each IC writes its plans, then stops
+      ▼                ▼                ▼
+   ┌───────────────────────────────────────────────┐
+   │ PLAN REVIEW    Codex reads all the plans      │
+   │                together, before any code      │
+   └───────────────────────────────────────────────┘
+      │                │                │
+      │   the ICs revise their plans, then build
       └────────────────┴────────────────┘
       │
       ▼
@@ -418,6 +428,18 @@ criterion, a file set disjoint from every sibling, a written interface
 contract with those siblings, and a model band. An IC works in its own
 worktree and cannot see its siblings' work, so that contract is the only
 channel between packages.
+
+Before any code is written, each IC writes the plan of each of its packages
+and stops. One reviewer, run through the Codex CLI, reads all the plans
+together as a skeptical staff engineer. The project lead labels each finding,
+and sends each IC the ones it accepts. A blocking finding makes the IC revise
+its plan before it starts. The review runs once, and a run continues without
+it when Codex is not installed, not signed in, out of quota or slow. A small item on the light
+path gets no plan review. To turn it off for one run, say:
+
+```
+Plan review: off
+```
 
 The project lead checks every package itself. It runs the acceptance test and
 the suite, and a failure sends the package back, up to five times. Review
@@ -477,6 +499,7 @@ else: every package takes the same steps.
 | Researcher | sonnet, or opus for a deep question | high |
 | Spec critic | opus | high |
 | Decomposition critic | opus | high |
+| Plan review | `gpt-6.2-sol`, through the Codex CLI | medium |
 | Skeptical review | opus | high |
 
 The project lead, the ICs and the scouts take your session's effort, so set
@@ -519,7 +542,7 @@ python3 skills/project-lead/scripts/crew-stats.py
 ```
 
 It prints cost per band, fix rounds, promotions, councils, reviews, the
-review catch rate and the finding labels the reviewers proposed for each
+plan reviews run and skipped, the review catch rate and the finding labels the reviewers proposed for each
 review kind, over every record.
 
 ## Roles
@@ -532,6 +555,7 @@ review kind, over every record.
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |
 | Decomposition critic | Reviews the work split before any IC starts. |
+| Plan review | Reads all the implementers' plans together before any code is written, through the Codex CLI. |
 | Skeptical review | Reads the whole diff against your goal once the work is handed over, in a checkout of its own. |
 | Researcher | Answers one open question across several hops, with citations. |
 | Scout | Answers one lookup for the project lead, then exits. |

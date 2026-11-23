@@ -774,11 +774,11 @@ has a diagnosis to build from.
    brief, the declared file set, the worktree path, the interface contracts, the
    acceptance test, and the global constraints. A teammate inherits no
    conversation history, so the prompt must be self-contained.
-3. Require plan approval. Today this means the fallback: the IC plans in
-   read-only mode, writes its plan into the record, and waits for the project
-   lead's go-ahead by message — see section 12's `PROBE PENDING` entry on plan
-   approval. Native plan approval is the pending upgrade; swap to it once that
-   probe confirms it works. Autonomous either way.
+3. The plan review (§15.148). Each IC writes the plan of every package of
+   its territory into the record and stops. One Codex reviewer reads all the
+   plans of the run together, and the project lead routes its findings and
+   sends each IC the start word by message. A run continues with no review
+   when Codex cannot run. Autonomous either way.
 4. The IC implements test-first, **commits after every green step**, self-reviews,
    and writes its report into the record.
 5. The project lead verifies the worktree itself — no review agent runs over

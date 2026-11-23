@@ -16,6 +16,8 @@ deploy signal of `pr-watch.sh`. `skills/orchestrator/scripts/launcher.py` and
 `iterm2-tabs.py` are code too, and `test-launcher.sh` tests them with stub
 commands. `skills/orchestrator/scripts/crew-usage.py` is code too, and
 `test-crew-usage.py` beside it tests it with a stub `claude`.
+`skills/project-lead/scripts/test-crew-stats.py` tests `crew-stats.py`
+against seeded records.
 `claude plugin test`, run with `CLAUDE_CONFIG_DIR` set to a new empty
 directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 `hooks/orch-board.tsx`.
@@ -39,7 +41,7 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
 | `skills/orchestrator/scripts/crew-usage.py`, `skills/orchestrator/references/usage.md` | the plan usage figures of the account in `<record-root>/usage.json`: the status line wrapper, the fresh reading, `show`, `check`, `watch` and `wait`; the reference that owns the figures, the levels and the slow-down | the orchestrator, from Bash and `Monitor`; a project lead with a `Usage limit:` charter line; the launcher's `--settings` value |
 | `skills/orchestrator/scripts/test-crew-usage.py` | the seeded test of `crew-usage.py`, with a stub `claude` | a person |
-| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, a `kind` column and the untouched-draft rate over every record | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, the plan reviews run and skipped with their finding labels, a `kind` column and the untouched-draft rate over every record; `test-crew-stats.py` is the seeded test of `crew-stats.py` | the project lead, from Bash; a person runs `crew-stats.py` |
 | `skills/orchestrator/SKILL.md` | the `/crew:orchestrator` entry point: the intake, the split, the launch, the goal message, the inbox, the merge, the wait and the close of each item of many project-lead sessions | its skill trigger |
 | `skills/orchestrator/references/resume-and-close.md` | the resume of an orchestrator after a compaction or a restart, the close of an item and the close of a run | the orchestrator session |
 | `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
@@ -59,7 +61,7 @@ is `$CREW_RECORD_ROOT` or, by default, `~/.claude/crew/`.
 ## Build state
 
 Stages 0 through 7 are built: seven agents — the six workers and the
-read-only `crew:scout` — fourteen references, both hooks and all four of
+read-only `crew:scout` — sixteen references, both hooks and all four of
 `/crew:project-lead`'s paths. The **simple path** runs one package on
 one branch under one named agent; the **full path** runs several packages
 in worktrees under named IC teammates, with a merge per package and
@@ -141,6 +143,11 @@ implementer feeds one shared file, a fresh reading covers idle time, and
 (§15.141). The wrapper and the fresh reading ran live once each. No
 orchestrator run has used them yet.
 
+The plan review is built (issue 170): every simple-path and full-path run
+stops its ICs after their plans, and Codex reviews all the plans together
+before any code. This run's own two later packages ran it once. Only
+`test-crew-stats.py` has run its `crew-stats.py` report.
+
 Subagent mode is built and on trial: with the teams flag unset, every
 dispatch is a background subagent. One probe passed its four checks, and no
 crew run has used the mode yet (§15.131).
@@ -196,6 +203,10 @@ Each reference owns one subject and is canonical for it:
 - `band-rubric.md` — the model a package gets, and when to promote.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
 - `review-output.md` — the shape every review reports its findings in.
+- `plan-review.md` — the plan review: the planning stop, the Codex run, the
+  skips, the adjudication, the start word and its resume.
+- `plan-reviewer.md` — the plan reviewer's own instructions, which the
+  project lead pipes into `codex exec` and does not follow.
 - `skeptical-review.md` — the review of the finished diff, and when it runs.
 - `review-runner.md` — the mechanics of a headless review: the detached
   worktree, the instructions file, the runner, the checks and the session id.

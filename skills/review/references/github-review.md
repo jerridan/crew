@@ -115,7 +115,7 @@ the record as a proposed new goal.
 ## The reviewer paragraph
 
 On a review run, append this paragraph to the instructions file, after the
-block `review-runner.md` gives. Replace the line in angle brackets with
+review block `review-runner.md` gives. Replace the line in angle brackets with
 those five paragraphs of `severity-rubric.md`, in that order, copied from the
 file as it stands:
 

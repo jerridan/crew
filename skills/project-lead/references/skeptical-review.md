@@ -1,30 +1,30 @@
 # Skeptical review
 
-This file owns the review of the finished diff, on every path (design
-§15.94d). It first runs at the hand-over, as the first round of the delivered
-window, and again on each later branch head: "When the review runs" below
-owns that, and nothing else decides it. `simple-path.md`'s "The skeptical
-review" is where a run enters the step, and `full-path.md` points there.
-`review-runner.md` owns the mechanics: the detached worktree, the
-instructions file, the runner, the checks and the session id.
+This file owns the review rounds of the finished diff that both run kinds
+share: when a round is armed, `review_pending`, the launch, the resume list,
+the ledger and the recovery of a killed round. "When the review runs" below
+owns the arming, and nothing else decides it. `review-runner.md` owns the
+mechanics: the detached worktree, the instructions file, the runner, the
+checks and the session id.
 
-The step it replaces read `spec.md` and the package briefs — the project
-lead's own writing — so it measured the author against the author, and it
-sent an artifact back 2 times in 18 (design §15.94b, §15.77a). This step
-reads the code instead.
+The review has a different name and job on each run kind:
+
+- **A review run** (`run.kind: review`, `/crew:review`) runs the skeptical
+  review, on every new head. This file also owns its stance and its verdict
+  pair.
+- **A goal run**, any other run, runs the goal check: one round, at the
+  hand-over. `goal-check.md` owns its question, its one round, its labels
+  and "Mark the PR ready".
 
 ## The stance
 
-Five rules. A review that drops one is not this step.
+These rules hold for a review run. A review that drops one is not this step.
 
-- **Read the diff against the goal and the repo, never against the spec.**
-  The goal is what the principal wrote in `charter.md`, constraints and all.
-  The spec and the package briefs are yours, and a defect they never
-  mentioned is the defect this step exists to find.
+- **Read the diff against the goal and the repo.** The goal is the author's
+  text in `charter.md`, read as a claim (`/crew:review`'s "Review").
 - **Assume the diff is wrong, and look for how.** A pass is a finding you
   failed to make, not a result.
-- **Run the suite.** A pass an IC reported is a claim about another tree. A
-  review run has no suite (`/crew:review`'s "Review").
+- **Run no suite.** `/crew:review`'s "Review" says why.
 - **Label every finding.** `review-output.md` owns the `Severity:` line and
   the three closing lines, and `severity-rubric.md` defines the labels.
 - **Say what you looked for and did not find.** A check that found nothing
@@ -38,21 +38,15 @@ these.
 
 | Input | Where you read it |
 |---|---|
-| the goal text | `charter.md`: the goal as the principal wrote it, and every constraint the principal stated there. Its acceptance criteria go in as supplementary, never on their own |
+| the goal text | `charter.md`. On a goal run, the goal as the principal wrote it, and every constraint the principal stated there. Its acceptance criteria go in as supplementary, never on their own. On a review run, the author's text (`/crew:review`'s "Review") |
 | the branch and its pending head | the deliverable's `branch`, at `run.review_pending.head` |
 | the base ref | the deliverable's `base` |
-| the suite, on a goal run | the standing instructions' `Gates` section (`SKILL.md`, "Standing instructions"). With no `Gates` section, the invocation the scout recorded and the directory it runs in, or the recorded no-suite outcome (`SKILL.md`, "Scout") |
 | the output path | `<record-dir>/reviews/skeptical-r<n>.md` |
 | the instructions file | `<record-dir>/reviews/skeptical-r<n>-instructions.md`, which you assemble before you launch |
 
 **Send the goal, not the criterion.** A criterion is a test the goal has to
 pass, and a diff can pass every one of them and still miss what the principal
-asked for. The stance above only works on the whole goal.
-
-**Send the suite the way it is run, not the name of a tool.** The reviewer
-gets the invocation word for word and the directory to run it in, and both go
-in the suite paragraph of `review-runner.md`'s "Reviewer instructions"
-verbatim. `review-runner.md`'s suite paragraph owns the no-suite outcome.
+asked for.
 
 **`<n>` is the reserved round**, `run.review_pending.round`, and never a
 number you pick. Every file of a round shares it, and a retry of a round
@@ -61,13 +55,17 @@ nothing.
 
 ## When the review runs
 
-This file is the only place that decides it. Two moments start a review:
+This file is the only place that decides it. On a review run, two moments
+start a review:
 
 1. **The `deliver` write hands the work over**, whether or not a PR opened.
    A local-only ending gets the same review: the branch is what it reviews,
    and a PR is only how a human reaches it.
 2. **The branch head moves in the delivered window** — a push, or a new
    commit on the branch when the run has no remote.
+
+**On a goal run, only the first moment starts a round.** `goal-check.md`'s
+"One round" owns that rule, and what an arming after the goal check writes.
 
 **A deliverable whose `branch` is `null` is the only exclusion.** An
 investigation run that ended in a report produced no diff.
@@ -83,50 +81,19 @@ could fail**:
   the push, and `crew-record.py integrate <package-id> --review-head <sha>` is
   the one write that does it: the arming folds into the integration write,
   atomically. `arm-review --head <sha>` on its own is for recovery and
-  supersession instead — resume entries 8 and 9 below — and for a round past
-  the cap, never a follow-up's ordinary path. A push that lands while the
-  record still says nothing is owed is a head no review would ever read. A
-  branch with no remote, and a push the remote refused, both record the head
-  the same way and review the local head: the review reads a sha, and a sha
-  does not need a remote.
+  supersession instead — resume entries 8 and 9 below — and for the extra
+  goal check the principal asks for, never a follow-up's ordinary path. A
+  push that lands while the record still says nothing is owed is a head no
+  review would ever read. A branch with no remote, and a push the remote
+  refused, both record the head the same way and review the local head: the
+  review reads a sha, and a sha does not need a remote. On a goal run after
+  its goal check, the same write records the head as `goal-check-done`
+  instead (`goal-check.md`).
 
-**Arming at the cap arms nothing, and says so.** When `review_rounds` already
-equals the cap, the same write leaves `review_pending` `null` and appends
-`{head, reason: "cap", at}` to `run.unreviewed_heads` instead
-(`record-format.md`). The write leaves a pending review of another head
-alone. `crew-record.py`'s `arm_review` does both, so no caller
-can record a head it will never review and forget it. **Name every head in
-that list in your next message to the principal**, as work that shipped
-unreviewed. A silent cap is worse than no cap.
-
-**An accepted verdict stops the review too**, on a goal run. The verdict is
-the one after your own labels ("The verdict pair" below). An `accepted`
-round holds no `blocking` finding, so every package of its patch round
-answers a suggestion or a nit. Each one integrates with
-`crew-record.py integrate <package-id> --review-head <sha> --no-review
-accepted-round`. That write arms nothing. It leaves `review_pending` `null`
-and appends `{head, reason: "accepted-round", at}` to
-`run.unreviewed_heads`. Your next message to the principal says the
-review stopped on an accepted verdict, and names the head. When
-`review_pending` already names another head, two cases apply. If that round is
-not entered (`review_rounds` is below `review_pending.round`),
-`review_pending` moves to the accepted round's head and keeps its number, and
-nothing is listed. If that round is entered (`review_rounds` is not below it),
-`review_pending` stays, and the accepted round's head is listed with the
-reason `accepted-round`, so a resume owes nothing for it. A later head that
-carries new scope, such as a change request or a finding from another source,
-is armed as above.
-
-**A review run arms every head.** On a `run.kind: review` run, an accepted
-verdict stops nothing, and `--no-review accepted-round` exits 2. Crew's own
-assist push is a head like any other: its integration takes
-`--review-head`, and the next round reviews it.
-
-**One more round past the cap is a command.** When the principal says "run
-one more review", run `crew-record.py <record-dir> arm-review --head <branch
-head> --past-cap`. It arms the head although `review_rounds` equals the cap,
-and it writes no `unreviewed_heads` entry. Log a `preference` decision whose
-`Citation:` quotes the principal's words. Never hand-edit `review_pending`.
+**A review run arms every head, and has no round limit.** On a `run.kind:
+review` run, an accepted verdict stops nothing, and `--no-review
+accepted-round` exits 2. Crew's own assist push is a head like any other: its
+integration takes `--review-head`, and the next round reviews it.
 
 **`review_pending` is an object, `{head, round}`**, not a bare sha. `head` is
 the sha owed a review, and `round` is the round that review will run at: one
@@ -139,8 +106,9 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
 1. **Arm the head** — `deliver --review-head` at the hand-over,
    `integrate --review-head` as part of a follow-up package's own
    integration write. Standalone `arm-review --head` is for recovery,
-   supersession and a round past the cap: entries 8 and 9 below, and the
-   `--past-cap` command above. It is never a follow-up's own launch.
+   supersession and the extra goal check: entries 8 and 9 below, and
+   `goal-check.md`'s `--past-cap` command. It is never a follow-up's own
+   launch.
 2. **Set `review_rounds` to `review_pending.round`**, by the table below.
 3. **Cut or move the deliverable's review worktree** and, on a goal run, run
    the setup command in it (`review-runner.md`).
@@ -161,10 +129,11 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    instructions"). Under the no-suite outcome, the file holds the `Base:`
    line and the line `No suite.` A run holds one deliverable
    (`autonomy-contract.md`, trigger 7), so it holds one baseline file.
-5. **Write the instructions file**, and the resume prompt on a later round
-   (`review-runner.md`).
-6. **Launch, or resume the reviewer of the round before** (`review-runner.md`'s
-   "The default command" and "Resume the reviewer").
+5. **Write the instructions file**, and, on a review run's later round, the
+   resume prompt (`review-runner.md`).
+6. **Launch, or, on a review run's later round, resume the reviewer of the
+   round before** (`review-runner.md`'s "The default command" and "Resume the
+   reviewer").
 
 **Every `<n>` in this file is `review_pending.round`, never `review_rounds`.**
 The two agree once step 2 has run, and they do not agree before it. A cleanup
@@ -293,7 +262,7 @@ Arm the watch once too, by that skill's "Watch the PR".
    `go_ahead_at: null`. Push. After a push that succeeded, write
    `run.watch.head` to the pushed sha with `crew-record.py <record-dir> run
    set watch.head '"<sha>"'`. Re-enter. **This is judged on the
-   branch, not on the review**, so a head the cap left unreviewed still
+   branch, not on the review**, so a head that no round reviews still
    reaches the remote.
 6. **An unfinished ledger has an accepted entry whose package is terminal —
    `integrated` or `abandoned` — and whose ledger entry lacks its outcome.**
@@ -323,11 +292,12 @@ Arm the watch once too, by that skill's "Watch the PR".
    once this one is adjudicated.
 9. **`review_pending` is `null`.** Compare the branch head with the last
    reviewed head:
-   - **The same** — owe nothing. Take "Mark the PR ready", then stop.
+   - **The same** — owe nothing. On a goal run, take `goal-check.md`'s "Mark
+     the PR ready". Then stop.
    - **Different, and the branch head is in `run.unreviewed_heads`** — owe
-     nothing. The cap or an accepted verdict stopped this head on purpose,
-     and your next message to the principal still names it. Take "Mark the
-     PR ready", then stop.
+     nothing. The one-round rule stopped this head on purpose, or, in an
+     older record, the cap or an accepted verdict. On a goal run, take
+     "Mark the PR ready". Then stop.
    - **Different, and not listed there** — an integrated head was never
      armed. `crew-record.py arm-review --head <branch head>`. Re-enter.
 10. **`review_pending` is set and `run.review_results[<round>]` is present and
@@ -346,8 +316,8 @@ Arm the watch once too, by that skill's "Watch the PR".
 13. **`review_pending` is set and nothing for the round is on disk.** Retry at
    launch step 2 — setting `review_rounds` to the reserved round first when
    it is behind. **Never launch step 1.** The reservation already exists, and
-   arming again would advance the round or spend the cap on a head that is
-   already owed a review.
+   arming again would advance the round, or end a goal run's one round, on a
+   head that is already owed a review.
 
 **The last reviewed head** is the `Reviewed:` line of the highest-numbered
 report in `reviews/`, and the hand-over head when no report exists yet. It is
@@ -385,9 +355,10 @@ those rounds.
 1. **Write the reply file**, `reviews/skeptical-r<round>-reply.md`, opening
    with `record-format.md`'s header. It gives every finding in the report
    your label and one of the dispositions below. It ends with the line
-   `Verdict after labels:` ("The verdict pair" below). It is also the
-   hand-off the next round reads: the resume prompt carries it to the
-   reviewer (`review-runner.md`'s "Resume the reviewer").
+   `Verdict after labels:` (`goal-check.md`'s "Labels and the verdict"). On
+   a review run, it is also the hand-off the next round reads: the resume
+   prompt carries it to the reviewer (`review-runner.md`'s "Resume the
+   reviewer").
 2. **Open the round.** Run `round open` from the header you just wrote,
    right after it, as that skill's "Open the round" says.
 3. **Create those packages** in `packages[]`, with the ids the reply named.
@@ -416,7 +387,8 @@ round, whatever its source, as `SKILL.md`'s "Every review in this run is
 adjudicated the same way" says. Its map decides whether the finding takes
 action, and each ledger line names the label. For one that does, the rubric
 below decides the disposition. So a `blocking` finding on pre-existing code
-can still go out of scope. A question gets no label.
+can still go out of scope. A question gets no label. `goal-check.md`'s
+"Labels and the verdict" adds one limit for the goal check's own findings.
 
 **The rubric decides between the dispositions**, for every round of every
 source:
@@ -459,20 +431,10 @@ write of the report.**
 `crew-record.py run set review_pending null` is the clear, and it is the only
 `run set` this step takes: every arming goes through `deliver --review-head`
 at the hand-over, `integrate --review-head` as a follow-up's ordinary path, or
-standalone `arm-review --head` for recovery, supersession and a round past the
-cap. A field left set names a head nothing will ever patch or push. **Clear
+standalone `arm-review --head` for recovery, supersession and the extra goal
+check. A field left set names a head nothing will ever patch or push. **Clear
 only the sha you adjudicated.** When an arming has moved `review_pending` on
 to a newer head, that head is owed its own review, so leave it alone.
-
-**Three rounds is the cap for the run**, the first review included. A
-`run.kind: review` run has no cap.
-`crew-record.py`'s `REVIEW_ROUND_CAP` is where the record enforces it, and
-the two numbers move together. **The cap decides whether a head is armed, and
-nothing else.** A report already on disk is adjudicated whatever the count
-says: the work is done and the findings are free. At the cap, clear
-`review_pending` once its report is adjudicated, and tell the principal which
-findings are still open, which heads went unreviewed, and that the cap
-stopped the next round (`autonomy-contract.md`).
 
 ## A round killed mid-flight
 
@@ -504,52 +466,6 @@ one.
 `run_state` stays `delivered` throughout. An escalation raised in this window
 goes `delivered → blocked → delivered` (`record-format.md`).
 
-## Mark the PR ready
-
-The PR opens as a draft at the hand-over (`simple-path.md`'s "End the run").
-It leaves draft when the skeptical review stops. The repo's own automated
-reviewers then start on a diff that crew has finished with. This file is the
-only place that decides when. This section does not apply to a `run.kind:
-review` run, because the PR and its draft state are the author's.
-
-Mark the PR ready when all of these hold:
-
-- The deliverable has a `pr_url`.
-- `charter.md` has no `PR: draft` line. With that line, the PR stays a
-  draft, and the principal marks it ready.
-- `review_pending` is `null`.
-- No follow-up or patch package is `pending` or `in-flight`.
-- Every `run.rounds` entry has a `replied_at`.
-
-These hold when the reviewer returns `accepted` and no package is left open,
-when you decline every finding, and when the cap or an accepted verdict
-stops the next round. A review that fails twice leaves `review_pending` set,
-so the PR stays a draft.
-Say so in that escalation.
-
-Run the check after every adjudication and after every reply you send. On a
-resume, entry 9 above runs it. Read the PR's state from GitHub:
-
-```
-gh pr view <pr_url> --json isDraft -q .isDraft
-```
-
-`true` means write `crew-record.py run set watch.draft false`, then run `gh pr
-ready <pr_url>`, and tell the principal in your next message that the PR is
-ready for review. The write tells the PR watch that this flip is yours. Stop
-the monitor before the write. Arm it again after `gh pr ready`, as
-`crew:delivered-window`'s "Watch the PR" says, so the new command starts from
-`false` and reports no `ready`. `false` means do nothing. The
-check reads GitHub, not the record, so a session killed between the commands
-can run it again safely.
-
-When `run.orchestrator` is set, write the stage `pr` as the review stops, as
-`orchestrator-report.md` says. Write it also when `PR: draft`
-keeps the PR a draft.
-
-**Mark the PR ready once.** A later change request or patch round pushes to a
-PR that is already ready. Never turn it back into a draft.
-
 ## Where a kill lands
 
 One row per point the session can die, and the entry above that catches it.
@@ -569,14 +485,14 @@ somewhere else.
 | **Launch 6**, the process exited | 11, `-result.json` present | the four checks run over the saved JSON; passing they lead to entry 10, failing the attempt is retired |
 | the four checks, before adjudicating | 10, a passing entry | the report is adjudicated |
 | **Follow-up 1**, the package `integrated` and the head armed (one write, `crew:delivered-window`'s "Take one group all the way through") | 5, the head is not on the remote | the push happens once no gated round waits; the round already runs on re-entry, since the integration write armed it |
-| **Follow-up 1**, at the cap, the head recorded in `unreviewed_heads` instead (same write) | 5, the head is not on the remote | the push happens first, once no gated round waits; re-entry 9 finds the head already listed and owes nothing |
+| **Follow-up 1**, on a goal run after its goal check, the head recorded in `unreviewed_heads` instead (same write) | 5, the head is not on the remote | the push happens first, once no gated round waits; re-entry 9 finds the head already listed and owes nothing |
 | **Follow-up 2**, the push | 10 to 13 for that round | the review runs, or its report is adjudicated |
 | **Ledger 1**, the reply written, before the round is opened | 1, second bullet | the round entry is rebuilt from the reply's header, then re-entry takes entry 2 |
 | **Ledger 2**, the round open, before any package exists | 2, ids the reply names and `packages[]` lacks | the packages are created from the ledger |
 | **Ledger 2**, some of the packages created | 2, the ids still missing | creation is finished from the ledger, then 4 recovers them |
 | **Ledger 3**, all the packages created, `review_pending` not yet cleared | 3, `review_pending.head` still matches the round's report | `review_pending` is cleared; re-entry 4 dispatches the packages |
 | **Ledger 4**, `review_pending` cleared, before dispatch | 4, an open package | the packages are recovered |
-| **Ledger 5**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, unless the cap stopped it |
+| **Ledger 5**, the packages dispatched | 4, an open package | the packages are recovered, and integrating them arms a new head — so a review is owed again, except on a goal run after its goal check |
 | **Patch 1**, a group integrated, its ledger entry not completed | 6, a terminal package with no outcome on its line | the line is filled from the package's commits and your verification note |
 | **Gate**, a gated round's groups all in, before the ask was written | 1a, no escalation whose trigger names the round | the gate report is sent with the commits, and the round waits |
 | **Gate**, the ask sent, no answer yet | 1a, an escalation with no answer | the round waits; the re-send rule already sent the ask again, and entries 5 and 7 skip it |
@@ -584,9 +500,11 @@ somewhere else.
 | **Gate**, `go_ahead_at` written, before the push | 5, the head is not on the remote | the push happens, then re-entry takes entry 7 |
 | **Patch 2**, every accepted entry complete and the round past its gate or not gated, the reply not sent, or posted on the PR in part | 7, a `null` `replied_at` | the reply file is sent as it stands; on the PR, the marker search skips each item already answered |
 | **Hold**, a round's reply sent, its held items not yet a round | 1b, `run.watch.held` with no open round of that kind | the held items open their round |
-| **Ready 1**, the loop idle, the PR still a draft | 9, owe nothing | "Mark the PR ready" runs, and the PR leaves draft |
+| **Ready 1**, on a goal run, the loop idle, the PR still a draft | 9, owe nothing | `goal-check.md`'s "Mark the PR ready" runs, and the PR leaves draft |
 
 ## The verdict pair
+
+This section is for a review run. `goal-check.md` states the goal check's.
 
 Your two verdict strings are `accepted` and `patch round needed`. The
 verdict is `accepted` exactly when the report holds no `blocking` finding,
@@ -595,19 +513,7 @@ and `patch round needed` exactly when it holds one or more. The block in
 both, and that rule. `review-output.md` owns the shape of the three closing
 lines, and it leaves the strings to each producer.
 
-**On a goal run, your labels decide the verdict.** When the reviewer wrote
-`accepted` and you label a finding `blocking`, the verdict is `patch round
-needed`. When the reviewer wrote `patch round needed` and no finding is
-`blocking` after your labels, the verdict is `accepted`. Log each change in
-`decisions.md`. Then write the verdict that results as the last line of the
-reply file: `Verdict after labels: accepted` or `Verdict after labels: patch
-round needed`. That line, not the report, is the verdict of the round. A
-session that resumes reads it there. An `unsure` finding does not count as
-`blocking` when you write the line. When the principal answers that it is
-`blocking`, rewrite the line to `patch round needed` before the package for
-that finding integrates. A round with no reply file holds no finding, and its
-verdict is `accepted`. A review run (`run.kind: review`)
-keeps its own rules, and an accepted verdict stops nothing there.
+An accepted verdict stops nothing on a review run.
 
 `patch round needed` opens a round of the delivered window, never a fix round
 on a package: the packages are integrated and the work is handed over.

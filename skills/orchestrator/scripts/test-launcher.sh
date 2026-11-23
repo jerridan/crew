@@ -1827,7 +1827,8 @@ reset_stub
 hbase=$(wtcount)
 mkdir -p "$T/bin2"
 for f in "$T/bin/"*; do case "$(basename "$f")" in herdr-app|hc) ;; *) ln -sf "$f" "$T/bin2/$(basename "$f")" ;; esac; done
-NOHERDR="$T/bin2:${PATH#$T/bin:}"
+# The real PATH of a person may hold the real herdr-app: keep only the stubs, python3 and the system.
+NOHERDR="$T/bin2:$(dirname "$(command -v python3)"):/usr/bin:/bin"
 PATH="$NOHERDR" run start --name hd-1 --terminal herdr --group grp --principal p --checkout "$CO"
 check 'start on Herdr with no herdr-app or hc exits 4 with one line that names Herdr, and makes no worktree' \
   $([ "$rc" = 4 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Herdr "$T/err" && [ "$(wtcount)" = "$hbase" ]; echo $?)
@@ -1896,7 +1897,7 @@ for l in open(sys.argv[1]):
     if p[:2] == ["do", "tab.new"]: print(json.loads(p[9])[2])' "$STUB_DIR/herdr.log")"
 expect_args=$(printf '%s\n' "$HWT" --name hd-2 --session-id "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["session_id"])' "$T/out")" --model sonnet --settings '{"remoteControlAtStartup": false}')
 check 'the argv command, run, starts claude in the worktree with the same arguments as on tmux' \
-  $([ "$(head -n 7 "$STUB_DIR/claude-args")" = "$expect_args" ]; echo $?)
+  $([ "$(head -n 9 "$STUB_DIR/claude-args")" = "$expect_args" ]; echo $?)
 
 # R4: a new space, the caller's space, --group-color.
 reset_stub

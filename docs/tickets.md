@@ -3694,5 +3694,5 @@ the split's four invariants and `crew-stats.py`'s output.
 Unexercised: no run has used the one-round rule for the split critic. Only a
 read of the files has checked it.
 
-Read first: design §15.148 and §15.150; `skills/project-lead/references/full-path.md`,
-"Have the split reviewed".
+Read first: design §15.148 and §15.150;
+`skills/project-lead/references/full-path.md`, "Have the split reviewed".

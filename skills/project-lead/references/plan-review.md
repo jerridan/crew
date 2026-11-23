@@ -127,9 +127,9 @@ First run the two checks in "When the review is skipped". Then write this
 script to `<record-dir>/reviews/plan-review-r1-run.sh`:
 
 ```
-cd <run.checkout> || exit 1
 r=<record-dir>/reviews/plan-review-r1
 : > "$r-result.txt"; : > "$r-result.stderr"; rm -f "$r-result.exit"
+cd <run.checkout> || { echo 1 > "$r-result.exit"; exit 1; }
 codex exec --sandbox read-only -m gpt-6.2-sol -c model_reasoning_effort=medium -C <run.checkout> - < "$r-instructions.md" > "$r-result.txt" 2> "$r-result.stderr" &
 pid=$!
 start=$(date +%s)
@@ -149,7 +149,9 @@ echo $? > "$r-result.exit"
 **The limit is 600 seconds of wall clock from the launch.** It is not an
 idle watchdog: a runner that still prints output is killed at 600 seconds
 too. At the limit the script kills the runner and its child processes, and
-writes 124 to `-result.exit`. The loop needs no `timeout` tool. The shape is
+writes 124 to `-result.exit`. Every exit path writes `-result.exit`: a
+failed `cd` writes 1, so that step reads a `failed` skip and not a dead
+attempt. The loop needs no `timeout` tool. The shape is
 `substitution.md`'s run script, and the reasons for its exit file and its
 stdin hold here too.
 

@@ -47,7 +47,8 @@ Do these steps in this order.
      `--session-id` only when the record holds one. Its match is `name`.
      When the handle differs from `launch.tab`, write it with `item <id> set
      launch.tab`. A restart of the machine gives each iTerm2 tab a new id,
-     and each tmux pane a new id.
+     and each tmux pane a new id. `launcher.md`'s "Herdr" says how a Herdr
+     handle behaves.
    - **Alive, matched by `id`.** The session resumed the implementer's
      conversation, but the launcher did not start it, so it can run with
      another model, with Remote Control on, and with no usage status line.

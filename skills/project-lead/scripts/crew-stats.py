@@ -50,6 +50,16 @@ round (`skeptical-review.md`'s "The verdict pair"). The record carries no
 per-finding adjudication beyond that line, so a review that was accepted and
 still produced a commit counts as no catch here (§15.57).
 
+The plan review adds the review kind `plan review` (`plan-review-r<n>.md`, with
+the verdicts `plans sound` and `plan revision needed`, the second an action
+verdict) to the review tables, and `plan-review` to the steps a rule can skip.
+It also prints a "Plan reviews" section, from `run.plan_review` of each record
+(`record-format.md`): the runs per outcome, the skips by reason, the findings by
+the project lead's label, the accepted findings, the refactor recommendations
+and the summed tokens. `--json` carries it under `plan_reviews`. A record with
+no `plan_review` counts nowhere, and an unreadable value gives a skip line. A
+plan review's companion and retired attempt files are no review.
+
 The finding labels are four totals per review kind: blocking, suggestion, nit
 and unsure. They are the labels the reviewers proposed, read from the review
 reports. They are not the project lead's final labels. A report's `Findings:`
@@ -121,6 +131,9 @@ REVIEW_KINDS = [
     ("split critic", re.compile(r"-split-critic-r\d+\.md$")),
     ("deliverable review", re.compile(r"-deliverable-review\.md$")),
     ("skeptical review", re.compile(r"^skeptical-r\d+\.md$")),
+    # `plan-review.md`: one report, `plan-review-r1.md`. Anchored, so no companion
+    # file (`-instructions.md`, `-run.sh`, `-result.*`) can match it.
+    ("plan review", re.compile(r"^plan-review-r\d+\.md$")),
 ]
 
 # The package review and the deliverable review are retired (§15.94d). Their
@@ -154,8 +167,9 @@ DRAFT_REVIEW = re.compile(r"^github-r\d+\.md$")
 # and the two retired reviewers). A verdict outside these gets a skip line: it
 # is a drifted string, not a clean review, and counting it as clean would
 # deflate the catch rate without saying so.
-ACTION_VERDICTS = ("fix round needed", "patch round needed", "re-spec needed", "re-split needed")
-CLEAN_VERDICTS = ("accepted", "ready to split", "dispatchable")
+ACTION_VERDICTS = ("fix round needed", "patch round needed", "re-spec needed", "re-split needed",
+                   "plan revision needed")
+CLEAN_VERDICTS = ("accepted", "ready to split", "dispatchable", "plans sound")
 # `Verdict:` is not anchored to column 0. `record-format.md` lets the project
 # lead transcribe a report whose write was denied, and a transcript can put the
 # verdict mid-line.
@@ -276,7 +290,7 @@ def price_run(record: Path, state: dict, checkout: str | None, forced: bool, ski
 # more. `plan-gate` and `deliverable-review` are retired with the two steps
 # themselves (§15.94d) and stay here so a record written before T58 or T59
 # still parses.
-SKIPPABLE_STEPS = ["plan-gate", "deliverable-review", "spec-critic"]
+SKIPPABLE_STEPS = ["plan-gate", "deliverable-review", "spec-critic", "plan-review"]
 RETIRED_STEPS = {"plan-gate", "deliverable-review"}
 
 
@@ -296,6 +310,73 @@ def read_steps_skipped(name: str, run: dict, skips: list) -> dict:
         else:
             skips.append(f"{name}: unreadable steps_skipped entry — {step!r} is none of {', '.join(SKIPPABLE_STEPS)}")
     return counts
+
+
+PLAN_OUTCOMES = ("ran", "skipped", "off")
+PLAN_LABELS = ("blocking", "suggestion", "nit", "unsure", "don't post", "not real")
+
+
+def count_of(value) -> int:
+    """The value when it is an integer and not a bool, and 0 otherwise."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def read_plan_review(name: str, run: dict, skips: list) -> dict | None:
+    """The run's plan review figures, or `None` when it counts nowhere.
+
+    A record with no `plan_review` (a light-path run, or a record from before
+    the step) counts nowhere. An unreadable value gives a skip line and counts
+    nowhere. An `outcome` of `null` is a run still in the planning step, and
+    counts in no outcome (`record-format.md`).
+    """
+    if "plan_review" not in run:
+        return None
+    value = run.get("plan_review")
+    if not isinstance(value, dict):
+        skips.append(f"{name}: unreadable plan_review — it holds a {type(value).__name__}, not an object")
+        return None
+    if not isinstance(value.get("labels"), dict):
+        skips.append(f"{name}: unreadable plan_review — its labels value is not an object")
+        return None
+    outcome = value.get("outcome")
+    if outcome is not None and outcome not in PLAN_OUTCOMES:
+        skips.append(f"{name}: unreadable plan_review — its outcome {outcome!r} is none of {', '.join(PLAN_OUTCOMES)}")
+        return None
+    reason = value.get("reason")
+    tokens = value.get("tokens")
+    return {
+        "outcome": outcome,
+        "reason": reason if isinstance(reason, str) and reason else "unknown",
+        "labels": {label: count_of(value["labels"].get(label)) for label in PLAN_LABELS},
+        "accepted": count_of(value.get("accepted")),
+        "recommendations": count_of(value.get("recommendations")),
+        "tokens": count_of(tokens),
+    }
+
+
+def plan_review_totals(records: list[dict]) -> dict:
+    """The `plan_reviews` object: the plan review figures summed over every record."""
+    totals = {
+        "outcomes": {outcome: 0 for outcome in PLAN_OUTCOMES},
+        "skips_by_reason": {},
+        "labels": {label: 0 for label in PLAN_LABELS},
+        "accepted": 0,
+        "recommendations": 0,
+        "tokens": 0,
+    }
+    for r in records:
+        pr = r.get("plan_review")
+        if not pr:
+            continue
+        if pr["outcome"] in PLAN_OUTCOMES:
+            totals["outcomes"][pr["outcome"]] += 1
+        if pr["outcome"] == "skipped":
+            totals["skips_by_reason"][pr["reason"]] = totals["skips_by_reason"].get(pr["reason"], 0) + 1
+        for label, n in pr["labels"].items():
+            totals["labels"][label] += n
+        for key in ("accepted", "recommendations", "tokens"):
+            totals[key] += pr[key]
+    return totals
 
 
 # The principal may name another runner for a review step, and only for these
@@ -732,6 +813,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "compactions": len(as_list(run.get("compactions"))),
         "steps_skipped": read_steps_skipped(record.name, run, skips),
         "steps_substituted": read_steps_substituted(record.name, run, skips),
+        "plan_review": read_plan_review(record.name, run, skips),
         "reviews": reviews,
         "catch": catch,
         "catch_by_band": catch_by_band,
@@ -840,10 +922,12 @@ def report(records: list[dict], skips: list[str]) -> None:
                 + [sum(r["labels"][kind][name] for r in records for kind, _ in REVIEW_KINDS) for name in LABELS])
     print(table(["kind", "count"] + list(LABELS), rows))
 
-    # A review "acted" when its verdict sent the artifact back for another
-    # round. That is the whole of what the record states. A review that was
+    # A review "acted" when its verdict is an action verdict. For a plan review
+    # that is the reviewer's verdict, and the project lead may decline every
+    # finding, so the Plan reviews section holds what was accepted.
+    # That is the whole of what the record states. A review that was
     # accepted and still produced a commit is not counted (§15.57).
-    print("\nCatch rate (share of reviews whose verdict sent the artifact back)\n")
+    print("\nCatch rate (share of reviews with an action verdict)\n")
     rows = []
     for kind, _ in REVIEW_KINDS:
         total = sum(r["catch"][kind]["reviews"] for r in records)
@@ -860,6 +944,17 @@ def report(records: list[dict], skips: list[str]) -> None:
     rows = [[step, sum(r["steps_skipped"][step] for r in records)] for step in SKIPPABLE_STEPS]
     rows = [row for row in rows if row[1] or row[0] not in RETIRED_STEPS]
     print(table(["step", "count"], rows))
+
+    # The plan review's own figures come from `run.plan_review`, the project
+    # lead's labels and counts. The catch rate above holds the reviewer's verdict.
+    plan = plan_review_totals(records)
+    print("\nPlan reviews\n")
+    rows = [[f"outcome: {o}", n] for o, n in plan["outcomes"].items()]
+    rows += [[f"skipped, {reason}", n] for reason, n in sorted(plan["skips_by_reason"].items())]
+    rows += [[f"findings: {label}", n] for label, n in plan["labels"].items()]
+    rows += [["accepted", plan["accepted"]], ["refactor recommendations", plan["recommendations"]],
+             ["tokens", plan["tokens"]]]
+    print(table(["measure", "value"], rows))
 
     # A replaced step ran, so its report is on disk and the catch rate above
     # counts it. What no other table holds is what the replacement cost: the
@@ -1049,7 +1144,7 @@ def main(argv: list[str]) -> None:
 
     if args.json:
         print(json.dumps({"record_root": str(root), "records": records,
-                          "skipped": skips}, indent=2))
+                          "plan_reviews": plan_review_totals(records), "skipped": skips}, indent=2))
     else:
         report(records, skips)
 

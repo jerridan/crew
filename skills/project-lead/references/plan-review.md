@@ -151,9 +151,8 @@ idle watchdog: a runner that still prints output is killed at 600 seconds
 too. At the limit the script kills the runner and its child processes, and
 writes 124 to `-result.exit`. Every exit path writes `-result.exit`: a
 failed `cd` writes 1, so that step reads a `failed` skip and not a dead
-attempt. The loop needs no `timeout` tool. The shape is
-`substitution.md`'s run script, and the reasons for its exit file and its
-stdin hold here too.
+attempt. The loop needs no `timeout` tool. The shape is `substitution.md`'s
+run script, and the reasons for its exit file and its stdin hold here too.
 
 Write `status: reviewing` just before the launch ("The record"). Then run the
 script headless, as a background command:

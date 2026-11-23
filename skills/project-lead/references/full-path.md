@@ -363,9 +363,9 @@ territory has another package in `split.md`, send the IC its next one. The
 message says that the package's plan is already written. It says the plan
 was reviewed only when `run.plan_review.outcome` is `ran` and the plan was on
 disk for that review. It names each accepted plan review finding on that
-package that no message has sent yet. A package dispatched over an unmerged predecessor puts its own work
-on a base you have not proved, and a red suite then names two packages instead
-of one.
+package that no message has sent yet. A package dispatched over an unmerged
+predecessor puts its own work on a base you have not proved, and a red suite
+then names two packages instead of one.
 
 An IC works its packages in the listed order. Write the new package's `base` as
 you send it — the worktree head as it stands now, which is the accepted

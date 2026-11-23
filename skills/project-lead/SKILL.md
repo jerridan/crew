@@ -412,16 +412,17 @@ open the file only when its `Findings:` line counts a finding.
 **The spec critic runs one round per run.** After its report, adjudicate and
 label each finding as below. Your labels decide, not the critic's verdict.
 Apply every finding you accept to `spec.md` yourself, `blocking` ones
-included. Log each finding you decline in `decisions.md` with its reason, and
-go on to the sweep. No spec writer round and no second critic round follows.
+included. Then write one `decisions.md` entry titled `Spec critic r<n>:
+adjudication`, with the label of each finding and the reason for each one you
+decline, and go on to the sweep. No spec writer round and no second critic round follows.
 Do not ask the principal whether to go on.
 
 **A report counts, a reserved number does not.** A critic that leaves no
 report file and no report in its final message produced no round. Dispatch it
 again at the next reserved number. A run adjudicates exactly one spec critic
 report, and never a second. On a resume, a report on disk is that one round:
-adjudicate it when `decisions.md` holds no adjudication of it, and dispatch
-no critic.
+adjudicate it when `decisions.md` holds no `Spec critic r<n>: adjudication`
+entry for its `<n>`, and dispatch no critic.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,

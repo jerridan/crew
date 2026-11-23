@@ -9979,7 +9979,7 @@ Deliberately different:
        finding).
 
      So a second round finds a blocker in 1 report of 6, from a sample of 6.
-     The principal accepted the small sample that §15.148 named.
+     The user accepted the small sample that §15.148 named.
 
      The new rule: after the one critic report, the project lead adjudicates
      and labels each finding as before, applies every finding it accepts to

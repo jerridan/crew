@@ -34,6 +34,7 @@ unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID __CFBund
 # CLAUDECODE or CLAUDE_CODE_* variable it gets to tmux-env. Files under
 # $STUB_DIR set its answers: tmux-has (the session exists), tmux-fail (new
 # windows fail), tmux-kill-fail (kill-pane fails), tmux-panes (one known pane id per line),
+# tmux-kill-gone (kill-pane removes the pane and fails: the pane closed between the check and the kill),
 # tmux-close-on-enter (send-keys Enter closes the pane, as when claude ends), tmux-sessions (the
 # list-sessions output), tmux-clients (the list-clients output), tmux-list-panes
 # (the list-panes output), tmux-ttys (`<pane id> <tty>` lines: the #{pane_tty}
@@ -61,6 +62,10 @@ case "$1" in
   display-message|select-window|select-pane|kill-pane|switch-client)
     grep -sqxF -- "$target" "$D/tmux-panes" 2>/dev/null || { echo "can't find pane: $target" >&2; exit 1; }
     [ "$1" = kill-pane ] && [ -e "$D/tmux-kill-fail" ] && { echo "tmux: kill failed" >&2; exit 1; }
+    if [ "$1" = kill-pane ] && [ -e "$D/tmux-kill-gone" ]; then
+      grep -vxF -- "$target" "$D/tmux-panes" > "$D/tmux-panes.new"; mv "$D/tmux-panes.new" "$D/tmux-panes"
+      echo "can't find pane: $target" >&2; exit 1
+    fi
     if [ "$1" = display-message ]; then
       case "$*" in
         *'#{pane_tty}'*) t=$(awk -v p="$target" '$1 == p {print $2}' "$D/tmux-ttys" 2>/dev/null); echo "${t:-/dev/ttys999}" ;;
@@ -95,6 +100,15 @@ printf '%s\n' "$line" >> "$D/osa.log"
 cat > "$D/osa-script"
 cat "$D/osa-script" >> "$D/osa-scripts"
 [ -e "$D/osa-fail" ] && { echo "execution error: iTerm2 got an error" >&2; exit 1; }
+# osa-stop-gone and osa-exit-gone: that script removes the session and fails,
+# as when the tab closes in the middle of the script.
+# osa-stop-keep and osa-exit-keep: that script fails and the session stays.
+[ -e "$D/osa-$2-keep" ] && { echo "execution error: iTerm2 got an error" >&2; exit 1; }
+if [ -e "$D/osa-$2-gone" ]; then
+  grep -vxF -- "$3" "$D/osa-sessions" > "$D/osa-sessions.new"; mv "$D/osa-sessions.new" "$D/osa-sessions"
+  grep -vF -- "$3 " "$D/osa-ttys" > "$D/osa-ttys.new"; mv "$D/osa-ttys.new" "$D/osa-ttys"
+  echo "execution error: iTerm2 got an error: Can't get session" >&2; exit 1
+fi
 case "$2" in
   start) echo 'OSA-0001' ;;
   focus|stop) if grep -sqxF -- "$3" "$D/osa-sessions" 2>/dev/null; then echo ok; else echo gone; fi ;;
@@ -208,7 +222,8 @@ case "$1" in
   ls) [ -e "$D/hc-ls-fail" ] && { echo '{"error":{"kind":"internal","message":"core busy"}}'; exit 1; }
     cat "$D/hc-ls" 2>/dev/null || echo '{"hidden_finished":0,"terminals":[]}' ;;
   keys) [ -e "$D/hc-keys-fail" ] && { echo '{"error":{"kind":"internal","message":"keys refused"}}'; exit 1; } ;;
-  send) [ -e "$D/hc-send-fail" ] && { echo '{"error":{"kind":"internal","message":"send refused"}}'; exit 1; } ;;
+  send) [ -e "$D/hc-send-gone" ] && { rm -f "$D/hc-get-$2.json"; echo '{"error":{"kind":"not_found","message":"terminal ended"}}'; exit 1; }
+    [ -e "$D/hc-send-fail" ] && { echo '{"error":{"kind":"internal","message":"send refused"}}'; exit 1; } ;;
   get)
     [ -e "$D/hc-get-fail-$2" ] && { echo '{"error":{"kind":"internal","message":"core busy"}}'; exit 1; }
     if [ -e "$D/hc-get-$2.json" ]; then cat "$D/hc-get-$2.json"
@@ -882,6 +897,36 @@ for v in focus stop; do
     $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:SESS-1' "$T/err"; echo $?)
 done
 rm -f "$STUB_DIR/tmux-kill-fail" "$STUB_DIR/osa-fail"
+
+# A close that fails on a tab or pane that is gone counts as closed.
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+: > "$STUB_DIR/tmux-kill-gone"
+run stop 'tmux:%7'
+check 'stop tmux:<pane> whose pane closed between the check and kill-pane exits 0 with no output' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && grep -sq '^kill-pane|' "$STUB_DIR/tmux.log"; echo $?)
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
+: > "$STUB_DIR/osa-stop-gone"
+run stop iterm2:SESS-1
+check 'stop iterm2:<id> whose tab closed during the close script exits 0 with no output' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ]; echo $?)
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
+: > "$STUB_DIR/osa-exit-gone"
+run stop iterm2:SESS-1
+check 'stop iterm2:<id> whose session ended during the exit script exits 0 with no output' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ]; echo $?)
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
+: > "$STUB_DIR/osa-stop-keep"
+run stop iterm2:SESS-1
+check 'stop iterm2:<id> whose close script fails on a tab that still exists exits 6' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:SESS-1' "$T/err"; echo $?)
 
 # -- stop types /exit before the close ---------------------------------------
 # claude then ends the session with the reason prompt_input_exit, and a
@@ -2140,6 +2185,14 @@ echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
 herdr_stop stop herdr:t3
 check 'stop with a failing hc send exits 6 with one line that names the handle, and closes no tab' \
   $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF herdr:t3 "$T/err" && ! grep -sq 'tab.close' "$STUB_DIR/herdr.log"; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo 'tb3' > "$STUB_DIR/herdr-tabs"
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+: > "$STUB_DIR/hc-send-gone"
+herdr_stop stop herdr:t3
+check 'stop with an hc send that fails because the terminal ended goes on, closes the tab and exits 0' \
+  $([ "$rc" = 0 ] && [ ! -s "$T/err" ] && grep -sq 'tab.close|--id|tb3|' "$STUB_DIR/herdr.log"; echo $?)
 # A terminal with no herdr.tab label: the tab comes from herdr-app ls.
 reset_stub
 printf '{"address":"t3","pid":900041,"state":"live","labels":{"herdr.space":"spaA"}}\n' > "$STUB_DIR/hc-get-t3.json"

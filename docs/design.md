@@ -7442,6 +7442,7 @@ Deliberately different:
        and every round replied to. That happens when the reviewer returns
        `accepted`, when the cap stops the next round, or when the project
        lead declines every finding. A PR that is ready stays ready.
+       §15.151 replaces the three-round cap with one goal check.
     b. **Why not ready at the hand-over.** The first version of T69 opened
        the PR ready. A review of that change found that nothing then stopped
        a merge before the skeptical review's patch round landed. A patch on
@@ -8259,6 +8260,7 @@ Deliberately different:
      hand-edits `review_pending`. A review run arms every head, its own
      assist push included. The accepted-verdict stop is a goal run's rule.
      No run has exercised these changes.
+     §15.151 replaces the three-round cap with one goal check.
 
 118. **The spec critic is capped at two rounds — 2026-10-25, T79.** Issue
      #112. The spec critic ran 44 rounds over 18 spec-path records, about 2.9
@@ -8575,6 +8577,7 @@ Deliberately different:
      its tagged finding headings, with Critical as blocking, Concern as
      suggestion and Nit as nit. A seeded record with one report of each shape
      printed the expected totals and exited 0.
+     §15.151 replaces the three-round cap with one goal check.
 
 126. **Launch check 1 probes the worktree root — 2026-10-30, T80, #120.**
      Item 121 found that launch check 1 blocks a full path that can run. Run
@@ -10007,3 +10010,116 @@ Deliberately different:
      unchanged.
 
      No run has exercised the one-round rule for the split critic.
+
+151. **The end-of-run review becomes one goal check — 2026-11-23, T90,
+     version 0.1.118.** The principal narrowed the review of the finished
+     diff on every goal run. In the principal's words, it "shouldn't depend
+     on whether it's in a repo using pr-review. Nearly every repo has its own
+     method of doing a review, and I'm finding this part of crew hasn't been
+     very necessary."
+
+     The principal's records hold 53 runs with a skeptical review report,
+     and 140 reports:
+
+     - 34 of the 53 runs went to round 3, the cap.
+     - A round took about 4 minutes for the review alone, and 8 at the 90th
+       percentile, plus the patch round between two rounds.
+     - Of 43 blocking findings in all rounds, 35 are code defects that a
+       reviewer finds from the diff, 7 are goal misses and 1 is docs. A goal
+       miss is a change that does not do what the charter asked, or that
+       breaks a stated constraint.
+     - 7 of the 53 runs had a blocking goal miss, and 6 of them in round 1.
+
+     The goal misses took three shapes. A ticket asked for a measurement,
+     and the change added the script and never ran it. A session was to roll
+     forward for 90 days, and no caller reached the code that extends it.
+     Readers were to get no edit-bar module, and their bundle held it.
+
+     The decisions:
+
+     a. **D1, the name.** On a goal run the step is the **goal check**, and
+        `goal-check.md` owns it. A review run's review keeps the name
+        skeptical review. The record's names do not change: a goal check
+        writes `reviews/skeptical-r<n>.md` and its companions, and
+        `rounds[].source.kind` stays `skeptical`, so old and new records read
+        the same way. A goal check's report carries the line `Check: goal`
+        after its `Reviewed:` line and after any `Source:` line. The verdict
+        strings stay `accepted` and `patch round needed`.
+     b. **D1b, the labels.** The goal check asks one question: does the
+        finished change do what the charter asked, with every constraint
+        that the principal stated? It reads the diff against `charter.md`
+        and the repo, never against `spec.md`, and looks for the three
+        shapes above. Only a goal miss can be `blocking`. A code defect that
+        it sees in passing is a `suggestion` at most, in its report and in
+        the project lead's label. The repo's own review owns code defects.
+     c. **D2, no suite.** The goal check runs no suite and no gate. What is
+        lost: a second suite run at the final head, in a separate process, by
+        a reader other than the project lead. What still covers it: the
+        project lead runs the suite on the branch head at "Integrate", each
+        package is verified with its criterion, and CI runs on the PR. The
+        baseline stays: the project lead still writes `reviews/baseline.md`
+        for the delivered window's ICs and its adjudication, and the goal
+        check does not read it.
+     d. **D3, the runner.** The goal check runs `claude -p --model sonnet
+        --effort high` under `timeout 900`, 15 minutes. It reads less than a
+        skeptical round did: no suite, and one question. A review run keeps
+        `--model opus --effort high` under `timeout 2700`.
+     e. **D4, Mark the PR ready.** On a goal run the PR leaves draft when the
+        deliverable has a `pr_url`, the charter has no `PR: draft` line,
+        `review_pending` is `null` (the one goal check is adjudicated), no
+        package is `pending` or `in-flight` (a goal-miss patch has
+        integrated), and every `run.rounds` entry has a `replied_at`.
+     f. **D4b, the orchestrator.** The ready line and the stage `pr` go when
+        "Mark the PR ready" runs: after a goal-miss patch is pushed, not at
+        the goal check's report. With `PR: draft`, they go when the same
+        conditions hold.
+     g. **D5, one round.** A goal run runs one goal check, on the head
+        handed over. No later round runs on any head move: not after a
+        goal-miss patch, a push for a PR comment, a CI finding, a change
+        request or a rebase. After the check, an arming arms nothing, and
+        `crew-record.py` lists the head in `run.unreviewed_heads` with the
+        reason `goal-check-done`. No message to the principal names such a
+        head, and the orchestrator's merge rule does not read it as
+        unreviewed. A blocking goal miss becomes one patch package, and no
+        second goal check follows it. A failed round is retried as the same
+        round. The principal can still ask for one more check in words, which
+        runs `arm-review --past-cap`. The three-round cap, the accepted-verdict
+        stop, the later-round block and the resume of the reviewer go for a
+        goal run. `REVIEW_ROUND_CAP = 3` became `GOAL_CHECK_ROUNDS = 1`.
+        `--no-review accepted-round` still works, for old records.
+
+     **What `/crew:review` keeps.** A review run's review is unchanged: the
+     skeptical review on every new head, with no cap, at Opus high effort
+     under a 45-minute cap, with the later-round block, the resume of the
+     reviewer, the gate on round 1 and the no-wait later rounds. The shared
+     machinery stays in `skeptical-review.md`: the arming, `review_pending`,
+     the launch, the resume list, the ledger and the verdict pair.
+     `review-runner.md` holds both commands, both instruction blocks, and the
+     resume of the reviewer for a review run. `skills/review` changed only in
+     pointers and names.
+
+     **Substitution.** The `Reviewers` words "goal check" and "skeptical
+     review" both name the goal check on a goal run. A new goal run writes
+     the step `goal-check` to `run.substitutions_requested` and
+     `run.steps_substituted`, and `skeptical-review` stays valid in old
+     records and on a review run. A replacement gets the goal-check block and
+     runs one round, with no `codex exec resume` line.
+
+     **`crew-stats.py`** prints a "Goal checks" table: the checks run (the
+     reports with `Check: goal`), the checks with a goal miss, the goal
+     misses found (the sum of their `Blocking count:` lines) and the checks
+     accepted. It reads the verdict from the reply file's `Verdict after
+     labels:` line first. Older skeptical reports keep their counting.
+     `goal-check` joins the substitutable steps.
+
+     Files changed: `skills/project-lead/references/goal-check.md` (new),
+     `skeptical-review.md`, `review-runner.md`, `substitution.md`,
+     `record-format.md`, `simple-path.md`, `full-path.md`, `resume.md`,
+     `review-output.md`, `band-rubric.md`, `autonomy-contract.md` and
+     `orchestrator-report.md`; `skills/project-lead/SKILL.md`;
+     `crew-record.py` and `crew-stats.py`; `skills/delivered-window/SKILL.md`;
+     pointers in `skills/review/SKILL.md` and `later-round.md`;
+     `skills/orchestrator/SKILL.md` and `usage.md`; `README.md`; `CLAUDE.md`.
+
+     `crew-record.py`'s seeded checks and `crew-stats.py` over the record
+     root ran. No run has used the goal check yet.

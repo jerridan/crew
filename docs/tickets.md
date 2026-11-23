@@ -3696,3 +3696,39 @@ read of the files has checked it.
 
 Read first: design §15.148 and §15.150;
 `skills/project-lead/references/full-path.md`, "Have the split reviewed".
+
+## T90 — Make the end-of-run review one goal check
+
+Status: done 2026-11-23
+Depends on: T79, T82
+Stage: 8 (design §15.151)
+
+The principal narrowed the review of the finished diff on every goal run. In
+53 runs, 34 went to the three-round cap, and 7 of 43 blocking findings were
+goal misses; the repo's own review finds the code defects. A goal run now
+runs one goal check at the hand-over: one question, does the change do what
+the charter asked, with every stated constraint. It reads the charter, not
+the spec, and runs no suite. Only a goal miss can be `blocking`. It runs
+`--model sonnet --effort high` under a 15-minute cap. No later round runs on
+any head move: `crew-record.py` lists each later head as `goal-check-done`.
+A goal miss becomes one patch package with no second check. The PR leaves
+draft when the check is adjudicated and its patch is pushed.
+`crew-stats.py` counts the goal checks, the goal misses and the checks
+accepted. `/crew:review` keeps the skeptical review on every head.
+
+Scope: `skills/project-lead/references/goal-check.md` (new),
+`skeptical-review.md`, `review-runner.md`, `substitution.md`,
+`record-format.md` and the other readers in `references/`;
+`skills/project-lead/SKILL.md`; `scripts/crew-record.py` and
+`scripts/crew-stats.py`; `skills/delivered-window/SKILL.md`; pointers in
+`skills/review/`; `skills/orchestrator/SKILL.md` and `usage.md`;
+`README.md`; `CLAUDE.md`; design §15.151.
+
+Out of scope: what a review run reviews, how often and with which model; the
+spec critic and the split critic; record file and field names.
+
+Unexercised: only seeded records ran the scripts. No run has used the goal
+check.
+
+Read first: design §15.117 and §15.151;
+`skills/project-lead/references/goal-check.md`.

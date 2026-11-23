@@ -5,6 +5,7 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
+import { clampTop, lastStart } from '../hooks/orch-board.js'
 import FIXTURE from './fixtures/board-json'
 import FIXTURE_TEXT from './fixtures/board-text'
 
@@ -1126,5 +1127,33 @@ test('R2 the error line and the reading line are one row', async ($, on) => {
   const ui = await mount($, 'terminal', 24, 10)
   const tree = await ui.drawn()
   for (const t of all(tree, 'Text')) expect(t.props?.wrap).toBe('truncate')
+  await ui.unmount()
+})
+
+// ---------------------------------------------------- PR review round 1
+
+test('R2 clampTop holds the window start between 0 and the last start', async () => {
+  expect(clampTop(30, 8, -5)).toBe(0)
+  expect(clampTop(30, 8, 9999)).toBe(lastStart(30, 8))
+  expect(clampTop(30, 8, 3)).toBe(3)
+  expect(clampTop(5, 8, 4)).toBe(0)
+})
+
+test('R2 a footer names the scroll words u d t b', async ($, on) => {
+  world(on, [FIXTURE])
+  await command($, 'x')
+  const ui = await mount($)
+  const footer = words(byKey(await ui.drawn(), 'footer'))
+  expect(footer).toContain('u d t b')
+  await ui.unmount()
+})
+
+test('R2 the last page is full: it shows bodyRows lines', async ($, on) => {
+  world(on, [longBoard(25)])
+  await command($, 'x')
+  const ui = await mount($, 'terminal', 40, 8)
+  await submit(ui, 'b')
+  const tree = await ui.drawn()
+  expect(lineNodes(tree).length).toBe(8)
   await ui.unmount()
 })

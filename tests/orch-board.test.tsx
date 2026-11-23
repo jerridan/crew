@@ -1085,3 +1085,46 @@ test('R3 a row number runs launcher.py focus for a row out of the current view',
   expect(w.launcher[1]?.slice(2)).toEqual(['focus', 'H1'])
   await ui.unmount()
 })
+
+test('R2 at 24 columns every Text is one row and a section header is one row', async ($, on) => {
+  const long = group('g1', 'A group title that is much wider than the pane', [row(1, 'alpha')], {
+    ticket: { id: 'PROJ-123456789', url: 'https://example.test/PROJ-123456789' },
+    repo: 'some-owner/some-long-repository-name',
+    merged: 1,
+    total: 3,
+  })
+  const plain = group('g2', 'Another long group title for the pane', [row(2, 'beta')], {
+    ticket: { id: 'PROJ-987654321', url: null },
+    repo: 'some-owner/another-long-repository',
+  })
+  world(on, [board({ plan: FIXTURE.plan, needs_you: needs(entry('e1', { recommend: 'do it' })), sections: [long, plain, singles([row(3, 'gamma')])] })])
+  await command($, 'x')
+  const bodyRows = 60
+  const ui = await mount($, 'terminal', 24, bodyRows)
+  const tree = await ui.drawn()
+  const list = lineNodes(tree)
+  expect(list.length).toBeLessThanOrEqual(bodyRows)
+  const texts = all(tree, 'Text')
+  expect(texts.length).toBeGreaterThan(10)
+  for (const t of texts) expect(t.props?.wrap, `Text "${words(t)}" truncates`).toBe('truncate')
+  for (const k of ['group-g1', 'group-g2']) {
+    const head = byKey(tree, k)
+    expect(head).toBeDefined()
+    // Every child is a Text that truncates, or a Box no wider than the pane.
+    for (const c of (head?.children ?? []) as Node[]) {
+      if (c.type === 'Text') expect(c.props?.wrap).toBe('truncate')
+      else expect(Number(c.props?.width)).toBeLessThanOrEqual(24)
+    }
+  }
+  for (const link of all(tree, 'Link')) expect(cellsOf(words(link))).toBeLessThanOrEqual(24)
+  await ui.unmount()
+})
+
+test('R2 the error line and the reading line are one row', async ($, on) => {
+  world(on, [{ exitCode: 1, stdout: '', stderr: 'a long failure text that is wider than the pane for sure' }])
+  await command($, 'x')
+  const ui = await mount($, 'terminal', 24, 10)
+  const tree = await ui.drawn()
+  for (const t of all(tree, 'Text')) expect(t.props?.wrap).toBe('truncate')
+  await ui.unmount()
+})

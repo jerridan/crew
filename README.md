@@ -288,11 +288,25 @@ you of each one in the inbox. To end the whole run, say so:
 close the run
 ```
 
-After a restart of the machine, or when the session closed, start a session
-with the same name and resume the record:
+To rename the orchestrator session, rename it, then tell the orchestrator the
+new name:
 
 ```
-claude --name my-orchestrator
+/rename my-new-name
+```
+
+```
+I renamed this session to my-new-name
+```
+
+The orchestrator tells each project lead that is running. The record keeps
+the name that you gave at the start.
+
+After a restart of the machine, or when the session closed, start a session
+under any name and resume the record by its first name:
+
+```
+claude --name any-name
 ```
 
 ```

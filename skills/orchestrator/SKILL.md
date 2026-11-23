@@ -161,7 +161,8 @@ instructions and hooks. Then:
    `--settings`, your current session name as `--principal`, and a session name
    that the `--name` rule accepts. Read your current session name from the
    first line of `ListAgents` ("This session is <name> ...") at each launch.
-   Never use the record name for it, and keep no copy of the session name. Use the item id when it does.
+   Never use the record name for it, and keep no copy of the session name.
+   For the item's `--name`, use the item id when the rule accepts it.
 5. **Store the output.** Write the start output, unchanged, into the item's
    `launch` with `item <id> set launch`.
 6. **Count the slot.** Write `pace.slots.busy` one higher.

@@ -31,7 +31,7 @@ The launcher supports iTerm2 and tmux. It takes the first rule that holds:
 
 ```
 launcher.py start --name <session-name> [--model <model>] [--settings <file-or-json>]
-                  --principal <orchestrator session name>
+                  --principal <orchestrator current session name>
                   [--repo <owner/repo>] [--checkout <path>]
                   [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]
 ```
@@ -41,7 +41,7 @@ launcher.py start --name <session-name> [--model <model>] [--settings <file-or-j
 | `--name` | the session name. It matches `[a-z0-9][a-z0-9-]*` and holds no `eval`, because a worktree-isolated session refuses a shell command that holds `eval`. It names the worktree, the branch, the `claude` session and the tab or window |
 | `--model` | the `--model` value of the new `claude`. The default is `opus`, never the machine's default model |
 | `--settings` | a path to a file that holds one JSON object, or a JSON object as a string. The new `claude` gets it as `--settings`, read as below |
-| `--principal` | the orchestrator's own session name. The wait prompt names it |
+| `--principal` | the orchestrator's current session name, read from the first line of `ListAgents`. It is not the record name. The wait prompt names it |
 | `--repo` | `<owner>/<repo>`. Without `--checkout`, it selects the `Checkouts` line |
 | `--checkout` | the principal's checkout. It wins over `--repo`. Then `--repo` sets only the `repo` field |
 | `--group` | the iTerm2 tab group, or the tmux session. The tmux default is `crew`. iTerm2 with no `--group` puts the tab in no group |

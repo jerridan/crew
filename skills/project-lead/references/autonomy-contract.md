@@ -14,16 +14,17 @@ file names the human as the only principal.
   `<cross-session-message>` to the same principal, even when a name for one of
   their other sessions is at hand. A question that lands inside a session the
   principal is working in is an interruption they did not ask for.
-- **The goal arrived as a `<cross-session-message>`.** Send by `SendMessage`,
-  addressed to that envelope's `from-name`. Never ask in your own pane. Nobody
-  is watching that pane.
+- **The goal arrived as a `<cross-session-message>`.** Write that envelope's
+  `from-name` into `run.principal` at once. Send by `SendMessage`, addressed to
+  `run.principal`. Never ask in your own pane. Nobody is watching that pane.
 - **This is a `--resume` and `run.principal` is set.** Send by `SendMessage`,
   addressed to that value. A resumed session holds no envelope in its
   transcript, so the record is the only place it can learn who to answer, and
   the pane it would otherwise fall back to is the unwatched one.
 
 When `run.orchestrator` is set, `orchestrator-report.md` says
-what you write before you send the question.
+what you write before you send the question, and when `run.principal`
+changes.
 
 `SendMessage`'s own contract says to copy an incoming `from` into `to`, and a
 `from` does deliver (design §15.72f). Use `from-name` anyway. `from` is a
@@ -33,7 +34,8 @@ the record both.
 
 **Write the principal into `run.principal` when the goal arrives**
 (`record-format.md`), from that same `from-name` — `from` only when the
-envelope carries no name.
+envelope carries no name. When `run.orchestrator` is set, a later message
+can change the value (`orchestrator-report.md`'s "A new orchestrator name").
 
 **Everything you send the principal goes by that route**, not escalations
 alone. The closing report is another: a principal that never learns the PR

@@ -166,6 +166,10 @@ board, and the mod `hooks/orch-board.tsx` draws it in a pane that
 `/orch-board` opens (§15.143). Only its tests and `test-crew-orch.sh` have run
 it, and no session has opened the pane.
 
+The rename procedure of the orchestrator session is built: the record name
+is fixed at `init`, and the orchestrator tells each live implementer a new
+session name (§15.NNN). No run has exercised it.
+
 The resume of an orchestrator and the close-out are built (§15.145):
 `resume-and-close.md`, with `launcher.py resume`, `find` and `remove`, the
 `/exit` of `stop`, and `crew-orch.py close`. Only the seeded tests have run

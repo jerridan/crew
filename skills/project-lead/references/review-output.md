@@ -86,8 +86,9 @@ its first line and name the denied path. Never say you wrote a file you
 could not write.
 
 **This first-line rule is for a dispatched agent, and the review of the
-finished diff is exempt from it.** Its own instructions give it a different first line —
-`Reviewed: <sha>`, the same line an unimpeded report opens with — and
+finished diff is exempt from it.** Its own instructions give it a
+different first line — `Reviewed: <sha>`, the same line an unimpeded report
+opens with — and
 `review-runner.md`'s check 4 reads that line whichever way the report
 reached it. Follow whichever first-line rule the dispatch you are reading
 actually states.

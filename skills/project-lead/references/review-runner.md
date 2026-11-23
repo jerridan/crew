@@ -614,8 +614,9 @@ is "The last report had no finding to answer. This is that report:", followed
 by `reviews/skeptical-r<n-1>.md`.
 
 **A replacement receives this same file, plus one sentence that names the
-report path and asks for the output too** (`substitution.md`). It replaces the block's rule that returns the report
-only when the write is denied. That sentence is the only addition:
+report path and asks for the output too** (`substitution.md`). It replaces
+the block's rule that returns the report only when the write is denied. That
+sentence is the only addition:
 
 ```
 For a replacement runner: write the complete report to <absolute output

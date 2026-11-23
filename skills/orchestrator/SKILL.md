@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: "Make this session an orchestrator of crew project-lead sessions. It takes one thing, a group of tickets, a milestone or project, or one large ticket, splits the work with no approval step, starts one project lead per item in its own terminal tab and worktree, answers their questions, keeps an inbox of what needs the principal, merges in order, and slows down before the plan usage limit. Use for 'orchestrate these tickets', 'run this milestone', 'run these in parallel', 'split this ticket and run the parts', 'crew orchestrator', 'resume orchestrator <name>'."
+description: "Make this session an orchestrator of crew project-lead sessions. It takes one thing, a group of tickets, a milestone or project, or one large ticket, splits the work with no approval step, starts one project lead per item in its own terminal tab and worktree, answers their questions, keeps an inbox of what needs the principal, merges in order, and slows down before the plan usage limit. Use for 'orchestrate these tickets', 'run this milestone', 'run these in parallel', 'split this ticket and run the parts', 'crew orchestrator', 'resume orchestrator <record name>', 'I renamed the orchestrator'."
 ---
 
 # Orchestrator
@@ -47,18 +47,19 @@ inbox, and each message you sent an implementer live in the orchestrator
 record. They survive a compaction and a restart of the machine.
 `orchestrator-record.md` owns every command below.
 
-- At the start, run `init` one time. Name the record after your own session
-  name, the name that `SendMessage` reaches you by. Every `launcher.py start
-  --principal` and every `Orchestrator:` line uses the same name. When your
-  session has no name, or its name does not match the name pattern of
-  `orchestrator-record.md`, ask the principal for a name before `init`.
+- At the start, run `init` one time. Name the record then, and never change
+  the name. It can equal your session name at `init`, and it stays the same
+  when the principal renames the session ("A rename"). Every `--orch` and
+  every `Orchestrator:` line uses the record name. When your session has no
+  name, or its name does not match the name pattern of `orchestrator-record.md`,
+  ask the principal for a name before `init`.
 - Keep no second copy in a scratchpad file. A file that you pass to `plan
   change --file` or `told --file` is input only. Read the plan, the items and
   the inbox from the record, with `show` and `plan.md`.
 - After a compaction, do what `resume-and-close.md`'s "When a resume runs"
   says before your next action.
 - A reopened session, or the principal's words such as "resume orchestrator
-  <name>", start `resume-and-close.md`'s "The resume".
+  <record name>", start `resume-and-close.md`'s "The resume".
 
 ## Take the work
 
@@ -157,8 +158,10 @@ instructions and hooks. Then:
    (`usage.md`'s "The launch value").
 4. **Start.** Run `launcher.py start` with the arguments of `launcher.md`'s
    "start", among them `--repo` and `--group`. Give that value as
-   `--settings`, your session name as `--principal`, and a session name that
-   the `--name` rule accepts. Use the item id when it does.
+   `--settings`, your current session name as `--principal`, and a session name
+   that the `--name` rule accepts. Read your current session name from the
+   first line of `ListAgents` ("This session is <name> ...") at each launch.
+   Never use the record name for it, and keep no copy of the session name. Use the item id when it does.
 5. **Store the output.** Write the start output, unchanged, into the item's
    `launch` with `item <id> set launch`.
 6. **Count the slot.** Write `pace.slots.busy` one higher.
@@ -189,7 +192,7 @@ The goal message carries:
 - context, data and pointers, each marked as context;
 - the charter line `Gate: off`;
 - the line `PR: ready`;
-- the line `Orchestrator: <your name>, item <id>`
+- the line `Orchestrator: <record name>, item <id>`
   (`skills/project-lead/references/orchestrator-report.md`);
 - the line `Usage limit: <pct>` (`usage.md`'s "The limit");
 - the rules for the run, below.
@@ -226,6 +229,26 @@ The rules for the run:
 
 Record every message to an implementer with `told` before you send it, or as
 you send it. This holds for the goal and for every later message.
+
+## A rename
+
+The principal can rename your session at any time, with `/rename <new name>`.
+Only the principal can tell you the new name, because no event tells you.
+When the principal says that the session has a new name, do these steps:
+
+1. Run `ListAgents`. Its first line shows your current name. Do not use a name
+   from your context.
+2. Send one message to each item whose implementer is alive (`ListAgents`
+   shows its name) and whose goal you already sent. A `shipped` or `closed`
+   item that is still in its close handshake counts. Send none to an
+   implementer that has not got its goal: its wait prompt cannot tell it
+   about a name, and the goal's envelope gives the name.
+3. Write each message with `told`. It carries the line `Orchestrator: <record
+   name>, item <id>` for that item, and says that your session has the new
+   name and that the implementer sends to the new name from now on.
+
+Keep the record name in every `crew-orch.py` call. `orchestrator-report.md`
+says what the implementer does with the message.
 
 ## Questions and the inbox
 

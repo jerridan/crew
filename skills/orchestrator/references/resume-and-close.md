@@ -17,20 +17,24 @@ its start.
 
 | Case | What is lost | What you do |
 |---|---|---|
-| A compaction of your session | your context only | Read the record ("The resume", step 3). Then ask each implementer with an open PR to send its ready line again. Background tasks, the usage watch and each GitHub wait continue. Arm none of them again |
+| A compaction of your session | your context only | Get the record name from your context. When the summary lost it, ask the principal, as "The resume" step 1 says. Then read the record ("The resume", step 3). Then ask each implementer with an open PR to send its ready line again. Background tasks, the usage watch and each GitHub wait continue. Arm none of them again |
 | The same session opened again: `claude --resume`, or `cc-restore` brought the tab back | every background task, `Monitor` watch and scheduled job | the whole of "The resume" |
-| A new session, after a restart of the machine or a lost transcript | your context and every background task | the whole of "The resume". The principal starts it with words such as "resume orchestrator <name>" |
+| A new session, after a restart of the machine or a lost transcript | your context and every background task | the whole of "The resume". The principal starts it with words such as "resume orchestrator <record name>" |
 
 ## The resume
 
 Do these steps in this order.
 
-1. **The name.** The record name is your session name, and each implementer
-   sends to that name. Run under the same name: `claude --resume`, or
-   `/rename <name>`. When the principal's words do not give the name, ask the
-   principal for it. When `ListAgents` shows another live session with that
-   name, a second orchestrator holds the record. Stop, and tell the
-   principal.
+1. **The record name.** The record name is fixed at `init`. Your session
+   name can differ from it, and each implementer sends to your current session
+   name. Run under any session name. Never rename back. When the principal's
+   words do not give the record name, ask the principal for it. When
+   `ListAgents` shows another live session whose name is the record name, or
+   a name that a rename message in the record's `told` gave, a second
+   orchestrator holds the record. Stop, and tell the principal. When no rename
+   message is in `told` and your session name differs from the record name,
+   the check cannot rule out a live first orchestrator. Ask the principal to
+   confirm that the earlier orchestrator session has stopped.
 2. **A closed record.** Run `crew-orch.py show`. When `closed_at` is set, the
    run is closed. Tell the principal so, and do nothing more.
 3. **Read the record.** Read `show` and `plan.md`, then print `board`. They
@@ -66,7 +70,10 @@ Do these steps in this order.
      with the item in the inbox (`inbox add notice --item <id>`), and leave
      the item as it is. The principal decides.
    - **The rejoin message.** Send one message, with `told`, to each
-     implementer that is alive or that you resumed. It says that the
+     implementer that is alive or that you resumed. It carries
+     the line `Orchestrator: <record name>, item <id>` and your current session
+     name from `ListAgents`, as SKILL.md's "A rename" says, so an implementer
+     that missed a rename sends to the new name. It says that the
      orchestrator restarted. It asks for its ready line, its stage and each
      open question again. The part about its background tasks and watches
      depends on its process:
@@ -79,9 +86,10 @@ Do these steps in this order.
      Send it to a resumed implementer when `ListAgents` shows its name. A
      resumed tab can wait on the trust dialog, as SKILL.md's "The goal
      message" says for a new tab.
-   - **No goal.** An item with a `launch` and an empty `told` never got its
-     goal. Send the goal now, as SKILL.md's "The goal message" says. Never
-     send a second goal to an item whose `told` holds one.
+   - **No goal.** An item with a `launch` whose `told` holds no goal message
+     never got its goal. A rename message or a rejoin message is not a goal.
+     Send the goal now, as SKILL.md's "The goal message" says. Never send a
+     second goal to an item whose `told` holds one.
    - **No launch.** An item with no `launch` follows SKILL.md's "Launch an
      implementer".
 

@@ -6,12 +6,12 @@ usage:
                     [--settings <file-or-json>] --principal <name>
                     [--repo <owner/repo>] [--checkout <path>]
                     [--group <name>] [--group-color <#rrggbb>]
-                    [--terminal iterm2|tmux]
+                    [--terminal iterm2|tmux|herdr]
   launcher.py resume --name <session-name> --worktree <path>
                      [--session-id <id>] [--model <model>]
                      [--settings <file-or-json>] [--repo <owner/repo>]
                      [--group <name>] [--group-color <#rrggbb>]
-                     [--terminal iterm2|tmux]
+                     [--terminal iterm2|tmux|herdr]
   launcher.py groups
   launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
   launcher.py focus <handle>
@@ -31,6 +31,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -64,13 +65,13 @@ START_USAGE = (
     "usage: launcher.py start --name <session-name> [--model <model>] "
     "[--settings <file-or-json>] --principal <name> "
     "[--repo <owner/repo>] [--checkout <path>] "
-    "[--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux]"
+    "[--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr]"
 )
 RESUME_USAGE = (
     "usage: launcher.py resume --name <session-name> --worktree <path> "
     "[--session-id <id>] [--model <model>] [--settings <file-or-json>] "
     "[--repo <owner/repo>] [--group <name>] [--group-color <#rrggbb>] "
-    "[--terminal iterm2|tmux]"
+    "[--terminal iterm2|tmux|herdr]"
 )
 REMOVE_USAGE = "usage: launcher.py remove <worktree> [--delete-branch [--pr <number>]] [--stop-processes]"
 USAGE_LINE = (
@@ -97,6 +98,8 @@ PANE_RE = re.compile(r"%[0-9]+")
 # The pid in a worktree lock reason: the word pid, a space and 1 to 10 digits.
 PID_RE = re.compile(r"\bpid ([0-9]{1,10})\b")
 ITERM_ID_RE = re.compile(r"[A-Za-z0-9-]+")
+HERDR_BUNDLE = "dev.herdr.app"
+HERDR_ID_RE = re.compile(r"t[0-9]+")
 
 # Every AppleScript scans windows, tabs and sessions for one unique id.
 OSA_START = """on run argv
@@ -290,7 +293,7 @@ def parse(argv):
     s.add_argument("--checkout")
     s.add_argument("--group")
     s.add_argument("--group-color")
-    s.add_argument("--terminal", choices=["iterm2", "tmux"])
+    s.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
     r = sub.add_parser("resume", add_help=False)
     r.usage_line = RESUME_USAGE
     r.add_argument("--name", required=True)
@@ -301,7 +304,7 @@ def parse(argv):
     r.add_argument("--repo")
     r.add_argument("--group")
     r.add_argument("--group-color")
-    r.add_argument("--terminal", choices=["iterm2", "tmux"])
+    r.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
     g = sub.add_parser("groups", add_help=False)
     g.usage_line = "usage: launcher.py groups"
     f = sub.add_parser("find", add_help=False)
@@ -411,11 +414,180 @@ def detect_terminal(flag=None):
         return "tmux"
     if os.environ.get("TERM_PROGRAM") == "iTerm.app" or os.environ.get("ITERM_SESSION_ID"):
         return "iterm2"
+    if os.environ.get("__CFBundleIdentifier") == HERDR_BUNDLE:
+        return "herdr"
     raise Fail(
         NO_TERMINAL,
-        "launcher: unsupported terminal (TERM_PROGRAM=%s); the supported terminals are iterm2 and tmux"
+        "launcher: unsupported terminal (TERM_PROGRAM=%s); the supported terminals are iterm2, tmux and herdr"
         % os.environ.get("TERM_PROGRAM", ""),
     )
+
+
+# -- herdr --------------------------------------------------------------------
+
+
+def herdr_program(name):
+    """The path of herdr-app or hc: on PATH, else in ~/.local/bin; or None."""
+    found = shutil.which(name)
+    if found:
+        return found
+    path = os.path.expanduser("~/.local/bin/" + name)
+    return path if os.path.isfile(path) and os.access(path, os.X_OK) else None
+
+
+def herdr_programs(need_app=True):
+    """(herdr-app path, hc path). Exit 4 when a program that the command needs
+    is not found."""
+    app, hc = herdr_program("herdr-app"), herdr_program("hc")
+    missing = [n for n, p in (("herdr-app", app if need_app else True), ("hc", hc)) if not p]
+    if missing:
+        raise Fail(
+            NO_TERMINAL,
+            "launcher: Herdr needs %s on PATH or in ~/.local/bin, and found no %s"
+            % (" and ".join(("herdr-app", "hc") if need_app else ("hc",)), " or ".join(missing)),
+        )
+    return app, hc
+
+
+def herdr_json(text):
+    try:
+        obj = json.loads(text)
+    except ValueError:
+        return None
+    return obj if isinstance(obj, (dict, list)) else None
+
+
+def herdr_error(out):
+    """The error text of a `{"error": ...}` answer, or the first line."""
+    obj = herdr_json(out)
+    if isinstance(obj, dict) and "error" in obj:
+        err = obj["error"]
+        return err if isinstance(err, str) else json.dumps(err)
+    return one_line(out)
+
+
+def herdr_app(args, what):
+    """Run herdr-app with args. Return the parsed JSON answer. A window that
+    does not answer exits 6. what names the step in the line."""
+    app, _ = herdr_programs()
+    rc, out, err = run([app] + args, timeout=60)
+    if rc == 2 or (rc != 0 and "no Herdr window" in (err or "")):
+        raise Fail(TERMINAL_STEP, "launcher: the Herdr window does not answer (%s); %s needs it" % (one_line(err) or "exit %d" % rc, what))
+    if rc != 0:
+        raise HerdrError(herdr_error(out) or one_line(err) or "exit %d" % rc)
+    obj = herdr_json(out)
+    if obj is None:
+        raise HerdrError("herdr-app printed no JSON: %s" % one_line(out))
+    return obj
+
+
+class HerdrError(Exception):
+    """herdr-app ran and reported one error."""
+
+
+def herdr_do(verb, args, what):
+    flat = ["do", verb]
+    for k, v in args:
+        flat += ["--" + k, v]
+    return herdr_app(flat, what)
+
+
+def hc_get(address):
+    """The `hc get` record of a terminal, or None when it is not found."""
+    _, hc = herdr_programs(need_app=False)
+    rc, out, err = run([hc, "get", address, "--json"], timeout=60)
+    obj = herdr_json(out)
+    if rc != 0:
+        if isinstance(obj, dict) and isinstance(obj.get("error"), dict) and obj["error"].get("kind") == "not_found":
+            return None
+        raise Fail(TERMINAL_STEP, "launcher: hc get %s failed: %s" % (address, one_line(err) or herdr_error(out) or "exit %d" % rc))
+    return obj if isinstance(obj, dict) else None
+
+
+def herdr_spaces():
+    obj = herdr_app(["ls"], "this command")
+    spaces = obj.get("spaces") if isinstance(obj, dict) else None
+    return [s for s in spaces or [] if isinstance(s, dict)]
+
+
+def herdr_target(a):
+    """Read the Herdr space of a start or resume: (space id or None, space
+    name). None for the id means that no space has that name, so open_tab
+    makes it. Reads only: it makes no space and no worktree."""
+    herdr_programs()
+    if a.group_color:
+        print("launcher: Herdr has no space color; --group-color %s is ignored" % a.group_color, file=sys.stderr)
+    own = os.environ.get("HC_TERMINAL_ID", "")
+    if not a.group and not own:
+        raise Fail(USAGE, "launcher: Herdr has no space for this terminal ($HC_TERMINAL_ID is not set); pass --group <space name>")
+    spaces = herdr_spaces()
+    if a.group:
+        for sp in spaces:
+            if sp.get("name") == a.group and isinstance(sp.get("id"), str):
+                return sp["id"], a.group
+        return None, a.group
+    rec = hc_get(own)
+    sid = ((rec or {}).get("labels") or {}).get("herdr.space")
+    if not sid:
+        raise Fail(USAGE, "launcher: Herdr shows no space for the terminal %s; pass --group <space name>" % own)
+    for sp in spaces:
+        if sp.get("id") == sid:
+            return sid, sp.get("name") or sid
+    return sid, sid
+
+
+def herdr_start(a, command, worktree, target):
+    space, group = target
+    argv = json.dumps(["/bin/sh", "-c", command])
+    try:
+        if space:
+            made = herdr_do(
+                "tab.new",
+                [("space", space), ("name", a.name), ("folder", worktree), ("argv", argv), ("focus", "false")],
+                "start",
+            )
+        else:
+            made = herdr_do(
+                "space.new",
+                [("name", group), ("folder", worktree), ("argv", argv), ("focus", "false")],
+                "start",
+            )
+        # tab.new runs in the one space, with the tab named a.name. A new space
+        # takes its first tab's name from the program.
+    except HerdrError as e:
+        raise Fail(TERMINAL_STEP, "launcher: Herdr opened no tab (%s); the worktree stays at %s" % (e, worktree))
+    except Fail as f:
+        raise Fail(f.code, "%s; the worktree stays at %s" % (f.line, worktree))
+    term = made.get("terminal") if isinstance(made, dict) else None
+    if not isinstance(term, str) or not HERDR_ID_RE.fullmatch(term):
+        raise Fail(TERMINAL_STEP, "launcher: Herdr opened a tab but printed no terminal address; the worktree stays at %s" % worktree)
+    return "herdr:" + term, group
+
+
+def herdr_ttys():
+    """[(handle, tty)] of each live Herdr terminal: hc ls, then hc get for the
+    pid, then the tty of that pid from ps."""
+    _, hc = herdr_programs(need_app=False)
+    rc, out, err = run([hc, "ls", "--json"], timeout=60)
+    obj = herdr_json(out)
+    if rc != 0 or not isinstance(obj, dict):
+        raise Fail(TERMINAL_STEP, "launcher: hc ls failed: %s" % (one_line(err) or herdr_error(out) or "exit %d" % rc))
+    rows = []
+    procs = None
+    for t in obj.get("terminals") or []:
+        addr = t.get("address") if isinstance(t, dict) else None
+        if not isinstance(addr, str) or not HERDR_ID_RE.fullmatch(addr) or t.get("state") != "live":
+            continue
+        rec = hc_get(addr)
+        pid = (rec or {}).get("pid")
+        if not isinstance(pid, int) or (rec or {}).get("state") != "live":
+            continue
+        if procs is None:
+            procs = processes()
+        tty = procs.get(pid, {}).get("tty")
+        if tty:
+            rows.append(("herdr:" + addr, tty))
+    return rows
 
 
 # -- checkout ---------------------------------------------------------------
@@ -658,6 +830,7 @@ def iterm_start(name, group, color, command, worktree):
 
 def start(a):
     terminal = detect_terminal(a.terminal)
+    target = herdr_target(a) if terminal == "herdr" else None
     checkout = a.checkout if a.checkout else checkout_for(a.repo)
     checkout = os.path.abspath(os.path.expanduser(checkout))
     worktree, branch, base = make_worktree(checkout, a.name)
@@ -667,14 +840,16 @@ def start(a):
         repo = repo_from_url(out) if rc == 0 else None
     session_id = str(uuid.uuid4())
     command = launch_command(worktree, a.name, session_id, a.model, a.settings_json, a.principal)
-    open_tab(a, terminal, command, worktree, repo, branch, base, session_id)
+    open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target)
     return OK
 
 
-def open_tab(a, terminal, command, worktree, repo, branch, base, session_id):
+def open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target=None):
     """Open the one tab or window, and print the start output line."""
     if terminal == "tmux":
         tab, group = tmux_start(a.name, a.group, command, worktree)
+    elif terminal == "herdr":
+        tab, group = herdr_start(a, command, worktree, target)
     else:
         tab, group = iterm_start(a.name, a.group, a.group_color, command, worktree)
     print(
@@ -733,6 +908,7 @@ def default_base(worktree):
 
 def resume(a):
     terminal = detect_terminal(a.terminal)
+    target = herdr_target(a) if terminal == "herdr" else None
     path = os.path.abspath(os.path.expanduser(a.worktree))
     if not os.path.isdir(path):
         raise Fail(GIT, "launcher: the worktree %s does not exist" % path)
@@ -755,7 +931,7 @@ def resume(a):
         rc, out, _ = run(["git", "-C", worktree, "config", "--get", "remote.origin.url"])
         repo = repo_from_url(out) if rc == 0 else None
     command = resume_command(worktree, session_id, a.name, a.model, a.settings_json)
-    open_tab(a, terminal, command, worktree, repo, branch, base, session_id)
+    open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target)
     return OK
 
 
@@ -871,6 +1047,8 @@ def terminal_ttys(terminal):
             if len(parts) == 2 and PANE_RE.fullmatch(parts[0]):
                 rows.append(("tmux:" + parts[0], norm_tty(parts[1])))
         return rows
+    if terminal == "herdr":
+        return herdr_ttys()
     rc, out, err = run(["osascript", "-", "ttys"], stdin=OSA_TTYS)
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: osascript could not list the iTerm2 sessions: %s" % (one_line(err) or "exit %d" % rc))
@@ -923,6 +1101,10 @@ def groups(_a):
             gid, name = line.split("\t", 1)
             print(json.dumps({"window_id": None, "group_id": gid, "name": name, "color": None}))
         return OK
+    if terminal == "herdr":
+        for sp in herdr_spaces():
+            print(json.dumps({"window_id": None, "group_id": sp.get("id"), "name": sp.get("name"), "color": None}))
+        return OK
     rc, out, err = run(helper_cmd("groups"), timeout=HELPER_TIMEOUT)
     rows = []
     if rc == 0:
@@ -950,7 +1132,12 @@ def split_handle(handle):
         return kind, ref
     if kind == "tmux" and PANE_RE.fullmatch(ref):
         return kind, ref
-    raise Fail(BAD_HANDLE, "launcher: unknown handle %r; a handle is iterm2:<session id> or tmux:<pane id>" % handle)
+    if kind == "herdr" and HERDR_ID_RE.fullmatch(ref):
+        return kind, ref
+    raise Fail(
+        BAD_HANDLE,
+        "launcher: unknown handle %r; a handle is iterm2:<session id>, tmux:<pane id> or herdr:<terminal address>" % handle,
+    )
 
 
 def tmux_pane_exists(pane):
@@ -1019,6 +1206,13 @@ def focus(a):
         if iterm_script(OSA_FOCUS, "focus", ref) != "ok":
             raise Fail(BAD_HANDLE, "launcher: no iTerm2 session %s" % ref)
         return OK
+    if kind == "herdr":
+        herdr_programs()
+        try:
+            herdr_do("agent.focus", [("terminal", ref)], "focus")
+        except HerdrError as e:
+            raise Fail(BAD_HANDLE, "launcher: no running Herdr terminal %s (%s)" % (ref, e))
+        return OK
     if not tmux_pane_exists(ref):
         raise Fail(BAD_HANDLE, "launcher: no tmux pane %s" % ref)
     tmux(["select-window", "-t", ref])
@@ -1060,6 +1254,45 @@ def not_target(a):
     return OK
 
 
+def herdr_stop(a, ref):
+    """stop on Herdr: the same keys as on tmux, then the close of the tab. The
+    shell of a Herdr terminal stays open after claude ends, so the tab must
+    close. Return OK."""
+    _, hc = herdr_programs()
+    rec = hc_get(ref)
+    pid = (rec or {}).get("pid")
+    if rec is None or rec.get("state") != "live" or not isinstance(pid, int):
+        print("launcher: %s was already gone" % a.handle)
+        return OK
+    tab = (rec.get("labels") or {}).get("herdr.tab")
+    tty = processes().get(pid, {}).get("tty")
+    if a.name or a.session_id:
+        if tty is None or not holds_target(a, tty):
+            return not_target(a)
+    for cmd in (["keys", ref, "esc"], ["keys", ref, "ctrl+u"]):
+        rc, out, err = run([hc] + cmd, timeout=60)
+        if rc != 0:
+            raise Fail(TERMINAL_STEP, "launcher: hc %s failed for %s: %s" % (cmd[0], a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
+        time.sleep(KEY_WAIT)
+    # hc send pastes the text and presses Enter. --force: Escape has just
+    # answered a dialog, and the status can still read blocked.
+    rc, out, err = run([hc, "send", ref, "/exit", "--force"], timeout=90)
+    if rc != 0:
+        raise Fail(TERMINAL_STEP, "launcher: hc send failed for %s: %s" % (a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
+    left = wait_claude_gone(tty, a.handle) if tty else {}
+    if tab:
+        try:
+            herdr_do("tab.close", [("id", tab), ("confirmed", "true")], "stop")
+        except HerdrError as e:
+            if not str(e).startswith("no tab"):
+                raise Fail(TERMINAL_STEP, "launcher: Herdr did not close the tab %s of %s (%s)" % (tab, a.handle, e))
+        except Fail as f:
+            raise Fail(f.code, "%s; the handle is %s" % (f.line, a.handle))
+    if left:
+        wait_pids_gone(left, a.handle)
+    return OK
+
+
 def stop(a):
     """Type /exit, wait for claude to end, close the tab or kill the pane,
     then wait for each claude that was still on the tty to end.
@@ -1089,6 +1322,8 @@ def stop(a):
         if left:
             wait_pids_gone(left, a.handle)
         return OK
+    if kind == "herdr":
+        return herdr_stop(a, ref)
     tty = tmux_pane_tty(ref)
     if tty is None:
         print("launcher: %s was already gone" % a.handle)

@@ -9933,7 +9933,10 @@ Deliberately different:
        plan under `## Changed at start`, and in `Plan changes` in its report.
      - One review and no second round. A blocking finding makes the IC revise
        its plan before code, and nothing reviews the revision. The verify
-       step and the skeptical review still read the code.
+       step and the skeptical review still read the code. Since §15.151,
+       the project lead's verify step reads the code, the goal check reads
+       it against the goal only, and the repo's own review (CI, a bot or a
+       person) reads it for defects.
      - The reviewer is the Codex CLI in a read-only sandbox, and not a Claude
        agent. That is the model and effort of the experiment. The step never
        blocks a run: an absent CLI, a failed `codex login status`, a quota

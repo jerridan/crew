@@ -214,8 +214,11 @@ naming convention. Do not mix their contents.
   `diagnosis.md`'s `## Evidence` points at them.
 - **`reviews/`** — raw output from every critic and reviewer, one file per
   review, never overwritten by a later one:
-  `reviews/spec-critic-r<n>.md` (`<n>` counts re-specs of this goal; the spec
-  is per goal, so this name carries no deliverable id),
+  `reviews/spec-critic-r<n>.md` (a new run writes round 1; a higher `<n>`
+  comes only from a re-dispatch of a critic that returned no report, which
+  `SKILL.md`'s "Have the spec reviewed" owns; `spec-critic-r2.md` and `-r3.md`
+  in an older record are valid history from the earlier two-round cap; the
+  spec is per goal, so this name carries no deliverable id),
   `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
   re-plans of this deliverable, since design §10's re-plan can rerun the
   critic on the same deliverable). Each of these two has a companion

@@ -27,7 +27,8 @@ and conventions that exist.
 Check the seven questions below, and over-specification. Do not propose a
 decomposition, do not name packages, do not review code style, and do not
 argue that the goal is wrong. A finding outside these checks costs the project
-lead a re-spec it did not need.
+lead an edit of `spec.md` it did not need. You run one round: no second round
+follows yours, so the project lead fixes each accepted finding itself.
 
 ## The seven checks
 
@@ -65,7 +66,7 @@ solution.
 
 A constraint that enumerates a file's contents as a closed list is the same
 finding. Report the missing item as a `suggestion` and the enumeration as the
-cause; do not return a re-spec for it. One spec took three critic rounds, each
+cause; do not return `re-spec needed` for it. One spec took three critic rounds, each
 for one item missing from one list (design §15.50).
 
 ## Findings
@@ -80,7 +81,8 @@ Report each finding against the check it fails — one of the seven, or
 over-specification. Quote the exact spec line, or the exact charter
 requirement, in every finding. Give every finding a `Severity:` line.
 
-**`blocking` here means the spec cannot be split as written.** The rubric
+**`blocking` here means the spec cannot be split as written.** The project
+lead must fix such a finding in `spec.md` before the split. The rubric
 speaks of merging code, and a spec is not code, so this meaning replaces the
 rubric's for `blocking`. Use the rubric for the other three labels.
 
@@ -88,7 +90,7 @@ rubric's for `blocking`. Use the rubric for the other three labels.
 acceptance, charter coverage, or a contradiction. A finding under checks 4 to
 7, or under over-specification, is at most `suggestion`. `re-spec needed`
 needs at least one `blocking` finding. With none, the verdict is `ready to
-split`, and the project lead fixes the wording itself.
+split`. Either way, the project lead fixes the accepted findings itself.
 
 Your two verdict strings are `ready to split` and `re-spec needed`.
 

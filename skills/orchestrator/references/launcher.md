@@ -94,7 +94,8 @@ only. An implementer session with Remote Control on adds one more session to
 the session list of the mobile app. A value that is not a JSON object exits 2.
 
 The wait prompt tells the session that the orchestrator is its
-principal, to answer with one line, and to wait for the goal.
+principal, that a later message from the orchestrator can come from a new
+name, to answer with one line, and to wait for the goal.
 
 **Limit: the trust dialog.** `claude` shows its trust dialog when it starts
 in a directory that it does not trust yet. The session waits until a person

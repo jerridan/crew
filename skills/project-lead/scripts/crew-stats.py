@@ -11,7 +11,9 @@ Prints cost per package by band, fix rounds by band, promotions from
 counts, the finding labels the reviewers proposed per review kind, the review
 catch rate, the steps a band or the light path let a run skip, a `kind` column
 (`review` for a run of `/crew:review`, `goal` otherwise), the untouched-draft
-rate, and the review steps the principal replaced with a runner of their own.
+rate, the review steps the principal replaced with a runner of their own, and
+the goal checks: how many ran, how many found a goal miss, how many goal
+misses they found, and how many were accepted.
 The untouched-draft rate is the share of the answered go-ahead drafts that the
 principal approved as they stood: over the escalations that carry `draft`, the
 count with `draft_changed: false` divided by the count with `draft_changed` not
@@ -46,7 +48,9 @@ The catch rate is one number per review kind: the share of that kind's reviews
 that returned an action verdict. A review file's `Verdict:` line gives the
 verdict. On a skeptical round whose reply file holds a `Verdict after labels:`
 line, that line gives it instead, because the project lead's labels decide the
-round (`skeptical-review.md`'s "The verdict pair"). The record carries no
+round (`goal-check.md`'s "Labels and the verdict"). The `skeptical review` kind
+counts every `skeptical-r<n>.md`, a goal check's and a review run's alike, as
+it did before the goal check existed. The record carries no
 per-finding adjudication beyond that line, so a review that was accepted and
 still produced a commit counts as no catch here (§15.57).
 
@@ -70,6 +74,14 @@ suggestion and the Nit tag as nit. A new report that lacks the `Findings:`
 line is counted from its `Severity:` lines. A report with none of these
 shapes counts nothing.
 `--json` carries the totals under `labels`.
+
+A goal check is a `skeptical-r<n>.md` report whose header holds the line
+`Check: goal` (`goal-check.md`). An older report has none and is no goal
+check. A goal check found a goal miss when its verdict is `patch round
+needed`: the reply file's `Verdict after labels:` line, or the report's own
+`Verdict:` line when no reply file holds one. Its goal misses are its
+`Blocking count:`. It was accepted when that verdict is `accepted`. `--json`
+carries the counts under `goal_checks`.
 
 Dollars come from `spend.py`, which this script imports. It never holds a
 second price table. A run is priced in this order:
@@ -163,7 +175,8 @@ DRAFT_REVIEW = re.compile(r"^github-r\d+\.md$")
 # accepts the artifact and the second sends it back for a fix (the spec
 # and split critics run one round, so a second verdict starts no new round;
 # older records may hold rounds 2 and 3, which are counted too)
-# (`agents/spec-critic.md`, `split-critic.md`, `references/skeptical-review.md`,
+# (`agents/spec-critic.md`, `split-critic.md`, `references/goal-check.md`,
+# `references/skeptical-review.md`,
 # and the two retired reviewers). A verdict outside these gets a skip line: it
 # is a drifted string, not a clean review, and counting it as clean would
 # deflate the catch rate without saying so.
@@ -193,9 +206,15 @@ OLD_TAG = re.compile(r"^[\s#>*\-\d.)]*(?:[A-Z]\d+[.)]?\s+)?[*`]*\[(" + "|".join(
 # unsure` that a transcribed output can quote is no finding, so a label
 # followed by `|` does not count.
 SEVERITY = re.compile(r"^Severity:\s*(" + "|".join(LABELS) + r")\b(?!\s*\|)", re.M)
-# The reply file's closing line (`skeptical-review.md`'s "The verdict pair").
+# The reply file's closing line (`goal-check.md`'s "Labels and the verdict").
 AFTER_LABELS = re.compile(r"Verdict after labels:\s*([^\n.]+)")
 SKEPTICAL_REPORT = re.compile(r"^skeptical-r(\d+)\.md$")
+# A goal check's header line, after `Reviewed:` and any `Source:` line
+# (`goal-check.md`). Only the first lines of a report are its header.
+CHECK_GOAL = re.compile(r"^Check:\s*goal\s*$", re.M | re.I)
+HEADER_LINES = 5
+# The last of the three closing lines (`review-output.md`).
+BLOCKING_COUNT = re.compile(r"Blocking count:\s*(\d+)")
 
 # `record-format.md`'s terminal deliverable states.
 TERMINAL_DELIVERABLE = ("draft-pr-opened", "work-complete", "under-review", "abandoned")
@@ -380,9 +399,10 @@ def plan_review_totals(records: list[dict]) -> dict:
 
 
 # The principal may name another runner for a review step, and only for these
-# two (`substitution.md`). The step ran, so it is not a skipped step and it
-# never reaches the table above.
-SUBSTITUTABLE_STEPS = ["spec-critic", "skeptical-review"]
+# (`substitution.md`). `goal-check` is a goal run's name for the step that a
+# review run, and a goal run before T90, calls `skeptical-review`. The step
+# ran, so it is not a skipped step and it never reaches the table above.
+SUBSTITUTABLE_STEPS = ["spec-critic", "goal-check", "skeptical-review"]
 
 
 def usage_usd(usage) -> float | None:
@@ -488,6 +508,54 @@ def classify_verdict(verdict: str | None) -> tuple[bool, bool]:
     acted = bool(verdict and verdict.startswith(ACTION_VERDICTS))
     known = bool(verdict and verdict.startswith(ACTION_VERDICTS + CLEAN_VERDICTS))
     return acted, known
+
+
+def blank_goal_checks() -> dict:
+    return {"run": 0, "missed": 0, "misses": 0, "accepted": 0}
+
+
+def read_goal_checks(record: Path) -> dict:
+    """Count the record's goal checks, as `blank_goal_checks` shapes them.
+
+    A goal check is a `skeptical-r<n>.md` report with `Check: goal` in its
+    header. Its verdict is the reply file's `Verdict after labels:` line, or
+    the report's last `Verdict:` line when no reply file holds one. A check
+    with the verdict `patch round needed` found a goal miss, and adds its
+    last `Blocking count:` to `misses`. A check with `accepted` was accepted.
+    A check with neither verdict counts as run and as nothing else: the
+    catch rate's skip line already names it.
+    """
+    counts = blank_goal_checks()
+    directory = record / "reviews"
+    if not directory.is_dir():
+        return counts
+    for name in sorted(os.listdir(directory)):
+        found = SKEPTICAL_REPORT.match(name)
+        if not found:
+            continue
+        try:
+            text = (directory / name).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not CHECK_GOAL.search("\n".join(text.splitlines()[:HEADER_LINES])):
+            continue
+        counts["run"] += 1
+        verdicts = VERDICT.findall(text)
+        verdict = verdicts[-1].strip().lower() if verdicts else None
+        reply = directory / f"skeptical-r{found.group(1)}-reply.md"
+        try:
+            after = AFTER_LABELS.findall(reply.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            after = []
+        if after:
+            verdict = after[-1].strip().lower()
+        if verdict and verdict.startswith("patch round needed"):
+            counts["missed"] += 1
+            blocking = BLOCKING_COUNT.findall(text)
+            counts["misses"] += int(blocking[-1]) if blocking else 0
+        elif verdict and verdict.startswith("accepted"):
+            counts["accepted"] += 1
+    return counts
 
 
 def read_reviews(record: Path, bands: dict, skips: list) -> tuple[dict, dict, dict, dict]:
@@ -818,6 +886,7 @@ def read_record(record: Path, state: dict, checkout: str | None, forced: bool, s
         "catch": catch,
         "catch_by_band": catch_by_band,
         "labels": labels,
+        "goal_checks": read_goal_checks(record),
         "usd": usd,
         "drafts": drafts,
         "untouched_draft_rate": percent(drafts["untouched"], drafts["answered"]),
@@ -937,6 +1006,17 @@ def report(records: list[dict], skips: list[str]) -> None:
         blank = sum(r["catch"][kind]["unverdicted"] for r in records)
         rows.append([kind, total, acted, rate(acted, total), blank])
     print(table(["kind", "reviews", "acted", "rate", "unscored"], rows))
+
+    # The goal check is one round with one question (`goal-check.md`). Zero
+    # rows are expected on records from before it, so the table always prints.
+    print("\nGoal checks (skeptical-r<n>.md reports with Check: goal)\n")
+    rows = [
+        ["goal checks run", sum(r["goal_checks"]["run"] for r in records)],
+        ["goal checks with a goal miss", sum(r["goal_checks"]["missed"] for r in records)],
+        ["goal misses found", sum(r["goal_checks"]["misses"] for r in records)],
+        ["goal checks accepted", sum(r["goal_checks"]["accepted"] for r in records)],
+    ]
+    print(table(["measure", "count"], rows))
 
     # A skipped review leaves no file, so it never reaches the catch rate
     # above. This table is what says the absence was by rule (§15.77, §15.88).

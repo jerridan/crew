@@ -221,9 +221,11 @@ naming convention. Do not mix their contents.
   `SKILL.md`'s "Have the spec reviewed" owns; `spec-critic-r2.md` and `-r3.md`
   in an older record are valid history from the earlier two-round cap; the
   spec is per goal, so this name carries no deliverable id),
-  `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` here counts
-  re-plans of this deliverable, since design §10's re-plan can rerun the
-  critic on the same deliverable). Each of these two has a companion
+  `reviews/<deliverable-id>-split-critic-r<n>.md` (`<n>` counts the
+  deliverable's critic rounds: one per split, so a re-plan takes the next
+  `<n>`, and so does a re-dispatch of a critic that returned no report;
+  `-r2` and `-r3` for one split in an older record are valid history from the
+  earlier three-round cap). Each of these two has a companion
   reservation file, written by the project lead before the dispatch to
   reserve the round: `reviews/spec-critic-r<n>-instructions.md` and
   `reviews/split-critic-<deliverable-id>-r<n>-instructions.md`, each holding

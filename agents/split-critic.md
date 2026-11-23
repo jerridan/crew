@@ -25,8 +25,10 @@ confirm what a package claims about a file that already exists.
 
 Check the seven questions below, and the band. Do not review the goal, the
 spec, the design, the code style, or whether a package is a good idea. Another
-agent owns each of those. A finding outside those checks is noise that costs a
-re-plan.
+agent owns each of those. A finding outside those checks is noise that costs
+the project lead an edit of `split.md` it did not need. You run one round: no
+second round follows yours, so the project lead fixes each accepted finding
+itself.
 
 ## The seven checks
 
@@ -74,10 +76,10 @@ Report each finding against the check it fails — one of the seven, or the band
 Name the packages and the exact file, type, or signature in every finding.
 Give every finding a `Severity:` line.
 
-**`blocking` here means the split is not dispatchable until the finding is
-fixed.** The rubric speaks of merging code, and a split is not code, so this
-meaning replaces the rubric's for `blocking`. Use the rubric for the other
-three labels. `re-split needed` needs at least one `blocking` finding. With
+**`blocking` here means the split is not dispatchable until the project lead
+fixes the finding in `split.md`.** The rubric speaks of merging code, and a
+split is not code, so this meaning replaces the rubric's for `blocking`. Use
+the rubric for the other three labels. `re-split needed` needs at least one `blocking` finding. With
 none, the verdict is `dispatchable`.
 
 Your two verdict strings are `dispatchable` and `re-split needed`.

@@ -1909,11 +1909,11 @@ lines = [l.rstrip("\n").split("|")[:-1] for l in open(sys.argv[1])]
 calls = [l for l in lines if l[:2] == ["do", "space.new"]]
 assert len(calls) == 1 and not [l for l in lines if l[:2] == ["do", "tab.new"]]
 c = calls[0]
-assert c[:8] == ["do", "space.new", "--name", "fresh", "--folder", sys.argv[2], "--argv", c[7]], c
-assert c[8:] == ["--focus", "false"], c
-assert json.loads(c[7])[:2] == ["/bin/sh", "-c"]
+assert c[:10] == ["do", "space.new", "--name", "fresh", "--tab", "hd-3", "--folder", sys.argv[2], "--argv", c[9]], c
+assert c[10:] == ["--focus", "false"], c
+assert json.loads(c[9])[:2] == ["/bin/sh", "-c"]
 PY
-check 'a group with no space of that name makes one with space.new, without focus' $r
+check 'a group with no space of that name makes one with space.new, its first tab named by the session name, without focus' $r
 check 'a new space gives tab herdr:t9 and tab_group fresh' $([ "$(field tab)" = '"herdr:t9"' ] && [ "$(field tab_group)" = '"fresh"' ]; echo $?)
 reset_stub
 printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"

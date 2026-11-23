@@ -12,8 +12,8 @@ counts, the finding labels the reviewers proposed per review kind, the review
 catch rate, the steps a band or the light path let a run skip, a `kind` column
 (`review` for a run of `/crew:review`, `goal` otherwise), the untouched-draft
 rate, the review steps the principal replaced with a runner of their own, and
-the goal checks: how many ran, how many found a goal miss, how many goal
-misses they found, and how many were accepted.
+the goal checks: how many ran, how many found a goal miss, how many
+blocking findings those reports held, and how many were accepted.
 The untouched-draft rate is the share of the answered go-ahead drafts that the
 principal approved as they stood: over the escalations that carry `draft`, the
 count with `draft_changed: false` divided by the count with `draft_changed` not
@@ -79,8 +79,10 @@ A goal check is a `skeptical-r<n>.md` report whose header holds the line
 `Check: goal` (`goal-check.md`). An older report has none and is no goal
 check. A goal check found a goal miss when its verdict is `patch round
 needed`: the reply file's `Verdict after labels:` line, or the report's own
-`Verdict:` line when no reply file holds one. Its goal misses are its
-`Blocking count:`. It was accepted when that verdict is `accepted`. `--json`
+`Verdict:` line when no reply file holds one. That check adds its report's
+`Blocking count:` to `misses`: the reviewer's own count, which can differ
+from the project lead's labels, because no ledger line format records
+those labels for a script. It was accepted when that verdict is `accepted`. `--json`
 carries the counts under `goal_checks`.
 
 Dollars come from `spend.py`, which this script imports. It never holds a
@@ -521,7 +523,8 @@ def read_goal_checks(record: Path) -> dict:
     header. Its verdict is the reply file's `Verdict after labels:` line, or
     the report's last `Verdict:` line when no reply file holds one. A check
     with the verdict `patch round needed` found a goal miss, and adds its
-    last `Blocking count:` to `misses`. A check with `accepted` was accepted.
+    last `Blocking count:` to `misses`: the reviewer's count, not the
+    project lead's labels. A check with `accepted` was accepted.
     A check with neither verdict counts as run and as nothing else: the
     catch rate's skip line already names it.
     """
@@ -1013,7 +1016,7 @@ def report(records: list[dict], skips: list[str]) -> None:
     rows = [
         ["goal checks run", sum(r["goal_checks"]["run"] for r in records)],
         ["goal checks with a goal miss", sum(r["goal_checks"]["missed"] for r in records)],
-        ["goal misses found", sum(r["goal_checks"]["misses"] for r in records)],
+        ["blocking findings in those reports", sum(r["goal_checks"]["misses"] for r in records)],
         ["goal checks accepted", sum(r["goal_checks"]["accepted"] for r in records)],
     ]
     print(table(["measure", "count"], rows))

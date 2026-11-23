@@ -10109,9 +10109,10 @@ Deliberately different:
      runs one round, with no `codex exec resume` line.
 
      **`crew-stats.py`** prints a "Goal checks" table: the checks run (the
-     reports with `Check: goal`), the checks with a goal miss, the goal
-     misses found (the sum of their `Blocking count:` lines) and the checks
-     accepted. It reads the verdict from the reply file's `Verdict after
+     reports with `Check: goal`), the checks with a goal miss, the
+     blocking findings in those reports (the sum of their `Blocking count:`
+     lines, the reviewer's count, because no ledger format records the
+     project lead's labels for a script) and the checks accepted. It reads the verdict from the reply file's `Verdict after
      labels:` line first. Older skeptical reports keep their counting.
      `goal-check` joins the substitutable steps.
 

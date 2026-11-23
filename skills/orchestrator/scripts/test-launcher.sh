@@ -28,7 +28,7 @@ mkdir -p "$CREW_RECORD_ROOT"
 export GIT_CONFIG_NOSYSTEM=1
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com
 export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
-unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID
+unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID __CFBundleIdentifier HC_TERMINAL_ID
 
 # tmux stub. It logs each call as one line, args joined by `|`, and each
 # CLAUDECODE or CLAUDE_CODE_* variable it gets to tmux-env. Files under
@@ -140,6 +140,61 @@ done
 case "$line" in
   *"|start|"*) printf '{"session_id": "ABC-123", "tab_group": %s}\n' "$group" ;;
   *"|groups|"*) cat "$D/uv-groups" 2>/dev/null ;;
+esac
+exit 0
+STUB
+
+# herdr-app and hc stubs: the Herdr window program and its core program.
+# Each call goes to herdr.log or hc.log as one line, args joined by `|`.
+# herdr-app files: herdr-down (the window does not answer), herdr-ls (the
+# `ls` JSON), herdr-terminals (one running terminal address per line, for
+# agent.focus), herdr-tabs (one known tab id per line, for tab.close),
+# herdr-close-fail (tab.close fails with an error that is not "no tab"),
+# herdr-do-fail (tab.new and space.new fail). hc files: hc-ls (the `ls --json`
+# output), hc-get-<address>.json (the `get` output; a missing file is not_found).
+cat > "$T/bin/herdr-app" <<'STUB'
+#!/bin/bash
+D=$STUB_DIR
+line=''
+for a in "$@"; do line="$line$a|"; done
+printf '%s\n' "$line" >> "$D/herdr.log"
+if [ -e "$D/herdr-down" ]; then
+  echo "herdr-app: no Herdr window at /x/herdr-app.sock: No such file or directory (os error 2)" >&2
+  exit 2
+fi
+case "$1" in
+  ls) cat "$D/herdr-ls" 2>/dev/null || echo '{"spaces":[]}' ;;
+  do)
+    case "$2" in
+      tab.new)
+        [ -e "$D/herdr-do-fail" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
+        echo '{"space":"spaNEW","tab":"tbNEW","terminal":"t9"}' ;;
+      space.new)
+        [ -e "$D/herdr-do-fail" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
+        echo '{"space":"spaMADE","tab":"tbNEW","terminal":"t9"}' ;;
+      agent.focus)
+        if grep -sqxF -- "$4" "$D/herdr-terminals"; then echo '{"ok":true}'
+        else echo "{\"error\":\"no running terminal \\\"$4\\\"\"}"; exit 1; fi ;;
+      tab.close)
+        [ -e "$D/herdr-close-fail" ] && { echo '{"error":"the window refused"}'; exit 1; }
+        if grep -sqxF -- "$4" "$D/herdr-tabs"; then echo '{"ok":true}'
+        else echo "{\"error\":\"no tab \\\"$4\\\"\"}"; exit 1; fi ;;
+      *) echo '{"ok":true}' ;;
+    esac ;;
+esac
+exit 0
+STUB
+cat > "$T/bin/hc" <<'STUB'
+#!/bin/bash
+D=$STUB_DIR
+line=''
+for a in "$@"; do line="$line$a|"; done
+printf '%s\n' "$line" >> "$D/hc.log"
+case "$1" in
+  ls) cat "$D/hc-ls" 2>/dev/null || echo '{"hidden_finished":0,"terminals":[]}' ;;
+  get)
+    if [ -e "$D/hc-get-$2.json" ]; then cat "$D/hc-get-$2.json"
+    else echo "{\"error\":{\"kind\":\"not_found\",\"message\":\"no terminal \\\"$2\\\"\"}}"; exit 3; fi ;;
 esac
 exit 0
 STUB
@@ -1741,6 +1796,268 @@ r=1; [ "$r1" = 0 ] && [ "$r1r" = 0 ] && [ "$(grep -c '^new-' "$STUB_DIR/tmux.log
   && grep -sq '^list-clients|' "$STUB_DIR/tmux.log" && grep -sq '^kill-pane|' "$STUB_DIR/tmux.log" \
   && [ ! -s "$STUB_DIR/tmux-env" ] && r=0
 check 'no tmux call of start, resume, groups, focus or stop gets CLAUDECODE or a CLAUDE_CODE_* variable' $r
+
+# -- herdr -------------------------------------------------------------------
+# hc_get <address> <pid> <space id> <tab id>: the `hc get` answer of a live terminal.
+hc_get() {
+  printf '{"address":"%s","pid":%s,"state":"live","labels":{"herdr.space":"%s","herdr.tab":"%s"}}\n' "$1" "$2" "$3" "$4" > "$STUB_DIR/hc-get-$1.json"
+}
+HERDR_LS='{"spaces":[{"id":"spaA","name":"grp","tabs":[]},{"id":"spaB","name":"grp","tabs":[]},{"id":"spaOwn","name":"own","tabs":[]}]}'
+HERDR=dev.herdr.app
+
+# R1: detection.
+reset_stub
+__CFBundleIdentifier=$HERDR run find nobody
+check 'a Herdr environment with no TMUX picks herdr: find reads hc, never tmux' \
+  $([ "$rc" = 0 ] && grep -sq '^ls|' "$STUB_DIR/hc.log" && [ ! -e "$STUB_DIR/tmux.log" ]; echo $?)
+reset_stub
+TMUX=/tmp/t,1,0 __CFBundleIdentifier=$HERDR run find nobody
+check 'a Herdr environment with TMUX picks tmux' \
+  $([ "$rc" = 0 ] && grep -sq '^list-panes|' "$STUB_DIR/tmux.log" && [ ! -e "$STUB_DIR/hc.log" ]; echo $?)
+TERM_PROGRAM=Apple_Terminal run find nobody
+check 'an environment with no supported terminal exits 4 and the line names herdr' \
+  $([ "$rc" = 4 ] && grep -sqi herdr "$T/err"; echo $?)
+reset_stub
+run start --name hd-0 --terminal herdr --group grp --principal p --checkout "$CO"
+check '--terminal herdr selects herdr with no Herdr environment' \
+  $([ "$rc" = 0 ] && [ "$(field terminal)" = '"herdr"' ]; echo $?)
+
+# R2: the programs and the limits.
+reset_stub
+hbase=$(wtcount)
+mkdir -p "$T/bin2"
+for f in "$T/bin/"*; do case "$(basename "$f")" in herdr-app|hc) ;; *) ln -sf "$f" "$T/bin2/$(basename "$f")" ;; esac; done
+NOHERDR="$T/bin2:${PATH#$T/bin:}"
+PATH="$NOHERDR" run start --name hd-1 --terminal herdr --group grp --principal p --checkout "$CO"
+check 'start on Herdr with no herdr-app or hc exits 4 with one line that names Herdr, and makes no worktree' \
+  $([ "$rc" = 4 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Herdr "$T/err" && [ "$(wtcount)" = "$hbase" ]; echo $?)
+mkdir -p "$T/home/.local/bin"
+cp "$T/bin/herdr-app" "$T/bin/hc" "$T/home/.local/bin/"
+PATH="$NOHERDR" __CFBundleIdentifier=$HERDR run find nobody
+check 'the launcher finds herdr-app and hc in ~/.local/bin when PATH has none' \
+  $([ "$rc" = 0 ] && grep -sq '^ls|' "$STUB_DIR/hc.log"; echo $?)
+rm -rf "$T/home/.local"
+reset_stub
+: > "$STUB_DIR/herdr-down"
+run start --name hd-1 --terminal herdr --group grp --principal p --checkout "$CO"
+check 'start on Herdr with no window answer exits 6 with one line that names Herdr and the window, and makes no worktree' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Herdr "$T/err" && grep -sqi window "$T/err" && [ "$(wtcount)" = "$hbase" ]; echo $?)
+__CFBundleIdentifier=$HERDR run groups
+check 'groups on Herdr with no window answer exits 6 with a line that names Herdr' \
+  $([ "$rc" = 6 ] && grep -sq Herdr "$T/err"; echo $?)
+__CFBundleIdentifier=$HERDR run find nobody
+check 'find on Herdr needs only hc: no window answer is no failure' $([ "$rc" = 0 ]; echo $?)
+reset_stub
+run start --name hd-1 --terminal herdr --principal p --checkout "$CO"
+check 'start on Herdr with no --group and no HC_TERMINAL_ID exits 2 with one line that names Herdr and --group, and makes no worktree' \
+  $([ "$rc" = 2 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Herdr "$T/err" && grep -sqF -- '--group' "$T/err" && [ "$(wtcount)" = "$hbase" ]; echo $?)
+echo '{"spaces":[]}' > "$STUB_DIR/herdr-ls"
+HC_TERMINAL_ID=t5 run start --name hd-1 --terminal herdr --principal p --checkout "$CO"
+check 'start on Herdr from a terminal with no space label exits 2 and tells the caller to pass --group' \
+  $([ "$rc" = 2 ] && grep -sq Herdr "$T/err" && grep -sqF -- '--group' "$T/err" && [ "$(wtcount)" = "$hbase" ]; echo $?)
+
+# R3 and R4: start into an existing space.
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+__CFBundleIdentifier=$HERDR run start --name hd-2 --group grp --principal p --checkout "$CO" --model sonnet
+HWT="$CO/.claude/worktrees/hd-2"
+check 'Herdr start into an existing space exits 0' $([ "$rc" = 0 ]; echo $?)
+r=1; [ "$(wc -l < "$T/out" | tr -d ' ')" = 1 ] && python3 - "$T/out" <<'PY' && r=0
+import json, sys
+o = json.loads(open(sys.argv[1]).read())
+want = {"session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group", "session_id"}
+ok = set(o) == want and o["terminal"] == "herdr" and o["tab"] == "herdr:t9" and o["tab_group"] == "grp"
+sys.exit(0 if ok else 1)
+PY
+check 'Herdr start prints the ten fields: terminal herdr, tab herdr:t9, tab_group the space name' $r
+r=1; python3 - "$STUB_DIR/herdr.log" "$T/out" "$HWT" <<'PY' && r=0
+import json, sys
+lines = [l.rstrip("\n").split("|")[:-1] for l in open(sys.argv[1])]
+o = json.load(open(sys.argv[2]))
+calls = [l for l in lines if l[:2] == ["do", "tab.new"]]
+assert len(calls) == 1
+c = calls[0]
+assert c[:10] == ["do", "tab.new", "--space", "spaA", "--name", "hd-2", "--folder", sys.argv[3], "--argv", c[9]], c
+assert c[10:] == ["--focus", "false"], c
+argv = json.loads(c[9])
+assert argv[:2] == ["/bin/sh", "-c"] and len(argv) == 3, argv
+cmd = argv[2]
+assert cmd.startswith("cd %s && exec claude --name hd-2 --session-id %s --model sonnet --settings " % (sys.argv[3], o["session_id"])), cmd
+assert "remoteControlAtStartup" in cmd
+PY
+check 'Herdr start runs do tab.new with the space, name, folder, argv and --focus false, and the claude command of the tmux path' $r
+check 'Herdr start picks the first space of that name and makes no space' \
+  $(! grep -sq 'space.new' "$STUB_DIR/herdr.log"; echo $?)
+check 'Herdr start sends no key and focuses nothing' \
+  $(! grep -sqE '^do\|(agent.focus|tab.select|space.select)' "$STUB_DIR/herdr.log" && [ ! -e "$STUB_DIR/hc.log" ]; echo $?)
+sh -c "$(python3 -c 'import json,sys
+for l in open(sys.argv[1]):
+    p = l.rstrip("\n").split("|")
+    if p[:2] == ["do", "tab.new"]: print(json.loads(p[9])[2])' "$STUB_DIR/herdr.log")"
+expect_args=$(printf '%s\n' "$HWT" --name hd-2 --session-id "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["session_id"])' "$T/out")" --model sonnet --settings '{"remoteControlAtStartup": false}')
+check 'the argv command, run, starts claude in the worktree with the same arguments as on tmux' \
+  $([ "$(head -n 7 "$STUB_DIR/claude-args")" = "$expect_args" ]; echo $?)
+
+# R4: a new space, the caller's space, --group-color.
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+__CFBundleIdentifier=$HERDR run start --name hd-3 --group fresh --principal p --checkout "$CO"
+r=1; python3 - "$STUB_DIR/herdr.log" "$CO/.claude/worktrees/hd-3" <<'PY' && r=0
+import json, sys
+lines = [l.rstrip("\n").split("|")[:-1] for l in open(sys.argv[1])]
+calls = [l for l in lines if l[:2] == ["do", "space.new"]]
+assert len(calls) == 1 and not [l for l in lines if l[:2] == ["do", "tab.new"]]
+c = calls[0]
+assert c[:8] == ["do", "space.new", "--name", "fresh", "--folder", sys.argv[2], "--argv", c[7]], c
+assert c[8:] == ["--focus", "false"], c
+assert json.loads(c[7])[:2] == ["/bin/sh", "-c"]
+PY
+check 'a group with no space of that name makes one with space.new, without focus' $r
+check 'a new space gives tab herdr:t9 and tab_group fresh' $([ "$(field tab)" = '"herdr:t9"' ] && [ "$(field tab_group)" = '"fresh"' ]; echo $?)
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+hc_get t5 1 spaOwn tbX
+HC_TERMINAL_ID=t5 __CFBundleIdentifier=$HERDR run start --name hd-4 --principal p --checkout "$CO"
+check 'with no --group the tab goes into the space of $HC_TERMINAL_ID, named by herdr-app ls' \
+  $([ "$rc" = 0 ] && grep -sq '^do|tab.new|--space|spaOwn|--name|hd-4|' "$STUB_DIR/herdr.log" && [ "$(field tab_group)" = '"own"' ]; echo $?)
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+__CFBundleIdentifier=$HERDR run start --name hd-5 --group grp --group-color '#112233' --principal p --checkout "$CO"
+check '--group-color on Herdr is ignored, with one stderr line that names Herdr' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Herdr "$T/err" && grep -sqi color "$T/err" \
+    && ! grep -sq '#112233' "$STUB_DIR/herdr.log"; echo $?)
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+: > "$STUB_DIR/herdr-do-fail"
+__CFBundleIdentifier=$HERDR run start --name hd-6 --group grp --principal p --checkout "$CO"
+check 'a failed do tab.new exits 6 with one line that names Herdr and the worktree path' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Herdr "$T/err" && grep -sqF "$CO/.claude/worktrees/hd-6" "$T/err"; echo $?)
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+__CFBundleIdentifier=$HERDR run groups
+r=1; [ "$rc" = 0 ] && python3 - "$T/out" <<'PY' && r=0
+import json, sys
+rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+want = [{"window_id": None, "group_id": i, "name": n, "color": None} for i, n in (("spaA", "grp"), ("spaB", "grp"), ("spaOwn", "own"))]
+sys.exit(0 if rows == want else 1)
+PY
+check 'groups on Herdr prints one line per space: window_id null, group_id the space id, name, color null' $r
+
+# R5: find.
+reset_stub
+cat > "$STUB_DIR/hc-ls" <<'JSON'
+{"hidden_finished":0,"terminals":[{"address":"t3","state":"live"},{"address":"t4","state":"live"}]}
+JSON
+hc_get t3 900041 spaA tb3
+hc_get t4 900043 spaA tb4
+cat > "$STUB_DIR/ps-extra" <<'PS'
+900041 1 ttys921 /bin/zsh -l
+900042 900041 ttys921 claude --name hd-a --model opus
+900043 1 ttys922 /bin/zsh -l
+900044 900043 ttys922 vim notes
+PS
+__CFBundleIdentifier=$HERDR run find hd-a
+check 'find on Herdr prints one line, the handle of the terminal that holds the session, and the match' \
+  $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'herdr:t3 name' ]; echo $?)
+__CFBundleIdentifier=$HERDR run find hd-none
+check 'find on Herdr with no match prints no line' $([ "$rc" = 0 ] && [ ! -s "$T/out" ]; echo $?)
+reset_stub
+cat > "$STUB_DIR/hc-ls" <<'JSON'
+{"hidden_finished":0,"terminals":[{"address":"t3","state":"live"}]}
+JSON
+hc_get t3 900041 spaA tb3
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+echo '900042 900041 ttys921 claude --resume sid-h --model opus' >> "$STUB_DIR/ps-extra"
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+__CFBundleIdentifier=$HERDR run resume --name hd-a --worktree "$RWT" --session-id sid-h --group grp
+check 'resume on Herdr of a session that find sees exits 8, names herdr:t3, and opens no tab' \
+  $([ "$rc" = 8 ] && grep -sqF 'herdr:t3' "$T/err" && ! grep -sq 'tab.new' "$STUB_DIR/herdr.log"; echo $?)
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+__CFBundleIdentifier=$HERDR run resume --name hd-a --worktree "$RWT" --session-id sid-h --group grp
+r=1; [ "$rc" = 0 ] && python3 - "$STUB_DIR/herdr.log" "$T/out" "$RWT" <<'PY' && r=0
+import json, sys
+c = [l.rstrip("\n").split("|")[:-1] for l in open(sys.argv[1])]
+c = [l for l in c if l[:2] == ["do", "tab.new"]][0]
+o = json.load(open(sys.argv[2]))
+assert c[:4] == ["do", "tab.new", "--space", "spaA"] and c[-2:] == ["--focus", "false"], c
+assert json.loads(c[9])[2].startswith("cd %s && exec claude --resume sid-h --name hd-a " % sys.argv[3])
+assert o["terminal"] == "herdr" and o["tab"] == "herdr:t9" and o["tab_group"] == "grp" and o["session_id"] == "sid-h"
+PY
+check 'resume on Herdr opens one tab in the space with the resume command and the Herdr output values' $r
+
+# R6: focus.
+reset_stub
+printf 't3\n' > "$STUB_DIR/herdr-terminals"
+run focus herdr:t3
+check 'focus herdr:<address> runs do agent.focus --terminal <address>, and nothing else' \
+  $([ "$rc" = 0 ] && [ "$(grep -c '^do|' "$STUB_DIR/herdr.log")" = 1 ] && grep -sqx 'do|agent.focus|--terminal|t3|' "$STUB_DIR/herdr.log"; echo $?)
+run focus herdr:t99
+check 'focus on an unknown Herdr terminal exits 7 with one line' $([ "$rc" = 7 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+run focus herdr:7
+check 'focus herdr:7 (no t) exits 7 with one line' $([ "$rc" = 7 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+: > "$STUB_DIR/herdr-down"
+run focus herdr:t3
+check 'focus on Herdr with no window answer exits 6 with a line that names Herdr' $([ "$rc" = 6 ] && grep -sq Herdr "$T/err"; echo $?)
+
+# R7: stop. herdr_stop <args...>: stop in this process with no wait.
+herdr_stop() {
+  python3 - "$here" "$@" > "$T/out" 2> "$T/err" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.STOP_WAIT = 0
+launcher.STOP_CLOSE_WAIT = 0
+launcher.KEY_WAIT = 0
+sys.exit(launcher.main(sys.argv[2:]))
+PY
+  rc=$?
+}
+reset_stub
+hc_get t3 900041 spaA tb3
+echo 'tb3' > "$STUB_DIR/herdr-tabs"
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+herdr_stop stop herdr:t3
+r=1; [ "$rc" = 0 ] && python3 - "$STUB_DIR/hc.log" "$STUB_DIR/herdr.log" <<'PY' && r=0
+import sys
+hc = [l.rstrip("\n") for l in open(sys.argv[1])]
+hd = [l.rstrip("\n") for l in open(sys.argv[2])]
+keys = [l for l in hc if not l.startswith("get|")]
+assert keys == ["keys|t3|esc|", "keys|t3|ctrl+u|", "send|t3|/exit|--force|"], keys
+assert [l for l in hd if l.startswith("do|")] == ["do|tab.close|--id|tb3|--confirmed|true|"], hd
+PY
+check 'stop herdr:<address> sends esc, then ctrl+u, then /exit with hc, then closes the tab with tab.close --id <tab> --confirmed true' $r
+check 'a clean Herdr stop prints nothing' $([ ! -s "$T/out" ] && [ ! -s "$T/err" ]; echo $?)
+reset_stub
+herdr_stop stop herdr:t3
+check 'stop on a Herdr terminal that is gone prints one line and exits 0, with no key and no close' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && grep -sqi gone "$T/out" && ! grep -sqE '^(keys|send)\|' "$STUB_DIR/hc.log" && ! grep -sq 'do|' "$STUB_DIR/herdr.log" 2>/dev/null; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo '900041 1 ttys921 /bin/zsh -l' > "$STUB_DIR/ps-extra"
+herdr_stop stop herdr:t3
+check 'stop when tab.close says the tab is gone prints no failure and exits 0' $([ "$rc" = 0 ] && [ ! -s "$T/err" ]; echo $?)
+echo 'tb3' > "$STUB_DIR/herdr-tabs"
+: > "$STUB_DIR/herdr-close-fail"
+herdr_stop stop herdr:t3
+check 'a failed tab.close exits 6 with one line that names Herdr and the handle' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sq Herdr "$T/err" && grep -sqF herdr:t3 "$T/err"; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo 'tb3' > "$STUB_DIR/herdr-tabs"
+printf '900041 1 ttys921 /bin/zsh -l\n900042 900041 ttys921 claude --name other --model opus\n' > "$STUB_DIR/ps-extra"
+herdr_stop stop herdr:t3 --name hd-a --session-id sid-h
+check 'stop --name on a Herdr terminal with another claude sends no key, closes nothing, prints one line and exits 0' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/out")" = 1 ] && ! grep -sqE '^(keys|send)\|' "$STUB_DIR/hc.log" && ! grep -sq 'do|' "$STUB_DIR/herdr.log" 2>/dev/null; echo $?)
+printf '900041 1 ttys921 /bin/zsh -l\n900042 900041 ttys921 claude --name hd-a --model opus\n' > "$STUB_DIR/ps-extra"
+herdr_stop stop herdr:t3 --name hd-a
+check 'stop --name on the terminal of that session sends the keys and closes the tab' \
+  $([ "$rc" = 0 ] && grep -sq '^send|t3|/exit|' "$STUB_DIR/hc.log" && grep -sq 'tab.close|--id|tb3|' "$STUB_DIR/herdr.log"; echo $?)
+# The Herdr start cases leave their worktrees: remove them.
+for n in hd-0 hd-2 hd-3 hd-4 hd-5 hd-6; do
+  git -C "$CO" worktree remove --force "$CO/.claude/worktrees/$n" > /dev/null 2>&1
+  git -C "$CO" branch -q -D "worktree-$n" > /dev/null 2>&1
+done
 
 # -- what launcher.py never does -------------------------------------------
 check 'launcher.py imports no iterm2 module' $(! grep -sqE '^\s*(import|from) iterm2' "$L"; echo $?)

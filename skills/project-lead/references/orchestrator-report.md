@@ -23,13 +23,13 @@ you make:
 
 | Path | Stage calls |
 |---|---|
-| Change path | `spec` when you start the spec; `split` (full path only); `build` at each IC dispatch, with `--detail <k>/<n>` for package k of n; `item <id> pr <pr_url>` and `review` when the PR opens and the first skeptical round starts; `pr` when the skeptical review stops (`skeptical-review.md`'s "Mark the PR ready"), also when `PR: draft` keeps the PR a draft |
+| Change path | `spec` when you start the spec; `split` (full path only); `build` at each IC dispatch, with `--detail <k>/<n>` for package k of n; `item <id> pr <pr_url>` and `review` when the PR opens and the goal check starts; `pr` when `goal-check.md`'s "Mark the PR ready" check passes, after a goal-miss patch is pushed and not at the goal check's report, also when `PR: draft` keeps the PR a draft |
 | Light path | `build` at each IC dispatch; then `review` and `pr` as on the change path |
 | Investigation path | `spec` while you diagnose; then the change path's calls for a fix ending, or `closed` for a report ending |
 
-A later skeptical round writes no stage. The delivered window writes `merged`
-at the merge, `shipped` at the ship word, and `closed` when the watch reports
-the PR closed with no merge. A `crew:review` run writes no stage call.
+A goal run runs one goal check, so no later review writes a stage. The
+delivered window writes `merged` at the merge, `shipped` at the ship word,
+and `closed` when the watch reports the PR closed with no merge. A `crew:review` run writes no stage call.
 
 Write each question with `ask <id> "<text>"` before you send it to the
 principal. `ask` prints a question id. Send the question by `SendMessage`, as

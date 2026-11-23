@@ -6,7 +6,7 @@ and the shape.
 
 The simple path is `simple-path.md`. Nothing here applies to it, and this file
 borrows five of its rules: "Create the branch", "Verify before you believe",
-"Integrate", "End the run" and "The skeptical review", named below. The third
+"Integrate", "End the run" and "The goal check", named below. The third
 check under "Check the launch conditions" is the one exception: it runs once
 for every goal, at the preference sweep, before either path is chosen —
 `autonomy-contract.md` owns when.
@@ -476,10 +476,10 @@ that procedure too, and `record-format.md` owns what the state means.
 At either end, restore the checkout to `checkout_branch`, as
 `simple-path.md`'s "End the run" says.
 
-## The skeptical review
+## The goal check
 
 `simple-path.md`'s section of that name is the call site on every path, and
-`skeptical-review.md` owns the step.
+`goal-check.md` owns the step.
 
 ## Clean up
 

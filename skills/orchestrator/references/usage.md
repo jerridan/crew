@@ -194,8 +194,8 @@ changes what you write there.
   that number to pause: it finishes its current package, commits, and waits
   for the reset. Tell each implementer to defer optional work that starts a
   new process on the plan, until the reset, when the forecast says the limit
-  falls before it. A skeptical review round and a push that starts a CI run
-  are such work.
+  falls before it. A goal check, a skeptical review round and a push that
+  starts a CI run are such work.
 - At `stopped`: tell each implementer to stop. It commits and starts no new
   step.
 - At the reset: set the mode to `normal` and restore `slots.max` to the

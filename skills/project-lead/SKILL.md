@@ -28,8 +28,9 @@ agent is absolute: its cwd is not yours.
 | `band-rubric.md` | the band: the model it buys, and which review steps it skips | at the split, and again before you skip a step |
 | `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |
 | `skills/review/references/severity-rubric.md` | the labels a reviewer proposes, and you give each finding again | inject it whole beside `review-output.md`; read it before you label |
-| `skeptical-review.md` | the review of the finished diff, and when it runs | at the hand-over, and on each later branch head |
-| `review-runner.md` | the mechanics of a headless review: the detached worktree, the instructions file, the runner, the checks and the session id | when `skeptical-review.md` sends you to it |
+| `goal-check.md` | the goal check: the one review of the finished diff, its one round, and "Mark the PR ready" | at the hand-over |
+| `skeptical-review.md` | the review rounds every run shares: the arming, the resume list and the ledger | at the hand-over, and on a resume |
+| `review-runner.md` | the mechanics of a headless review: the detached worktree, the instructions file, the runner, the checks and the session id | when `goal-check.md` or `skeptical-review.md` sends you to it |
 | `substitution.md` | a review step the principal named another reviewer for | before you dispatch that step |
 | `plan-review.md` | the review of every IC's plan before code: the planning stop, the reviewer run, the skips, the adjudication, the start word and its resume | before the first dispatch of a simple-path or full-path run |
 | `writing-standard.md` | any instruction file you draft | before you draft one |
@@ -160,7 +161,7 @@ model`, and you act on the other twelve:
 |---|---|
 | `Reviewers` | the plain words that name a replacement for a review step, read as below |
 | `Known red tests` | on a goal run, it seeds `reviews/baseline.md` |
-| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads `Gates` not at all: it runs no local check. A `Gates` section whose only line is `ci` reads as no `Gates` section, so an old file does not run `ci` as a command; the scout's suite and gates stand for your verification and for the skeptical review |
+| `Gates` | the exact verification commands. Check the scout's answer on the suite and the gates against it. A review run reads `Gates` not at all: it runs no local check. A `Gates` section whose only line is `ci` reads as no `Gates` section, so an old file does not run `ci` as a command; the scout's suite and gates stand for your verification and for the baseline |
 | `Auto-review` | the GitHub login of the repo's review bot, such as `claude[bot]`. A review run reads that bot's review as claims (`/crew:review`'s "Adjudicate"). With no section, nothing reads a bot's review |
 | `Hook workarounds` | read it before every push and every merge |
 | `Ticket defaults` | read it before you create or name a ticket. It answers that question without an escalation (`autonomy-contract.md`, "How to escalate") |
@@ -218,14 +219,14 @@ the brief. Each dispatch site points here.
 **`Reviewers` names a replacement for a review step.** It holds the same
 plain words the principal types at launch. For each step, the most specific
 source that names a reviewer wins. That source can name the step's own
-reviewer — "use the default skeptical review" — and then it cancels a
+reviewer — "use the default goal check" — and then it cancels a
 replacement from a source below it.
 
 Write each replacement that wins to `run.substitutions_requested` as `{step,
 replacement, source}`. A resumed session reads that field and nothing else,
 because the words that named the replacement are not in its context, and a
 file can change after the run starts. `references/substitution.md` owns what
-you then do with it.
+you then do with it, and the `step` name each run kind writes.
 
 ## Every dispatch is named
 
@@ -440,7 +441,7 @@ back in writing where it is wrong here. **A finding is a claim, not a verdict.**
 
 **Then label each finding again yourself**, by `severity-rubric.md`, with the
 artifact or the code open. This holds for every round of every source: a
-critic, the skeptical review, CI, a bot, a PR comment or review, the
+critic, the goal check, CI, a bot, a PR comment or review, the
 principal's reading of the diff, a `/code-review` run, or any other reviewer.
 A finding with no proposed label gets yours alone. A critic's own definition
 of `blocking` holds for its artifact. A question or a notice is not a finding
@@ -449,9 +450,9 @@ is final, and it alone decides whether the finding takes action:
 
 | Your label | The action |
 |---|---|
-| `blocking` | a fix: your own edit of `spec.md` on a spec critic's finding, your own edit of `split.md` on a split critic's, or a patch-round package on the skeptical review's, or on any finding after the hand-over |
-| `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The skeptical review's, or any finding after the hand-over: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there. When the verdict after your labels is `accepted`, that package integrates with `--no-review accepted-round` |
-| `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
+| `blocking` | a fix: your own edit of `spec.md` on a spec critic's finding, your own edit of `split.md` on a split critic's, or a patch-round package on the goal check's, or on any finding after the hand-over. Only a goal miss of the goal check is `blocking` (`goal-check.md`) |
+| `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The goal check's, or any finding after the hand-over: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there |
+| `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the goal check |
 | `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |
 
 The label decides whether a finding takes action, as a package. It never

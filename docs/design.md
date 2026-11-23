@@ -10198,11 +10198,10 @@ Deliberately different:
        restart of the core. Only the seeded test, with stub `herdr-app` and
        `hc`, ran the code.
 
-NNN. **The board pane wraps its entries and draws its own window — 2026-11-23,
-     version X.Y.Z.** The orchestrator assigns the number and the version.
-     The person who runs an orchestrator could not read the full text of a
-     `Needs you` entry, and the pane did not scroll past the top of a long
-     board.
+154. **The board pane wraps its entries and draws its own window — 2026-11-23,
+     version 0.1.122.** The person who runs an orchestrator could not read
+     the full text of a `Needs you` entry, and the pane did not scroll past
+     the top of a long board.
 
      - **Cause.** Every cell was `Text wrap="truncate"`, cut by `fit()`. The
        engine scrolls a pane body itself, but the autofocused `Row` input holds

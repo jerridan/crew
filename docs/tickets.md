@@ -3632,3 +3632,36 @@ a read of the files has checked it.
 
 Read first: design §15.130; `skills/project-lead/references/review-runner.md`;
 `skills/review-queue/SKILL.md`.
+
+## T88 — Run the spec critic for one round
+
+Status: done 2026-11-23
+Depends on: T79
+Stage: 8 (design §15.148)
+
+The principal decided that the spec critic runs one round. T79 capped it at
+two rounds (§15.118). Records of 81 reviewed specs show that the second round
+finds a `blocking` finding in about 1 report of 7, and it costs a spec writer
+dispatch, a critic dispatch at Opus high effort and the project lead's
+handling of about 5 findings. After the one report, the project lead
+adjudicates each finding, applies every accepted one to `spec.md` itself,
+`blocking` ones included, logs each declined one in `decisions.md` with its
+reason, and goes on to the sweep. A critic that returned no report is
+dispatched again, and a run adjudicates one report. A resume re-dispatches no
+critic that left a report. A `spec-critic-r2.md` in an older record stays
+valid.
+
+Scope: `skills/project-lead/SKILL.md`, "Have the spec reviewed" and its label
+table; `references/record-format.md`, `resume.md` and `substitution.md`;
+`agents/spec-critic.md`; a comment in `scripts/crew-stats.py`; `CLAUDE.md`;
+design §15.148.
+
+Out of scope: the split critic, `agents/split-critic.md` and `full-path.md`,
+the skeptical review and its cap, every verdict string, and `crew-stats.py`'s
+output.
+
+Unexercised: no run has used the one-round rule. Only a read of the files has
+checked it.
+
+Read first: design §15.118 and §15.148;
+`skills/project-lead/SKILL.md`, "Have the spec reviewed".

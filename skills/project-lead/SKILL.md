@@ -409,15 +409,17 @@ and names its round the same way, and returns the short result
 `review-output.md` defines, read as "Every dispatch is named" above says;
 open the file only when its `Findings:` line counts a finding.
 
-A round with a finding you label `blocking` means: revise `spec.md`, and
-dispatch `spec-writer-r<n>` again for the next round. The critic's next round
-reads the whole spec. **Two rounds is the cap.** At the cap, apply every open
-finding you accept to `spec.md` yourself, log the rest in `decisions.md` as
-declined with reasons, and go on to the sweep. Do not ask.
+**The spec critic runs one round per run.** After its report, adjudicate and
+label each finding as below. Your labels decide, not the critic's verdict.
+Apply every finding you accept to `spec.md` yourself, `blocking` ones
+included. Log each finding you decline in `decisions.md` with its reason, and
+go on to the sweep. No spec writer round and no second critic round follows.
+Do not ask the principal whether to go on.
 
-**A round with no finding you label `blocking` is the last.** Your labels
-decide, not the critic's verdict. Apply each finding you accept to `spec.md`
-yourself, and go on to the sweep. No spec writer and no critic round follows.
+**A report counts, a reserved number does not.** A critic that leaves no
+report file and no report in its final message produced no round. Dispatch it
+again at the next reserved number. A run adjudicates exactly one spec critic
+report, and never a second.
 
 **This review runs on every spec.** `band-rubric.md` says which later steps a
 band skips, and the spec critic is not one of them: the split has not run yet,
@@ -442,7 +444,7 @@ is final, and it alone decides whether the finding takes action:
 
 | Your label | The action |
 |---|---|
-| `blocking` | a fix round: a re-spec, a re-split, or a patch-round package on the skeptical review's, or on any finding after the hand-over |
+| `blocking` | a fix: your own edit of `spec.md` on a spec critic's finding, a re-split on a split critic's, or a patch-round package on the skeptical review's, or on any finding after the hand-over |
 | `suggestion`, `nit` | a critic's: apply it inline to `spec.md` or `split.md`, or decline it. No writer round runs for it. The skeptical review's, or any finding after the hand-over: decline it, or accept it as one patch-round package. You edit the target repo only at "Integrate" ("Choose the shape"), so no inline edit is possible there. When the verdict after your labels is `accepted`, that package integrates with `--no-review accepted-round` |
 | `don't post`, `not real` | the ledger only: `decisions.md` for a critic, the reply file for the skeptical review |
 | `unsure` | one question to the principal, by `autonomy-contract.md`'s escalation rules |

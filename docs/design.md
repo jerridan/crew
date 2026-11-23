@@ -8280,6 +8280,7 @@ Deliberately different:
      `[Nit]` on the spec is a wording fix. The project lead applies it itself,
      with no writer and no critic round. The same holds for a split-critic
      round with no `[Critical]` finding. No run has exercised the cap.
+     §15.148 replaces the two-round cap with one round.
 
 119. **Fix rounds patched the cited line only — 2026-10-25, T79.** Issue #116.
      Four records fixed one defect class in three successive rounds.
@@ -9830,3 +9831,63 @@ Deliberately different:
 
      Only the seeded test has run the changes. No orchestrator has closed an
      item with them yet.
+
+148. **The spec critic runs one round — 2026-11-23, T88.** The principal
+     decided that the spec critic runs one round. §15.118 capped it at two
+     rounds, and a round with a `blocking` finding sent the spec to a spec
+     writer and to a new critic round. The records of 81 reviewed specs
+     show what that second round bought:
+
+     - 51 specs went to a second round, and 4 of those to a third.
+     - A round 1 report holds 9.1 findings on average, and 1.4 of them are
+       `blocking`. 28 of the 35 round 1 reports with a count line hold a
+       `blocking` finding.
+     - A round 2 report holds 5.1 findings on average, and 0.1 of them are
+       `blocking`. 3 of the 21 round 2 reports with a count line hold a
+       `blocking` finding.
+
+     So the second round finds a blocker in about 1 report of 7. It costs a
+     spec writer dispatch, a critic dispatch at Opus high effort, and the
+     project lead's handling of about 5 more findings.
+
+     The new rule: after the one critic report, the project lead adjudicates
+     and labels each finding as before, and applies every finding it
+     accepts to `spec.md` itself, `blocking` ones included. It logs each
+     declined finding in `decisions.md` with its reason, and goes on to the
+     sweep. No spec writer round and no second critic round follows, and
+     the project lead asks the principal nothing about whether to go on.
+     The `unsure` label still sends one question.
+
+     A report counts, and a reserved number does not. A critic that leaves
+     no report file and no report in its final message produced no round,
+     and the project lead dispatches it again at the next reserved number.
+     A run adjudicates exactly one spec critic report. A resume
+     re-dispatches no critic that left a report, and adjudicates that report
+     when `decisions.md` holds no adjudication of it. A `spec-critic-r2.md`
+     or `-r3.md` in an older record is valid history, and `crew-stats.py`
+     still counts it. The two verdict strings stay, because `crew-stats.py`
+     and old records read them.
+
+     This entry replaces §15.118's two-round cap. The rest of §15.118 holds:
+     only a finding under check 1, 2 or 3 may be `blocking`, and a wording
+     fix is the project lead's own edit.
+
+     Files changed: `skills/project-lead/SKILL.md` ("Have the spec reviewed"
+     and its label table), `skills/project-lead/references/record-format.md`,
+     `resume.md` and `substitution.md`, `agents/spec-critic.md`, a comment in
+     `skills/project-lead/scripts/crew-stats.py`, and `CLAUDE.md`. The split
+     critic, `agents/split-critic.md` and `full-path.md` are unchanged.
+
+     Open question: the split critic. The same records give these figures
+     for it. 17 of 33 splits ended at round 1, 12 at round 2 and 4 at round
+     3. 16 of 33 round 1 reports have the verdict `re-split needed`,
+     against 3 of 16 at round 2 and 1 of 4 at round 3. Of the reports with a
+     count line, 6 of 8 at round 1 hold a `blocking` finding (12 blocking
+     findings), against 1 of 6 at round 2 (1 blocking finding).
+
+     The recommendation: the shape matches the spec critic's, so the split
+     critic can take the same one-round rule, in its own change, after the
+     sample grows past 6 counted round 2 reports or the principal accepts
+     the small sample.
+
+     No run has exercised the one-round rule.

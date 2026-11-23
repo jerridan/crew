@@ -147,7 +147,9 @@ ATTEMPT = re.compile(r"-attempt\d+\.[A-Za-z0-9]+$")
 DRAFT_REVIEW = re.compile(r"^github-r\d+\.md$")
 
 # Each review names its own two verdict strings. The first of each pair
-# accepts the artifact and the second sends it back for another round
+# accepts the artifact and the second sends it back for a fix (the spec
+# critic runs one round, so its second verdict starts no new round; older
+# records may hold rounds 2 and 3, which are counted too)
 # (`agents/spec-critic.md`, `split-critic.md`, `references/skeptical-review.md`,
 # and the two retired reviewers). A verdict outside these gets a skip line: it
 # is a drifted string, not a clean review, and counting it as clean would

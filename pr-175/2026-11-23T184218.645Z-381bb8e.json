@@ -1,0 +1,1485 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 175,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let the principal rename the orchestrator session",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/175"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "87abfa7cdc91280db0b04691c594c684ca9c2374",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-175/2026-11-23T183408.904Z-87abfa7.json",
+      "open": [
+        "42296fb304786b54",
+        "a5a04ebccb2a75ff"
+      ],
+      "dismissed": [
+        "40298b893d3b8e70",
+        "b8133f0b1dd62984"
+      ],
+      "fetch_failed": false
+    },
+    "base": "665c7343225ebd388b5d5bc4af771f906a9d4d6e",
+    "head": "381bb8e9255165770cbb0c5937e7d70e4bea722a",
+    "started_at": "2026-11-23T18:42:18.645Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let the principal rename the orchestrator session\n\n## Summary\n\nYou can now rename an orchestrator session at any time, and its project leads still reach it. Before, the session name was both the name of the orchestrator's record and the address that project leads sent to, so a rename cut them off. Now the record keeps the name it got at the start, and after a rename the orchestrator tells each running project lead the new name. A project lead then sends to the new name. The README says how to rename.\n\n**Ticket:** N/A\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.152 (new finding).\n- `skills/orchestrator/SKILL.md` owns the record-name rule and the new \"A rename\" procedure.\n- `skills/project-lead/references/orchestrator-report.md` owns the project lead's new \"A new orchestrator name\" rule.\n- `skills/orchestrator/references/resume-and-close.md` owns the resume and compaction steps.\n\n### What changed, by file\n\n- `skills/orchestrator/SKILL.md`: the record name is fixed at `init`; `--principal` takes the current session name from the first line of `ListAgents`; the `Orchestrator:` line takes the record name; new section \"A rename\"; description trigger \"I renamed the orchestrator\".\n- `skills/orchestrator/references/resume-and-close.md`: resume step 1 runs under any session name and never renames back; the duplicate check looks at the record name and each rename's new name in `told`, and asks the principal when it cannot decide; the compaction row gets the record name first; the rejoin message carries the `Orchestrator:` line; \"No goal\" asks whether `told` holds the goal itself, not whether it is empty.\n- `skills/orchestrator/references/launcher.md`: `--principal` is the current session name, not the record name.\n- `skills/orchestrator/scripts/launcher.py`: the wait prompt says that a later message from the orchestrator can come from a new name.\n- `skills/orchestrator/scripts/test-launcher.sh`: expects the new wait prompt.\n- `skills/project-lead/references/orchestrator-report.md`: new section \"A new orchestrator name\": a message with a matching `Orchestrator:` line and a new envelope `from-name` updates `run.principal`.\n- `skills/project-lead/references/autonomy-contract.md`: a goal by message writes `run.principal` at once, and every send goes to `run.principal`; points at the new rule.\n- `skills/project-lead/references/record-format.md`, `skills/project-lead/SKILL.md`: point at the new rule for a later change of `run.principal`.\n- `README.md`: how to rename the orchestrator; resume under any name by the record name.\n- `docs/design.md`: finding §15.152, with the four options weighed and the facts found.\n- `CLAUDE.md`: one build-state paragraph.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version `0.1.119`.\n\n### Constraints that applied\n\n- One rule, one file: the procedure lives in the orchestrator's `SKILL.md`, and the project lead's rule in `orchestrator-report.md`; every other file points at them.\n- No new hook, no new `crew-orch.py` command, no new record field, and no session id stored anywhere.\n- Version and §15 number: the orchestrator assigned 0.1.119 and §15.152.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-launcher.sh`: 220 of 220 checks passed.\n- The project lead read the whole diff against the acceptance sequence: init, rename, notice, implementer sends to the new name with the same record name, then a compaction or a resume of either side.\n- The status sweep of `writing-standard.md` found two \"No run has\" lines, both true.\n- A spec critic round (5 findings, all applied) and a Codex plan review (3 blocking, 2 suggestions, all applied) ran before the build.\n\n### Known gaps\n\n- No run has exercised the rename procedure.\n- The orchestrator learns of a rename only from the person's word. A hook could detect it later (`session_title` in `UserPromptSubmit`), and the person ruled that out for now.\n\n<details><summary>spec.md</summary>\n\n# Spec: orch-rename (path B)\n\nRepo: /Users/jerridan/src/crew/.claude/worktrees/orch-rename (jerridan/crew).\n\n## The problem\n\nThe orchestrator's session name does two jobs today. It names the orchestrator record (`<record-root>/orchestrators/<name>/`, every `crew-orch.py --orch <name>`, the goal's `Orchestrator: <name>, item <id>` line, `/orch-board`, `$CREW_ORCH`). It is also the `SendMessage` address of the orchestrator: the launcher's wait prompt (`launcher.py start --principal`), the goal envelope's `from-name`, and each project lead's `run.principal`. After `/rename`, the old name leaves `ListAgents`, every implementer send to it fails, and nothing tells the implementer the new name. `skills/orchestrator/SKILL.md` and `references/resume-and-close.md` also say that the record name is the session name, so after a rename a resume looks for the wrong record, or tells the orchestrator to rename back.\n\n## The chosen fix (the person's decision in the project lead's tab)\n\nPath B: when the orchestrator is renamed, it tells each implementer the new name. The record name and the address become two separate values.\n\n## Requirements\n\nR1. **The record name is fixed at `init`.** The orchestrator names its record once, at `init`, and never changes it. Every `--orch`, every `Orchestrator:` line and every board call uses the record name for the life of the run. The record name may equal the session name at `init`, but no rule may say that the two stay equal.\n  - AC1: these lines no longer say that the record name is, or must stay, the session name: `skills/orchestrator/SKILL.md:50-54`, `skills/orchestrator/references/resume-and-close.md:28-33`, `README.md:291-300`. `skills/orchestrator/SKILL.md`'s record rule names the record name as fixed at `init`. A `grep -n -i \"session name\"` over `skills/orchestrator/` and `README.md` shows no other line that equates the two.\n\nR2. **The address is the orchestrator's current session name.** `launcher.py start --principal` takes the orchestrator's current session name, not the record name. The goal's `Orchestrator:` line keeps the record name. The orchestrator reads its current session name from the first line of `ListAgents` output (\"This session is <name> ...\"), at each launch, so a compaction or a resume cannot leave it with an old name. It keeps no copy of the name in its context or its record.\n  - AC2: `skills/orchestrator/SKILL.md`'s launch step and goal-message list say which name goes where (current session name, read from `ListAgents`, to `--principal`; record name to `Orchestrator:`), and `skills/orchestrator/references/launcher.md`'s `--principal` row says the same.\n\nR3. **The rename procedure.** The orchestrator owns one procedure for a rename. The person renames the session with `/rename <new>` and tells the orchestrator the new name. The orchestrator then sends one message, recorded with `told`, to each implementer that is alive. The message carries the line `Orchestrator: <record name>, item <id>` for that implementer's item, and says the new name. The orchestrator can learn the new name only from the person; the procedure says so.\n  - AC3: exactly one file under `skills/orchestrator/` holds the rename procedure, and it names: the trigger (the person's word), the recipients (each item with a live implementer), the `told` write, and the content (the `Orchestrator:` line and the new name). Every other mention points at it.\n\nR4. **An implementer follows the new name.** A project lead whose `run.orchestrator` is set writes a new `run.principal` when a cross-session message from its orchestrator arrives with a `from-name` that differs from `run.principal`, and sends to the new name from then on. \"From its orchestrator\" means that the message carries the line `Orchestrator: <name>, item <id>` with both values equal to `run.orchestrator`. A session that knows both values could still pass this test; the run accepts that risk, because every session on the machine works for the same person. The envelope's `from-name` is the source of the new value, never a name in the message text alone.\n  - AC4: `skills/project-lead/references/orchestrator-report.md` (the owner for runs with `run.orchestrator`) holds this rule. Each other line that says when `run.principal` is written points at it rather than copying it: `skills/project-lead/references/autonomy-contract.md` (its routing section and lines 34-35), `skills/project-lead/references/record-format.md` (the `principal` field), and `skills/project-lead/SKILL.md` (\"Take the goal\").\n  - AC4b: the launcher's wait prompt (`WAIT_PROMPT` in `skills/orchestrator/scripts/launcher.py`) tells the waiting session that a later message from the orchestrator can come from a new name, and to send to that name. `skills/orchestrator/scripts/test-launcher.sh` checks the new prompt text and passes.\n\nR5. **Resume and compaction keep working.**\n  - The orchestrator's resume no longer requires the same session name. `resume-and-close.md`'s \"The resume\" step 1 asks for the record name when the principal's words do not give it, and does not tell the orchestrator to rename back. Its duplicate check still exists: when `ListAgents` shows another live session whose name is the record name, or a new name that a rename message in the record's `told` log gave, a second orchestrator can hold the record, and the orchestrator stops and tells the principal.\n  - The rejoin message that the resume sends to each live or resumed implementer carries the `Orchestrator:` line of R3, so R4 updates an implementer that missed a rename.\n  - A project lead's own `--resume` reads `run.principal` from its record, as today; R4 keeps that value current.\n  - AC5: a reader can trace the sequence in `charter.md`'s acceptance criterion through `skills/orchestrator/SKILL.md`, `resume-and-close.md`, `orchestrator-report.md` and `autonomy-contract.md` with no step that sends to the old name or reads a record under the new name.\n\nR6. **The README.** `README.md`'s \"Run many goals with an orchestrator\" says how to rename the orchestrator, and its resume text no longer says to start a session with the same name. `.claude/rules/readme.md` owns the shape.\n  - AC6: the README section holds a rename instruction with the command lines a person types, and the resume instruction names the record name.\n\nR7. **The design record.** `docs/design.md` §15 gets one new finding, numbered with a placeholder `§15.NNN`, that states the problem, the options the person weighed (A: a stored address read before each send; B: tell each implementer; C: a fixed handle; D: name before `init` only), the choice B, and the facts found: no hook event fires on a rename; `UserPromptSubmit` and `SessionStart` carry `session_title`; the status line carries `session_name`. `CLAUDE.md`'s \"Build state\" gets one sentence that says the rename procedure is built and no run has exercised it.\n  - AC7: the §15 finding and the CLAUDE.md sentence exist; the finding number is the literal placeholder `§15.NNN`.\n\n## Global constraints\n\n- Every prose rule in `skills/project-lead/references/writing-standard.md`, and its \"Before you open the PR\" checklist. ASD-STE100 prose. \"Writing for a person\" for the README.\n- `CLAUDE.md`'s \"A rule lives in exactly one file\": each new rule has one owner, and other files point at it.\n- `CLAUDE.md`'s \"Constraints that are easy to get wrong\": the version bump. The orchestrator owns `version` in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`. Write the literal placeholder `0.1.NNN` in both, the same value.\n- Write \"project lead\" in full.\n- No new hook, no new `crew-orch.py` command and no new record field.\n\n## Non-goals\n\n- Detecting a rename automatically (a hook, the status line). The person's decision ruled it out for now.\n- Storing the orchestrator's session id anywhere.\n- Changing `crew-orch.py`, `orch-board.tsx` or the record schema.\n- Renaming an implementer session.\n\n</details>\n\n<details><summary>decisions.md</summary>\n\n## Which path does this goal take?\nRoute: precedent\nAnswer: change path\nCitation: the goal: 'let the principal rename the orchestrator session and keep every implementer able to reach it'\nConfidence: high\nTimestamp: 2026-11-23T17:53:42Z\n\n## Which fix for an orchestrator rename?\nRoute: precedent\nAnswer: B: the orchestrator sends the new name to each implementer; record name fixed at init; implementers take the sender name of each orchestrator message into run.principal\nCitation: the person in the project lead's tab: 'Maybe it would be simpler just to let the implementers know what the new name is when we do a rename'\nConfidence: high\nTimestamp: 2026-11-23T18:08:57Z\n\n## Does the work take the light path?\nRoute: precedent\nAnswer: no: the change edits rules in instruction files (orchestrator SKILL.md, resume-and-close.md, autonomy-contract.md), which simple-path.md says promotes a run\nCitation: simple-path.md 'The light path': 'A rule change in an instruction file ... promote the run instead'\nConfidence: high\nTimestamp: 2026-11-23T18:09:40Z\n\n## Spec critic r1: adjudication\nRoute: precedent\nAnswer: all five accepted and applied to spec.md\nCitation: reviews/spec-critic-r1.md\nConfidence: high\nFinding one: blocking (critic blocking), accepted; the orchestrator reads its current name from the first line of ListAgents at each launch (R2)\nFinding two: suggestion, accepted; duplicate check names the record name and each rename's new name from told (R5)\nFinding three: suggestion, accepted; record-format.md, SKILL.md and autonomy-contract.md lines point at the R4 owner (AC4)\nFinding four: suggestion, accepted; the test is the full Orchestrator: line with name and item, and the residual risk is stated\nFinding five: nit, accepted; AC1 names the lines\nTimestamp: 2026-11-23T18:11:51Z\n\n## Preference sweep: what does the principal want that the repo cannot say?\nRoute: preference\nAnswer: none\nCitation: charter.md and spec.md; the person chose path B in the project lead's tab\nConfidence: high\nTimestamp: 2026-11-23T18:11:51Z\n\n## Plan review: which findings does the run act on?\nRoute: precedent\nAnswer: 5 of 5 findings sent to the ICs\nCitation: reviews/plan-review-r1.md\nConfidence: high\nFinding: F1 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F2 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F3 blocking (reviewer: blocking) — sent to ic-p1-r1\nFinding: F4 suggestion (reviewer: suggestion) — sent to ic-p1-r1\nFinding: F5 suggestion (reviewer: suggestion) — sent to ic-p1-r1\nTimestamp: 2026-11-23T18:20:33Z\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "README.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes agent-instruction procedures that act as logic (record name vs session name, run.principal rewrite on rename), plus a launcher wait-prompt change with its test, so behavior and addressing correctness need review.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs",
+        "test",
+        "other"
+      ],
+      "hotspots": [
+        "skills/project-lead/references/orchestrator-report.md (new 'A new orchestrator name': principal rewrite trust rule, spoofing via from-name)",
+        "skills/orchestrator/SKILL.md ('A rename' procedure and --principal sourced from ListAgents)",
+        "skills/orchestrator/references/resume-and-close.md (step 1 duplicate-orchestrator check, rejoin/no-goal logic via told)",
+        "skills/orchestrator/scripts/launcher.py WAIT_PROMPT and test-launcher.sh expected prompt must match exactly",
+        "skills/project-lead/references/autonomy-contract.md and record-format.md consistency"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump 0.1.118 to 0.1.119"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump to match plugin.json"
+        },
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "WAIT_PROMPT text gains a sentence about a later name change; runtime string passed to claude"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "expected PROMPT updated to match the new wait prompt"
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "record name fixed at init; new 'A rename' section; principal read from ListAgents"
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "resume step 1 rewritten, rejoin and no-goal rules changed, close step adds Orchestrator line"
+        },
+        {
+          "file": "skills/project-lead/references/orchestrator-report.md",
+          "note": "new section: project lead updates run.principal on a rename message"
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "principal taken from from-name and may change"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "field docs for principal and orchestrator updated"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "pointer to the principal-change rule"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 152"
+        },
+        {
+          "file": "README.md",
+          "note": "user docs on rename and resume under any name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "status note"
+        }
+      ],
+      "summary": "Fixes the orchestrator record name at init and separates it from the session name that SendMessage uses. Adds a rename procedure: the orchestrator tells each live implementer the new name, and the project lead updates run.principal from the envelope from-name. Resume and close flows are adjusted, the launcher wait prompt gets a sentence, and the test and docs are updated. Versions bump to 0.1.119."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes agent-instruction procedures that act as logic (record name vs session name, run.principal rewrite on rename), plus a launcher wait-prompt change with its test, so behavior and addressing correctness need review.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 1505,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 10901,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011021,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 53,
+              "cacheReadInputTokens": 10154,
+              "cacheCreationInputTokens": 10411,
+              "webSearchRequests": 0,
+              "costUSD": 0.0863868,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0874889
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/resume-and-close.md",
+            "start_line": 31,
+            "end_line": 37,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The duplicate-orchestrator check can pass when a first orchestrator is still alive under a renamed name that no `told` entry records.",
+            "evidence": "When no rename\n   message is in `told` and your session name differs from the record name,\n   the check cannot rule out a live first orchestrator.",
+            "suggested_fix": "Ask the principal to confirm that the earlier session has stopped whenever the check cannot account for the latest name. For example, always ask unless the current session is the one that `told`'s latest rename names, or record each rename in the record (for example with `plan change`) even when it sends no message.",
+            "explanation": "SKILL.md's \"A rename\" writes `told` only when an implementer is alive and already has its goal. A rename done before any goal, or a later rename that reached no implementer, leaves no trace. The fallback asks only when `told` has no rename and the session name differs from the record name, so a new session named after the record (or a record with older renames) passes the check while the first orchestrator runs on under an unrecorded name.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/references/resume-and-close.md",
+            "start_line": 72,
+            "end_line": 95,
+            "category": "other",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "Both the rejoin rule and the \"No goal\" rule depend on whether `told` holds a goal message, but `told` entries carry no message type.",
+            "evidence": "An item with a `launch` whose `told` holds no goal message\n     never got its goal. A rename message or a rejoin message is not a goal.",
+            "suggested_fix": "Say how to identify the goal message: it is the one that carries `Gate: off`, `PR: ready` and the `Orchestrator:` line together, or it is always `told/<item>-1.md`.",
+            "explanation": "`told` is a list of `{at, path}` with no kind, so the orchestrator must read every told file and guess its kind. Before this change it checked only whether `told` was empty. A wrong guess either sends a second goal or skips the rejoin.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 29930,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 10889,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011009000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 2931,
+              "cacheReadInputTokens": 89931,
+              "cacheCreationInputTokens": 23540,
+              "webSearchRequests": 0,
+              "costUSD": 0.2649582,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1595,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2660591
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6483,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 10893,
+              "outputTokens": 235,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0012068,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 215,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 521,
+              "cacheReadInputTokens": 30531,
+              "cacheCreationInputTokens": 11950,
+              "webSearchRequests": 0,
+              "costUSD": 0.1121422,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.113349
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 4620,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 27074,
+              "outputTokens": 20,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0027174000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 477,
+              "cacheReadInputTokens": 47500,
+              "cacheCreationInputTokens": 27424,
+              "webSearchRequests": 0,
+              "costUSD": 0.11922400000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 312,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1219414
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/record-format.md",
+            "start_line": 705,
+            "end_line": 705,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "run.principal, the escalation target, can now be replaced by any cross-session message that repeats the public Orchestrator: line, so another local session can redirect a project lead's escalations to itself.",
+            "evidence": "When `run.orchestrator` is set, a later message can replace it (`orchestrator-report.md`'s \"A new orchestrator name\").",
+            "suggested_fix": "Accept the new name only after the old principal confirms it, or check that the new name is a live session in ListAgents that the record's told log names.",
+            "explanation": "The Orchestrator: name and item are not secret, because the goal text and the board show them, so the check does not prove that the sender is the orchestrator.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 4526,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 10897,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011012,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 404,
+              "cacheReadInputTokens": 10348,
+              "cacheCreationInputTokens": 10407,
+              "webSearchRequests": 0,
+              "costUSD": 0.0934136,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 65,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0945148
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 3194,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 10889,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011014,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 361,
+              "cacheReadInputTokens": 32649,
+              "cacheCreationInputTokens": 10842,
+              "webSearchRequests": 0,
+              "costUSD": 0.0502509,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 112,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.051352300000000003
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/references/record-format.md",
+          "start_line": 705,
+          "end_line": 705,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "run.principal, the escalation target, can now be replaced by any cross-session message that repeats the public Orchestrator: line, so another local session can redirect a project lead's escalations to itself.",
+          "evidence": "When `run.orchestrator` is set, a later message can replace it (`orchestrator-report.md`'s \"A new orchestrator name\").",
+          "suggested_fix": "Accept the new name only after the old principal confirms it, or check that the new name is a live session in ListAgents that the record's told log names.",
+          "explanation": "The Orchestrator: name and item are not secret, because the goal text and the board show them, so the check does not prove that the sender is the orchestrator.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When `run.orchestrator` is set, a later message can replace it (`orchestrator-report.md`'s \"A new orchestrator name\")."
+          ],
+          "rationale": "The rule exists as described: any message with a matching Orchestrator: line can replace run.principal. But the spec explicitly accepts this risk because every session on the machine works for the same person. The finding's line is only a pointer to the rule, which lives in orchestrator-report.md.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When `run.orchestrator` is set, a later message can replace it (`orchestrator-report.md`'s \"A new orchestrator name\").",
+            "A message is from your orchestrator when it carries that line with both\nvalues equal to `run.orchestrator`. When such a message arrives with an\nenvelope `from-name` that differs from `run.principal`, do two things:",
+            "1. Write the `from-name` into `run.principal` with `crew-record.py <record-dir>\n   run set principal '\"<from-name>\"'`.",
+            "A project lead whose `run.orchestrator`\n     matches that line takes the envelope `from-name` into `run.principal`."
+          ],
+          "rationale": "The new rule accepts any cross-session message whose `Orchestrator: <name>, item <id>` line matches `run.orchestrator`, and it writes that message's `from-name` into `run.principal`, so a session that knows those public values can redirect escalations. The spec names this risk and accepts it on purpose, because every session on the machine works for the same person, so the finding only repeats a known trade-off.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When `run.orchestrator` is set, a later message can replace it (`orchestrator-report.md`'s \"A new orchestrator name\").",
+            "A message is from your orchestrator when it carries that line with both\nvalues equal to `run.orchestrator`. When such a message arrives with an\nenvelope `from-name` that differs from `run.principal`, do two things:",
+            "1. Write the `from-name` into `run.principal` with `crew-record.py <record-dir>\n   run set principal '\"<from-name>\"'`.",
+            "A project lead whose `run.orchestrator`\n     matches that line takes the envelope `from-name` into `run.principal`."
+          ],
+          "rationale": "The new rule accepts any cross-session message whose `Orchestrator: <name>, item <id>` line matches `run.orchestrator`, and it writes that message's `from-name` into `run.principal`, so a session that knows those public values can redirect escalations. The spec names this risk and accepts it on purpose, because every session on the machine works for the same person, so the finding only repeats a known trade-off.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "start_line": 31,
+          "end_line": 37,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The duplicate-orchestrator check can pass when a first orchestrator is still alive under a renamed name that no `told` entry records.",
+          "evidence": "When no rename\n   message is in `told` and your session name differs from the record name,\n   the check cannot rule out a live first orchestrator.",
+          "suggested_fix": "Ask the principal to confirm that the earlier session has stopped whenever the check cannot account for the latest name. For example, always ask unless the current session is the one that `told`'s latest rename names, or record each rename in the record (for example with `plan change`) even when it sends no message.",
+          "explanation": "SKILL.md's \"A rename\" writes `told` only when an implementer is alive and already has its goal. A rename done before any goal, or a later rename that reached no implementer, leaves no trace. The fallback asks only when `told` has no rename and the session name differs from the record name, so a new session named after the record (or a record with older renames) passes the check while the first orchestrator runs on under an unrecorded name.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When no rename\n   message is in `told` and your session name differs from the record name,\n   the check cannot rule out a live first orchestrator.",
+            "Send none to an\n   implementer that has not got its goal"
+          ],
+          "rationale": "A rename sends no message to an implementer with no goal, or to none alive. So `told` can lack that rename. If the new session is named after the record, or `told` holds only an older rename, the check passes while the first orchestrator runs on under the unrecorded name. The gap exists but needs a rare sequence.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When\n   `ListAgents` shows another live session whose name is the record name, or\n   a name that a rename message in the record's `told` gave, a second\n   orchestrator holds the record.",
+            "When no rename\n   message is in `told` and your session name differs from the record name,\n   the check cannot rule out a live first orchestrator.",
+            "Send one message to each item whose implementer is alive (`ListAgents`\n   shows its name) and whose goal you already sent.",
+            "Send none to an\n   implementer that has not got its goal"
+          ],
+          "rationale": "\"A rename\" writes `told` only when a live implementer already has its goal, so a rename with no such implementer leaves no trace. The resume check then looks only at the record name and the names in `told`. The fallback question fires only when `told` holds no rename and the session name differs from the record name, so a first orchestrator still running under an unrecorded name passes the check. This gap in a new safeguard is on an unusual path, so it is a suggestion.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When\n   `ListAgents` shows another live session whose name is the record name, or\n   a name that a rename message in the record's `told` gave, a second\n   orchestrator holds the record.",
+            "When no rename\n   message is in `told` and your session name differs from the record name,\n   the check cannot rule out a live first orchestrator.",
+            "Send one message to each item whose implementer is alive (`ListAgents`\n   shows its name) and whose goal you already sent.",
+            "Send none to an\n   implementer that has not got its goal"
+          ],
+          "rationale": "\"A rename\" writes `told` only when a live implementer already has its goal, so a rename with no such implementer leaves no trace. The resume check then looks only at the record name and the names in `told`. The fallback question fires only when `told` holds no rename and the session name differs from the record name, so a first orchestrator still running under an unrecorded name passes the check. This gap in a new safeguard is on an unusual path, so it is a suggestion.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "start_line": 72,
+          "end_line": 95,
+          "category": "other",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "Both the rejoin rule and the \"No goal\" rule depend on whether `told` holds a goal message, but `told` entries carry no message type.",
+          "evidence": "An item with a `launch` whose `told` holds no goal message\n     never got its goal. A rename message or a rejoin message is not a goal.",
+          "suggested_fix": "Say how to identify the goal message: it is the one that carries `Gate: off`, `PR: ready` and the `Orchestrator:` line together, or it is always `told/<item>-1.md`.",
+          "explanation": "`told` is a list of `{at, path}` with no kind, so the orchestrator must read every told file and guess its kind. Before this change it checked only whether `told` was empty. A wrong guess either sends a second goal or skips the rejoin.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "whose `told` holds\n      its goal message.",
+            "An item with a `launch` whose `told` holds no goal message\n     never got its goal. A rename message or a rejoin message is not a goal."
+          ],
+          "rationale": "`told` is a list of `{at, path}` with no message type, and the new rules in `resume-and-close.md` depend on whether `told` holds a goal message. The file never says how to identify the goal.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "An item with a `launch` whose `told` holds no goal message\n     never got its goal. A rename message or a rejoin message is not a goal.",
+            "| `told` | a list of `{at, path}`. `path` is `told/<item>-<k>.md` |",
+            "- the charter line `Gate: off`;",
+            "- the line `PR: ready`;"
+          ],
+          "rationale": "It is true that `told` entries are only `{at, path}` and have no kind, and the change now asks whether `told` holds a goal message instead of whether it is empty. The risk of a wrong guess is small: the goal message has its own lines (`Gate: off`, `PR: ready`), and the rules send no rename or rejoin message before the goal. Saying in one sentence how to spot the goal message would still help the reader.",
+          "score": 60,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "An item with a `launch` whose `told` holds no goal message\n     never got its goal. A rename message or a rejoin message is not a goal.",
+            "| `told` | a list of `{at, path}`. `path` is `told/<item>-<k>.md` |",
+            "- the charter line `Gate: off`;",
+            "- the line `PR: ready`;"
+          ],
+          "rationale": "It is true that `told` entries are only `{at, path}` and have no kind, and the change now asks whether `told` holds a goal message instead of whether it is empty. The risk of a wrong guess is small: the goal message has its own lines (`Gate: off`, `PR: ready`), and the rules send no rename or rejoin message before the goal. Saying in one sentence how to spot the goal message would still help the reader.",
+          "score": 60,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6027424238,
+      "review_url": "https://github.com/jerridan/crew/pull/175#pullrequestreview-6027424238",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 137926632180
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/references/resume-and-close.md",
+        "start_line": 31,
+        "end_line": 37,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The duplicate-orchestrator check can pass when a first orchestrator is still alive under a renamed name that no `told` entry records.",
+        "evidence": "When no rename\n   message is in `told` and your session name differs from the record name,\n   the check cannot rule out a live first orchestrator.",
+        "suggested_fix": "Ask the principal to confirm that the earlier session has stopped whenever the check cannot account for the latest name. For example, always ask unless the current session is the one that `told`'s latest rename names, or record each rename in the record (for example with `plan change`) even when it sends no message.",
+        "explanation": "SKILL.md's \"A rename\" writes `told` only when an implementer is alive and already has its goal. A rename done before any goal, or a later rename that reached no implementer, leaves no trace. The fallback asks only when `told` has no rename and the session name differs from the record name, so a new session named after the record (or a record with older renames) passes the check while the first orchestrator runs on under an unrecorded name.",
+        "needs_context": false,
+        "fingerprint": "d1a1805648a73278",
+        "severity": "suggestion",
+        "score": 82,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "When\n   `ListAgents` shows another live session whose name is the record name, or\n   a name that a rename message in the record's `told` gave, a second\n   orchestrator holds the record.",
+            "When no rename\n   message is in `told` and your session name differs from the record name,\n   the check cannot rule out a live first orchestrator.",
+            "Send one message to each item whose implementer is alive (`ListAgents`\n   shows its name) and whose goal you already sent.",
+            "Send none to an\n   implementer that has not got its goal"
+          ],
+          "rationale": "\"A rename\" writes `told` only when a live implementer already has its goal, so a rename with no such implementer leaves no trace. The resume check then looks only at the record name and the names in `told`. The fallback question fires only when `told` holds no rename and the session name differs from the record name, so a first orchestrator still running under an unrecorded name passes the check. This gap in a new safeguard is on an unusual path, so it is a suggestion.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "span_text": "words do not give the record name, ask the principal for it. When `ListAgents` shows another live session whose name is the record name, or a name that a rename message in the record's `told` gave, a second orchestrator holds the record. Stop, and tell the principal. When no rename message is in `told` and your session name differs from the record name, the check cannot rule out a live first orchestrator. Ask the principal to confirm that the earlier orchestrator session has stopped.",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/references/resume-and-close.md",
+        "start_line": 72,
+        "end_line": 95,
+        "category": "other",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "Both the rejoin rule and the \"No goal\" rule depend on whether `told` holds a goal message, but `told` entries carry no message type.",
+        "evidence": "An item with a `launch` whose `told` holds no goal message\n     never got its goal. A rename message or a rejoin message is not a goal.",
+        "suggested_fix": "Say how to identify the goal message: it is the one that carries `Gate: off`, `PR: ready` and the `Orchestrator:` line together, or it is always `told/<item>-1.md`.",
+        "explanation": "`told` is a list of `{at, path}` with no kind, so the orchestrator must read every told file and guess its kind. Before this change it checked only whether `told` was empty. A wrong guess either sends a second goal or skips the rejoin.",
+        "needs_context": true,
+        "fingerprint": "2a045634114e37a5",
+        "severity": "nit",
+        "score": 60,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "An item with a `launch` whose `told` holds no goal message\n     never got its goal. A rename message or a rejoin message is not a goal.",
+            "| `told` | a list of `{at, path}`. `path` is `told/<item>-<k>.md` |",
+            "- the charter line `Gate: off`;",
+            "- the line `PR: ready`;"
+          ],
+          "rationale": "It is true that `told` entries are only `{at, path}` and have no kind, and the change now asks whether `told` holds a goal message instead of whether it is empty. The risk of a wrong guess is small: the goal message has its own lines (`Gate: off`, `PR: ready`), and the rules send no rename or rejoin message before the goal. Saying in one sentence how to spot the goal message would still help the reader.",
+          "score": 60,
+          "severity": "nit"
+        },
+        "span_text": "- **The rejoin message.** Send one message, with `told`, to each implementer that is alive or that you resumed, and whose `told` holds its goal message. Send none to an implementer with no goal: the step \"No goal\" gives it the goal, and the goal's envelope gives it the name. The message carries the line `Orchestrator: <record name>, item <id>` and your current session name from `ListAgents`, as SKILL.md's \"A rename\" says, so an implementer that missed a rename sends to the new name. It says that the orchestrator restarted. It asks for its ready line, its stage and each open question again. The part about its background tasks and watches depends on its process: - Its process restarted: you resumed it, or its handle differs from `launch.tab`. Tell it to arm its background tasks and watches again, because the restart ended them. - Any other live implementer kept its tasks. Tell it to arm only a watch that it does not hold now. Send it to a resumed implementer when `ListAgents` shows its name. A resumed tab can wait on the trust dialog, as SKILL.md's \"The goal message\" says for a new tab. - **No goal.** An item with a `launch` whose `told` holds no goal message never got its goal. A rename message or a rejoin message is not a goal. Send the goal now, as SKILL.md's \"The goal message\" says. Never send a second goal to an item whose `told` holds one.",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": [
+      {
+        "file": "skills/orchestrator/references/resume-and-close.md",
+        "start_line": 43,
+        "end_line": 44,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The rejoin message is meant to catch up implementers that missed a rename, but it goes only to items before `shipped`, while \"A rename\" also sends to shipped or closed items that are still in their close handshake.",
+        "evidence": "4. **Each implementer.** Do this for each item that has a\n   `launch.session_name` and a stage before `shipped`:",
+        "suggested_fix": "Also send the rejoin to `shipped` or `closed` items whose implementer is still alive.",
+        "explanation": "An implementer whose item is `shipped` but still in its close handshake gets no rejoin. If it missed a rename, it keeps sending to the old, dead name.",
+        "needs_context": false,
+        "fingerprint": "a5a04ebccb2a75ff",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "4. **Each implementer.** Do this for each item that has a\n   `launch.session_name` and a stage before `shipped`:",
+            "so an implementer\n     that missed a rename sends to the new name.",
+            "A `shipped` or `closed`\n   item that is still in its close handshake counts.",
+            "An item at `shipped` or `closed` whose tab or worktree is still there\n   waits for its close."
+          ],
+          "rationale": "This PR added the rejoin message's job of catching up an implementer that missed a rename, but the rejoin only goes to items before `shipped`. SKILL.md's \"A rename\" says that a `shipped` or `closed` item still in its close handshake counts as a recipient. On resume, such an item goes straight to \"The close of an item\", and an implementer that missed the rename can answer the close message to the old, dead name. The gap is real, but it needs a missed rename, a resume and an item in its close handshake at the same time, so it is on an unusual path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "4. **Each implementer.** Do this for each item that has a `launch.session_name` and a stage before `shipped`:",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7364,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14025,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014125000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1156,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 13539,
+            "webSearchRequests": 0,
+            "costUSD": 0.06584620000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0672587
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 1505,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10901,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011021,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 53,
+            "cacheReadInputTokens": 10154,
+            "cacheCreationInputTokens": 10411,
+            "webSearchRequests": 0,
+            "costUSD": 0.0863868,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0874889
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 4526,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10897,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011012,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 404,
+            "cacheReadInputTokens": 10348,
+            "cacheCreationInputTokens": 10407,
+            "webSearchRequests": 0,
+            "costUSD": 0.0934136,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 65,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0945148
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4620,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27074,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027174000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 477,
+            "cacheReadInputTokens": 47500,
+            "cacheCreationInputTokens": 27424,
+            "webSearchRequests": 0,
+            "costUSD": 0.11922400000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 312,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1219414
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3194,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10889,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011014,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 361,
+            "cacheReadInputTokens": 32649,
+            "cacheCreationInputTokens": 10842,
+            "webSearchRequests": 0,
+            "costUSD": 0.0502509,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 112,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.051352300000000003
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6483,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10893,
+            "outputTokens": 235,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012068,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 215,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 521,
+            "cacheReadInputTokens": 30531,
+            "cacheCreationInputTokens": 11950,
+            "webSearchRequests": 0,
+            "costUSD": 0.1121422,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.113349
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4963,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 26557,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0026652000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 647,
+            "cacheReadInputTokens": 34801,
+            "cacheCreationInputTokens": 26919,
+            "webSearchRequests": 0,
+            "costUSD": 0.1176341,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 150,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.12029930000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 17972,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 26569,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0026689,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 12,
+            "outputTokens": 1596,
+            "cacheReadInputTokens": 163598,
+            "cacheCreationInputTokens": 29670,
+            "webSearchRequests": 0,
+            "costUSD": 0.30204759999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 390,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3047165
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 29930,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10889,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011009000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 2931,
+            "cacheReadInputTokens": 89931,
+            "cacheCreationInputTokens": 23540,
+            "webSearchRequests": 0,
+            "costUSD": 0.2649582,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1595,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2660591
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5023,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15830,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015965000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 652,
+            "cacheReadInputTokens": 24074,
+            "cacheCreationInputTokens": 16924,
+            "webSearchRequests": 0,
+            "costUSD": 0.0766314,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 138,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0782279
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5216,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15757,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015862000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 699,
+            "cacheReadInputTokens": 24001,
+            "cacheCreationInputTokens": 15668,
+            "webSearchRequests": 0,
+            "costUSD": 0.0720701,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 47,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0736563
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10553,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15830,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015940000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1090,
+            "cacheReadInputTokens": 24070,
+            "cacheCreationInputTokens": 16593,
+            "webSearchRequests": 0,
+            "costUSD": 0.15937400000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 449,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.160968
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12929,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 15755,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0015875000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1378,
+            "cacheReadInputTokens": 44193,
+            "cacheCreationInputTokens": 16485,
+            "webSearchRequests": 0,
+            "costUSD": 0.1683026,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 562,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1698901
+      }
+    ],
+    "total_cost_usd": 1.7097223,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 41,
+      "gather": 339,
+      "scope": 13,
+      "triage": 8282,
+      "find_verify": 50283,
+      "merge": 8
+    },
+    "errors": []
+  }
+}

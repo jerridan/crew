@@ -80,7 +80,11 @@ case "$1" in
       grep -vxF -- "$target" "$D/tmux-panes" > "$D/tmux-panes.new"; mv "$D/tmux-panes.new" "$D/tmux-panes"
     fi
     exit 0 ;;
-  list-panes) [ -e "$D/tmux-list-panes" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-list-panes" ;;
+  list-panes)
+    # tmux-list-fail: the pane list read fails with an error that is not "no server running".
+    [ -e "$D/tmux-list-fail" ] && { echo "tmux: protocol version mismatch" >&2; exit 1; }
+    case "$*" in *'#{pane_id}'*'#{pane_tty}'*) ;; *'#{pane_id}'*) cat "$D/tmux-panes" 2>/dev/null; exit 0 ;; esac
+    [ -e "$D/tmux-list-panes" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-list-panes" ;;
   list-sessions) [ -e "$D/tmux-sessions" ] || { echo 'no server running' >&2; exit 1; }; cat "$D/tmux-sessions" ;;
   list-clients) cat "$D/tmux-clients" 2>/dev/null; exit 0 ;;
   *) exit 0 ;;
@@ -170,7 +174,7 @@ STUB
 # space.new answer after 3 seconds), herdr-close-down (tab.close takes the
 # window down: it exits 2 and sets herdr-down). hc files: hc-ls-fail (`ls`
 # fails), hc-get-fail-<address> (`get` fails with an error that is not
-# not_found), hc-keys-fail and hc-send-fail (`keys` and `send` fail). hc files: hc-ls (the `ls --json`
+# not_found), hc-keys-fail and hc-send-fail (`keys` and `send` fail), hc-send-gone (`send` fails and the terminal is gone for `get`). hc files: hc-ls (the `ls --json`
 # output), hc-get-<address>.json (the `get` output; a missing file is not_found).
 cat > "$T/bin/herdr-app" <<'STUB'
 #!/bin/bash
@@ -921,6 +925,41 @@ run stop iterm2:SESS-1
 check 'stop iterm2:<id> whose session ended during the exit script exits 0 with no output' \
   $([ "$rc" = 0 ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ]; echo $?)
 reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+: > "$STUB_DIR/tmux-kill-gone"
+: > "$STUB_DIR/tmux-list-fail"
+run stop 'tmux:%7'
+check 'stop tmux:<pane> with a failed kill-pane and a failed re-check read exits 6 with the kill-pane line' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'kill-pane failed for tmux:%7' "$T/err"; echo $?)
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
+: > "$STUB_DIR/osa-exit-keep"
+run stop iterm2:SESS-1
+check 'stop iterm2:<id> whose exit script fails on a session that still exists exits 6, one line naming the handle' \
+  $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF 'iterm2:SESS-1' "$T/err"; echo $?)
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys961' > "$STUB_DIR/osa-ttys"
+: > "$STUB_DIR/osa-exit-gone"
+(bash -c "exec -a claude sleep 300" < /dev/null > /dev/null 2>&1 & echo $! > "$T/cl")
+pc=$(cat "$T/cl"); echo "$pc" >> "$T/pids"
+echo "$pc ttys961" > "$STUB_DIR/ps-tty"
+python3 - "$here" > "$T/out" 2> "$T/err" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+launcher.STOP_WAIT = 1
+launcher.STOP_CLOSE_WAIT = 1
+launcher.KEY_WAIT = 0
+sys.exit(launcher.main(["stop", "iterm2:SESS-1"]))
+PY
+rc=$?
+check 'stop iterm2:<id> whose session ended during the exit script, with a claude still on its tty: exit 0, one stderr line names the pid' \
+  $([ "$rc" = 0 ] && [ "$(lines "$T/err")" = 1 ] && [ "$(grep -c "$pc" "$T/err")" = 1 ] && alive_pid "$pc"; echo $?)
+kill -9 "$pc" 2>/dev/null
+reset_stub
 echo 'SESS-1' > "$STUB_DIR/osa-sessions"
 echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
 : > "$STUB_DIR/osa-stop-keep"
@@ -935,8 +974,8 @@ reset_stub
 echo 'SESS-1' > "$STUB_DIR/osa-sessions"
 echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
 run stop iterm2:SESS-1
-r=1; [ "$rc" = 0 ] && [ "$(sed -n 1p "$STUB_DIR/osa.log")" = '-|exit|SESS-1|' ] \
-  && [ "$(sed -n 2p "$STUB_DIR/osa.log")" = '-|stop|SESS-1|' ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
+r=1; [ "$rc" = 0 ] && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | sed -n 1p)" = '-|exit|SESS-1|' ] \
+  && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | sed -n 2p)" = '-|stop|SESS-1|' ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
 check 'stop iterm2:<id> types /exit into the session first, then closes the tab' $r
 check 'the iTerm2 exit step types /exit with write text' $(grep -sqF 'write text "/exit"' "$STUB_DIR/osa-scripts"; echo $?)
 r=1; python3 - "$STUB_DIR/osa-scripts" <<'PY' && r=0

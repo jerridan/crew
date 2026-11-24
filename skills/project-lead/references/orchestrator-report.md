@@ -25,7 +25,7 @@ you make:
 
 | Path | Stage calls |
 |---|---|
-| Change path | `spec` when you start the spec; `split` (full path only); `build` at each IC dispatch, with `--detail <k>/<n>` for package k of n; `item <id> pr <pr_url>` and `review` when the PR opens and the goal check starts; `pr` when `goal-check.md`'s "Mark the PR ready" check passes, after a goal-miss patch is pushed and not at the goal check's report, also when `PR: draft` keeps the PR a draft |
+| Change path | `spec` when you start the spec; `split` (full path only); `build` at each IC dispatch, with `--detail <k>/<n>` for package k of n; `item <id> pr <pr_url>` and `review` when the PR opens and the goal check starts, which `crew-step.py hand-over` makes (`crew-step.md`), so make neither call yourself; `pr` when `goal-check.md`'s "Mark the PR ready" check passes, after a goal-miss patch is pushed and not at the goal check's report, also when `PR: draft` keeps the PR a draft |
 | Light path | `build` at each IC dispatch; then `review` and `pr` as on the change path |
 | Investigation path | `spec` while you diagnose; then the change path's calls for a fix ending, or `closed` for a report ending |
 

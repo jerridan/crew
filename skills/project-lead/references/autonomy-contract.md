@@ -147,10 +147,12 @@ Use the competing-patterns form under How to escalate instead for a question
 about two patterns already in the repo. That form's `usages` and `Age:` lines
 have nothing to say about any other kind of question.
 
-**Run two of `full-path.md`'s "Check the launch conditions" here, every
-time, and put a failure in the same batch:** "A worktree base is reachable"
-and "This run can push and open a PR", which the trigger text below calls
-launch check 3. Each is trigger 6, does not depend on an answer, and cannot be
+**Run `crew-step.py launch-check` here, every time, and put a failure in the
+same batch** (`crew-step.md`). It runs two of `full-path.md`'s "Check the
+launch conditions": "A worktree base is reachable" and "This run can push and
+open a PR", which the trigger text below calls launch check 3. Answer the
+`ask collect` line it prints, and escalate a collect hit. The call escalates
+nothing itself. Each is trigger 6, does not depend on an answer, and cannot be
 fixed mid-run. Every path needs both: every path cuts a review worktree under
 the base, and every path pushes. The teams-flag check stays where it is — it
 only matters once the goal has been sent to the full path, so that rule runs

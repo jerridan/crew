@@ -330,10 +330,9 @@ path the run took: an IC makes the edit, and you verify it yourself (design
    push is `git push origin crew/pr-<n>:<headRefName>`. After a push that
    succeeded, write
    `run.watch.head` to the pushed sha with `crew-record.py <record-dir> run
-   set watch.head '"<sha>"'`. Then finish the cleanup
-   `simple-path.md`'s "End the run" lists: remove a worktree you cut, restore
-   the checkout, and run `<project-lead-dir>/scripts/spend.py --write`
-   (`autonomy-contract.md`'s "Spend"). Report the way the message arrived.
+   set watch.head '"<sha>"'`. Then run
+   `<project-lead-dir>/scripts/crew-step.py cleanup` (`crew-step.md` in the
+   project lead's references owns it). Report the way the message arrived.
 
 ### A merge request
 
@@ -452,9 +451,8 @@ In order:
     after the push succeeded, then write `run.watch.head` to the pushed sha,
     as "A change request" step 5 says. A push the remote refuses twice is a
     `push_refused` entry on the round instead, and the head stays
-    unpublished (`record-format.md`). Then finish the cleanup
-    `simple-path.md`'s "End the run" lists. Then run
-    `<project-lead-dir>/scripts/spend.py --write`.
+    unpublished (`record-format.md`). Then run
+    `<project-lead-dir>/scripts/crew-step.py cleanup` (`crew-step.md`).
 11. **Send the reply file**, once every accepted entry in it is complete. A
     `skeptical` round's reply is the file, and a `principal` round's reply
     goes to the principal's channel. **A `pr-comments` or `ci` round posts

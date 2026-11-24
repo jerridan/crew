@@ -155,22 +155,13 @@ the test covers, and run the test. Check that its output
 confirms the test fails. Then restore the behaviour and run the test again.
 Commit neither the break nor its output. Both outputs go in your report.
 
-**The project lead's half of this check.** It runs once per package, in the
-checkout the package was worked in, on the clean tree `simple-path.md`'s
-"Verify before you believe" defines:
-
-```
-git -C <repo> switch --detach <sha> -q
-<the criterion, run from that checkout>
-git -C <repo> switch -q <the branch>
-```
-
-The criterion must exit non-zero. Switch back before anything else: an IC may
-not switch branches, so a checkout left detached takes the next commits with
-it. In a repo that builds before it tests, re-run that build at the red
-commit, or the criterion reads the fix still sitting on disk. A fix round
-writes no new red commit, so round 1's sha stays the evidence for every round
-after it.
+**The project lead's half of this check.** It runs once per package, on the
+clean tree `simple-path.md`'s "Verify before you believe" defines, with
+`crew-step.py verify --red <sha>` (`crew-step.md` owns the procedure). The
+criterion must exit non-zero at the red commit. The call switches back to the
+branch before anything else: an IC may not switch branches, so a checkout left
+detached takes the next commits with it. A fix round writes no new red commit,
+so round 1's sha stays the evidence for every round after it.
 
 ## Commit discipline
 

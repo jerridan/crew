@@ -10373,3 +10373,31 @@ Deliberately different:
     - **Unexercised.** Only `test-watch-step.sh` and `test-pr-reply.sh` ran
       the scripts, with a stub `gh`. No crew run has armed a monitor, acked a
       wake or sent a round with them.
+
+159. **One script runs the set-up, the verification and the hand-over —
+     2026-11-24, version 0.1.127.** A project lead spent many model calls on three fixed
+     command sequences, and each call re-reads the whole context.
+
+     - **Seen.** Over 51 project-lead sessions since 2026-11-03, counting the
+       Bash calls of each sequence in the transcripts, a session took 3.3
+       calls for the set-up (the launch checks and the branch), 12.1 for the
+       verification of a package and 6.5 for the hand-over.
+     - **Decision.** `skills/project-lead/scripts/crew-step.py` runs each
+       sequence in one call and prints one line per step, then the evidence:
+       `launch-check`, `branch`, `verify`, `hand-over` and `cleanup`.
+       `crew-record.py` stays the only writer of `state.json`.
+       `skills/project-lead/references/crew-step.md` owns the command line,
+       the step lines and the exit codes. The path files say when to run each
+       subcommand. The project lead keeps every judgment: the diff reading,
+       the prose checklists, the PR body, the fix-round decision, the
+       escalations and the closing report. `branch` and `hand-over` run again
+       after a partial failure and finish the job. `verify --ic-branch` reads
+       the IC's worktree for every check.
+     - **Expected.** 2 calls for the set-up (`launch-check`, `branch`), 2 for
+       the verification (`verify`, then the `decisions.md` write after the
+       reading) and 2 for the hand-over (the body file, then `hand-over`). The
+       figures come from the calls the new prose requires. No run has
+       measured them.
+     - **Unexercised.** Only `test-crew-step.py` ran the script, with a seeded
+       repo, a bare remote and stub `gh`, `spend.py` and `crew-orch.py`
+       commands. No crew run has used it.

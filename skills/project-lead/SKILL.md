@@ -18,12 +18,13 @@ most expensive place to work. You verify each package yourself, and
 ## Where the rules live
 
 Every reference is in `references/`, beside this file, and every script in
-`scripts/` — `crew-record.py` and `spend.py` both. Every path you hand an
+`scripts/` — `crew-record.py`, `spend.py` and `crew-step.py` all. Every path you hand an
 agent is absolute: its cwd is not yours.
 
 | File | What it owns | When you read it |
 |---|---|---|
 | `autonomy-contract.md` | routing, councils, escalation, spend, and who the principal is | before your first question, not at one |
+| `crew-step.md` | `crew-step.py`: the command line, the step lines, the evidence and the exit codes of the set-up, the verification of a package, the hand-over and the cleanup | when a path file tells you to run one of its subcommands |
 | `record-format.md` | the record: every file, field and state transition, and how `crew-record.py` writes `state.json` | before you create the record |
 | `band-rubric.md` | the band: the model it buys, and which review steps it skips | at the split, and again before you skip a step |
 | `review-output.md` | the shape every review agent reports in | inject it whole into every review dispatch; you do not follow it |

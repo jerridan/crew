@@ -6,7 +6,7 @@ The repo root is the plugin root.
 
 Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
-two hooks, the three scripts under `skills/project-lead/scripts/`,
+two hooks, the four scripts under `skills/project-lead/scripts/`,
 `skills/orchestrator/scripts/crew-orch.py` with its test `test-crew-orch.sh`,
 `skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`,
 and `skills/review/scripts/review-json.py`: they are code, run against a
@@ -20,7 +20,9 @@ and `test-launcher.sh` tests them with stub commands.
 `skills/orchestrator/scripts/crew-usage.py` is code too, and
 `test-crew-usage.py` beside it tests it with a stub `claude`.
 `skills/project-lead/scripts/test-crew-stats.py` tests `crew-stats.py`
-against seeded records.
+against seeded records. `skills/project-lead/scripts/crew-step.py` is code
+too, and `test-crew-step.py` beside it tests it with a seeded repo, a bare
+remote and stub `gh`, `spend.py` and `crew-orch.py` commands.
 `claude plugin test`, run with `CLAUDE_CONFIG_DIR` set to a new empty
 directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 `hooks/orch-board.tsx`.
@@ -47,6 +49,7 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/orchestrator/scripts/crew-usage.py`, `skills/orchestrator/references/usage.md` | the plan usage figures of the account in `<record-root>/usage.json`: the status line wrapper, the fresh reading, `show`, `check`, `watch` and `wait`; the reference that owns the figures, the levels and the slow-down | the orchestrator, from Bash and `Monitor`; a project lead with a `Usage limit:` charter line; the launcher's `--settings` value |
 | `skills/orchestrator/scripts/test-crew-usage.py` | the seeded test of `crew-usage.py`, with a stub `claude` | a person |
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, the plan reviews run and skipped with their finding labels, a `kind` column and the untouched-draft rate over every record; `test-crew-stats.py` is the seeded test of `crew-stats.py` | the project lead, from Bash; a person runs `crew-stats.py` |
+| `skills/project-lead/scripts/crew-step.py`, `skills/project-lead/scripts/test-crew-step.py`, `skills/project-lead/references/crew-step.md` | the fixed command sequences of a project lead, one call each: `launch-check`, `branch`, `verify`, `hand-over` and `cleanup`; the seeded test; the reference that owns the command line, the step lines and the exit codes | the project lead, from Bash; a person runs the test |
 | `skills/orchestrator/SKILL.md` | the `/crew:orchestrator` entry point: the intake, the split, the launch, the goal message, the inbox, the merge, the wait and the close of each item of many project-lead sessions | its skill trigger |
 | `skills/orchestrator/references/resume-and-close.md` | the resume of an orchestrator after a compaction or a restart, the close of an item and the close of a run | the orchestrator session |
 | `skills/orchestrator/references/subagent-items.md` | the subagent item: the test that makes an item one, its record, its dispatch, its PR window, its escalation to an implementer and its close | the orchestrator session |
@@ -146,6 +149,10 @@ seeded tests have run them, and no crew run has used them.
 The orchestrator launcher is built and ran only against its seeded test, and
 no crew run has exercised it (§15.140). Its Herdr support ran only against
 that test and one probe (§15.153).
+
+`crew-step.py` is built: it runs the set-up, the verification of a package,
+the hand-over and the cleanup in one call each (`crew-step.md`). Only its
+seeded test has run it, and no crew run has used it.
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

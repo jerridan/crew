@@ -10,11 +10,13 @@ takes one goal to a PR. You are the project lead, and every reference this
 skill names addresses you as the project lead.
 
 A review run is the delivered window on a foreign PR. Its one deliverable
-arrives already open, under another person's name, and it enters the window
-at once. `crew:delivered-window` watches the PR, sorts what lands, adjudicates
-on a ledger, runs patch rounds through an IC, holds the go-ahead gate where
-it applies, posts replies, and merges on the principal's word. This
-file holds only what a review run does differently.
+arrives already open, under another person's name. You run round 1 and post
+it. Then you write `handover.md`, start the watcher and end, as "Hand over to
+the window" says. There is one window and no second mode. Each later burst
+of events starts a window session. `crew:delivered-window` tells it to sort
+what lands, adjudicate on a ledger, run patch rounds through an IC, hold the
+go-ahead gate where it applies, post replies, and merge on the principal's
+word. This file holds only what a review run does differently.
 
 **Paths.** `<project-lead-dir>` is the `skills/project-lead` directory beside
 this skill's base directory, which the invocation names. `<plugin-dir>` is
@@ -40,7 +42,7 @@ every file by its absolute path, and give every agent absolute paths.
 | `skeptical-review.md` | when the review runs, the ledger, and the resume list | at "Review" and "Adjudicate", and on a resume |
 | `record-format.md` | every record file and field | before you create the record |
 | `autonomy-contract.md` | escalation, and who the principal is | before your first question |
-| `crew:delivered-window` and its `pr-watch.md` | the watch, the rounds, the gate, the replies and the merge | at "Enter the delivered window" |
+| `crew:delivered-window` and its `pr-watch.md` | the window session: the rounds, the gate, the replies and the merge, and the watcher's poll | at "Hand over to the window" |
 
 **Plan mode stops every dispatch**, as `<project-lead-dir>/SKILL.md`'s
 "Before anything" says.
@@ -149,8 +151,8 @@ sanitizing" says so.
    ```bash
    python3 <project-lead-dir>/scripts/crew-record.py <record-dir> decision precedent "Which runner reviews this PR?" --answer "<the entry's replacement, or the default command>" --citation "<the entry's source and words>" --confidence high
    ```
-9. **Write `run.watch`** as `pr-watch.md`'s "The first write's cursor" says,
-    `head` included.
+9. **Write no `run.watch`.** `window-watch.py start` writes it at "Hand over
+    to the window", from the PR at that time.
 
 ## Review
 
@@ -254,7 +256,10 @@ python3 <project-lead-dir>/scripts/crew-record.py <record-dir> escalation <index
 python3 <project-lead-dir>/scripts/crew-record.py <record-dir> escalation <index> set draft_changed null
 ```
 
-The run is `blocked` until the answer.
+The run is `blocked` until the answer. In a window session, write
+`run.window.awaiting` with the round's id, send the ask and end, as
+`crew:delivered-window`'s "The go-ahead gate" says. The answer starts the next
+session.
 
 The principal can change any disposition or label, mark any finding `no
 reply`, or edit the text. When the answer lands:
@@ -285,10 +290,22 @@ post, in this order:
 A failed post is retried once, with every inline comment folded into the
 body. A second failure is an escalation.
 
-## Enter the delivered window
+## Hand over to the window
 
-Invoke `crew:delivered-window` with the `Skill` tool. It runs as it stands,
-and it already carries the sentences for a `run.kind: review` run:
+Run this step once, after round 1's post and its `round replied`. In order:
+
+1. Write `handover.md`, with the nine headings of `record-format.md`. Put
+   each finding held back, with its whole text, under the first heading. An
+   empty heading says `none`.
+2. Run `python3 <plugin-dir>/skills/delivered-window/scripts/window-watch.py
+   start <record-dir>`. It starts the watcher.
+3. Print the `say` command that `crew:delivered-window`'s "The go-ahead
+   gate" gives, for a person. End the turn. Start no watch of your own and no
+   recurring job.
+
+Every later burst starts a window session that invokes `crew:delivered-window`.
+It runs as it stands, and it already carries the sentences for a
+`run.kind: review` run:
 
 - which rounds take the gate, decided by the author of each item: its "The
   go-ahead gate";
@@ -296,13 +313,13 @@ and it already carries the sentences for a `run.kind: review` run:
   pushes, and every other round is answered and never patched: its
   "Findings from a review";
 - the `merged` and `closed` items are each the ship word, except that under
-  `Done: rolled out` a `merged` item follows the deploy rule: its "Watch the
-  PR", "The deploy watch" and "The word that the work shipped";
+  `Done: rolled out` a `merged` item follows the deploy rule: its "What the
+  watcher sends you", "The deploy watch" and "The word that the work shipped";
 - an item that neither answers a crew-posted finding nor addresses the
   principal is a notice, so other people's conversations open no round: its
   "Sort what reaches you";
-- the first cursor starts at the arming time, so the PR's history opens no
-  round: `pr-watch.md`'s "The first write's cursor".
+- the first cursor starts at the time of `start`, so the PR's history opens no
+  round: `pr-watch.md`'s "The first cursor".
 
 `goal-check.md`'s "Mark the PR ready" does not apply, and it says so.
 
@@ -312,11 +329,11 @@ rounds" adds to it.
 
 ## Later rounds
 
-A `push` item that the watch sorts as a head move arms the next review. The
-window owns that.
+A `push` line that a window session sorts as a head move arms the next
+review. The window owns that. A later round runs in a window session.
 
 **Re-read the head after every head move**: crew's own push, or a `push`
-item the watch sorts as one. Run the re-read command of `github-review.md`'s
+line that the session sorts as one. Run the re-read command of `github-review.md`'s
 "The post command", and act on a `CONFLICTING` `mergeable` as that section
 says. A push dismisses an earlier approval, and the next round approves again
 on the new head.
@@ -364,9 +381,9 @@ fix, push, re-review, approve, so an approval never lands before a fix:
    recovers it through `skeptical-review.md`'s resume entries 1a to 7.
 4. **Push** to the PR's branch behind the gate, with the command that the
    window's "A change request" step 5 gives for a review run. The window's
-   step 10
-   writes `run.watch.head` after the push, so your own push returns as a
-   notice. Then re-read the head, as "Later rounds" says.
+   step 10 writes the head to `run.window.own.pushes` first, so the watcher
+   starts no session for your own push. Then re-read the head, as "Later
+   rounds" says.
 5. **Run the re-review.** The integration write arms the new head, and
    "Review" runs again. Skip it when the charter's `Re-review:` line holds
    and the pushed diff meets one of its tests, which `record-format.md`'s
@@ -398,8 +415,8 @@ A merge is the window's "A merge request" as it stands.
 
 ## The end
 
-The `merged` or `closed` item is the ship word, and the window owns the
-steps. Under `Done: rolled out`, that window's "The word that the work
+The `merged` or `closed` line is the ship word, and the window owns the
+steps, which end with `window-watch.py done --final`. Under `Done: rolled out`, that window's "The word that the work
 shipped" names the word instead of a `merged` item. Before its closing
 message, remove the review worktree as `review-runner.md`'s "Never review in
 the run's own checkout" says. It keeps the worktree when the branch holds
@@ -409,9 +426,9 @@ the record.
 
 ## A resume
 
-`--resume <record slug>` reads `run.kind`, and re-enters
-`crew:delivered-window` as `<project-lead-dir>/references/resume.md`
-does for a delivered run. `skeptical-review.md`'s "Resume in the delivered
+`--resume <record slug>` reads `run.kind`. A run that has handed over runs
+`window-watch.py ensure`, as `<project-lead-dir>/references/resume.md` says
+for a delivered run. `skeptical-review.md`'s "Resume in the delivered
 window" owns the rest. Its entries 1a and 7 hold the review-run case. Entry
 1a says when an accepted line with no package is complete: it carries its
 label and its comment text. It also sends a `skeptical` round with no ask to

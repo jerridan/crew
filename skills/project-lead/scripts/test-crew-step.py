@@ -100,6 +100,10 @@ code = int(os.environ.get("STUB_GH_EXIT", "0"))
 if code:
     sys.stderr.write("gh: stub error\\n")
     sys.exit(code)
+if sys.argv[1:3] == ["pr", "list"]:
+    open_url = os.environ.get("STUB_GH_OPEN")
+    print(json.dumps([{"url": open_url}] if open_url else []))
+    sys.exit(0)
 print("Creating draft pull request")
 print("%s")
 """ % PR_URL)
@@ -227,6 +231,11 @@ def log_calls(d, name):
         return []
     with open(path) as f:
         return [json.loads(line) for line in f if line.strip()]
+
+
+def creates(d):
+    """The `gh pr create` calls the stub gh logged."""
+    return [c for c in log_calls(d, "gh") if c[:2] == ["pr", "create"]]
 
 
 def deliverable(rec, did="deliverable-1"):
@@ -725,7 +734,7 @@ body_before = raw(bodyfile)
 rc, out, _ = step("hand-over", rec, "deliverable-1", "--body", bodyfile, "--title", "My title", log=d)
 st = state(rec)
 dl = deliverable(rec)
-gh = log_calls(d, "gh")
+gh = creates(d)
 check("R15 hand-over exits 0", rc == 0)
 check("R15 the branch is on the remote", g(bare, "rev-parse", DEL_BRANCH) == head)
 check("R15 gh saw --draft, the title and the body file",
@@ -753,7 +762,7 @@ check("PR4 a rerun skips push, pr and deliver as already done",
       rc == 0 and "ok push: already done" in lines(out) and "ok pr: already done" in lines(out)
       and "ok deliver: already done" in lines(out))
 check("PR4 a rerun makes one gh pr create call and one deliver write in all",
-      len(log_calls(d, "gh")) == 1 and dl.get("state_changed_at") == changed_at
+      len(creates(d)) == 1 and dl.get("state_changed_at") == changed_at
       and state(rec)["run"].get("review_pending") == pending)
 check("PR4 a rerun runs orch again", len(log_calls(d, "orch")) == 4)
 
@@ -886,6 +895,125 @@ check("R17 a run with no worktrees.json removes nothing", rc == 0 and has(out, "
       and wt_json(rec) is None)
 
 
+# --- the bot's round: pr-comments-r1 ---------------------------------------
+
+# Item 2: a path that git quotes (non-ASCII, a space) still matches the file set.
+NASTY = "src/é ü.py"
+d, repo, _ = make_repo("q1", remote=False)
+qbase = g(repo, "rev-parse", "HEAD")
+g(repo, "switch", "-q", "-c", DEL_BRANCH)
+rec = make_record(d, repo, checkout=repo, packages=[
+    {"id": "p1", "deliverable": "deliverable-1", "territory": "alpha", "state": "in-flight",
+     "file_set": [NASTY, "tests/ö.py"], "ic_name": None, "base": qbase}],
+    deliverables=[{"id": "deliverable-1", "branch": DEL_BRANCH, "base": qbase, "state": "in-flight",
+                   "pr_url": None, "checkout_branch": "main", "checkout_restored": None}])
+commit(repo, NASTY, "x = 1\n", "add a quoted name")
+rc, out, _ = step("verify", rec, "p1", "--no-suite")
+check("a committed file with a quoted name in the file set passes file-set",
+      rc == 0 and "ok file-set: 1 files, all in the file set" in lines(out))
+write(os.path.join(repo, "tests", "ö.py"), "untracked\n")
+rc, out, _ = step("verify", rec, "p1", "--no-suite")
+check("an untracked file with a quoted name in the set fails clean-tree under its real name",
+      rc == 1 and any(x.startswith("FAIL clean-tree:") and "tests/ö.py" in x for x in lines(out)))
+os.remove(os.path.join(repo, "tests", "ö.py"))
+write(os.path.join(repo, "notes ä.txt"), "mine\n")
+rc, out, _ = step("verify", rec, "p1", "--no-suite")
+check("an untracked quoted name outside the set is reported under its real name",
+      rc == 0 and "notes ä.txt" in section(out, "untracked"))
+os.remove(os.path.join(repo, "notes ä.txt"))
+commit(repo, "stray é.py", "y\n", "stray")
+rc, out, _ = step("verify", rec, "p1", "--no-suite")
+check("a committed quoted name outside the set is named in FAIL file-set",
+      rc == 1 and any(x.startswith("FAIL file-set:") and "stray é.py" in x for x in lines(out)))
+
+# Item 3: a bad --start-point in the held case writes nothing.
+d, repo, _ = make_repo("sp1", remote=False)
+rec = make_record(d, repo)
+before = raw(os.path.join(rec, "state.json"))
+rc, out, _ = step("branch", rec, "deliverable-1", "--held", "--start-point", "no-such-ref")
+check("a held call with a bad --start-point is FAIL start-point, exit 1", rc == 1 and has(out, "FAIL start-point:"))
+check("a bad --start-point writes no worktrees.json and no state",
+      wt_json(rec) is None and raw(os.path.join(rec, "state.json")) == before
+      and len(worktree_paths(repo)) == 1)
+rc, out, _ = step("branch", rec, "deliverable-1", "--held", "--start-point", "main")
+check("a rerun with a good --start-point cuts the worktree",
+      rc == 0 and os.path.isdir(os.path.join(rec, "worktrees", "deliverable-1")))
+
+# Item 4: the restore failure path.
+d, repo, bare, rec, bodyfile = seed_handover("rf1", orchestrator=False)
+rc, out, _ = step("cleanup", rec, "deliverable-1", log=d, STUB_GIT_REFUSE="main")
+cr = deliverable(rec).get("checkout_restored")
+check("a failed switch back is FAIL restore, exit 1", rc == 1 and has(out, "FAIL restore: switch to main failed"))
+check("a failed switch back writes the sentence to checkout_restored",
+      isinstance(cr, str) and cr.startswith("switch to main failed"))
+
+# Items 5: a rerun after a failed deliver write reuses the open PR.
+d, repo, bare, rec, bodyfile = seed_handover("pr1", orchestrator=False)
+rc, out, _ = step("hand-over", rec, "deliverable-1", "--body", bodyfile, "--title", "T", log=d,
+                  script=S_WRAP, STUB_RECORD_FAIL="deliver")
+check("a failed deliver write leaves one created PR and exit 1",
+      rc == 1 and has(out, "FAIL deliver:") and len(creates(d)) == 1)
+rc, out, _ = step("hand-over", rec, "deliverable-1", "--body", bodyfile, "--title", "T", log=d,
+                  script=S_WRAP, STUB_GH_OPEN=PR_URL)
+check("the rerun reuses the open PR and calls gh pr create no second time",
+      rc == 0 and ("ok pr: already open " + PR_URL) in lines(out) and len(creates(d)) == 1)
+check("the rerun delivers with the open PR's url",
+      deliverable(rec).get("state") == "draft-pr-opened" and deliverable(rec).get("pr_url") == PR_URL)
+
+# Item 6: a criterion that edits a tracked file at the red commit.
+d, repo, rec, base = seed_verify("rd1")
+red = commit(repo, "tests/test_a.py", "test\n", "red test")
+commit(repo, "src/a.py", "x = 1\n", "fix")
+crit = "if [ ! -f src/a.py ]; then echo edit >> README; fi; test -f src/a.py"
+rc, out, _ = step("verify", rec, "p1", "--criterion", crit, "--no-suite", "--red", red)
+check("a criterion that edits a tracked file at the red commit still passes the red check",
+      rc == 0 and any(x.startswith("ok red:") for x in lines(out)))
+check("the red step and the red evidence name the edited file",
+      any(x.startswith("ok red:") and "README" in x for x in lines(out))
+      and any("README" in x for x in section(out, "red")))
+check("the edit does not reach the branch: the tree is clean and the branch is back",
+      g(repo, "status", "--porcelain") == "" and g(repo, "branch", "--show-current") == DEL_BRANCH
+      and raw(os.path.join(repo, "README")) == b"hello\n")
+
+# Item 9: an id with / or .. is a usage error.
+d, repo, _ = make_repo("id1")
+rec = make_record(d, repo)
+before = raw(os.path.join(rec, "state.json"))
+for bad in ("../x", "a/b", ".."):
+    rc, out, err = step("branch", rec, bad, "--held", "--start-point", "main")
+    check("branch with the id %s is a usage error that runs nothing" % bad,
+          rc == 2 and "deliverable id" in err and wt_json(rec) is None
+          and raw(os.path.join(rec, "state.json")) == before and len(worktree_paths(repo)) == 1)
+rc, out, err = step("branch", rec, "deliverable-1", "--territory", "..=ic-x")
+check("branch with the territory slug .. is a usage error", rc == 2 and "--territory" in err)
+rc, out, err = step("hand-over", rec, "a/b", "--local")
+check("hand-over with the id a/b is a usage error", rc == 2 and "deliverable id" in err)
+rc, out, err = step("cleanup", rec, "../x")
+check("cleanup with the id ../x is a usage error", rc == 2 and "deliverable id" in err)
+
+# A bad --branch name is a usage error that writes nothing.
+rc, out, err = step("branch", rec, "deliverable-1", "--branch", "bad name~")
+check("branch with an invalid --branch name is a usage error that writes nothing",
+      rc == 2 and raw(os.path.join(rec, "state.json")) == before and g(repo, "branch", "--show-current") == "main")
+
+# Item 10: cleanup's already-gone branch.
+d, repo, bare, rec, bodyfile = seed_handover("ag1", orchestrator=False, held_ic=True)
+icwt = os.path.join(rec, "worktrees", "alpha")
+g(repo, "worktree", "remove", icwt)
+rc, out, _ = step("cleanup", rec, "deliverable-1", log=d)
+check("a worktree removed outside the script is already gone, and its entry is deleted",
+      rc == 0 and ("ok worktree-remove: %s: already gone" % icwt) in lines(out) and wt_json(rec) == {})
+
+# A rerun of launch-check writes the decision once.
+d, repo, _ = make_repo("lr1")
+rec = make_record(d, repo)
+step("launch-check", rec)
+rc, out, _ = step("launch-check", rec)
+dec = (raw(os.path.join(rec, "decisions.md")) or b"").decode()
+check("a launch-check rerun writes one worktree base decision",
+      rc == 0 and dec.count("## Which worktree base does this run use?") == 1)
+
+
 # --- greps of the script: R17, R19, R20 ------------------------------------
 
 text = (raw(SRC) or b"").decode()
@@ -899,14 +1027,20 @@ writes = [x for x in src_lines if write_open.search(x) or ".write_text(" in x or
 check("R20 every write-mode open() names worktrees", bool(text) and all("worktrees" in x for x in writes))
 check("R20 no state.json line writes the file",
       bool(text) and not any("state.json" in x and (write_open.search(x) or ".write(" in x or "write_json" in x) for x in src_lines))
-r = subprocess.run([REAL_GIT, "-C", HERE, "diff", "--quiet", "HEAD", "--", "crew-record.py"], env=ENV)
-same = r.returncode == 0
-mb = subprocess.run([REAL_GIT, "-C", HERE, "merge-base", "HEAD", "main"], env=ENV,
-                    capture_output=True, text=True)
-if same and mb.returncode == 0:
-    same = subprocess.run([REAL_GIT, "-C", HERE, "diff", "--quiet", mb.stdout.strip(), "--",
-                           "crew-record.py"], env=ENV).returncode == 0
-check("R20 git diff shows no change to crew-record.py", same)
+base_ref = None
+for ref in ("origin/main",):
+    if subprocess.run([REAL_GIT, "-C", HERE, "rev-parse", "--verify", "--quiet", ref], env=ENV,
+                      capture_output=True).returncode == 0:
+        base_ref = ref
+if base_ref is None:
+    print("skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout")
+else:
+    mb = subprocess.run([REAL_GIT, "-C", HERE, "merge-base", "HEAD", base_ref], env=ENV,
+                        capture_output=True, text=True)
+    same = mb.returncode == 0 and subprocess.run(
+        [REAL_GIT, "-C", HERE, "diff", "--quiet", mb.stdout.strip(), "--", "crew-record.py"],
+        env=ENV).returncode == 0
+    check("R20 git diff shows no change to crew-record.py since the merge base with " + base_ref, same)
 
 
 # --- end -------------------------------------------------------------------

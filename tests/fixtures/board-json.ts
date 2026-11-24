@@ -82,7 +82,8 @@ export default {
           "ticket": null,
           "text": "",
           "age": "",
-          "launch_tab": null
+          "launch_tab": null,
+          "subagent": false
         },
         {
           "n": 2,
@@ -97,7 +98,8 @@ export default {
           "ticket": null,
           "text": "reads the review",
           "age": "40s",
-          "launch_tab": "tmux:%7"
+          "launch_tab": "tmux:%7",
+          "subagent": false
         },
         {
           "n": 3,
@@ -108,7 +110,8 @@ export default {
           "ticket": null,
           "text": "after settings · ic-2 runs the suite",
           "age": "12m",
-          "launch_tab": null
+          "launch_tab": null,
+          "subagent": false
         }
       ]
     },
@@ -137,7 +140,8 @@ export default {
           },
           "text": "",
           "age": "",
-          "launch_tab": "iterm2:w1t2"
+          "launch_tab": "iterm2:w1t2",
+          "subagent": false
         },
         {
           "n": 5,
@@ -148,7 +152,20 @@ export default {
           "ticket": null,
           "text": "writes the spec",
           "age": "2h",
-          "launch_tab": null
+          "launch_tab": null,
+          "subagent": false
+        },
+        {
+          "n": 7,
+          "id": "moves",
+          "marks": "●●◐○○",
+          "status": "build",
+          "pr": null,
+          "ticket": null,
+          "text": "subagent · moves the tickets",
+          "age": "5m",
+          "launch_tab": null,
+          "subagent": true
         }
       ]
     }

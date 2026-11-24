@@ -165,7 +165,7 @@ except the build of the skill itself.
 
 Subagent items are built: the orchestrator runs an item that passes its test
 under a subagent, with no implementer session, and the record marks it with
-the item field `subagent` (§15.NNN). Only the seeded tests have run it, and
+the item field `subagent` (§15.157). Only the seeded tests have run it, and
 no orchestrator run has exercised it.
 
 The board pane is built: `crew-orch.py board --json` is the one source of the

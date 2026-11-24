@@ -10282,8 +10282,8 @@ Deliberately different:
        `herdr-app` and `hc` that give `t1j` and `t1B`. No live run has
        started, found, focused or stopped a terminal with such an address.
 
-NNN. **The orchestrator runs a small item with a subagent — 2026-11-24,
-     version placeholder.** An orchestrator gave every item an implementer
+157. **The orchestrator runs a small item with a subagent — 2026-11-24,
+     version 0.1.125.** An orchestrator gave every item an implementer
      session. It ran an item with a subagent only on the principal's word.
 
      - **Seen.** Item `stop-exit-keys` of the record `crew-orchestrator` ran

@@ -215,11 +215,14 @@ def build_instructions(rv):
     rv.f("-instructions.md").write_text(out, encoding="utf-8")
 
 
+CD_FAILED = "crew: cd to the checkout failed"
+
+
 def write_script(rv, checkout):
     wall, poll = rv.args.wall_clock, rv.args.poll
     text = f'''r={rv.r}
 : > "$r-result.txt"; : > "$r-result.stderr"; rm -f "$r-result.exit"
-cd {checkout} || {{ echo 1 > "$r-result.exit"; exit 1; }}
+cd {checkout} || {{ echo "{CD_FAILED}" > "$r-result.stderr"; echo 1 > "$r-result.exit"; exit 1; }}
 codex exec --sandbox read-only -m gpt-6.2-sol -c model_reasoning_effort=medium -C {checkout} - < "$r-instructions.md" > "$r-result.txt" 2> "$r-result.stderr" &
 pid=$!
 start=$(date +%s)
@@ -313,6 +316,8 @@ def cmd_run(rv):
     o["tokens"] = token_count(rv)
     if code == 124:
         skip(rv, "timeout", "result.exit holds 124: not done at the wall clock", o)
+    if code == 1 and CD_FAILED in (read_text(rv.f("-result.stderr")) or ""):
+        skip(rv, "failed", CD_FAILED + ": " + str(checkout), o)
     if code != 0:
         rv.write(o)
         tail = (read_text(rv.f("-result.stderr")) or "").rstrip("\n").split("\n")[-20:]

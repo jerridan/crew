@@ -123,7 +123,8 @@ in this order:
    watchdog: a runner that still prints output is killed at 600 seconds too. At
    the limit the script kills the runner and its child processes, and writes
    124 to `-result.exit`. Every exit path writes `-result.exit`: a failed `cd`
-   writes 1. The loop needs no `timeout` tool. The shape is `substitution.md`'s
+   writes 1 and the line `crew: cd to the checkout failed` to `-result.stderr`.
+   The script reads that pair as a `failed` skip, with no judgment stop. The loop needs no `timeout` tool. The shape is `substitution.md`'s
    run script, and the reasons for its exit file and its stdin hold here too.
 5. **The read of the result.** It reads `-result.exit`, then on 0 it checks
    that `-result.txt` ends with a `Verdict:` line that holds `plans sound` or

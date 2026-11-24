@@ -196,6 +196,8 @@ git -C <run.repo> branch -D crew/pr-<n>
 (`/crew:review`'s "Review").
 
 On a goal run, the script runs the `--setup` command in the review worktree.
+It runs the command once in each round, so a round on a new head gets its own
+dependencies. It writes `reviews/skeptical-r<n>-setup-done` when it has run.
 The goal check runs no suite, but the baseline does. A fresh worktree has the
 repo's files and none of its installed dependencies, so the baseline's gates
 fail there for a reason that has nothing to do with the diff. The script runs
@@ -211,7 +213,7 @@ would have.
 how you write it. When the file is missing, or its `Base:` line names another
 sha than the deliverable's `base`, the script stops before the instructions
 with `BASELINE OWED:`. You write the file, then run the command again. The
-script skips the setup command on that second call.
+script skips the setup command on that second call of the same round.
 
 ### Reviewer instructions
 

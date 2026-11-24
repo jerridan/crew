@@ -308,7 +308,7 @@ def prepare_worktree(ctx):
 def setup_and_baseline(ctx):
     base = ctx.deliverable().get("base")
     baseline = ctx.reviews / "baseline.md"
-    marker = ctx.reviews / "setup-done"
+    marker = ctx.reviews / ("skeptical-r%d-setup-done" % ctx.n)
     if ctx.args.setup and (ctx.cut or not marker.exists()):
         r = subprocess.run(ctx.args.setup, shell=True, cwd=str(ctx.wt), capture_output=True, text=True)
         marker.write_text(now() + "\n", encoding="utf-8")

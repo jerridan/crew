@@ -1,0 +1,276 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 188,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Replace the long-lived project lead after the hand-over with a watcher and small window sessions",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/188"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "2cc719b49347d4950ffdbf88400d6546688cc22b",
+    "head": "597bd565b7e70bfeb0412924813f35e8a7eb8ee6",
+    "started_at": "2026-11-24T20:32:43.932Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Replace the long-lived project lead after the hand-over with a watcher and small window sessions\n\n## Summary\n\nAfter a crew run hands over its PR, the project lead no longer stays alive with its whole build context. A watcher with no model now watches the PR, CI and the deploy at no token cost. When something lands that needs a model, such as a review, a comment, a failed check, the merge or a word from a person or an orchestrator, the watcher opens one small window session in a new tab. That session reads the run's record, handles the whole burst of events, writes the record and closes. Before this change, the window was 64% of a project lead's cost: every call there read a median 209K-token build context again, and a 30-minute watch expiry woke the session only to arm the watch again.\n\n**Ticket:** N/A (orchestrator item window-session, no GitHub issue)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.<TBD> (new finding, number assigned at merge).\n- `skills/delivered-window/SKILL.md` owns the window session and the project lead's hand-over; `skills/delivered-window/references/pr-watch.md` the watcher's poll and cursor; `skills/delivered-window/references/patch-mode.md` (new) the patch rounds of a review's findings.\n- `skills/project-lead/references/record-format.md` owns `handover.md`, `window/` and `run.window`.\n- `skills/project-lead/references/crew-step.md` owns the new `watch` step of `hand-over` and the new `verify` diff output.\n- `skills/orchestrator/references/launcher.md` owns `launcher.py window`.\n- `skills/orchestrator/SKILL.md` owns how the orchestrator reaches a delivered item (`say`).\n\n### What changed, by file\n\n- `skills/delivered-window/scripts/window-watch.py` (new): the watcher. `start [--hold]`, `release`, `ensure`, `stop`, `say`, `claim`, `next`, `done [--final]`, `status`. One detached process per delivered run; polls with `pr-watch.sh` every 60 s with no expiry; drops events that need no model (the run's own push and ready flip from `run.window.own`, `queued`, a passing check, the run's own comment); queues the rest durably and acks the cursor itself; waits 120 s of quiet (600 s cap) and starts one window session per burst through `launcher.py window`; one session slot per run; a launch is recorded before the launcher call and reconciled with `launcher.py find`; sets up the deploy on `merged` and polls it; flags a stale tab and asks the orchestrator.\n- `skills/delivered-window/scripts/test-window-watch.sh` (new): 90 seeded checks with a stub `gh`, launcher, poll and `crew-orch.py`, and the real `crew-record.py`.\n- `skills/delivered-window/scripts/watch-step.py`: the `Monitor` `arm` subcommand is gone; `deploy --setup-only` writes `run.deploy` and returns. `test-watch-step.sh` changed to match.\n- `skills/delivered-window/scripts/pr-watch.sh`: the die message and the header name the watcher, not `Monitor`.\n- `skills/orchestrator/scripts/launcher.py`: new `window --name --cwd --prompt-file [--model] [--group]` subcommand: one interactive tab, no worktree, no branch, prints one JSON line whose `tab` is the handle `stop` takes. `test-launcher.sh` has 13 new checks.\n- `skills/project-lead/scripts/crew-step.py`: `hand-over` runs `window-watch.py start --hold` in a new `watch` step after `orch`; `verify` now writes the package diff to `diffs/<package-id>-verify.patch` and prints its path and the stat, and `--diff` prints the whole diff. This run saw about 1,200 lines of diff in the `verify` output of one prose package. `test-crew-step.py` covers both; its R20 check now guards the `crew-record.py` command lines instead of the whole file.\n- `skills/project-lead/scripts/crew-record.py`: one exclusive lock per record around each read-modify-write, because the watcher and a session write the same record. `hooks/session-end.py` takes the same lock and no longer marks a `delivered` run interrupted.\n- `skills/delivered-window/SKILL.md`: rewritten for the window session (entry, the watcher's events, own acts, the gate that asks and ends, the deploy, the ship word with `done --final`, the hand-over); under 500 lines.\n- `skills/delivered-window/references/pr-watch.md`, `references/patch-mode.md` (new): the watcher's poll and cursor; the patch-mode procedure moved out of SKILL.md.\n- `skills/review/SKILL.md`: a review run posts round 1, writes `handover.md`, starts the watcher and ends.\n- `skills/project-lead/SKILL.md`: the `Window model` standing-instruction section (default opus).\n- `skills/project-lead/references/record-format.md`: `handover.md` with its nine headings, `window/`, every `run.window` field, the record lock.\n- `skills/project-lead/references/goal-check.md`, `simple-path.md`, `full-path.md`, `resume.md`, `skeptical-review.md`, `orchestrator-report.md`: the project lead ends at the hand-over with `window-watch.py release`; its own pushes and flips after `start` go to `run.window.own`; a resume runs `ensure`, `claim`, the owed work, `done`.\n- `skills/orchestrator/SKILL.md`, `references/resume-and-close.md`, `references/launcher.md`: the orchestrator sends the merge word, the rebase word and gate answers to a delivered item with `window-watch.py say --item`, and runs `ensure` on its resume.\n- `README.md`, `CLAUDE.md`, `docs/design.md`: the new way, the layout rows, the build state and the finding.\n\n### Constraints that applied\n\n- \"Only the launcher and `crew-usage.py` start a `claude` process\" holds: the watcher starts a session only through `launcher.py window`.\n- One rule in one file: the window session's rules live in `crew:delivered-window`; other files point at it. The writing-standard checklist was read for each changed instruction file; `SKILL.md` is 494 lines.\n- Version and §15 number: left as placeholders for the orchestrator. The manifests are not bumped in this PR, and the finding is numbered `<TBD>`.\n- The project lead never merges.\n\n### How this was verified\n\nEvery seeded test passes on the branch head: `test-window-watch.sh` 90/90, `test-watch-step.sh` 90/90, `test-pr-reply.sh` 55/55, `test-pr-watch-deploy.sh` 23/23, `test-launcher.sh` 326/326, `test-crew-step.py` 177/177, `test-crew-stats.py` 26/26, `test-review-run.py` 140/140, `test-plan-review.py` 45/45, `test-crew-orch.sh` all, `test-crew-usage.py` 107/107. Each code package had a red commit that failed its new checks. A Codex plan review over all five plans found six blocking design faults (record write races, the cursor, burst recovery, the deploy set-up, the tab close order, and the session ownership on resume), and each was fixed before code.\n\nWindow size, before and after. Before, from the orchestrator's study of three weeks of transcripts: the window started at a median 209K tokens and made about 87 calls. After: the seeded test measures the first prompt plus every record file it names at 5,071 bytes. An estimate from file sizes (about 3.6 bytes a token over the study's 58K base): a notice session starts at about 72K tokens and makes about 10 calls; a patch round with an IC reaches about 110K to 120K and makes 30 to 40 calls. Events that need no model start no session.\n\n### Known gaps\n\n- No real window session has run. The token figures above are estimates, not a transcript measurement. One probe against a seeded record would measure them.\n- A wait before the hand-over (a usage-limit pause, a question to the principal) still wakes the build context. The orchestrator made it a second item.\n- A machine restart stops the watcher; `--resume` or the orchestrator's resume runs `ensure` to start it again. Nothing starts it at login.\n- The test drives the watcher with a stub poll, so the real `pr-watch.sh` runs only in its own deploy test.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "README.md",
+        "hunks": 7
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/session-end.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 12
+      },
+      {
+        "path": "skills/delivered-window/references/patch-mode.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/delivered-window/scripts/pr-watch.sh",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-watch-step.sh",
+        "hunks": 4
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-window-watch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/watch-step.py",
+        "hunks": 7
+      },
+      {
+        "path": "skills/delivered-window/scripts/window-watch.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 7
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/crew-step.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/references/full-path.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/goal-check.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 9
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-step.py",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-step.py",
+        "hunks": 10
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 10
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6046921537,
+      "review_url": "https://github.com/jerridan/crew/pull/188#pullrequestreview-6046921537",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138757024689
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 38,
+      "gather": 37,
+      "find_verify": 2,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

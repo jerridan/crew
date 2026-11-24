@@ -17,9 +17,9 @@ its start.
 
 | Case | What is lost | What you do |
 |---|---|---|
-| A compaction of your session | your context only | Get the record name from your context. When the summary lost it, ask the principal, as "The resume" step 1 says. Then read the record ("The resume", step 3). Then ask each implementer with an open PR to send its ready line again. Background tasks, the usage watch and each GitHub wait continue. Arm none of them again |
-| The same session opened again: `claude --resume`, or `cc-restore` brought the tab back | every background task, `Monitor` watch and scheduled job | the whole of "The resume" |
-| A new session, after a restart of the machine or a lost transcript | your context and every background task | the whole of "The resume". The principal starts it with words such as "resume orchestrator <record name>" |
+| A compaction of your session | your context only | Get the record name from your context. When the summary lost it, ask the principal, as "The resume" step 1 says. Then read the record ("The resume", step 3). Then ask each implementer with an open PR to send its ready line again. Background tasks, each subagent, the usage watch and each GitHub wait continue. Arm none of them again |
+| The same session opened again: `claude --resume`, or `cc-restore` brought the tab back | every background task, subagent, `Monitor` watch and scheduled job | the whole of "The resume" |
+| A new session, after a restart of the machine or a lost transcript | your context, every background task and every subagent | the whole of "The resume". The principal starts it with words such as "resume orchestrator <record name>" |
 
 ## The resume
 
@@ -94,8 +94,9 @@ Do these steps in this order.
      never got its goal. A rename message or a rejoin message is not a goal.
      Send the goal now, as SKILL.md's "The goal message" says. Never send a
      second goal to an item whose `told` holds one.
-   - **No launch.** An item with no `launch` follows SKILL.md's "Launch an
-     implementer".
+   - **No launch.** An item with no `launch` and a `subagent` of `null`
+     follows SKILL.md's "Launch an implementer". An item with a `subagent`
+     never does: "A subagent item" below says what it gets.
 
    An item at `shipped` or `closed` whose tab or worktree is still there
    waits for its close. It gets no rejoin message: step 1 of "The close of an
@@ -107,12 +108,30 @@ Do these steps in this order.
    - It prints no handle, or only a `cwd` match: the session is gone. Run
      "The close of an item" again from step 1, with no step 2. Never stop a
      `cwd` match.
+
+   **A subagent item**, an item whose `subagent` is not `null`, gets none of
+   the steps above. Its subagent is gone after a reopen or a new session.
+   Its brief is in `told`. By its stage:
+   - `queued`: dispatch it as SKILL.md's "Subagent items" says.
+   - `build`: dispatch it again under the same name and brief. Add as
+     context its branch and commits, or, for work in no repo, what the record
+     shows done. Tell it to read the current state before it changes
+     anything. When `subagent.worktree` is set and is gone, put a notice with
+     the item in the inbox instead. The principal decides.
+   - `pr`: when `subagent.ready` is `null`, or its sha is not the
+     `headRefOid` of the PR, dispatch it again under the same name. Ask it
+     only for a ready line for the current head.
+   - `merged`: when SKILL.md's "Subagent items" ran a deploy watch for it,
+     write its input file again with `since` `null`, and arm it again.
+   - `shipped` or `closed` with its worktree still there: run "The close of
+     an item" again.
 5. **The slot count.** Write `pace.slots.busy` with `pace set`. The value is
    the count of implementers, alive or resumed, at a stage before `merged`.
 6. **The watches and waits.** Run `crew-usage.py check`, write its level, and
    arm the usage watch, as `usage.md`'s "The watch" says. Arm a GitHub wait
    (SKILL.md's "The wait") for each item whose PR waits on something that no
-   implementer reports, such as a human approval. No scheduled job comes back
+   implementer reports, such as a human approval, and for each open PR of a
+   subagent item, as SKILL.md's "Subagent items" says. No scheduled job comes back
    after a restart, so a wait never lives only in a session.
 7. **The inbox.** Answer each open entry with `for: orchestrator` that is
    yours, with `answer`, and send the answer with `told`. Name each open
@@ -171,6 +190,10 @@ also runs on the principal's word for an item that stops early: write
    or a ticket in a ticket file, as the standing instructions say. For an
    item closed with no merge, leave the ticket open and say so in the inbox.
 
+**A subagent item** has no session and no tab, so skip steps 1 and 2. Stop
+its subagent with `TaskStop` when it still runs. Run step 3 on
+`subagent.worktree` when it is set, with the same flags. Run step 4 as it is.
+
 The close writes no slot count. The item released its slot when it reached
 `merged` or `closed`, as SKILL.md's "After the merge" says.
 
@@ -179,15 +202,16 @@ say what it started. The session ends before the worktree goes, because a live
 session holds its worktree, and `gh pr merge --delete-branch` fails on it. The
 worktree goes last, after its processes stop.
 
-The record keeps the item at `shipped` or `closed`, with its `launch` and
-`told`. They are the history of the item.
+The record keeps the item at `shipped` or `closed`, with its `launch`,
+`subagent` and `told`. They are the history of the item.
 
 ## The close of a run
 
 The close of a run starts on the principal's word.
 
 1. **Each item.** Tell each item before `merged` to stop, with `told`: commit,
-   and start no new step. Write `stage <item> closed` for each item before
+   and start no new step. Send it to a subagent with `SendMessage`, and
+   `TaskStop` the subagent after its answer. Write `stage <item> closed` for each item before
    `merged`. Then run "The close of an item" for each item. Its step 3 says
    which flags to give. A clean worktree with committed work is still
    removed, because a branch with unproven commits stays.

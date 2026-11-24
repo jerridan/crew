@@ -115,7 +115,8 @@ item or an implementer item, whatever the test gives.
 
 **The record.** Before the dispatch, write `item <id> set subagent` with
 `name`, `model`, `worktree` and `branch`. Write a `plan change` whose reason
-names the test or the principal's word.
+names the test or the principal's word. Write the brief, and each later
+message to the subagent, with `told`.
 
 **The dispatch.**
 

@@ -60,6 +60,11 @@ REMOVE_WAIT = 10
 KILL_WAIT = 2
 # stop waits this many seconds after Escape and after Ctrl-U.
 KEY_WAIT = 0.5
+# The exit dialog of Claude Code for a session with live background tasks: its
+# title, its first option, which has the focus, and its last option.
+EXIT_DIALOG = ("Background work is running", "Exit and stop tasks", "Stay")
+# At most this many lines with text can come after the last option.
+EXIT_DIALOG_TAIL = 6
 
 START_USAGE = (
     "usage: launcher.py start --name <session-name> [--model <model>] "
@@ -100,6 +105,8 @@ PID_RE = re.compile(r"\bpid ([0-9]{1,10})\b")
 ITERM_ID_RE = re.compile(r"[A-Za-z0-9-]+")
 HERDR_BUNDLE = "dev.herdr.app"
 HERDR_ID_RE = re.compile(r"t[0-9]+")
+# A line that starts a numbered option of a dialog, such as "> 1. Yes".
+OPTION_RE = re.compile(r"\W*[0-9]+\.\s")
 
 # Every AppleScript scans windows, tabs and sessions for one unique id.
 OSA_START = """on run argv
@@ -165,6 +172,39 @@ OSA_EXIT = """on run argv
             delay {pause}
             tell s to write text "/exit"
             return tty of s
+          end if
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  return "gone"
+end run
+"""
+
+# The visible text of the session, or nothing when the session is gone.
+OSA_SCREEN = """on run argv
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          if unique id of s is item 2 of argv then return contents of s
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  return ""
+end run
+"""
+
+# Press Enter in the session. stop runs it only on the exit dialog.
+OSA_ENTER = """on run argv
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          if unique id of s is item 2 of argv then
+            tell s to write text ""
+            return "ok"
           end if
         end repeat
       end repeat
@@ -1186,8 +1226,50 @@ def claude_on_tty(tty):
     return {p["pid"]: p["argv"] for p in processes().values() if p["tty"] == tty and is_claude(p["argv"])}
 
 
-def wait_claude_gone(tty, handle):
+def shows_exit_dialog(screen):
+    """True when the screen text ends with the exit dialog of a session with
+    live background tasks. Enter on that dialog takes its first option, "Exit
+    and stop tasks". The lines must hold the title, then the first option,
+    then the last option. After the last option come at most EXIT_DIALOG_TAIL
+    lines with text, and none of them starts a numbered option: a permission
+    dialog under these words has numbered options, and Enter would approve it.
+    """
+    lines = [l for l in (screen or "").splitlines() if l.strip()]
+    title, first, last = EXIT_DIALOG
+    at = max((i for i, l in enumerate(lines) if title in l), default=None)
+    for word in (first, last):
+        if at is None:
+            return False
+        at = next((i for i in range(at + 1, len(lines)) if word in lines[i]), None)
+    if at is None:
+        return False
+    tail = lines[at + 1:]
+    return len(tail) <= EXIT_DIALOG_TAIL and not any(OPTION_RE.match(l) for l in tail)
+
+
+def exit_confirm(read_screen, press_enter):
+    """A confirm step for wait_claude_gone: it reads the screen, and presses
+    Enter only when the screen ends with the exit dialog. A read or a key that
+    fails is no failure of stop: the wait goes on, and the tab closes."""
+
+    def confirm():
+        try:
+            if not shows_exit_dialog(read_screen()):
+                return False
+            press_enter()
+        except Fail:
+            return False
+        return True
+
+    return confirm
+
+
+def wait_claude_gone(tty, handle, confirm=None):
     """Wait up to STOP_WAIT seconds until no claude process has the tty.
+
+    While one has it, each poll calls confirm. The first time confirm returns
+    True, it pressed Enter on the exit dialog: the wait starts again, and no
+    later poll calls it.
 
     Return {pid: argv} of each claude process on the tty at the last read.
     """
@@ -1198,7 +1280,10 @@ def wait_claude_gone(tty, handle):
         }
         if not left:
             return left
-        if time.time() >= end:
+        if confirm is not None and confirm():
+            confirm = None
+            end = time.time() + STOP_WAIT
+        elif time.time() >= end:
             print(
                 "launcher: the claude session in %s did not end %d seconds after /exit; the tab closes now"
                 % (handle, STOP_WAIT),
@@ -1233,6 +1318,22 @@ def iterm_script(script, verb, ref):
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: osascript failed for iterm2:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
     return one_line(out)
+
+
+def iterm_screen(ref):
+    """The visible text of the iTerm2 session."""
+    rc, out, err = run(["osascript", "-", "screen", ref], stdin=OSA_SCREEN)
+    if rc != 0:
+        raise Fail(TERMINAL_STEP, "launcher: osascript failed for iterm2:%s: %s" % (ref, one_line(err) or "exit %d" % rc))
+    return out
+
+
+def tmux_screen(pane):
+    """The visible text of the tmux pane."""
+    rc, out, err = tmux(["capture-pane", "-p", "-t", pane])
+    if rc != 0:
+        raise Fail(TERMINAL_STEP, "launcher: tmux capture-pane failed for tmux:%s: %s" % (pane, one_line(err) or "exit %d" % rc))
+    return out
 
 
 def focus(a):
@@ -1330,7 +1431,9 @@ def hc_ended(ref):
 def herdr_stop(a, ref):
     """stop on Herdr: the same keys as on tmux, then the close of the tab. The
     shell of a Herdr terminal stays open after claude ends, so the tab must
-    close. Return OK."""
+    close. Each key goes with hc keys. Never hc send: it puts the text in an
+    <hc> tag, and the session gets /exit as a message to the model, not as a
+    command. Return OK."""
     _, hc = herdr_programs()
     rec = hc_get(ref)
     pid = (rec or {}).get("pid")
@@ -1351,20 +1454,31 @@ def herdr_stop(a, ref):
             raise Fail(f.code, "%s; the handle is %s" % (f.line, a.handle))
         if not tab:
             raise Fail(TERMINAL_STEP, "launcher: Herdr shows no tab that holds %s; stop sent no key and closed nothing" % a.handle)
-    for cmd in (["keys", ref, "esc"], ["keys", ref, "ctrl+u"]):
-        rc, out, err = run([hc] + cmd, timeout=60)
+
+    def keys(*names):
+        rc, out, err = run([hc, "keys", ref] + list(names), timeout=60)
         if rc != 0:
-            raise Fail(TERMINAL_STEP, "launcher: hc %s failed for %s: %s" % (cmd[0], a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
+            raise Fail(TERMINAL_STEP, "launcher: hc keys failed for %s: %s" % (a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
+
+    def screen():
+        rc, out, err = run([hc, "read", ref], timeout=60)
+        if rc != 0:
+            raise Fail(TERMINAL_STEP, "launcher: hc read failed for %s: %s" % (a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
+        return out
+
+    for name in ("esc", "ctrl+u"):
+        keys(name)
         time.sleep(KEY_WAIT)
-    # hc send pastes the text and presses Enter. --force: Escape has just
-    # answered a dialog, and the status can still read blocked.
-    rc, out, err = run([hc, "send", ref, "/exit", "--force"], timeout=90)
-    # A terminal that ended during hc send is no failure: the tab can still be
-    # open with a shell, so go on to close it. A failed read of the terminal
-    # keeps the failure of hc send.
-    if rc != 0 and not hc_ended(ref):
-        raise Fail(TERMINAL_STEP, "launcher: hc send failed for %s: %s" % (a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
-    left = wait_claude_gone(tty, a.handle) if tty else {}
+    try:
+        keys(*"/exit")
+        keys("enter")
+    except Fail:
+        # A terminal that ended during the keys is no failure: the tab can
+        # still be open with a shell, so go on to close it. A failed read of
+        # the terminal keeps the failure of hc keys.
+        if not hc_ended(ref):
+            raise
+    left = wait_claude_gone(tty, a.handle, exit_confirm(screen, lambda: keys("enter"))) if tty else {}
     try:
         herdr_do("tab.close", [("id", tab), ("confirmed", "true")], "stop")
     except HerdrError as e:
@@ -1390,9 +1504,11 @@ def stop(a):
     /exit ends the session with the reason prompt_input_exit, so a tool that
     restores closed sessions does not start it again. Escape and Ctrl-U come
     first: Enter on a permission dialog would approve it, and text in the
-    input line would go to the model with /exit. With --name or --session-id,
-    stop sends no key and closes nothing unless the target holds that
-    session.
+    input line would go to the model with /exit. A session with live
+    background tasks answers /exit with a dialog: during the wait, stop
+    presses Enter one time when the screen ends with that dialog. With --name
+    or --session-id, stop sends no key and closes nothing unless the target
+    holds that session.
     """
     kind, ref = split_handle(a.handle)
     if kind == "iterm2":
@@ -1428,7 +1544,11 @@ def stop(a):
         if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
             return OK
-        left = wait_claude_gone(norm_tty(tty), a.handle)
+        left = wait_claude_gone(
+            norm_tty(tty),
+            a.handle,
+            exit_confirm(lambda: iterm_screen(ref), lambda: iterm_script(OSA_ENTER, "enter", ref)),
+        )
         try:
             iterm_script(OSA_STOP, "stop", ref)  # "gone" here: the tab closed when claude ended
         except Fail:
@@ -1453,7 +1573,9 @@ def stop(a):
     time.sleep(KEY_WAIT)
     tmux(["send-keys", "-t", ref, "-l", "/exit"])
     tmux(["send-keys", "-t", ref, "Enter"])
-    left = wait_claude_gone(tty, a.handle)
+    left = wait_claude_gone(
+        tty, a.handle, exit_confirm(lambda: tmux_screen(ref), lambda: tmux(["send-keys", "-t", ref, "Enter"]))
+    )
     if tmux_pane_exists(ref):
         rc, _, err = tmux(["kill-pane", "-t", ref])
         if rc != 0 and not tmux_pane_gone(ref):

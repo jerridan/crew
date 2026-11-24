@@ -14,7 +14,7 @@ seeded record (design §15.38, §15.50, §15.123, §15.124).
 `skills/delivered-window/scripts/test-pr-watch-deploy.sh` tests the default
 deploy signal of `pr-watch.sh`. `skills/delivered-window/scripts/watch-step.py`
 and `pr-reply.py` are code too, and `test-watch-step.sh` and
-`test-pr-reply.sh` test them with a stub `gh` (design §15.NN).
+`test-pr-reply.sh` test them with a stub `gh` (design §15.158).
 `skills/orchestrator/scripts/launcher.py` and `iterm2-tabs.py` are code too,
 and `test-launcher.sh` tests them with stub commands.
 `skills/orchestrator/scripts/crew-usage.py` is code too, and
@@ -140,7 +140,7 @@ run has used it (§15.127).
 
 The watch and reply scripts are built: `watch-step.py` arms the PR watch
 and the deploy watch and writes the cursor, and `pr-reply.py` posts a round's
-replies and resolves their threads, each in one call (§15.NN). Only their
+replies and resolves their threads, each in one call (§15.158). Only their
 seeded tests have run them, and no crew run has used them.
 
 The orchestrator launcher is built and ran only against its seeded test, and

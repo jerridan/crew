@@ -361,19 +361,42 @@ caller knows the session.
 
   On iTerm2, `write text` sends each key: Escape and Ctrl-U with `newline
   NO`. On tmux, `send-keys` sends `Escape`, `C-u`, `-l /exit` and `Enter`. On
-  Herdr, `hc keys <t> esc`, `hc keys <t> ctrl+u` and `hc send <t> /exit
-  --force`; `hc send` presses Enter, and `--force` covers a status that still
-  reads blocked after Escape.
-  On Herdr, an `hc send` that fails is no failure when `hc get` shows that
-  the terminal is gone or not live: `stop` goes on and closes the tab. When
-  `hc get` fails too, or the terminal is live, the failure stands with exit
-  6. On iTerm2, an exit script that fails is no failure when the session is
-  gone: `stop` exits 0 with no line. It reads the tty of the session before
-  the keys, so it still waits for a `claude` that stays on that tty, as the
-  other stops do.
+  Herdr, `hc keys` presses each key: `hc keys <t> esc`, `hc keys <t>
+  ctrl+u`, `hc keys <t> / e x i t` and `hc keys <t> enter`. `stop` never
+  runs `hc send`. `hc send` puts the text in an `<hc from="...">` tag, and
+  the session then gets `/exit` as a message to the model, not as a command.
+  On Herdr, an `hc keys` call for `/exit` or for Enter that fails is no
+  failure when `hc get` shows that the terminal is gone or not live: `stop`
+  goes on and closes the tab. When `hc get` fails too, or the terminal is
+  live, the failure stands with exit 6. On iTerm2, an exit script that fails
+  is no failure when the session is gone: `stop` exits 0 with no line. It
+  reads the tty of the session before the keys, so it still waits for a
+  `claude` that stays on that tty, as the other stops do.
   Then `stop` waits up to 15 seconds until no `claude` process has the tab's
   tty. It reads the pid and the argv of each one. When one is still there,
   one line on stderr says so, and the stop continues.
+- During that wait, `stop` answers the exit dialog. A session with a live
+  background task, such as a `Monitor` or a background Bash command, does
+  not end on `/exit`. It shows a dialog with the title `Background work is
+  running`. The first option, `Exit and stop tasks`, has the focus, and the
+  last option is `Stay`. While a `claude` process still has the tty, `stop`
+  reads the screen at each poll: `tmux capture-pane -p`, `hc read <t>`, or
+  the `contents` of the iTerm2 session. When the screen ends with that
+  dialog, `stop` presses Enter one time: `send-keys Enter`, `hc keys <t>
+  enter`, or `write text ""`. Then the 15 seconds start again. The session
+  ends with the reason `prompt_input_exit`, as after `/exit` with no dialog.
+
+  The screen ends with the dialog when all of these are true:
+  - A line holds the title.
+  - A later line holds `Exit and stop tasks`.
+  - A later line holds `Stay`.
+  - At most 6 lines with text come after the `Stay` line.
+  - None of those lines starts with a numbered option, such as `1. Yes`.
+
+  A permission dialog has numbered options, and Enter on it would approve
+  the command. So a screen with a permission dialog under the words of the
+  exit dialog gets no Enter. A screen read that fails gets no Enter. In each
+  such case the wait ends as it does with no dialog, and the tab closes.
 - Then `stop iterm2:<id>` closes the tab, and `stop tmux:<pane>` kills the
   pane, and its window closes with it. `stop herdr:<address>` runs
   `herdr-app do tab.close --id <tab> --confirmed true`. The tab id is the
@@ -398,9 +421,23 @@ caller knows the session.
 - A tab or pane that is already gone before the stop prints one line on
   stdout and exits 0.
 
-**Limit: the keys.** The seeded test checks only the order of the keys. No
-run has shown how a live `claude` takes Escape, Ctrl-U and `/exit`, on any
-terminal.
+**Limit: the keys.** The seeded test checks only the order of the keys. Two
+live stops on tmux ran `/exit` as a command, each on a session with no
+background task. No live run has shown any of these:
+
+- Escape, Ctrl-U and `/exit` on iTerm2.
+- `hc keys <t> / e x i t` on Herdr. It is not known that `hc` takes `/` as a
+  key name, or that the session runs the typed `/exit` as a command. If `hc`
+  refuses the key, `stop` exits 6 and the tab stays open.
+- The exit dialog on a screen. Its title, its option labels and its focus
+  come from the code of Claude Code 2.1.326, 2.1.330 and 2.1.331. Nobody saw
+  the dialog, so the lines that the screen check reads are a guess at its
+  layout. A check that does not match sends no key, and the tab closes over
+  the live session as before.
+- Enter on the exit dialog, and the screen read, on any terminal.
+
+`stop` does not answer the other exit dialog of that code, which a session
+gets when Claude Code made its worktree.
 
 `/exit` makes Claude Code end the session with the reason
 `prompt_input_exit`. A tool that restores closed sessions, such as

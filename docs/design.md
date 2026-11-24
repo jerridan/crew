@@ -10222,3 +10222,35 @@ Deliberately different:
      - **Unexercised.** Only `tests/orch-board.test.tsx` ran the change. The
        harness cannot raise `ui.scroll`, so the hook has no test, and no
        session has opened the pane in Herdr with the change.
+
+155. **`stop` types `/exit` with `hc keys`, and answers the exit dialog —
+     2026-11-23, version 0.1.123.** `launcher.py stop` closed the tab over a
+     live session in two cases.
+
+     - **Herdr: seen.** `stop` sent `/exit` with `hc send`. A transcript shows
+       that the session got `<hc from="t13">/exit</hc>` as user text and
+       answered it in prose. So `/exit` was a message to the model, not a
+       command.
+     - **Background tasks: inferred.** A transcript had no `/exit` record and
+       two live tasks. The code of Claude Code 2.1.326, 2.1.330 and 2.1.331
+       has a `requestExit` path: with a running background task, it shows a
+       dialog and does not end the session. The title is `Background work is
+       running`. The options are `Exit and stop tasks`, sometimes `Move to
+       background and exit`, and `Stay`. The focus is on the first option,
+       and that option ends the session with the reason `prompt_input_exit`.
+       Nobody saw the dialog on a screen.
+     - **Decisions.** On Herdr, `stop` presses each key with `hc keys`: `/`,
+       `e`, `x`, `i`, `t`, then `enter`. It never runs `hc send`. On each
+       terminal, while a `claude` process stays on the tty after `/exit`,
+       `stop` reads the screen and presses Enter one time when the screen
+       ends with the exit dialog. `stop` reads the screen first because a
+       blind Enter could approve a permission dialog. A numbered option
+       under the dialog stops the Enter for the same reason.
+       `skills/orchestrator/references/launcher.md` owns the keys and the
+       screen check.
+     - **Unexercised.** Only `test-launcher.sh` ran the change, with stub
+       `tmux`, `osascript` and `hc`. No live run has shown that `hc keys`
+       takes `/`, that a Herdr session runs the typed `/exit` as a command,
+       the layout of the dialog on a screen, the screen read on any
+       terminal, or Enter on the dialog. The other exit dialog of that
+       code, for a session whose worktree Claude Code made, gets no answer.

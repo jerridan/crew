@@ -1,0 +1,3304 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 184,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Run the set-up, the verification of a package and the hand-over in one call each with crew-step.py",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/184"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "897faa987f8cfb44b03223eb313c99a9af8db602",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-184/2026-11-24T174721.800Z-897faa9.json",
+      "open": [],
+      "dismissed": [
+        "141248bafc0684b8",
+        "3272100e750c7931",
+        "474e3d7576565ab2",
+        "7df2112b3461689f",
+        "83e57c7bcdc1bbcf",
+        "89d2eda7b4c77d78",
+        "ada1d19ec56b811f",
+        "ae9236ed6e7b743d",
+        "b1cfb7a523f46cc9",
+        "c17ab1b6a811efab",
+        "c2c08bc0b044b796",
+        "f6f18d03a25190b1"
+      ],
+      "fetch_failed": false
+    },
+    "base": "45c5bdbd1559c899b226aecde08a14289c9c2ce5",
+    "head": "b38fe5f98c241b59e3c25d44b4dac169fbafe813",
+    "started_at": "2026-11-24T18:05:35.208Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Run the set-up, the verification of a package and the hand-over in one call each with crew-step.py\n\n## Summary\n\nA crew project lead used many model calls on three fixed command sequences: the set-up of its branch and worktrees, the check of a package after an IC reports, and the hand-over at the end of a run. Each model call reads the whole context again, so these sequences used a large part of the plan usage limit. A new script, `crew-step.py`, now runs each sequence in one call and prints one line per step, then the evidence. The project lead still reads the diff and makes every decision; only the mechanical collection of the evidence and the record writes moved into the script.\n\n**Ticket:** N/A\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.<n> (new finding; the orchestrator assigns the number).\n- `skills/project-lead/references/crew-step.md` (new) owns the script's command line, step lines, evidence markers and exit codes.\n- `simple-path.md` owns \"Create the branch\", \"Verify before you believe\" and \"End the run\"; `full-path.md` owns its launch conditions, its worktrees, its verification and \"Clean up\"; `autonomy-contract.md` owns the preference sweep; `ic-contract.md` owns the red-commit rule; `record-format.md` owns `worktrees.json`; `orchestrator-report.md` owns the stage calls; `skills/delivered-window/SKILL.md` owns the cleanup after a later round.\n\n### What changed, by file\n\n- `skills/project-lead/scripts/crew-step.py` (new): subcommands `launch-check`, `branch`, `verify`, `hand-over` and `cleanup`. Every `state.json` and `decisions.md` write is a `crew-record.py` subprocess; the script writes only `worktrees.json` itself. `branch` and `hand-over` can run again after a partial failure and finish the job. `verify --ic-branch` runs every check in the IC's worktree.\n- `skills/project-lead/scripts/test-crew-step.py` (new): the seeded test, 144 checks: temporary git repos, a bare remote, a stub `gh`, a stub `git` wrapper that refuses chosen paths, the real `crew-record.py`, and stub `spend.py` and `crew-orch.py`.\n- `skills/project-lead/references/crew-step.md` (new): the interface reference.\n- `simple-path.md`, `full-path.md`, `autonomy-contract.md`, `ic-contract.md`: the command blocks are replaced by one call each and a pointer; every judgment of the old prose stays where it was.\n- `orchestrator-report.md`: `hand-over` makes the `item <id> pr` and `review` stage calls.\n- `record-format.md`: names `crew-step.py` as the writer of `worktrees.json` entries.\n- `skills/delivered-window/SKILL.md`: the two \"finish the cleanup\" steps run `crew-step.py cleanup`.\n- `skills/project-lead/SKILL.md`: a row for `crew-step.md` in \"Where the rules live\".\n- `CLAUDE.md`: the layout row, the list of code with seeded tests, and the build state.\n- `docs/design.md`: finding §15.<n> with the call counts before and after.\n\n### Constraints that applied\n\n- `crew-record.py` stays the only writer of `state.json`, unchanged: the test checks `git diff` shows no change to it.\n- No `--force` on a worktree removal, except the script's own empty probe worktree: the test greps for it.\n- `version` in both manifests is unchanged: the orchestrator owns it and sets it before the merge. This PR changes `skills/`, so it needs a bump at that time.\n- One rule, one file: the interface is only in `crew-step.md`; path files name a flag only in the sentence that says when to pass it.\n- `CLAUDE.md` is 327 lines, over its 200-line target. It was over before this change; this change adds about 14 lines.\n\n### How this was verified\n\n- `python3 skills/project-lead/scripts/test-crew-step.py`: `144 of 144 checks passed` at the head; `26 of 144` at the red commit `5875a1b`. Mutations by the IC (not committed): removing the switch-back of the red check fails 4 checks; adding `--force` to the worktree removal fails 2.\n- `python3 skills/project-lead/scripts/test-crew-stats.py`: `26 of 26 checks passed`.\n- The run that built the script verified its script package with `crew-step.py verify --ic-branch --criterion ... --no-suite --red 5875a1b`: one call, every step `ok`, and the branch was back in place after the red check.\n- The project lead read both package diffs against the spec, and the prose diff against `writing-standard.md`'s checklist.\n- A spec critic (one round), a split critic (one round) and a Codex plan review (6 blocking findings, all accepted and built) ran before the code.\n\n### Known gaps\n\n- Only the seeded test and one `verify` call in this run exercised the script. No other crew run has used `launch-check`, `branch` or `cleanup`.\n- The call counts after the change are an estimate from the calls the new prose requires, not a measurement.\n\n<details><summary>spec.md</summary>\n\n# Spec: script-handover\n\n## Goal\n\nA project lead does the set-up, the verification of a package and the hand-over in far fewer model calls, with the same checks. One new script, `skills/project-lead/scripts/crew-step.py`, runs the mechanical commands and record writes of each sequence in one call. It prints one line per step and then the evidence. The project lead keeps every judgment: the diff reading, the PR body, the fix-round decision, the escalations and the closing report.\n\nTarget: set-up takes 2 calls (launch-check at the sweep, branch after the split), verification takes 2 (verify, then the `decisions.md` write after the reading), hand-over takes 2 (write the body file, then hand-over). Today the three sequences take about 3, 12 and 6 calls.\n\n## Decisions the spec makes\n\n- **Owner.** The orchestrator approved `crew-step.py` as part of this run, in its answer to question Q1 (`decisions.md`, \"Interface: who owns crew-step.py and the record-format.md change?\"). `crew-record.py` does not change. `record-format.md` changes only to name `crew-step.py` as the writer of `worktrees.json` entries and as the caller of the `crew-record.py` writes it makes.\n- **Interface home.** A new reference, `skills/project-lead/references/crew-step.md`, owns the command line, the output lines and the exit codes. The path files say when to run each subcommand and what the project lead judges, and point at it. One home keeps a flag from having two descriptions.\n- **Launch-check writes.** `launch-check` writes `run.worktree_base` and the `decisions.md` entry for the base it chose, both through `crew-record.py`. This keeps the sweep to one call. The escalation stays with the project lead.\n- **Test format.** The seeded test is `skills/project-lead/scripts/test-crew-step.py`, in the style of `test-crew-stats.py`: a temporary directory, `check(label, ok)`, a last line `N of M checks passed`, exit 0 only when N equals M. Python can build the git repos, the bare remote and the stub `gh` in one file.\n- **Output.** Every step prints `ok <step>: <detail>` or `FAIL <step>: <detail>`. A FAIL detail carries the failed command's own error text. Evidence (a diff, a tail of output) follows the step lines under a line `--- <name>`. Exit 0 when every step passed. Exit 1 on the first step that stops the sequence. Exit 2 on a usage error.\n\n## Requirements\n\n### Launch check\n\n**R1. One call runs both launch checks of the sweep.** `crew-step.py launch-check <record-dir>` runs check 1 (worktree base) and check 2 (remote) of `full-path.md`'s \"Check the launch conditions\".\n- Check 1 probes `<record-dir>` with `worktree add --detach`, `status` and `worktree remove --force` of the probe path only. It removes the probe after every `add` that passed, even when `status` was refused.\n- On any refusal it probes `<run.repo>/.claude/worktrees/crew/<goal-slug>` the same way and runs `git check-ignore -v` on it. No output line from `check-ignore` is a FAIL for that base.\n- It writes `run.worktree_base` for the base that passed. It writes one `decisions.md` entry: `crew-record.py decision precedent \"Which worktree base does this run use?\" --answer \"<the base path>\" --citation \"full-path.md launch check 1: <each probe and its result>\" --confidence high`. Both writes go through `crew-record.py`.\n- It runs both checks every time, and prints both results, then exits 1 if either failed, so one call gives the project lead the whole batch.\n- It fails check 1 only when both bases fail.\n- Check 2 passes when `git -C <run.repo> remote` prints at least one line.\n- Acceptance: the test seeds a repo and passes the default base, then a base refused by a stub `git` wrapper that falls back and passes, then both refused (exit 1, `FAIL base`), then a repo with no remote (`FAIL remote`). In each pass case `git worktree list` shows no probe. `state.json` holds the written `worktree_base`.\n\n**R2. The script names the one condition it cannot judge.** For the fallback base, the repo's test command must not collect files under `.claude/`. The script prints `ask collect: ...` as an evidence line and decides nothing. The project lead answers it and escalates on a collect hit.\n- Acceptance: the test checks the fallback case prints that line, and the default case does not.\n\n**R3. The script escalates nothing.** It writes no `escalations` entry. The project lead writes the `launch check 3 (trigger 6): no remote` escalation, as now.\n- Acceptance: after every launch-check test case, `state.json` has no `escalations` entry.\n\n### Branch and worktrees\n\n**R4. One call creates the branch on a free checkout.** `crew-step.py branch <record-dir> <deliverable-id> [--branch <name>] [--held] [--start-point <ref>] [--territory <slug>=<ic-name> ...]` replaces `simple-path.md`'s \"Create the branch\" for the free case.\n- The default name is `crew/<goal-slug>/<deliverable-id>`. `--branch` carries a `Branch names` rule's result. A branch that already exists is `FAIL exists`, and nothing is written.\n- It runs `switch -c <name>` in `run.repo`.\n- It writes the deliverable entry through `crew-record.py`: `id`, the branch, the head sha as `base`, `state: pending`, `pr_url: null`, and `checkout_branch` set to the branch read before the switch (`null` when detached).\n- It writes `run.checkout` as `run.repo`.\n- Acceptance: the test runs it on a clean repo on `main`. It checks the branch exists and is checked out, and the record fields above hold. It checks a detached start gives `checkout_branch: null`.\n\n**R5. One call decides the held case and cuts the deliverable's own checkout.** The checkout is held when `--held` is given, or when the current branch starts with `crew/` and carries a goal slug other than this run's.\n- It names a start point from `--start-point`, or else from `origin/HEAD`. With neither, it prints `FAIL start-point` and cuts nothing. The project lead then picks a start point, writes the `decisions.md` entry for the choice, and runs the call again with `--start-point`.\n- It runs `worktree add <run.worktree_base>/worktrees/<deliverable-id> -b <name> <start-point>` in `run.repo`. It never switches the shared checkout.\n- It writes `run.checkout` as the worktree path, the `worktrees.json` entry keyed by the deliverable id, and the deliverable entry with `checkout_branch: null`. `checkout_restored` stays `null`.\n- Acceptance: the test seeds a repo on another run's `crew/` branch. It checks the shared checkout stays on that branch, the worktree starts at `origin/HEAD` and not at the other branch's head, and `worktrees.json` holds the entry. A second case has no remote and no `--start-point` and checks the FAIL line and an empty `git worktree list` apart from the main tree.\n\n**R6. One call cuts the territory worktrees on the full path.** Each `--territory <slug>=<ic-name>` cuts `<run.worktree_base>/worktrees/<slug>` on branch `crew/<goal-slug>/<slug>` from the head of `run.checkout`.\n- It writes one `worktrees.json` entry per IC: the worktree path, the branch, `session_ids` set to `[$CLAUDE_CODE_SESSION_ID]`, and `orphaned: false`. It leaves the deliverable checkout entry in place.\n- It writes `ic_name` on every package whose `territory` is that slug.\n- Territory branches keep crew's names, whatever `--branch` says.\n- Acceptance: the test seeds `state.json` with two packages in two territories. It checks two worktrees, two entries, the right `ic_name` on each package, and that all branches share one head.\n\n### Verification\n\n**R7. One call collects the evidence of a package.** `crew-step.py verify <record-dir> <package-id> [--repo <path>] [--criterion <cmd>] [--suite <cmd> | --no-suite] [--red <sha>] [--pattern <regex>] [--ic-branch]` replaces the commands of `simple-path.md`'s \"Verify before you believe\" and `full-path.md`'s. It reads the package's `base` and `file_set` from `state.json`. `--repo` defaults to `run.checkout`.\n- It runs `status --porcelain` and classifies it by the clean-tree definition. A tracked change anywhere is FAIL. An untracked file inside the file set is FAIL. An untracked file outside it is reported and never a FAIL.\n- It prints `log --oneline <base>..HEAD` and `diff <base>..HEAD --stat`.\n- It lists the files of the diff against the file set. A file outside the set is FAIL and is named.\n- Acceptance: the test seeds a package with a file set and checks five cases: a clean tree passes; a modified tracked file fails; an untracked file in the set fails; an untracked file outside the set passes with a report line; a committed file outside the set fails and is named.\n\n**R8. A failed check does not hide the rest.** In `verify`, a FAIL on one check does not stop the other checks. The call prints every step, then exits 1 if any step failed. The project lead needs the whole picture to write one fix round.\n- Acceptance: the test seeds a package with a dirty tree and an out-of-set file. It checks both FAIL lines print in one call and the exit code is 1.\n\n**R9. The script runs the criterion and the suite.** With `--criterion`, it runs the command at HEAD in `--repo` and prints the exit code and the last 40 lines of output. With `--suite`, the same. With `--no-suite`, it prints `ok suite: no suite`. A non-zero exit is FAIL. A review run passes neither `--criterion` nor `--suite`: it passes `--no-suite` and the script runs no test.\n- Acceptance: the test checks a passing and a failing criterion, a failing suite, `--no-suite`, and that a call with no `--criterion` runs no command.\n\n**R10. The script runs the red-commit check.** With `--red <sha>`, it requires `--criterion` (without it, exit 2) and a clean tree first. In a repo that builds before it tests, the project lead puts the build in `--criterion`, so the build runs at the red commit too. It runs `switch --detach <sha> -q`, runs the criterion, and requires a non-zero exit. It then runs `switch -q <branch>`, always, even when the criterion or an earlier step failed. A criterion that exits 0 at the red commit is `FAIL red`.\n- Acceptance: the test checks a red commit that fails (pass), one that passes (FAIL), and that after each case `git branch --show-current` equals the original branch. A dirty tree makes `FAIL red` and no switch happens.\n\n**R11. The script greps the deliverable diff for a pattern.** With `--pattern <regex>`, it greps every line of the diff from the deliverable's `base` to HEAD, and prints the count and every hit. It does not judge a hit.\n- Acceptance: the test checks a count of 0, a count of 2 with both lines printed, and that the exit code is 0 in both cases.\n\n**R12. The script checks the IC's own branch on the full path.** With `--ic-branch`, it reads the worktree's branch from the `worktrees.json` entry of the package's `ic_name`. It fails when the worktree's current branch differs from that branch. It also prints every commit on `run.checkout`'s branch since the deliverable `base`, under `--- deliverable branch`, and never fails on them: the project lead judges whether one is an IC's commit outside its own branch.\n- Acceptance: the test checks a worktree on its own branch (pass), and a worktree switched to another branch (FAIL), and that a commit added to `run.checkout`'s branch is printed.\n\n**R12a. The scripts find their helpers beside themselves.** `crew-step.py` runs `crew-record.py` and `spend.py` from its own directory, and `crew-orch.py` from `../../orchestrator/scripts/`, so the test can copy it beside stubs, as `test-crew-orch.sh` does with its stub `crew-usage.py`.\n- Acceptance: the test runs a copy of `crew-step.py` with a stub `spend.py` and a stub `crew-orch.py` that log their arguments, and the real `crew-record.py`.\n\n**R13. The script reports compactions.** It prints every `run.compactions` entry whose `agent` equals the package's `ic_name`. It prints every entry with `agent: null` as the project lead's own. It prints `ok compactions: none` when there are none. It never fails on them.\n- Acceptance: the test seeds one entry of each kind and checks the lines.\n\n**R14. The full diff prints last, and the script gives no verdict.** After all step lines and evidence, the script prints `--- diff` and the full `diff <base>..HEAD`. It prints no word on the diff's content. It writes no `decisions.md` entry and no state field.\n- Acceptance: the test checks `--- diff` is the last marker and its body equals `git diff <base>..HEAD`. It checks `state.json` and `decisions.md` are byte-equal before and after a call.\n\n### Hand-over\n\n**R15. One call hands the deliverable over.** `crew-step.py hand-over <record-dir> <deliverable-id> --body <file> --title <t>`, or `crew-step.py hand-over <record-dir> <deliverable-id> --local`, replaces `simple-path.md`'s \"End the run\" commands. It runs these steps in order and stops at the first FAIL:\n1. `git push -u <remote> <branch>` in `run.checkout`, unless `--local`. `<remote>` is `origin`, or else the only remote. Two remotes and no `origin` is `FAIL push: no origin`.\n2. `gh pr create --draft --title <t> --body-file <file> --head <branch>`, unless `--local`. The script reads the URL from its output.\n3. `crew-record.py deliver <id> draft-pr-opened --pr-url <url> --review-head <head sha>`, or `work-complete --review-head <head sha>` with `--local`.\n4. When `run.orchestrator` is set and a PR opened: `crew-orch.py --orch <name> item <item> pr <url>`, then `stage <item> review`. A failed call here prints `FAIL orch: <its error>` and does not stop the sequence, because a failed `crew-orch.py` call never stops the run (`orchestrator-report.md`). The project lead writes the `decisions.md` note from that line. The exit code is 1 at the end.\n5. `spend.py <record-dir> <run.checkout> --write`.\n6. Print `lsof -iTCP -sTCP:LISTEN`. The script kills nothing.\n7. Remove the worktrees (R17).\n8. Restore the checkout (R18).\n- Acceptance: the test seeds a repo with a bare remote and a stub `gh` that prints a PR URL. It checks the branch is on the remote, the stub saw `--draft`, the title and the body file, `state.json` holds `pr_url`, `run_state: delivered` and `review_pending`, the stub orchestrator saw both calls, and the stub `spend.py` saw `--write`. A second case with `--local` on a repo with no remote checks `work-complete`, `pr_url: null`, no push, no `gh` call, and a written `checkout_restored`. A third case with a stub `crew-orch.py` that exits 1 checks `FAIL orch`, exit 1, and that the spend, removal and restore steps still ran.\n\n**R16. A push or PR failure reports the escalation, and stops.** When the push or `gh pr create` fails, the script reads `escalations` for the entry with trigger text `launch check 3 (trigger 6): no remote`. It prints `FAIL push: <git's error>` (or `FAIL pr: <gh's error>`) and then `escalation: <its answer>` or `escalation: none`. It runs nothing after the failed step. The project lead acts on the answer, as `simple-path.md` says now. A second call after a push that passed and a `gh` failure pushes again, which is a no-op, and goes on.\n- Acceptance: the test checks a refused push with no entry prints `escalation: none`, and with a seeded entry prints its answer. In both, `gh` was not called and `state.json` is unchanged. A stub `gh` that exits 1 prints `FAIL pr` and leaves `state.json` unchanged.\n\n**R17. The script removes the worktrees the run cut, and only those.** After the PR, it removes each worktree that `worktre",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/crew-step.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/full-path.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/references/ic-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-step.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-step.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new 928-line script that runs git, push, PR creation, worktree removal and record writes, and rewrites the project-lead procedures so they depend on it.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/project-lead/scripts/crew-step.py: cleanup() worktree-remove and restore logic",
+        "skills/project-lead/scripts/crew-step.py: cmd_hand_over (push, PR reuse, deliver write, rerun idempotence, orch calls)",
+        "skills/project-lead/scripts/crew-step.py: red_check (detach, --discard-changes, switch back)",
+        "skills/project-lead/scripts/crew-step.py: cmd_branch (held detection, rerun/exists logic, worktrees.json writes)",
+        "skills/project-lead/scripts/crew-step.py: shell() runs --criterion/--suite with shell=True",
+        "skills/project-lead/scripts/crew-step.py: cmd_launch_check probe with --force removal and fallback base",
+        "skills/project-lead/references/simple-path.md and full-path.md: removed procedure text now deferred to the script",
+        "skills/delivered-window/SKILL.md: cleanup step replaced by crew-step.py cleanup"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "note": "new script with five subcommands that run git, gh, record writes and worktree removal"
+        },
+        {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "note": "new seeded test with stub gh, git, spend and orch"
+        },
+        {
+          "file": "skills/project-lead/references/crew-step.md",
+          "note": "new reference that owns the command line, step lines and exit codes"
+        },
+        {
+          "file": "skills/project-lead/references/simple-path.md",
+          "note": "branch, verify and end-run procedure replaced by crew-step.py calls; behaviour moves to the script"
+        },
+        {
+          "file": "skills/project-lead/references/full-path.md",
+          "note": "launch checks, branch, worktree, verify and cleanup rewritten to point at crew-step.py"
+        },
+        {
+          "file": "skills/project-lead/references/autonomy-contract.md",
+          "note": "launch checks now run through crew-step.py launch-check"
+        },
+        {
+          "file": "skills/project-lead/references/ic-contract.md",
+          "note": "red-commit procedure replaced with verify --red"
+        },
+        {
+          "file": "skills/project-lead/references/orchestrator-report.md",
+          "note": "states that hand-over makes the item pr and review stage calls"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "one sentence added"
+        },
+        {
+          "file": "skills/delivered-window/SKILL.md",
+          "note": "cleanup steps replaced with crew-step.py cleanup"
+        },
+        {
+          "file": "skills/project-lead/SKILL.md",
+          "note": "reference table and script list updated"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs of the new script and test"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new §15.159 entry"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump"
+        }
+      ],
+      "summary": "Adds crew-step.py, which runs a project lead's fixed command sequences (launch-check, branch, verify, hand-over, cleanup) in one call each. It also adds a seeded test and a reference doc. The path docs, delivered-window skill, CLAUDE.md and design doc are rewritten to call the script instead of listing raw commands. The script pushes, opens PRs, removes worktrees and switches branches, so logic and error-handling review matters most."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new 928-line script that runs git, push, PR creation, worktree removal and record writes, and rewrites the project-lead procedures so they depend on it.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/crew-step.md",
+            "start_line": 19,
+            "end_line": 23,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The output-format block documents `ask <step> <name>: <text>`, but the script and the launch-check section use `ask collect: <text>`, with no separate name field.",
+            "evidence": "ask <step> <name>: <text>",
+            "suggested_fix": "Change the format line to `ask <step>: <text>`.",
+            "explanation": "crew-step.md says it owns the script's output lines, so its general format has to match what the script prints.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7968,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 57528,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.005764300000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 521,
+              "cacheReadInputTokens": 10182,
+              "cacheCreationInputTokens": 57037,
+              "webSearchRequests": 0,
+              "costUSD": 0.46876039999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 201,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.47452469999999997
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 801,
+            "end_line": 807,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "A rerun of hand-over on a delivered deliverable runs `crew-orch.py stage <item> review` again, and that call moves the item back to `review` from any later stage.",
+            "evidence": "for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]):",
+            "suggested_fix": "On the already-delivered rerun path, skip the stage call, or run it only when the item's stage is earlier than `review`.",
+            "explanation": "`cmd_stage` in crew-orch.py sets `item[\"stage\"] = stage` with no check, and it also resets `detail` and `stage_at`. A rerun after the item reached `pr` or `merged` therefore moves the item back, which contradicts the doc's claim that the call is idempotent.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 660,
+            "end_line": 683,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "When the red-commit criterion creates untracked files, the switch back does not remove them, so they stay in the branch's working tree.",
+            "evidence": "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "suggested_fix": "Before the switch back, remove the files that the criterion created and that are not in `outside_before`, or at least report that they remain.",
+            "explanation": "`git switch --discard-changes` resets tracked changes only and leaves new untracked files in place, such as build output or files in the file set. The doc says the switch back discards every change the criterion makes, and that is not true for these files. They also make the next verify fail clean-tree.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 855,
+            "end_line": 861,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "When lsof is missing or fails, the listeners step prints `ok listeners: none` instead of reporting the failure.",
+            "evidence": "listening = run([\"lsof\", \"-iTCP\", \"-sTCP:LISTEN\", \"-n\", \"-P\"])\n    text = listening.stdout.strip()\n    if text:",
+            "suggested_fix": "Check `listening.returncode` and print an error detail (or FAIL) when the command could not run.",
+            "explanation": "`run()` turns an OSError into exit code 127 with empty stdout, and the step never checks the exit code. The project lead is then told that no server is listening when the script could not check.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 907,
+            "end_line": 912,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "When the switch back fails, the restore step writes `checkout_restored` without checking the result of the write.",
+            "evidence": "record(rec, \"deliverable\", did, \"set\", \"checkout_restored\", json.dumps(sentence))",
+            "suggested_fix": "Use `record_step` here, as the other record writes do.",
+            "explanation": "Every other record write goes through `record_step`, which reports a failed write. If this write fails, the error is lost and the record does not say why the checkout was not restored.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 360,
+            "end_line": 367,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "Once a deliverable entry exists, the branch step treats the checkout as free and ignores `--held` on a rerun.",
+            "evidence": "    elif dl:\n        held, why = False, \"free, recorded deliverable on %s\" % dl.get(\"branch\")\n    elif opts.get(\"--held\"):",
+            "suggested_fix": "When `--held` is given but the record says free, print FAIL or a warning instead of ignoring the flag.",
+            "explanation": "Say the free-case switch failed after the deliverable write, and the project lead then reruns with `--held`. The script still takes the free path and tries to switch the shared checkout again, and prints no warning.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 71180,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 57530,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0057645000000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 6879,
+              "cacheReadInputTokens": 226687,
+              "cacheCreationInputTokens": 65898,
+              "webSearchRequests": 0,
+              "costUSD": 0.7101333999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 4849,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.7158978999999999
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/references/crew-step.md",
+            "start_line": 83,
+            "end_line": 83,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The doc says the held start point defaults to origin/HEAD, but the code also falls back to the recorded deliverable base when there is no origin/HEAD.",
+            "evidence": "| `--start-point <ref>` | The start of the held case's branch. The default is `origin/HEAD`. |",
+            "suggested_fix": "Add: 'or else the recorded deliverable base on a rerun'.",
+            "explanation": "cmd_branch uses dl['base'] when neither --start-point nor origin/HEAD is there, so FAIL start-point does not always follow the doc's 'no flag and no origin/HEAD' rule.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/references/crew-step.md",
+            "start_line": 223,
+            "end_line": 223,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The listeners row names a different lsof command line from the one the script runs.",
+            "evidence": "| `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |",
+            "suggested_fix": "Name the command as `lsof -iTCP -sTCP:LISTEN -n -P`.",
+            "explanation": "The code runs `lsof -iTCP -sTCP:LISTEN -n -P`.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 15973,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 57532,
+              "outputTokens": 20,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0057632,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1322,
+              "cacheReadInputTokens": 77225,
+              "cacheCreationInputTokens": 57964,
+              "webSearchRequests": 0,
+              "costUSD": 0.505613,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 644,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.5113762000000001
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 689,
+            "end_line": 693,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The red check's switch back with --discard-changes does not remove untracked files that the criterion created at the red commit.",
+            "evidence": "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "suggested_fix": "Report untracked files the criterion created, or remove them explicitly after the switch back.",
+            "explanation": "`git switch --discard-changes` drops tracked edits only, so untracked build output from the criterion stays in the checkout. The next verify can then see an untracked file in the file set and fail the clean tree.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 22527,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 84739,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.008485399999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1997,
+              "cacheReadInputTokens": 105220,
+              "cacheCreationInputTokens": 86103,
+              "webSearchRequests": 0,
+              "costUSD": 0.37491199999999997,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1541,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.38339739999999994
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 593,
+            "end_line": 593,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The --red value goes to `git switch --detach` without a `--` separator or a check for a leading dash, so a value that starts with `-` is read as a git option.",
+            "evidence": "switched = git(repo, \"switch\", \"--detach\", sha, \"-q\")",
+            "suggested_fix": "Resolve the value with `rev-parse --verify <sha>^{commit}` first, or reject values that start with '-'.",
+            "explanation": "A ref value that git reads as an option can change what the command does.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6999,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 57532,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0057647,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 446,
+              "cacheReadInputTokens": 10376,
+              "cacheCreationInputTokens": 57041,
+              "webSearchRequests": 0,
+              "costUSD": 0.4673312,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 162,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.4730959
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 715,
+            "end_line": 715,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The `escalation: unanswered` branch has no test.",
+            "evidence": "        out.line(\"escalation: unanswered\")",
+            "suggested_fix": "Seed an escalation entry with no answer, refuse the push, and assert `escalation: unanswered`.",
+            "explanation": "The tests cover only an answered escalation and no escalation. An entry with answer None is a third branch, and nothing tests it.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/crew-step.py",
+            "start_line": 205,
+            "end_line": 206,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The rename and copy handling in the `status -z` parser is untested.",
+            "evidence": "        if \"R\" in code or \"C\" in code:\n            i += 1",
+            "suggested_fix": "Add a verify case with a staged `git mv` and assert the paths classify correctly.",
+            "explanation": "A mistake here would misclassify the next record in the clean-tree check. No test stages a rename.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/test-crew-step.py",
+            "start_line": 1031,
+            "end_line": 1046,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The check that crew-record.py is unchanged is skipped when `origin/main` is absent, so it often runs nothing. It also tests a repo-process constraint instead of script behaviour.",
+            "evidence": "    print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\")",
+            "suggested_fix": "Drop the check, or fail it when the base ref is missing.",
+            "explanation": "The skip prints no check and does not affect the pass count. In a checkout without `origin/main`, the constraint goes unchecked while the run reports all checks passed.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/test-crew-step.py",
+            "start_line": 1019,
+            "end_line": 1028,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Tests grep the script's source text, such as \"--force appears only on the probe line\" and \"no Skill call\". These restate the code and break on a rename or refactor, while behaviour stays the same.",
+            "evidence": "check(\"R17 --force appears only on the probe line\", bool(force) and all(\"probe\" in x for x in force))",
+            "suggested_fix": "Rely on the behavioural refusal test and remove the grep checks.",
+            "explanation": "A source-text assertion does not observe behaviour. The test already checks that a worktree with uncommitted files is refused, and that is the observable form of the no-force rule.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 14132,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 57534,
+              "outputTokens": 21,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.005763900000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1650,
+              "cacheReadInputTokens": 79349,
+              "cacheCreationInputTokens": 57918,
+              "webSearchRequests": 0,
+              "costUSD": 0.25611490000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 498,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2618788
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 593,
+          "end_line": 593,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The --red value goes to `git switch --detach` without a `--` separator or a check for a leading dash, so a value that starts with `-` is read as a git option.",
+          "evidence": "switched = git(repo, \"switch\", \"--detach\", sha, \"-q\")",
+          "suggested_fix": "Resolve the value with `rev-parse --verify <sha>^{commit}` first, or reject values that start with '-'.",
+          "explanation": "A ref value that git reads as an option can change what the command does.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "switched = git(repo, \"switch\", \"--detach\", sha, \"-q\")"
+          ],
+          "rationale": "The sha goes to git switch with no `--` and no check for a leading dash, so the claim is literally true. The finding's line number (593) points at the wrong line, and the real call is at line 678. The value comes from the project lead's own command line, and `--criterion` already runs arbitrary shell. That means no security boundary is crossed, and the practical impact is negligible.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "switched = git(repo, \"switch\", \"--detach\", sha, \"-q\")",
+            "red_check(out, repo, opts[\"--red\"], opts[\"--criterion\"], clean, file_set, evidence)",
+            "opts[item] = argv[i + 1]"
+          ],
+          "rationale": "The claim holds. `parse` takes whatever follows `--red` without checking it, and `red_check` puts that value into `git switch --detach` with no rev-parse check, so a leading `-` is read as a git option. The harm is small, though. The project lead runs this local CLI with its own arguments, the tree has already been checked clean, and a value git misreads only gives an odd FAIL or detach result. It gives no one a new way into anything.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "switched = git(repo, \"switch\", \"--detach\", sha, \"-q\")",
+            "red_check(out, repo, opts[\"--red\"], opts[\"--criterion\"], clean, file_set, evidence)",
+            "opts[item] = argv[i + 1]"
+          ],
+          "rationale": "The claim holds. `parse` takes whatever follows `--red` without checking it, and `red_check` puts that value into `git switch --detach` with no rev-parse check, so a leading `-` is read as a git option. The harm is small, though. The project lead runs this local CLI with its own arguments, the tree has already been checked clean, and a value git misreads only gives an odd FAIL or detach result. It gives no one a new way into anything.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/crew-step.md",
+          "start_line": 19,
+          "end_line": 23,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The output-format block documents `ask <step> <name>: <text>`, but the script and the launch-check section use `ask collect: <text>`, with no separate name field.",
+          "evidence": "ask <step> <name>: <text>",
+          "suggested_fix": "Change the format line to `ask <step>: <text>`.",
+          "explanation": "crew-step.md says it owns the script's output lines, so its general format has to match what the script prints.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "ask <step> <name>: <text>",
+            "When the fallback base passed, it prints one line `ask collect: <text>`.",
+            "out.line(\"ask collect: does the repo's test command collect files under %s? \""
+          ],
+          "rationale": "The script's only ask line is `ask collect: ...`, with no separate name field. The general format `ask <step> <name>: <text>` in crew-step.md does not match it, and neither does the launch-check section of the same file.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "ask <step> <name>: <text>",
+            "When the fallback base passed, it prints one line `ask collect: <text>`.",
+            "out.line(\"ask collect: does the repo's test command collect files under %s? \""
+          ],
+          "rationale": "The script's only ask line is `ask collect: ...`, with no separate name field. The general format `ask <step> <name>: <text>` in crew-step.md does not match it, and neither does the launch-check section of the same file.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/crew-step.md",
+          "start_line": 83,
+          "end_line": 83,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The doc says the held start point defaults to origin/HEAD, but the code also falls back to the recorded deliverable base when there is no origin/HEAD.",
+          "evidence": "| `--start-point <ref>` | The start of the held case's branch. The default is `origin/HEAD`. |",
+          "suggested_fix": "Add: 'or else the recorded deliverable base on a rerun'.",
+          "explanation": "cmd_branch uses dl['base'] when neither --start-point nor origin/HEAD is there, so FAIL start-point does not always follow the doc's 'no flag and no origin/HEAD' rule.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if not start_point and dl and dl.get(\"base\"):",
+            "start_point = dl[\"base\"]",
+            "| `--start-point <ref>` | The start of the held case's branch. The default is `origin/HEAD`. |"
+          ],
+          "rationale": "The code falls back to the recorded deliverable base when there is no flag and no origin/HEAD, so the doc's default and its FAIL rule are incomplete.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if not start_point and dl and dl.get(\"base\"):",
+            "start_point = dl[\"base\"]",
+            "| `--start-point <ref>` | The start of the held case's branch. The default is `origin/HEAD`. |"
+          ],
+          "rationale": "The code falls back to the recorded deliverable base when there is no flag and no origin/HEAD, so the doc's default and its FAIL rule are incomplete.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/references/crew-step.md",
+          "start_line": 223,
+          "end_line": 223,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The listeners row names a different lsof command line from the one the script runs.",
+          "evidence": "| `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |",
+          "suggested_fix": "Name the command as `lsof -iTCP -sTCP:LISTEN -n -P`.",
+          "explanation": "The code runs `lsof -iTCP -sTCP:LISTEN -n -P`.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |"
+          ],
+          "rationale": "The script runs `lsof -iTCP -sTCP:LISTEN -n -P`, and the doc omits `-n -P`. The omission is minor and the doc's meaning is unchanged.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |"
+          ],
+          "rationale": "The script runs `lsof -iTCP -sTCP:LISTEN -n -P`, and the doc omits `-n -P`. The omission is minor and the doc's meaning is unchanged.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 715,
+          "end_line": 715,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The `escalation: unanswered` branch has no test.",
+          "evidence": "        out.line(\"escalation: unanswered\")",
+          "suggested_fix": "Seed an escalation entry with no answer, refuse the push, and assert `escalation: unanswered`.",
+          "explanation": "The tests cover only an answered escalation and no escalation. An entry with answer None is a third branch, and nothing tests it.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "out.line(\"escalation: unanswered\")",
+            "check(\"R16 a refused push with no entry prints FAIL push and escalation: none\","
+          ],
+          "rationale": "The test file only checks `escalation: none` and an answered escalation, plus a loose `escalation:` check at line 812. No test asserts `escalation: unanswered`. The gap is real, but it covers one small branch.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif found[-1].get(\"answer\") is None:\n        out.line(\"escalation: unanswered\")",
+            "rec_call(rec, \"escalation\", \"answer\", \"0\", \"Keep the work local\")",
+            "rc == 1 and has(out, \"FAIL push:\") and \"escalation: none\" in lines(out))"
+          ],
+          "rationale": "The claim holds. The tests cover only two escalation cases: no entry (`escalation: none`) and an answered entry (`escalation: Keep the work local`). No test adds an entry and leaves it unanswered, so the `escalation: unanswered` branch never runs. The branch is a simple one-line print, so the gap is minor and cheap to close.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif found[-1].get(\"answer\") is None:\n        out.line(\"escalation: unanswered\")",
+            "rec_call(rec, \"escalation\", \"answer\", \"0\", \"Keep the work local\")",
+            "rc == 1 and has(out, \"FAIL push:\") and \"escalation: none\" in lines(out))"
+          ],
+          "rationale": "The claim holds. The tests cover only two escalation cases: no entry (`escalation: none`) and an answered entry (`escalation: Keep the work local`). No test adds an entry and leaves it unanswered, so the `escalation: unanswered` branch never runs. The branch is a simple one-line print, so the gap is minor and cheap to close.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 205,
+          "end_line": 206,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The rename and copy handling in the `status -z` parser is untested.",
+          "evidence": "        if \"R\" in code or \"C\" in code:\n            i += 1",
+          "suggested_fix": "Add a verify case with a staged `git mv` and assert the paths classify correctly.",
+          "explanation": "A mistake here would misclassify the next record in the clean-tree check. No test stages a rename.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if \"R\" in code or \"C\" in code:\n            i += 1"
+          ],
+          "rationale": "The test file has no staged rename or copy case. The only match for rename is `git remote rename`. The rename branch in `classify` is untested. The code looks correct, so the gap is minor.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        if \"R\" in code or \"C\" in code:\n            i += 1",
+            "            tracked.append(path)",
+            "g(repo, \"remote\", \"rename\", \"origin\", \"a\")"
+          ],
+          "rationale": "No test stages a file rename or copy, so the claim holds. Any rename already lands in `tracked` and fails `clean-tree`, so a mistake in the skip could not change the pass or fail result. The gap has almost no effect.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        if \"R\" in code or \"C\" in code:\n            i += 1",
+            "            tracked.append(path)",
+            "g(repo, \"remote\", \"rename\", \"origin\", \"a\")"
+          ],
+          "rationale": "No test stages a file rename or copy, so the claim holds. Any rename already lands in `tracked` and fails `clean-tree`, so a mistake in the skip could not change the pass or fail result. The gap has almost no effect.",
+          "score": 88,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "start_line": 1031,
+          "end_line": 1046,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The check that crew-record.py is unchanged is skipped when `origin/main` is absent, so it often runs nothing. It also tests a repo-process constraint instead of script behaviour.",
+          "evidence": "    print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\")",
+          "suggested_fix": "Drop the check, or fail it when the base ref is missing.",
+          "explanation": "The skip prints no check and does not affect the pass count. In a checkout without `origin/main`, the constraint goes unchecked while the run reports all checks passed.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\")"
+          ],
+          "rationale": "The skip branch only prints and does not touch the counters. A checkout without origin/main therefore leaves the constraint unchecked while the run reports all checks passed. The impact is small, because the check is a repo-process guard and is often present in CI.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if base_ref is None:\n    print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\")",
+            "for ref in (\"origin/main\",):",
+            "print(\"%d of %d checks passed\" % (passed, total))"
+          ],
+          "rationale": "When origin/main is missing, the R20 crew-record.py diff check only prints a skip line and never calls check(), so the final \"N of N checks passed\" leaves it out. The skip is deliberate and visible, so the impact is small.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if base_ref is None:\n    print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\")",
+            "for ref in (\"origin/main\",):",
+            "print(\"%d of %d checks passed\" % (passed, total))"
+          ],
+          "rationale": "When origin/main is missing, the R20 crew-record.py diff check only prints a skip line and never calls check(), so the final \"N of N checks passed\" leaves it out. The skip is deliberate and visible, so the impact is small.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "start_line": 1019,
+          "end_line": 1028,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Tests grep the script's source text, such as \"--force appears only on the probe line\" and \"no Skill call\". These restate the code and break on a rename or refactor, while behaviour stays the same.",
+          "evidence": "check(\"R17 --force appears only on the probe line\", bool(force) and all(\"probe\" in x for x in force))",
+          "suggested_fix": "Rely on the behavioural refusal test and remove the grep checks.",
+          "explanation": "A source-text assertion does not observe behaviour. The test already checks that a worktree with uncommitted files is refused, and that is the observable form of the no-force rule.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "force = [x for x in src_lines if \"--force\" in x]",
+            "check(\"R17 --force appears only on the probe line\", bool(force) and all(\"probe\" in x for x in force))",
+            "check(\"R19 no Skill call in the script\", bool(text) and \"Skill\" not in text)"
+          ],
+          "rationale": "The tests do grep the script's source text, so they are brittle to refactors. But the spec and PR description list them as deliberate constraint checks, and they guard rules that behaviour tests only partly cover. That makes the finding not worth posting.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "force = [x for x in src_lines if \"--force\" in x]",
+            "check(\"R17 --force appears only on the probe line\", bool(force) and all(\"probe\" in x for x in force))",
+            "check(\"R19 no Skill call in the script\", bool(text) and \"Skill\" not in text)"
+          ],
+          "rationale": "The checks do grep the source text, but the PR's stated constraints ask for these greps on purpose (\"the test greps for it\"). The behavioural refusal test also does not cover every constraint, for example the no-Skill rule and the R20 writer rules. So removing the greps is a design preference, not a defect.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "force = [x for x in src_lines if \"--force\" in x]",
+            "check(\"R17 --force appears only on the probe line\", bool(force) and all(\"probe\" in x for x in force))",
+            "check(\"R19 no Skill call in the script\", bool(text) and \"Skill\" not in text)"
+          ],
+          "rationale": "The checks do grep the source text, but the PR's stated constraints ask for these greps on purpose (\"the test greps for it\"). The behavioural refusal test also does not cover every constraint, for example the no-Skill rule and the R20 writer rules. So removing the greps is a design preference, not a defect.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 689,
+          "end_line": 693,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The red check's switch back with --discard-changes does not remove untracked files that the criterion created at the red commit.",
+          "evidence": "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+          "suggested_fix": "Report untracked files the criterion created, or remove them explicitly after the switch back.",
+          "explanation": "`git switch --discard-changes` drops tracked edits only, so untracked build output from the criterion stays in the checkout. The next verify can then see an untracked file in the file set and fail the clean tree.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "changed = tracked + inside + [n for n in outside if n not in outside_before]",
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []"
+          ],
+          "rationale": "Untracked files do survive `--discard-changes`. But the code already detects and reports them as \\\"the criterion changed ...\\\", so the suggested fix is mostly in place and the later clean-tree failure is an accurate signal.",
+          "score": 60,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# --discard-changes drops the criterion's edits, so none reaches the branch.",
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "changed = tracked + inside + [n for n in outside if n not in outside_before]",
+            "text = text.rstrip(\"\\n\") + \"\\nthe criterion changed: \" + \", \".join(changed)"
+          ],
+          "rationale": "The claim holds: `git switch --discard-changes` throws away edits to tracked files but leaves new untracked files in place. So any file the criterion creates at the red commit is still in the checkout after the switch back, which contradicts the code comment that \"none reaches the branch\". The impact is limited because the script already lists those files in the `red` step line and evidence (\"the criterion changed ...\"), so the project lead sees them and can remove them.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# --discard-changes drops the criterion's edits, so none reaches the branch.",
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "changed = tracked + inside + [n for n in outside if n not in outside_before]",
+            "text = text.rstrip(\"\\n\") + \"\\nthe criterion changed: \" + \", \".join(changed)"
+          ],
+          "rationale": "The claim holds: `git switch --discard-changes` throws away edits to tracked files but leaves new untracked files in place. So any file the criterion creates at the red commit is still in the checkout after the switch back, which contradicts the code comment that \"none reaches the branch\". The impact is limited because the script already lists those files in the `red` step line and evidence (\"the criterion changed ...\"), so the project lead sees them and can remove them.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 801,
+          "end_line": 807,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "A rerun of hand-over on a delivered deliverable runs `crew-orch.py stage <item> review` again, and that call moves the item back to `review` from any later stage.",
+          "evidence": "for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]):",
+          "suggested_fix": "On the already-delivered rerun path, skip the stage call, or run it only when the item's stage is earlier than `review`.",
+          "explanation": "`cmd_stage` in crew-orch.py sets `item[\"stage\"] = stage` with no check, and it also resets `detail` and `stage_at`. A rerun after the item reached `pr` or `merged` therefore moves the item back, which contradicts the doc's claim that the call is idempotent.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]):",
+            "if dl.get(\"state\") in (\"draft-pr-opened\", \"work-complete\"):",
+            "item[\"stage\"] = stage"
+          ],
+          "rationale": "On rerun with the deliverable already delivered, url comes from dl.pr_url and the orch block runs `stage review` unconditionally. `cmd_stage` overwrites the stage, detail and stage_at with no check, so a later stage regresses to `review`.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]):",
+            "if dl.get(\"state\") in (\"draft-pr-opened\", \"work-complete\"):",
+            "item[\"stage\"] = stage",
+            "item[\"detail\"] = opts.get(\"detail\")",
+            "item[\"stage_at\"] = stamp",
+            "both `crew-orch.py` calls are idempotent, and then the cleanup steps."
+          ],
+          "rationale": "On the already-delivered path, hand-over still runs `stage <item> review`. `cmd_stage` writes the stage, clears detail and restamps stage_at without checking the current stage, so an item already at `pr` or `merged` goes back to `review`. That contradicts crew-step.md's claim that both calls are idempotent. This only happens on an unusual rerun after the orchestrator has moved the item on, so it is a suggestion, not a blocker.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]):",
+            "if dl.get(\"state\") in (\"draft-pr-opened\", \"work-complete\"):",
+            "item[\"stage\"] = stage",
+            "item[\"detail\"] = opts.get(\"detail\")",
+            "item[\"stage_at\"] = stamp",
+            "both `crew-orch.py` calls are idempotent, and then the cleanup steps."
+          ],
+          "rationale": "On the already-delivered path, hand-over still runs `stage <item> review`. `cmd_stage` writes the stage, clears detail and restamps stage_at without checking the current stage, so an item already at `pr` or `merged` goes back to `review`. That contradicts crew-step.md's claim that both calls are idempotent. This only happens on an unusual rerun after the orchestrator has moved the item on, so it is a suggestion, not a blocker.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 660,
+          "end_line": 683,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "When the red-commit criterion creates untracked files, the switch back does not remove them, so they stay in the branch's working tree.",
+          "evidence": "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+          "suggested_fix": "Before the switch back, remove the files that the criterion created and that are not in `outside_before`, or at least report that they remain.",
+          "explanation": "`git switch --discard-changes` resets tracked changes only and leaves new untracked files in place, such as build output or files in the file set. The doc says the switch back discards every change the criterion makes, and that is not true for these files. They also make the next verify fail clean-tree.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "# --discard-changes drops the criterion's edits, so none reaches the branch."
+          ],
+          "rationale": "`git switch --discard-changes` only resets tracked files, so untracked files the criterion creates stay in the tree. The code does report them as \"the criterion changed ...\", so the user is told. The comment overstates what the flag does, and the leftover files can fail a later clean-tree check.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "# --discard-changes drops the criterion's edits, so none reaches the branch.",
+            "changed = tracked + inside + [n for n in outside if n not in outside_before]",
+            "detail and evidence, and the switch back discards it, so it never reaches the"
+          ],
+          "rationale": "The claim holds. `git switch --discard-changes` only resets tracked changes, so any new untracked file the criterion creates at the red commit stays in the branch's working tree. That contradicts the code comment and crew-step.md, which say the switch back discards every change. The files are named in the `red` note, so the user can see them. A file inside the file set would make the next clean-tree check fail.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "# --discard-changes drops the criterion's edits, so none reaches the branch.",
+            "changed = tracked + inside + [n for n in outside if n not in outside_before]",
+            "detail and evidence, and the switch back discards it, so it never reaches the"
+          ],
+          "rationale": "The claim holds. `git switch --discard-changes` only resets tracked changes, so any new untracked file the criterion creates at the red commit stays in the branch's working tree. That contradicts the code comment and crew-step.md, which say the switch back discards every change. The files are named in the `red` note, so the user can see them. A file inside the file set would make the next clean-tree check fail.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 855,
+          "end_line": 861,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "When lsof is missing or fails, the listeners step prints `ok listeners: none` instead of reporting the failure.",
+          "evidence": "listening = run([\"lsof\", \"-iTCP\", \"-sTCP:LISTEN\", \"-n\", \"-P\"])\n    text = listening.stdout.strip()\n    if text:",
+          "suggested_fix": "Check `listening.returncode` and print an error detail (or FAIL) when the command could not run.",
+          "explanation": "`run()` turns an OSError into exit code 127 with empty stdout, and the step never checks the exit code. The project lead is then told that no server is listening when the script could not check.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "listening = run([\"lsof\", \"-iTCP\", \"-sTCP:LISTEN\", \"-n\", \"-P\"])\n    text = listening.stdout.strip()",
+            "return subprocess.CompletedProcess(cmd, 127, \"\", str(exc))"
+          ],
+          "rationale": "When lsof is missing, run() returns exit code 127 with empty stdout, and cleanup never checks the return code. The step then prints \"ok listeners: none\". The step is advisory and the script kills nothing, so the impact is small.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "listening = run([\"lsof\", \"-iTCP\", \"-sTCP:LISTEN\", \"-n\", \"-P\"])\n    text = listening.stdout.strip()",
+            "return subprocess.CompletedProcess(cmd, 127, \"\", str(exc))"
+          ],
+          "rationale": "When lsof is missing, run() returns exit code 127 with empty stdout, and cleanup never checks the return code. The step then prints \"ok listeners: none\". The step is advisory and the script kills nothing, so the impact is small.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 907,
+          "end_line": 912,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "When the switch back fails, the restore step writes `checkout_restored` without checking the result of the write.",
+          "evidence": "record(rec, \"deliverable\", did, \"set\", \"checkout_restored\", json.dumps(sentence))",
+          "suggested_fix": "Use `record_step` here, as the other record writes do.",
+          "explanation": "Every other record write goes through `record_step`, which reports a failed write. If this write fails, the error is lost and the record does not say why the checkout was not restored.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "record(rec, \"deliverable\", did, \"set\", \"checkout_restored\", json.dumps(sentence))",
+            "out.fail(\"restore\", sentence)"
+          ],
+          "rationale": "The `record(...)` call at the switch-failure branch ignores its return code, unlike every other record write, which goes through `record_step`. The restore failure is still reported by `out.fail`, so the impact is small.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "record(rec, \"deliverable\", did, \"set\", \"checkout_restored\", json.dumps(sentence))",
+            "out.fail(\"restore\", sentence)",
+            "record_step(out, rec, \"not restored, \" + sentence,"
+          ],
+          "rationale": "The claim holds. When the switch fails, the code calls `record(...)` directly and never checks its return code, while the dirty-tree branch next to it uses `record_step`. The harm is small: this only matters when both the switch and the write fail, and `FAIL restore` still prints and the exit code is still 1. Only the write's own error text is lost.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "record(rec, \"deliverable\", did, \"set\", \"checkout_restored\", json.dumps(sentence))",
+            "out.fail(\"restore\", sentence)",
+            "record_step(out, rec, \"not restored, \" + sentence,"
+          ],
+          "rationale": "The claim holds. When the switch fails, the code calls `record(...)` directly and never checks its return code, while the dirty-tree branch next to it uses `record_step`. The harm is small: this only matters when both the switch and the write fail, and `FAIL restore` still prints and the exit code is still 1. Only the write's own error text is lost.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "start_line": 360,
+          "end_line": 367,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "Once a deliverable entry exists, the branch step treats the checkout as free and ignores `--held` on a rerun.",
+          "evidence": "    elif dl:\n        held, why = False, \"free, recorded deliverable on %s\" % dl.get(\"branch\")\n    elif opts.get(\"--held\"):",
+          "suggested_fix": "When `--held` is given but the record says free, print FAIL or a warning instead of ignoring the flag.",
+          "explanation": "Say the free-case switch failed after the deliverable write, and the project lead then reruns with `--held`. The script still takes the free path and tries to switch the shared checkout again, and prints no warning.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif dl:\n        held, why = False, \"free, recorded deliverable on %s\" % dl.get(\"branch\")\n    elif opts.get(\"--held\"):"
+          ],
+          "rationale": "`--held` is ignored once a deliverable record exists, but this looks deliberate for idempotent reruns. The `ok held` line states the reason, and the scenario is rare.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif dl:\n        held, why = False, \"free, recorded deliverable on %s\" % dl.get(\"branch\")\n    elif opts.get(\"--held\"):\n        held, why = True, \"held: --held\"",
+            "| `--held` | Marks the checkout as held by another run. The script also treats it as held when the current branch starts with `crew/` and carries another goal slug. |"
+          ],
+          "rationale": "The claim holds: a recorded deliverable with no worktrees.json entry is checked before `--held`, so a rerun with `--held` takes the free path and switches the shared checkout again, and crew-step.md does not say the record wins over the flag. The script does print `ok held: free, recorded deliverable on ...`, so the decision shows, but nothing says the flag was ignored. This only happens on an unusual rerun path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif dl:\n        held, why = False, \"free, recorded deliverable on %s\" % dl.get(\"branch\")\n    elif opts.get(\"--held\"):\n        held, why = True, \"held: --held\"",
+            "| `--held` | Marks the checkout as held by another run. The script also treats it as held when the current branch starts with `crew/` and carries another goal slug. |"
+          ],
+          "rationale": "The claim holds: a recorded deliverable with no worktrees.json entry is checked before `--held`, so a rerun with `--held` takes the free path and switches the shared checkout again, and crew-step.md does not say the record wins over the flag. The script does print `ok held: free, recorded deliverable on ...`, so the decision shows, but nothing says the flag was ignored. This only happens on an unusual rerun path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [
+      {
+        "file": "skills/project-lead/references/crew-step.md",
+        "start_line": 223,
+        "end_line": 223,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The listeners row names a different lsof command line from the one the script runs.",
+        "evidence": "| `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |",
+        "suggested_fix": "Name the command as `lsof -iTCP -sTCP:LISTEN -n -P`.",
+        "explanation": "The code runs `lsof -iTCP -sTCP:LISTEN -n -P`.",
+        "needs_context": false,
+        "fingerprint": "27fca6769c37201c",
+        "severity": "nit",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "| `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |"
+          ],
+          "rationale": "The script runs `lsof -iTCP -sTCP:LISTEN -n -P`, and the doc omits `-n -P`. The omission is minor and the doc's meaning is unchanged.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "span_text": "| `listeners` | Prints `lsof -iTCP -sTCP:LISTEN` under `--- listeners`. The script kills nothing. |",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 593,
+        "end_line": 593,
+        "category": "security",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The --red value goes to `git switch --detach` without a `--` separator or a check for a leading dash, so a value that starts with `-` is read as a git option.",
+        "evidence": "switched = git(repo, \"switch\", \"--detach\", sha, \"-q\")",
+        "suggested_fix": "Resolve the value with `rev-parse --verify <sha>^{commit}` first, or reject values that start with '-'.",
+        "explanation": "A ref value that git reads as an option can change what the command does.",
+        "needs_context": false,
+        "fingerprint": "b9c2ec3ea0f8dc37",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "switched = git(repo, \"switch\", \"--detach\", sha, \"-q\")",
+            "red_check(out, repo, opts[\"--red\"], opts[\"--criterion\"], clean, file_set, evidence)",
+            "opts[item] = argv[i + 1]"
+          ],
+          "rationale": "The claim holds. `parse` takes whatever follows `--red` without checking it, and `red_check` puts that value into `git switch --detach` with no rev-parse check, so a leading `-` is read as a git option. The harm is small, though. The project lead runs this local CLI with its own arguments, the tree has already been checked clean, and a value git misreads only gives an odd FAIL or detach result. It gives no one a new way into anything.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "out.fail(\"file-set\", err(names))",
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/test-crew-step.py",
+        "start_line": 1031,
+        "end_line": 1046,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The check that crew-record.py is unchanged is skipped when `origin/main` is absent, so it often runs nothing. It also tests a repo-process constraint instead of script behaviour.",
+        "evidence": "    print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\")",
+        "suggested_fix": "Drop the check, or fail it when the base ref is missing.",
+        "explanation": "The skip prints no check and does not affect the pass count. In a checkout without `origin/main`, the constraint goes unchecked while the run reports all checks passed.",
+        "needs_context": false,
+        "fingerprint": "ca28e8c90a16d8d9",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if base_ref is None:\n    print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\")",
+            "for ref in (\"origin/main\",):",
+            "print(\"%d of %d checks passed\" % (passed, total))"
+          ],
+          "rationale": "When origin/main is missing, the R20 crew-record.py diff check only prints a skip line and never calls check(), so the final \"N of N checks passed\" leaves it out. The skip is deliberate and visible, so the impact is small.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "for ref in (\"origin/main\",): if subprocess.run([REAL_GIT, \"-C\", HERE, \"rev-parse\", \"--verify\", \"--quiet\", ref], env=ENV, capture_output=True).returncode == 0: base_ref = ref if base_ref is None: print(\"skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout\") else: mb = subprocess.run([REAL_GIT, \"-C\", HERE, \"merge-base\", \"HEAD\", base_ref], env=ENV, capture_output=True, text=True) same = mb.returncode == 0 and subprocess.run( [REAL_GIT, \"-C\", HERE, \"diff\", \"--quiet\", mb.stdout.strip(), \"--\", \"crew-record.py\"], env=ENV).returncode == 0 check(\"R20 git diff shows no change to crew-record.py since the merge base with \" + base_ref, same) # --- end -------------------------------------------------------------------",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6044743712,
+      "review_url": "https://github.com/jerridan/crew/pull/184#pullrequestreview-6044743712",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138665707318
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 855,
+        "end_line": 861,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "When lsof is missing or fails, the listeners step prints `ok listeners: none` instead of reporting the failure.",
+        "evidence": "listening = run([\"lsof\", \"-iTCP\", \"-sTCP:LISTEN\", \"-n\", \"-P\"])\n    text = listening.stdout.strip()\n    if text:",
+        "suggested_fix": "Check `listening.returncode` and print an error detail (or FAIL) when the command could not run.",
+        "explanation": "`run()` turns an OSError into exit code 127 with empty stdout, and the step never checks the exit code. The project lead is then told that no server is listening when the script could not check.",
+        "needs_context": false,
+        "fingerprint": "8abe7bc612791d71",
+        "severity": "suggestion",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "listening = run([\"lsof\", \"-iTCP\", \"-sTCP:LISTEN\", \"-n\", \"-P\"])\n    text = listening.stdout.strip()",
+            "return subprocess.CompletedProcess(cmd, 127, \"\", str(exc))"
+          ],
+          "rationale": "When lsof is missing, run() returns exit code 127 with empty stdout, and cleanup never checks the return code. The step then prints \"ok listeners: none\". The step is advisory and the script kills nothing, so the impact is small.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "span_text": "elif not wt: out.ok(\"worktree-remove\", \"no worktrees left\") else: # IC worktrees branch from the deliverable checkout, so it goes last. keys = [k for k in wt if k != did] + ([did] if did in wt else []) for key in keys: path = wt[key].get(\"worktree\", \"\")",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 801,
+        "end_line": 807,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "A rerun of hand-over on a delivered deliverable runs `crew-orch.py stage <item> review` again, and that call moves the item back to `review` from any later stage.",
+        "evidence": "for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]):",
+        "suggested_fix": "On the already-delivered rerun path, skip the stage call, or run it only when the item's stage is earlier than `review`.",
+        "explanation": "`cmd_stage` in crew-orch.py sets `item[\"stage\"] = stage` with no check, and it also resets `detail` and `stage_at`. A rerun after the item reached `pr` or `merged` therefore moves the item back, which contradicts the doc's claim that the call is idempotent.",
+        "needs_context": false,
+        "fingerprint": "f2b95d97773f8bfe",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]):",
+            "if dl.get(\"state\") in (\"draft-pr-opened\", \"work-complete\"):",
+            "item[\"stage\"] = stage",
+            "item[\"detail\"] = opts.get(\"detail\")",
+            "item[\"stage_at\"] = stamp",
+            "both `crew-orch.py` calls are idempotent, and then the cleanup steps."
+          ],
+          "rationale": "On the already-delivered path, hand-over still runs `stage <item> review`. `cmd_stage` writes the stage, clears detail and restamps stage_at without checking the current stage, so an item already at `pr` or `merged` goes back to `review`. That contradicts crew-step.md's claim that both calls are idempotent. This only happens on an unusual rerun after the orchestrator has moved the item on, so it is a suggestion, not a blocker.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "orch = run_state.get(\"orchestrator\") if orch and url: for call in ([\"item\", str(orch.get(\"item\")), \"pr\", url], [\"stage\", str(orch.get(\"item\")), \"review\"]): result = run([sys.executable, ORCH, \"--orch\", str(orch.get(\"name\"))] + call) if result.returncode == 0: out.ok(\"orch\", \" \".join(call)) else:",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 660,
+        "end_line": 683,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "When the red-commit criterion creates untracked files, the switch back does not remove them, so they stay in the branch's working tree.",
+        "evidence": "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+        "suggested_fix": "Before the switch back, remove the files that the criterion created and that are not in `outside_before`, or at least report that they remain.",
+        "explanation": "`git switch --discard-changes` resets tracked changes only and leaves new untracked files in place, such as build output or files in the file set. The doc says the switch back discards every change the criterion makes, and that is not true for these files. They also make the next verify fail clean-tree.",
+        "needs_context": false,
+        "fingerprint": "e4b3f6ce14fbe5eb",
+        "severity": "suggestion",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "# --discard-changes drops the criterion's edits, so none reaches the branch.",
+            "changed = tracked + inside + [n for n in outside if n not in outside_before]",
+            "detail and evidence, and the switch back discards it, so it never reaches the"
+          ],
+          "rationale": "The claim holds. `git switch --discard-changes` only resets tracked changes, so any new untracked file the criterion creates at the red commit stays in the branch's working tree. That contradicts the code comment and crew-step.md, which say the switch back discards every change. The files are named in the `red` note, so the user can see them. A file inside the file set would make the next clean-tree check fail.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "span_text": "def red_check(out, repo, sha, criterion, clean, file_set, evidence): \"\"\"Run the criterion at the red commit, then switch back, always.\"\"\" if not clean: out.fail(\"red\", \"dirty tree, no switch\") return # The criterion and the suite ran at HEAD and can leave an edit: check again. status = git(repo, \"status\", \"--porcelain\", \"-z\", \"--untracked-files=all\") tracked, inside, outside_before = classify(status.stdout, file_set) if status.returncode != 0 or tracked or inside: out.fail(\"red\", \"dirty tree before the switch, no switch: %s\" % (\", \".join(tracked + inside) or err(status))) return branch = git(repo, \"branch\", \"--show-current\").stdout.strip() old_head = git(repo, \"rev-parse\", \"HEAD\").stdout.strip() code, text = None, \"\" changed = [] switched = git(repo, \"switch\", \"--detach\", sha, \"-q\") try: if switched.returncode == 0: code, text = shell(criterion, repo) # The tree was clean before the detach, so each change came from the criterion. after = git(repo, \"status\", \"--porcelain\", \"-z\", \"--untracked-files=all\")",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 360,
+        "end_line": 367,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "Once a deliverable entry exists, the branch step treats the checkout as free and ignores `--held` on a rerun.",
+        "evidence": "    elif dl:\n        held, why = False, \"free, recorded deliverable on %s\" % dl.get(\"branch\")\n    elif opts.get(\"--held\"):",
+        "suggested_fix": "When `--held` is given but the record says free, print FAIL or a warning instead of ignoring the flag.",
+        "explanation": "Say the free-case switch failed after the deliverable write, and the project lead then reruns with `--held`. The script still takes the free path and tries to switch the shared checkout again, and prints no warning.",
+        "needs_context": false,
+        "fingerprint": "e608d3b2a9b17a0d",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif dl:\n        held, why = False, \"free, recorded deliverable on %s\" % dl.get(\"branch\")\n    elif opts.get(\"--held\"):\n        held, why = True, \"held: --held\"",
+            "| `--held` | Marks the checkout as held by another run. The script also treats it as held when the current branch starts with `crew/` and carries another goal slug. |"
+          ],
+          "rationale": "The claim holds: a recorded deliverable with no worktrees.json entry is checked before `--held`, so a rerun with `--held` takes the free path and switches the shared checkout again, and crew-step.md does not say the record wins over the flag. The script does print `ok held: free, recorded deliverable on ...`, so the decision shows, but nothing says the flag was ignored. This only happens on an unusual rerun path.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "check_branch_name(\"crew/%s/%s\" % (slug, tslug)) worktree_base = run_state.get(\"worktree_base\") or rec dl = find(state.get(\"deliverables\"), did) wt = load_worktrees(rec) or {} sid = session_id(run_state) out = Out() name = opts.get(\"--branch\") or (dl.get(\"branch\") if dl else None) or \"crew/%s/%s\" % (slug, did)",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 689,
+        "end_line": 693,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The red check's switch back with --discard-changes does not remove untracked files that the criterion created at the red commit.",
+        "evidence": "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+        "suggested_fix": "Report untracked files the criterion created, or remove them explicitly after the switch back.",
+        "explanation": "`git switch --discard-changes` drops tracked edits only, so untracked build output from the criterion stays in the checkout. The next verify can then see an untracked file in the file set and fail the clean tree.",
+        "needs_context": false,
+        "fingerprint": "bf95ea6516f4823d",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "# --discard-changes drops the criterion's edits, so none reaches the branch.",
+            "flags = [\"--discard-changes\"] if switched.returncode == 0 else []",
+            "changed = tracked + inside + [n for n in outside if n not in outside_before]",
+            "text = text.rstrip(\"\\n\") + \"\\nthe criterion changed: \" + \", \".join(changed)"
+          ],
+          "rationale": "The claim holds: `git switch --discard-changes` throws away edits to tracked files but leaves new untracked files in place. So any file the criterion creates at the red commit is still in the checkout after the switch back, which contradicts the code comment that \"none reaches the branch\". The impact is limited because the script already lists those files in the `red` step line and evidence (\"the criterion changed ...\"), so the project lead sees them and can remove them.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "# --discard-changes drops the criterion's edits, so none reaches the branch. flags = [\"--discard-changes\"] if switched.returncode == 0 else [] back = (git(repo, \"switch\", \"-q\", *flags, branch) if branch else git(repo, \"switch\", \"--detach\", \"-q\", *flags, old_head)) note = \"\"",
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/references/crew-step.md",
+        "start_line": 83,
+        "end_line": 83,
+        "category": "docs",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The doc says the held start point defaults to origin/HEAD, but the code also falls back to the recorded deliverable base when there is no origin/HEAD.",
+        "evidence": "| `--start-point <ref>` | The start of the held case's branch. The default is `origin/HEAD`. |",
+        "suggested_fix": "Add: 'or else the recorded deliverable base on a rerun'.",
+        "explanation": "cmd_branch uses dl['base'] when neither --start-point nor origin/HEAD is there, so FAIL start-point does not always follow the doc's 'no flag and no origin/HEAD' rule.",
+        "needs_context": false,
+        "fingerprint": "50d4f79cf8e97b13",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if not start_point and dl and dl.get(\"base\"):",
+            "start_point = dl[\"base\"]",
+            "| `--start-point <ref>` | The start of the held case's branch. The default is `origin/HEAD`. |"
+          ],
+          "rationale": "The code falls back to the recorded deliverable base when there is no flag and no origin/HEAD, so the doc's default and its FAIL rule are incomplete.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "| `--start-point <ref>` | The start of the held case's branch. The default is `origin/HEAD`. |",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 715,
+        "end_line": 715,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The `escalation: unanswered` branch has no test.",
+        "evidence": "        out.line(\"escalation: unanswered\")",
+        "suggested_fix": "Seed an escalation entry with no answer, refuse the push, and assert `escalation: unanswered`.",
+        "explanation": "The tests cover only an answered escalation and no escalation. An entry with answer None is a third branch, and nothing tests it.",
+        "needs_context": false,
+        "fingerprint": "ed96994f141a9e4a",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif found[-1].get(\"answer\") is None:\n        out.line(\"escalation: unanswered\")",
+            "rec_call(rec, \"escalation\", \"answer\", \"0\", \"Keep the work local\")",
+            "rc == 1 and has(out, \"FAIL push:\") and \"escalation: none\" in lines(out))"
+          ],
+          "rationale": "The claim holds. The tests cover only two escalation cases: no entry (`escalation: none`) and an answered entry (`escalation: Keep the work local`). No test adds an entry and leaves it unanswered, so the `escalation: unanswered` branch never runs. The branch is a simple one-line print, so the gap is minor and cheap to close.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "out.line(\"escalation: unanswered\")",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/scripts/crew-step.py",
+        "start_line": 907,
+        "end_line": 912,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "When the switch back fails, the restore step writes `checkout_restored` without checking the result of the write.",
+        "evidence": "record(rec, \"deliverable\", did, \"set\", \"checkout_restored\", json.dumps(sentence))",
+        "suggested_fix": "Use `record_step` here, as the other record writes do.",
+        "explanation": "Every other record write goes through `record_step`, which reports a failed write. If this write fails, the error is lost and the record does not say why the checkout was not restored.",
+        "needs_context": false,
+        "fingerprint": "3c2d3c69dcd00d25",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "record(rec, \"deliverable\", did, \"set\", \"checkout_restored\", json.dumps(sentence))",
+            "out.fail(\"restore\", sentence)",
+            "record_step(out, rec, \"not restored, \" + sentence,"
+          ],
+          "rationale": "The claim holds. When the switch fails, the code calls `record(...)` directly and never checks its return code, while the dirty-tree branch next to it uses `record_step`. The harm is small: this only matters when both the switch and the write fail, and `FAIL restore` still prints and the exit code is still 1. Only the write's own error text is lost.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "\"branch\": cmd_branch, \"verify\": cmd_verify, \"hand-over\": cmd_hand_over, \"cleanup\": cmd_cleanup, }",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/project-lead/references/crew-step.md",
+        "start_line": 19,
+        "end_line": 23,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The output-format block documents `ask <step> <name>: <text>`, but the script and the launch-check section use `ask collect: <text>`, with no separate name field.",
+        "evidence": "ask <step> <name>: <text>",
+        "suggested_fix": "Change the format line to `ask <step>: <text>`.",
+        "explanation": "crew-step.md says it owns the script's output lines, so its general format has to match what the script prints.",
+        "needs_context": false,
+        "fingerprint": "f2644bc9c2c8ba09",
+        "severity": "nit",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "ask <step> <name>: <text>",
+            "When the fallback base passed, it prints one line `ask collect: <text>`.",
+            "out.line(\"ask collect: does the repo's test command collect files under %s? \""
+          ],
+          "rationale": "The script's only ask line is `ask collect: ...`, with no separate name field. The general format `ask <step> <name>: <text>` in crew-step.md does not match it, and neither does the launch-check section of the same file.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "span_text": "``` ok <step>: <detail> FAIL <step>: <detail> ask <step> <name>: <text>",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 9381,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 66888,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.006697800000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1359,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 66401,
+            "webSearchRequests": 0,
+            "costUSD": 0.2793242,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.286022
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6999,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 57532,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0057647,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 446,
+            "cacheReadInputTokens": 10376,
+            "cacheCreationInputTokens": 57041,
+            "webSearchRequests": 0,
+            "costUSD": 0.4673312,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 162,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4730959
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7968,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 57528,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.005764300000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 521,
+            "cacheReadInputTokens": 10182,
+            "cacheCreationInputTokens": 57037,
+            "webSearchRequests": 0,
+            "costUSD": 0.46876039999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 201,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.47452469999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 15973,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 57532,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0057632,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1322,
+            "cacheReadInputTokens": 77225,
+            "cacheCreationInputTokens": 57964,
+            "webSearchRequests": 0,
+            "costUSD": 0.505613,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 644,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.5113762000000001
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 12328,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30213,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030308,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 1622,
+            "cacheReadInputTokens": 108458,
+            "cacheCreationInputTokens": 31556,
+            "webSearchRequests": 0,
+            "costUSD": 0.1533098,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 260,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1563406
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 14132,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 57534,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.005763900000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1650,
+            "cacheReadInputTokens": 79349,
+            "cacheCreationInputTokens": 57918,
+            "webSearchRequests": 0,
+            "costUSD": 0.25611490000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 498,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2618788
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 22527,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 84739,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.008485399999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1997,
+            "cacheReadInputTokens": 105220,
+            "cacheCreationInputTokens": 86103,
+            "webSearchRequests": 0,
+            "costUSD": 0.37491199999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1541,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.38339739999999994
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6769,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 20188,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020283000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 818,
+            "cacheReadInputTokens": 52728,
+            "cacheCreationInputTokens": 20550,
+            "webSearchRequests": 0,
+            "costUSD": 0.0956648,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 83,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.09769309999999998
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3800,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 20198,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020293,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 462,
+            "cacheReadInputTokens": 28441,
+            "cacheCreationInputTokens": 19940,
+            "webSearchRequests": 0,
+            "costUSD": 0.08723209999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08926139999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5262,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 20251,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0020341,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 619,
+            "cacheReadInputTokens": 28494,
+            "cacheCreationInputTokens": 20371,
+            "webSearchRequests": 0,
+            "costUSD": 0.09053140000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0925655
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7968,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29983,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030098,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 605,
+            "cacheReadInputTokens": 72439,
+            "cacheCreationInputTokens": 30407,
+            "webSearchRequests": 0,
+            "costUSD": 0.1349339,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1379437
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5388,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40339,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040459,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 476,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 39848,
+            "webSearchRequests": 0,
+            "costUSD": 0.1645927,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1686386
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6281,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29195,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029300000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 444,
+            "cacheReadInputTokens": 37438,
+            "cacheCreationInputTokens": 28948,
+            "webSearchRequests": 0,
+            "costUSD": 0.1239838,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.12691380000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 11152,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30217,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030317000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 891,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 29722,
+            "webSearchRequests": 0,
+            "costUSD": 0.25647739999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 463,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2595091
+      },
+      {
+        "role": "verifier",
+        "verification": 7,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5480,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40742,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040852,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 519,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 40251,
+            "webSearchRequests": 0,
+            "costUSD": 0.1666347,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 144,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1707199
+      },
+      {
+        "role": "verifier",
+        "verification": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8623,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30159,
+            "outputTokens": 233,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031324,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 212,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 850,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 29668,
+            "webSearchRequests": 0,
+            "costUSD": 0.1276127,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 324,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1307451
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 6,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10537,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40345,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040465,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 852,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 39850,
+            "webSearchRequests": 0,
+            "costUSD": 0.33672139999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 233,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.34076789999999996
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 4,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 11800,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29989,
+            "outputTokens": 287,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031424,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 263,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 861,
+            "cacheReadInputTokens": 72623,
+            "cacheCreationInputTokens": 31567,
+            "webSearchRequests": 0,
+            "costUSD": 0.2843046,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 161,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.287447
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 7,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 8919,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 40744,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0040854,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 643,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 40249,
+            "webSearchRequests": 0,
+            "costUSD": 0.3357334,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 247,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.33981880000000003
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 5,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13057,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29179,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029294,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1050,
+            "cacheReadInputTokens": 37418,
+            "cacheCreationInputTokens": 28901,
+            "webSearchRequests": 0,
+            "costUSD": 0.25970760000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 251,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.262637
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 8,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 14385,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30163,
+            "outputTokens": 272,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0031523,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 251,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1170,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 29668,
+            "webSearchRequests": 0,
+            "costUSD": 0.2616254,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 705,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2647777
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 71180,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 57530,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0057645000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 6879,
+            "cacheReadInputTokens": 226687,
+            "cacheCreationInputTokens": 65898,
+            "webSearchRequests": 0,
+            "costUSD": 0.7101333999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 4849,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.7158978999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 11,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4998,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 28494,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028629000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 568,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 28003,
+            "webSearchRequests": 0,
+            "costUSD": 0.11813270000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.12099560000000001
+      },
+      {
+        "role": "verifier",
+        "verification": 12,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4513,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27515,
+            "outputTokens": 203,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028530000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 181,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 516,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 27024,
+            "webSearchRequests": 0,
+            "costUSD": 0.1136967,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11654969999999999
+      },
+      {
+        "role": "verifier",
+        "verification": 13,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5841,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30205,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030305,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 586,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 29714,
+            "webSearchRequests": 0,
+            "costUSD": 0.1251567,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1281872
+      },
+      {
+        "role": "verifier",
+        "verification": 10,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6830,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30617,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030727000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 718,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 30126,
+            "webSearchRequests": 0,
+            "costUSD": 0.1281247,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 374,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.13119740000000002
+      },
+      {
+        "role": "verifier",
+        "verification": 9,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8809,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29667,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029802,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 945,
+            "cacheReadInputTokens": 37910,
+            "cacheCreationInputTokens": 29881,
+            "webSearchRequests": 0,
+            "costUSD": 0.132773,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 68,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1357532
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 12,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 8026,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27519,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027629,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 617,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 27024,
+            "webSearchRequests": 0,
+            "costUSD": 0.2294134,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 228,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2321763
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 13,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12437,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30205,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0030305,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1043,
+            "cacheReadInputTokens": 38444,
+            "cacheCreationInputTokens": 30557,
+            "webSearchRequests": 0,
+            "costUSD": 0.2730208,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 468,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2760513
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 10,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13735,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 30625,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.003073,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1124,
+            "cacheReadInputTokens": 74038,
+            "cacheCreationInputTokens": 31358,
+            "webSearchRequests": 0,
+            "costUSD": 0.28817560000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 450,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2912486
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 9,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 16417,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 29673,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0029798000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1295,
+            "cacheReadInputTokens": 108368,
+            "cacheCreationInputTokens": 32013,
+            "webSearchRequests": 0,
+            "costUSD": 0.30370959999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 222,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3066894
+      }
+    ],
+    "total_cost_usd": 7.770820799999998,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 52,
+      "gather": 408,
+      "scope": 15,
+      "triage": 10091,
+      "find_verify": 99475,
+      "merge": 11
+    },
+    "errors": []
+  }
+}

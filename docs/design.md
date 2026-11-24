@@ -10320,3 +10320,30 @@ Deliberately different:
        command, and `claude plugin test` ran the board fixtures. No
        orchestrator run has judged an item by the test or dispatched a
        subagent item under these rules.
+
+NN. **The PR watch and the PR replies run in one call each — 2026-11-24,
+    version <version>.** A project lead in the delivered window ran each
+    command of two fixed sequences in its own model call, and each call read
+    its whole context again.
+
+    - **Seen.** The watch took a `gh` read, a cursor write, a draft read, a
+      draft write and a `Monitor` call to arm. After a wake it took one
+      cursor write, and a `held` write when a round was open. A round's
+      replies took one reply file per item, a marker search, one post per
+      item and a `round replied` write. The resolve of a finding took two more
+      reads and a mutation. Each step was a separate call of the project
+      lead, with the same checks and the same writes every time.
+    - **Decision.** `skills/delivered-window/scripts/watch-step.py` has the
+      subcommands `arm`, `cursor`, `deploy`, `ack` and `release`.
+      `pr-reply.py` has `send` and `posted`. Both call `crew-record.py` for
+      every write and `gh` for every read, and neither changes the poll
+      `pr-watch.sh`. `arm` runs the poll in its own process, so the monitor
+      prints the poll's lines. `cursor` is the first write alone, for the
+      review run that writes it before its review. The prose gives the project
+      lead the calls and keeps each rule about a value in the file that owned
+      it. A reply carries its marker because the script adds it, and a marker
+      counts as posted only from the login of the principal's own account.
+    - **Calls.** <counts>
+    - **Unexercised.** Only `test-watch-step.sh` and `test-pr-reply.sh` ran
+      the scripts, with a stub `gh`. No crew run has armed a monitor, acked a
+      wake or sent a round with them.

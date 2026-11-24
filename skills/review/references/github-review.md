@@ -348,29 +348,19 @@ gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews --jq '.[]
 
 ## The resolve command
 
-A finding is resolved in two steps. First reply "Resolved at <sha>." in its
-thread, with the marker as the last line. `pr-watch.md`'s "Post a reply"
-gives the reply command, and its "Find the replies a round already posted",
-run with the earlier round's id, gives the finding's comment id.
+A finding is resolved by its reply and the resolve of its thread. Write one
+entry in the round's replies file, with `to` naming the finding's comment id
+and `resolve` after it, then send the file with `pr-reply.py`
+(`pr-watch.md`'s "Post a reply" holds the header and the call):
 
-Then read the thread id for that comment, and resolve the thread:
-
-```bash
-gh api graphql --paginate -f owner=<owner> -f repo=<repo> -F n=<n> -f query='
-  query($owner: String!, $repo: String!, $n: Int!, $endCursor: String) {
-    repository(owner: $owner, name: $repo) {
-      pullRequest(number: $n) {
-        reviewThreads(first: 100, after: $endCursor) {
-          pageInfo { hasNextPage endCursor }
-          nodes { id isResolved comments(first: 1) { nodes { databaseId } } }
-        }
-      }
-    }
-  }' --jq '.data.repository.pullRequest.reviewThreads.nodes[]
-  | select(.comments.nodes[0].databaseId == <comment id>) | .id'
-
-gh api graphql -f id=<thread id> -f query='
-  mutation($id: ID!) {
-    resolveReviewThread(input: {threadId: $id}) { thread { isResolved } }
-  }'
 ```
+=== review-comment <finding id> to <comment id> resolve
+Resolved at <sha>.
+```
+
+The marker's item id is the finding id, so the reply carries the marker
+`<!-- pr-review: <round-id> <finding id> -->`. The comment id comes from
+`pr-watch.md`'s "Find the replies a round already posted", run with the
+earlier round's id: it prints `<finding id> <comment id>`. The script posts
+the reply in the finding's thread, reads the thread id and resolves the
+thread. It resolves also when an earlier call posted the reply.

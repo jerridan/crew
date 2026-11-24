@@ -39,7 +39,7 @@ and the state of each one. The launcher finds each one on `PATH`, and else in
 
 | Launcher term | On Herdr |
 |---|---|
-| tab | one Herdr tab with one terminal. Its handle is `herdr:<terminal address>`, such as `herdr:t9` |
+| tab | one Herdr tab with one terminal. Its handle is `herdr:<terminal address>`, such as `herdr:t9` or `herdr:t1j`. The address is the letter `t`, then one or more letters and digits |
 | group | a Herdr space |
 
 **The tab.** `start` and `resume` run `herdr-app do tab.new` with the space,

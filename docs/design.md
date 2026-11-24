@@ -10259,3 +10259,25 @@ Deliberately different:
        of the dialog on a screen, the screen read on any terminal, or Enter
        on the dialog. The other exit dialog of that
        code, for a session whose worktree Claude Code made, gets no answer.
+
+156. **The launcher takes a Herdr terminal address with letters —
+     2026-11-23, version 0.1.124.** `launcher.py` took a Herdr address only
+     when it matched `t[0-9]+`.
+
+     - **Seen.** On crew 0.1.122, `start --terminal herdr` got the terminal
+       `t1j`. The tab opened and `claude` started in it, but `start` exited 6
+       with no start output. `stop herdr:t1j` and `focus herdr:t1j` exited 7.
+       `hc ls --json` on the same machine listed `t1`, `t1c`, `t1j`, `t1k`
+       and `t1n` (issue 180).
+     - **What Herdr says.** `hc --help` says an address is "like t7 or t1b",
+       and `hc get --help` names `machine/t7` for a terminal on another
+       machine. Neither help text, `hc --skill` nor `hc schema` gives a closer
+       rule.
+     - **Decision.** A Herdr address is the letter `t`, then one or more
+       letters and digits. `start`, `resume`, `find`, `focus` and `stop` use
+       the same pattern. The launcher opens tabs on this machine only, so it
+       does not take a `machine/t7` address.
+       `skills/orchestrator/references/launcher.md` owns the handle.
+     - **Unexercised.** Only `test-launcher.sh` ran the change, with stub
+       `herdr-app` and `hc` that give `t1j` and `t1B`. No live run has
+       started, found, focused or stopped a terminal with such an address.

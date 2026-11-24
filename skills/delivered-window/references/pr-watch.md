@@ -1,17 +1,20 @@
 # PR watch commands
 
 The exact command lines and arming steps for `SKILL.md`'s "Watch the PR" and
-"Send the reply file". That file owns when each one runs.
+"Send the reply file". That file owns when each one runs. Two scripts in this
+skill's `scripts/` directory do the mechanical steps: `watch-step.py` for the
+watch and `pr-reply.py` for the replies. `<watch-step>` and `<reply-script>`
+below are their absolute paths, made like `<watch-script>` ("The poll").
 
 Fill `<owner>`, `<repo>` and `<n>` from the deliverable's `pr_url`, which is
 `https://github.com/<owner>/<repo>/pull/<n>`. Every command runs as the
 principal's own `gh` account.
 
-When `run.watch` has no `head`, the record is from before the key. Take
-`head` from the `Reviewed:` line of the latest `reviews/skeptical-r<n>.md`,
-or the deliverable's `base` when there is none. Write it to `run.watch` before
-the monitor starts, so the first poll prints no `push` for a head the project
-lead already knows.
+When `run.watch` has no `head`, the record is from before the key. The head
+is the `Reviewed:` line of the latest `reviews/skeptical-r<n>.md`, or the
+deliverable's `base` when there is none. `watch-step.py` writes it to
+`run.watch` before the monitor starts, so the first poll prints no `push` for
+a head the project lead already knows.
 
 ## The poll
 
@@ -106,72 +109,83 @@ queued state is what stops a repeat.
 
 ## The first write's cursor
 
-Write `run.watch` first at the first arming, before the monitor starts, with
-`crew-record.py <record-dir> run set watch '<json>'`. It takes `draft` from
-the PR's `isDraft`, `head` from its `headRefOid` and `last_polled_at` from
-the PR's creation time, and starts `seen_ids` and `held` empty. The first
-poll then reports every item that landed before the arming. The marker
-already keeps out your own replies.
+`run.watch` is first written at the first arming, before the monitor starts.
+It takes `draft` from the PR's `isDraft`, `head` from its `headRefOid` and
+`last_polled_at` from the PR's creation time, and starts `seen_ids` and `held`
+empty. The first poll then reports every item that landed before the arming.
+The marker already keeps out your own replies.
 
 On a `run.kind: review` run, `last_polled_at` is the arming time instead, not
 the PR's creation time. Every earlier item is left to the people already in
 that conversation.
 
-```bash
-gh pr view <pr_url> --json isDraft,createdAt,headRefOid -q '"\(.isDraft) \(.createdAt) \(.headRefOid)"'
-```
-
 A resume of a record that has no `run.watch` is the one exception. That
 record is from before the watch, so the principal brought its PR reviews to
-you by hand. Take `last_polled_at` from the clock, and put every review
-comment already on the PR in `seen_ids`:
+you by hand. `last_polled_at` is the clock, and `seen_ids` holds every review
+comment already on the PR.
+
+"Arm the monitor" makes this write. A caller that needs the cursor before the
+monitor runs makes it alone, with no poll and no draft read. Add `--resume` for
+the exception above:
 
 ```bash
-gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments --jq '.[].id'
+python3 <watch-step> cursor <record-dir>
 ```
+
+A record with a cursor is not written again.
 
 ## Arm the monitor
 
 1. Stop the monitor you armed before, with `TaskStop` and the task id its
    `Monitor` call returned. **One monitor at a time**: a second one doubles
-   the wakes. A resumed process holds no monitor from the old one.
-2. When `run.watch` is absent, write it first, as "The first write's cursor"
-   says.
-3. Read `gh pr view <pr_url> --json isDraft -q .isDraft`. When it reads true
-   and `run.watch.draft` is false, run `crew-record.py <record-dir> run set
-   watch.draft true`.
+   the wakes. A resumed process holds no monitor from the old one. Send the
+   `TaskStop` call and the `Monitor` call of step 4 in one response, with
+   `TaskStop` first. At a first arming or a resume, put the login read of
+   `SKILL.md`'s "The go-ahead gate" in that same response. The re-arm after the
+   expiry notice is one `Monitor` call, because the monitor has ended.
+2. The command writes `run.watch` first when it is absent, as "The first
+   write's cursor" says. Add `--resume` on the resume of a record that has no
+   `run.watch`.
+3. The command reads the PR's `isDraft`. When it reads true and
+   `run.watch.draft` is false, it writes `run.watch.draft` true.
 4. Call `Monitor` with "The monitor command" below and `timeout_ms:
    1800000`, so one cache read lands inside the one-hour cache. Pass
    `persistent: false` when the tool offers that key.
-5. When the monitor ends at once with a `pr-watch.sh:` message, the record
-   is not ready. Do what the message says, then arm it again.
+5. When the monitor ends at once with a `watch-step.py:` or a `pr-watch.sh:`
+   message, the record is not ready. Do what the message says, then arm it
+   again.
 
 ## The monitor command
 
-The script with no mode polls every 60 seconds. It stops after a `merged` or
-`closed` line, and on no other.
+`watch-step.py arm` does steps 2 and 3, then runs `pr-watch.sh` with no mode
+in its own process, so the monitor's output is the poll's. The poll runs every
+60 seconds. It stops after a `merged` or `closed` line, and on no other.
 
 ```bash
-bash <watch-script> <record-dir>
+python3 <watch-step> arm <record-dir>
 ```
 
 ## Arm the deploy watch
 
-`SKILL.md`'s "The deploy watch" says when this runs. The script reads
-`run.deploy` from `state.json`. It needs no `run.watch`. It exits 2 with a
-message on stderr when `run.deploy` is absent, or when its `timeout_minutes` is
-not a positive integer. It exits 0 and prints nothing when `run.deploy.ended`
-is set.
+`SKILL.md`'s "The deploy watch" says when this runs and what its flags hold.
+`watch-step.py deploy` writes `run.deploy` when it is absent. When `ended` is
+set, it writes `since` and `ended` only. When `ended` is `null`, it writes
+nothing and ignores its flags. Then it runs `pr-watch.sh <record-dir> deploy`
+in its own process. That script reads `run.deploy` from `state.json`. It needs
+no `run.watch`. It exits 2 with a message on stderr when `run.deploy` is absent,
+or when its `timeout_minutes` is not a positive integer. It exits 0 and prints
+nothing when `run.deploy.ended` is set.
 
-1. Stop the monitor you armed before, with `TaskStop`. **One monitor at a
-   time.**
+1. Stop the monitor you armed before, with `TaskStop`, in the same response
+   as step 2 and before it. **One monitor at a time.**
 2. Call `Monitor` with the command below, `timeout_ms: 1800000` and
    `persistent: false` when the tool offers that key.
-3. When the monitor ends at once with a `pr-watch.sh:` message, the record is
-   not ready. Do what the message says, then arm it again.
+3. When the monitor ends at once with a `watch-step.py:` or a `pr-watch.sh:`
+   message, the record is not ready. Do what the message says, then arm it
+   again.
 
 ```bash
-bash <watch-script> <record-dir> deploy
+python3 <watch-step> deploy <record-dir> --source <name> [--environment <e>] [--workflow <w>] [--timeout <minutes>]
 ```
 
 The script polls every 60 seconds. Each poll reads the PR state, the merge
@@ -311,35 +325,50 @@ status 2. `SKILL.md`'s "Watch the PR" says how the output sorts the item.
 
 ## Post a reply
 
-Write the reply to a file outside the repo first, so a backtick in it reaches
-GitHub intact. Its last line is `<!-- pr-review: <round-id> <item id> -->`,
-with the id of the item it answers.
+`pr-reply.py send` posts every reply of a round in one call. Write the
+replies file outside the repo first, so a backtick in a body reaches GitHub
+intact. A line that starts `=== ` opens a reply. Every line below it, up to
+the next such line, is its body:
 
-A `review-comment` replies in its own thread. GitHub takes a reply only on a
-thread's first comment, so read that comment's id first:
-
-```bash
-gh api repos/<owner>/<repo>/pulls/comments/<id> --jq '.in_reply_to_id // .id'
-gh api -X POST repos/<owner>/<repo>/pulls/<n>/comments/<first comment id>/replies -F body=@<reply file>
+```
+=== <kind> <item-id> [to <comment-id>] [resolve]
+<body>
 ```
 
-A `review`, a `comment` or a `check` gets a PR conversation comment:
+`<kind>` is `review-comment`, `review`, `comment`, `check` or `dequeued`.
+`<item-id>` is the id of the item the reply answers. The script drops the
+blank lines at the end of each body, then adds the marker
+`<!-- pr-review: <round-id> <item-id> -->` as its last line. Write no marker.
+A header it cannot read, a `to` or a `resolve` on a kind other than
+`review-comment`, an empty body and text before the first header end the call
+with exit 2 before any post.
+
+A `review-comment` replies in its own thread, on the thread's first comment,
+which the script reads. `to <comment-id>` names a comment of another thread
+than the item's own: the finding comment of an earlier round, when the item id
+is that finding's id. `resolve` resolves the thread after the reply, also when
+an earlier call posted the reply. Every other kind posts a PR conversation
+comment with `gh pr comment`.
 
 ```bash
-gh pr comment <pr_url> --body-file <reply file>
+python3 <reply-script> send <record-dir> <round-id> <replies-file> [--mark-replied]
 ```
+
+It prints one line per item: `posted <item-id> <reply-id>`, `skipped <item-id>
+<reply-id> already posted`, `resolved <item-id> <thread-id>` or `failed
+<item-id> <step>: <message>`. A failed item does not stop the others, and the
+exit status is then 1. With `--mark-replied` and no failure, it runs `round
+replied <round-id>` and prints `replied <round-id>`.
 
 ## Find the replies a round already posted
 
-Run this before a resumed send. It matches the full marker, and prints the
-item id each reply answers, then the reply's own id. An item whose id it
-prints is not posted again.
+`send` runs this search itself, once, and skips an item that it finds. Only a
+marker from the login of the principal's own `gh` account counts. To read the
+result, for a resumed send or for a round's earlier finding ids, run:
 
 ```bash
-for p in pulls issues; do
-  gh api --paginate "repos/<owner>/<repo>/$p/<n>/comments" --jq '.[]
-    | (.body // "" | gsub("\r"; "") | rtrimstr("\n") | split("\n") | last // "") as $m
-    | select($m | startswith("<!-- pr-review: <round-id> "))
-    | "\($m | ltrimstr("<!-- pr-review: <round-id> ") | rtrimstr(" -->")) \(.id)"'
-done
+python3 <reply-script> posted <record-dir> <round-id>
 ```
+
+It prints the item id each reply answers, then the reply's own id, one reply
+per line.

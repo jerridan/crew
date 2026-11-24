@@ -57,8 +57,8 @@ skeptical review runs on it, as `skeptical-review.md`'s "When the review
 runs" says for a head that moves in the delivered window. **On a goal run, a
 head move after the goal check runs no review.** The same write arms
 nothing and lists the head as `goal-check-done` (`goal-check.md`'s "One
-round"), and no message names it. Then write `run.watch.head` with
-`crew-record.py <record-dir> run set watch.head '"<sha>"'`. A `merged` item
+round"), and no message names it. The `ack` call below then writes
+`run.watch.head`, so run `arm-review` before it. A `merged` item
 in a goal run arms the deploy watch, or is the ship word under `Deploy: none`
 (see "The deploy watch"). In a `run.kind: review` run, `merged` and `closed`
 are the ship word, and `Done: rolled out` changes `merged` (see "The word that
@@ -81,10 +81,19 @@ the dequeue to the principal as a `ci` item, with the output.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
 each key holds. After every wake that reported something, and never before
-your report to the principal lands, write the whole object with
-`crew-record.py <record-dir> run set watch '<json>'`. The reported ids join
-`seen_ids`. `last_polled_at` moves to the newest time among the reported
-`review` and `comment` items. `draft` goes to `false` after a `ready` item.
+your report to the principal lands, pass the wake's lines to
+`python3 <watch-step> ack <record-dir>` (`pr-watch.md` names `<watch-step>`),
+in a quoted heredoc (`<<'EOF'`), so the shell expands no summary text. Pass the
+lines exactly as the monitor printed them. The call writes the whole object.
+The reported ids join `seen_ids`. `last_polled_at` moves to the newest time
+among the reported `review` and `comment` items. `draft` goes to `false` after
+a `ready` item, and `head` moves on a `push` item. The call also writes
+`run.deploy.ended` for a `deploy-failed` or `deploy-timeout` line.
+
+The call goes after the report. Put it in the same response as the report only
+after the `SendMessage` call that carries it: tool calls run in the order sent,
+and the next one starts when the last one returns. Otherwise make it in your
+next call.
 
 **Arm the monitor on every entry into this window**: at the hand-over, on a
 resume, and on every return from `blocked` to `delivered`. Do not arm it when
@@ -116,12 +125,14 @@ on that item. In order:
 
 1. Decide the winning `Deploy` by the one order in "Standing instructions".
    Read the two files again at the paths in `run.standing_instructions`.
-2. Write `run.deploy` with `crew-record.py <record-dir> run set deploy
-   '<json>'`. The object is `{environment, workflow, timeout_minutes, source,
-   since, ended}`. `environment` and `workflow` are `null` when unused, and
-   both are `null` with no `Deploy` section. `source` is the winning source's
-   name, or `default`. `since` is the time now, and `ended` is `null`.
-3. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch".
+2. Pick the flags of `watch-step.py deploy`. `--environment` and `--workflow`
+   are the winning section's values, and neither is set with no `Deploy`
+   section. `--source` is the winning source's name, or `default`. `--timeout`
+   is the section's `timeout_minutes`. The call writes the object that
+   `record-format.md`'s `run.deploy` row names: `since` is the time now, and
+   `ended` is `null`.
+3. Arm the deploy watch by `pr-watch.md`'s "Arm the deploy watch", which makes
+   the `run.deploy` write.
 4. Report the merge to the principal in one sentence that says the deploy
    watch runs. Never say the work shipped.
 5. Write the stage `merged`, as `project-lead`'s
@@ -133,9 +144,10 @@ report the merge, and ask for the ship word.
 
 The watch prints one line and ends: `deployed`, `no-deploy`, `deploy-failed`,
 `deploy-timeout` or `closed`. "The word that the work shipped" says what each
-one does. After you report a `deploy-failed` or `deploy-timeout` line, write
-`run.deploy.ended` as that kind. When the principal asks for the watch again,
-write `since` as the time now and `ended` as `null`, then arm it by step 3.
+one does. After you report a `deploy-failed` or `deploy-timeout` line, the `ack`
+call writes `run.deploy.ended` as that kind. When the principal asks for the
+watch again, arm it by step 3: the call writes `since` as the time now and
+`ended` as `null`.
 The watch touches no `run.watch` cursor. The expiry notice re-arms it by
 step 3, while `ended` is `null`.
 
@@ -353,9 +365,11 @@ cursor write then answers nothing twice.
 
 **Hold a wake's items whose round is open.** When a round of the same kind is
 open, with `replied_at` still `null`, put that wake's items of that kind in
-`run.watch.held`, and tell the principal they are held. When that round's
-reply is sent, the held items become the next round of that kind: run the
-steps below on them, and remove them from `held` once the round is open.
+`run.watch.held`, with `--hold <id>` on the `ack` call, one for each item, and
+tell the principal they are held. When that round's reply is sent, the held
+items become the next round of that kind: run the steps below on them, and
+remove them from `held` once the round is open, with `python3 <watch-step>
+release <record-dir> <id>...`.
 
 In order:
 
@@ -441,24 +455,23 @@ In order:
     `skeptical` round's reply is the file, and a `principal` round's reply
     goes to the principal's channel. **A `pr-comments` or `ci` round posts
     one reply per item on the PR**, after the push, or at once when the
-    round pushed nothing. The item's kind picks the command, and
-    `pr-watch.md` holds each one in full:
-    - a `review-comment` gets a reply in its own thread, posted to the
-      `repos/<owner>/<repo>/pulls/<n>/comments/<id>/replies` endpoint with
-      `gh api -X POST`;
-    - a `review` or a `comment` gets a PR conversation comment from
-      `gh pr comment`, which quotes the item's first line;
-    - a `check` gets a PR conversation comment from `gh pr comment`, which
-      links the failing run's URL.
+    round pushed nothing. Write the round's replies in one replies file, and
+    post them with `pr-reply.py send`. `pr-watch.md`'s "Post a reply" holds the
+    file's shape and the call. The item's kind decides what the reply holds:
+    - a `review-comment` gets a reply in its own thread;
+    - a `review` or a `comment` gets a PR conversation comment, which quotes
+      the item's first line;
+    - a `check` gets a PR conversation comment, which links the failing run's
+      URL.
 
     Post nothing for an item whose ledger line says `no reply`. Each reply
     states that item's ledger line in plain words, with no hard wrap. **Its
     last line is the marker `<!-- pr-review: <round-id> <item id> -->`.** Every
-    comment you
-    post on the PR carries it, whatever the round's kind, because you post
-    from the principal's own account and the poll skips your replies by the
-    marker. On a resume, post no reply for an item whose id `pr-watch.md`'s
-    marker search prints. Then run `round replied <round-id>`. Your next
+    comment you post on the PR carries it, whatever the round's kind, because
+    you post from the principal's own account and the poll skips your replies
+    by the marker. The script adds the marker. On a resume, the script posts no
+    reply for an item whose marker it finds. Pass `--mark-replied`, so the call
+    runs `round replied <round-id>` when no item failed. Your next
     message to the principal names the reply's path, every proposed new goal,
     and an unpublished head if the push was refused. Then open the round the
     held items of this kind make, if any.

@@ -119,6 +119,18 @@ os.execv(real, [real] + sys.argv[1:])
 """)
 
 
+# The stub window-watch.py logs its arguments, prints STUB_WW_OUT, and exits STUB_WW_EXIT.
+WW_STUB = """import json, os, sys
+with open(os.path.join(os.environ["STUB_LOG"], "window-watch.log"), "a") as f:
+    f.write(json.dumps(sys.argv[1:]) + "\\n")
+code = int(os.environ.get("STUB_WW_EXIT", "0"))
+if code:
+    sys.stderr.write("window-watch stub failed\\n")
+    sys.exit(code)
+print(os.environ.get("STUB_WW_OUT", "started pid 4242"))
+"""
+
+
 def make_plugin(name, record_wrapper=False):
     """A fake plugin tree. Return the path of its crew-step.py copy."""
     root = os.path.join(T, name)
@@ -142,6 +154,9 @@ sys.exit(subprocess.call([sys.executable, os.path.join(here, "crew-record-real.p
         shutil.copy(REAL_RECORD, os.path.join(scripts, "crew-record.py"))
     write(os.path.join(scripts, "spend.py"), LOGGER % ("spend", "STUB_SPEND_EXIT", "spend"))
     write(os.path.join(orch, "crew-orch.py"), LOGGER % ("orch", "STUB_ORCH_EXIT", "crew-orch"))
+    window = os.path.join(root, "skills", "delivered-window", "scripts")
+    os.makedirs(window)
+    write(os.path.join(window, "window-watch.py"), WW_STUB)
     return os.path.join(scripts, "crew-step.py")
 
 
@@ -569,9 +584,19 @@ check("R7 clean tree passes, exit 0", rc == 0 and has(out, "ok clean-tree:") and
 check("R7 prints the log and the stat", any("add a" in x for x in section(out, "log"))
       and any("src/a.py" in x for x in section(out, "stat")) and has(out, "ok log:"))
 mk = markers(out)
-check("R14 --- diff is the last marker", bool(mk) and mk[-1] == "--- diff")
-body = out.split("--- diff\n", 1)[1] if "--- diff\n" in out else None
-check("R14 the diff body equals git diff <base>..HEAD", body == g_raw(repo, "diff", base + "..HEAD"))
+want_diff = g_raw(repo, "diff", base + "..HEAD")
+patch = os.path.join(rec, "diffs", "p1-verify.patch")
+check("R14 verify prints no diff body by default", "--- diff" not in mk and "--- diff\n" not in out)
+check("R14 the whole diff is in <record>/diffs/<package>-verify.patch",
+      (raw(patch) or b"").decode() == want_diff and bool(want_diff))
+check("R14 ok diff: line names the patch file and its line count",
+      "ok diff: %s (%d lines)" % (patch, len(want_diff.splitlines())) in lines(out))
+rc2, out2, _ = step("verify", rec, "p1", "--no-suite", "--diff")
+mk2 = markers(out2)
+check("R14 --diff prints --- diff as the last marker", bool(mk2) and mk2[-1] == "--- diff")
+body = out2.split("--- diff\n", 1)[1] if "--- diff\n" in out2 else None
+check("R14 the --diff body equals git diff <base>..HEAD", body == want_diff)
+check("R14 --diff still writes the patch file", (raw(patch) or b"").decode() == want_diff)
 check("R14 state.json and decisions.md are byte-equal after verify",
       raw(os.path.join(rec, "state.json")) == st_before and raw(os.path.join(rec, "decisions.md")) == dec_before)
 check("R9 --no-suite prints ok suite: no suite", "ok suite: no suite" in lines(out))
@@ -693,7 +718,7 @@ write(os.path.join(rec, "worktrees.json"), json.dumps({"ic-alpha-r1": {
     "worktree": icwt, "branch": "crew/%s/alpha" % SLUG, "session_ids": [SESSION], "orphaned": False}}))
 commit(icwt, "src/a.py", "ic work\n", "ic commit")
 commit(repo, "lead.txt", "stray\n", "stray commit on the deliverable branch")
-rc, out, _ = step("verify", rec, "p1", "--ic-branch", "--criterion", "test -f src/a.py", "--no-suite")
+rc, out, _ = step("verify", rec, "p1", "--ic-branch", "--criterion", "test -f src/a.py", "--no-suite", "--diff")
 body = out.split("--- diff\n", 1)[1] if "--- diff\n" in out else None
 check("R12 a worktree on its own branch passes", rc == 0 and has(out, "ok ic-branch:"))
 check("PR1 --ic-branch runs the criterion in the IC worktree", "ok criterion: exit 0" in lines(out))
@@ -751,6 +776,10 @@ check("R15 the stub orchestrator saw both calls",
       ["--orch", "orch-x", "item", "item-3", "pr", PR_URL] in orch
       and ["--orch", "orch-x", "stage", "item-3", "review"] in orch)
 check("R15 the stub spend.py saw --write", [rec, repo, "--write"] in log_calls(d, "spend"))
+check("watch: window-watch.py start <record> --hold ran once, after the PR opened",
+      log_calls(d, "window-watch") == [["start", rec, "--hold"]] and has(out, "ok watch:"))
+check("watch: the step line comes after orch and before the listeners",
+      [x.split(":")[0] for x in lines(out) if x.startswith(("ok orch", "ok watch"))] == ["ok orch", "ok orch", "ok watch"])
 check("R15 prints the listeners evidence", "--- listeners" in markers(out) and has(out, "ok listeners:"))
 check("R18 a clean tree with checkout_branch switches back and writes true",
       g(repo, "branch", "--show-current") == "main" and dl.get("checkout_restored") is True)
@@ -765,6 +794,10 @@ check("PR4 a rerun makes one gh pr create call and one deliver write in all",
       len(creates(d)) == 1 and dl.get("state_changed_at") == changed_at
       and state(rec)["run"].get("review_pending") == pending)
 check("PR4 a rerun runs orch again", len(log_calls(d, "orch")) == 4)
+rc, out, _ = step("hand-over", rec, "deliverable-1", "--body", bodyfile, "--title", "My title", log=d,
+                  STUB_WW_OUT="already running")
+check("watch: a rerun on a live watcher is ok watch: already running, exit 0",
+      rc == 0 and "ok watch: already running" in lines(out) and len(log_calls(d, "window-watch")) == 3)
 
 d, repo, bare, rec, bodyfile = seed_handover("h2", remote=False, orchestrator=False)
 rc, out, _ = step("hand-over", rec, "deliverable-1", "--local", log=d)
@@ -773,6 +806,8 @@ check("R15 --local: exit 0 and work-complete with pr_url null",
       rc == 0 and dl.get("state") == "work-complete" and dl.get("pr_url") is None
       and state(rec)["run"].get("run_state") == "delivered")
 check("R15 --local: no push and no gh call", not has(out, "FAIL push") and log_calls(d, "gh") == [])
+check("watch: --local skips the watch and calls window-watch.py never",
+      "ok watch: skipped, --local" in lines(out) and log_calls(d, "window-watch") == [])
 check("R15 --local: checkout_restored is written", dl.get("checkout_restored") is True)
 
 d, repo, bare, rec, bodyfile = seed_handover("h3", held_ic=True)
@@ -823,6 +858,12 @@ rc, out, _ = step("hand-over", rec, "deliverable-1", "--body", bodyfile, "--titl
 check("PR4 a failed spend.py prints FAIL spend and the sequence goes on",
       rc == 1 and has(out, "FAIL spend:") and wt_json(rec) == {}
       and deliverable(rec).get("checkout_restored") is True)
+
+d9, repo9, bare9, rec9, body9 = seed_handover("h8b", held_ic=True)
+rc, out, _ = step("hand-over", rec9, "deliverable-1", "--body", body9, "--title", "T", log=d9, STUB_WW_EXIT="1")
+check("watch: a failing window-watch.py prints FAIL watch and the cleanup steps still run",
+      rc == 1 and has(out, "FAIL watch:") and log_calls(d9, "spend") != [] and wt_json(rec9) == {}
+      and deliverable(rec9).get("checkout_restored") is True)
 
 d, repo, bare, rec, bodyfile = seed_handover("h9")
 rc, out, _ = step("hand-over", rec, "deliverable-1", "--local", "--body", bodyfile, log=d)
@@ -1024,7 +1065,8 @@ check("R19 no Skill call in the script", bool(text) and "Skill" not in text)
 check("R19 no open() of the body file", bool(text) and not any("open(" in x and "body" in x for x in src_lines))
 write_open = re.compile(r"""open\([^)]*["'][wax]b?\+?["']""")
 writes = [x for x in src_lines if write_open.search(x) or ".write_text(" in x or ".write_bytes(" in x]
-check("R20 every write-mode open() names worktrees", bool(text) and all("worktrees" in x for x in writes))
+# The two files the script writes itself: worktrees.json and the verify patch file.
+check("R20 every write-mode open() names worktrees or the verify patch", bool(text) and all("worktrees" in x or "patch" in x for x in writes))
 check("R20 no state.json line writes the file",
       bool(text) and not any("state.json" in x and (write_open.search(x) or ".write(" in x or "write_json" in x) for x in src_lines))
 base_ref = None
@@ -1033,14 +1075,19 @@ for ref in ("origin/main",):
                       capture_output=True).returncode == 0:
         base_ref = ref
 if base_ref is None:
-    print("skip R20 git diff shows no change to crew-record.py: no origin/main in this checkout")
+    print("skip R20 the command line of crew-record.py is unchanged: no origin/main in this checkout")
 else:
+    # R20 guards the command line that crew-step.py calls. crew-record.py may change inside
+    # (a lock, a new field), but every usage line of the merge base must still be there.
     mb = subprocess.run([REAL_GIT, "-C", HERE, "merge-base", "HEAD", base_ref], env=ENV,
                         capture_output=True, text=True)
-    same = mb.returncode == 0 and subprocess.run(
-        [REAL_GIT, "-C", HERE, "diff", "--quiet", mb.stdout.strip(), "--", "crew-record.py"],
-        env=ENV).returncode == 0
-    check("R20 git diff shows no change to crew-record.py since the merge base with " + base_ref, same)
+    old = subprocess.run([REAL_GIT, "-C", HERE, "show", mb.stdout.strip() + ":./crew-record.py"], env=ENV,
+                         capture_output=True, text=True)
+    usage = re.compile(r"^  crew-record\.py <record-dir> .*$", re.M)
+    old_lines = usage.findall(old.stdout) if old.returncode == 0 else []
+    new_lines = usage.findall((raw(REAL_RECORD) or b"").decode())
+    check("R20 every usage line of crew-record.py at the merge base with " + base_ref + " is still there",
+          bool(old_lines) and all(x in new_lines for x in old_lines))
 
 
 # --- end -------------------------------------------------------------------

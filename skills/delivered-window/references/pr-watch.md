@@ -1,10 +1,13 @@
 # PR watch commands
 
-The exact command lines and arming steps for `SKILL.md`'s "Watch the PR" and
-"Send the reply file". That file owns when each one runs. Two scripts in this
-skill's `scripts/` directory do the mechanical steps: `watch-step.py` for the
-watch and `pr-reply.py` for the replies. `<watch-step>` and `<reply-script>`
-below are their absolute paths, made like `<watch-script>` ("The poll").
+What the watcher runs, and the command lines a window session uses.
+`SKILL.md`'s "What the watcher sends you" owns which events reach a session.
+Three scripts in this skill's `scripts/` directory do the mechanical steps:
+`window-watch.py` starts and ends the watcher, the sessions and the inbox,
+`watch-step.py` writes the cursor and the deploy setup, and `pr-reply.py`
+posts a round's replies. `<window-watch>`, `<watch-step>` and `<reply-script>`
+below are their absolute paths, made like `<watch-script>` ("The poll"). The
+watcher runs the poll and the cursor write. A window session runs neither.
 
 Fill `<owner>`, `<repo>` and `<n>` from the deliverable's `pr_url`, which is
 `https://github.com/<owner>/<repo>/pull/<n>`. Every command runs as the
@@ -12,9 +15,9 @@ principal's own `gh` account.
 
 When `run.watch` has no `head`, the record is from before the key. The head
 is the `Reviewed:` line of the latest `reviews/skeptical-r<n>.md`, or the
-deliverable's `base` when there is none. `watch-step.py` writes it to
-`run.watch` before the monitor starts, so the first poll prints no `push` for
-a head the project lead already knows.
+deliverable's `base` when there is none. `window-watch.py start` writes it to
+`run.watch`, so the first poll prints no `push` for a head the project lead
+already knows.
 
 ## The poll
 
@@ -67,13 +70,13 @@ A `push` line reads the PR's head sha. When it differs from the command's
 author (`-` when that read fails) and the time of the poll, and the command
 sets `head`. A `merged` line carries the PR number as its id, the `mergedAt`
 time and no author. Like `ready`, it never goes into `seen_ids`. It prints
-once, and the monitor command stops its loop on it. The poll prints it last,
+once, and the watcher stops this poll on it. The poll prints it last,
 so the items of that poll are reported first. A `closed` line is the same for
 a PR closed without a merge: the PR number as its id, the time of the poll, no
-author, and the loop stops on it.
+author, and the watcher stops this poll on it.
 
 A `queued` line is for a PR that entered the merge queue: the PR number as
-its id, the `enqueuedAt` time and no author. The loop does not stop on it. It
+its id, the `enqueuedAt` time and no author. The watcher does not stop on it. It
 prints once per entry into the queue. The script starts from
 `run.watch.queued`, and remembers the queued state from poll to poll. So a PR
 already queued at the start prints no second `queued` line.
@@ -107,91 +110,60 @@ queued state is what stops a repeat.
 - A passing or pending check. A `check` is a `fail`-bucket entry of
   `gh pr checks`. Its id holds its start time, so a re-run is new.
 
-## The first write's cursor
+## The first cursor
 
-`run.watch` is first written at the first arming, before the monitor starts.
-It takes `draft` from the PR's `isDraft`, `head` from its `headRefOid` and
-`last_polled_at` from the PR's creation time, and starts `seen_ids` and `held`
-empty. The first poll then reports every item that landed before the arming.
-The marker already keeps out your own replies.
+`window-watch.py start` writes `run.watch` first, from the PR at the time of
+`start`. It takes `draft` from the PR's `isDraft`, `head` from its
+`headRefOid` and `last_polled_at` from the PR's creation time, and starts
+`seen_ids` empty. So the project lead's own last push and ready flip start no
+session. The marker already keeps out your own replies.
 
-On a `run.kind: review` run, `last_polled_at` is the arming time instead, not
-the PR's creation time. Every earlier item is left to the people already in
-that conversation.
+On a `run.kind: review` run, `last_polled_at` is the time of `start`
+instead, not the PR's creation time. Every earlier item is left to the people
+already in that conversation.
 
 A resume of a record that has no `run.watch` is the one exception. That
 record is from before the watch, so the principal brought its PR reviews to
 you by hand. `last_polled_at` is the clock, and `seen_ids` holds every review
-comment already on the PR.
+comment already on the PR. `watch-step.py cursor <record-dir> --resume`
+writes it. A record with a cursor is not written again.
 
-"Arm the monitor" makes this write. A caller that needs the cursor before the
-monitor runs makes it alone, with no poll and no draft read. Add `--resume` for
-the exception above:
+## The cursor write
 
-```bash
-python3 <watch-step> cursor <record-dir>
-```
+The watcher writes the cursor itself with `watch-step.py ack`, after it
+writes a batch of lines to `window/pending.jsonl` and flushes the file. It
+passes every line of the batch, also a `queued` line and a draft change. A
+window session never runs it. The reported ids join `seen_ids`.
+`last_polled_at` moves to the newest time among the reported `review` and
+`comment` items. `draft` goes to `false` after a `ready` line, and `head`
+moves on a `push` line. The call also writes `run.deploy.ended` for a
+`deploy-failed` or `deploy-timeout` line.
 
-A record with a cursor is not written again.
+## The deploy poll
 
-## Arm the monitor
+`SKILL.md`'s "The deploy watch" says when this runs. The watcher runs these
+steps on a `merged` line:
 
-1. Stop the monitor you armed before, with `TaskStop` and the task id its
-   `Monitor` call returned. **One monitor at a time**: a second one doubles
-   the wakes. A resumed process holds no monitor from the old one. Send the
-   `TaskStop` call and the `Monitor` call of step 4 in one response, with
-   `TaskStop` first. At a first arming or a resume, put the login read of
-   `SKILL.md`'s "The go-ahead gate" in that same response. The re-arm after the
-   expiry notice is one `Monitor` call, because the monitor has ended.
-2. The command writes `run.watch` first when it is absent, as "The first
-   write's cursor" says. Add `--resume` on the resume of a record that has no
-   `run.watch`.
-3. The command reads the PR's `isDraft`. When it reads true and
-   `run.watch.draft` is false, it writes `run.watch.draft` true.
-4. Call `Monitor` with "The monitor command" below and `timeout_ms:
-   1800000`, so one cache read lands inside the one-hour cache. Pass
-   `persistent: false` when the tool offers that key.
-5. When the monitor ends at once with a `watch-step.py:` or a `pr-watch.sh:`
-   message, the record is not ready. Do what the message says, then arm it
-   again.
+1. It runs `python3 <watch-step> deploy <record-dir> --setup-only --source
+   <name> [--environment <e>] [--workflow <w>] [--timeout <minutes>]`. The call
+   writes `run.deploy` and returns with exit 0. It runs no poll. `--source` is
+   the winning source's name, or `default`. `--environment` and `--workflow`
+   are the winning section's values, and neither is set with no `Deploy`
+   section. `--timeout` is the section's `timeout_minutes`. `since` is the time
+   now, and `ended` is `null`. When `ended` is set, the call writes `since`
+   and `ended` only. When `ended` is `null`, it writes nothing.
+2. It writes `run.window.merged_seen` with the merge commit sha, so the next
+   poll does not queue the `merged` line again.
+3. It runs `pr-watch.sh <record-dir> deploy` itself, every 60 seconds. That
+   script reads `run.deploy` from `state.json`. It needs no `run.watch`. It
+   exits 2 with a message on stderr when `run.deploy` is absent, or when its
+   `timeout_minutes` is not a positive integer. It exits 0 and prints nothing
+   when `run.deploy.ended` is set.
 
-## The monitor command
-
-`watch-step.py arm` does steps 2 and 3, then runs `pr-watch.sh` with no mode
-in its own process, so the monitor's output is the poll's. The poll runs every
-60 seconds. It stops after a `merged` or `closed` line, and on no other.
-
-```bash
-python3 <watch-step> arm <record-dir>
-```
-
-## Arm the deploy watch
-
-`SKILL.md`'s "The deploy watch" says when this runs and what its flags hold.
-`watch-step.py deploy` writes `run.deploy` when it is absent. When `ended` is
-set, it writes `since` and `ended` only. When `ended` is `null`, it writes
-nothing and ignores its flags. Then it runs `pr-watch.sh <record-dir> deploy`
-in its own process. That script reads `run.deploy` from `state.json`. It needs
-no `run.watch`. It exits 2 with a message on stderr when `run.deploy` is absent,
-or when its `timeout_minutes` is not a positive integer. It exits 0 and prints
-nothing when `run.deploy.ended` is set.
-
-1. Stop the monitor you armed before, with `TaskStop`, in the same response
-   as step 2 and before it. **One monitor at a time.**
-2. Call `Monitor` with the command below, `timeout_ms: 1800000` and
-   `persistent: false` when the tool offers that key.
-3. When the monitor ends at once with a `watch-step.py:` or a `pr-watch.sh:`
-   message, the record is not ready. Do what the message says, then arm it
-   again.
-
-```bash
-python3 <watch-step> deploy <record-dir> --source <name> [--environment <e>] [--workflow <w>] [--timeout <minutes>]
-```
-
-The script polls every 60 seconds. Each poll reads the PR state, the merge
-commit and the merge time with one `gh pr view`. A poll whose read fails uses
-the last good values. A PR that is not merged prints nothing. After the merge
-it reads the deploy signal that `run.deploy` names:
+The deploy poll reads the PR state, the merge commit and the merge time with
+one `gh pr view`. A poll whose read fails uses the last good values. A PR
+that is not merged prints nothing. After the merge it reads the deploy signal
+that `run.deploy` names:
 
 - `environment` set: the newest GitHub deployment of the merge commit to that
   environment, with its newest status.
@@ -236,56 +208,6 @@ The script prints one line and exits. The kinds are:
 that a newer deploy made `inactive` counts as `success` when an earlier status
 was `success`. An empty deploy read costs one quiet poll.
 
-## Arm the keep-alive job
-
-1. Call `CronList`. It lists the jobs this process holds, and a job ends
-   with the process that made it. Delete each job whose prompt starts
-   "Crew keep-alive" with `CronDelete`.
-2. Call `CronCreate` with `recurring: true`, the cron `13,43 * * * *`, and
-   one of these prompts. With a `pr_url`:
-
-   ```
-   Crew keep-alive with a PR watch. Run the fallback poll in pr-watch.md, in one Bash call, and sort what it prints.
-   ```
-
-   With no `pr_url`:
-
-   ```
-   Crew keep-alive. Reply with the single word ok. Run no tool.
-   ```
-
-The job has no end date. It fires until the run ships, until the principal
-stops it, or until Claude Code expires it 7 days after you armed it. The
-re-arm on a new date restarts those 7 days. **One job at a time** is what
-step 1 is for: a second job would double the reads.
-
-## The fallback poll
-
-The script with the mode `once`, in one Bash call per keep-alive fire. It
-polls one time and prints `isDraft=<true|false>` last.
-
-```bash
-bash <watch-script> <record-dir> once
-```
-
-When `run.deploy` is in the record, the fire runs the mode `deploy-once`
-instead. It polls one time and prints a line from "Arm the deploy watch" only
-when one is due, and no draft line. A record with `run.deploy.ended` set prints
-nothing.
-
-```bash
-bash <watch-script> <record-dir> deploy-once
-```
-
-A fire that prints `isDraft=true` while `run.watch.draft` is false runs
-`crew-record.py <record-dir> run set watch.draft true`. The fallback keeps no
-state between fires, so this write is what lets a PR returned to draft fire
-`ready` again. A fire after the merge prints the `merged` line again, a fire
-after a close prints the `closed` line again, and a fire while the PR is in
-the merge queue prints the `queued` line again. Sort each as a notice already
-reported. A fire reads `run.watch.queued` at its start, so it prints
-`dequeued` when that reads `true` and the PR has left the queue.
-
 ## Verify a failed check
 
 The run id is in the check's link, `.../actions/runs/<run-id>/job/<job-id>`.
@@ -296,7 +218,7 @@ gh run view <run-id> --repo <owner>/<repo> --log-failed
 
 ## Diagnose a dequeue
 
-Run this on every `dequeued` line, except on a review run (`run.kind` is
+A window session runs this on every `dequeued` line, except on a review run (`run.kind` is
 `review`). `<dequeue-script>` is `scripts/dequeue-diagnosis.sh` beside
 `<watch-script>`, by its absolute path:
 
@@ -321,7 +243,7 @@ It prints three sections, each under a `==` heading line:
 Then `== mergeable` and the PR's `mergeable` value. A section with nothing
 in it prints `none`. A section whose `gh` read exits non-zero prints
 `read failed: <status>`, with the exit status. A missing argument exits with
-status 2. `SKILL.md`'s "Watch the PR" says how the output sorts the item.
+status 2. `SKILL.md`'s "What the watcher sends you" says how the output sorts the line.
 
 ## Post a reply
 

@@ -151,8 +151,9 @@ no crew run has exercised it (§15.140). Its Herdr support ran only against
 that test and one probe (§15.153).
 
 `crew-step.py` is built: it runs the set-up, the verification of a package,
-the hand-over and the cleanup in one call each (`crew-step.md`). Only its
-seeded test has run it, and no crew run has used it.
+the hand-over and the cleanup in one call each (`crew-step.md`). The run
+that built it used `verify` once, on its own script package. Nothing else
+has run it outside its seeded test (§15.<n>).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

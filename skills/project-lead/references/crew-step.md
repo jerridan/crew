@@ -193,7 +193,7 @@ It runs these steps in order and stops at the first `FAIL`, except `orch`,
 **A failed push or PR.** The script reads `escalations` for the entry with
 trigger text `launch check 3 (trigger 6): no remote`. It prints `FAIL push:
 <git's error>` or `FAIL pr: <gh's error>`, then one line `escalation:
-<its answer>` or `escalation: none`. It runs nothing after that. You act on
+<its answer>`, `escalation: unanswered` or `escalation: none`. It runs nothing after that. You act on
 the answer. A second call after a push that passed and a `gh` failure pushes
 again, which changes nothing, and goes on.
 

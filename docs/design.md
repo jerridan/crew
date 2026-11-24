@@ -10299,6 +10299,7 @@ Deliberately different:
        is an implementer, and the principal's word wins in both directions.
        The test sends code and instruction changes to an implementer, because
        they need a red test or a review, and the light path exists for them.
+       161 widens part 3 to an obvious one-line fix.
        The subagent runs on `sonnet`, not `haiku`, because a Haiku agent's
        Bash, Write and Edit fall back to a prompt (`band-rubric.md`).
      - **The marker is a field, not a stage.** The item field `subagent` is
@@ -10442,3 +10443,23 @@ Deliberately different:
      - **Unexercised.** Only `test-review-run.py` and `test-plan-review.py`
        ran the scripts, with stub `claude`, `codex`, `timeout` and `uuidgen`.
        No crew run has used them.
+
+161. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of
+    the test in `subagent-items.md` kept every change to code, a test, a
+    config or an instruction file with an implementer.
+
+    - **Seen.** The goal check of PR 182 raised this as its finding F1 (§15.157).
+      The project lead declined it as deliberate and quality-first. The
+      principal then said that obvious one-liners also count as subagent
+      items. PR 186, a fix to `crew-usage.py` with a seeded test, already ran
+      this way.
+    - **Decision.** Part 3 now passes an obvious one-line fix of any kind. The
+      file defines "obvious": the ticket names the wrong line, the fix has one
+      reading, and the diff is the one line and at most its test. A fix with
+      two readings, and a change to a rule that other files copy, still go to
+      an implementer. The subagent adds a test that fails first when the repo
+      tests the code, runs the repo's check, and checks an instruction line
+      for a second copy. The orchestrator reads the diff for the one line
+      before the merge. The default and the principal's word are unchanged.
+    - **Unexercised.** No orchestrator run has judged an item by the new
+      part 3.

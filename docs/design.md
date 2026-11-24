@@ -10405,3 +10405,40 @@ Deliberately different:
        it must. It used `hand-over` once: one call, every step `ok`. No
        other crew run has used it, and no run has used `launch-check`,
        `branch` or `cleanup`.
+§15.<n>. **The headless review and the plan review run as scripts —
+     2026-11-24, version <version>.** A project lead ran the headless review of
+     `review-runner.md` in about 12 model calls and the plan review of
+     `plan-review.md` in about 4. Each call was a mechanical step.
+
+     - **Seen.** One round of the default runner took a startup check, a
+       `uuidgen`, a session id write, an instructions file, a run script, the
+       launch, the four checks, a `review_results` write and, on a failure, a
+       fallback report. The plan review took its inputs, one `codex exec`,
+       the parse of its result and the record writes.
+     - **Decision.** `scripts/review-run.py` does the whole round in one
+       background Bash call, and `scripts/plan-review.py` does the plan review
+       in a `run` call and a `decide` call. The project lead still judges a
+       `Cannot verify` line (`review-run.py ... record`), the `quota` reason of
+       a plan review (`plan-review.py ... skip`), the labels, the adjudication
+       and the start word. Each stop that needs the project lead has its own
+       output prefix and exit status. Every record write goes through
+       `crew-record.py` as a subprocess.
+     - **One home for each block.** The reviewer blocks moved out of
+       `review-runner.md` into `references/reviewer-blocks/`, one file each.
+       The script reads them at run time. The review block carries the
+       claim-only framing of a PR author's text, so
+       `skills/review/SKILL.md` no longer states it. `review-run.py
+       --replacement` builds the same files for a replacement runner, so the
+       assembly has one copy.
+     - **Saved attempts.** The script reads the files of a round before it
+       launches. A saved `-result.json` runs through the four checks first, so
+       a session that died after `claude` exited never pays for a second
+       review.
+     - **A rule kept as it was.** The base of a later round compares the
+       merge base with `deliverable.base`, and a resumed round writes the
+       previous head to `deliverable.base`. So a third round of a review run
+       always reads the whole PR. `later-round.md` says the same, and this
+       change does not alter it.
+     - **Unexercised.** Only `test-review-run.py` and `test-plan-review.py`
+       ran the scripts, with stub `claude`, `codex`, `timeout` and `uuidgen`.
+       No crew run has used them.

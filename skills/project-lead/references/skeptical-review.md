@@ -110,10 +110,13 @@ the sha and the report name it expects cannot disagree (`record-format.md`).
    `goal-check.md`'s `--past-cap` command. It is never a follow-up's own
    launch.
 2. **Set `review_rounds` to `review_pending.round`**, by the table below.
+   `review-run.py` does this, and steps 3, 5 and 6, in one call (`review-runner.md`
+   owns the call). It stops before step 5 on a goal run when step 4 is owed.
 3. **Cut or move the deliverable's review worktree** and, on a goal run, run
    the setup command in it (`review-runner.md`).
 4. **On a goal run, write the baseline, before the first round at each
-   `base`.** A review run writes none. Skip
+   `base`.** A review run writes none. The script stops with `BASELINE OWED:`
+   when this step is owed. Run the script again after you write the file. Skip
    this step when `reviews/baseline.md` exists and its first line names the
    deliverable's `base`. A file with another sha there, or with no `Base:`
    line, was measured at an old base: write it again. Move the worktree to
@@ -306,16 +309,18 @@ Arm the watch once too, by that skill's "Watch the PR".
    already have packages, and the adjudication continues from there rather
    than starting over.
 11. **`review_pending` is set, `-result.json` is there, and no passing entry
-   exists.** Run `review-runner.md`'s four checks over that JSON. Passing,
-   write the entry and take entry 10 — applying the result-field fallback
-   first when the report file never landed. Failing, retire the attempt and
-   retry at launch step 2.
+   exists.** Run `review-run.py` (`review-runner.md`'s "A saved attempt"). It
+   runs the four checks over that JSON before it launches anything. Passing, it
+   writes the entry, after the result-field fallback when the report file never
+   landed, and you take entry 10. Failing, it retires the attempt and retries at
+   launch step 2.
 12. **`review_pending` is set, the round's instructions file is there, and
    `-result.json` is not.** The attempt died before its process
-   finished. Retire it and retry at launch step 2.
-13. **`review_pending` is set and nothing for the round is on disk.** Retry at
-   launch step 2 — setting `review_rounds` to the reserved round first when
-   it is behind. **Never launch step 1.** The reservation already exists, and
+   finished. Run `review-run.py`: it retires the attempt and retries at launch
+   step 2.
+13. **`review_pending` is set and nothing for the round is on disk.** Run
+   `review-run.py` (launch step 2). It sets `review_rounds` to the reserved
+   round first when the count is behind. **Never launch step 1.** The reservation already exists, and
    arming again would advance the round, or end a goal run's one round, on a
    head that is already owed a review.
 
@@ -508,9 +513,9 @@ This section is for a review run. `goal-check.md` states the goal check's.
 
 Your two verdict strings are `accepted` and `patch round needed`. The
 verdict is `accepted` exactly when the report holds no `blocking` finding,
-and `patch round needed` exactly when it holds one or more. The block in
-`review-runner.md`'s "Reviewer instructions" is where the reviewer is told
-both, and that rule. `review-output.md` owns the shape of the three closing
+and `patch round needed` exactly when it holds one or more. The blocks in
+`reviewer-blocks/` (`review-runner.md`'s "Reviewer instructions") are where the
+reviewer is told both, and that rule. `review-output.md` owns the shape of the three closing
 lines, and it leaves the strings to each producer.
 
 An accepted verdict stops nothing on a review run.

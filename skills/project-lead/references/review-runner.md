@@ -54,30 +54,45 @@ In this order. Each step prints a line when it fails or falls back.
 1. **It refuses a substituted round.** A `run.substitutions_requested` entry
    for the step stops it (`REFUSED:`). The entry names `goal-check` on a goal
    run and `skeptical-review` on a review run.
-2. **It finds the timeout tool**, `timeout` or else `gtimeout`. `timeout` is
-   GNU coreutils, and on macOS it comes from Homebrew. With neither tool, the
-   script says so in one sentence, and the round runs with no cap.
-3. **It runs the startup check**, `timeout 15 claude --version`, before every
-   round. A fault is a non-zero exit or a timeout. The script retries it three
-   times at one-minute intervals, as `autonomy-contract.md`'s "Retry an
-   environment fault" says, then prints `ESCALATE:`. A round that never
-   launched is no failed review: the script writes no `review_results` entry
-   and no failure decision for it.
-4. **It sets the round.** With `review_rounds` below the reserved round, it
-   sets `review_rounds` to the reserved round. With the two equal, the round
-   is a retry, and it leaves the count alone.
-5. **It cuts or moves the review worktree** (rules below).
-6. **On a goal run, it runs the setup command and checks the baseline**
-   (rules below).
-7. **It resolves the round**: whether a review run resumes, and the base. On
+2. **It finds the timeout tool and runs the startup check**, before every
+   round ("The startup check and the cap").
+3. **It sets the round**, by the table in `skeptical-review.md`'s "When the
+   review runs".
+4. **It cuts or moves the review worktree** ("Never review in the run's own
+   checkout").
+5. **On a goal run, it runs the setup command and checks the baseline**
+   ("Setup and the baseline").
+6. **It resolves the round**: whether a review run resumes, and the base. On
    a review run's later round it also writes the base to the deliverable
-   (rules below).
-8. **It writes the instructions file** (rules below).
-9. **It records the session id**, then writes and runs the run script.
-10. **It runs the four checks and writes the result**, or takes the failure
-    path (rules below).
+   ("Resume the reviewer").
+7. **It writes the instructions file** ("Reviewer instructions").
+8. **It records the session id**, then writes and runs the run script
+   ("Record the review's session id" and "The default command").
+9. **It runs the four checks and writes the result**, or takes the failure
+   path ("Check the review before you read it").
 
-### The worktree
+### The startup check and the cap
+
+**Check that the runner starts, before every round.** `timeout` is GNU
+coreutils. On macOS it comes from Homebrew, as `timeout` or `gtimeout`. The
+script uses whichever it finds, and every `timeout` in this file reads as that
+one. For the default runner, the check is `timeout 15 claude --version`. A
+non-zero exit or a timeout is an environment fault. The script retries it
+three times at one-minute intervals, then prints `ESCALATE:`, as
+`autonomy-contract.md`'s "Retry an environment fault" says. A round that never
+launched is no failed review, so the failure path below does not count it: the
+script writes no `review_results` entry and no failure decision.
+
+**With neither tool**, the script prints one sentence that names the missing
+tool, runs `claude --version` with no cap, and launches the round without the
+`timeout` prefix.
+
+**Every `claude -p` command runs under `timeout <cap>`**, with the cap of its
+run kind. A capped process exits 124, and check 1 takes that to the failure
+path. A replacement runs its own check, as `substitution.md`'s "Running it"
+says.
+
+### Never review in the run's own checkout
 
 **Never review in the run's own checkout.** A probe watched one finder agent
 run `git checkout main` inside the repo under review (design §15.94c). The
@@ -198,7 +213,7 @@ sha than the deliverable's `base`, the script stops before the instructions
 with `BASELINE OWED:`. You write the file, then run the command again. The
 script skips the setup command on that second call.
 
-### The instructions file
+### Reviewer instructions
 
 The script writes `reviews/skeptical-r<n>-instructions.md`. The child process
 reads no file of this plugin, so every part goes in whole, never by name. The
@@ -230,7 +245,7 @@ fills the brackets:
 
 | File | What it is |
 |---|---|
-| `goal-check.md` | the goal-check block. `goal-check.md` (the reference) owns the question it asks |
+| `goal-check.md` | the goal-check block. `references/goal-check.md` owns the question it asks |
 | `review.md` | the review block. `skeptical-review.md` owns its stance |
 | `later-round.md` | the frame of the later-round block |
 | `reading-delta.md`, `reading-whole.md` | the two reading paragraphs. The delta paragraph is for a previous head that is an ancestor of the pending head. The whole paragraph is for a previous head that is not |
@@ -242,7 +257,7 @@ fills the brackets:
 (`substitution.md`). The sentence replaces the block's rule that returns the
 report only when the write is denied.
 
-### The resume of a review run's later round
+### Resume the reviewer
 
 **A goal run resumes no reviewer.** An extra goal check launches as round 1
 does (`goal-check.md`).
@@ -285,7 +300,7 @@ This rule is for a review run's skeptical review alone. A goal check, a spec
 critic, replaced or not, and every in-process critic, start fresh each round
 (design §15.108).
 
-### The session id and the run script
+### Record the review's session id
 
 The script writes the ids before the launch, so a review killed halfway still
 prices into the run. A fresh round gets a new uuid from `uuidgen`, and the
@@ -299,6 +314,8 @@ the entry. `record-format.md` owns both fields. A goal run writes no
 them. **Never put one in `run.session_ids`**: `hooks/session-end.py` marks the
 whole run `interrupted` when an id in that field ends, so a finished review
 would fake a dead run (`record-format.md`, design §15.90h).
+
+### The default command
 
 The script writes the command to `reviews/skeptical-r<n>-run.sh` with every
 value as a literal, then runs it with `bash`. A worktree-isolated session
@@ -369,7 +386,7 @@ show`), and one `Edit` rule for the report.
   the refusal. When the write is refused anyway, the result-field fallback
   below is the documented path.
 
-## The checks and the failure path
+## Check the review before you read it
 
 The script runs four checks on the JSON the process printed and on the record
 directory. All four pass, or the round takes the failure path.
@@ -482,7 +499,7 @@ for a replacement:
 python3 <project-lead-dir>/scripts/review-run.py <record-dir> --replacement <runner name> [--setup "<setup command>"] [--reviewer-paragraph <file>]
 ```
 
-With `--replacement` the script does steps 4 to 8 above and stops. It runs no
+With `--replacement` the script sets the round, cuts the worktree, runs the setup and the baseline check, resolves the round and writes the instructions file. Then it stops. It runs no
 startup check, writes no session id and runs no reviewer. It writes the
 worktree, the instructions file with the replacement sentence added, and, for
 a later round of a review run that resumes, the resume prompt. It prints
@@ -494,10 +511,8 @@ checks 3 and 4 hold word for word. The failure path, the retirement and the
 fallback layout hold for the replacement too.
 
 **The startup check of a replacement.** `substitution.md`'s "Running it" names
-the check, such as `timeout 15 codex --version`. Use the `timeout` or
-`gtimeout` that `command -v` finds, and with neither, run the command with no
-cap. Retry a fault three times at one-minute intervals, then escalate, as
-`autonomy-contract.md`'s "Retry an environment fault" says.
+the check, such as `timeout 15 codex --version`. "The startup check and the
+cap" owns the timeout tool, the retries and the escalation for it.
 
 **The resume of a replacement** keeps the run script of `substitution.md` and
 changes its `codex exec` line:

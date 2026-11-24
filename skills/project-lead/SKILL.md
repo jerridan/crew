@@ -18,7 +18,8 @@ most expensive place to work. You verify each package yourself, and
 ## Where the rules live
 
 Every reference is in `references/`, beside this file, and every script in
-`scripts/` — `crew-record.py`, `spend.py` and `crew-step.py` all. Every path you hand an
+`scripts/` — `crew-record.py`, `spend.py`, `crew-step.py`, `review-run.py`
+and `plan-review.py`. Every path you hand an
 agent is absolute: its cwd is not yours.
 
 | File | What it owns | When you read it |
@@ -31,9 +32,9 @@ agent is absolute: its cwd is not yours.
 | `skills/review/references/severity-rubric.md` | the labels a reviewer proposes, and you give each finding again | inject it whole beside `review-output.md`; read it before you label |
 | `goal-check.md` | the goal check: the one review of the finished diff, its one round, and "Mark the PR ready" | at the hand-over |
 | `skeptical-review.md` | the review rounds every run shares: the arming, the resume list and the ledger | at the hand-over, and on a resume |
-| `review-runner.md` | the mechanics of a headless review: the detached worktree, the instructions file, the runner, the checks and the session id | when `goal-check.md` or `skeptical-review.md` sends you to it |
+| `review-runner.md` | how to run one round of a headless review with `scripts/review-run.py`: its output lines, and the rules it enforces for the worktree, the instructions file, the runner, the checks and the session id | when `goal-check.md` or `skeptical-review.md` sends you to it |
 | `substitution.md` | a review step the principal named another reviewer for | before you dispatch that step |
-| `plan-review.md` | the review of every IC's plan before code: the planning stop, the reviewer run, the skips, the adjudication, the start word and its resume | before the first dispatch of a simple-path or full-path run |
+| `plan-review.md` | the review of every IC's plan before code: the planning stop, the run with `scripts/plan-review.py`, the skips, the adjudication, the start word and its resume | before the first dispatch of a simple-path or full-path run |
 | `writing-standard.md` | any instruction file you draft | before you draft one |
 | `ic-contract.md` | the IC's rules | you do not follow it |
 | `investigation-path.md` | the loop from a symptom to a diagnosis | when the goal names a symptom |

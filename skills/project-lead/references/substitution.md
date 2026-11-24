@@ -15,7 +15,7 @@ Give the replacement what the step's own reviewer would have had:
 | The step | What the replacement gets |
 |---|---|
 | spec critic | the whole body of `agents/spec-critic.md` below its frontmatter, `review-output.md` and `skills/review/references/severity-rubric.md` whole, the standing instructions as `SKILL.md`'s "Standing instructions" says, and the absolute paths of `spec.md` and `charter.md` |
-| goal check, skeptical review | the instructions file `review-runner.md` has you assemble, which already carries `review-output.md`, `severity-rubric.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
+| goal check, skeptical review | the instructions file that `review-run.py --replacement` builds (`review-runner.md`'s "A replacement runner"), which already carries `review-output.md`, `severity-rubric.md` and the standing instructions, plus the branch at `run.review_pending.head` and the base ref |
 
 **The spec critic's whole body, never the seven checks alone.** The scope
 limit, the over-specification checks, the rule against `re-spec needed` for
@@ -26,10 +26,11 @@ a replacement given the checks by themselves loses every one of them.
 that "Read or write the report file" below gives, and tells the replacement
 to write the complete report there and to return it as its output too. For
 the goal check and the skeptical review, it is the sentence in
-`review-runner.md`'s "Reviewer instructions", and the block is otherwise
-unchanged. Write the whole of what
-you assembled to `<record-dir>/reviews/<prefix>-r<n>-instructions.md`, the
-shape `review-runner.md` already defines for its own file.
+`reviewer-blocks/replacement-sentence.md`, and the block is otherwise
+unchanged. The script writes the whole file to
+`<record-dir>/reviews/<prefix>-r<n>-instructions.md`, the shape
+`review-runner.md` defines. For the spec critic, write the whole of what you
+assembled there.
 
 **`<prefix>` is the step's file prefix, and the step name is not always it:**
 
@@ -66,7 +67,7 @@ the retries and the escalation for this check.
 
 Write this script to `<record-dir>/reviews/<prefix>-r<n>-run.sh`, with
 `<dir>` set to `run.repo` for a spec review and to the review worktree
-`review-runner.md` names for a goal check or a skeptical review:
+`review-run.py --replacement` prints for a goal check or a skeptical review:
 
 ```
 cd <dir> || exit 1
@@ -97,7 +98,7 @@ kill "$tail_pid"
 The runner writes its output to `-result.txt` and its progress to
 `-result.stderr`, where it prints its session id. `tail -f` shows the
 progress in a pane. A later round of a review run changes only the `codex
-exec` line, as `review-runner.md`'s "Resume the reviewer" says. **A goal
+exec` line, as `review-runner.md`'s "A replacement runner" says. **A goal
 check runs one round**, so it has no `codex exec resume` line: an extra
 goal check that the principal asks for runs this script as round 1 does.
 

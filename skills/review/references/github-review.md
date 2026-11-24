@@ -114,10 +114,11 @@ the record as a proposed new goal.
 
 ## The reviewer paragraph
 
-On a review run, append this paragraph to the instructions file, after the
-review block `review-runner.md` gives. Replace the line in angle brackets with
-those five paragraphs of `severity-rubric.md`, in that order, copied from the
-file as it stands:
+On a review run, write this paragraph to a file once per run, and pass the file
+to `review-run.py` as `--reviewer-paragraph`. The script appends it to the
+instructions file, after the review block (`review-runner.md`'s "Reviewer
+instructions"). Replace the line in angle brackets with those five paragraphs
+of `severity-rubric.md`, in that order, copied from the file as it stands:
 
 ```
 This change is a colleague's pull request. Read the diff against this

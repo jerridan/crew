@@ -1,0 +1,192 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 183,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Arm the PR watch and send PR replies in one call each",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/183"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "eb295c19f2a3f7af50a8760eabaa0eedaa29ce66",
+    "head": "51b3317258daa9b86464efd942c55815e39270bb",
+    "started_at": "2026-11-24T17:31:02.731Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Arm the PR watch and send PR replies in one call each\n\n## Summary\n\nA crew project lead in the delivered window ran each command of two fixed prose sequences in its own model call, and each call reads the whole context again. Two new scripts now do the mechanical steps in one call each: `watch-step.py` arms the PR watch and the deploy watch and writes the watch cursor, and `pr-reply.py` posts every reply of a round, skips the replies already posted, and resolves review threads. Every check, command and record write stays the same, and every failure prints a message and a non-zero exit. The project lead still writes each reply and the go-ahead gate holds where it held.\n\n**Ticket:** N/A (orchestrator item script-watch, group scripts)\n**Type:** Refactor\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/delivered-window/SKILL.md` owns when each step runs; `skills/delivered-window/references/pr-watch.md` owns the commands; `skills/project-lead/references/record-format.md` owns `run.watch` and `run.deploy` (not changed). The design finding is `docs/design.md` §15.NN (number and version are placeholders for the orchestrator).\n\n### What changed, by file\n\n- `skills/delivered-window/scripts/watch-step.py` (new): `arm`, `cursor`, `deploy`, `ack`, `release`.\n- `skills/delivered-window/scripts/pr-reply.py` (new): `send` (one replies file, marker added, own-login marker search, thread reply, resolve, `--mark-replied`) and `posted`.\n- `skills/delivered-window/scripts/test-watch-step.sh`, `test-pr-reply.sh` (new): seeded tests with a stub `gh` and the real `crew-record.py`.\n- `skills/delivered-window/references/pr-watch.md`: \"Arm the monitor\", \"The first write's cursor\", \"The monitor command\", \"Arm the deploy watch\", \"Post a reply\" and \"Find the replies a round already posted\" give the script calls.\n- `skills/delivered-window/SKILL.md`: the cursor write, the deploy watch steps, `held`, and step 11 point at the scripts. The two \"finish the cleanup\" steps are untouched (another item owns them).\n- `skills/review/references/github-review.md`: \"The resolve command\" is one replies-file entry with `to` and `resolve`.\n- `CLAUDE.md`: names the scripts and their tests, and their build state.\n- `docs/design.md`: finding §15.NN with the call counts before and after.\n\n### Constraints that applied\n\n- No change to `pr-watch.sh`, `crew-record.py`, `record-format.md` or the manifests: `git diff` against the base shows none. Every `state.json` write goes through `crew-record.py`.\n- The orchestrator owns the version bump and the §15 number; both stay placeholders.\n- One copy of each rule: the value rules stay in their owner sections, and the scripts are the mechanism.\n\n### How this was verified\n\n- `bash skills/delivered-window/scripts/test-watch-step.sh`: 79 of 79 checks pass. `test-pr-reply.sh`: 44 of 44. `test-pr-watch-deploy.sh`: 23 of 23.\n- `grep -rn \"run set watch '\" skills/delivered-window` and the grep for the old reply and resolve command copies in `skills/**/*.md` find nothing.\n- The project lead read every prose diff and both scripts.\n\n### Known gaps\n\n- No crew run has used either script; only the seeded tests ran them.\n- The 30-minute expiry wake and the `push` wake for the project lead's own push are not changed.\n\n<details><summary>spec.md</summary>\n\n# Spec: the PR watch and the PR replies in fewer model calls\n\nRepo: /Users/jerridan/src/crew/.claude/worktrees/script-watch (the crew plugin).\n\n## Problem\n\nA project lead in the delivered window follows prose in `skills/delivered-window/references/pr-watch.md` and `skills/delivered-window/SKILL.md` that gives a fixed sequence of commands for two jobs, and it runs each command in its own model call:\n\n1. The watch: arm and re-arm the PR watch (\"Arm the monitor\", \"The first write's cursor\"), the cursor write after a wake (\"Watch the PR\", \"The cursor is `run.watch`\"), `held` (\"Findings from a review\"), and the deploy watch (`SKILL.md` \"The deploy watch\" steps 2 and 3, `pr-watch.md` \"Arm the deploy watch\", the `deploy.ended` write).\n2. The replies: write one reply file per item, find the replies a round already posted, post each reply, then `round replied`; and the resolve of a review thread (`skills/review/references/github-review.md` \"The resolve command\").\n\n## Requirements\n\nR1. **One arm command for the PR watch.** A new script, `skills/delivered-window/scripts/watch-step.py`, has the subcommand `arm <record-dir> [--resume]`. It is the `Monitor` command. Before it starts the poll it does every step that \"Arm the monitor\" steps 2 and 3 and \"The first write's cursor\" and the \"no `head`\" paragraph of `pr-watch.md` now give the project lead, with the same values and the same writes:\n- `run.watch` absent: one `gh pr view` read of `isDraft`, `createdAt`, `headRefOid`; the cursor `{last_polled_at, seen_ids: [], draft, head, held: []}`, with `last_polled_at` the PR creation time, or the current UTC time on a `run.kind: review` run. With `--resume` and no `run.watch` (a record from before the watch), `last_polled_at` is the clock and `seen_ids` holds every review comment id on the PR.\n- `run.watch` with no `head`: the `Reviewed:` sha of the latest `reviews/skeptical-r<n>.md`, else the deliverable's `base`.\n- The PR reads `isDraft` true and `run.watch.draft` is false: write `watch.draft` true.\n- Then it runs `pr-watch.sh <record-dir>` in the same process slot (exec or equivalent), so the monitor's stdout is the poll's stdout, unchanged. On success the steps before the poll print nothing to stdout. Any failed step (a missing record, a failed `gh` read, a failed `crew-record.py` write) prints `watch-step.py: <what failed and what to do>` on stderr and exits 2 before the poll starts, so the monitor ends at once with that message, as a `pr-watch.sh:` message does now.\n\nR2. **One arm command for the deploy watch.** `watch-step.py deploy\n<record-dir> --source <name> [--environment <e>] [--workflow <w>] [--timeout <minutes>]` writes `run.deploy` as `SKILL.md` \"The deploy watch\" step 2 says, only when `run.deploy` is absent: the whole object, `since` the current UTC time, `ended` null, `timeout_minutes` default 180. When `ended` is set (the principal asked for the watch again), it writes `since` (now) and `ended` (null) only. When `ended` is null (an expiry re-arm or a resume), it writes nothing and ignores the flags. These are the three writes `record-format.md`'s `deploy` row permits, and no other. Then it runs `pr-watch.sh <record-dir> deploy`. Failures as in R1.\n\nR3. **One cursor write after a wake.** `watch-step.py ack <record-dir> [--hold <id>...]` reads the wake's lines, exactly as the monitor printed them, on stdin, and makes the cursor write that \"Watch the PR\" now asks for, as one `crew-record.py run set watch '<whole object>'`:\n- `review`, `review-comment`, `comment`, `check`, `push`: the id joins `seen_ids` (no duplicates). The ids of `ready`, `merged`, `queued`, `dequeued` and `closed` never do (`record-format.md`'s `watch` row).\n- `last_polled_at` moves to the newest time among the `review` and `comment` items, never back.\n- `ready`: `draft` false. `push`: `head` is its sha. `queued`: `queued` true. `dequeued`: `queued` false. `merged`, `closed`, `deployed`, `no-deploy`: no cursor change.\n- `deploy-failed`, `deploy-timeout`: a separate write of `run.deploy.ended` to that kind; no `run.watch` write when no line needs one.\n- `--hold <id>`: that item also goes into `held` as `{kind, id, author, at, summary}`, and still joins `seen_ids`.\n- `isDraft=true` (the fallback poll's last line) with `draft` false: `draft` true. `isDraft=false`: no change.\n- An unknown kind or a malformed line: exit 2, write nothing. The project lead passes the lines in a quoted heredoc (`<<'EOF'`), so the shell expands no summary text. `watch-step.py release <record-dir> <id>...` removes those items from `held`. Each writes through `crew-record.py`, never by editing `state.json` itself, and prints one line naming what changed.\n\nR4. **One send command for a round's replies.** A new script, `skills/delivered-window/scripts/pr-reply.py`:\n- `send <record-dir> <round-id> <replies-file> [--mark-replied]`. The file holds every reply of the round, each opened by a header line `=== <kind> <item-id> [to <comment-id>] [resolve]`, the body below it. `<item-id>` goes into the marker. `to <comment-id>` names the comment whose thread takes a `review-comment` reply, when it is not `<item-id>` itself: the resolve of a finding an earlier round posted, whose marker id is a finding id (`github-review.md` \"The resolve command\"). Without `to`, the thread is `<item-id>`'s. The script adds the marker `` as the last line of each body, so the project lead does not write it. It runs the marker search of \"Find the replies a round already posted\" once, and skips an item already posted. It posts a `review-comment` reply in its thread (first comment id, then the `replies` endpoint) and every other kind with `gh pr comment --body-file`. A body reaches GitHub byte for byte: no shell quoting of the body. `resolve` on a `review-comment` resolves its thread after the reply, also when the reply was posted before. It prints one line per item: `posted <item-id> <reply-id>`, `skipped <item-id>\n  <reply-id> already posted`, `resolved <item-id> <thread-id>`, or `failed <item-id> <step>: <message>`. A failed item does not stop the others. Exit 1 when any item failed. With `--mark-replied` and no failure, it runs `crew-record.py round replied <round-id>` and prints `replied <round-id>`.\n- `posted <record-dir> <round-id>` prints the marker search's output as \"Find the replies a round already posted\" does now: `<item-id>\n  <reply-id>` per reply. The PR, owner, repo and number come from the deliverable's `pr_url` in `state.json`. The thread reads that a reply needs, the first comment of a thread and the thread id for a resolve, are inside `send`: they are the \"read the threads\" step of the charter. The sort of an item (whether its thread holds a `pr-review` marker) stays the project lead's.\n\nR5. **Seeded tests.** `skills/delivered-window/scripts/test-watch-step.sh` and `test-pr-reply.sh`, each with a stub `gh` first in `PATH` and a seeded `state.json`, in the style of `test-pr-watch-deploy.sh`. They use the real `crew-record.py` for the writes and a stub poll script in place of `pr-watch.sh` (an environment variable the script reads only for tests may name it). Each requirement R1 to R4 has at least one case, including: the first cursor, the review-run cursor, the `--resume` cursor, the head fallback, the draft write, a failed `gh` read exits 2 with no write, the deploy write and the no-rewrite re-arm, every `ack` kind, `--hold` and `release`, a body with backticks, `$` and quotes arriving intact, the skip of an already-posted item, resolve, a failed post with the others still posted and exit 1, and `--mark-replied`. Each test exits 0 only when every check passes.\n\nR6. **The prose tells the new way, with one copy of each rule.**\n- `pr-watch.md` \"Arm the monitor\", \"The first write's cursor\", \"Arm the deploy watch\", \"Post a reply\" and \"Find the replies a round already posted\" give the script call in place of the command sequence. Keep those section names, and keep \"Arm the monitor\" step 3 as the step that names the draft write, because `record-format.md` cites them. The rules about the values (what the cursor holds, when the draft write runs) stay in the one file that owns them; the script is the mechanism, not a second statement.\n- Arming tells the project lead to send `TaskStop` of the old monitor and the new `Monitor` call in one response, `TaskStop` first; at a first arming or a resume the `gh api user` login read of \"The go-ahead gate\" goes in that same response. The expiry re-arm is one `Monitor` call.\n- \"Arm the monitor\" step 5 and \"Arm the deploy watch\" step 3 name the `watch-step.py:` prefix beside `pr-watch.sh:`.\n- A wake with a `push` head move runs `arm-review` before `ack`.\n- The `ack` call goes after the report: in the same response only after the `SendMessage` call that carries the report (tool calls run in the order sent, and the next starts when the last returns), else in the next call.\n- `SKILL.md` \"Watch the PR\" (the cursor paragraph), \"The deploy watch\" steps 2 and 3 and the `ended` write, \"Findings from a review\" (`held`, step 11) point at the scripts. `skills/review/SKILL.md`'s two citations of \"The first write's cursor\" stay true. The two steps of `SKILL.md` that say \"finish the cleanup `simple-path.md`'s \"End the run\" lists\" belong to another run: do not change them. The cursor write may go in the same response as the report to the principal, after it.\n- `github-review.md` \"The resolve command\" uses `pr-reply.py`.\n- `CLAUDE.md` names the two new scripts and their tests where it names the other delivered-window scripts (the intro paragraph and the layout row).\n- `docs/design.md` §15 gets a new finding, numbered `§15.NN` as a placeholder, that states the change and the call counts.\n- Nothing about the gate changes: the prose still says when a send may run.\n\n## Acceptance criteria\n\n- AC1 (R1–R4): `bash skills/delivered-window/scripts/test-watch-step.sh` and `bash skills/delivered-window/scripts/test-pr-reply.sh` exit 0.\n- AC2 (R5): each test case named in R5 is a check in one of the two tests; `grep` of each test finds a case per R1–R4 subcommand.\n- AC3 (R6): the five `pr-watch.md` sections each give one script call where they gave a command sequence; `grep -rn \"run set watch '\" skills/delivered-window` finds no match; `grep -rnE 'pulls/comments/<id>|/replies -F body|resolveReviewThread|reviewThreads\\(|ltrimstr\\(\"",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/delivered-window/scripts/pr-reply.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-pr-reply.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-watch-step.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/watch-step.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/review/references/github-review.md",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6044225457,
+      "review_url": "https://github.com/jerridan/crew/pull/183#pullrequestreview-6044225457",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138642169173
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 55,
+      "gather": 37,
+      "find_verify": 2,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

@@ -160,7 +160,9 @@ checkout of every check above, the diff and the criterion included. A
 even when the criterion or an earlier step failed. It checks the tree again
 just before the detach, after the criterion and the suite ran at HEAD. A dirty
 tree at that point is `FAIL red: dirty tree before the switch`, and no switch
-happens. In a repo that builds before it tests, put the build in
+happens. A change the criterion makes at the red commit is named in the `red`
+detail and evidence, and the switch back discards it, so it never reaches the
+branch. In a repo that builds before it tests, put the build in
 `--criterion`, so the build runs at the red commit too.
 
 **The diff comes last.** After every step line and every other evidence
@@ -185,7 +187,7 @@ It runs these steps in order and stops at the first `FAIL`, except `orch`,
 | Step | What it does |
 |---|---|
 | `push` | `git push -u <remote> <branch>` in `run.checkout`. The remote is `origin`, or else the only remote. Two remotes and no `origin` is `FAIL push: no origin`. Skipped with `--local`. |
-| `pr` | `gh pr create --draft --title <t> --body-file <file> --head <branch>`. It reads the URL from the output. Skipped with `--local`. |
+| `pr` | `gh pr create --draft --title <t> --body-file <file> --head <branch>`. It reads the URL from the output. An open PR on the branch is reused, with the detail `already open <url>`, so a rerun after a failed `deliver` write opens no second PR. Skipped with `--local`. |
 | `deliver` | `crew-record.py deliver <id> draft-pr-opened --pr-url <url> --review-head <head sha>`, or `work-complete --review-head <head sha>` with `--local`. |
 | `orch` | Runs when `run.orchestrator` is set and a PR opened: `crew-orch.py --orch <name> item <item> pr <url>`, then `stage <item> review`. A failed call prints `FAIL orch: <its error>` and the sequence goes on. |
 | `spend`, `listeners`, `worktree-remove`, `restore` | The `cleanup` steps below. |

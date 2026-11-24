@@ -8,7 +8,8 @@ lead's reports into the record are in
 is `record-format.md`.
 
 An orchestrator is a session that runs many goals, each under its own project
-lead. The record is its one shared state: the items it runs, the groups
+lead or, for a subagent item, under a subagent of the orchestrator. The
+record is its one shared state: the items it runs, the groups
 that merge in order, the questions that wait on the principal, the plan and
 what each implementer was told.
 
@@ -94,6 +95,7 @@ display number `n` is `counters.item` after the add.
 | `merge` | the merge value. Derived |
 | `waits_on` | the item ids this item waits on. Derived |
 | `launch` | the object below. `{}` until set |
+| `subagent` | `null` for an implementer item, or the object below for a subagent item. `item add` writes `null`. An item with no `subagent` key reads as `null` |
 | `told` | a list of `{at, path}`. `path` is `told/<item>-<k>.md` |
 | `created_at` | a time |
 
@@ -129,6 +131,26 @@ alone. No command sets them.
 | `tab` | `iterm2:<session unique id>`, `tmux:<pane id>` or `herdr:<terminal address>` |
 | `tab_group` | a tab group name, or `null` for none |
 | `session_id` | the id of the project lead's conversation, which `launcher.py resume` takes |
+
+`subagent` is the marker of a subagent item: an item that a subagent of the
+orchestrator runs, with no implementer session (`SKILL.md`'s "Subagent
+items"). It holds six keys, each a string or `null`. The orchestrator writes
+them.
+
+| Key | Holds |
+|---|---|
+| `name` | the dispatch name, `sub-<item id>` |
+| `model` | the model of the subagent |
+| `worktree` | the absolute path of its worktree, or `null` for work that changes no repo |
+| `branch` | its branch, or `null` |
+| `outcome` | one line: the result of work with no PR, or `null` |
+| `ready` | the subagent's newest ready line, as it sent it, or `null` |
+
+An item is a subagent item or an implementer item, never both. A write of a
+`subagent` object or key to an item whose `launch` is not `{}` exits 2. A
+write of `launch` or a `launch.<key>` to an item whose `subagent` is not
+`null` exits 2. So an escalation to an implementer writes `subagent` `null`
+before the launch.
 
 ### A group
 
@@ -248,7 +270,9 @@ The text view prints, in this order:
 5. `Done <count>`: the items at `shipped` or `closed` outside an open group.
 
 An item row holds `n`, the id, the five marks, the status word, the PR number,
-`doing` and the age of `doing_at`. A `waits on` value names the items. The text `after <ids>` shows only when
+`doing` and the age of `doing_at`. The text of a subagent item's row starts
+with `subagent`, and its `subagent.outcome`, when set, takes the place of
+`doing`. A `waits on` value names the items. The text `after <ids>` shows only when
 the status word is not the merge value. An age
 is one number and one unit, the largest that is not zero: `40s`, `12m`, `2h`,
 `1d`.
@@ -343,9 +367,10 @@ A row object:
 | `status` | string | the status word |
 | `pr` | object or `null` | `{number, label, url}`; `label` is `#<number>` |
 | `ticket` | object or `null` | the ticket the row shows, `{id, url}`: a single item's own ticket. Always `null` for a grouped item |
-| `text` | string | the row text: `after <ids>`, `shipped`, `doing` |
+| `text` | string | the row text: `subagent`, `after <ids>`, `shipped`, and `doing` or `subagent.outcome` |
 | `age` | string | the age of `doing_at`, or `""` |
 | `launch_tab` | string or `null` | the `launch.tab` handle: what `launcher.py focus` takes. It is not a board value |
+| `subagent` | boolean | `true` for a subagent item |
 
 The compatibility rule: a reader ignores a field it does not know. A new
 field does not change `version`. The removal of a field, or a change in what
@@ -360,8 +385,8 @@ Each line is one command and what it does.
 |---|---|
 | `init` | creates the record. A second `init` of the same name exits 1 and changes nothing |
 | `item add <id> --title <t> --repo <owner/name> [--group <g>] [--ticket <id> --ticket-url <url>]` | adds an item at stage `queued` |
-| `item <id> pr <number\|url>` | sets the PR. A number builds the URL from `repo`. A URL whose repo is not the item's repo exits 2, and the match ignores case. A PR with a new number clears `github` until the next `refresh` |
-| `item <id> set <field> <json>` | sets `title`, `repo`, `ticket`, `group` or `launch`. A dotted key `launch.<key>` merges. Any other field exits 2. A `repo` that differs from the repo of the item's PR URL exits 2, and the match ignores case |
+| `item <id> pr <number\|url\|none>` | sets the PR. A number builds the URL from `repo`. A URL whose repo is not the item's repo exits 2, and the match ignores case. A PR with a new number clears `github` until the next `refresh`. `none` sets `pr` and `github` to `null` |
+| `item <id> set <field> <json>` | sets `title`, `repo`, `ticket`, `group`, `launch` or `subagent`. A dotted key `launch.<key>` or `subagent.<key>` merges. A `subagent` object takes the six keys, and a key it does not give is `null`. Any other field exits 2. A `repo` that differs from the repo of the item's PR URL exits 2, and the match ignores case |
 | `group add <id> --title <t> [--repo <r>] [--ticket <id> --ticket-url <url>]` | adds a group |
 | `group <id> order <item,item,...>` | sets the merge order. Each item must exist and belong to the group |
 | `group <id> owner <thing> <item>` | records the one item that owns a shared file or component |

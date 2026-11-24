@@ -189,7 +189,8 @@ The mode, the slot counts and the limit live in `pace` of the orchestrator
 record (`orchestrator-record.md`). There is no second copy. A level only
 changes what you write there.
 
-- At `slowed`: start no new implementer. Set `slots.max` to 1 with
+- At `slowed`: start no new implementer, and dispatch no new subagent for a
+  subagent item (`SKILL.md`'s "Subagent items"). Set `slots.max` to 1 with
   `crew-orch.py pace set '{"slots": {"max": 1}}'`. Tell each implementer above
   that number to pause: it finishes its current package, commits, and waits
   for the reset. Tell each implementer to defer optional work that starts a
@@ -197,7 +198,7 @@ changes what you write there.
   falls before it. A goal check, a skeptical review round and a push that
   starts a CI run are such work.
 - At `stopped`: tell each implementer to stop. It commits and starts no new
-  step.
+  step. Dispatch no new subagent.
 - At the reset: set the mode to `normal` and restore `slots.max` to the
   concurrency number: 3 by default, or the number that the principal's word or
   the standing instructions set. An implementer that waits resumes by itself.
@@ -210,7 +211,7 @@ waits with `crew-usage.py wait`, which exits 0 once the stored five-hour window
 has reset, or a later window shows in the file. With no figures it exits 1 at
 once.
 
-`slots` counts implementer sessions only. A slot is not a brake on burn. In one
+`slots` counts implementer sessions only. A subagent item takes no slot. A slot is not a brake on burn. In one
 window, a single working implementer moved the five-hour figure from 61% to 82%
 in 19 minutes. A headless review run, a CI review run on the same plan, and the
 implementer's own ICs burn usage outside the slot count. The level is the

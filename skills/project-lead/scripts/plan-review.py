@@ -51,6 +51,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import subprocess
 import sys
@@ -220,7 +221,8 @@ CD_FAILED = "crew: cd to the checkout failed"
 
 def write_script(rv, checkout):
     wall, poll = rv.args.wall_clock, rv.args.poll
-    text = f'''r={rv.r}
+    r, checkout = shlex.quote(str(rv.r)), shlex.quote(str(checkout))
+    text = f'''r={r}
 : > "$r-result.txt"; : > "$r-result.stderr"; rm -f "$r-result.exit"
 cd {checkout} || {{ echo "{CD_FAILED}" > "$r-result.stderr"; echo 1 > "$r-result.exit"; exit 1; }}
 codex exec --sandbox read-only -m gpt-6.2-sol -c model_reasoning_effort=medium -C {checkout} - < "$r-instructions.md" > "$r-result.txt" 2> "$r-result.stderr" &

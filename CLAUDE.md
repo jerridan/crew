@@ -15,6 +15,9 @@ seeded record (design §15.38, §15.50, §15.123, §15.124).
 deploy signal of `pr-watch.sh`. `skills/delivered-window/scripts/watch-step.py`
 and `pr-reply.py` are code too, and `test-watch-step.sh` and
 `test-pr-reply.sh` test them with a stub `gh` (design §15.158).
+`skills/delivered-window/scripts/window-watch.py` is code too, and
+`test-window-watch.sh` tests it with a stub `gh`, a stub launcher, a stub
+poll and the real `crew-record.py`.
 `skills/orchestrator/scripts/launcher.py` and `iterm2-tabs.py` are code too,
 and `test-launcher.sh` tests them with stub commands.
 `skills/orchestrator/scripts/crew-usage.py` is code too, and
@@ -38,12 +41,13 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `.claude-plugin/marketplace.json` | marketplace entry | `/plugin marketplace add` |
 | `agents/*.md` | definitions for dispatched agents | the dispatcher, at spawn time |
 | `skills/project-lead/SKILL.md` | the `/crew:project-lead` entry point — the goal, the scouting, the size, the spec and the shape, which review step the principal replaced, then a route to one path file | its skill trigger |
-| `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md` | `crew:delivered-window`, the session after the hand-over, and the `gh` and `Monitor` command lines of its PR watch | the project lead, at the hand-over and on a resume of a delivered run |
-| `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | the project lead's `Monitor` call and keep-alive fire, from the plugin directory; the project lead, on a `dequeued` line |
+| `skills/delivered-window/SKILL.md`, `skills/delivered-window/references/pr-watch.md`, `skills/delivered-window/references/patch-mode.md` | `crew:delivered-window`, the window session that the watcher starts for each burst of events after the hand-over, and the project lead's hand-over; the poll and the cursor of the watcher; the patch rounds of a review's findings | a window session, from its first prompt; the project lead, at the hand-over; a resume of a delivered run |
+| `skills/delivered-window/scripts/window-watch.py`, `skills/delivered-window/scripts/test-window-watch.sh` | the watcher with no model: one detached process per delivered run that polls the PR and the deploy, queues events, and starts one window session per burst through `launcher.py window`; its inbox (`say`), the session slot (`claim`, `next`, `done`) and `ensure`; the seeded test | `crew-step.py hand-over`, a window session, a review run, a resume and the orchestrator, from Bash; a person runs the test |
+| `skills/delivered-window/scripts/pr-watch.sh`, `skills/delivered-window/scripts/dequeue-diagnosis.sh` | the PR watch poll: reads the PR and the cursor from `state.json`, and prints one line per new item; the diagnosis of a PR that left the merge queue | `window-watch.py`, on each poll; a window session, on a `dequeued` line |
 | `skills/delivered-window/scripts/test-pr-watch-deploy.sh` | the seeded test of the default deploy signal of `pr-watch.sh`, with a stub `gh` | a person |
-| `skills/delivered-window/scripts/watch-step.py`, `skills/delivered-window/scripts/pr-reply.py` | the mechanical steps of the PR watch (arm, the first cursor, the deploy watch, the cursor write after a wake, the release of held items) and of a round's PR replies (send, find the posted ones, resolve a thread), each in one call | the project lead's `Monitor` call and Bash calls, from the plugin directory |
+| `skills/delivered-window/scripts/watch-step.py`, `skills/delivered-window/scripts/pr-reply.py` | the mechanical steps of the PR watch (the first cursor, the deploy set-up, the cursor write after a poll, the release of held items) and of a round's PR replies (send, find the posted ones, resolve a thread), each in one call | `window-watch.py`; a window session's Bash calls, from the plugin directory |
 | `skills/delivered-window/scripts/test-watch-step.sh`, `skills/delivered-window/scripts/test-pr-reply.sh` | the seeded tests of those two scripts, with a stub `gh` and the real `crew-record.py` | a person |
-| `skills/orchestrator/scripts/launcher.py`, `skills/orchestrator/scripts/iterm2-tabs.py` | the orchestrator launcher: starts, resumes, finds, lists, focuses and stops implementer sessions in iTerm2 tabs, tmux windows or Herdr tabs, and removes their worktrees; its iTerm2 Python API helper. `skills/orchestrator/references/launcher.md` owns its interface | the orchestrator session, from Bash |
+| `skills/orchestrator/scripts/launcher.py`, `skills/orchestrator/scripts/iterm2-tabs.py` | the orchestrator launcher: starts, resumes, finds, lists, focuses and stops implementer sessions and window sessions in iTerm2 tabs, tmux windows or Herdr tabs, and removes their worktrees; its iTerm2 Python API helper. `skills/orchestrator/references/launcher.md` owns its interface | the orchestrator session and `window-watch.py`, from Bash |
 | `skills/orchestrator/scripts/test-launcher.sh` | the seeded test of `launcher.py`, with stub `tmux`, `osascript`, `uv`, `herdr-app`, `hc`, `claude`, `ps` and `lsof` | a person |
 | `skills/review/SKILL.md` | the `/crew:review` entry point: take a colleague's PR, review it, post, then the delivered window | its skill trigger |
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
@@ -60,7 +64,7 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/orchestrator/references/subagent-items.md` | the subagent item: the test that makes an item one, its record, its dispatch, its PR window, its escalation to an implementer and its close | the orchestrator session |
 | `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
 | `skills/orchestrator/scripts/crew-orch.py`, `skills/orchestrator/scripts/test-crew-orch.sh` | the only writer of the orchestrator record, and its board; the seeded test, with a stub `gh` | an orchestrator and a project lead it started, from Bash; a person runs the test |
-| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
+| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted, except a delivered run, which the watcher keeps; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
 | `hooks/orch-board.tsx`, `types/index.d.ts` | the board pane mod: `/orch-board` draws `crew-orch.py board --json` in a pane, and a row number brings that implementer's tab to the front; the mod's `$.state` contract, named in `plugin.json` `types` | the plugin loader, from `modules` in `hooks/hooks.json` |
 | `tests/orch-board.test.tsx`, `tests/fixtures/` | the mod's tests, with a stub board command and a stub launcher; the board fixtures, which `test-crew-orch.sh` writes and checks | `claude plugin test`, run by a person |
 | `docs/design.md` | the living spec | a person |
@@ -146,8 +150,15 @@ successful deploy of the merge commit is the ship word. A repo with
 rule ships 2 minutes after it (§15.137). The watch ran only against a seeded record, and no crew
 run has used it (§15.127).
 
-The watch and reply scripts are built: `watch-step.py` arms the PR watch
-and the deploy watch and writes the cursor, and `pr-reply.py` posts a round's
+The window sessions are built: the project lead ends at the hand-over, a
+watcher with no model (`window-watch.py`) watches the PR, CI and the deploy,
+and a small window session starts from the record for each burst of events
+(§15.<TBD>). They replace the `Monitor` watch, its re-arm and the cron
+fallback of T72 and T70. Only the seeded tests have run them, and no crew run
+has used them.
+
+The watch and reply scripts are built: `watch-step.py` writes the first
+cursor, sets up the deploy and writes the cursor for the watcher, and `pr-reply.py` posts a round's
 replies and resolves their threads, each in one call (§15.158). Only their
 seeded tests have run them, and no crew run has used them.
 

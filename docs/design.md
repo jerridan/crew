@@ -10493,3 +10493,57 @@ Deliberately different:
       that time, and not longer.
     - **Unexercised.** Only `test-crew-usage.py` ran the change, with a stub
       `claude`. No live reading ran it.
+
+<TBD>. **After the hand-over, no large session waits — 2026-11-24,
+    `crew:delivered-window`, `window-watch.py`.** A study of three weeks of
+    transcripts found that the delivered window was 64% of a project lead's
+    cost. The project lead entered it with its whole build context, 209K
+    tokens at the median, and made about 87 calls there, each of which read
+    that context again. 77 wakes after more than 1 hour wrote the whole
+    context to the cache again, up to 960K tokens. The `Monitor` watch
+    expired every 30 minutes, and 206 wakes in the sample only armed it
+    again.
+    - **Decision.** The project lead ends at the hand-over. `crew-step.py
+      hand-over` starts a watcher with no model, `window-watch.py`, held. The
+      project lead runs the goal check, marks the PR ready, writes
+      `handover.md` and runs `window-watch.py release` as its last call. The
+      watcher polls with `pr-watch.sh` every 60 seconds and has no expiry.
+      For a burst of events that needs a model, it waits for 120 seconds with
+      no new event, at most 600 seconds, then starts one window session
+      through `launcher.py window`. That session reads the record, handles
+      the burst, takes the late events with `next`, writes the record and
+      ends with `done`. The watcher then closes its tab.
+    - **No session.** A push or a ready flip that the run recorded in
+      `run.window.own`, a `queued` line, a passing check, a comment by the
+      run's own login and the heartbeat start no session. The watcher has no
+      expiry, so no expiry event exists.
+    - **The record.** `handover.md` holds one heading for each of the nine
+      facts that a probe found only in the conversation in 8 of 16 window
+      events. `window/` holds the queue, the inbox and the log. The watcher
+      writes its heartbeat in `window/watcher.json` and never in
+      `state.json`, and `crew-record.py` now locks each write, because the
+      watcher and a session write the same record.
+    - **The words of the orchestrator and of a person** go to the inbox with
+      `window-watch.py say`. A `SendMessage` to the old project-lead session
+      would wake the build context.
+    - **The claude rule** holds: the watcher starts a session only through
+      the launcher.
+    - **The go-ahead gate.** A window session asks, writes
+      `run.window.awaiting` and ends. The answer by `say` starts the next
+      session, so no session stays alive to wait.
+    - **`crew-step.py verify`** printed the whole package diff after its step
+      lines, about 1,200 lines for one prose package of this run. It now
+      writes the diff to `diffs/<package-id>-verify.patch` and prints the
+      path, and `--diff` prints it in full.
+    - **Size.** The seeded test measures the first prompt and every record
+      file that it names: 5,071 bytes. An estimate from the file sizes, at
+      about 3.6 bytes a token over a base of 58K: a notice session starts at
+      about 72K tokens and makes about 10 calls; a patch round with an IC
+      reaches about 110K to 120K and makes about 30 to 40 calls. Before:
+      209K at the start and about 87 calls.
+    - **Out of scope.** A wait before the hand-over, a usage-limit pause or a
+      question to the principal, still wakes the build context. It is a
+      second item.
+    - **Unexercised.** Only the seeded tests ran the watcher, the launcher's
+      `window` and the `watch` step. No crew run has used a window session,
+      and no real session measured the token figure.

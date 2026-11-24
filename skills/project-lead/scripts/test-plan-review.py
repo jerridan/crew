@@ -68,6 +68,9 @@ if mode == "quota":
     sys.stderr.write("You have hit your usage limit.\n")
     sys.exit(1)
 sys.stderr.write("tokens used\n1,234\n")
+if mode == "noheader":
+    sys.stdout.write("preface\nno header here\nFindings: 0\nVerdict: plans sound\nBlocking count: 0\n")
+    sys.exit(0)
 if mode == "noverdict":
     sys.stdout.write("preface\nPlans reviewed: 1\nSource: nothing\nno verdict here\n")
     sys.exit(0)
@@ -75,6 +78,13 @@ sys.stdout.write("preface line\nsecond preface\nPlans reviewed: 2\n\n### F1. A\n
                  "Findings: 1 blocking\nVerdict: plan revision needed\nBlocking count: 1\n")
 ''' % sys.executable
 write_exec(os.path.join(STUBS, "codex"), CODEX)
+NOTOOL = os.path.join(T, "notool")
+os.makedirs(NOTOOL)
+for name in ("sh", "date", "sleep", "rm", "pkill", "pgrep", "kill", "cat", "env"):
+    found = shutil.which(name)
+    if found:
+        os.symlink(found, os.path.join(NOTOOL, name))
+os.symlink(os.path.join(STUBS, "codex"), os.path.join(NOTOOL, "codex"))
 EMPTY = os.path.join(T, "empty")
 os.makedirs(EMPTY)
 
@@ -91,12 +101,12 @@ def planning_obj():
             "accepted": 0, "recommendations": 0, "tokens": None}
 
 
-def seed(status="planning", plans=("p1", "p2"), pr=None):
+def seed(status="planning", plans=("p1", "p2"), pr=None, space=False):
     COUNTER[0] += 1
     c = Ctx()
-    c.dir = os.path.join(T, "case%d" % COUNTER[0])
+    c.dir = os.path.join(T, ("case %d sp ace" if space else "case%d") % COUNTER[0])
     c.rec = os.path.join(c.dir, "rec")
-    c.checkout = os.path.join(c.dir, "checkout")
+    c.checkout = os.path.join(c.dir, "check out" if space else "checkout")
     c.stub = os.path.join(c.dir, "stub")
     os.makedirs(os.path.join(c.rec, "reviews"))
     os.makedirs(os.path.join(c.rec, "plans"))
@@ -213,6 +223,33 @@ check("ran: the run script has the codex command, the checkout and the 600-secon
 check("ran: the exit file reads 0 and codex ran in the checkout", (rv(c, "plan-review-r1-result.exit") or "").strip() == "0"
       and json.loads(open(c.stub + ".log").readline())["cwd"].endswith("checkout"))
 
+# a checkout and a record path that hold a space
+c = seed(space=True)
+rc = go(c, "run", *PLANS)
+check("a checkout and a record path with a space: the run script quotes both and codex runs in the checkout",
+      rc == 0 and "status: RAN" in c.out and launches(c) == 1
+      and json.loads(open(c.stub + ".log").readline())["cwd"].endswith("check out")
+      and (rv(c, "plan-review-r1-result.exit") or "").strip() == "0")
+
+# the skip checks with no timeout tool
+c = seed()
+rc = go(c, "run", *PLANS, path=NOTOOL)
+check("no timeout tool: the login check runs bare and the review runs",
+      rc == 0 and "status: RAN" in c.out and not os.path.exists(c.stub + ".timeout"))
+c = seed()
+rc = go(c, "run", *PLANS, path=NOTOOL, not_logged=True)
+check("no timeout tool: a failed login check still skips as not logged in",
+      rc == 20 and pr_of(c)["reason"] == "not logged in" and launches(c) == 0)
+
+# a result with no Plans reviewed line
+c = seed()
+rc = go(c, "run", *PLANS, mode="noheader")
+rep = rv(c, "plan-review-r1.md") or ""
+check("no Plans reviewed line: a notice, and the whole text is the report under an unknown header",
+      rc == 0 and "notice: result.txt has no `Plans reviewed:` line" in c.out
+      and rep.startswith("Plans reviewed: unknown\nSource: codex output\npreface\nno header here\n")
+      and rep.rstrip().endswith("Blocking count: 0"))
+
 # ---- the other ends of a run ------------------------------------------------
 
 c = seed()
@@ -328,6 +365,17 @@ proc.wait()
 check("resume: a live run script is waited for, and no second launch happens",
       rc == 0 and launches(c) == 0 and time.time() - t0 >= 1.0
       and (rv(c, "plan-review-r1.md") or "").startswith("Plans reviewed: 1\nSource: codex output\n"))
+
+c = seed(status="reviewing", pr=dict(reviewing))
+live = os.path.join(c.rec, "reviews", "plan-review-r1-run.sh")
+open(live, "w").write("sleep 20\n")
+proc = subprocess.Popen(["sh", live])
+rc = go(c, "run", *PLANS, "--wall-clock=-60")
+proc.kill()
+proc.wait()
+check("resume: a live run script that leaves no exit file is skipped with reason timeout, with no launch",
+      rc == 20 and launches(c) == 0 and pr_of(c)["reason"] == "timeout" and pr_of(c)["outcome"] == "skipped"
+      and "skipped: timeout" in decisions(c) and "no exit file" in decisions(c))
 
 # ---- planning, off, started -------------------------------------------------
 

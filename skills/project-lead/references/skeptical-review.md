@@ -42,7 +42,7 @@ these.
 | the branch and its pending head | the deliverable's `branch`, at `run.review_pending.head` |
 | the base ref | the deliverable's `base` |
 | the output path | `<record-dir>/reviews/skeptical-r<n>.md` |
-| the instructions file | `<record-dir>/reviews/skeptical-r<n>-instructions.md`, which you assemble before you launch |
+| the instructions file | `<record-dir>/reviews/skeptical-r<n>-instructions.md`, which `review-run.py` assembles before it launches |
 
 **Send the goal, not the criterion.** A criterion is a test the goal has to
 pass, and a diff can pass every one of them and still miss what the principal

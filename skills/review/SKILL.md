@@ -36,7 +36,7 @@ every file by its absolute path, and give every agent absolute paths.
 | `later-round.md` | a later round's head and base, which `review-run.py` finds | at "Review", from round 2 |
 | `review-runner.md` | how to run `review-run.py`, and the rules it enforces | at "Review" |
 | `substitution.md` | a review the principal named another reviewer for | at "Review", when `run.substitutions_requested` names one |
-| `review-output.md` | the shape the reviewer reports in | inject it whole into the instructions file |
+| `review-output.md` | the shape the reviewer reports in | `review-run.py` injects it whole into the instructions file |
 | `skeptical-review.md` | when the review runs, the ledger, and the resume list | at "Review" and "Adjudicate", and on a resume |
 | `record-format.md` | every record file and field | before you create the record |
 | `autonomy-contract.md` | escalation, and who the principal is | before your first question |

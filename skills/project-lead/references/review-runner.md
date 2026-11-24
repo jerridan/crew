@@ -107,11 +107,13 @@ working tree stays out of its reach.
   record with no `run.worktree_base` uses `<record-dir>` as the base
   (`record-format.md`).
 - **A review run**: `run.checkout`, which is
-  `<run.repo>/.claude/worktrees/crew-pr-<n>` with `<n>` the PR number. The
-  script runs `git worktree list --porcelain` before the cut. When it lists
-  the path and this record did not cut it, another run reviews this PR in this
-  checkout. The script prints `ESCALATE:` with the path. It cuts nothing and
-  removes nothing. A review run runs no `checkout`, `switch`, `reset` or
+  `<run.repo>/.claude/worktrees/crew-pr-<n>` with `<n>` the PR number.
+  `/crew:review` records the path in `run.checkout` and checks that
+  `git worktree list --porcelain` does not list it, but cuts no tree. The
+  script cuts the tree in round 1. It runs `git worktree list --porcelain`
+  before the cut. When it lists the path and this record did not cut it,
+  another run reviews this PR in this checkout. The script prints `ESCALATE:`
+  with the path. It cuts nothing and removes nothing. A review run runs no `checkout`, `switch`, `reset` or
   `clean` in the main working tree.
 - **The ignore check.** Before the first cut under
   `<checkout>/.claude/worktrees/`, the script runs `git check-ignore -q

@@ -10398,6 +10398,8 @@ Deliberately different:
        reading) and 2 for the hand-over (the body file, then `hand-over`). The
        figures come from the calls the new prose requires. No run has
        measured them.
-     - **Unexercised.** Only `test-crew-step.py` ran the script, with a seeded
+     - **Exercised.** `test-crew-step.py` ran the script, with a seeded
        repo, a bare remote and stub `gh`, `spend.py` and `crew-orch.py`
-       commands. No crew run has used it.
+       commands, and the run that built it used `verify` once, on its own
+       script package: one call, every step `ok`, the red commit failing as
+       it must. No other crew run has used it.

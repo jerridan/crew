@@ -11,11 +11,13 @@ piece itself, integrates the work and hands it over as a PR. Only then is
 the whole diff checked, once. A separate session reads it against your goal
 and asks one question: does it do what you asked? A goal miss comes back as a
 patch on the same PR. When that check is done, the PR leaves draft. Merge it
-when you are ready, or tell the project lead to merge it. The project lead
-stays until its work ships, so you can ask it about the change before the
-merge, or ask for a change to the PR after. The work ships when its deploy
-succeeds, or soon after the merge when the repo has no deploy.
-It watches the PR and CI the whole time. It assesses each comment and failed
+when you are ready, or tell crew to merge it. The project lead ends at the
+hand-over. A watcher with no model then watches the PR, CI and the deploy
+until the work ships. When something lands that needs a model, the watcher
+opens a small window session in a new tab. That session reads the run's
+record, handles what landed, and closes. You can ask about the change before
+the merge, or ask for a change to the PR after. The work ships when its
+deploy succeeds, or soon after the merge when the repo has no deploy. It assesses each comment and failed
 check that lands, and fixes what it accepts on the branch at once. It tells
 you what it fixed or declined and why. When another person commented, it
 waits for your go-ahead before it pushes or replies on the PR. A comment from
@@ -126,10 +128,18 @@ The run sizes the work itself and picks a path:
 The result is a branch named `crew/<goal-slug>/<deliverable-id>` and a
 draft PR from it. The PR leaves draft when crew's goal check of it is done,
 so your automated reviewers start after that. To keep it a draft, say so in
-the goal. The run restores your checkout to the branch it started on, and the
-session stays. In that session you can ask about the change, or ask for a
-change to the same PR. You do not paste review findings: the project lead
-finds each review, comment and failed CI check on the PR itself. It verifies
+the goal. The run restores your checkout to the branch it started on, starts the
+watcher, and ends its turn. The project lead prints a command for you to
+send words to the run after that, such as a question or a change to the same
+PR:
+
+```
+! python3 <plugin-dir>/skills/delivered-window/scripts/window-watch.py say <record-dir> --from person "<your words>"
+```
+
+The watcher opens a window session for your words. You do not paste review
+findings: a window session finds each review, comment and failed CI check on
+the PR itself. It verifies
 each one, and fixes what it accepts on the branch. Then it tells you what it
 fixed or declined, and why. When another person commented, it waits for your
 go-ahead, then pushes and replies to each one on the PR. A comment from a
@@ -144,9 +154,10 @@ workflow file. One with such a workflow but no run closes 10 minutes after the
 merge. `Deploy: none` closes at the merge. If the deploy fails or
 does not finish in time,
 crew tells you, and the run stays open until you say the work shipped. With
-`Deploy: manual`, the run also waits for your word. Closing the
-session instead leaves the run recorded as interrupted, which is fine for a
-run you merged yourself.
+`Deploy: manual`, the run also waits for your word. You can close the project
+lead's tab at any time after the hand-over: the watcher goes on. After a
+restart of the machine, `/crew:project-lead --resume <goal-slug>` starts the
+watcher again.
 
 To let the run push and reply on the PR with no go-ahead, say so in the goal,
 or put this line in your charter file:
@@ -160,8 +171,10 @@ Then nothing waits for your go-ahead, from the PR or from you.
 A question comes to you in the same session. The triggers are fixed: no
 testable acceptance criterion, a preference the repo cannot settle, a council
 that cannot decide, an action outside the deliverable branch, a fix loop that
-ran out, and the go-ahead before a push or a reply on the PR. Answer in the
-session and the run continues.
+ran out, and the go-ahead before a push or a reply on the PR. Before the
+hand-over, answer in the session and the run continues. After it, a window
+session asks in its tab, prints the `say` command, and closes. Answer with
+that command, and the watcher opens the next window session.
 
 ### Review a colleague's PR
 
@@ -509,7 +522,7 @@ assigned position, so the project lead weighs arguments instead of counting
 votes. A question about what you want is never debated. It comes to you.
 
 The PR is the end of the work. Crew merges only when you tell it to. The
-project lead stays until you say the work shipped.
+watcher and its window sessions stay until the work shipped.
 
 A review run takes these steps:
 
@@ -563,6 +576,8 @@ to see every judgment call with its citation.
 ├── split.md        packages, interfaces and bands
 ├── state.json      package states, band history, spend, escalations
 ├── decisions.md    every judgment call, with its citation
+├── handover.md     what a window session must know that no other file holds
+├── window/         the watcher's log, its queue of events and its inbox
 ├── reports/        one report per package
 ├── plans/          one plan per package
 ├── reviews/        every critic and reviewer output, and the reply to each
@@ -595,7 +610,8 @@ review kind, over every record.
 
 | Role | What it does |
 |---|---|
-| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays until the work ships: it watches the PR and CI, fixes what lands, and waits for your go-ahead before it answers another person's comment or a finding you sent. It answers your questions and takes your changes too. |
+| Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR, runs the goal check and hands over to the watcher. |
+| Window session | Starts from the run's record when the watcher sees an event that needs a model: a review, a comment, a failed check, the merge, the deploy or your words. It fixes what lands, waits for your go-ahead before it answers another person's comment or a finding you sent, answers your questions, writes the record and closes. |
 | Orchestrator | Runs many goals from one session: splits the work, starts a project lead per item in its own tab, or a subagent for a small item, answers their questions, keeps an inbox of what needs you, and merges in order. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |

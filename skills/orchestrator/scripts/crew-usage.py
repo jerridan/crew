@@ -48,6 +48,7 @@ MARGIN = 15  # points below the limit where `slowed` starts
 FORECAST_MIN = 600  # seconds between first and newest sample that a forecast needs
 REFRESH_LIMIT = 30  # seconds
 DEFAULT_LIMIT = 95.0
+SESSION_AGE = 2 * 86400
 EXIT = {"normal": 0, "slowed": 10, "stopped": 20}
 
 
@@ -159,16 +160,30 @@ def apply_sample(d, sample, source, ts, fresh=False):
     d = dict(d)
     moved = fresh
     lowered = False
+    sid = sample.get("session_id")
+    sid = sid if isinstance(sid, str) and sid and not fresh else None
+    seen = {k: v for k, v in (d.get("sessions") or {}).items()
+            if isinstance(v, dict) and ts - v.get("at", 0) <= SESSION_AGE}
+    last = seen.get(sid, {}) if sid else {}
+    if sid:
+        seen[sid] = {"at": ts}
+        d["sessions"] = seen
     for key, new in (("five_hour", five), ("seven_day", seven)):
         if new is None:
             continue
+        if sid:
+            seen[sid][key] = [new["used_pct"], new["resets_at"]]
+            if last.get(key) == [new["used_pct"], new["resets_at"]]:
+                # A session that repeats its last figure got no API response
+                # since then: the repeat is old and changes nothing.
+                continue
         old = d.get(key)
         if key == "five_hour" and advanced(old, new):
             moved = True
         d[key] = merge_window(old, new, fresh)
         if key == "five_hour" and old and d[key]["used_pct"] < old["used_pct"]:
             lowered = True
-    if five:
+    if five and d.get("five_hour"):
         wf = d.get("window_first")
         if (not isinstance(wf, dict) or wf.get("resets_at") != d["five_hour"]["resets_at"]
                 or lowered):

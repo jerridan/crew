@@ -21,6 +21,7 @@ its only writer. Writes are atomic and safe when many sessions write at once.
 | `plan_limits` | `false` when the account has no plan limits, else `true` |
 | `checked_at` | when `plan_limits` was set to `false` |
 | `refresh_attempt_at`, `refresh_failed` | when the last fresh reading started, and whether it failed |
+| `sessions` | per session id: `at` and the last `[used_pct, resets_at]` of each window it sent |
 | `window_first` | the first sample seen in the current five-hour window: `resets_at`, `at`, `used_pct` |
 
 The merge rule applies to each window. A sample with a later `resets_at`
@@ -30,8 +31,13 @@ lowers the figure. The fresh reading reads the account, and so its figure
 replaces the stored one in the same `resets_at` also when it is lower. That is
 how a partial reset of a window shows: the next fresh reading lowers the
 figure. A lower five-hour figure from a fresh reading also starts
-`window_first` again from that figure. A sample with no
-figures changes nothing. A sample with figures clears `plan_limits: false`.
+`window_first` again from that figure. The file keeps in `sessions` the last
+figure of each window that each session sent, for 2 days. A sample that
+repeats the last figure of its own session is an old sample: it changes
+nothing, so an idle session cannot raise a lowered figure again. A session
+that gets an API response sends a new figure, and that figure is merged by the
+rule above. The first sample of a session has no last figure and is merged. A
+sample with no figures changes nothing. A sample with figures clears `plan_limits: false`.
 
 `updated_at` and `source` move only when the five-hour figure advances: a
 higher percent in the same window, or a later window. A repeat of the stored

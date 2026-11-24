@@ -10494,7 +10494,7 @@ Deliberately different:
     - **Unexercised.** Only `test-crew-usage.py` ran the change, with a stub
       `claude`. No live reading ran it.
 
-<TBD>. **After the hand-over, no large session waits — 2026-11-24,
+163. **After the hand-over, no large session waits — 2026-11-24,
     `crew:delivered-window`, `window-watch.py`.** A study of three weeks of
     transcripts found that the delivered window was 64% of a project lead's
     cost. The project lead entered it with its whole build context, 209K

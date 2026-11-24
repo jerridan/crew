@@ -65,6 +65,8 @@ case "$mode" in
     if [ -e "$f.snap" ]; then
       while IFS= read -r line; do
         [ -n "$line" ] || continue
+        # The real poll drops crew's own replies, which end in the pr-review marker.
+        case "$line" in *'<!-- pr-review: '*) continue ;; esac
         kind=${line%% *}; id=${line#* }; id=${id%% *}
         case "$kind" in
           review|review-comment|comment|check|push)
@@ -361,7 +363,7 @@ emit dep "merged 7 - $TS the PR merged"
 waitfor 12 "[ \"\$(nwin dep)\" -ge 1 ]"
 sleep 4
 chk 'a merged line starts one session, and the merge is not queued again' "$(nwin dep) $(nlines "$RECS/dep/window/events-1.jsonl")" '1 1'
-chk 'the merge wrote run.deploy (setup only) and merged_seen' "$(sj dep deploy.source) $([ "$(sj dep window.merged_seen)" != null ] && echo seen)" '"window-watch" seen'
+chk 'the merge wrote run.deploy (setup only) and merged_seen' "$(sj dep deploy.source) $([ "$(sj dep window.merged_seen)" != null ] && echo seen)" '"default" seen'
 ww done "$RECS/dep" --session dep-w1
 waitfor 8 "[ \"\$(sj dep window.session)\" = null ]"
 emit_deploy dep "deploy-timeout 7 - $TS no deploy seen 180 minutes after the watch started"
@@ -446,6 +448,88 @@ chk 'stale: the orchestrator gets one ask line that names the item and the tab' 
   "$(grep -c '^--orch orchS ask itS .*tmux:%' "$STUB_DIR/orch.log") $(wc -l < "$STUB_DIR/orch.log" | tr -d ' ')" '1 1'
 unset CREW_WINDOW_ORCH
 
+# ---- item 1: the merge sets up the deploy poll from the winning Deploy section
+printf '# Repo\n\n## Deploy\n\nnone\n' > "$T/d-none.md"
+printf '# Machine\n\n## Deploy\n\nmanual\n' > "$T/d-manual.md"
+printf '## Deploy\n\n- environment: staging\n- timeout: 45\n' > "$T/d-env.md"
+printf '## Deploy\n\n- workflow: Ship it\n' > "$T/d-wf.md"
+printf '## Deploy\n\n- environment: other\n' > "$T/d-other.md"
+dep_case() { # name repo-file machine-file [charter-line]
+  local repo=null machine=null
+  [ -n "$2" ] && repo="\"$2\""
+  [ -n "$3" ] && machine="\"$3\""
+  mkrec "$1"
+  rec "$RECS/$1" run set standing_instructions "{\"repo\":$repo,\"machine\":$machine}" > /dev/null
+  [ -n "${4:-}" ] && echo "$4" >> "$RECS/$1/charter.md"
+  ww start "$RECS/$1" --poll 1 --quiet 2 --cap 5
+  emit "$1" "merged 7 - $TS the PR merged"
+}
+dep_case dnone "$T/d-none.md" ""
+dep_case dmanual "" "$T/d-manual.md"
+dep_case denv "$T/d-env.md" ""
+dep_case dwf "" "$T/d-wf.md"
+dep_case ddef "" ""
+dep_case drepo "$T/d-env.md" "$T/d-other.md"
+dep_case dchart "$T/d-env.md" "$T/d-wf.md" "Deploy: none"
+for n in dnone dmanual denv dwf ddef drepo dchart; do waitfor 15 "[ \"\$(nwin $n)\" -ge 1 ]"; done
+sleep 1
+chk 'deploy none: the merged line starts a session, sets up no run.deploy and records the merge' "$(nwin dnone) $(sj dnone deploy) $([ "$(sj dnone window.merged_seen)" != null ] && echo seen)" '1 null seen'
+chk 'deploy manual (machine): set up no run.deploy' "$(nwin dmanual) $(sj dmanual deploy)" '1 null'
+chk 'deploy environment and timeout (repo): run.deploy has them, source repo' "$(sj denv deploy.environment) $(sj denv deploy.timeout_minutes) $(sj denv deploy.source) $(sj denv deploy.workflow)" '"staging" 45 "repo" null'
+chk 'deploy workflow (machine): run.deploy has the workflow, source machine' "$(sj dwf deploy.workflow) $(sj dwf deploy.source) $(sj dwf deploy.environment)" '"Ship it" "machine" null'
+chk 'no Deploy section: the default signal, source default' "$(sj ddef deploy.source) $(sj ddef deploy.environment) $(sj ddef deploy.workflow) $(sj ddef deploy.timeout_minutes)" '"default" null null 180'
+chk 'the repo section wins over the machine section, whole' "$(sj drepo deploy.source) $(sj drepo deploy.environment)" '"repo" "staging"'
+chk 'a charter Deploy line wins over the repo and machine sections' "$(nwin dchart) $(sj dchart deploy)" '1 null'
+
+# ---- item 2: no own-login filter on comments
+mkrec cmt
+ww start "$RECS/cmt" --poll 1 --quiet 2 --cap 5
+emit cmt "comment 951 crew $TS a crew reply <!-- pr-review: reply -->"
+sleep 4
+chk 'a crew reply with the pr-review marker starts no session (the poll drops it)' "$(nwin cmt)" 0
+emit cmt "comment 952 me $TS the principal wrote this"
+waitfor 12 "[ \"\$(nwin cmt)\" -ge 1 ]"
+chk 'a comment by the principal login starts a session' "$(nwin cmt) $(nlines "$RECS/cmt/window/events-1.jsonl")" '1 1'
+
+# ---- item 3: the watcher own writes do not reset the stale clock
+mkrec stale2
+CREW_WINDOW_STALE=4 ww start "$RECS/stale2" --poll 1 --quiet 2 --cap 5
+emit stale2 "review 961 jo $TS COMMENTED start"
+waitfor 12 "[ \"\$(sj stale2 window.session.status)\" = '\"live\"' ]"
+for i in 1 2 3 4 5 6 7 8; do emit stale2 "push cafe000$i other $TS new head"; sleep 1; done
+# The stale cap is 4 s and the watcher wrote every second: the stale mark is due before the pushes end.
+chk 'watcher writes during a live session do not reset the stale clock' "$([ "$(sj stale2 window.session.stale_at)" != null ] && echo yes)" yes
+chk 'those writes did land: the cursor head followed the pushes' "$(sj stale2 watch.head)" '"cafe0008"'
+
+# ---- item 4: a claim that lands while the watcher archives a done session survives
+mkrec race
+export CREW_WINDOW_TEST_HOLD="$T/hold-tick"
+ww start "$RECS/race" --poll 1 --quiet 2 --cap 5
+emit race "review 971 kay $TS COMMENTED race"
+waitfor 12 "[ \"\$(sj race window.session.status)\" = '\"live\"' ]"
+: > "$CREW_WINDOW_TEST_HOLD"
+ww done "$RECS/race" --session race-w1
+waitfor 6 "[ -e '$CREW_WINDOW_TEST_HOLD.waiting' ]"
+chk 'item 4: the watcher stops at the hold point after it read the done session' "$([ -e "$CREW_WINDOW_TEST_HOLD.waiting" ] && echo yes)" yes
+ww claim "$RECS/race" --session racer
+chk 'item 4: a claim of the slot of a done session succeeds' "$rc" 0
+rm -f "$CREW_WINDOW_TEST_HOLD"
+sleep 3
+chk 'item 4: the watcher archive does not erase the claim' "$(sj race window.session.name) $(sj race window.session.status)" '"racer" "live"'
+chk 'item 4: the done session is archived once' "$(sj race window.sessions | python3 -c 'import json,sys; print([s["name"] for s in json.load(sys.stdin)])')" "['race-w1']"
+unset CREW_WINDOW_TEST_HOLD
+
+# ---- item 6: events that keep coming still start one session at the cap
+mkrec capr
+ww start "$RECS/capr" --poll 1 --quiet 3 --cap 5
+t0=$SECONDS
+( for i in $(seq 1 10); do emit capr "review-comment $((980 + i)) lee $TS f.py:$i keep coming"; sleep 1; done ) &
+waitfor 9 "[ \"\$(nwin capr)\" -ge 1 ]"
+el=$((SECONDS - t0))
+wait
+chk 'cap: one session starts at the cap although the quiet wait never ends' "$(nwin capr) $([ "$el" -ge 4 ] && [ "$el" -le 8 ] && echo in-range)" '1 in-range'
+chk 'cap: the events after the start wait in pending, and no second session starts' "$(nwin capr) $([ "$(nlines "$RECS/capr/window/pending.jsonl")" -ge 1 ] && echo pending)" '1 pending'
+
 # ---- say --item finds the record by run.orchestrator
 mkrec orchitem
 rec "$RECS/orchitem" run set orchestrator '{"name":"orch1","item":"it1"}' > /dev/null
@@ -475,6 +559,19 @@ python3 "$REC_PY" "$HR/dl" run state delivered > /dev/null
 python3 "$REC_PY" "$HR/ac" init g ac "sid-hook" > /dev/null
 echo '{"session_id": "sid-hook"}' | CREW_RECORD_ROOT="$HR" python3 "$HOOK"
 chk 'a closed project-lead session leaves a delivered run delivered' "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run"]["run_state"])' "$HR/dl/state.json")" delivered
+python3 "$REC_PY" "$HR/held" init g held "sid-held" > /dev/null
+python3 "$REC_PY" "$HR/held" run state delivered > /dev/null
+python3 "$REC_PY" "$HR/held" run set window.hold true > /dev/null
+python3 "$REC_PY" "$HR/rel" init g rel "sid-held" > /dev/null
+python3 "$REC_PY" "$HR/rel" run state delivered > /dev/null
+python3 "$REC_PY" "$HR/rel" run set window.hold false > /dev/null
+python3 "$REC_PY" "$HR/other" init g other "sid-other" > /dev/null
+python3 "$REC_PY" "$HR/other" run state delivered > /dev/null
+python3 "$REC_PY" "$HR/other" run set window.hold true > /dev/null
+echo '{"session_id": "sid-held"}' | CREW_RECORD_ROOT="$HR" python3 "$HOOK"
+chk 'item 5: a held delivered run goes interrupted when its project lead session ends' "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run"]["run_state"])' "$HR/held/state.json")" interrupted
+chk 'item 5: a released delivered run stays delivered' "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run"]["run_state"])' "$HR/rel/state.json")" delivered
+chk 'item 5: a held run of another session is not touched' "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run"]["run_state"])' "$HR/other/state.json")" delivered
 chk 'the hook still marks an active run interrupted' "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run"]["run_state"])' "$HR/ac/state.json")" interrupted
 
 echo "$((total - fails)) of $total checks passed"

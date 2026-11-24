@@ -13,16 +13,8 @@ usage:
 `skills/project-lead/references/crew-step.md` owns what each subcommand and
 flag does, and when the project lead runs it.
 
-Output. Each step prints one line, `ok <step>: <detail>` or
-`FAIL <step>: <detail>`. A FAIL detail holds the failed command's own error
-text. Evidence follows the step lines, each block under a line
-`--- <name>`. In `verify`, `--- diff` is always the last block.
-`launch-check` prints `ask collect: <text>` for the fallback base. `hand-over`
-prints `escalation: <answer>` or `escalation: none` after a FAIL push or a
-FAIL pr. A step that a rerun skips prints the detail `already done`.
-
-Exit codes: 0 when every step passed, 1 when a step failed, 2 on a usage
-error. A usage error runs nothing.
+`skills/project-lead/references/crew-step.md` also owns the output lines, the
+evidence markers and the exit codes.
 
 Record writes. Every write to the record's state goes through
 `crew-record.py`, which runs from this script's own directory, as `spend.py`
@@ -197,20 +189,37 @@ def branch_exists(repo, name):
 
 
 def classify(status_text, file_set):
-    """Split `status --porcelain` by the clean-tree definition."""
+    """Split `status --porcelain -z` by the clean-tree definition.
+
+    With -z, git quotes no path, and a rename names its source in the next record.
+    """
     tracked, inside, outside = [], [], []
-    for line in status_text.splitlines():
-        if len(line) < 4:
+    records = status_text.split("\0")
+    i = 0
+    while i < len(records):
+        record_text = records[i]
+        i += 1
+        if len(record_text) < 4:
             continue
-        code, path = line[:2], line[3:]
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1]
-        path = path.strip('"')
+        code, path = record_text[:2], record_text[3:]
+        if "R" in code or "C" in code:
+            i += 1
         if code == "??":
             (inside if path in file_set else outside).append(path)
         else:
             tracked.append(path)
     return tracked, inside, outside
+
+
+def check_id(value, what):
+    """A name that goes into a path or a branch holds no `/` and no `..`."""
+    if not value or "/" in value or ".." in value:
+        raise Usage("%s is not a valid %s: it holds a / or .. or is empty" % (value, what))
+
+
+def check_branch_name(name):
+    if run(["git", "check-ref-format", "--branch", name]).returncode != 0:
+        raise Usage("%s is not a valid branch name" % name)
 
 
 # --- argument parsing -------------------------------------------------------
@@ -306,11 +315,20 @@ def cmd_launch_check(argv):
         out.fail("remote", "no remote")
     if chosen:
         record_step(out, rec, "run set worktree_base", ["run", "set", "worktree_base", json.dumps(chosen)])
-        record_step(out, rec, "decision", [
-            "decision", "precedent", "Which worktree base does this run use?",
-            "--answer", chosen,
-            "--citation", "full-path.md launch check 1: " + "; ".join(log),
-            "--confidence", "high"])
+        title = "Which worktree base does this run use?"
+        decisions = os.path.join(rec, "decisions.md")
+        written = ""
+        if os.path.isfile(decisions):
+            with open(decisions, encoding="utf-8") as handle:
+                written = handle.read()
+        if ("## %s\n" % title) in written and ("Answer: %s\n" % chosen) in written:
+            out.ok("record", "decision: already done")
+        else:
+            record_step(out, rec, "decision", [
+                "decision", "precedent", title,
+                "--answer", chosen,
+                "--citation", "full-path.md launch check 1: " + "; ".join(log),
+                "--confidence", "high"])
     if chosen == fallback:
         out.line("ask collect: does the repo's test command collect files under %s? "
                  "Answer it, and escalate on a collect hit." % os.path.join(repo, ".claude"))
@@ -324,17 +342,22 @@ def cmd_branch(argv):
                              repeated=("--territory",))
     rec, did = want(positional, 2, "branch <record-dir> <deliverable-id> [--branch <name>] [--held] "
                                    "[--start-point <ref>] [--territory <slug>=<ic-name> ...]")
+    check_id(did, "deliverable id")
+    if opts.get("--branch"):
+        check_branch_name(opts["--branch"])
     territories = []
     for item in opts.get("--territory", []):
         slug_part, sep, ic = item.partition("=")
-        if not sep or not slug_part or not ic or "/" in slug_part:
-            raise Usage("--territory takes <slug>=<ic-name>, got %s" % item)
+        if not sep or not slug_part or not ic or "/" in slug_part or ".." in slug_part:
+            raise Usage("--territory takes <slug>=<ic-name> with no / or .. in the slug, got %s" % item)
         territories.append((slug_part, ic))
     state = load_state(rec)
     run_state = state.get("run", {})
     repo, slug = run_state.get("repo"), state.get("goal_slug")
     if not repo or not slug:
         raise Usage("the record has no run.repo or goal_slug")
+    for tslug, _ in territories:
+        check_branch_name("crew/%s/%s" % (slug, tslug))
     worktree_base = run_state.get("worktree_base") or rec
     dl = find(state.get("deliverables"), did)
     wt = load_worktrees(rec) or {}
@@ -374,6 +397,10 @@ def cmd_branch(argv):
             start_point = dl["base"]
         if not start_point:
             out.fail("start-point", "no --start-point and no origin/HEAD")
+            return out.finish()
+        sha = git(repo, "rev-parse", "--verify", start_point + "^{commit}")
+        if sha.returncode != 0:
+            out.fail("start-point", err(sha))
             return out.finish()
         out.ok("start-point", start_point)
 
@@ -424,10 +451,6 @@ def cmd_branch(argv):
         if did not in wt:
             wt[did] = {"worktree": deliverable_path, "branch": name, "session_ids": [sid], "orphaned": False}
             save_worktrees(rec, wt)
-        sha = git(repo, "rev-parse", "--verify", start_point + "^{commit}")
-        if sha.returncode != 0:
-            out.fail("start-point", err(sha))
-            return out.finish()
         if not add_deliverable(sha.stdout.strip(), None) or not set_checkout(deliverable_path):
             return out.finish()
         if registered(repo).get(real(deliverable_path)) == name:
@@ -533,7 +556,7 @@ def cmd_verify(argv):
         repo = entry["worktree"]
 
     # clean-tree
-    status = git(repo, "status", "--porcelain", "--untracked-files=all")
+    status = git(repo, "status", "--porcelain", "-z", "--untracked-files=all")
     clean = False
     if status.returncode != 0:
         out.fail("clean-tree", err(status))
@@ -565,11 +588,11 @@ def cmd_verify(argv):
         evidence["stat"] = git(repo, "diff", base + "..HEAD", "--stat").stdout
 
     # file-set
-    names = git(repo, "diff", "--name-only", "--no-renames", base + "..HEAD")
+    names = git(repo, "diff", "-z", "--name-only", "--no-renames", base + "..HEAD")
     if names.returncode != 0:
         out.fail("file-set", err(names))
     else:
-        files = [n for n in names.stdout.splitlines() if n]
+        files = [n for n in names.stdout.split("\0") if n]
         stray = [n for n in files if n not in file_set]
         if stray:
             out.fail("file-set", "outside the set: " + ", ".join(stray))
@@ -642,8 +665,8 @@ def red_check(out, repo, sha, criterion, clean, file_set, evidence):
         out.fail("red", "dirty tree, no switch")
         return
     # The criterion and the suite ran at HEAD and can leave an edit: check again.
-    status = git(repo, "status", "--porcelain", "--untracked-files=all")
-    tracked, inside, _ = classify(status.stdout, file_set)
+    status = git(repo, "status", "--porcelain", "-z", "--untracked-files=all")
+    tracked, inside, outside_before = classify(status.stdout, file_set)
     if status.returncode != 0 or tracked or inside:
         out.fail("red", "dirty tree before the switch, no switch: %s"
                  % (", ".join(tracked + inside) or err(status)))
@@ -651,21 +674,35 @@ def red_check(out, repo, sha, criterion, clean, file_set, evidence):
     branch = git(repo, "branch", "--show-current").stdout.strip()
     old_head = git(repo, "rev-parse", "HEAD").stdout.strip()
     code, text = None, ""
+    changed = []
     switched = git(repo, "switch", "--detach", sha, "-q")
     try:
         if switched.returncode == 0:
             code, text = shell(criterion, repo)
+            # The tree was clean before the detach, so each change came from the criterion.
+            after = git(repo, "status", "--porcelain", "-z", "--untracked-files=all")
+            tracked, inside, outside = classify(after.stdout, file_set)
+            changed = tracked + inside + [n for n in outside if n not in outside_before]
+            if after.returncode != 0:
+                changed = ["git status failed: " + err(after)]
     finally:
-        back = git(repo, "switch", "-q", branch) if branch else git(repo, "switch", "--detach", "-q", old_head)
+        # --discard-changes drops the criterion's edits, so none reaches the branch.
+        flags = ["--discard-changes"] if switched.returncode == 0 else []
+        back = (git(repo, "switch", "-q", *flags, branch) if branch
+                else git(repo, "switch", "--detach", "-q", *flags, old_head))
+    note = ""
+    if changed:
+        note = "; the criterion changed %s" % ", ".join(changed)
+        text = text.rstrip("\n") + "\nthe criterion changed: " + ", ".join(changed)
     evidence["red"] = tail(text)
     if switched.returncode != 0:
         out.fail("red", "switch to %s failed: %s" % (sha, err(switched)))
     elif back.returncode != 0:
-        out.fail("red", "switch back to %s failed: %s" % (branch or old_head, err(back)))
+        out.fail("red", "switch back to %s failed: %s%s" % (branch or old_head, err(back), note))
     elif code == 0:
-        out.fail("red", "the criterion passes at %s" % sha)
+        out.fail("red", "the criterion passes at %s%s" % (sha, note))
     else:
-        out.ok("red", "the criterion exits %d at %s" % (code, sha))
+        out.ok("red", "the criterion exits %d at %s%s" % (code, sha, note))
 
 
 # --- hand-over and cleanup --------------------------------------------------
@@ -680,9 +717,23 @@ def escalation_line(out, run_state):
         out.line("escalation: %s" % found[-1]["answer"])
 
 
+def open_pr(checkout, branch):
+    """The URL of an open PR on the branch, or None when there is none or gh cannot say."""
+    listed = run(["gh", "pr", "list", "--head", branch, "--state", "open", "--json", "url"], cwd=checkout)
+    if listed.returncode != 0:
+        return None
+    try:
+        found = json.loads(listed.stdout or "[]")
+    except ValueError:
+        return None
+    urls = [item.get("url") for item in found if isinstance(item, dict) and item.get("url")]
+    return urls[0] if urls else None
+
+
 def cmd_hand_over(argv):
     positional, opts = parse(argv, ("--body", "--title"), ("--local",))
     rec, did = want(positional, 2, "hand-over <record-dir> <deliverable-id> --body <file> --title <t> | --local")
+    check_id(did, "deliverable id")
     local = bool(opts.get("--local"))
     if local and ("--body" in opts or "--title" in opts):
         raise Usage("--local takes no --body or --title")
@@ -722,15 +773,20 @@ def cmd_hand_over(argv):
                 escalation_line(out, run_state)
                 return out.finish()
             out.ok("push", "%s to %s" % (branch, remote))
-            created = run(["gh", "pr", "create", "--draft", "--title", opts["--title"],
-                           "--body-file", os.path.abspath(opts["--body"]), "--head", branch], cwd=checkout)
-            urls = [line.strip() for line in created.stdout.splitlines() if line.strip().startswith("http")]
-            if created.returncode != 0 or not urls:
-                out.fail("pr", err(created))
-                escalation_line(out, run_state)
-                return out.finish()
-            url = urls[-1]
-            out.ok("pr", url)
+            # A rerun after a failed deliver write finds the PR it opened.
+            url = open_pr(checkout, branch)
+            if url:
+                out.ok("pr", "already open " + url)
+            else:
+                created = run(["gh", "pr", "create", "--draft", "--title", opts["--title"],
+                               "--body-file", os.path.abspath(opts["--body"]), "--head", branch], cwd=checkout)
+                urls = [line.strip() for line in created.stdout.splitlines() if line.strip().startswith("http")]
+                if created.returncode != 0 or not urls:
+                    out.fail("pr", err(created))
+                    escalation_line(out, run_state)
+                    return out.finish()
+                url = urls[-1]
+                out.ok("pr", url)
         head = git(checkout, "rev-parse", "HEAD")
         if head.returncode != 0:
             out.fail("deliver", err(head))
@@ -762,6 +818,7 @@ def cmd_hand_over(argv):
 def cmd_cleanup(argv):
     positional, _ = parse(argv, (), ())
     rec, did = want(positional, 2, "cleanup <record-dir> <deliverable-id>")
+    check_id(did, "deliverable id")
     state = load_state(rec)
     if not find(state.get("deliverables"), did):
         raise Usage("no deliverable %s in the record" % did)

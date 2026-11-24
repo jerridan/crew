@@ -266,6 +266,41 @@ newack; LINES='review 101 alice 2026-01-02T00:00:00Z COMMENTED x'; before=$(sum)
 ack --hold 999
 chk 'ack --hold of an id not in the lines: exit 2, no write' "$rc $(sum)" "2 $before"
 
+# ---- deploy: the timeout must be a positive integer
+for bad in 0 -5 abc 1.5; do
+  newrec '{"run_state":"delivered"}'; before=$(sum)
+  ws deploy "$REC" --source repo --timeout "$bad"
+  chk "deploy --timeout $bad: exit 2, prefix, no write, no poll" "$rc ${err%%:*} $(sum) $(polled)" "2 watch-step.py $before no"
+done
+newrec '{"run_state":"delivered","deploy":'"$D_LIVE"'}'; before=$(sum)
+ws deploy "$REC" --source repo --timeout 0
+chk 'deploy --timeout 0 on an armed record: exit 2, no write' "$rc $(sum)" "2 $before"
+
+# ---- every failure is a watch-step.py message with exit 2
+newrec '{"run_state":"delivered"}'; printf '{bad' > "$STUB_DIR/comments.json"; before=$(sum)
+ws arm "$REC" --resume
+chk 'malformed paginated read: exit 2, prefix, no write, no poll' "$rc ${err%%:*} $(sum) $(polled)" "2 watch-step.py $before no"
+newrec '{"run_state":"delivered"}'; printf '{"id":1}' > "$STUB_DIR/comments.json"; before=$(sum)
+ws arm "$REC" --resume
+chk 'paginated read of the wrong shape: exit 2, prefix, no write' "$rc ${err%%:*} $(sum)" "2 watch-step.py $before"
+newrec '{"run_state":"delivered"}'; echo 'not json' > "$STUB_DIR/pr.json"; before=$(sum)
+ws arm "$REC"
+chk 'PR read that is not JSON: exit 2, prefix, no write' "$rc ${err%%:*} $(sum)" "2 watch-step.py $before"
+newrec '{"run_state":"delivered"}'; echo '{}' > "$STUB_DIR/pr.json"; before=$(sum)
+ws arm "$REC"
+chk 'PR read with no fields: exit 2, prefix, no write' "$rc ${err%%:*} $(sum)" "2 watch-step.py $before"
+newrec '{"run_state":"delivered"}'; echo '[1]' > "$REC/state.json"
+ws arm "$REC"
+chk 'a state.json of the wrong shape: exit 2 with the prefix' "$rc ${err%%:*}" '2 watch-step.py'
+newack; echo '[1]' > "$REC/state.json"; LINES='review 1 a 2026-01-02T00:00:00Z x'; ack
+chk 'ack with a state.json of the wrong shape: exit 2 with the prefix' "$rc ${err%%:*}" '2 watch-step.py'
+
+# ---- ack: an empty isDraft value is no change
+newack; before=$(sum); LINES='isDraft='; ack
+chk 'ack isDraft= (empty): exit 0, no change' "$rc $(sum)" "0 $before"
+newack; before=$(sum); LINES=$'isDraft=\nreview 1 a 2026-01-02T00:00:00Z x'; ack
+chk 'ack isDraft= with a review line: the review is written' "$rc $(jq -c .run.watch.seen_ids "$REC/state.json")" '0 [1]'
+
 # ---- ack: bad input writes nothing
 for bad in 'bogus 1 a 2026-01-01T00:00:00Z text' 'review 5' $'review 1 a 2026-01-02T00:00:00Z ok x\nbogus 2 a t s' ''; do
   newack; before=$(sum); LINES=$bad; ack

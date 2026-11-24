@@ -2616,6 +2616,82 @@ for n in hd-0 hd-2 hd-3 hd-4 hd-5 hd-6 hd-7 hd-8; do
   git -C "$CO" branch -q -D "worktree-$n" > /dev/null 2>&1
 done
 
+# -- window ----------------------------------------------------------------
+# window opens one tab in an existing directory, with no worktree and no branch.
+WINDIR="$T/windir"
+mkdir -p "$WINDIR"
+printf 'Handle the burst. It has "quotes", $HOME and a '"'"'tick'"'"'.\nSecond line.\n' > "$T/win-prompt.md"
+WPROMPT=$(cat "$T/win-prompt.md")
+# The window runs read the git log on their own: keep the log of the earlier runs aside.
+cp "$T/git.log" "$T/git.log.before-window"
+reset_stub
+: > "$T/git.log"
+wbase=$(wtcount)
+TMUX=/tmp/t,1,0 run window --name rec-w1 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --model sonnet
+check 'window on tmux exits 0' $([ "$rc" = 0 ]; echo $?)
+r=1; [ "$(lines "$T/out")" = 1 ] && python3 - "$T/out" <<'PY' && r=0
+import json, sys
+o = json.loads(open(sys.argv[1]).read())
+want = {"session_name", "model", "terminal", "tab", "tab_group", "session_id", "cwd"}
+sys.exit(0 if set(o) == want else 1)
+PY
+check 'window prints one JSON line with exactly the seven fields, and no worktree, branch or base' $r
+check 'window on tmux: tab is tmux:<pane id>, session_name and model and cwd as given' \
+  $([ "$(field tab)" = '"tmux:%7"' ] && [ "$(field session_name)" = '"rec-w1"' ] && [ "$(field model)" = '"sonnet"' ] && [ "$(field cwd)" = "\"$WINDIR\"" ]; echo $?)
+check 'window on tmux cuts no worktree and no branch' \
+  $([ "$(wtcount)" = "$wbase" ] && ! grep -sq 'worktree|add' "$T/git.log" && ! grep -sq 'branch|' "$T/git.log"; echo $?)
+check 'window on tmux names the window rec-w1 in the session crew' $(grep -sq '^new-session|-d|-s|crew|-n|rec-w1|' "$STUB_DIR/tmux.log"; echo $?)
+WSID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["session_id"])' "$T/out" 2>/dev/null)
+check 'window session_id is a UUID4' $(python3 -c 'import sys,uuid; u=uuid.UUID(sys.argv[1]); sys.exit(0 if str(u) == sys.argv[1] and u.version == 4 else 1)' "$WSID" 2>/dev/null; echo $?)
+check 'the window command starts with cd <cwd> and execs claude' \
+  $(case "$(cat "$STUB_DIR/tmux-cmd" 2>/dev/null)" in ("cd $WINDIR && exec claude "*|"cd '$WINDIR' && exec claude "*) echo 0 ;; (*) echo 1 ;; esac)
+sh -c "$(cat "$STUB_DIR/tmux-cmd")"
+expect_args=$(printf '%s\n' "$(cd "$WINDIR" && pwd -P)" --name rec-w1 --session-id "$WSID" --model sonnet --settings '{"remoteControlAtStartup": false}' "$WPROMPT")
+check 'claude runs in the cwd with --name, --session-id, --model, --settings and the prompt file text as the last arg, quotes intact' \
+  $([ "$(cat "$STUB_DIR/claude-args" 2>/dev/null)" = "$expect_args" ]; echo $?)
+echo '%7' > "$STUB_DIR/tmux-panes"
+run stop "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tab"])' "$T/out" 2>/dev/null)"
+check 'stop on the tab handle of window (tmux) kills the exact pane' $([ "$rc" = 0 ] && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log"; echo $?)
+
+# window with the default model.
+reset_stub
+TMUX=/tmp/t,1,0 run window --name rec-w2 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --group grp
+r=1; [ "$rc" = 0 ] && [ "$(field model)" = '"opus"' ] && sh -c "$(cat "$STUB_DIR/tmux-cmd")" && grep -sqx -- opus "$STUB_DIR/claude-args" && r=0
+check 'window with no --model gives model opus' $r
+
+# window on iTerm2 (the helper stub, then the osascript stub for stop).
+reset_stub
+: > "$T/git.log"
+wbase=$(wtcount)
+TERM_PROGRAM=iTerm.app run window --name rec-w3 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --model sonnet --group grp
+check 'window on iterm2 exits 0 with terminal iterm2, tab iterm2:<id>, and no worktree, branch or base field' \
+  $([ "$rc" = 0 ] && [ "$(field terminal)" = '"iterm2"' ] && [ "$(field tab)" = '"iterm2:ABC-123"' ] && [ "$(field tab_group)" = '"grp"' ] && ! grep -sqE '"(worktree|branch|base)"' "$T/out"; echo $?)
+check 'window on iterm2 cuts no worktree and no branch' $([ "$(wtcount)" = "$wbase" ] && ! grep -sq 'worktree|add' "$T/git.log"; echo $?)
+check 'window on iterm2 passes the name to the helper' $(grep -sq '|--name|rec-w3|' "$STUB_DIR/uv.log"; echo $?)
+check 'window on iterm2 passes the cwd, the name, the model and the prompt file in the helper command' \
+  $(grep -sqF "|cd $WINDIR && exec claude " "$STUB_DIR/uv.log" && grep -sqF -- '--model sonnet' "$STUB_DIR/uv.log" && grep -sqF -- '--name rec-w3' "$STUB_DIR/uv.log" && grep -sqF -- "$T/win-prompt.md" "$STUB_DIR/uv.log"; echo $?)
+echo 'ABC-123' > "$STUB_DIR/osa-sessions"
+run stop iterm2:ABC-123
+check 'stop on the tab handle of window (iterm2) addresses the id' $([ "$rc" = 0 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log"; echo $?)
+
+# window usage errors exit 2 with a usage line and open no tab.
+reset_stub
+wusage() {
+  label=$1; shift
+  TMUX=/tmp/t,1,0 run window "$@"
+  r=1; [ "$rc" = 2 ] && grep -sqi usage "$T/err" && [ ! -s "$T/out" ] && [ ! -e "$STUB_DIR/tmux.log" ] && r=0
+  check "window $label exits 2 with a usage line and opens no tab" $r
+}
+wusage 'with no --name' --cwd "$WINDIR" --prompt-file "$T/win-prompt.md"
+wusage 'with no --cwd' --name rec-w4 --prompt-file "$T/win-prompt.md"
+wusage 'with no --prompt-file' --name rec-w4 --cwd "$WINDIR"
+wusage 'with a missing cwd' --name rec-w4 --cwd "$T/no-such-dir" --prompt-file "$T/win-prompt.md"
+wusage 'with a missing prompt file' --name rec-w4 --cwd "$WINDIR" --prompt-file "$T/no-such.md"
+wusage 'with a bad name' --name Bad_Name --cwd "$WINDIR" --prompt-file "$T/win-prompt.md"
+
+cat "$T/git.log" >> "$T/git.log.before-window"
+mv "$T/git.log.before-window" "$T/git.log"
+
 # -- what launcher.py never does -------------------------------------------
 check 'launcher.py imports no iterm2 module' $(! grep -sqE '^\s*(import|from) iterm2' "$L"; echo $?)
 check 'launcher.py runs no git clone: the git log of every run holds worktree add and no clone' \

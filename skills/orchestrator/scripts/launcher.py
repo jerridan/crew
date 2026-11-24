@@ -80,8 +80,12 @@ RESUME_USAGE = (
     "[--terminal iterm2|tmux|herdr]"
 )
 REMOVE_USAGE = "usage: launcher.py remove <worktree> [--delete-branch [--pr <number>]] [--stop-processes]"
+WINDOW_USAGE = (
+    "usage: launcher.py window --name <session-name> --cwd <dir> --prompt-file <file> "
+    "[--model <model>] [--group <name>] [--terminal iterm2|tmux|herdr]"
+)
 USAGE_LINE = (
-    "usage: launcher.py start ... | resume ... | groups | find <session-name> "
+    "usage: launcher.py start ... | resume ... | window ... | groups | find <session-name> "
     "| focus <handle> | stop <handle> | remove <worktree>"
 )
 
@@ -349,6 +353,14 @@ def parse(argv):
     r.add_argument("--group")
     r.add_argument("--group-color")
     r.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
+    w = sub.add_parser("window", add_help=False)
+    w.usage_line = WINDOW_USAGE
+    w.add_argument("--name", required=True)
+    w.add_argument("--cwd", required=True)
+    w.add_argument("--prompt-file", required=True)
+    w.add_argument("--model", default="opus")
+    w.add_argument("--group")
+    w.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
     g = sub.add_parser("groups", add_help=False)
     g.usage_line = "usage: launcher.py groups"
     f = sub.add_parser("find", add_help=False)
@@ -377,6 +389,8 @@ def parse(argv):
         check_start(args)
     if args.cmd == "resume":
         check_resume(args)
+    if args.cmd == "window":
+        check_window(args)
     if args.cmd == "remove":
         check_remove(args)
     return args
@@ -398,6 +412,24 @@ def check_resume(a):
     if a.session_id is not None and not a.session_id.strip():
         bad("--session-id is empty")
     check_common(a, bad)
+
+
+def check_window(a):
+    def bad(why):
+        raise Fail(USAGE, "launcher: %s; %s" % (why, WINDOW_USAGE))
+
+    if not NAME_RE.fullmatch(a.name):
+        bad("--name %r does not match [a-z0-9][a-z0-9-]*" % a.name)
+    a.cwd = os.path.abspath(os.path.expanduser(a.cwd))
+    if not os.path.isdir(a.cwd):
+        bad("--cwd %s is not a directory" % a.cwd)
+    a.prompt_file = os.path.abspath(os.path.expanduser(a.prompt_file))
+    if not os.path.isfile(a.prompt_file):
+        bad("--prompt-file %s is not a file" % a.prompt_file)
+    if a.group is not None and not a.group.strip():
+        bad("--group is empty")
+    a.group_color = None
+    a.settings_json = settings_json(None, bad)
 
 
 def check_remove(a):
@@ -762,6 +794,19 @@ def launch_command(worktree, name, session_id, model, settings, principal):
     )
 
 
+def window_command(cwd, name, session_id, model, settings, prompt_file):
+    """The prompt is the text of the file, as the last argument."""
+    return "cd %s && exec %s --name %s --session-id %s --model %s --settings %s \"$(cat %s)\"" % (
+        shlex.quote(cwd),
+        shlex.quote(claude_program()),
+        shlex.quote(name),
+        shlex.quote(session_id),
+        shlex.quote(model),
+        shlex.quote(settings),
+        shlex.quote(prompt_file),
+    )
+
+
 def resume_command(worktree, session_id, name, model, settings):
     return "cd %s && exec %s --resume %s --name %s --model %s --settings %s" % (
         shlex.quote(worktree),
@@ -905,6 +950,34 @@ def start(a):
     session_id = str(uuid.uuid4())
     command = launch_command(worktree, a.name, session_id, a.model, a.settings_json, a.principal)
     open_tab(a, terminal, command, worktree, repo, branch, base, session_id, target)
+    return OK
+
+
+def window(a):
+    """Open one interactive tab in an existing directory: no worktree, no branch."""
+    terminal = detect_terminal(a.terminal)
+    target = herdr_target(a) if terminal == "herdr" else None
+    session_id = str(uuid.uuid4())
+    command = window_command(a.cwd, a.name, session_id, a.model, a.settings_json, a.prompt_file)
+    if terminal == "tmux":
+        tab, group = tmux_start(a.name, a.group, command, a.cwd)
+    elif terminal == "herdr":
+        tab, group = herdr_start(a, command, a.cwd, target)
+    else:
+        tab, group = iterm_start(a.name, a.group, None, command, a.cwd)
+    print(
+        json.dumps(
+            {
+                "session_name": a.name,
+                "model": a.model,
+                "terminal": terminal,
+                "tab": tab,
+                "tab_group": group,
+                "session_id": session_id,
+                "cwd": a.cwd,
+            }
+        )
+    )
     return OK
 
 
@@ -2147,6 +2220,7 @@ def main(argv):
         verbs = {
             "start": start,
             "resume": resume,
+            "window": window,
             "groups": groups,
             "find": find,
             "focus": focus,

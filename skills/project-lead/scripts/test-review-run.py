@@ -715,6 +715,46 @@ rc = go(c, "--reviewer-paragraph", c.paragraph, seq="clobber,ok")
 check("clobbered previous report with no usable result field: the loss is recorded",
       rc == 0 and "lost" in decisions(c).lower() and "round 1" in decisions(c).lower())
 
+
+# ---- options: allow-extra, replacement, worktree_base -----------------------
+
+c = seed()
+rc = go(c, "--allow-extra", "Bash(cargo tree *)", "--allow-extra", "Bash(go list *)")
+check("--allow-extra adds each rule to the allow list in run.sh",
+      rc == 0 and "Bash(cargo tree *),Bash(go list *)" in (read(c, "skeptical-r1-run.sh") or "")
+      and "Edit(//" in (read(c, "skeptical-r1-run.sh") or ""))
+
+base_dir = os.path.join(T, "wtbase")
+c = seed(run_extra={"worktree_base": base_dir})
+rc = go(c)
+check("a goal run's worktree is under run.worktree_base/review-worktrees/<deliverable id>",
+      rc == 0 and os.path.isdir(os.path.join(base_dir, "review-worktrees", "d1", ".git")) is False
+      and git(os.path.join(base_dir, "review-worktrees", "d1"), "rev-parse", "HEAD") == C1)
+
+c = seed(run_extra={"substitutions_requested": [{"step": "goal-check", "replacement": "codex", "source": "launch"}]})
+rc = go(c, "--replacement", "codex")
+ins = read(c, "skeptical-r1-instructions.md") or ""
+check("replacement: the files are built, nothing launches, and the status is BUILT",
+      rc == 0 and "status: BUILT" in c.out and not launches(c) and read(c, "skeptical-r1-run.sh") is None
+      and "review_session_ids" not in run_of(c) and run_of(c)["review_rounds"] == 1)
+check("replacement: the instructions end with the one added sentence naming the report path",
+      " ".join(ins.split()).endswith("For a replacement runner: write the complete report to %s/reviews/skeptical-r1.md, "
+                                      "and also return it whole as your output, `Reviewed: <sha>` first and the three "
+                                      "closing lines last, whether or not the write succeeded." % c.rec)
+      and "You are checking one finished change" in ins)
+
+c = later(runner="codex")
+rc = go(c, "--replacement", "codex", "--reviewer-paragraph", c.paragraph)
+resume = read(c, "skeptical-r2-resume.md") or ""
+check("replacement round 2: a codex session resumes, with the replacement sentence for the output",
+      rc == 0 and "resume session: S1" in c.out and "also return it whole" in " ".join(resume.split())
+      and "before you finish." not in resume and not launches(c))
+c = later(runner="claude")
+rc = go(c, "--replacement", "codex", "--reviewer-paragraph", c.paragraph)
+check("replacement round 2: a session of another runner launches fresh and says why",
+      rc == 0 and "fresh_reason: the runner of skeptical-r1 is claude, not codex" in c.out
+      and read(c, "skeptical-r2-resume.md") is None)
+
 shutil.rmtree(T, ignore_errors=True)
 print("%d of %d checks passed" % (passed, total))
 sys.exit(0 if passed == total else 1)

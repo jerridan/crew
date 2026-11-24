@@ -1,93 +1,170 @@
 # Review runner
 
-This file owns the mechanics of a headless review. It says how any caller
-cuts the detached worktree, writes the instructions file, launches the
-runner, checks the result and records the session. The caller supplies its
-round `<n>`, its goal text and where it reads that text, its base ref, its
-pending head and its output path (`<record-dir>/reviews/skeptical-r<n>.md`).
-`skeptical-review.md`, "The inputs", is the table that lists every value and
-where it is read from. The body names its files `skeptical-r<n>` on both run
-kinds. Two callers use it: `goal-check.md` on a goal run, and `/crew:review`
-on a review run (`run.kind: review`).
+This file owns how the project lead runs one round of the headless review.
+`scripts/review-run.py` does the mechanics. This file says how to call it,
+what each line of its output means, and which rules the script enforces. The
+round comes reserved in `run.review_pending`, and `skeptical-review.md` owns
+the reservation. Two callers use this file: `goal-check.md` on a goal run, and
+`/crew:review` on a review run (`run.kind: review`). Both name their files
+`skeptical-r<n>`, with `<n>` the reserved round
+(`<record-dir>/reviews/skeptical-r<n>.md` is the report).
 
-## Never review in the run's own checkout
+## Run a round
 
-A probe watched one finder agent run `git checkout main` inside the repo
-under review (design §15.94c). The review reads; it must not be able to
-move the run's branch. So cut a worktree of its own, detached at the
-pending sha, once per deliverable:
+Run this as one Bash call, with `run_in_background: true`:
 
 ```
-git -C <run.repo> worktree add --detach <review-worktree> <review_pending.head>
+python3 <project-lead-dir>/scripts/review-run.py <record-dir> [--setup "<setup command>"] [--reviewer-paragraph <file>] [--allow-extra "<rule>"]
 ```
 
-`<review-worktree>` is `<run.worktree_base>/review-worktrees/<deliverable-id>`.
-A record with no `run.worktree_base` uses `<record-dir>` as the base
-(`record-format.md`).
+- `--setup` is for a goal run. It is the scout's setup command. Leave it out
+  when the scout named none.
+- `--reviewer-paragraph` is for a review run. It is the file that holds
+  `github-review.md`'s reviewer paragraph, which you write once per run, with
+  the five rubric paragraphs filled in.
+- `--allow-extra` adds one read-only rule to the allow list, such as
+  `Bash(cargo tree *)`. Use it when the setup command names a package manager
+  that the list does not cover. Repeat the option for each rule.
 
-**On a review run** (`run.kind: review`), the one worktree is
-`<run.repo>/.claude/worktrees/crew-pr-<n>`, with `<n>` the PR number. Before
-the cut, `git -C <run.repo> worktree list --porcelain` must not list that
-path. When it does, another run reviews this PR in this checkout. Stop, and
-escalate to the principal with the path. Do not cut, and do not remove the
-other run's tree. Otherwise cut it with the command above, detached at the
-pending head. It is `run.checkout`.
-A goal run keeps the path above. This is the exception to the rule of this
-section: on a review run, the run's checkout is this worktree. The
-reviewer's allow list has no `git switch` or `git checkout` rule, so the
-branch of the principal's main working tree stays out of its reach. A review
-run runs no `checkout`, `switch`, `reset` or `clean` in the main working
-tree.
+The completion notification carries the output. On the normal path this one
+call takes the round from the arming to the recorded `review_results` entry,
+and you make no other call before you adjudicate. Read the last line,
+`status:`, then act on the line that named it:
 
-**Check that the repo ignores the folder, once per checkout.** Run this
-before the first cut under `<checkout>/.claude/worktrees/` in a checkout:
+| Output line | Exit | You |
+|---|---|---|
+| `status: PASSED` | 0 | `run.review_results[<n>]` is written. Run `spend.py` (`autonomy-contract.md`), then adjudicate |
+| `ESCALATE:` | 10 | Escalate to the principal with the line, as `autonomy-contract.md` says. The script launched nothing, or the round failed twice. A review worktree path that another run holds is also this line |
+| `BASELINE OWED:` | 11 | Write `reviews/baseline.md` (`skeptical-review.md`, launch step 4). Then run the same command again |
+| `CANNOT VERIFY:` | 12 | The report holds a `Cannot verify` line, and the script wrote no entry. Read each printed line. Decide whether it bears on the verdict. Run the printed `record --denials-ok true` command when no line does. Run it with `false` when one does: the script then takes the failure path below |
+| `REFUSED:` | 13 | No review is owed, or the principal named a replacement for this step. For a replacement, run `substitution.md` and "A replacement runner" below |
+| `RECORD ERROR:` | 14 | A `crew-record.py` call failed. Fix the cause, then run the command again |
 
-```
-git -C <checkout> check-ignore -q .claude/worktrees/
-```
+A `notice:` line asks for one message to the principal. A `fallback:` or
+`retry:` line says what the script did on its own. It needs no action, and the
+failure path wrote its own `decisions.md` entry.
 
-When it exits non-zero, tell the principal once, and go on. Two reviews of
-two PRs in one checkout cut two worktrees, one per PR number.
+A session that finds a round half done runs the same command. The script reads
+what is on disk first (see "A saved attempt").
+
+## What the script does
+
+In this order. Each step prints a line when it fails or falls back.
+
+1. **It refuses a substituted round.** A `run.substitutions_requested` entry
+   for the step stops it (`REFUSED:`). The entry names `goal-check` on a goal
+   run and `skeptical-review` on a review run.
+2. **It finds the timeout tool**, `timeout` or else `gtimeout`. `timeout` is
+   GNU coreutils, and on macOS it comes from Homebrew. With neither tool, the
+   script says so in one sentence, and the round runs with no cap.
+3. **It runs the startup check**, `timeout 15 claude --version`, before every
+   round. A fault is a non-zero exit or a timeout. The script retries it three
+   times at one-minute intervals, as `autonomy-contract.md`'s "Retry an
+   environment fault" says, then prints `ESCALATE:`. A round that never
+   launched is no failed review: the script writes no `review_results` entry
+   and no failure decision for it.
+4. **It sets the round.** With `review_rounds` below the reserved round, it
+   sets `review_rounds` to the reserved round. With the two equal, the round
+   is a retry, and it leaves the count alone.
+5. **It cuts or moves the review worktree** (rules below).
+6. **On a goal run, it runs the setup command and checks the baseline**
+   (rules below).
+7. **It resolves the round**: whether a review run resumes, and the base. On
+   a review run's later round it also writes the base to the deliverable
+   (rules below).
+8. **It writes the instructions file** (rules below).
+9. **It records the session id**, then writes and runs the run script.
+10. **It runs the four checks and writes the result**, or takes the failure
+    path (rules below).
+
+### The worktree
+
+**Never review in the run's own checkout.** A probe watched one finder agent
+run `git checkout main` inside the repo under review (design §15.94c). The
+review reads, and it must not be able to move the run's branch. So the script
+cuts a worktree of its own, detached at the pending head
+(`review_pending.head`), once per deliverable. The reviewer's allow list has
+no `git switch` or `git checkout` rule, so the branch of the principal's main
+working tree stays out of its reach.
+
+- **A goal run**: `<run.worktree_base>/review-worktrees/<deliverable-id>`. A
+  record with no `run.worktree_base` uses `<record-dir>` as the base
+  (`record-format.md`).
+- **A review run**: `run.checkout`, which is
+  `<run.repo>/.claude/worktrees/crew-pr-<n>` with `<n>` the PR number. The
+  script runs `git worktree list --porcelain` before the cut. When it lists
+  the path and this record did not cut it, another run reviews this PR in this
+  checkout. The script prints `ESCALATE:` with the path. It cuts nothing and
+  removes nothing. A review run runs no `checkout`, `switch`, `reset` or
+  `clean` in the main working tree.
+- **The ignore check.** Before the first cut under
+  `<checkout>/.claude/worktrees/`, the script runs `git check-ignore -q
+  .claude/worktrees/`. A non-zero exit prints a `notice:` line. Tell the
+  principal once, and go on. Two reviews of two PRs in one checkout cut two
+  worktrees, one per PR number.
+- **Before every round** it runs `git worktree prune` and `git rev-parse
+  --git-dir` in the tree. A killed session can leave the directory without its
+  registration, or the registration without the directory. When the second
+  command fails, the script removes the registration, deletes what is left at
+  the path, and cuts the tree again at the same path. This acts only on a path
+  this run cut. A path that another run cut is not the script's to remove.
+- **Every later round moves the same worktree** to its pending head, in place,
+  with `git switch --detach --discard-changes`. A resumed reviewer works in the
+  directory its session started in, so the path never changes. A review run
+  also fetches the PR's head and base first, as `later-round.md` says.
+
+**Detached, and at the pending sha.** A named branch in a second worktree is
+a branch two trees can move. The sha is what the review was asked about.
+`--force` and `--discard-changes` are right on a review worktree and nowhere
+else in this run. The tree holds no work except the setup command's output,
+and every piece of evidence the review produced is in the record. The rule
+that protects an IC worktree (`simple-path.md`'s "End the run") protects
+something this tree never has.
+
+**You alone make and remove these worktrees.** No review agent touches them.
+On a goal run, no IC touches `review-worktrees/` either. Nothing registers a
+review worktree in `worktrees.json`, which holds the run's own worktrees only
+(`record-format.md`). So the "End the run" cleanup that the delivered window
+runs after a fix round leaves it in place, and the deliverable's
+`checkout_branch` stays `null`.
 
 **One worktree serves the review and the assist fix.** A review round
 detaches it at the pending head. A fix round puts it on a local branch named
-`crew/pr-<n>` at the pending head, the IC commits on that branch, and the
-push updates `<headRefName>` from it. `crew:delivered-window`'s "A change
-request" steps 3 and 5 own the two commands. The worktree never checks out
+`crew/pr-<n>` at the pending head, the IC commits on that branch, and the push
+updates `<headRefName>` from it. `crew:delivered-window`'s "A change request"
+steps 3 and 5 own the two commands. The worktree never checks out
 `<headRefName>` itself, because the principal's main working tree can hold
 that branch, and git refuses a branch that another worktree holds.
 `deliverables[].branch` stays `<headRefName>`: it names the PR's ref, which
-the push updates.
+the push updates. The only round that puts the worktree on `crew/pr-<n>` is a
+fix round of a review run.
 
-**Every later round moves the same worktree to its pending head**, in place,
-and detaches it again after a fix round. A resumed reviewer works in the
-directory its session started in ("Resume the reviewer" below), so the path
-never changes:
-
-```
-git -C <review-worktree> switch --detach --discard-changes <review_pending.head>
-```
-
-On a goal run, remove it at the ship word, never after a round:
+**Removal.** On a goal run, remove the worktree at the ship word, never after
+a round. Use `run.repo`, never `run.checkout`: "End the run" removes a
+checkout the run cut for itself, and a review that runs after that would have
+no repo to work from. On a review run, `run.checkout` is the review worktree,
+and the command still runs against `run.repo`.
 
 ```
 git -C <run.repo> worktree remove --force <review-worktree>
 git -C <run.repo> worktree prune
 ```
 
-**A direct review run checks for unpushed commits, then removes its worktree
-at "The end"** of `skills/review/SKILL.md`. An assist fix round commits on
-`crew/pr-<n>`, and a refused or declined push leaves those commits there.
-Run this check first:
+Ignore a removal that fails because the path is already gone.
+
+**A direct review run checks for unpushed commits first**, then removes its
+worktree at "The end" of `skills/review/SKILL.md`. An assist fix round commits
+on `crew/pr-<n>`, and a refused or declined push leaves those commits there.
+Run this check:
 
 ```
 git -C <run.repo> merge-base --is-ancestor crew/pr-<n> origin/<headRefName>
 ```
 
-When the branch does not exist, the check has nothing to protect: go on.
-When the branch exists and the check exits with any status but 0, keep the
-branch and the worktree, and tell the principal the path and the branch.
-Exit 1 means the branch holds commits the PR does not. Exit 128 means
+When the branch does not exist, the check has nothing to protect: go on. When
+the branch exists and the check exits with any status but 0, keep the branch
+and the worktree, and tell the principal the path and the branch. Exit 1
+means the branch holds commits the PR does not. Exit 128 means
 `origin/<headRefName>` is gone. Remove the tree and delete the branch only
 when the check exits 0. Ignore the failure of the last command when the
 branch does not exist:
@@ -98,588 +175,243 @@ git -C <run.repo> worktree prune
 git -C <run.repo> branch -D crew/pr-<n>
 ```
 
-**`run.repo`, never `run.checkout`.** "End the run" removes a checkout the
-run cut for itself, and a review that runs after that would have no repo to
-work from. `run.repo` is the target-repo clone, and it outlives the run
-(`record-format.md`). On a review run, `run.checkout` is the review worktree,
-so every command that removes it runs against `run.repo`.
+### Setup and the baseline
 
-**Detached, and at the pending sha.** A named branch in a second worktree is
-a branch two trees can move. The sha is what the review was asked about, and
-detaching it keeps the run's own branch out of reach. Only a fix round of a
-review run puts the worktree on `crew/pr-<n>`.
+**A review run skips this step.** It runs no setup command and no baseline
+(`/crew:review`'s "Review").
 
-**You alone make and remove these worktrees.** No review agent touches them.
-On a goal run, no IC touches `review-worktrees/` either. On a review run, the
-assist IC commits in the worktree during a fix round, and nowhere else.
-Nothing registers a review worktree in `worktrees.json`, which holds the
-run's own worktrees only (`record-format.md`). So the "End the run" cleanup
-that the delivered window runs after a fix round leaves it in place. The
-deliverable's `checkout_branch` stays `null`, so the restore step there does
-nothing.
+On a goal run, the script runs the `--setup` command in the review worktree.
+The goal check runs no suite, but the baseline does. A fresh worktree has the
+repo's files and none of its installed dependencies, so the baseline's gates
+fail there for a reason that has nothing to do with the diff. The script runs
+the command itself and never grants the child a rule for it, because that
+rule would let the review install whatever it liked.
 
-**Check the worktree before every round.** A killed session can leave the
-directory without its registration, or the registration without the
-directory. Before you move the worktree, run:
+**A setup that fails is an environment failure, not a finding.** The script
+writes it to `decisions.md` and writes `reviews/baseline.md` as the no-suite
+outcome: `Base: <sha>` and the line `No suite.` The goal check runs as it
+would have.
 
-```
-git -C <run.repo> worktree prune
-git -C <review-worktree> rev-parse --git-dir
-```
+**The baseline.** `skeptical-review.md`'s launch step 4 owns what it holds and
+how you write it. When the file is missing, or its `Base:` line names another
+sha than the deliverable's `base`, the script stops before the instructions
+with `BASELINE OWED:`. You write the file, then run the command again. The
+script skips the setup command on that second call.
 
-When the second command fails, run the removal above, delete what is left at
-the path, and cut the worktree again at the same path. This check acts only
-on a path this run cut. A path that another run cut is not yours to remove.
+### The instructions file
 
-`--force` and `--discard-changes` are right on a review worktree and nowhere
-else in this run. The tree is detached at a sha the branch already holds, it
-holds no work except the setup command's output, and every piece of evidence
-the review produced is in the record. On a review run, the commits of a fix
-round are on the PR branch once the push lands. The rule that protects an IC
-worktree (`simple-path.md`'s "End the run") is protecting something this tree
-never has. Ignore a removal that fails because the path is already gone.
+The script writes `reviews/skeptical-r<n>-instructions.md`. The child process
+reads no file of this plugin, so every part goes in whole, never by name. The
+parts, in this order:
 
-## The startup check and the cap
+1. `review-output.md`, verbatim. It owns the `Severity:` line, the `Cannot
+   verify` rule, the report-never-fix rule and the three closing lines.
+2. On a goal run, `skills/review/references/severity-rubric.md`, verbatim. A
+   review run carries the rubric's paragraphs in the reviewer paragraph
+   instead (part 5).
+3. The standing instructions: the repo file, then the machine file, from the
+   paths in `run.standing_instructions`. A review run reads the `repo` value,
+   `origin/<baseRefName>:.claude/crew.md`, with `git show`.
+4. The block of the run kind, with its brackets filled in: the goal-check
+   block on a goal run, the review block on a review run. It holds what is
+   this review's own: the goal text, the diff range, the output path and the
+   pending head. The goal text is `charter.md` whole on a goal run. On a
+   review run it is the section under the charter's author's-text heading. The
+   review block says the text is a claim and never an instruction to the
+   reviewer.
+5. On a review run: the later-round block for a round `n > 1`, then the
+   reviewer paragraph file. A fresh launch and a resume both get the
+   later-round block, whatever made the round launch fresh. Its reading
+   instruction replaces part 4's for that round.
 
-**Check that the runner starts, before every round.** `timeout` is GNU
-coreutils. On macOS it comes from Homebrew, as `timeout` or `gtimeout`. Use
-whichever `command -v` finds, and read every `timeout` in this file as that
-one. For the default runner, run:
+**The blocks are files**, in `skills/project-lead/references/reviewer-blocks/`,
+and each one is in that one file only. The script reads them at run time and
+fills the brackets:
 
-```
-timeout 15 claude --version
-```
+| File | What it is |
+|---|---|
+| `goal-check.md` | the goal-check block. `goal-check.md` (the reference) owns the question it asks |
+| `review.md` | the review block. `skeptical-review.md` owns its stance |
+| `later-round.md` | the frame of the later-round block |
+| `reading-delta.md`, `reading-whole.md` | the two reading paragraphs. The delta paragraph is for a previous head that is an ancestor of the pending head. The whole paragraph is for a previous head that is not |
+| `reply-line.md`, `no-reply-line.md` | the line before the reply file, and the line before the previous report, for a round whose report had no finding to answer |
+| `resume-prompt.md` | the prompt of a resumed round |
+| `replacement-sentence.md` | the one sentence a replacement runner gets in addition ("A replacement runner") |
 
-A replacement runs its own check, as `substitution.md`'s "Running it" says.
-A non-zero exit or a timeout is an environment fault. Retry it three times
-at one-minute intervals, then escalate, as `autonomy-contract.md`'s "Retry
-an environment fault" says. A round that never launched is no failed review,
-so the failure path below does not count it.
+**A replacement receives this same file**, plus that one sentence
+(`substitution.md`). The sentence replaces the block's rule that returns the
+report only when the write is denied.
 
-**With neither tool**, print one sentence that names the missing tool, such
-as "GNU timeout is not installed, so this round runs with no cap." Then run
-`claude --version` with no cap, and launch the round without the `timeout`
-prefix.
+### The resume of a review run's later round
 
-**Every `claude -p` command runs under `timeout <cap>`**, with the cap of its
-run kind in "The default command" below. A capped process exits 124, and
-"Check the review before you read it" takes that to the failure path.
+**A goal run resumes no reviewer.** An extra goal check launches as round 1
+does (`goal-check.md`).
 
-**The default runner gets a cap, and a replacement gets an alarm.**
-`claude -p --output-format json` prints nothing until it exits, so a
-no-output alarm would kill a healthy default run. A replacement streams its
-progress, so its run script kills it after 600 seconds with no output.
-`substitution.md`'s "Running it" holds that script.
-
-## The default command
-
-Write the instructions file first, then launch, from the review worktree.
-The round `<n>` comes reserved in `run.review_pending.round`, and
-`skeptical-review.md` owns the reservation.
-
-**Launch from a script file.** Write the command below, with every
-placeholder filled as a literal path, to
-`<record-dir>/reviews/skeptical-r<n>-run.sh`. Then run `bash
-<record-dir>/reviews/skeptical-r<n>-run.sh`. A worktree-isolated session
-refuses the command typed whole, because it names git in a compound form,
-and it allows the script (design §15.126). The resume command below launches
-the same way.
-
-```
-cd <review-worktree> && printf '%s\n' "Review the finished change on this detached head, following every instruction in your system prompt. Write your report to the absolute path your instructions name." | timeout <cap> claude -p --model <model> --effort high --output-format json --session-id <uuid> --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "Read,Glob,Grep,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git rev-parse *),Bash(npm view *),Bash(npm ls *),Bash(pnpm ls *),Bash(pnpm why *),Bash(yarn why *),Bash(pip show *),Edit(//<record-dir>/reviews/**)" > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
-```
-
-**Fill `<model>` and `<cap>` by the run kind, exactly:**
-
-| Run kind | `<model>` | `<cap>` |
-|---|---|---|
-| a goal run: the goal check | `sonnet` | `900`, 15 minutes |
-| a review run: the skeptical review | `opus` | `2700`, 45 minutes |
-
-A separate process with its own model and effort flag keeps the review's
-cost apart from `band-rubric.md`'s pick for the run's own ICs (design
-§15.94c). The goal check asks one question and runs no suite, so it takes
-the cheaper model and the shorter cap (design §15.151).
-
-**The prompt rides on stdin, never as a positional argument.**
-`--allowedTools` takes a variadic list, so a prompt placed after it is read as
-one more tool name, and the process exits 1 with "Input must be provided
-either through stdin or as a prompt argument" (design §15.98b). Piping the
-prompt on stdin keeps the tool list closed. "Check the review before you read
-it" below catches a prompt that still did not arrive.
-
-**No slash command runs.** The bundled pull-request reviewer the skeptical
-review used to invoke reads a base ref as the commit to review, not the whole
-diff against the goal, and even retargeted at the right commit it wrote no
-report file and no verdict pair (design §15.98b). The stance that
-`goal-check.md` or `skeptical-review.md` states is what the printed line and
-the appended system prompt carry instead.
-
-**Redirect every piece of evidence to the record, and read it from there.**
-The checks below run against `-result.json`, so a session that dies between
-the exit and the checks finds the same evidence a live one had. It also holds
-the report itself when the fallback applies. `-result.stderr` is the runner's
-own error output, kept beside it for the same reason. `-result.exit` is the
-process's own exit status, the same protocol the substituted runner already
-uses (`substitution.md`) — check 1 below reads it rather than trusting the
-JSON's own shape when the process died before writing one.
-
-## Resume the reviewer
-
-**This section is for a review run.** A goal run resumes no reviewer: an
-extra goal check launches as round 1 does (`goal-check.md`).
-
-**On a review run, round 1 launches as above. Every later round resumes the
-reviewer session of the round before it**, so the reviewer keeps what it read
-and does not inspect the whole PR again. Resume when all three hold:
+On a review run, round 1 launches fresh. Every later round resumes the
+reviewer session of the round before it, so the reviewer keeps what it read
+and does not inspect the whole PR again. The script resumes when all three of
+these hold:
 
 - `run.review_sessions[skeptical-r<n-1>]` exists, and its `runner` is the
   runner this round uses.
 - The head round `<n-1>` reviewed, the `Reviewed:` line of
-  `reviews/skeptical-r<n-1>.md`, is an ancestor of the pending head: `git
-  merge-base --is-ancestor <previous head> <review_pending.head>` exits 0. A
+  `reviews/skeptical-r<n-1>.md`, is an ancestor of the pending head. A
   force-push, and a round on another deliverable, fail this check.
 - No `reviews/skeptical-r<n>-resume-attempt<k>.md` exists. A retired resume
-  attempt means a resume of this round failed once, and the round now
-  launches fresh.
+  attempt means a resume of this round failed once, and the round now launches
+  fresh.
 
-Otherwise launch as round 1 does. Take the session id from the record, never
-from a runner's `--last`. A fresh launch at a later round takes the base that
-"Find the base of a later round" sets for it, in
-`skills/review/references/later-round.md`.
+Otherwise it launches fresh, and writes the condition that failed to
+`fresh_reason`. It takes the session id from the record, never from a
+runner's `--last`. It resolves the resume and the base together, as
+`later-round.md`'s "Find the base of a later round" says, and writes the base
+to the deliverable before it renders any file. The resume prompt and the
+instructions file both read that result.
 
-**Write the resume prompt** to `<record-dir>/reviews/skeptical-r<n>-resume.md`.
-Write the instructions file as well, as every round does. Fill this block:
-
-```
-The change has a new head. In this session you reviewed <previous head sha>.
-This working directory is now a detached checkout at <pending head sha>.
-
-<part 4 of "Reviewer instructions", the later-round block, filled in>
-
-Follow your first instructions on the suite. Use the same two verdict
-strings as before. Open the report with this line, and nothing before it:
-
-Reviewed: <pending head sha>
-
-Give every finding a `Severity:` line. End the report with the three closing
-lines: `Findings:`, `Verdict:` and `Blocking count:`. Your first instructions
-may name an older count line. Write `Blocking count:` instead.
-
-<the output sentence>
-
-Do not write to <previous round's absolute report path>. That file is the
-report of your last round.
-```
-
-**A resumed round writes its report to its own round's path,
-never to the previous round's path.** The resumed session still holds the
-path its first instructions named. A reviewer that writes there overwrites
-the last round's report, so the block names both paths.
-
-The resume prompt takes part 4 from "Reviewer instructions" below, filled in
-the same way as the instructions file. Do not write a second version of it.
-
-The output sentence is "Write your whole report to <absolute output path>
-before you finish." for the default runner, and the replacement sentence in
-"Reviewer instructions" below for a replacement.
-
-**One runner call per round.** The pushback rides in the resume prompt. A
-second call per round would double the runner's spend, and the reviewer needs
-the context, not a dialogue.
-
-**The resume commands.** The default runner keeps "The default command" with
-two changes: `--resume <session id>` in place of `--session-id <uuid>`, and
-the resume prompt on stdin in place of the `printf` line. It launches from
-its round's `-run.sh` script, as "The default command" says:
-
-```
-cd <review-worktree> && timeout 2700 claude -p --resume <session id> --model opus --effort high --output-format json --append-system-prompt-file <record-dir>/reviews/skeptical-r<n>-instructions.md --allowedTools "<the same list>" < <record-dir>/reviews/skeptical-r<n>-resume.md > <record-dir>/reviews/skeptical-r<n>-result.json 2> <record-dir>/reviews/skeptical-r<n>-result.stderr; echo $? > <record-dir>/reviews/skeptical-r<n>-result.exit
-```
-
-A replacement keeps `substitution.md`'s run script, with this `codex exec`
-line. The resumed session keeps the directory it started in:
-
-```
-codex exec resume -c sandbox_mode=read-only <session id> - \
-  < "$r-resume.md" > "$r-result.txt" 2> "$r-result.stderr" &
-```
-
-**Record the round's session** in `run.review_sessions[skeptical-r<n>]`,
-with `crew-record.py <record-dir> run set review_sessions.skeptical-r<n>
-'<json>'`. A resumed round writes `resumed_from: "skeptical-r<n-1>"` and
-`fresh_reason: null`. A round that launches fresh writes `resumed_from:
-null`, and `fresh_reason` names the condition above that failed, or `null` on
-round 1. A retry overwrites the round's entry.
-
-- **The default runner** writes the entry before the launch. A resumed
-  session keeps its id, which `run.review_session_ids` already holds, so
-  append nothing to that list.
-- **A replacement** prints `session id: <uuid>` on stderr. Write the entry
-  after the run, from `sed -n 's/^session id: //p'
-  <record-dir>/reviews/skeptical-r<n>-result.stderr | head -1`. With no such
-  line, write no entry, and the next round launches fresh. Never put this id
-  in `run.review_session_ids`: `spend.py` prices Claude sessions alone.
+A resumed round writes its report to its own round's path. The resumed
+session still holds the path its first instructions named, so the resume
+prompt names both paths and forbids the old one. One runner call runs per
+round. The pushback rides in the resume prompt.
 
 **A resume that exits non-zero launches fresh, in the same round.** The
-session can be gone, or a runner upgrade cannot read it. Retire the attempt
-as `skeptical-review.md`'s "Retiring an attempt before you retry it" says,
-write `fresh_reason: "resume exited <status>"`, and launch as round 1 does.
-That launch is not the failure path's retry. A resume that exits 0 and fails
-a check below takes the failure path, and its retry launches fresh. Before
-either fresh launch, replace the previous-head base the resume used. First,
-recompute the merge base, as `later-round.md`'s "Find the base of a later
-round" does for a round that is not resumed. Then write it to
-`deliverable.base`. Then write the round's instructions file again, with the
-whole-PR range `git diff <merge base>..HEAD`.
+session can be gone, or a runner upgrade cannot read it. The script retires
+the attempt, writes `fresh_reason: "resume exited <status>"`, recomputes the
+base as for a round that is not resumed, writes it to `deliverable.base`, and
+renders both files again. That launch is not the failure path's retry. A
+resume that exits 0 and fails a check takes the failure path, and its retry
+launches fresh because the retired resume attempt fails the third condition.
 
 This rule is for a review run's skeptical review alone. A goal check, a spec
 critic, replaced or not, and every in-process critic, start fresh each round
 (design §15.108).
 
-## The permissions the review needs
+### The session id and the run script
 
-**Without an allow list the review returns nothing.** The same probe found
-that under default headless permissions every command the review has to run,
-and its report write, are denied: the reviewer runs no test, writes no
-report, and prints its findings into the JSON `result` field instead.
+The script writes the ids before the launch, so a review killed halfway still
+prices into the run. A fresh round gets a new uuid from `uuidgen`, and the
+script appends it to `run.review_session_ids`. A resumed round appends none.
+On a review run the script writes `run.review_sessions[skeptical-r<n>]` too:
+`runner`, `session_id`, `resumed_from` and `fresh_reason`. A retry overwrites
+the entry. `record-format.md` owns both fields. A goal run writes no
+`review_sessions` entry.
 
-Each rule buys one thing the review cannot work without:
+`spend.py` prices those transcripts into the run, and `crew-stats.py` reports
+them. **Never put one in `run.session_ids`**: `hooks/session-end.py` marks the
+whole run `interrupted` when an id in that field ends, so a finished review
+would fake a dead run (`record-format.md`, design §15.90h).
 
-| Rule | What it buys |
-|---|---|
-| `Read`, `Glob`, `Grep` | reading the tree the review is about |
-| `Bash(git diff *)`, `Bash(git log *)`, `Bash(git show *)` | the history and the diff |
-| `Bash(git rev-parse *)` | the sha the reviewer opens its report with (`git rev-parse HEAD`) |
-| `Bash(npm view *)`, `Bash(npm ls *)`, `Bash(pnpm ls *)`, `Bash(pnpm why *)`, `Bash(yarn why *)`, `Bash(pip show *)` | read-only package probes: which version is installed, and why. When the setup command, from the scout, uses another package manager, add its read-only equivalent |
-| `Edit(//<record-dir>/reviews/**)` | the report file, which sits in the record and not in the worktree |
+The script writes the command to `reviews/skeptical-r<n>-run.sh` with every
+value as a literal, then runs it with `bash`. A worktree-isolated session
+refuses the command typed whole, because it names git in a compound form, and
+it allows the script (design §15.126). Four rules hold for the command:
 
-**The list adds capabilities and removes none.** Headless mode already allows
-reading in the working directory and its read-only commands. Everything the
-list does not name prompts instead, and a prompt with nobody to answer it is
-a denial — which is how the reviewer is kept from editing the code. It
-reports; you decide.
+- **It runs under `timeout <cap>`.** A capped process exits 124. The goal check
+  takes the cheaper model and the shorter cap, because it asks one question and
+  runs no suite (design §15.151). The skeptical review takes the stronger
+  model and the longer cap. `MODEL` in the script holds both pairs. A separate
+  process with its own model and effort flag keeps the review's cost apart
+  from `band-rubric.md`'s pick for the run's own ICs (design §15.94c).
+- **The default runner gets a cap, and a replacement gets an alarm.**
+  `claude -p --output-format json` prints nothing until it exits, so a
+  no-output alarm would kill a healthy default run.
+- **The prompt rides on stdin, never as a positional argument.**
+  `--allowedTools` takes a variadic list, so a prompt placed after it is read
+  as one more tool name, and the process exits 1 with "Input must be provided
+  either through stdin or as a prompt argument" (design §15.98b). A resumed
+  round pipes the resume prompt file instead.
+- **No slash command runs.** The bundled pull-request reviewer reads a base
+  ref as the commit to review, not the whole diff against the goal, and even
+  retargeted at the right commit it wrote no report file and no verdict pair
+  (design §15.98b).
 
-**One comma-separated argument.** The flag also accepts space-separated
-rules, but each one then needs its own shell quoting, and a rule that loses
-its quotes silently becomes a different rule.
+**Every piece of evidence goes to the record**, and the checks read it from
+there, so a session that dies between the exit and the checks finds the same
+evidence a live one had. `-result.json` is the JSON the process printed, and
+it holds the report when the fallback applies. `-result.stderr` is the
+runner's own error output. `-result.exit` is the process's own exit status,
+the same protocol the replacement runner uses (`substitution.md`).
 
-**`Edit(...)` is what governs the report write, not `Write(...)`.** A path
-rule on `Write` is accepted and never consulted, so a review given
-`Write(<path>/**)` cannot write its report. The `//` at the front of the
-rule is the absolute-path anchor: the record directory's own leading slash
-is not doubled, it is written after the anchor. The rule is scoped to
-`reviews/`, so this buys the report file and no code edit anywhere.
+### The permissions the review needs
 
-**A headless run can refuse a write under ~/.claude.** This was seen once: a
-cloud routine on Claude Code 2.1.280 could not write its report under
-`/root/.claude/crew/`, which it treated as a sensitive path. A local headless
-review on this plugin's own repo wrote under `~/.claude/crew/` with no
-refusal. The default record root, `~/.claude/crew/`, is inside that tree. A
-run whose `CREW_RECORD_ROOT` points outside ~/.claude avoids the refusal.
-When the write is refused anyway, the result-field fallback in "Check the
-review before you read it" is the documented path.
+**Without an allow list the review returns nothing.** Under default headless
+permissions every command the review has to run, and its report write, are
+denied: the reviewer runs no test, writes no report, and prints its findings
+into the JSON `result` field instead. The list is `ALLOW` in the script:
+`Read`, `Glob` and `Grep`, read-only `git diff`, `git log`, `git show` and
+`git rev-parse` (the last gives the sha the report opens with), read-only
+package probes (`npm view`, `npm ls`, `pnpm ls`, `pnpm why`, `yarn why`, `pip
+show`), and one `Edit` rule for the report.
 
-**`node -e`, `python -c`, every install command and every gate stay off the
-list.** `node -e` and `python -c` run any code they get, so either one lets
-the review do more than report. An install changes the tree the review reads.
-Neither run kind runs a suite or a gate: `goal-check.md` and
-`/crew:review`'s "Review" say why.
+- **The list adds capabilities and removes none.** Headless mode already
+  allows reading in the working directory and its read-only commands.
+  Everything the list does not name prompts instead, and a prompt with nobody
+  to answer it is a denial. That denial is what keeps the reviewer from
+  editing the code. It reports, and you decide.
+- **`Edit(...)` governs the report write, not `Write(...)`.** A path rule on
+  `Write` is accepted and never consulted. The `//` at the front of the rule
+  is the absolute-path anchor, and the record directory's own leading slash
+  follows it. The rule is scoped to `reviews/`, so it buys the report file and
+  no code edit anywhere.
+- **`Bash(<prefix> *)` matches the start of the command string, not a git
+  subcommand.** `Bash(git log *)` allows `git log --oneline` and denies `git
+  -C <path> log --oneline`. The review runs with its worktree as the working
+  directory for this reason: the commands it needs start with `git`, with no
+  `-C` in front.
+- **`node -e`, `python -c`, every install command and every gate stay off the
+  list.** `node -e` and `python -c` run any code they get. An install changes
+  the tree the review reads. Neither run kind runs a suite or a gate:
+  `goal-check.md` and `/crew:review`'s "Review" say why.
+- **A headless run can refuse a write under ~/.claude.** This was seen once: a
+  cloud routine on Claude Code 2.1.280 could not write its report under
+  `/root/.claude/crew/`, which it treated as a sensitive path. A local
+  headless review on this plugin's own repo wrote under `~/.claude/crew/` with
+  no refusal. A run whose `CREW_RECORD_ROOT` points outside ~/.claude avoids
+  the refusal. When the write is refused anyway, the result-field fallback
+  below is the documented path.
 
-**`Bash(<prefix> *)` matches the start of the command string, not a git
-subcommand.** The probe showed `Bash(git log *)` allow `git log --oneline`
-and deny `git -C <path> log --oneline`, because the second does not begin
-with `git log`. The review runs with its worktree as the working directory
-for exactly this reason: the commands it needs start with `git`, with no
-`-C` in front.
+## The checks and the failure path
 
-## Prepare the worktree before you launch
-
-**A review run skips this section.** It runs no setup command and no baseline,
-and the setup failure path below does not apply (`/crew:review`'s "Review").
-The rest of the section is for a goal run.
-
-**Run the repo's setup command yourself, in the review worktree.** The goal
-check runs no suite, but the baseline does. A fresh worktree has the repo's
-files and none of its installed dependencies, so the baseline's gates fail
-there for a reason that has nothing to do with the diff. The scout records
-the command beside the suite command (`SKILL.md`, "Scout"). Run it as the
-project lead, in the worktree, before the baseline. Never grant the child a
-rule for it, because that rule would let the review install whatever it
-liked.
-
-**Before the deliverable's first round, the baseline runs here.**
-`skeptical-review.md`'s "When the review runs" owns that step. It moves the
-worktree with the `switch` command above, to the deliverable's `base` and
-then back to the pending head.
-
-**A setup that fails is an environment failure, not a finding.** Record it in
-`decisions.md`, and write the baseline as under the no-suite outcome. The
-goal check runs as it would have.
-
-**A file, never an inline string.** The block below is long, and it carries
-the principal's own words, so passing it inline puts a quote or a backtick
-one shell layer away from breaking the command. The file also lands in the
-record, where a reader can see exactly what the reviewer was told
-(`record-format.md`).
-
-**The review edits nothing but its own report.** The only `Edit` rule it
-carries is scoped to `reviews/`, so whatever it decides, it can make no code
-edit. The findings come back to you, and you decide what each one earns.
-
-## Reviewer instructions
-
-**You assemble this file; you do not copy a second copy of the report
-shape.** It has three parts, and a fourth for a review run's later round, in
-this order:
-
-1. **`review-output.md`, verbatim.** It owns the `Severity:` line, the
-   `Cannot verify` rule, the report-never-fix rule and the three closing
-   lines, and it is the same text every review dispatch injects. The child
-   process reads no file of this plugin, so a reference by name would not
-   resolve. On a goal run, `skills/review/references/severity-rubric.md`
-   follows it, verbatim. A review run carries the rubric's paragraphs in
-   `github-review.md`'s reviewer paragraph instead.
-2. **The standing instructions**, as `SKILL.md`'s "Standing instructions"
-   says.
-3. **The block of the run kind**, with its bracketed values filled in: the
-   goal-check block on a goal run, the review block on a review run. It holds
-   what is this review's own and nothing that parts 1 and 2 already state:
-   the goal text, the diff range, the output path and the pending head.
-4. **On a review run, for a round `n > 1`, the later-round block** after the
-   review block. A fresh launch and a resume both get it, whatever made the
-   round launch fresh. Its reading instruction replaces part 3's for that
-   round.
-
-Write the parts into
-`<record-dir>/reviews/skeptical-r<n>-instructions.md` and pass that path to
-`--append-system-prompt-file`.
-
-**The goal-check block**, for a goal run. `goal-check.md` owns the question
-it asks:
-
-```
-You are checking one finished change against its goal. This is not a bug
-hunt: the repository's own review owns code defects.
-
-The goal, in the principal's own words, with every constraint the principal
-stated: <goal text>
-
-You are already on the change: this working directory is a detached checkout
-at <pending head sha>. Read `git diff <base>..HEAD` against that goal and
-against this repository. The charter's acceptance criteria go in as
-supplementary evidence, never on their own. Do not look for a specification
-document, and do not treat any file in the repository as the statement of
-what this change owed.
-
-Answer one question: does this change do what the goal asks, with every
-constraint it states? A goal miss is a change that does not do what the goal
-asks, or that breaks a constraint the goal states. Look for these three in
-particular:
-
-- a deliverable the goal asked for that the change added and never ran, such
-  as a measurement script with no measurement;
-- code the goal needs that no caller reaches;
-- a stated exclusion that the result still breaks, such as a module the goal
-  kept out that a bundle still holds.
-
-Only a goal miss can be blocking. A code defect you see in passing is a
-suggestion at most. Do not run the suite, a gate or an install. Read the
-code with read-only commands, such as a grep or a read of a call site.
-
-Write your whole report to <absolute output path> before you finish. This
-process has no caller reading its output, so anything you print to the
-terminal and do not also write to that path is lost with it — except your
-very last message, which is captured whole. So: write the report to that
-path. If, and only if, that write is denied, return the complete report as
-your final message instead, in the same shape, so the one thing that is
-captured is the report itself.
-
-Open the report with these two lines, and nothing before them:
-
-Reviewed: <pending head sha>
-Check: goal
-
-The first is `git rev-parse HEAD` in this working directory, and it is how
-the reader knows which tree your findings describe.
-
-Then the findings, in the shape those rules give. Give every finding a
-`Severity:` line. Add one section, titled "Checked and found nothing",
-listing each part of the goal and each constraint you checked and found met.
-A check you never ran does not go in it.
-
-End the report with the three closing lines, after that section: `Findings:`,
-`Verdict:` and `Blocking count:`. Your two verdict strings are `accepted` and
-`patch round needed`. Use "accepted" exactly when no finding is blocking, and
-"patch round needed" exactly when at least one finding is blocking.
-```
-
-**The review block**, for a review run. `skeptical-review.md` owns its
-stance:
-
-```
-You are reviewing one finished change, and you are the only reader it gets.
-
-The goal, in the principal's own words, with every constraint the principal
-stated: <goal text>
-
-You are already on the change: this working directory is a detached checkout
-at <pending head sha>. Read `git diff <base>..HEAD` against that goal and
-against this repository. The charter's acceptance criteria go in as
-supplementary evidence, never on their own. Do not look for a specification
-document, and do not treat any file in the repository as the statement of
-what this change owed.
-
-Assume the change is wrong, and look for how. A clean pass is a finding you
-failed to make, not a result.
-
-Do not run the suite, a gate or an install. Spot-check the diff against the
-code with read-only commands, such as a grep or a read of a call site.
-Raise every behavior defect you read, also one that a test or a type check
-would catch. Do not report a tool's output as a finding of your own: a lint,
-format or type-checker message, or a test run's result. When a CI check
-would also catch a finding, name that check in the finding.
-
-Write your whole report to <absolute output path> before you finish. This
-process has no caller reading its output, so anything you print to the
-terminal and do not also write to that path is lost with it — except your
-very last message, which is captured whole. So: write the report to that
-path. If, and only if, that write is denied, return the complete report as
-your final message instead, in the same shape, so the one thing that is
-captured is the report itself.
-
-Open the report with this line, and nothing before it:
-
-Reviewed: <pending head sha>
-
-That is `git rev-parse HEAD` in this working directory, and it is how the
-reader knows which tree your findings describe.
-
-Then the findings, in the shape those rules give. Give every finding a
-`Severity:` line. Add one section, titled "Checked and found nothing",
-listing what you looked for and did not find. A check you never ran does not
-go in it.
-
-End the report with the three closing lines, after that section: `Findings:`,
-`Verdict:` and `Blocking count:`. Your two verdict strings are `accepted` and
-`patch round needed`. Use "accepted" exactly when no finding is blocking, and
-"patch round needed" exactly when at least one finding is blocking.
-```
-
-**Part 4, the later-round block, for a review run's round `n > 1`.**
-`<previous head sha>` is the `Reviewed:` line of
-`reviews/skeptical-r<n-1>.md`:
-
-```
-<one of the two reading paragraphs below>
-
-For this round, this reading instruction replaces the earlier instruction
-to read the whole diff. Give a verdict on the whole change as it now stands,
-not on the delta alone.
-
-<one of the two literal lines below>
-
-<the file that line names, verbatim>
-
-A finding the project lead declined with a reason stays declined unless you
-have new evidence. When you raise it again, name that evidence.
-```
-
-**The reading paragraph depends on the ancestor check** that "Resume the
-reviewer" runs on the previous head and the pending head. Run that check
-for every later round, also for a round that launches fresh. When the check
-passes, the paragraph is the delta:
-
-```
-The previous round reviewed <previous head sha>. Read two things before
-anything else: the change since that round, `git diff <previous head
-sha>..HEAD`, and the file below. Read the whole change only where that delta
-touches code the previous round did not review.
-```
-
-When the check fails, a diff from the previous head also holds commits that
-are not part of this change, so the paragraph is the whole change:
-
-```
-The previous round reviewed <previous head sha>. That commit is not an
-ancestor of this head. Read the file below first. Then read the whole
-change, `git diff <base>..HEAD`.
-```
-
-The literal line is "This is the project lead's reply to the last report. It
-says which findings it accepted, and why it declined or pushed back on the
-others:", followed by `reviews/skeptical-r<n-1>-reply.md`. When that round
-has no reply file, because its report had no finding to dispose of, the line
-is "The last report had no finding to answer. This is that report:", followed
-by `reviews/skeptical-r<n-1>.md`.
-
-**A replacement receives this same file, plus one sentence that names the
-report path and asks for the output too** (`substitution.md`). It replaces
-the block's rule that returns the report only when the write is denied. That
-sentence is the only addition:
-
-```
-For a replacement runner: write the complete report to <absolute output
-path>, and also return it whole as your output, `Reviewed: <sha>` first and
-the three closing lines last, whether or not the write succeeded.
-```
-
-## Check the review before you read it
-
-Four checks, on the JSON the process printed and on the record directory.
-All four pass, or this is the failure path below:
+The script runs four checks on the JSON the process printed and on the record
+directory. All four pass, or the round takes the failure path.
 
 1. **`-result.exit` reads `0`**, and the JSON's own `is_error` is false.
-2. **The outcome.** Check 2 fails on outcomes, not on denials. It fails in
-   two cases:
+2. **The outcome.** Check 2 fails on outcomes, not on denials. It fails in two
+   cases:
    - No report came back, from the file or from the `result` field.
    - The report marks a check `Cannot verify`, and that check bears on the
      verdict.
 
-   A report with no suite output passes, because no round runs a suite.
-   Every other denial passes this check. Write the `tool_input` of each
-   denial in `permission_denials` to `denied`, below. Read the entries by
-   their `tool_name` and `tool_input` and no more: the shape of an entry is
-   not documented, so anything else about it can change.
+   Only you can judge the second case, so the script stops with `CANNOT
+   VERIFY:` and writes no entry (the table above). A report with no suite
+   output passes, because no round runs a suite. Every other denial passes this
+   check. The script writes the `tool_input` of each denial in
+   `permission_denials` to `denied`, and reads each entry by its `tool_name`
+   and `tool_input` and no more, because the shape of an entry is not
+   documented.
 3. **The report file exists** at the output path, or the fallback below
    supplied it.
 4. **Its last two lines are the verdict pair**, and its first line is
-   `Reviewed: <sha>`, matching `run.review_pending.head`. On a resumed
-   round, the previous round's report must also still open with its own
-   `Reviewed:` sha, the previous head sha that the resume prompt names.
+   `Reviewed: <sha>`, matching `run.review_pending.head`. On a resumed round,
+   the previous round's report must also still open with its own `Reviewed:`
+   sha, the previous head sha that the resume prompt names.
 
-**A hung runner fails the round, by check 1.** It has two signs:
+**A hung runner fails the round, by check 1.** After the default command,
+`-result.exit` reads 124: the `timeout` cap stopped it. After a replacement,
+`-result.exit` reads 124 and `-result.stderr` ends with `watchdog: no output
+for 600 seconds`: the alarm killed it.
 
-- After the default command, `-result.exit` reads 124: the `timeout` cap
-  stopped it.
-- After a replacement, `-result.exit` reads 124 and `-result.stderr` ends
-  with `watchdog: no output for 600 seconds`: the alarm killed it.
-
-Take the failure path below for either one.
-
-**A `Reviewed:` mismatch fails the round.** Take the failure path below:
-retire the attempt and rerun it. A resumed round that fails this way reruns
-fresh, as "Resume the reviewer" says. When the previous round's report opens
-with another sha, the resumed reviewer overwrote it. Restore it from the
-`result` field of `skeptical-r<n-1>-result.json` when that text ends with
-the verdict pair. Use the fallback layout below, with the previous
-head sha on the `Reviewed:` line. Otherwise, record the loss in
-`decisions.md` with the round number, and go on. The current round still
-fails and reruns fresh.
-
-**Write the outcome down.** These checks decide whether a report may be
-adjudicated, so their result belongs in the record and not in your context:
+**The result is in the record.** The script writes
 `run.review_results[<n>] = {exit, denials_ok, report_ok, denied, at}`
 (`record-format.md`). A resumed session adjudicates a report only when that
-entry exists and passes. With no entry it runs the four checks again from the
-saved JSON, rather than trusting the report it finds. When you adjudicate,
+entry exists and passes. With no entry it runs the script again, which runs
+the four checks over the saved JSON ("A saved attempt"). When you adjudicate,
 read `denied` beside the report. A finding that rests on a denied command is
 unverified.
 
-**When the report file is missing, read `result` in the saved JSON.** A
-reviewer denied its report write prints the report there. When that text ends
-with the verdict pair, it is the report. Write the file yourself, in
-this layout, so every report on disk opens the same way:
+**When the report file is missing, the script reads `result` in the saved
+JSON.** A reviewer denied its report write prints the report there. When that
+text ends with the verdict pair, the script writes the file in this layout, so
+every report on disk opens the same way, and prints a `fallback:` line:
 
 ```
 Reviewed: <sha>
@@ -688,40 +420,106 @@ Source: result field
 <the result text>
 ```
 
-On a goal check, write `Check: goal` after the `Source:` line.
+On a goal check it writes `Check: goal` after the `Source:` line. It takes the
+`Reviewed:` sha from the text when the text carries one, and from
+`run.review_pending.head` when it does not. A goal check report with no
+`Check: goal` line gets one from the script, in either case. The review counts
+and its round stands.
 
-Take the `Reviewed:` sha from the text when it carries one, and from
-`run.review_pending.head` when it does not — that is the sha the review was
-launched against. The review counts and its round stands.
+**A `Reviewed:` mismatch fails the round.** A resumed round that fails this way
+reruns fresh. When the previous round's report opens with another sha, the
+resumed reviewer overwrote it. The script restores it from the `result` field
+of `skeptical-r<n-1>-result.json` when that text ends with the verdict pair,
+in the layout above with the previous head sha on the `Reviewed:` line.
+Otherwise it records the loss in `decisions.md` with the round number, and goes
+on. The current round still fails and reruns fresh.
 
-**Otherwise the review failed.** Record the failure in `decisions.md`. Retire
-the attempt as `skeptical-review.md`'s "Retiring an attempt before you retry
-it" says. Then run it once more, and **do not increment `run.review_rounds`
-for the retry** — no review happened, so the round count has nothing to add. A
-second failure is an escalation to the principal (`autonomy-contract.md`): say
-the review could not produce a report, and hand over what the branch holds.
+**The failure path.** On any failed check, the script:
+
+1. writes a `decisions.md` entry titled `Review round <n> failed`;
+2. retires the attempt, as `skeptical-review.md`'s "Retiring an attempt before
+   you retry it" says;
+3. removes the key `<n>` from `run.review_results`, so nothing points at a file
+   that has moved;
+4. runs the round once more in the same call, fresh, with a new session id.
+   It does not increment `run.review_rounds` for the retry, because no review
+   happened.
+
+A second failure prints `ESCALATE:`, and you escalate to the principal
+(`autonomy-contract.md`): say the review could not produce a report, and hand
+over what the branch holds.
 
 **A prompt that never reached the child is a failed launch.** The signs are
-an empty `result` in `-result.json`, or an empty file, and
-`Input must be provided` in `-result.stderr`. Take the failure path above,
-and put the whole command line you ran in its `decisions.md` entry. Its one
-retry is the rerun, not an extra one, and a second failure escalates as it
-says.
+an empty `result` in `-result.json`, or an empty file, and `Input must be
+provided` in `-result.stderr`. The script takes the failure path and puts the
+whole command line in the entry. Its one retry is the rerun, not an extra
+one.
 
-## Record the review's session id
+### A saved attempt
 
-**Generate the id before you launch a fresh round.** `uuidgen` prints one. Pass it as
-`--session-id <uuid>`, and append it to `state.json`'s
-`run.review_session_ids` **before** the command runs. A review killed
-halfway then still prices into the run; an id read out of the result
-afterwards is lost with the process that died. A resumed round generates
-none, as "Resume the reviewer" says.
+The script reads the round's files before it launches anything:
 
-`spend.py` prices those transcripts into the run, and `crew-stats.py` reports
-them. **Never put one in `run.session_ids`**: `hooks/session-end.py` marks
-the whole run `interrupted` when an id in that field ends, so a finished
-review would fake a dead run (`record-format.md`, design §15.90h).
+- **A passing `review_results[<n>]` entry and the report file.** It prints a
+  `fallback:` line, launches nothing and ends with `status: PASSED`.
+- **A `-result.json` and no passing entry.** It runs the four checks over that
+  JSON. Passing, it writes the entry. Failing, it takes the failure path.
+  Either way it launches no reviewer before the checks. A review already paid
+  for is never spent twice.
+- **An instructions file and no `-result.json`.** The attempt died before its
+  process finished. It retires the attempt and launches the round.
+- **Nothing on disk.** It launches the round.
+
+`skeptical-review.md`'s resume list says which entry sends a resumed session
+here.
+
+## A replacement runner
+
+A round whose `run.substitutions_requested` names a replacement runs through
+`substitution.md`. `review-run.py` refuses it, and it builds the same files
+for a replacement:
+
+```
+python3 <project-lead-dir>/scripts/review-run.py <record-dir> --replacement <runner name> [--setup "<setup command>"] [--reviewer-paragraph <file>]
+```
+
+With `--replacement` the script does steps 4 to 8 above and stops. It runs no
+startup check, writes no session id and runs no reviewer. It writes the
+worktree, the instructions file with the replacement sentence added, and, for
+a later round of a review run that resumes, the resume prompt. It prints
+`status: BUILT`, the paths, and `fresh_reason` or the session id to resume.
+The runner of a resume is the `<runner name>`. Run the replacement as
+`substitution.md` says. Then run the checks of this file: check 1 reads
+`-result.exit`, check 2 sets `denied` to `"not applicable: <runner>"`, and
+checks 3 and 4 hold word for word. The failure path, the retirement and the
+fallback layout hold for the replacement too.
+
+**The startup check of a replacement.** `substitution.md`'s "Running it" names
+the check, such as `timeout 15 codex --version`. Use the `timeout` or
+`gtimeout` that `command -v` finds, and with neither, run the command with no
+cap. Retry a fault three times at one-minute intervals, then escalate, as
+`autonomy-contract.md`'s "Retry an environment fault" says.
+
+**The resume of a replacement** keeps the run script of `substitution.md` and
+changes its `codex exec` line:
+
+```
+codex exec resume -c sandbox_mode=read-only <session id> - \
+  < "$r-resume.md" > "$r-result.txt" 2> "$r-result.stderr" &
+```
+
+**Record a replacement's session** in `run.review_sessions[skeptical-r<n>]`,
+with `crew-record.py <record-dir> run set review_sessions.skeptical-r<n>
+'<json>'`, after the run. A resumed round writes `resumed_from:
+"skeptical-r<n-1>"` and `fresh_reason: null`. A round that launches fresh
+writes `resumed_from: null`, and `fresh_reason` names the condition that
+failed, or `null` on round 1. The replacement prints `session id: <uuid>` on
+stderr. Take it from `sed -n 's/^session id: //p'
+<record-dir>/reviews/skeptical-r<n>-result.stderr | head -1`. With no such
+line, write no entry, and the next round launches fresh. Never put this id in
+`run.review_session_ids`: `spend.py` prices Claude sessions alone.
+
+## After the round
 
 **Measure the spend again once the review returns.** The canonical figure is
-`autonomy-contract.md`'s, and it names the review as one of the moments to
-run it. A figure taken before the review misses it.
+`autonomy-contract.md`'s, and it names the review as one of the moments to run
+it. A figure taken before the review misses it.

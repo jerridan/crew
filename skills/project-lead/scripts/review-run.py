@@ -5,6 +5,7 @@ recorded result, in one call.
 usage:
   review-run.py <record-dir> [--setup "<setup command>"] [--reviewer-paragraph <file>]
   review-run.py <record-dir> record --denials-ok true|false [same options]
+  review-run.py <record-dir> --replacement <runner name> [--setup ...] [--reviewer-paragraph <file>]
 
 `skills/project-lead/references/review-runner.md` owns how the project lead
 uses this script and what it does on each output prefix and exit status. The
@@ -15,6 +16,11 @@ resolve the round's resume and base, write the instructions file, record the
 session id, write and run `reviews/skeptical-r<n>-run.sh`, run the four
 checks, and write `run.review_results[<n>]`. A failed check retires the
 attempt and runs the round once more in the same call.
+
+`--allow-extra "<rule>"` adds one read-only rule to the allow list, and may
+repeat. `--replacement` builds the files of a round that a replacement runner
+reviews and stops: no startup check, no session id, no launch. It exits 0 with
+`status: BUILT`.
 
 The reviewer blocks are files in `references/reviewer-blocks/`. This script
 reads them at run time and keeps no copy.
@@ -81,9 +87,10 @@ RETIRE = [("skeptical-r{n}.md", "skeptical-r{n}-attempt{k}.md"),
 
 
 class Stop(Exception):
-    def __init__(self, code, lines):
+    def __init__(self, code, lines, word=None):
         self.code = code
         self.lines = lines
+        self.word = word
 
 
 def say(text):
@@ -176,8 +183,9 @@ def basics(ctx):
     state = ctx.load()
     run = state.get("run", {})
     ctx.review = run.get("kind") == "review"
+    ctx.runner = ctx.args.replacement or "claude"
     step = "skeptical-review" if ctx.review else "goal-check"
-    for entry in run.get("substitutions_requested") or []:
+    for entry in [] if ctx.args.replacement else run.get("substitutions_requested") or []:
         if isinstance(entry, dict) and entry.get("step") == step:
             raise Stop(REFUSED, ["REFUSED: the principal named a replacement for the %s. This script runs the default "
                                  "runner only. Run the replacement as substitution.md says." % step])
@@ -341,8 +349,8 @@ def resolve_round(ctx, force=None):
         reasons = []
         if not isinstance(entry, dict):
             reasons.append("no session recorded for %s" % prev_round)
-        elif entry.get("runner") != "claude":
-            reasons.append("the runner of %s is %s, not claude" % (prev_round, entry.get("runner")))
+        elif entry.get("runner") != ctx.runner:
+            reasons.append("the runner of %s is %s, not %s" % (prev_round, entry.get("runner"), ctx.runner))
         if not ancestor:
             reasons.append("previous head %s is not an ancestor of the pending head" % prev_head)
         if glob.glob(str(ctx.reviews / ("skeptical-r%d-resume-attempt*.md" % ctx.n))):
@@ -434,10 +442,14 @@ def build_instructions(ctx):
         if text is None:
             raise Stop(REFUSED, ["REFUSED: the reviewer paragraph file %s is missing" % ctx.args.reviewer_paragraph])
         parts.append(text)
+    replacement = fill((BLOCKS / "replacement-sentence.md").read_text(), {"<absolute output path>": out_path})
+    if ctx.args.replacement:
+        parts.append(replacement)
     ctx.p("-instructions.md").write_text("\n".join(x if x.endswith("\n") else x + "\n" for x in parts), encoding="utf-8")
     if plan["resume"]:
         skeleton = (BLOCKS / "resume-prompt.md").read_text()
-        sentence = "Write your whole report to %s before you finish." % out_path
+        sentence = replacement.strip("\n") if ctx.args.replacement else \
+            "Write your whole report to %s before you finish." % out_path
         skeleton = fill(skeleton, {"<previous head sha>": plan["prev_head"], "<pending head sha>": ctx.head,
                                    "<output sentence>": sentence,
                                    "<previous report path>": str(ctx.p(".md", ctx.n - 1))})
@@ -479,7 +491,7 @@ def run_script(ctx, sid):
     n = ctx.n
     q = shlex.quote
     prefix = "%s %d " % (ctx.tool, ctx.cap) if ctx.tool else ""
-    allow = ALLOW % str(ctx.rec).lstrip("/")
+    allow = ",".join([ALLOW % str(ctx.rec).lstrip("/")] + list(ctx.args.allow_extra or []))
     tail = "--append-system-prompt-file %s --allowedTools \"%s\"" % (q(str(ctx.p("-instructions.md"))), allow)
     out = "> %s 2> %s; echo $? > %s" % (q(str(ctx.p("-result.json"))), q(str(ctx.p("-result.stderr"))),
                                           q(str(ctx.p("-result.exit"))))
@@ -524,6 +536,22 @@ def launch(ctx):
             sid = new_session(ctx)
             script = run_script(ctx, sid)
             subprocess.run(["bash", str(script)])
+
+
+def build_replacement(ctx):
+    """The files of a round that a replacement runner reviews. Nothing launches."""
+    round_table(ctx)
+    prepare_worktree(ctx)
+    if not ctx.review:
+        setup_and_baseline(ctx)
+    plan = resolve_round(ctx)
+    build_instructions(ctx)
+    lines = ["instructions: %s" % ctx.p("-instructions.md"), "worktree: %s" % ctx.wt, "base: %s" % plan["base"]]
+    if plan["resume"]:
+        lines += ["resume prompt: %s" % ctx.p("-resume.md"), "resume session: %s" % plan["session"]["session_id"]]
+    else:
+        lines.append("resume prompt: none. fresh_reason: %s" % plan["fresh_reason"])
+    raise Stop(OK, lines, "BUILT")
 
 
 def run_round(ctx):
@@ -722,7 +750,7 @@ def saved_attempt(ctx):
 
 # ---- the output -------------------------------------------------------------
 
-def finish(ctx, code, lines):
+def finish(ctx, code, lines, word=None):
     for line in lines:
         say(line)
     s = ctx.summary
@@ -736,7 +764,7 @@ def finish(ctx, code, lines):
     for line in ctx.events:
         if line.startswith(("fallback:", "retry:")):
             say(line)
-    say("status: %s" % STATUS[code])
+    say("status: %s" % (word or STATUS[code]))
     sys.exit(code)
 
 
@@ -747,6 +775,8 @@ def main(argv):
     ap.add_argument("--setup")
     ap.add_argument("--reviewer-paragraph")
     ap.add_argument("--denials-ok", choices=["true", "false"])
+    ap.add_argument("--replacement")
+    ap.add_argument("--allow-extra", action="append")
     ap.add_argument("--startup-interval", type=float, default=60.0)
     args = ap.parse_args(argv)
     ctx = Round(args)
@@ -758,11 +788,13 @@ def main(argv):
             if not ctx.p("-result.json").exists():
                 raise Stop(REFUSED, ["REFUSED: no saved result for round %d. Run the script without `record`." % ctx.n])
             settle(ctx, judged=(args.denials_ok == "true"))
+        elif args.replacement:
+            build_replacement(ctx)
         elif not saved_attempt(ctx):
             run_round(ctx)
             settle(ctx)
     except Stop as stop:
-        finish(ctx, stop.code, stop.lines)
+        finish(ctx, stop.code, stop.lines, stop.word)
     finish(ctx, OK, [])
 
 

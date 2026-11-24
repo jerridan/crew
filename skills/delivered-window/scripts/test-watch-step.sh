@@ -92,7 +92,7 @@ newrec '{"run_state":"delivered","watch":'"$W0"'}'
 before=$(sum)
 ws arm "$REC"
 chk 'arm existing cursor: state.json unchanged' "$(sum)" "$before"
-chk 'arm existing cursor: no comments read' "$(grep -c 'comments' "$STUB_DIR/calls.log")" 0
+chk 'arm existing cursor: no comments read' "$(cat "$STUB_DIR/calls.log" 2>/dev/null | grep -c 'comments')" 0
 chk 'arm existing cursor: poll ran' "$(polled)" yes
 
 # ---- arm: the head fallback
@@ -156,7 +156,7 @@ newrec '{"run_state":"delivered","watch":'"$W_NOHEAD"'}'
 printf 'Reviewed: ddd\n' > "$REC/reviews/skeptical-r1.md"
 ws cursor "$REC"
 chk 'cursor: the head fallback' "$(jq -r .run.watch.head "$REC/state.json")" ddd
-chk 'cursor: no draft read of the PR' "$(grep -c 'pr view' "$STUB_DIR/calls.log")" 0
+chk 'cursor: no draft read of the PR' "$(cat "$STUB_DIR/calls.log" 2>/dev/null | grep -c 'pr view')" 0
 
 # ---- deploy
 newrec '{"run_state":"delivered"}'

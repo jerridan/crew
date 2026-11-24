@@ -182,6 +182,13 @@ git(SEED, "commit", "-q", "-m", "c1b")
 C1B = git(SEED, "rev-parse", "HEAD")
 git(SEED, "push", "-q", "origin", "sib")
 
+git(SEED, "checkout", "-q", "-b", "xrepo", C0)
+open(os.path.join(SEED, "x.txt"), "w").write("x\n")
+git(SEED, "add", "-A")
+git(SEED, "commit", "-q", "-m", "cx")
+CX = git(SEED, "rev-parse", "HEAD")
+git(SEED, "push", "-q", "origin", "xrepo:refs/pull/9/head")
+
 ROUNDS = 0
 
 
@@ -200,7 +207,7 @@ def seed(kind="goal", pending=None, rounds=0, baseline=True, run_extra=None, rep
     c.repo = os.path.join(c.dir, "repo")
     c.state_stub = os.path.join(c.dir, "stub")
     os.makedirs(os.path.join(c.rec, "reviews"))
-    sh("git", "clone", "-q", ORIGIN, c.repo, env=GIT_ENV)
+    sh("git", "clone", "-q", "--no-local", ORIGIN, c.repo, env=GIT_ENV)
     if repo_ignore:
         open(os.path.join(c.repo, ".gitignore"), "w").write(".claude/worktrees/\n")
     pending = pending or {"head": C1, "round": 1}
@@ -398,6 +405,20 @@ rc = go(c, "--setup", "exit 3")
 check("failed setup: a decision entry is written", "etup" in decisions(c) and "exit 3" in decisions(c))
 check("failed setup: baseline.md is the no-suite outcome", read(c, "baseline.md") == "Base: %s\nNo suite.\n" % C0)
 check("failed setup: the review goes on", rc == 0 and len(launches(c)) == 1)
+c = seed(baseline=False)
+open(os.path.join(c.rec, "reviews", "baseline.md"), "w").write("Base: %s\nRED test-a\n" % C0)
+rc = go(c, "--setup", "exit 3")
+check("failed setup: a current baseline.md keeps its measured red-test list",
+      rc == 0 and read(c, "baseline.md") == "Base: %s\nRED test-a\n" % C0)
+c = seed(baseline=False)
+open(os.path.join(c.rec, "reviews", "baseline.md"), "w").write("Base: %s\nRED test-a\n" % C1)
+rc = go(c, "--setup", "exit 3")
+check("failed setup: a baseline.md of another base becomes the no-suite outcome",
+      rc == 0 and read(c, "baseline.md") == "Base: %s\nNo suite.\n" % C0)
+c = seed()
+rc = go(c, "--setup", "echo x >> setup-count", seq="badsha,ok")
+check("setup runs once per round: the in-call retry does not run it again",
+      rc == 0 and len(launches(c)) == 2 and open(os.path.join(c.wt, "setup-count")).read() == "x\n")
 
 c = seed(pending={"head": C1, "round": 2}, rounds=1)
 add_worktree(c, C1)
@@ -456,8 +477,11 @@ c = seed()
 rc = go(c, seq="badsha,ok")
 check("a failed first attempt leaves no review_results key until the retry passes",
       rc == 0 and run_of(c)["review_results"]["1"]["report_ok"] is True and len(run_of(c)["review_results"]) == 1)
-check("failure retry removes review_results[n] before the rerun (null does not count)",
-      all(v is not None for v in run_of(c)["review_results"].values()))
+c = seed(run_extra={"review_results": {"1": {"exit": 1, "denials_ok": False, "report_ok": False,
+                                              "denied": ["STALE"], "at": "x"}}})
+rc = go(c, seq="badsha,badsha")
+check("failure retry removes a stale review_results[n] (the second failure leaves none)",
+      rc == 10 and "1" not in run_of(c).get("review_results", {}))
 
 c = seed()
 rc = go(c, seq="noprompt,ok")
@@ -596,6 +620,43 @@ rc = go(c, "--reviewer-paragraph", c.paragraph)
 check("review run: a listed path the record does not own escalates and cuts nothing",
       rc == 10 and "ESCALATE:" in c.out and os.path.exists(c.wt) and not launches(c))
 
+# round 1 of a review run: the record names run.checkout and no tree exists yet
+c = seed(kind="review", repo_ignore=True)
+git(c.repo, "add", ".gitignore")
+check("review r1 setup: run.checkout is set and no tree exists before the script runs",
+      run_of(c)["checkout"] == c.wt and not os.path.exists(c.wt))
+rc = go(c, "--reviewer-paragraph", c.paragraph)
+check("review r1: the script cuts the tree at the pending head and runs the ignore check",
+      rc == 0 and git(c.wt, "rev-parse", "HEAD") == C1 and "notice:" not in c.out
+      and "crew-pr-7" in git(c.repo, "worktree", "list", "--porcelain"))
+c = seed(kind="review")
+git(c.repo, "worktree", "add", "--detach", c.wt, C0)
+rc = go(c, "--reviewer-paragraph", c.paragraph)
+check("review r1: a path that another tree holds escalates with the path, and nothing is cut over it",
+      rc == 10 and "ESCALATE:" in c.out and c.wt in c.out and git(c.wt, "rev-parse", "HEAD") == C0
+      and not launches(c))
+
+# a cross-repository head is fetched as pull/<n>/head
+c = seed(kind="review", pending={"head": CX, "round": 1})
+st = state_of(c)
+st["run"]["pr"]["cross_repository"] = True
+st["run"]["pr"]["number"] = 9
+st["run"]["pr"]["head_ref"] = "xrepo"
+json.dump(st, open(os.path.join(c.rec, "state.json"), "w"))
+check("cross-repository: the clone does not hold the head before the call",
+      subprocess.run(["git", "-C", c.repo, "cat-file", "-e", CX], capture_output=True).returncode != 0)
+rc = go(c, "--reviewer-paragraph", c.paragraph)
+check("cross-repository: pull/<n>/head is fetched, so the tree is cut at the head",
+      rc == 0 and git(c.wt, "rev-parse", "HEAD") == CX and "fetch of pull/9/head failed" not in c.out)
+c = seed(kind="review")
+st = state_of(c)
+st["run"]["pr"]["cross_repository"] = True
+st["run"]["pr"]["number"] = 99
+json.dump(st, open(os.path.join(c.rec, "state.json"), "w"))
+rc = go(c, "--reviewer-paragraph", c.paragraph)
+check("cross-repository: a failed fetch of pull/<n>/head is a notice and the round goes on",
+      rc == 0 and "notice: fetch of pull/99/head failed" in c.out)
+
 # ---- a review run's round 1 -------------------------------------------------
 
 c = seed(kind="review")
@@ -625,7 +686,7 @@ check("review run r1: no baseline is needed and the report has no Check: goal",
 
 
 def later(pending_head=C2, session=True, runner="claude", resume_attempt=False, reply=True, prev_head=C1, base=None,
-          prev_result=None):
+          prev_result=None, sid="S1"):
     c = seed(kind="review", pending={"head": pending_head, "round": 2}, rounds=1, base=base)
     add_worktree(c, prev_head)
     rs = {"1": {"exit": 0, "denials_ok": True, "report_ok": True, "denied": [], "at": "x"}}
@@ -633,7 +694,7 @@ def later(pending_head=C2, session=True, runner="claude", resume_attempt=False, 
     st["run"]["review_results"] = rs
     st["run"]["review_session_ids"] = ["S1"]
     if session:
-        st["run"]["review_sessions"] = {"skeptical-r1": {"runner": runner, "session_id": "S1", "resumed_from": None,
+        st["run"]["review_sessions"] = {"skeptical-r1": {"runner": runner, "session_id": sid, "resumed_from": None,
                                                          "fresh_reason": None}}
     json.dump(st, open(os.path.join(c.rec, "state.json"), "w"))
     open(os.path.join(c.rec, "reviews", "skeptical-r1.md"), "w").write(
@@ -751,6 +812,33 @@ rc = go(c, "--allow-extra", "Bash(cargo tree *)", "--allow-extra", "Bash(go list
 check("--allow-extra adds each rule to the allow list in run.sh",
       rc == 0 and "Bash(cargo tree *),Bash(go list *)" in (read(c, "skeptical-r1-run.sh") or "")
       and "Edit(//" in (read(c, "skeptical-r1-run.sh") or ""))
+
+c = seed()
+mark1, mark2 = os.path.join(c.dir, "PWNED1"), os.path.join(c.dir, "PWNED2")
+rule1, rule2 = "Bash(echo $(touch %s) *)" % mark1, "Bash(echo `touch %s` *)" % mark2
+rc = go(c, "--allow-extra", rule1, "--allow-extra", rule2)
+tools = nth(c, 0)["args"][nth(c, 0)["args"].index("--allowedTools") + 1] if launches(c) else ""
+check("--allow-extra with $( and a backtick: the run script does not expand either",
+      rc == 0 and not os.path.exists(mark1) and not os.path.exists(mark2) and tools.endswith("," + rule1 + "," + rule2))
+c = seed()
+rc = go(c, "--allow-extra", "Bash(echo it's *)")
+tools = nth(c, 0)["args"][nth(c, 0)["args"].index("--allowedTools") + 1] if launches(c) else ""
+check("--allow-extra with a single quote reaches the child whole", rc == 0 and tools.endswith(",Bash(echo it's *)"))
+
+c = seed()
+go(c, "--allow-extra", "Bash(cargo tree *)", "--allow-extra", "Bash(go list *)", seq="cannot")
+check("CANNOT VERIFY prints a record command that carries every --allow-extra",
+      "--allow-extra 'Bash(cargo tree *)'" in c.out and "--allow-extra 'Bash(go list *)'" in c.out)
+rc = go(c, "record", "--denials-ok", "false", "--allow-extra", "Bash(cargo tree *)", seq="cannot,ok")
+check("the retry of a false judgment keeps the rules it is given",
+      rc == 0 and "Bash(cargo tree *)" in nth(c, 1)["args"][nth(c, 1)["args"].index("--allowedTools") + 1])
+
+mark3 = os.path.join(T, "PWNED3")
+c = later(sid="S1 $(touch %s)" % mark3)
+rc = go(c, "--reviewer-paragraph", c.paragraph)
+log = nth(c, 0)["args"]
+check("a resume session id with shell text reaches the child as one argument and runs nothing",
+      rc == 0 and not os.path.exists(mark3) and "--resume" in log and log[log.index("--resume") + 1] == "S1 $(touch %s)" % mark3)
 
 base_dir = os.path.join(T, "wtbase")
 c = seed(run_extra={"worktree_base": base_dir})

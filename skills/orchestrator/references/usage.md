@@ -41,9 +41,9 @@ sample with no figures changes nothing. A sample with figures clears `plan_limit
 
 `updated_at` and `source` move only when the five-hour figure advances: a
 higher percent in the same window, or a later window. A repeat of the stored
-figure, a lower one, and a seven-day-only advance do not move them. An idle
+figure, a lower one from a status line sample, and a seven-day-only advance do not move them. An idle
 session repeats its old figure and so cannot hide that the figure is old. The
-fresh reading is the one writer that moves `updated_at` on an equal figure.
+fresh reading is the one writer that moves `updated_at` on an equal or a lower figure.
 
 ## Which sessions contribute
 

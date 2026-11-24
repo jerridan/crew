@@ -105,7 +105,10 @@ PANE_RE = re.compile(r"%[0-9]+")
 PID_RE = re.compile(r"\bpid ([0-9]{1,10})\b")
 ITERM_ID_RE = re.compile(r"[A-Za-z0-9-]+")
 HERDR_BUNDLE = "dev.herdr.app"
-HERDR_ID_RE = re.compile(r"t[0-9]+")
+# A local Herdr terminal address: hc --help says it is like t7 or t1b, and
+# gives no closer rule. So: the letter t, then letters and digits. The
+# launcher opens tabs on this machine only, so a machine/t7 address is not one.
+HERDR_ID_RE = re.compile(r"t[0-9A-Za-z]+")
 # A line that starts a numbered option of a dialog, such as "> 1. Yes".
 OPTION_RE = re.compile(r"\W*[0-9]+\.\s")
 

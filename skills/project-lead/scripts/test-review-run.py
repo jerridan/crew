@@ -13,6 +13,7 @@ only when N equals M.
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -320,7 +321,8 @@ sh_text = read(c, "skeptical-r1-run.sh") or ""
 rec_path = c.rec.lstrip("/")
 check("goal pass: run.sh has the sonnet/900 command and the session id",
       "timeout 900 claude -p --model sonnet --effort high --output-format json --session-id " + UUID1 in sh_text)
-check("goal pass: run.sh has the allow list with the record anchor", '--allowedTools "' + ALLOW % rec_path + '"' in sh_text)
+check("goal pass: run.sh has the allow list with the record anchor",
+      "--allowedTools " + shlex.quote(ALLOW % rec_path) in sh_text)
 check("goal pass: run.sh has the three redirects and the exit file",
       ("> %s/reviews/skeptical-r1-result.json 2> %s/reviews/skeptical-r1-result.stderr; echo $? > %s/reviews/skeptical-r1-result.exit"
        % (c.rec, c.rec, c.rec)) in sh_text)

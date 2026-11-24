@@ -261,6 +261,7 @@ def prepare_worktree(ctx):
     run = ctx.run
     wt = ctx.wt
     owned = (not ctx.review) or ctx.rounds_before >= 1
+    ctx.cut = False
     pr = run.get("pr") or {}
     git("-C", ctx.repo, "worktree", "prune")
     if ctx.review:
@@ -305,6 +306,16 @@ def prepare_worktree(ctx):
 
 # ---- step 5: setup and baseline (a goal run) --------------------------------
 
+def baseline_owed(ctx):
+    """The reason the baseline is owed, or None when baseline.md names the base."""
+    base = ctx.deliverable().get("base")
+    text = read_text(ctx.reviews / "baseline.md")
+    first = (text or "").split("\n", 1)[0].strip()
+    if not text:
+        return "missing"
+    return None if first == "Base: %s" % base else "measured at another base (%s)" % first
+
+
 def setup_and_baseline(ctx):
     base = ctx.deliverable().get("base")
     baseline = ctx.reviews / "baseline.md"
@@ -313,18 +324,18 @@ def setup_and_baseline(ctx):
         r = subprocess.run(ctx.args.setup, shell=True, cwd=str(ctx.wt), capture_output=True, text=True)
         marker.write_text(now() + "\n", encoding="utf-8")
         if r.returncode:
-            ctx.event("fallback", "the setup command failed with exit %d, so the baseline is the no-suite outcome"
-                      % r.returncode)
+            owed = baseline_owed(ctx)
+            ctx.event("fallback", "the setup command failed with exit %d%s" % (
+                r.returncode, ", so the baseline is the no-suite outcome" if owed else ", and the current baseline stays"))
             ctx.decision("Review worktree setup failed", "environment failure, not a finding: no suite",
                          "setup command `%s` exited %d: %s" % (ctx.args.setup, r.returncode,
                                                                 one_line(r.stderr or r.stdout, 300)))
-            baseline.write_text("Base: %s\nNo suite.\n" % base, encoding="utf-8")
-    text = read_text(baseline)
-    first = (text or "").split("\n", 1)[0].strip()
-    if not text or first != "Base: %s" % base:
+            if owed:
+                baseline.write_text("Base: %s\nNo suite.\n" % base, encoding="utf-8")
+    owed = baseline_owed(ctx)
+    if owed:
         raise Stop(OWED, ["BASELINE OWED: reviews/baseline.md is %s. Write it as skeptical-review.md step 4 says, "
-                          "then run this script again with the same options."
-                          % ("missing" if not text else "measured at another base (%s)" % first)])
+                          "then run this script again with the same options." % owed])
 
 
 # ---- steps 6 and 7: the round, its resume and its base ----------------------
@@ -492,15 +503,15 @@ def run_script(ctx, sid):
     q = shlex.quote
     prefix = "%s %d " % (ctx.tool, ctx.cap) if ctx.tool else ""
     allow = ",".join([ALLOW % str(ctx.rec).lstrip("/")] + list(ctx.args.allow_extra or []))
-    tail = "--append-system-prompt-file %s --allowedTools \"%s\"" % (q(str(ctx.p("-instructions.md"))), allow)
+    tail = "--append-system-prompt-file %s --allowedTools %s" % (q(str(ctx.p("-instructions.md"))), q(allow))
     out = "> %s 2> %s; echo $? > %s" % (q(str(ctx.p("-result.json"))), q(str(ctx.p("-result.stderr"))),
                                           q(str(ctx.p("-result.exit"))))
     if ctx.plan["resume"]:
         cmd = "cd %s && %sclaude -p --resume %s --model %s --effort high --output-format json %s < %s %s" % (
-            q(str(ctx.wt)), prefix, sid, ctx.model, tail, q(str(ctx.p("-resume.md"))), out)
+            q(str(ctx.wt)), prefix, q(sid), ctx.model, tail, q(str(ctx.p("-resume.md"))), out)
     else:
         cmd = "cd %s && printf '%%s\\n' \"%s\" | %sclaude -p --model %s --effort high --output-format json " \
-              "--session-id %s %s %s" % (q(str(ctx.wt)), PROMPT, prefix, ctx.model, sid, tail, out)
+              "--session-id %s %s %s" % (q(str(ctx.wt)), PROMPT, prefix, ctx.model, q(sid), tail, out)
     path = ctx.p("-run.sh")
     path.write_text(cmd + "\n", encoding="utf-8")
     return path
@@ -728,6 +739,8 @@ def settle(ctx, judged=None):
             opts += " --setup %s" % shlex.quote(ctx.args.setup)
         if ctx.args.reviewer_paragraph:
             opts += " --reviewer-paragraph %s" % shlex.quote(ctx.args.reviewer_paragraph)
+        for rule in ctx.args.allow_extra or []:
+            opts += " --allow-extra %s" % shlex.quote(rule)
         lines = ["CANNOT VERIFY: %s" % x for x in ev["cannot"]]
         lines.append("No review_results entry was written. Judge whether each line bears on the verdict, then run: "
                      "python3 %s %s record --denials-ok true|false%s" % (shlex.quote(str(HERE / "review-run.py")),

@@ -4,11 +4,11 @@
 # usage: pr-watch.sh <record-dir> [once|deploy|deploy-once]
 #
 # With no second argument, the script polls every 60 seconds until the PR
-# merges or closes. That is the `Monitor` command. A PR in the merge queue
+# merges or closes. A PR in the merge queue
 # does not stop it: the script prints `queued` once per entry into the queue,
 # and `dequeued` once when the PR leaves the queue and stays open.
 # With `once`, it polls one time and prints `isDraft=<d>` last. That is the
-# fallback poll of a keep-alive fire.
+# poll of `window-watch.py`, on each tick.
 #
 # With `deploy`, the script watches the deploy of the merge commit instead.
 # It polls every 60 seconds, prints one terminal line (`deployed`,

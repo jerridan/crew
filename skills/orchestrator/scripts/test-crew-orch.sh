@@ -1070,6 +1070,7 @@ expect_exit 0 orch5 group dialogs order editor,settings,export
 expect_exit 0 orch5 item add loner --title "Loner" --repo owner/other --ticket "owner/other#12" --ticket-url https://github.com/owner/other/issues/12
 expect_exit 0 orch5 item add docs --title "Docs" --repo owner/other
 expect_exit 0 orch5 item add done1 --title "Done" --repo owner/other
+expect_exit 0 orch5 item add moves --title "Move tickets" --repo owner/other
 expect_exit 0 orch5 item editor pr 893
 expect_exit 0 orch5 item settings pr 894
 expect_exit 0 orch5 item loner pr 77
@@ -1079,6 +1080,8 @@ expect_exit 0 orch5 stage export build --detail 2/3 --doing "ic-2 runs the suite
 expect_exit 0 orch5 stage loner pr
 expect_exit 0 orch5 stage docs spec --doing "writes the spec"
 expect_exit 0 orch5 stage done1 shipped
+expect_exit 0 orch5 item moves set subagent '{"name": "sub-moves", "model": "sonnet"}'
+expect_exit 0 orch5 stage moves build --doing "moves the tickets"
 expect_exit 0 orch5 item settings set launch '{"tab": "tmux:%7", "terminal": "tmux"}'
 expect_exit 0 orch5 item loner set launch.tab '"iterm2:w1t2"'
 cat >"$TMP/gh/pr-894.json" <<'EOF'
@@ -1105,7 +1108,7 @@ def at(ago):
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - ago))
 for n, item in enumerate(s["items"].values()):
     item["created_at"] = item["stage_at"] = at(3 * 86400 - n)
-for iid, ago in (("settings", 40), ("export", 12 * 60), ("docs", 2 * 3600)):
+for iid, ago in (("settings", 40), ("export", 12 * 60), ("docs", 2 * 3600), ("moves", 5 * 60)):
     s["items"][iid]["doing_at"] = at(ago)
 for n, entry in enumerate(s["inbox"]):
     entry["created_at"] = at(86400 + 600 - n * 300)

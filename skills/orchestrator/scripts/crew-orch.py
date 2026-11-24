@@ -13,8 +13,8 @@ writes nothing.
 Commands:
   init
   item add <id> --title <t> --repo <owner/name> [--group <g>] [--ticket <id> --ticket-url <url>]
-  item <id> pr <number|url>
-  item <id> set <title|repo|ticket|group|launch|launch.<key>> <json>
+  item <id> pr <number|url|none>
+  item <id> set <title|repo|ticket|group|launch|launch.<key>|subagent|subagent.<key>> <json>
   group add <id> --title <t> [--repo <r>] [--ticket <id> --ticket-url <url>]
   group <id> order <item,...>
   group <id> owner <thing> <item>
@@ -59,9 +59,10 @@ MARK_STAGES = ["spec", "split", "build", "review", "pr"]
 DONE_STAGES = {"shipped", "closed"}
 LANDED_STAGES = {"merged", "shipped"}
 KINDS = {"decision": "d", "question": "q", "idea": "i", "notice": "n"}
-SETTABLE = {"title", "repo", "ticket", "group", "launch"}
+SETTABLE = {"title", "repo", "ticket", "group", "launch", "subagent"}
 LAUNCH_KEYS = ["session_name", "repo", "worktree", "branch", "base", "model", "terminal", "tab", "tab_group",
                "session_id"]
+SUBAGENT_KEYS = ["name", "model", "worktree", "branch", "outcome", "ready"]
 PACE_MODES = {"normal", "slowed", "stopped"}
 
 GH_FIELDS = "state,isDraft,reviewDecision,mergeStateStatus,statusCheckRollup"
@@ -169,6 +170,9 @@ class Record:
             state = json.loads(self.json.read_text(encoding="utf-8"))
             if isinstance(state, dict):
                 state.setdefault("closed_at", None)  # a record from before close
+                for item in (state.get("items") or {}).values():
+                    if isinstance(item, dict):
+                        item.setdefault("subagent", None)  # a record from before subagent items
             return state
         except FileNotFoundError:
             raise Fail(f"no orchestrator record '{self.name}'; run: crew-orch.py --orch {self.name} init")
@@ -421,13 +425,13 @@ def cmd_item(rec: Record, args: list) -> None:
     item_id = args[0]
     pos, _ = take_options(args[1:], {})
     if pos[:1] == ["pr"]:
-        want(pos, 2, 2, "item <id> pr <number|url>")
+        want(pos, 2, 2, "item <id> pr <number|url|none>")
         item_pr(rec, item_id, pos[1])
     elif pos[:1] == ["set"]:
         want(pos, 3, 3, "item <id> set <field> <json>")
         item_set(rec, item_id, pos[1], parse_json(pos[2]))
     else:
-        raise Usage("usage: item <id> pr <number|url> | item <id> set <field> <json>")
+        raise Usage("usage: item <id> pr <number|url|none> | item <id> set <field> <json>")
 
 
 def item_add(rec: Record, args: list) -> None:
@@ -453,16 +457,25 @@ def item_add(rec: Record, args: list) -> None:
             "group": group, "ticket": ticket, "pr": None,
             "stage": "queued", "detail": None, "stage_at": stamp,
             "doing": None, "doing_at": None, "github": None,
-            "merge": "no PR", "waits_on": [], "launch": {}, "told": [], "created_at": stamp,
+            "merge": "no PR", "waits_on": [], "launch": {}, "subagent": None, "told": [], "created_at": stamp,
         }
 
     rec.mutate(change)
 
 
 def item_pr(rec: Record, item_id: str, ref: str) -> None:
+    if ref == "none":
+        # The item leaves its PR, as at the escalation of a subagent item.
+        def clear(state):
+            item = get_item(state, item_id)
+            item["pr"] = None
+            item["github"] = None
+
+        rec.mutate(clear)
+        return
     url_match = PR_URL_RE.fullmatch(ref)
     if not url_match and not re.fullmatch(r"[1-9][0-9]*", ref):
-        raise Usage(f"bad PR '{ref}': give a number or a https://github.com/<owner>/<name>/pull/<n> URL")
+        raise Usage(f"bad PR '{ref}': give a number, a https://github.com/<owner>/<name>/pull/<n> URL or none")
 
     def change(state):
         item = get_item(state, item_id)
@@ -483,8 +496,8 @@ def item_pr(rec: Record, item_id: str, ref: str) -> None:
 
 def item_set(rec: Record, item_id: str, field: str, value) -> None:
     base, _, key = field.partition(".")
-    if base not in SETTABLE or (key and base != "launch"):
-        raise Usage(f"cannot set '{field}': use one of {', '.join(sorted(SETTABLE))}, or launch.<key>")
+    if base not in SETTABLE or (key and base not in ("launch", "subagent")):
+        raise Usage(f"cannot set '{field}': use one of {', '.join(sorted(SETTABLE))}, launch.<key> or subagent.<key>")
     if base == "title" and (not isinstance(value, str) or not value):
         raise Usage("title must be a non-empty string")
     if base == "repo":
@@ -504,11 +517,32 @@ def item_set(rec: Record, item_id: str, field: str, value) -> None:
                 raise Usage(f"launch must be an object with keys from: {', '.join(LAUNCH_KEYS)}")
             if not all(isinstance(v, (str, type(None))) for v in value.values()):
                 raise Usage("every launch value must be a string or null")
+    if base == "subagent":
+        if key:
+            if key not in SUBAGENT_KEYS:
+                raise Usage(f"bad subagent key '{key}': use one of {', '.join(SUBAGENT_KEYS)}")
+            if not isinstance(value, (str, type(None))):
+                raise Usage(f"subagent.{key} must be a string or null")
+        elif value is not None:
+            if not isinstance(value, dict) or set(value) - set(SUBAGENT_KEYS):
+                raise Usage(f"subagent must be null or an object with keys from: {', '.join(SUBAGENT_KEYS)}")
+            if not all(isinstance(v, (str, type(None))) for v in value.values()):
+                raise Usage("every subagent value must be a string or null")
+            value = {k: value.get(k) for k in SUBAGENT_KEYS}
 
     def change(state):
         item = get_item(state, item_id)
+        # An item is a subagent item or an implementer item, never both, so a
+        # resume reads it one way.
+        if base == "launch" and item.get("subagent") is not None:
+            raise Usage(f"item '{item_id}' is a subagent item; set subagent null first")
+        if base == "subagent" and (key or value is not None) and item.get("launch"):
+            raise Usage(f"item '{item_id}' has a launch; a subagent item has none")
         if base == "launch" and key:
             item["launch"][key] = value
+        elif base == "subagent" and key:
+            item["subagent"] = item.get("subagent") or {k: None for k in SUBAGENT_KEYS}
+            item["subagent"][key] = value
         elif base == "group":
             if value is not None:
                 get_group(state, value)
@@ -1019,12 +1053,15 @@ def status_word(item: dict) -> str:
 
 
 def row_text(item: dict) -> str:
-    parts = []
+    sub = item.get("subagent")
+    parts = ["subagent"] if sub is not None else []
     if item.get("waits_on") and not shows_merge(item) and item["stage"] != "closed":
         parts.append("after " + ", ".join(item["waits_on"]))
     if item["stage"] == "shipped" and not item.get("doing"):
         parts.append("shipped")
-    if item.get("doing"):
+    if sub is not None and sub.get("outcome"):
+        parts.append(sub["outcome"])
+    elif item.get("doing"):
         parts.append(item["doing"])
     return clean(" · ".join(parts))
 
@@ -1076,6 +1113,7 @@ def row_data(item: dict, show_ticket: bool) -> dict:
         "text": row_text(item),
         "age": age(item.get("doing_at")) if item.get("doing") else "",
         "launch_tab": clean(tab) if tab else None,
+        "subagent": item.get("subagent") is not None,
     }
 
 

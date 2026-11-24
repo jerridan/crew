@@ -2674,6 +2674,37 @@ echo 'ABC-123' > "$STUB_DIR/osa-sessions"
 run stop iterm2:ABC-123
 check 'stop on the tab handle of window (iterm2) addresses the id' $([ "$rc" = 0 ] && grep -sq '^-|stop|ABC-123|$' "$STUB_DIR/osa.log"; echo $?)
 
+# window on Herdr: tab.new into the space of --group, with the cwd as the folder.
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+: > "$T/git.log"
+wbase=$(wtcount)
+__CFBundleIdentifier=$HERDR run window --name rec-w5 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --model sonnet --group grp
+check 'window on herdr exits 0 with terminal herdr, tab herdr:<terminal>, tab_group the space name and no worktree, branch or base field' \
+  $([ "$rc" = 0 ] && [ "$(field terminal)" = '"herdr"' ] && [ "$(field tab)" = '"herdr:t9"' ] && [ "$(field tab_group)" = '"grp"' ] && ! grep -sqE '"(worktree|branch|base)"' "$T/out"; echo $?)
+check 'window on herdr cuts no worktree and no branch' $([ "$(wtcount)" = "$wbase" ] && ! grep -sq 'worktree|add' "$T/git.log"; echo $?)
+r=1; python3 - "$STUB_DIR/herdr.log" "$WINDIR" "$T/win-prompt.md" <<'PY' && r=0
+import json, sys
+lines = [l.rstrip("\n").split("|")[:-1] for l in open(sys.argv[1])]
+calls = [l for l in lines if l[:2] == ["do", "tab.new"]]
+assert len(calls) == 1, lines
+c = calls[0]
+assert c[:8] == ["do", "tab.new", "--space", "spaA", "--name", "rec-w5", "--folder", sys.argv[2]], c
+cmd = json.loads(c[9])[2]
+assert cmd.startswith("cd %s && exec claude --name rec-w5 --session-id " % sys.argv[2]), cmd
+assert "--model sonnet" in cmd and "$(cat %s)" % sys.argv[3] in cmd, cmd
+PY
+check 'window on herdr runs do tab.new with the space, the name, the cwd as folder, the model and the prompt file' $r
+echo 't9' > "$STUB_DIR/herdr-terminals"
+echo 'tbNEW' > "$STUB_DIR/herdr-tabs"
+printf '900051 1 ttys931 /bin/zsh -l\n900052 900051 ttys931 claude --name rec-w5 --model sonnet\n' > "$STUB_DIR/ps-extra"
+__CFBundleIdentifier=$HERDR run stop herdr:t9
+check 'stop on the tab handle of window (herdr) exits 0' $([ "$rc" = 0 ]; echo $?)
+reset_stub
+run window --name rec-w6 --cwd "$WINDIR" --prompt-file "$T/win-prompt.md" --terminal herdr
+check 'window on herdr with no --group and no HC_TERMINAL_ID exits 2 and opens no tab' \
+  $([ "$rc" = 2 ] && grep -sqF -- '--group' "$T/err" && ! grep -sq 'tab.new' "$STUB_DIR/herdr.log" 2>/dev/null; echo $?)
+
 # window usage errors exit 2 with a usage line and open no tab.
 reset_stub
 wusage() {

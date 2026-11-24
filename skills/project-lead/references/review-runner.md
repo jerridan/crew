@@ -113,7 +113,8 @@ working tree stays out of its reach.
   script cuts the tree in round 1. It runs `git worktree list --porcelain`
   before the cut. When it lists the path and this record did not cut it,
   another run reviews this PR in this checkout. The script prints `ESCALATE:`
-  with the path. It cuts nothing and removes nothing. A review run runs no `checkout`, `switch`, `reset` or
+  with the path. It cuts nothing and removes nothing. A review run runs no
+  `checkout`, `switch`, `reset` or
   `clean` in the main working tree.
 - **The ignore check.** Before the first cut under
   `<checkout>/.claude/worktrees/`, the script runs `git check-ignore -q

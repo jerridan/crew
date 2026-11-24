@@ -23,6 +23,9 @@ and `test-launcher.sh` tests them with stub commands.
 against seeded records. `skills/project-lead/scripts/crew-step.py` is code
 too, and `test-crew-step.py` beside it tests it with a seeded repo, a bare
 remote and stub `gh`, `spend.py` and `crew-orch.py` commands.
+`review-run.py` and `plan-review.py` in the same directory are code
+too: `test-review-run.py` and `test-plan-review.py` test
+them with stub `claude`, `codex`, `timeout` and `uuidgen` commands.
 `claude plugin test`, run with `CLAUDE_CONFIG_DIR` set to a new empty
 directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 `hooks/orch-board.tsx`.
@@ -46,6 +49,8 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/review/references/github-review.md`, `severity-rubric.md`, `later-round.md`, `auto-review.md` | what a review run puts on GitHub: the sanitizing, the label rule, the shapes and the post command; the severity rubric; a later round's head and base; the read of the repo's review bot | the project lead, in a review run |
 | `skills/review/scripts/review-json.py` | builds a review's post JSON from the draft file's bytes | the project lead, before every review post |
 | `skills/project-lead/references/*.md` | shared references, read with `Read` | whoever is pointed at one |
+| `skills/project-lead/references/reviewer-blocks/*.md` | the reviewer blocks of a headless review, one file each: the goal-check block, the review block, the later-round block with its parts, the resume prompt and the replacement sentence. A block lives in this one file | `review-run.py`, at run time |
+| `skills/project-lead/scripts/review-run.py`, `plan-review.py`, `test-review-run.py`, `test-plan-review.py` | one round of the headless review in one call, with its record writes; the plan review in a `run` call and a `decide` call; their seeded tests | the project lead, from Bash, as `review-runner.md` and `plan-review.md` say; a person runs the tests |
 | `skills/orchestrator/scripts/crew-usage.py`, `skills/orchestrator/references/usage.md` | the plan usage figures of the account in `<record-root>/usage.json`: the status line wrapper, the fresh reading, `show`, `check`, `watch` and `wait`; the reference that owns the figures, the levels and the slow-down | the orchestrator, from Bash and `Monitor`; a project lead with a `Usage limit:` charter line; the launcher's `--settings` value |
 | `skills/orchestrator/scripts/test-crew-usage.py` | the seeded test of `crew-usage.py`, with a stub `claude` | a person |
 | `skills/project-lead/scripts/crew-record.py`, `spend.py`, `crew-stats.py`, `test-crew-stats.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, the plan reviews run and skipped with their finding labels, a `kind` column and the untouched-draft rate over every record; `test-crew-stats.py` is the seeded test of `crew-stats.py` | the project lead, from Bash; a person runs `crew-stats.py` |
@@ -235,16 +240,17 @@ Each reference owns one subject and is canonical for it:
 - `band-rubric.md` — the model a package gets, and when to promote.
 - `ic-contract.md` — what an IC may and may not do, and its report statuses.
 - `review-output.md` — the shape every review reports its findings in.
-- `plan-review.md` — the plan review: the planning stop, the Codex run, the
-  skips, the adjudication, the start word and its resume.
-- `plan-reviewer.md` — the plan reviewer's own instructions, which the
-  project lead pipes into `codex exec` and does not follow.
+- `plan-review.md` — the plan review: the planning stop, the run with
+  `plan-review.py`, the skips, the adjudication, the start word and its resume.
+- `plan-reviewer.md` — the plan reviewer's own instructions, which
+  `plan-review.py` pipes into `codex exec` and the project lead does not follow.
 - `goal-check.md` — a goal run's one review of the finished diff: its
   question, its one round, and when the PR leaves draft.
 - `skeptical-review.md` — the review rounds both run kinds share, and a
   review run's skeptical review.
-- `review-runner.md` — the mechanics of a headless review: the detached
-  worktree, the instructions file, the runner, the checks and the session id.
+- `review-runner.md` — how to run `review-run.py`, and the rules it enforces
+  for a headless review: the detached worktree, the instructions file, the
+  runner, the checks and the session id.
 - `substitution.md` — how a review step the principal replaced runs.
 - `resume.md` — what `--resume` reopens, re-enters and re-runs.
 - `orchestrator-report.md` — what a project lead that an orchestrator

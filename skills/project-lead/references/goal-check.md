@@ -41,12 +41,12 @@ charter asked, with every constraint that the principal stated?**
 - **Say what was checked and found nothing.** Each part of the goal and each
   constraint that the check read and found met goes in the report.
 
-`review-runner.md`'s goal-check block carries these rules to the reviewer.
+The block `reviewer-blocks/goal-check.md` carries these rules to the reviewer.
 
 **The report carries `Check: goal`.** The line comes after the `Reviewed:`
 line, and after a `Source:` line when one exists. An older report has none.
-`crew-stats.py` counts goal checks by this line. When a report on disk lacks
-it, write it yourself before you adjudicate.
+`crew-stats.py` counts goal checks by this line. `review-run.py` adds it when
+a report lacks it.
 
 ## One round
 
@@ -84,7 +84,8 @@ most. The repo's own review owns it.
 **Your two verdict strings are `accepted` and `patch round needed`.** The
 verdict is `accepted` exactly when the report holds no `blocking` finding,
 and `patch round needed` exactly when it holds one or more.
-`review-runner.md`'s goal-check block tells the reviewer both, and that rule.
+The block `reviewer-blocks/goal-check.md` tells the reviewer both, and that
+rule.
 `review-output.md` owns the shape of the three closing lines.
 
 **Your labels decide the verdict.** When the reviewer wrote `accepted` and

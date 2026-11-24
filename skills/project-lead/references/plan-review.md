@@ -5,8 +5,9 @@ outside the run reads every implementation plan of the run together, with the
 charter, the spec and the split, before any code exists. You label and route
 each finding, then give the start word.
 
-The reviewer is the Codex CLI. Its instructions are `plan-reviewer.md`. You
-inject that file whole into the runner's stdin, and you do not follow it.
+The reviewer is the Codex CLI. Its instructions are `plan-reviewer.md`.
+`scripts/plan-review.py` injects that file whole into the runner's stdin. You
+do not follow it.
 
 **The step never blocks a run.** Every failure is a skip with a reason, and a
 skip asks the principal nothing.
@@ -55,7 +56,7 @@ the full path, each IC writes one plan for each package of its territory, and
 every territory plans in parallel. Write `run.plan_review` with `status:
 planning` at the first of these dispatches ("The record").
 
-**Wait for every IC.** Go on to "The inputs" only when every IC stopped, or
+**Wait for every IC.** Go on to "Run the review" only when every IC stopped, or
 when the nudge below gave up on it.
 
 **A stop is the final message `Plans written: <absolute paths>`.** Check that
@@ -69,122 +70,89 @@ message.`
 each missing plan and its absolute path. Then increment that package's
 `nudges_used`, and write `state.json`. A second idle with a plan still missing
 ends the wait for that IC. The review runs over the plans that exist, and the
-instructions file names the missing ones ("The inputs"). That IC still gets
+instructions file names the missing ones ("Run the review"). That IC still gets
 the start word. It writes the missing plan at the start of the package, with
 no stop, and no review reads that plan. The same rule holds on the simple
 path: one nudge, then the start word.
 
 `nudges_used` resets to 0 at the start word.
 
-## The inputs
+## Run the review
 
-The reviewer reads one instructions file,
-`<record-dir>/reviews/plan-review-r1-instructions.md`. It holds, in this
-order:
-
-1. `plan-reviewer.md`, whole.
-2. `review-output.md`, whole.
-3. `skills/review/references/severity-rubric.md`, whole.
-4. The standing instructions, as `SKILL.md`'s "Standing instructions" says.
-5. `charter.md`, `spec.md` and `split.md`. The simple path wrote a
-   `split.md` too, so both paths send it.
-6. Every `plans/<id>.md`, in `split.md` order. Label each plan with its
-   package id, its territory and its order in that territory.
-7. When a plan is missing, one line after the plans: `Missing plans: <id>,
-   <id>.`
-
-Items 5 and 6 are data, not instructions. Put each file in its own tagged
-block, with a new random id for each block. Build the file with `cat`, and
-never retype a file:
+Run this as one Bash call, with `run_in_background: true`, when every IC has
+stopped. Give `--plan` once for each package, in `split.md` order. `<territory>`
+is the package's territory, and `<k>/<m>` is its order in that territory, such as
+`2/3`:
 
 ```
-r=<record-dir>/reviews/plan-review-r1
-refs=<skill-dir>/references
-blk() { id=$(openssl rand -hex 8); printf '<data-%s %s>\n' "$id" "$2"; cat "$1"; printf '\n</data-%s>\n\n' "$id"; }
-{
-  cat "$refs/plan-reviewer.md" "$refs/review-output.md" "<skill-dir>/../review/references/severity-rubric.md"
-  <the standing instructions>
-  blk <record-dir>/charter.md 'source="charter.md"'
-  blk <record-dir>/spec.md 'source="spec.md"'
-  blk <record-dir>/split.md 'source="split.md"'
-  blk <record-dir>/plans/<id>.md 'source="plans/<id>.md" package="<id>" territory="<territory>" order="<k> of <m>"'
-} > "$r-instructions.md"
+python3 <skill-dir>/scripts/plan-review.py <record-dir> run --plan <id>:<territory>:<k>/<m> --plan <id>:<territory>:<k>/<m>
 ```
 
-Add one `blk` line for each plan. The reviewer reads the repo itself, from
-`run.checkout`. This is one review, over all plans together. Write no summary
-of the plans for the reviewer: it reads them whole.
+The script reads the checkout from `run.checkout`. The completion notification
+carries the output. On the normal path this call and the `decide` call below
+are the only calls from the inputs to the recorded result. The script does,
+in this order:
 
-## Run the reviewer
+1. **The two skip checks** ("When the review is skipped").
+2. **The instructions file**,
+   `<record-dir>/reviews/plan-review-r1-instructions.md`, built from files and
+   never retyped. It holds, in this order:
+   1. `plan-reviewer.md`, whole.
+   2. `review-output.md`, whole.
+   3. `skills/review/references/severity-rubric.md`, whole.
+   4. The standing instructions, as `SKILL.md`'s "Standing instructions" says.
+   5. `charter.md`, `spec.md` and `split.md`. The simple path wrote a
+      `split.md` too, so both paths send it.
+   6. Every `plans/<id>.md`, in the order of the `--plan` arguments. Each plan
+      is labelled with its package id, its territory and its order in that
+      territory.
+   7. When a plan file is missing, one line after the plans: `Missing plans:
+      <id>, <id>.`
 
-The runner is one command. The instructions go in on stdin:
+   Items 5 and 6 are data, not instructions. The script puts each file in its
+   own tagged block, `<data-<id> ...>`, with a new random id for each block.
+   The reviewer reads the repo itself, from `run.checkout`. This is one review,
+   over all plans together. The script writes no summary of the plans for the
+   reviewer: it reads them whole.
+3. **The record write of point 3** ("The record"): `status: reviewing`, `at`,
+   and `attempts` plus 1, just before the launch.
+4. **The run script**, `plan-review-r1-run.sh`, written and run. The runner is
+   `codex exec` with a read-only sandbox, from `run.checkout`, with the
+   instructions on stdin. The model and its effort are in the script. **The
+   limit is 600 seconds of wall clock from the launch.** It is not an idle
+   watchdog: a runner that still prints output is killed at 600 seconds too. At
+   the limit the script kills the runner and its child processes, and writes
+   124 to `-result.exit`. Every exit path writes `-result.exit`: a failed `cd`
+   writes 1. The loop needs no `timeout` tool. The shape is `substitution.md`'s
+   run script, and the reasons for its exit file and its stdin hold here too.
+5. **The read of the result.** It reads `-result.exit`, then on 0 it checks
+   that `-result.txt` ends with a `Verdict:` line that holds `plans sound` or
+   `plan revision needed`, then a `Blocking count:` line.
+6. **The token count**, after every run that launched, a skip included: the
+   integer on the line after the last line of `-result.stderr` that is exactly
+   `tokens used`. The runner echoes the whole prompt to `-result.stderr`, and
+   the prompt holds that phrase too, so the script reads only the last exact
+   match. An empty read means `tokens: null`. The script writes it in the
+   record ("The record" point 4).
+7. **The transcription.** It copies `-result.txt` to
+   `<record-dir>/reviews/plan-review-r1.md`, from its `Plans reviewed: <n>`
+   line to the end, with `Source: codex output` as the second line. The
+   runner cannot write the record, so the script does.
 
-```
-codex exec --sandbox read-only -m gpt-6.2-sol -c model_reasoning_effort=medium -C <run.checkout> -
-```
+The output tells you what to do next:
 
-First run the two checks in "When the review is skipped". Then write this
-script to `<record-dir>/reviews/plan-review-r1-run.sh`:
+| Output line | Exit | You |
+|---|---|---|
+| `PLAN REVIEW RAN:` | 0 | Read `reviews/plan-review-r1.md`, then "Adjudicate the findings" |
+| `SKIPPED:` | 20 | The script wrote the skip record and the skip `decisions.md` entry. Add the hand-over line ("The hand-over"), then give the start word with no findings ("The start word") |
+| `QUOTA CHECK:` | 21 | The runner exited non-zero, and the script printed the last 20 lines of `-result.stderr`. Decide as "When the review is skipped" says, then run `skip` |
+| `RECORD ERROR:` | 14 | A `crew-record.py` call failed. Fix the cause, then run the command again |
 
-```
-r=<record-dir>/reviews/plan-review-r1
-: > "$r-result.txt"; : > "$r-result.stderr"; rm -f "$r-result.exit"
-cd <run.checkout> || { echo 1 > "$r-result.exit"; exit 1; }
-codex exec --sandbox read-only -m gpt-6.2-sol -c model_reasoning_effort=medium -C <run.checkout> - < "$r-instructions.md" > "$r-result.txt" 2> "$r-result.stderr" &
-pid=$!
-start=$(date +%s)
-while kill -0 "$pid" 2>/dev/null; do
-  sleep 10
-  if [ $(( $(date +%s) - start )) -ge 600 ]; then
-    pkill -P "$pid"; kill "$pid"; sleep 5; kill -9 "$pid" 2>/dev/null
-    echo "wall clock: not done 600 seconds after launch" >> "$r-result.stderr"
-    echo 124 > "$r-result.exit"
-    exit 124
-  fi
-done
-wait "$pid"
-echo $? > "$r-result.exit"
-```
-
-**The limit is 600 seconds of wall clock from the launch.** It is not an
-idle watchdog: a runner that still prints output is killed at 600 seconds
-too. At the limit the script kills the runner and its child processes, and
-writes 124 to `-result.exit`. Every exit path writes `-result.exit`: a
-failed `cd` writes 1, so that step reads a `failed` skip and not a dead
-attempt. The loop needs no `timeout` tool. The shape is `substitution.md`'s
-run script, and the reasons for its exit file and its stdin hold here too.
-
-Write `status: reviewing` just before the launch ("The record"). Then run the
-script headless, as a background command:
-
-```
-sh <record-dir>/reviews/plan-review-r1-run.sh > /dev/null
-```
-
-When it exits, read `-result.exit`. A non-zero value is a skip ("When the
-review is skipped"). On 0, check that `-result.txt` ends with a `Verdict:`
-line that holds `plans sound` or `plan revision needed`, then a `Blocking
-count:` line. With no verdict pair, the run is a skip with reason `failed`.
-
-**Read the token count** after every run that launched, a skip included:
-
-```
-awk '$0=="tokens used"{getline; v=$0} END{print v}' <record-dir>/reviews/plan-review-r1-result.stderr | tr -dc '0-9'
-```
-
-It prints the integer on the line after the last line that is exactly `tokens
-used`. The runner echoes the whole prompt to `-result.stderr`, and the prompt
-holds that phrase too, so read only the last exact match. Empty output means
-`tokens: null`.
-
-**Transcribe the report.** The runner cannot write the record. Copy
-`-result.txt` to `<record-dir>/reviews/plan-review-r1.md`, from its `Plans
-reviewed: <n>` line to the end. Put `Source: codex output` as the second
-line.
+A command with a missing or wrong argument exits 2 and says why.
 
 ## When the review is skipped
 
-Run these two checks before you write the script:
+The script runs these two checks before it writes anything:
 
 ```
 command -v codex
@@ -192,26 +160,34 @@ timeout 15 codex login status
 ```
 
 `review-runner.md`'s "The startup check and the cap" names the `timeout` tool:
-`timeout` or `gtimeout`. With neither, run `codex login status` with no
-limit. **Never read a credential file.** `codex login status` is the only
-login check.
+`timeout` or `gtimeout`. With neither, the script runs `codex login status`
+with no limit. **The script never reads a credential file.** `codex login
+status` is the only login check.
 
-| Reason | When |
-|---|---|
-| `absent` | `command -v codex` prints nothing |
-| `not logged in` | `codex login status` exits non-zero |
-| `timeout` | `-result.exit` holds 124 |
-| `quota` | `-result.exit` is non-zero, and the last lines of `-result.stderr` name a usage limit or a rate limit |
-| `failed` | any other non-zero exit, a `-result.txt` with no verdict pair, or a second attempt that died ("Resume in the planning step") |
+| Reason | When | Who decides |
+|---|---|---|
+| `absent` | `command -v codex` prints nothing | the script |
+| `not logged in` | `codex login status` exits non-zero | the script |
+| `timeout` | `-result.exit` holds 124 | the script |
+| `quota` | `-result.exit` is non-zero, and the last lines of `-result.stderr` name a usage limit or a rate limit | you |
+| `failed` | any other non-zero exit, a `-result.txt` with no verdict pair, or a second attempt that died ("Resume in the planning step") | the script, except a non-zero exit |
 
-For `quota`, read the last 20 lines of `-result.stderr` and decide. No file
-holds a list of strings.
+**For a non-zero exit that is not 124, you decide.** No file holds a list of
+strings, so you read the 20 lines that the script printed. Then run:
 
-**A skip does four things, in this order.** Write the record ("The record").
-Write one `decisions.md` entry that names the reason ("Adjudicate the
-findings"). Add the hand-over line ("The hand-over"). Then give the start
-word with no findings ("The start word"). **A skip asks the principal no
-question.**
+```
+python3 <skill-dir>/scripts/plan-review.py <record-dir> skip --reason quota --evidence "<the stderr line>"
+```
+
+With `--reason failed`, the evidence is the exit status or the line that shows
+the failure. The command writes the skip record and the skip `decisions.md`
+entry.
+
+**A skip does four things, in this order.** It writes the record ("The
+record"). It writes one `decisions.md` entry that names the reason ("Adjudicate
+the findings"). The script does both. Then you add the hand-over line ("The
+hand-over"), and give the start word with no findings ("The start word"). **A
+skip asks the principal no question.**
 
 ## Adjudicate the findings
 
@@ -238,18 +214,25 @@ actions for the plan review in its place:
   you believe" then checks it. After the package is integrated, it is a
   finding from the principal in the delivered window.
 
-**Write the record first**: `outcome: ran` and the counts, as "The record"
-point 4 says. **Then write one `decisions.md` entry**, with one `--line` for
-each finding and one for each refactor recommendation:
+**Then run `decide`**, once every finding has your label. It writes the
+record first: `outcome: ran`, the `labels` counts by your label, `accepted`
+(the findings you send to an IC) and `recommendations` (the "The record" point
+4 write). Then it writes one `decisions.md` entry. Give one `--finding` for
+each finding and one `--refactor` for each refactor recommendation, in report
+order:
 
 ```
-python3 <skill-dir>/scripts/crew-record.py <record-dir> decision precedent "Plan review: which findings does the run act on?" --answer "<k> of <n> findings sent to the ICs" --citation "reviews/plan-review-r1.md" --confidence high --line "Finding: F1 blocking (reviewer: blocking) — sent to <ic name>" --line "Finding: F2 don't post (reviewer: suggestion) — declined: <reason>" --line "Refactor: <ticket title>"
+python3 <skill-dir>/scripts/plan-review.py <record-dir> decide --finding "Finding: F1 blocking (reviewer: blocking) — sent to <ic name>" --finding "Finding: F2 don't post (reviewer: suggestion) — declined: <reason>" --refactor "Refactor: <ticket title>"
 ```
 
 Each finding line has the form `Finding: F<k> <project lead label> (reviewer:
 <label>) — sent to <ic name> | declined: <reason>`. `F<k>` numbers the
 findings in report order. `crew-record.py`'s `--line` key takes letters only,
-so the number goes in the text, not in the key.
+so the number goes in the text, not in the key. The script counts the labels
+and the `sent to` lines from these arguments. The entry has the title `Plan
+review: which findings does the run act on?`, the answer `<k> of <n> findings
+sent to the ICs`, the citation `reviews/plan-review-r1.md` and the confidence
+`high`.
 
 On a skip, the entry has the same title and the answer `skipped: <reason>`.
 The citation is the evidence: the empty `command -v`, the exit status, or the
@@ -284,34 +267,30 @@ accepted finding on them, and `Plan stop: off`.
 
 ## The record
 
-`record-format.md` owns `run.plan_review`: every key and every value. Write
-the whole object each time, with one command:
+`record-format.md` owns `run.plan_review`: every key and every value. The script
+writes the whole object each time, through `crew-record.py run set
+plan_review`. It writes at these points:
 
-```
-python3 <skill-dir>/scripts/crew-record.py <record-dir> run set plan_review '<json>'
-```
+1. **At the first planning dispatch**, you run `plan-review.py <record-dir>
+   planning`: `status: planning`, `outcome: null`, `reason: null`, `at: null`,
+   `started_at: null`, `attempts: 0`, every `labels` count 0, `accepted: 0`,
+   `recommendations: 0`, `tokens: null`.
+2. **At a skip before the launch** (`absent` or `not logged in`), `run` writes
+   `outcome: skipped` and the `reason`.
+3. **Just before the launch**, `run` writes `status: reviewing`, `at` the launch
+   time, and `attempts` plus 1.
+4. **After the run exits**, `run` writes the `tokens` count. On a skip it
+   writes `outcome: skipped` and the `reason`. On a review, `decide` writes,
+   once you labelled every finding and before the `decisions.md` entry:
+   `outcome: ran`, the `labels` counts by your own label, `accepted` and
+   `recommendations`. A crash between this write and the entry leaves `status:
+   reviewing` with the exit file present, so the resume adjudicates again.
+5. **When the start word has gone to every IC**, you run `plan-review.py
+   <record-dir> started`: `status: started` and `started_at`.
 
-Write it at these points:
-
-1. **At the first planning dispatch**: `status: planning`, `outcome: null`,
-   `reason: null`, `at: null`, `started_at: null`, `attempts: 0`, every
-   `labels` count 0, `accepted: 0`, `recommendations: 0`, `tokens: null`.
-2. **At a skip before the launch** (`absent` or `not logged in`): `outcome:
-   skipped` and the `reason`.
-3. **Just before the launch**: `status: reviewing`, `at` the launch time, and
-   `attempts` plus 1.
-4. **After the run exits**: the `tokens` count. On a skip, `outcome: skipped`
-   and the `reason`. On a review, once you labelled every finding and before
-   the `decisions.md` entry: `outcome: ran`, the `labels` counts by your own
-   label, `accepted` (the findings you send to an IC) and `recommendations`.
-   A crash between this write and the entry leaves `status: reviewing` with
-   the exit file present, so the resume adjudicates again.
-5. **When the start word has gone to every IC**: `status: started` and
-   `started_at`.
-
-**With `Plan review: off`**, write the object once, at the first dispatch:
-`status: started`, `outcome: off`, `started_at` the dispatch time, and the
-initial values of point 1 for the rest.
+**With `Plan review: off`**, run `plan-review.py <record-dir> off` once, at the
+first dispatch. It writes `status: started`, `outcome: off`, `started_at` the
+dispatch time, and the initial values of point 1 for the rest.
 
 A light-path run writes no `run.plan_review`. Its `steps_skipped` entry is
 its whole record of the step.
@@ -353,11 +332,12 @@ that matches:
    brief carries the absolute paths of its territory's plans, the
    accepted findings on them, and `Plan stop: off`. Then write `status:
    started`.
-3. **`status` is `reviewing`.** When `-result.exit` is present, read it and go
-   on: adjudicate, or skip. When it is absent, check first that no
-   `plan-review-r1-run.sh` process still runs (`pgrep -f`). If one runs, wait
-   for the exit file. If none runs, the script died with the session. Retire
-   each file of the attempt that exists:
+3. **`status` is `reviewing`.** Run the `run` command again. The script
+   follows this rule. When `-result.exit` is present, it reads it and goes on:
+   you adjudicate, or the script skips. When it is absent, the script checks
+   first that no `plan-review-r1-run.sh` process still runs (`pgrep -f`). If one
+   runs, it waits for the exit file. If none runs, the script died with the
+   session. The script retires each file of the attempt that exists:
 
    | File | Retired name |
    |---|---|
@@ -367,10 +347,10 @@ that matches:
    | `plan-review-r1-result.stderr` | `plan-review-r1-result-attempt1.stderr` |
    | `plan-review-r1-result.exit` | `plan-review-r1-result-attempt1.exit` |
 
-   With `attempts` at 1, build the instructions file again ("The inputs"),
-   write `plan-review-r1-run.sh` again, and run the script once more. The run
-   script is not retired. With `attempts` at 2, skip with reason `failed`.
-   This rerun is not a second review, because no review finished.
+   With `attempts` at 1, it builds the instructions file again, writes
+   `plan-review-r1-run.sh` again, and runs the script once more. The run script
+   is not retired. With `attempts` at 2, it skips with reason `failed`. This
+   rerun is not a second review, because no review finished.
 4. **`status` is `planning`.** A split-pane IC can still run, so check first,
    as `full-path.md`'s "Resume after a kill" says. A territory with every plan
    on disk is done. Respawn the IC of each other territory with a fresh name

@@ -101,8 +101,11 @@ sanitizing" says so.
 
    Then read the standing instructions, the repo file from the base branch,
    as `<project-lead-dir>/SKILL.md`'s "Standing instructions" says.
-5. **Cut the review worktree, detached at `headRefOid`.** Cut it and run the
-   ignore check as `review-runner.md`'s "Never review in the run's own
+5. **Check the review worktree path, and cut nothing.** Run `git -C
+   <run.repo> worktree list --porcelain`. The path in `run.checkout` must not
+   be in its output. When it is, another run holds the path: stop and
+   escalate with the path. The script cuts the tree in round 1, and runs the
+   ignore check then, as `review-runner.md`'s "Never review in the run's own
    checkout" says. `checkout_branch` is `null`. The main working tree is
    never switched, so a dirty main tree is no blocker.
 6. **Write `charter.md`** in the record directory, in this shape:

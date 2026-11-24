@@ -1,0 +1,208 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 182,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "The orchestrator gives a small item to a subagent by its own judgment",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/182"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "94f79039211d7314d7c622d0d9657af8475bd2ab",
+    "head": "466c8a954320e89ad2a08390e5801b3b3d11a035",
+    "started_at": "2026-11-24T16:58:17.038Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "The orchestrator gives a small item to a subagent by its own judgment\n\n## Summary\n\nAn orchestrator now decides by itself when an item is small enough for a subagent, and runs that item with no project-lead session, no tab and no slot. Before this change, it did that only when the person asked for it in words, and every other small task got a full implementer session. The orchestrator applies a four-part test at intake. When the test is in doubt, the default is an implementer. The person's word wins in both directions. The orchestrator record marks a subagent item with a new field, so a resume and a close treat it correctly, and the board marks its row `subagent`.\n\n**Ticket:** N/A\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/subagent-items.md` (new) owns the test, the dispatch, the PR window, the escalation to an implementer and the close of a subagent item.\n- `skills/orchestrator/references/orchestrator-record.md` owns the `subagent` field and `item <id> pr none`.\n- `docs/design.md` §15.NNN records the finding. The orchestrator assigns the number.\n\n### What changed, by file\n\n- `skills/orchestrator/references/subagent-items.md`: new. The test with three examples, the default, the principal's word, the record writes, the dispatch (sonnet, `sub-<item id>`, `general-purpose`, the mode table), slots and pace, the stages, the PR window and its GitHub wait, the deploy watch, the escalation, the close.\n- `skills/orchestrator/SKILL.md`: the manager rule allows one subagent per subagent item; a short \"Subagent items\" section points at the reference; the merge, the wait, a rename, after the merge and the close of an item name the subagent case.\n- `skills/orchestrator/references/orchestrator-record.md`: the `subagent` item field, its six keys, the both-kinds refusal, `item <id> pr none`, the row `subagent` boolean and the row text.\n- `skills/orchestrator/references/resume-and-close.md`: a subagent item never goes to \"Launch an implementer\" on a resume; what a resume does for it at each stage; the close points at the reference.\n- `skills/orchestrator/references/usage.md`: the slow-down rule stops a new subagent dispatch; a subagent item takes no slot.\n- `skills/orchestrator/scripts/crew-orch.py`: the `subagent` field, its writes and refusals, `item pr none`, the board row field and text.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: tests for each of those; red commit 099addb.\n- `tests/fixtures/board-json.ts`, `tests/fixtures/board-text.ts`: regenerated, with one subagent row.\n- `types/index.d.ts`: `OrchBoardRow.subagent: boolean`.\n- `docs/design.md`: finding §15.NNN.\n- `README.md`: the orchestrator section, the Models table and the Roles table.\n- `CLAUDE.md`: Layout, Authority and Build state.\n\n### Constraints that applied\n\n- A rule lives in one file: the subagent rules live only in `subagent-items.md`, and the other files point at it.\n- The plugin `version` is not bumped, and the §15 number is `NNN`. The orchestrator owns both and assigns them before the merge.\n- The subagent model is `sonnet`, never `haiku`, because `band-rubric.md` says a Haiku agent's Bash, Write and Edit fall back to a prompt.\n- ASD-STE100 and `writing-standard.md` in every changed file.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-crew-orch.sh` exits 0 on the head.\n- `CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin test`: 53 pass, 0 fail.\n- The project lead read the whole diff against each acceptance criterion of the spec below.\n- A Codex plan review ran before any code. Its findings and the adjudication are in the decisions below.\n\n### Known gaps\n\n- No orchestrator run has judged an item by the test or dispatched a subagent item under these rules.\n- `version` and the §15 number are placeholders.\n\n## Spec\n\n\n## The goal\n\nAn orchestrator (`skills/orchestrator/SKILL.md`) runs some items with a subagent on a cheaper model, by its own judgment, with no implementer session. Today it does that only on the person's word.\n\n## Requirements\n\nR1. **The test.** The orchestrator's instructions state the test that the orchestrator applies to each item at intake. The test decides \"subagent item\" or \"implementer item\" with no word from the person. The test is written so that a reader can apply it to an example and get one answer.\n- AC1: `SKILL.md`, or a reference that it points to, holds the test. Applied to the person's example (move the tickets of a markdown file to a GitHub project), the test gives \"subagent item\". Applied to this goal itself (a change to the orchestrator's design across several files), it gives \"implementer item\". Applied to a one-line code change that needs a red test and review, the test gives \"implementer item\", as R2 says: the project lead's light path exists for that case.\n\nR2. **The default goes to an implementer.** When the test does not clearly give \"subagent item\", the item gets an implementer. Work that needs a spec, a design choice, a preference question, review, or more than one package gets an implementer.\n- AC2: the text says so in one place, and names the cases above.\n\nR3. **The person's word wins in both directions.** The person's word makes an item a subagent item or an implementer item, whatever the test says. This change adds no standing-instructions section.\n- AC3: the text states both directions.\n\nR4. **A subagent item that is larger than it looked goes to an implementer.** When the subagent reports that the work needs a judgment, a design choice, or more work than the item said, the orchestrator ends the subagent and starts an implementer for the item, under the normal launch rules.\n- AC4: the text states this escalation, and what happens to the subagent's worktree and partial work.\n\nR5. **The dispatch.** The text says how the orchestrator dispatches a subagent item: the model (a cheaper model than the implementer's), the name, the worktree (for work that changes a repo), what the brief carries (the goal, the outcome, the context, under the manager rule), and what the subagent returns.\n- AC5: each of those five has one statement.\n\nR6. **The manager rule.** \"The manager rule\" stays true with subagent items. The orchestrator itself still writes no code, no test and no fix. A subagent that it dispatches can, for a subagent item only.\n- AC6: no sentence of the orchestrator's files says the orchestrator dispatches only read-only research while another says it dispatches a subagent that changes a repo.\n\nR7. **The record.** The orchestrator record says durably which items are subagent items, so that a resume after a compaction or a restart does not start an implementer for one, and the close of an item does not run the implementer steps for one. The record and the board show each subagent item, its stage, and its result: the PR, or an outcome for work with no PR.\n- AC7a: `orchestrator-record.md` defines how the record marks a subagent item. If that is a new field or command, `crew-orch.py` writes it, and `test-crew-orch.sh` tests it and passes.\n- AC7b: `resume-and-close.md`'s \"No launch\" branch and \"The close of an item\" each say what they do for a subagent item.\n- AC7c: the board's text view and its JSON view show that a row is a subagent item. `tests/orch-board.test.tsx` and its fixtures still pass if they change.\n\nR8. **The merge and the window after the PR.** A subagent item's PR goes through the same merge checks as any PR. The text says what stands in for the implementer's ready line, and who answers a review comment or a red CI check on a subagent item's PR.\n- AC8: the text states both.\n\nR9. **Slots and usage.** A subagent item takes no implementer slot: it starts no session and no tab, as the `stop-exit-keys` item ran. The pace mode (`usage.md`'s \"The slow-down rule\") applies to a new subagent dispatch.\n- AC9: the text states both.\n\n## Global constraints\n\n- `CLAUDE.md` \"Writing rules\": `writing-standard.md` and its checklist, and ASD-STE100 in every file, commit message and PR body.\n- A rule lives in one file. Other files point at it (`CLAUDE.md`, \"Authority\").\n- The plugin `version` in both manifests and each new `docs/design.md` §15 number stay placeholders. The orchestrator assigns them.\n- `.claude/rules/readme.md` decides whether `README.md` changes.\n- `docs/design.md` gets a §15 finding for the change, with a placeholder number.\n- `skills/orchestrator/scripts/test-crew-orch.sh` passes, whether or not the change touches `crew-orch.py`.\n- `CLAUDE.md`'s \"Build state\" says the change is built and that no run has exercised it.\n\n## Non-goals\n\n- No change to the project lead's own paths or its light path.\n- No change to how an implementer is launched.\n- No new subagent agent definition, unless the IC shows that an existing one cannot take the brief.\n\n\n## Decisions\n\n### Which path does this goal take?\n- Route: precedent\n- Answer: change path\n- Citation: the orchestrator decides by itself when a task is too small for an implementer session, and gives it to a cheaper subagent\n- Confidence: high\n- Timestamp: 2026-11-24T16:31:51Z\n\n### Does the work take the light path?\n- Route: precedent\n- Answer: no: the charter criterion leaves the judgment test, the record marker and the merge of a subagent item to interpret\n- Citation: scout-1's report and charter.md\n- Confidence: high\n- Timestamp: 2026-11-24T16:34:00Z\n\n### Who writes spec.md?\n- Route: precedent\n- Answer: the project lead, with no spec writer\n- Citation: the outline already holds every requirement; a writer round costs more than the prose\n- Confidence: medium\n- Timestamp: 2026-11-24T16:34:00Z\n\n### Spec critic r1: adjudication\n- Route: precedent\n- Answer: accepted all 4 and applied them to spec.md\n- Citation: reviews/spec-critic-r1.md\n- Confidence: high\n- Labels: 1 suggestion (test passes unconditionally, added to constraints); 2 suggestion (no new standing-instructions section); 3 suggestion (subagent item takes no slot, per stop-exit-keys precedent; pace mode applies); 4 nit (one-line change with red test gives implementer item)\n- Timestamp: 2026-11-24T16:35:00Z\n\n### Preference sweep: what does the principal want that the repo cannot say?\n- Route: preference\n- Answer: none\n- Citation: charter.md and spec.md; the spec critic's open decisions are settled in spec.md by the stop-exit-keys precedent\n- Confidence: medium\n- Timestamp: 2026-11-24T16:35:08Z\n\n### Plan review: which findings does the run act on?\n- Route: precedent\n- Answer: 6 of 6 findings sent to the IC, plus one project-lead finding\n- Citation: reviews/plan-review-r1.md\n- Confidence: high\n- Finding: F1 suggestion (reviewer: blocking) — sent to ic-p1-r1: parity with implementer items keeps the Done section as is; the result must reach the principal another way\n- Finding: F2 blocking (reviewer: blocking) — sent to ic-p1-r1\n- Finding: F3 blocking (reviewer: blocking) — sent to ic-p1-r1\n- Finding: F4 blocking (reviewer: blocking) — sent to ic-p1-r1\n- Finding: F5 blocking (reviewer: blocking) — sent to ic-p1-r1\n- Finding: F6 suggestion (reviewer: unsure) — sent to ic-p1-r1: settled from SKILL.md's mode table, no question to the principal\n- Finding: F7 blocking (project lead) — sent to ic-p1-r1: haiku cannot run Bash or Write unattended (band-rubric.md)\n- Timestamp: 2026-11-24T16:42:43Z\n\n### May p1 add a new reference file?\n- Route: precedent\n- Answer: yes: skills/orchestrator/references/subagent-items.md, added to the file set\n- Citation: SKILL.md near its 500-line target; CLAUDE.md Authority: each reference owns one subject\n- Confidence: high\n- Timestamp: 2026-11-24T16:44:41Z\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "CLAUDE.md",
+        "hunks": 3
+      },
+      {
+        "path": "README.md",
+        "hunks": 3
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 11
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 5
+      },
+      {
+        "path": "skills/orchestrator/references/subagent-items.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 9
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 5
+      },
+      {
+        "path": "tests/fixtures/board-json.ts",
+        "hunks": 5
+      },
+      {
+        "path": "tests/fixtures/board-text.ts",
+        "hunks": 1
+      },
+      {
+        "path": "types/index.d.ts",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6043720792,
+      "review_url": "https://github.com/jerridan/crew/pull/182#pullrequestreview-6043720792",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138619969170
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 54,
+      "gather": 37,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

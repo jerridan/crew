@@ -24,8 +24,13 @@ its only writer. Writes are atomic and safe when many sessions write at once.
 | `window_first` | the first sample seen in the current five-hour window: `resets_at`, `at`, `used_pct` |
 
 The merge rule applies to each window. A sample with a later `resets_at`
-replaces the stored one. Within the same `resets_at`, the higher percent wins.
-So the old sample of an idle session never lowers the figure. A sample with no
+replaces the stored one. Within the same `resets_at`, a status line sample
+wins only with a higher percent, so the old sample of an idle session never
+lowers the figure. The fresh reading reads the account, and so its figure
+replaces the stored one in the same `resets_at` also when it is lower. That is
+how a partial reset of a window shows: the next fresh reading lowers the
+figure. A lower five-hour figure from a fresh reading also starts
+`window_first` again from that figure. A sample with no
 figures changes nothing. A sample with figures clears `plan_limits: false`.
 
 `updated_at` and `source` move only when the five-hour figure advances: a

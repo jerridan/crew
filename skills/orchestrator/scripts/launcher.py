@@ -61,8 +61,9 @@ KILL_WAIT = 2
 # stop waits this many seconds after Escape and after Ctrl-U.
 KEY_WAIT = 0.5
 # The exit dialog of Claude Code for a session with live background tasks: its
-# title, its first option, which has the focus, and its last option.
-EXIT_DIALOG = ("Background work is running", "Exit and stop tasks", "Stay")
+# title, its first option, which has the focus, the option that is there only
+# sometimes, and its last option.
+EXIT_DIALOG = ("Background work is running", "Exit and stop tasks", "Move to background and exit", "Stay")
 # At most this many lines with text can come after the last option.
 EXIT_DIALOG_TAIL = 6
 
@@ -1226,31 +1227,58 @@ def claude_on_tty(tty):
     return {p["pid"]: p["argv"] for p in processes().values() if p["tty"] == tty and is_claude(p["argv"])}
 
 
+def dialog_line(label):
+    """A pattern for a screen line that holds only the label: frame and
+    pointer characters and an option number can come before it, and frame
+    characters after it. A sentence that has the label in it does not match."""
+    return re.compile(r"\W*(?:[0-9]+\.\s*)?%s\W*" % re.escape(label))
+
+
+EXIT_DIALOG_LINES = tuple(dialog_line(label) for label in EXIT_DIALOG)
+
+
 def shows_exit_dialog(screen):
     """True when the screen text ends with the exit dialog of a session with
     live background tasks. Enter on that dialog takes its first option, "Exit
-    and stop tasks". The lines must hold the title, then the first option,
-    then the last option. After the last option come at most EXIT_DIALOG_TAIL
-    lines with text, and none of them starts a numbered option: a permission
-    dialog under these words has numbered options, and Enter would approve it.
+    and stop tasks". Each of these lines holds its label and no other word:
+    the title; after it the first option; on the next line with text the last
+    option, or the option to move to the background and then the last option.
+    After the last option come at most EXIT_DIALOG_TAIL lines with text, and
+    none of them starts a numbered option: a permission dialog under these
+    words has numbered options, and Enter would approve it.
     """
-    lines = [l for l in (screen or "").splitlines() if l.strip()]
-    title, first, last = EXIT_DIALOG
-    at = max((i for i, l in enumerate(lines) if title in l), default=None)
-    for word in (first, last):
-        if at is None:
-            return False
-        at = next((i for i in range(at + 1, len(lines)) if word in lines[i]), None)
+    # A line with text has a letter or a digit: a frame line does not count.
+    lines = [l for l in (screen or "").splitlines() if re.search(r"\w", l)]
+    title, first, middle, last = EXIT_DIALOG_LINES
+    at = max((i for i, l in enumerate(lines) if title.fullmatch(l)), default=None)
     if at is None:
+        return False
+    at = next((i for i in range(at + 1, len(lines)) if first.fullmatch(lines[i])), None)
+    if at is None:
+        return False
+    at += 1
+    if at < len(lines) and middle.fullmatch(lines[at]):
+        at += 1
+    if at >= len(lines) or not last.fullmatch(lines[at]):
         return False
     tail = lines[at + 1:]
     return len(tail) <= EXIT_DIALOG_TAIL and not any(OPTION_RE.match(l) for l in tail)
 
 
 def exit_confirm(read_screen, press_enter):
-    """A confirm step for wait_claude_gone: it reads the screen, and presses
-    Enter only when the screen ends with the exit dialog. A read or a key that
-    fails is no failure of stop: the wait goes on, and the tab closes."""
+    """A confirm step for wait_claude_gone, or None. Call it before the first
+    key of stop: it reads the screen one time now. A screen that shows the
+    exit dialog before /exit shows words that /exit did not cause, such as
+    text that the session printed. Then, and when that read fails, the answer
+    is None and stop presses no Enter. Else the step reads the screen, and
+    presses Enter only when the screen ends with the exit dialog. A read or a
+    key that fails is no failure of stop: the step returns False, the next
+    poll tries again, and at the end of the wait the tab closes."""
+    try:
+        if shows_exit_dialog(read_screen()):
+            return None
+    except Fail:
+        return None
 
     def confirm():
         try:
@@ -1334,6 +1362,13 @@ def tmux_screen(pane):
     if rc != 0:
         raise Fail(TERMINAL_STEP, "launcher: tmux capture-pane failed for tmux:%s: %s" % (pane, one_line(err) or "exit %d" % rc))
     return out
+
+
+def tmux_enter(pane):
+    """Press Enter in the tmux pane."""
+    rc, _, err = tmux(["send-keys", "-t", pane, "Enter"])
+    if rc != 0:
+        raise Fail(TERMINAL_STEP, "launcher: tmux send-keys failed for tmux:%s: %s" % (pane, one_line(err) or "exit %d" % rc))
 
 
 def focus(a):
@@ -1466,6 +1501,7 @@ def herdr_stop(a, ref):
             raise Fail(TERMINAL_STEP, "launcher: hc read failed for %s: %s" % (a.handle, one_line(err) or herdr_error(out) or "exit %d" % rc))
         return out
 
+    confirm = exit_confirm(screen, lambda: keys("enter"))
     for name in ("esc", "ctrl+u"):
         keys(name)
         time.sleep(KEY_WAIT)
@@ -1478,7 +1514,7 @@ def herdr_stop(a, ref):
         # the terminal keeps the failure of hc keys.
         if not hc_ended(ref):
             raise
-    left = wait_claude_gone(tty, a.handle, exit_confirm(screen, lambda: keys("enter"))) if tty else {}
+    left = wait_claude_gone(tty, a.handle, confirm) if tty else {}
     try:
         herdr_do("tab.close", [("id", tab), ("confirmed", "true")], "stop")
     except HerdrError as e:
@@ -1506,7 +1542,8 @@ def stop(a):
     first: Enter on a permission dialog would approve it, and text in the
     input line would go to the model with /exit. A session with live
     background tasks answers /exit with a dialog: during the wait, stop
-    presses Enter one time when the screen ends with that dialog. With --name
+    presses Enter one time when the screen ends with that dialog, and only
+    when the screen did not show it before the keys. With --name
     or --session-id, stop sends no key and closes nothing unless the target
     holds that session.
     """
@@ -1527,6 +1564,7 @@ def stop(a):
                 tty = iterm_tty(ref)
             except Fail:
                 tty = None
+        confirm = exit_confirm(lambda: iterm_screen(ref), lambda: iterm_script(OSA_ENTER, "enter", ref))
         try:
             tty_out = iterm_script(OSA_EXIT.replace("{pause}", str(KEY_WAIT)), "exit", ref)
         except Fail:
@@ -1544,11 +1582,7 @@ def stop(a):
         if tty == "gone" or not tty:
             print("launcher: %s was already gone" % a.handle)
             return OK
-        left = wait_claude_gone(
-            norm_tty(tty),
-            a.handle,
-            exit_confirm(lambda: iterm_screen(ref), lambda: iterm_script(OSA_ENTER, "enter", ref)),
-        )
+        left = wait_claude_gone(norm_tty(tty), a.handle, confirm)
         try:
             iterm_script(OSA_STOP, "stop", ref)  # "gone" here: the tab closed when claude ended
         except Fail:
@@ -1567,15 +1601,14 @@ def stop(a):
         return OK
     if not holds_target(a, tty):
         return not_target(a)
+    confirm = exit_confirm(lambda: tmux_screen(ref), lambda: tmux_enter(ref))
     tmux(["send-keys", "-t", ref, "Escape"])
     time.sleep(KEY_WAIT)
     tmux(["send-keys", "-t", ref, "C-u"])
     time.sleep(KEY_WAIT)
     tmux(["send-keys", "-t", ref, "-l", "/exit"])
     tmux(["send-keys", "-t", ref, "Enter"])
-    left = wait_claude_gone(
-        tty, a.handle, exit_confirm(lambda: tmux_screen(ref), lambda: tmux(["send-keys", "-t", ref, "Enter"]))
-    )
+    left = wait_claude_gone(tty, a.handle, confirm)
     if tmux_pane_exists(ref):
         rc, _, err = tmux(["kill-pane", "-t", ref])
         if rc != 0 and not tmux_pane_gone(ref):

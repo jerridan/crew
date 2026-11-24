@@ -105,6 +105,10 @@ if mode == "badsha":
     report = "Reviewed: deadbeef\n\n" + body
 if mode == "cannot":
     report = "Reviewed: %%s\n\n### F1. x\nSeverity: nit\nCannot verify: the build step\n%%s" %% (sha, closing)
+if mode in ("cannot-false", "cannot-mixed"):
+    false_lines = "## Cannot verify\n\n## Checked and found nothing\n\n- **The project lead still adjudicates.** The `Cannot verify` judgment, the `quota` decision, the labels and the adjudication all stay in the prose.\n"
+    real_lines = "It does not say how they were measured. Cannot verify from the diff.\n\n- Cannot verify from the diff that `test-x.py` passes.\n"
+    report = "Reviewed: %%s\n\n### F1. x\nSeverity: nit\n" %% sha + (real_lines if mode == "cannot-mixed" else "") + false_lines + closing
 if mode == "denials":
     result["permission_denials"] = [{"tool_name": "Bash", "tool_input": {"command": "git push origin main"}},
                                     {"tool_name": "Read", "tool_input": {"file_path": "/etc/hosts"}}]
@@ -476,6 +480,15 @@ rc = go(c, "record", "--denials-ok", "true")
 e = run_of(c).get("review_results", {}).get("1", {})
 check("record --denials-ok true writes the entry", rc == 0 and e.get("denials_ok") is True and e.get("report_ok") is True
       and e.get("exit") == 0 and len(launches(c)) == 1)
+c = seed()
+rc = go(c, seq="cannot-false")
+check("Cannot verify: a heading and a backticked mention are no mark",
+      rc == 0 and "CANNOT VERIFY:" not in c.out and "review_results" in run_of(c))
+c = seed()
+rc = go(c, seq="cannot-mixed")
+check("Cannot verify: a finding line and a list item print, a heading and a mention do not",
+      rc == 12 and c.out.count("CANNOT VERIFY:") == 2 and "Cannot verify from the diff." in c.out
+      and "CANNOT VERIFY: ## Cannot verify" not in c.out and "judgment" not in c.out)
 c = seed()
 go(c, seq="cannot,ok")
 rc = go(c, "record", "--denials-ok", "false", seq="cannot,ok")

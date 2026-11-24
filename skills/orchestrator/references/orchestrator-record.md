@@ -133,8 +133,8 @@ alone. No command sets them.
 | `session_id` | the id of the project lead's conversation, which `launcher.py resume` takes |
 
 `subagent` is the marker of a subagent item: an item that a subagent of the
-orchestrator runs, with no implementer session (`SKILL.md`'s "Subagent
-items"). It holds six keys, each a string or `null`. The orchestrator writes
+orchestrator runs, with no implementer session (`subagent-items.md`). It
+holds six keys, each a string or `null`. The orchestrator writes
 them.
 
 | Key | Holds |

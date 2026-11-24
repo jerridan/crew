@@ -44,6 +44,7 @@ directory, runs `tests/orch-board.test.tsx` against the TypeScript mod
 | `skills/project-lead/scripts/*.py` | `crew-record.py` writes one `state.json` field, a `decisions.md` entry or a round stamp; `spend.py` prices a run from its transcripts; `crew-stats.py` reports cost, bands, fix rounds, councils, reviews, the review catch rate, the finding labels the reviewers proposed per review kind, the skipped steps, the steps the principal replaced, the plan reviews run and skipped with their finding labels, a `kind` column and the untouched-draft rate over every record; `test-crew-stats.py` is the seeded test of `crew-stats.py` | the project lead, from Bash; a person runs `crew-stats.py` |
 | `skills/orchestrator/SKILL.md` | the `/crew:orchestrator` entry point: the intake, the split, the launch, the goal message, the inbox, the merge, the wait and the close of each item of many project-lead sessions | its skill trigger |
 | `skills/orchestrator/references/resume-and-close.md` | the resume of an orchestrator after a compaction or a restart, the close of an item and the close of a run | the orchestrator session |
+| `skills/orchestrator/references/subagent-items.md` | the subagent item: the test that makes an item one, its record, its dispatch, its PR window, its escalation to an implementer and its close | the orchestrator session |
 | `skills/orchestrator/references/orchestrator-record.md` | the orchestrator record: its files, every field, the ids, the stages, the merge value, the board and every command | whoever writes or reads an orchestrator record |
 | `skills/orchestrator/scripts/crew-orch.py`, `skills/orchestrator/scripts/test-crew-orch.sh` | the only writer of the orchestrator record, and its board; the seeded test, with a stub `gh` | an orchestrator and a project lead it started, from Bash; a person runs the test |
 | `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py` | `SessionEnd` marks a dead run interrupted; `PreCompact` logs a compaction into the run | the plugin loader, in every session |
@@ -239,6 +240,8 @@ Each reference owns one subject and is canonical for it:
   levels and the orchestrator's slow-down.
 - `skills/orchestrator/references/resume-and-close.md` — the resume of an
   orchestrator, the close of an item and the close of a run.
+- `skills/orchestrator/references/subagent-items.md` — the subagent item: the
+  test, the dispatch, the PR window, the escalation and the close.
 - `skills/orchestrator/SKILL.md` — the orchestrator's own rules: the manager
   rule, the authority, the goal message, the inbox rule, the
   merge procedure and its `Merge` section, and the concurrency number.

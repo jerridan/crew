@@ -10294,7 +10294,7 @@ NNN. **The orchestrator runs a small item with a subagent — 2026-11-24,
        orchestrator to judge such items by itself, to save tokens and time.
        The example was a move of the tickets of a markdown file to a GitHub
        project.
-     - **Decision.** `skills/orchestrator/SKILL.md`'s "Subagent items" holds
+     - **Decision.** `skills/orchestrator/references/subagent-items.md` holds
        a four-part test that the orchestrator applies at intake. The default
        is an implementer, and the principal's word wins in both directions.
        The test sends code and instruction changes to an implementer, because

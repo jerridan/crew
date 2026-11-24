@@ -190,7 +190,7 @@ record (`orchestrator-record.md`). There is no second copy. A level only
 changes what you write there.
 
 - At `slowed`: start no new implementer, and dispatch no new subagent for a
-  subagent item (`SKILL.md`'s "Subagent items"). Set `slots.max` to 1 with
+  subagent item (`subagent-items.md`). Set `slots.max` to 1 with
   `crew-orch.py pace set '{"slots": {"max": 1}}'`. Tell each implementer above
   that number to pause: it finishes its current package, commits, and waits
   for the reset. Tell each implementer to defer optional work that starts a

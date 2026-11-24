@@ -1,0 +1,1082 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 186,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let a fresh reading lower the stored usage figure after a partial reset",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/186"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "e375dd208cee64f55464d1021ea8d3625a0adbe1",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-186/2026-11-24T180439.107Z-e375dd2.json",
+      "open": [
+        "0cf664fc40e4996c",
+        "c0172f0328f35ef8"
+      ],
+      "dismissed": [],
+      "fetch_failed": false
+    },
+    "base": "7f2059e4f7b9be9c9368cd9a41c44f097bf28b18",
+    "head": "410e08e147edf238a7701b4bb5af29101658e336",
+    "started_at": "2026-11-24T19:32:27.916Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let a fresh reading lower the stored usage figure after a partial reset\n\n## Summary\n\nAfter a partial reset of a usage window, the shared usage file kept the old, higher figure until the window ended. On 2026-11-24 it showed seven-day at 99% when the account was at 69%. Now a fresh reading of the account lowers the stored figure in the same window. A status line sample of an idle session, also a repeat of its old figure, never raises it again.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/orchestrator/references/usage.md` \"The shared file\" owns the merge rule. `docs/design.md` §15.162 holds the finding.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-usage.py`: `merge_window` takes a `fresh` flag, and a fresh reading replaces a window with an equal `resets_at` also when its percent is lower. A lower five-hour figure from a fresh reading starts `window_first` again. `usage.json` keeps the last figure of each window per session id in `sessions` for 2 days, and a sample equal to the last one of its own session changes nothing.\n- `skills/orchestrator/scripts/test-crew-usage.py`: six new checks in R3, each group committed failing first (3 of 4 checks failed before the fix for the lowered figure, then 2 of 2 failed before the fix for the idle repeat).\n- `skills/orchestrator/references/usage.md`: the merge rule, the `sessions` field and the `updated_at` rule say the new cases.\n- `docs/design.md`: new finding §15.162.\n- `CLAUDE.md`: build state says what is built and that only the seeded test ran it.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.130.\n\n### Constraints that applied\n\nThe rule lives only in `usage.md`. The plugin `version` is bumped in both manifests, because the PR changes `skills/`.\n\n### How this was verified\n\n`python3 skills/orchestrator/scripts/test-crew-usage.py` gives 107 of 107 checks passed, with a stub `claude`.\n\n### Known gaps\n\nNo live reading ran the change. `check` and `watch` take a fresh reading only when the newest sample is older than 5 minutes. A session whose first sample comes after the reset with an old figure is not told apart. A fresh reading can lower a figure that a session raised in the few seconds of the probe, and the next sample of that session raises it again.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZh7PDNExjtW2kbKe69\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-usage.py",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-usage.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes merge logic in crew-usage.py (state-handling rules, new per-session persisted records, window_first reset), which can cause subtle bugs.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-usage.py:apply_sample (session dedupe, seen/last handling, lowered flag)",
+        "skills/orchestrator/scripts/crew-usage.py:merge_window (fresh param)",
+        "skills/orchestrator/scripts/crew-usage.py: window_first condition `if five and d.get(\"five_hour\")`",
+        "skills/orchestrator/scripts/crew-usage.py: SESSION_AGE pruning and seen[sid] written even when the sample is skipped",
+        "skills/orchestrator/scripts/test-crew-usage.py R3 additions"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "note": "Logic change: a fresh reading can lower a figure in the same resets_at. Adds per-session last-figure records (`sessions`, pruned after 2 days) that ignore repeated samples. A lowered five-hour figure restarts window_first."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "note": "New R3 cases: lowered figure, window_first restart, idle repeat, earlier resets_at."
+        },
+        {
+          "file": "skills/orchestrator/references/usage.md",
+          "note": "Documents the new merge rule and the `sessions` field. Some lines now run over the wrap width."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New §15.162 decision entry."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Adds a status note."
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "Version bump to 0.1.130."
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "Version bump to 0.1.130."
+        }
+      ],
+      "summary": "After a partial account reset, a fresh reading can now lower the stored usage figure in the same resets_at. Status line samples still never lower it. To stop idle sessions from raising a lowered figure again, usage.json now keeps each session's last figure and ignores repeats. A lowered five-hour figure restarts window_first. Docs, tests and the version are updated."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes merge logic in crew-usage.py (state-handling rules, new per-session persisted records, window_first reset), which can cause subtle bugs.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5836,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5399,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005519,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 247,
+              "cacheReadInputTokens": 25366,
+              "cacheCreationInputTokens": 5186,
+              "webSearchRequests": 0,
+              "costUSD": 0.0515172,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 74,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.05206909999999999
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 167,
+            "end_line": 179,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "A sample that has only one window resets the session's record to `{\"at\": ts}`, which drops the stored last figure of the other window. The next repeat of the old figure for that window then counts as a first sample and can raise a lowered figure again.",
+            "evidence": "    if sid:\n        seen[sid] = {\"at\": ts}\n        d[\"sessions\"] = seen",
+            "suggested_fix": "Start from the old record and update it, e.g. `seen[sid] = dict(last, at=ts)`, so windows the sample did not include keep their last figure.",
+            "explanation": "The new usage.md text says `sessions` keeps the last figure of each window the session sent, but the code replaces the whole record on every sample, so the idle-repeat guard can be lost for a window that the latest sample left out.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 18100,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5395,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005514999999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1282,
+              "cacheReadInputTokens": 42490,
+              "cacheCreationInputTokens": 7843,
+              "webSearchRequests": 0,
+              "costUSD": 0.09690600000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 632,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0974575
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 12465,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5409,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005528999999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 742,
+              "cacheReadInputTokens": 40740,
+              "cacheCreationInputTokens": 6517,
+              "webSearchRequests": 0,
+              "costUSD": 0.07514799999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 127,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.07570089999999999
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 7231,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 10995,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011115,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 760,
+              "cacheReadInputTokens": 53881,
+              "cacheCreationInputTokens": 13290,
+              "webSearchRequests": 0,
+              "costUSD": 0.0661601,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 400,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0672716
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3216,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5401,
+              "outputTokens": 27,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005536,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 73,
+              "cacheReadInputTokens": 10423,
+              "cacheCreationInputTokens": 4910,
+              "webSearchRequests": 0,
+              "costUSD": 0.042832600000000005,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.04338620000000001
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 4175,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5391,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005511,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 488,
+              "cacheReadInputTokens": 27300,
+              "cacheCreationInputTokens": 5605,
+              "webSearchRequests": 0,
+              "costUSD": 0.030038000000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 148,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0305891
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 167,
+          "end_line": 179,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "A sample that has only one window resets the session's record to `{\"at\": ts}`, which drops the stored last figure of the other window. The next repeat of the old figure for that window then counts as a first sample and can raise a lowered figure again.",
+          "evidence": "    if sid:\n        seen[sid] = {\"at\": ts}\n        d[\"sessions\"] = seen",
+          "suggested_fix": "Start from the old record and update it, e.g. `seen[sid] = dict(last, at=ts)`, so windows the sample did not include keep their last figure.",
+          "explanation": "The new usage.md text says `sessions` keeps the last figure of each window the session sent, but the code replaces the whole record on every sample, so the idle-repeat guard can be lost for a window that the latest sample left out.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        seen[sid] = {\"at\": ts}",
+            "            seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]"
+          ],
+          "rationale": "The session record is reset to {\"at\": ts} on every sample, and only the windows present in that sample are written back. A window the sample left out loses its stored figure, so a later repeat of the old figure counts as new. This only matters on the uncommon path where samples carry a single window.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        seen[sid] = {\"at\": ts}",
+            "            seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]",
+            "            if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "| `sessions` | per session id: `at` and the last `[used_pct, resets_at]` of each window it sent |"
+          ],
+          "rationale": "The code replaces the session's whole record with `{\"at\": ts}` on every sample and only fills in the windows that sample includes. If a sample leaves out a window, that window's last figure is lost. A later repeat of the old figure then gets past the idle-repeat guard and can raise a figure that a fresh reading lowered. This only happens when a sample carries just one window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        seen[sid] = {\"at\": ts}",
+            "            seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]",
+            "            if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "| `sessions` | per session id: `at` and the last `[used_pct, resets_at]` of each window it sent |"
+          ],
+          "rationale": "The code replaces the session's whole record with `{\"at\": ts}` on every sample and only fills in the windows that sample includes. If a sample leaves out a window, that window's last figure is lost. A later repeat of the old figure then gets past the idle-repeat guard and can raise a figure that a fresh reading lowered. This only happens when a sample carries just one window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6045996008,
+      "review_url": "https://github.com/jerridan/crew/pull/186#pullrequestreview-6045996008",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138720101625
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 167,
+        "end_line": 179,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "A sample that has only one window resets the session's record to `{\"at\": ts}`, which drops the stored last figure of the other window. The next repeat of the old figure for that window then counts as a first sample and can raise a lowered figure again.",
+        "evidence": "    if sid:\n        seen[sid] = {\"at\": ts}\n        d[\"sessions\"] = seen",
+        "suggested_fix": "Start from the old record and update it, e.g. `seen[sid] = dict(last, at=ts)`, so windows the sample did not include keep their last figure.",
+        "explanation": "The new usage.md text says `sessions` keeps the last figure of each window the session sent, but the code replaces the whole record on every sample, so the idle-repeat guard can be lost for a window that the latest sample left out.",
+        "needs_context": true,
+        "fingerprint": "52d403643df17f88",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        seen[sid] = {\"at\": ts}",
+            "            seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]",
+            "            if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "| `sessions` | per session id: `at` and the last `[used_pct, resets_at]` of each window it sent |"
+          ],
+          "rationale": "The code replaces the session's whole record with `{\"at\": ts}` on every sample and only fills in the windows that sample includes. If a sample leaves out a window, that window's last figure is lost. A later repeat of the old figure then gets past the idle-repeat guard and can raise a figure that a fresh reading lowered. This only happens when a sample carries just one window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "last = seen.get(sid, {}) if sid else {} if sid: seen[sid] = {\"at\": ts} d[\"sessions\"] = seen for key, new in ((\"five_hour\", five), (\"seven_day\", seven)): if new is None: continue if sid: seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]] if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]: # A session that repeats its last figure got no API response # since then: the repeat is old and changes nothing. continue",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": [
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 338,
+        "end_line": 347,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "A fresh reading now replaces the stored figure even when that figure is newer: a status line sample of an active session written between the probe's read and the locked update gets lowered back, and window_first is reset.",
+        "evidence": "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+        "suggested_fix": "Lower only when the stored figure is not newer than the probe's read time (for example, compare against the stored updated_at, or record the probe time and keep a higher figure that arrived after it).",
+        "explanation": "The probe's figures are read several seconds before `update` takes the lock, and `fresh` now bypasses the higher-percent guard unconditionally, so a genuinely newer higher figure from a live session can be overwritten by the older fresh value and the forecast restarted.",
+        "needs_context": false,
+        "fingerprint": "c0172f0328f35ef8",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+            "if key == \"five_hour\" and old and d[key][\"used_pct\"] < old[\"used_pct\"]:\n            lowered = True",
+            "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "stop_group(proc)\n        lines = read_lines(probe)"
+          ],
+          "rationale": "`fresh=True` now replaces any stored window that has the same resets_at, even when the stored figure is higher. The probe's lines are read before `update` takes the lock, so a higher sample that a session writes in between gets lowered and `window_first` is reset. The race window is a few seconds and only opens when the file is already stale. The next higher session sample fixes the figure, but the forecast still restarts.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "ts = now() result = [0] def fn(d): out = d got = False for x in lines: new = apply_sample(out, x, \"refresh\", ts, fresh=True) if new is not None: out, got = new, True",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5919,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 6399,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006534,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 914,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 5912,
+            "webSearchRequests": 0,
+            "costUSD": 0.0329182,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0335716
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 3216,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5401,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005536,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 73,
+            "cacheReadInputTokens": 10423,
+            "cacheCreationInputTokens": 4910,
+            "webSearchRequests": 0,
+            "costUSD": 0.042832600000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.04338620000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 5836,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5399,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005519,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 247,
+            "cacheReadInputTokens": 25366,
+            "cacheCreationInputTokens": 5186,
+            "webSearchRequests": 0,
+            "costUSD": 0.0515172,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 74,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.05206909999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7231,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10995,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011115,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 760,
+            "cacheReadInputTokens": 53881,
+            "cacheCreationInputTokens": 13290,
+            "webSearchRequests": 0,
+            "costUSD": 0.0661601,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 400,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0672716
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4175,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5391,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005511,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 488,
+            "cacheReadInputTokens": 27300,
+            "cacheCreationInputTokens": 5605,
+            "webSearchRequests": 0,
+            "costUSD": 0.030038000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 148,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0305891
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 12465,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5409,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005528999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 742,
+            "cacheReadInputTokens": 40740,
+            "cacheCreationInputTokens": 6517,
+            "webSearchRequests": 0,
+            "costUSD": 0.07514799999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 127,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.07570089999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 18100,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5395,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005514999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1282,
+            "cacheReadInputTokens": 42490,
+            "cacheCreationInputTokens": 7843,
+            "webSearchRequests": 0,
+            "costUSD": 0.09690600000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 632,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0974575
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5111,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9117,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009227000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 603,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8626,
+            "webSearchRequests": 0,
+            "costUSD": 0.0409747,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 266,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0418974
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10912,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9137,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009266999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 884,
+            "cacheReadInputTokens": 17376,
+            "cacheCreationInputTokens": 9244,
+            "webSearchRequests": 0,
+            "costUSD": 0.0951232,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 321,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.09604990000000001
+      }
+    ],
+    "total_cost_usd": 0.5379933,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 63,
+      "gather": 260,
+      "scope": 15,
+      "triage": 7119,
+      "find_verify": 37131,
+      "merge": 2
+    },
+    "errors": []
+  }
+}

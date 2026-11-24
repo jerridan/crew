@@ -29,7 +29,8 @@ Exit codes: 0 done, 1 any other failure, 2 usage, 3 a session name that does
 not hold the slot, or a slot that is taken.
 
 Tests name another poll script in WINDOW_WATCH_POLL, another launcher in
-CREW_WINDOW_LAUNCHER, and a stale cap in seconds in CREW_WINDOW_STALE.
+CREW_WINDOW_LAUNCHER, a stale cap in seconds in CREW_WINDOW_STALE, and a file in
+CREW_WINDOW_TEST_HOLD that holds a tick at the archive of a done session.
 """
 
 import argparse
@@ -435,15 +436,7 @@ def run_poll(record, mode):
     return [l.strip() for l in done.stdout.splitlines() if l.strip()]
 
 
-def gh_login():
-    try:
-        done = subprocess.run(["gh", "api", "user", "--jq", ".login"], capture_output=True, text=True, timeout=60)
-    except (OSError, subprocess.SubprocessError):
-        return ""
-    return done.stdout.strip() if done.returncode == 0 else ""
-
-
-def needs_session(line, win, wj, login):
+def needs_session(line, win, wj):
     """The filter of D2. Returns (keep, consumed one own ready flip)."""
     parts = line.split()
     kind = parts[0] if parts else ""
@@ -458,8 +451,6 @@ def needs_session(line, win, wj, login):
         if len(own.get("ready") or []) > int(wj.get("ready_consumed") or 0):
             return False, True
         return True, False
-    if kind == "comment" and login and len(parts) > 2 and parts[2] == login:
-        return False, False
     return True, False
 
 
@@ -539,6 +530,7 @@ def launch(record, name, find_first, wj, poll):
     rec_set(record, "session.handle", handle)
     rec_set(record, "session.session_id", session_id)
     rec_set(record, "session.status", "live")
+    wj["activity_at"] = time.time()
     wj["launch_fails"] = 0
     wj["next_launch_at"] = None
     log(f"session {name} is live at {handle}")
@@ -567,6 +559,16 @@ def start_session(record, wj, poll):
     launch(record, name, False, wj, poll)
 
 
+def test_hold():
+    """Test only: CREW_WINDOW_TEST_HOLD names a file. While it exists, the tick waits here."""
+    path = os.environ.get("CREW_WINDOW_TEST_HOLD")
+    if path and os.path.exists(path):
+        Path(path + ".waiting").touch()
+        end = time.time() + 15
+        while os.path.exists(path) and time.time() < end:
+            time.sleep(0.1)
+
+
 def stale_cap():
     try:
         return int(os.environ.get("CREW_WINDOW_STALE") or STALE_DEFAULT)
@@ -574,13 +576,21 @@ def stale_cap():
         return STALE_DEFAULT
 
 
-def check_stale(record, state, sess):
+def state_mtime(record):
+    try:
+        return (record / "state.json").stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def check_stale(record, state, sess, wj):
+    """The clock is the last write that the watcher did not make, or the launch."""
     if sess.get("stale_at"):
         return
-    try:
-        idle = time.time() - (record / "state.json").stat().st_mtime
-    except OSError:
+    if wj.get("activity_at") is None:
+        wj["activity_at"] = time.time()
         return
+    idle = time.time() - wj["activity_at"]
     if idle < stale_cap():
         return
     rec_set(record, "session.stale_at", now())
@@ -592,7 +602,7 @@ def check_stale(record, state, sess):
                        capture_output=True, text=True)
 
 
-def collect(record, state, wj, login):
+def collect(record, state, wj):
     """Poll and read the inbox. Returns the events to queue and the lines to ack."""
     w = win_of(state)
     events, ack = [], []
@@ -600,7 +610,7 @@ def collect(record, state, wj, login):
     if not wj.get("merged_seen") and not wj.get("closed_seen"):
         for line in run_poll(record, "once"):
             ack.append(line)
-            keep, ready = needs_session(line, w, wj, login)
+            keep, ready = needs_session(line, w, wj)
             if ready:
                 wj["ready_consumed"] = int(wj.get("ready_consumed") or 0) + 1
             if keep:
@@ -627,6 +637,81 @@ def collect(record, state, wj, login):
     return events, ack
 
 
+def section_lines(path, title):
+    """The lines under the `## <title>` heading of a file, or None."""
+    if not path or not Path(path).is_file():
+        return None
+    inside, found = False, None
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        if re.match(r"^#{1,6}\s", raw):
+            if inside:
+                break
+            inside = bool(re.fullmatch(r"#{1,6}\s*" + re.escape(title) + r"\s*", raw.strip(), re.I))
+            if inside:
+                found = []
+            continue
+        if inside:
+            found.append(raw)
+    return found
+
+
+def parse_deploy(lines):
+    """The `Deploy` lines as {mode, environment, workflow, timeout}, or None when empty."""
+    d = {}
+    for raw in lines:
+        text = raw.strip().lstrip("-*").strip().strip("`").strip()
+        if text.lower() in ("none", "manual"):
+            d["mode"] = text.lower()
+            continue
+        m = re.fullmatch(r"(environment|workflow|timeout)\s*:\s*(.+)", text, re.I)
+        if m:
+            d[m.group(1).lower()] = m.group(2).strip().strip("`")
+    return d or None
+
+
+def resolve_deploy(state, record):
+    """The winning `Deploy` and its source, by the one order of the standing instructions.
+
+    The charter holds a `Deploy: <value>` line only when the principal gave one at
+    launch. Then come the repo file and the machine file. No section is `("default", None)`.
+    """
+    try:
+        text = (record / "charter.md").read_text(encoding="utf-8")
+    except OSError:
+        text = ""
+    values = [m.group(1) for m in re.finditer(r"^Deploy:\s*(.+)$", text, re.M)]
+    if values:
+        d = parse_deploy(re.split(r"[;,]", values[-1]))
+        if d:
+            return "charter", d
+    si = (state.get("run") or {}).get("standing_instructions") or {}
+    for key in ("repo", "machine"):
+        lines = section_lines(si.get(key), "Deploy")
+        d = parse_deploy(lines) if lines is not None else None
+        if d:
+            return key, d
+    return "default", None
+
+
+def setup_deploy(record):
+    source, d = resolve_deploy(load(record), record)
+    if d and d.get("mode") in ("none", "manual"):
+        log(f"Deploy {d['mode']} from {source}: no deploy poll")
+        return
+    cmd = [sys.executable, str(WATCH_STEP), "deploy", str(record), "--source", source, "--setup-only"]
+    for flag, key in (("--environment", "environment"), ("--workflow", "workflow"), ("--timeout", "timeout")):
+        value = (d or {}).get(key)
+        if value is None:
+            continue
+        if key == "timeout" and not (value.isdigit() and int(value) > 0):
+            log(f"Deploy timeout {value!r} is not a positive integer: left out")
+            continue
+        cmd += [flag, value]
+    done = subprocess.run(cmd, capture_output=True, text=True)
+    if done.returncode != 0:
+        log(f"deploy setup failed: {done.stderr.strip()[:300]}")
+
+
 def after_queue(record, events, wj):
     """The writes that a queued line asks for: the merge, the close, the deploy end."""
     for e in events:
@@ -635,10 +720,7 @@ def after_queue(record, events, wj):
         if e[0] == "pr" and kind == "merged" and not wj.get("merged_seen"):
             run = load(record).get("run") or {}
             if not isinstance(run.get("deploy"), dict):
-                done = subprocess.run([sys.executable, str(WATCH_STEP), "deploy", str(record), "--source",
-                                       "window-watch", "--setup-only"], capture_output=True, text=True)
-                if done.returncode != 0:
-                    log(f"deploy setup failed: {done.stderr.strip()[:300]}")
+                setup_deploy(record)
             rec_set(record, "merged_seen", parts[3] if len(parts) > 3 else now())
             wj["merged_seen"] = True
         elif e[0] == "pr" and kind == "closed":
@@ -657,6 +739,9 @@ def tick(record, ctx):
         log("the record names another watcher: this one exits")
         return False
     wj = wj_read(record)
+    # A write that the watcher did not make since its last tick is the session's.
+    if wj.get("own_mtime") is not None and state_mtime(record) > wj["own_mtime"]:
+        wj["activity_at"] = time.time()
     if (wdir(record) / "stop-now").exists():
         sess = w.get("session") or {}
         close_tab(sess.get("handle"))
@@ -665,7 +750,7 @@ def tick(record, ctx):
         return False
     intake = w.get("intake") is not False
     if intake:
-        events, ack = collect(record, state, wj, ctx["login"])
+        events, ack = collect(record, state, wj)
         if events:
             with Lock(record):
                 append_lines(wdir(record) / "pending.jsonl", [event(*e) if len(e) == 3 else event(e[0], e[1]) for e in events])
@@ -687,12 +772,21 @@ def tick(record, ctx):
     sess = w.get("session")
     if sess and sess.get("status") == "done":
         close_tab(sess.get("handle"))
-        archive(record, sess)
-        log(f"session {sess.get('name')} ended")
-        if sess.get("final"):
-            rec_set(record, "watcher", None)
-            log("the final done: the watcher exits")
-            return False
+        test_hold()
+        with Lock(record):
+            # Read the slot again: a claim can land between the read above and the lock.
+            now_sess = win_of(load(record)).get("session") or {}
+            mine = now_sess.get("name") == sess.get("name") and now_sess.get("status") == "done"
+            if mine:
+                archive(record, sess)
+        if not mine:
+            log(f"session {sess.get('name')} left the slot already: nothing to archive")
+        else:
+            log(f"session {sess.get('name')} ended")
+            if sess.get("final"):
+                rec_set(record, "watcher", None)
+                log("the final done: the watcher exits")
+                return False
     elif sess and sess.get("status") == "launching":
         # Dedupe the pending file against the event file, which a crash can leave doubled.
         with Lock(record):
@@ -705,7 +799,7 @@ def tick(record, ctx):
             launch(record, sess["name"], True, wj, poll)
             wj_write(record, wj)
     elif sess and sess.get("status") == "live":
-        check_stale(record, state, sess)
+        check_stale(record, state, sess, wj)
     elif not sess and intake and not w.get("hold"):
         if not read_lines(wdir(record) / "pending.jsonl"):
             wj["first_event_at"] = wj["last_event_at"] = None
@@ -715,7 +809,8 @@ def tick(record, ctx):
         quiet, cap = int(w.get("quiet") or 120), int(w.get("cap") or 600)
         if first and (time.time() - last >= quiet or time.time() - first >= cap):
             start_session(record, wj, poll)
-            wj_write(record, wj)
+    wj["own_mtime"] = state_mtime(record)
+    wj_write(record, wj)
     return True
 
 
@@ -730,7 +825,7 @@ def cmd_loop(a):
     else:
         log("the record never named this process: exit")
         return 1
-    ctx = {"login": gh_login(), "poll": 60}
+    ctx = {"poll": 60}
     log(f"the watcher runs, pid {os.getpid()}")
     while True:
         try:

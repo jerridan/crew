@@ -15,8 +15,9 @@ seeded record (design §15.38, §15.50, §15.123, §15.124).
 deploy signal of `pr-watch.sh`. `skills/delivered-window/scripts/watch-step.py`
 and `pr-reply.py` are code too, and `test-watch-step.sh` and
 `test-pr-reply.sh` test them with a stub `gh` (design §15.NN).
-`skills/orchestrator/scripts/launcher.py` and `iterm2-tabs.py` are code too, and `test-launcher.sh` tests them with stub
-commands. `skills/orchestrator/scripts/crew-usage.py` is code too, and
+`skills/orchestrator/scripts/launcher.py` and `iterm2-tabs.py` are code too,
+and `test-launcher.sh` tests them with stub commands.
+`skills/orchestrator/scripts/crew-usage.py` is code too, and
 `test-crew-usage.py` beside it tests it with a stub `claude`.
 `skills/project-lead/scripts/test-crew-stats.py` tests `crew-stats.py`
 against seeded records.
@@ -136,6 +137,11 @@ successful deploy of the merge commit is the ship word. A repo with
 `Deploy: none` ships at the merge, and a repo with no deploy by the default
 rule ships 2 minutes after it (§15.137). The watch ran only against a seeded record, and no crew
 run has used it (§15.127).
+
+The watch and reply scripts are built: `watch-step.py` arms the PR watch
+and the deploy watch and writes the cursor, and `pr-reply.py` posts a round's
+replies and resolves their threads, each in one call (§15.NN). Only their
+seeded tests have run them, and no crew run has used them.
 
 The orchestrator launcher is built and ran only against its seeded test, and
 no crew run has exercised it (§15.140). Its Herdr support ran only against

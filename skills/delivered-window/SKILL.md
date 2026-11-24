@@ -132,7 +132,9 @@ it, run `window-watch.py stop <record-dir> --session <name>`. It turns off
 event intake and starts no new session. Write a `decision` entry that the
 principal stopped the watch. When the principal asks for it again, write one
 that the principal started it again, and run `window-watch.py start
-<record-dir>`, which turns intake on for a live watcher.
+<record-dir>`, which turns intake on for a live watcher. A person
+who stops the watch with no session open runs `window-watch.py stop
+<record-dir> --force`, which ends the watcher.
 
 ## Sort what reaches you
 Five kinds of message reach you here: the lines of the event file, and

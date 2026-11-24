@@ -10402,4 +10402,6 @@ Deliberately different:
        repo, a bare remote and stub `gh`, `spend.py` and `crew-orch.py`
        commands, and the run that built it used `verify` once, on its own
        script package: one call, every step `ok`, the red commit failing as
-       it must. No other crew run has used it.
+       it must. It used `hand-over` once: one call, every step `ok`. No
+       other crew run has used it, and no run has used `launch-check`,
+       `branch` or `cleanup`.

@@ -7,8 +7,8 @@ description: Take one goal to a PR ready for review. It stops for approval only 
 
 Take one goal to a PR ready for review that a human can merge. Answer your
 own questions. Stop for the **principal** only when you cannot proceed
-correctly. Then stay, until the principal says the work shipped: the session
-outlives the PR (the skill `crew:delivered-window`).
+correctly. Then end at the hand-over. A watcher and small window sessions
+take the PR from there (the skill `crew:delivered-window`).
 
 The judgment is your job: the spec, the split, the order of the work, and every
 adjudication. Dispatch the scouting and the drafting — your own context is the
@@ -157,9 +157,9 @@ differs from the base branch's, or exists where the base branch has none, tell
 the principal once that the review reads the committed file. A resumed
 session reads the files at those paths again before its first dispatch.
 
-**Each file holds optional `##` sections.** Seventeen exist. The orchestrator
+**Each file holds optional `##` sections.** Eighteen exist. The orchestrator
 reads `Checkouts`, `Usage limit`, `Merge`, `Concurrency` and `Implementer
-model`, and you act on the other twelve:
+model`, and you act on the other thirteen:
 
 | Section | What you do with it |
 |---|---|
@@ -176,6 +176,7 @@ model`, and you act on the other twelve:
 | `Plan review` | `on` or `off`. `off` adds `Plan review: off` to `charter.md`. `references/plan-review.md`'s "When the plan review runs" acts on it |
 | `Checkouts` | one line per repo, the principal's checkout of that repo. The orchestrator launcher reads it from the machine file. `skills/orchestrator/references/launcher.md` owns the line format |
 | `Deploy` | what shows that a merge is live, read as below. `crew:delivered-window`'s "The word that the work shipped" acts on it |
+| `Window model` | a model name for the window sessions. The most specific source wins, and the default is `opus`. `window-watch.py start` reads it, and its `--model` flag overrides it (`record-format.md`'s `run.window` rows) |
 | `Usage limit` | the plan usage limit of an orchestrator, a percent of the five-hour window. Only an orchestrator reads it; `skills/orchestrator/references/usage.md`'s "The limit" owns it |
 | `Merge` | prose steps that replace part of the orchestrator's merge procedure. `skills/orchestrator/SKILL.md` acts on it |
 | `Concurrency` | machine file only: how many implementers an orchestrator runs at once. `skills/orchestrator/SKILL.md` acts on it |
@@ -190,13 +191,13 @@ model`, and you act on the other twelve:
 - `none`: the repo has no deploy process. The merge is the ship word.
 - `manual`: the repo deploys where `gh` cannot see, such as a deploy tool
   outside GitHub. After the merge, the ship word stays the principal's.
-- `timeout: <minutes>`: a positive integer, how long the watch waits after it
-  arms. The default is 180.
+- `timeout: <minutes>`: a positive integer, how long the deploy poll waits
+  after the merge. The default is 180.
 
 With no `Deploy` section in any source, the default signal is the one
-`skills/delivered-window/references/pr-watch.md`'s "Arm the deploy watch"
-owns. The delivered window arms the deploy watch from the winning source
-(`crew:delivered-window`'s "The deploy watch").
+`skills/delivered-window/references/pr-watch.md`'s "The deploy poll" owns.
+The watcher sets the poll up from the winning source (`crew:delivered-window`'s
+"The deploy watch").
 
 A file with no `##` heading is one `Reviewers` section. Act on no other
 section yourself, and pass it through to ICs and reviewers unread.

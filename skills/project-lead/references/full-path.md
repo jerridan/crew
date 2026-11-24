@@ -480,11 +480,11 @@ ownership (design §13.1).
 The work ends here, and your closing report says so. It lists every
 decision taken on a recommendation, as `simple-path.md`'s "End the run" says.
 Send it to the principal the way the goal arrived (`autonomy-contract.md`).
-A pane is not a report when nobody is watching it. Then stay: the skill
-`crew:delivered-window`, which "End the run" invoked, owns the rest of the
-session on every path. A change
-request there is one package on the simple path's loop, and a review's
-findings are a patch round on it. Neither is a new split.
+A pane is not a report when nobody is watching it. Then run the goal check,
+and end your turn at the skill `crew:delivered-window`'s "The hand-over",
+which "End the run" invoked. A window session owns the rest on every path. A
+change request there is one package on the simple path's loop, and a
+review's findings are a patch round on it. Neither is a new split.
 
 ## Resume after a kill
 
@@ -542,8 +542,7 @@ delivered-window round still owes".
 Move `run_state` out of `interrupted` **first**, then clear `orphaned` on
 each worktree as you reconcile it. In the other order, a session that dies
 mid-reconciliation leaves cleared worktrees behind a run the hook will not
-touch again, because the hook only acts on an `active`, `blocked` or
-`delivered` run.
+touch again, because the hook only acts on an `active` or `blocked` run.
 
 A project lead killed mid-commit can leave a stale `index.lock` in a worktree.
 Clear one only when no process holds it.

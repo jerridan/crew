@@ -23,11 +23,21 @@ record with no `run.plan_review` takes the rules below.
 
 **A record whose every deliverable holds a terminal state has no deliverable
 left to make**: set `run_state: delivered` — or `blocked`, when an escalation
-is open — and invoke the skill `crew:delivered-window` again. Which step
-of that window you enter at is decided by one list, and only by it:
-`skeptical-review.md`'s "Resume in the delivered window". It covers every
-state this window can die in, and each entry names the file that owns the
-work it sends you to.
+is open — and run `window-watch.py ensure <record-dir>`, which restarts a
+dead watcher. A machine restart kills it, and so does a crash. Then take the
+one session slot with `window-watch.py claim <record-dir> --session <name>`,
+with a name of your own. Exit 3 means a window session holds the slot: that
+session does the owed work, so say so and end. With the slot, invoke the skill
+`crew:delivered-window` and work as a window session. Which step you enter at
+is decided by one list, and only by it: `skeptical-review.md`'s "Resume in the
+delivered window". It covers every state this window can die in, and each
+entry names the file that owns the work it sends you to. Handle each
+obligation that `record-format.md`'s "What a delivered-window round still
+owes" lists, then run `window-watch.py done <record-dir> --session <name>` and
+end. No resumed session stays up for PR events. `window-watch.py status
+<record-dir>` prints `hold: true|false` and `intake: on|off`. `hold: true`
+means the project lead died before its last call: finish the goal check, then
+`goal-check.md`'s "The last call".
 
 **Read `run.review_pending` before you recover a package.** A head there
 means a review round is owed or half adjudicated, the goal check on a goal

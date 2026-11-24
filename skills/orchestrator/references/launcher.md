@@ -5,7 +5,8 @@ its implementers with `scripts/launcher.py` in this skill's directory. An
 implementer is a `crew:project-lead` session in its own git worktree. It
 waits for a goal that the orchestrator sends as a cross-session message. This
 file owns the subcommands, their arguments, the start output and the exit
-codes.
+codes. One more caller exists: the watcher of a delivered run starts each
+window session with `window` (see "window").
 
 Run the script from the plugin with `python3 <skill dir>/scripts/launcher.py`.
 It needs Python 3.9 or newer and no package. On iTerm2 it runs
@@ -262,6 +263,39 @@ rule.
 | `session_id` | the resumed id |
 
 The other fields are as in `start`.
+
+## window
+
+```
+launcher.py window --name <session-name> --cwd <path> --prompt-file <file>
+                   [--model <model>] [--settings <file-or-json>]
+                   [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr]
+```
+
+`window` opens one interactive tab or window for a window session of a
+delivered run (`crew:delivered-window`). It makes no worktree and no branch,
+and it takes no `--checkout`. The watcher of `window-watch.py` runs it. The
+rule that only the launcher and `crew-usage.py` start a `claude` process
+holds. `--name`, `--model`, `--settings`, `--group`, `--group-color` and
+`--terminal` have the meanings and the checks of `start`. The `--model`
+default is `opus`, and `<json>` gets `"remoteControlAtStartup": false` as in
+`start`.
+
+| Argument | Meaning |
+|---|---|
+| `--cwd` | the directory the session runs in: `run.repo` of the delivered run |
+| `--prompt-file` | a file that holds the first prompt of the session. It names the record directory and the event file |
+
+**The tab.** The command that runs in the tab is the command of `start`, with
+`--cwd` for the worktree, a new `--session-id`, and the prompt of
+`--prompt-file` in place of the wait prompt. The tab rules of `start` apply
+whole.
+
+**The output.** The ten fields of `start`, with these values: `worktree` is
+the real `--cwd` path, `branch` is the branch that `--cwd` has checked out, or
+`null`, `base` is `null`, and `session_id` is the new id. The watcher writes
+`tab` and `session_id` to `run.window.session`, and closes the tab later with
+`stop`.
 
 ## groups
 
@@ -638,6 +672,7 @@ a fixed order, and the first check that fails decides the exit:
 
 - `start`: 2, 4, 3, 5, 6. On Herdr, 4 means a missing program, and 2 and 6
   come from the space check before any worktree.
+- `window`: 2, 4, 6. Then 6 when the tab does not open.
 - `resume`: 2, 4, 5. Then 6 when `ps`, `lsof`, `osascript` or `hc` cannot list
   the tabs, then 8. Then 6 when the tab does not open.
 - `find`: 2, 4, 6.

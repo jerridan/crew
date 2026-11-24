@@ -15,6 +15,8 @@ One directory per goal, outside the target repo (design §4):
 ├── state.json        deliverables, per-package state, band history, spend, escalations
 ├── decisions.md      every judgment call, with its citation, confidence, and timestamp
 ├── worktrees.json    IC name → worktree path → branch → session ids → orphaned
+├── handover.md       the nine headings a window session reads, written at the hand-over
+├── window/           the watcher's files: watcher.log, watcher.json, pending.jsonl, inbox.jsonl, events-<n>.jsonl
 ├── reports/          one report per package, written by its IC
 ├── plans/            one plan per package, written by its IC
 ├── diffs/            one diff per deliverable, written by the project lead
@@ -653,8 +655,8 @@ own (`worktrees.json` below).
 
 ### What a delivered-window round still owes
 
-A resume in `delivered` reads two obligations here, and infers no third from
-a `null` field:
+A resume in `delivered` reads these obligations here, and infers no other
+from a `null` field:
 
 - **A package owes a dispatch** when its `base` is `null`. It was written
   and never sent, so dispatch it (`simple-path.md`'s "Dispatch the IC").
@@ -678,6 +680,11 @@ a `null` field:
   entry 7 of `skeptical-review.md`'s resume list, which owns the order, and
   entry 6 there fills a ledger line the kill left empty.
 
+- **A run owes an answer** when `run.window.awaiting` is set. The ask went
+  out, and the round waits for an inbox line. The resume asks nothing again.
+  The session that the answer starts reads `awaiting`
+  (`crew:delivered-window`'s "The go-ahead gate").
+
 Two obligations sit outside this rule. `run.review_pending` is
 `skeptical-review.md`'s alone. A package still `pending` or `in-flight`
 belongs to `skeptical-review.md`'s "A round killed mid-flight".
@@ -686,7 +693,7 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 
 | Field | Meaning |
 |---|---|
-| `run_state` | one of `active`, `blocked`, `delivered`, `interrupted`, `complete`. See `run_state` transitions below. `delivered` means every deliverable holds a terminal state and the session stays up for questions, changes to the PR, a review's findings and the word that the work shipped, from the principal or from the deploy watch (`crew:delivered-window`). `complete` means that word came. |
+| `run_state` | one of `active`, `blocked`, `delivered`, `interrupted`, `complete`. See `run_state` transitions below. `delivered` means every deliverable holds a terminal state and the project lead has ended its turn. A window session answers questions, changes to the PR, a review's findings and the word that the work shipped, from the principal or from the deploy poll (`crew:delivered-window`). The watcher starts each window session. `complete` means that word came. |
 | `kind` | a string. `"review"` on a review run, written by `/crew:review` with `run set kind` at the record's creation. Absent on a goal run, which means `goal`. A review run has no round limit: `crew-record.py`'s `arm_review` arms every head and appends nothing to `unreviewed_heads`. A goal run runs one goal check (`goal-check.md`). |
 | `dispatch_modes` | an object keyed by session id, each value `"teammate"` or `"subagent"`: the mode `SKILL.md`'s "Every dispatch is named" read from that session's first dispatch, written with `run set dispatch_modes.<session id>`. A resumed session adds its own key, so a run that changed mode keeps both. Absent on a run from before design §15.131. |
 | `pr` | an object, written once by `/crew:review` at the record's creation, and absent on a goal run. It holds at least `owner`, `repo`, `url`, `author`, `base_ref`, `head_ref` and `merge_base` (strings), `number` (an integer) and `cross_repository` (a boolean). |
@@ -702,8 +709,17 @@ belongs to `skeptical-review.md`'s "A round killed mid-flight".
 | `rounds[].source` | `{kind, ref}`. `kind` is one of `ci`, `pr-comments`, `principal` and `skeptical`. `ref` names the one source of that kind. For `pr-comments` it is the PR URL. For `ci` it is the failing run's URL, or the PR's checks page URL, `<pr_url>/checks`, when one wake found failures in more than one run. For `principal` it is the principal's session name or `"typed"`, and for `skeptical` it is `skeptical-r<n>`. A goal check's round is `skeptical` too, so old and new records read the same way. |
 | `rounds[].posted_review_id` | an integer, the id of the GitHub review that a review-run round posted. Absent on a goal run. |
 | `rounds[].reply_to` | where this round's reply is sent, decided by `kind` and written when the round opens. **`pr-comments` and `ci` are the PR.** Each item gets its own reply there, placed by the kind and id on its ledger line: a `review-comment` in its own thread, a `review` or a `comment` as a PR comment that quotes its first line, and a `check` as a PR comment that links the failing run. **Every comment the project lead posts on the PR ends with the marker line `<!-- pr-review: <round-id> <item id> -->`**, the id of the item it answers, whatever the round's kind (`crew:delivered-window`'s "Send the reply file"). `principal` is the channel the message arrived on. `skeptical` is the record alone — the reply file is the reply, and the next status message to the principal names its path. On a `run.kind: review` run, a `skeptical` round's `reply_to` is the PR URL, and the reply is the review posted there. |
-| `watch` | `{last_polled_at, seen_ids, head, draft, held, queued}`, the cursor of the PR watch. `last_polled_at` is the ISO-8601 UTC time a re-armed monitor polls from: a `review` or `comment` older than it is not reported. `seen_ids` lists every item id the project lead has reported to the principal, a check's `<link>@<startedAt>` id included and the id of a `ready`, `merged`, `queued`, `dequeued` or `closed` line excluded. `head` is a sha, the last PR head the project lead knows. It joins the first write, and a `push` wake updates it after the item is sorted. The project lead also writes it after every push it makes itself. `draft` is the last draft state the project lead itself knows. `held` lists the items, each `{kind, id, author, at, summary}`, that arrived while a round of the same kind was open, until their own round opens. `queued` is a boolean, `true` while the PR is in the merge queue as far as the project lead knows. The project lead writes it `true` on a `queued` item, and writes it back to `false` with the cursor after a `dequeued` item. `pr-watch.sh` reads it at start, and an absent key reads as `false`. Each write has one owner, which says when it runs and with which command. The first write is written by `crew:delivered-window`'s `pr-watch.md`, "The first write's cursor". The write after a wake is written by that skill's "Watch the PR", and `held` by its "Findings from a review". `draft` alone is also written by `pr-watch.md`'s "Arm the monitor" step 3, by `pr-watch.md`'s "The fallback poll" and by `goal-check.md`'s "Mark the PR ready". Absent on a run that never had a PR. |
-| `deploy` | `{environment, workflow, timeout_minutes, source, since, ended}`, what the deploy watch reads. `environment` is the GitHub deployment environment to watch, and `workflow` is the GitHub Actions workflow name. Each is `null` when unused. Both `null` is the default: the watch reads the repo's GitHub deployments, matches the newest deployment of the merge commit with `production_environment` true or an environment named `production` or `prod`, and falls back to a `deploy` or `release` Actions run when the repo has no deployment (`pr-watch.md`'s "Arm the deploy watch"). `timeout_minutes` is a positive integer, how long the watch waits for a result. `source` is the name of the source whose `Deploy` section won (`SKILL.md`'s "Standing instructions"), or `default`. `since` is the ISO-8601 UTC time the project lead decided the watch, and the timeout counts from it. `ended` is `null`, or the kind of the `deploy-failed` or `deploy-timeout` line the project lead reported. While `ended` is set, the script prints nothing, and a resume arms no deploy watch. Written with `run set deploy <json>` when the project lead decides the deploy watch (`crew:delivered-window`'s "The deploy watch" step 2), with `deploy.ended` when it reports a failure or a timeout, and again, `since` and `ended` only, when the principal asks for the watch again. Absent until then, and absent for good when the winning `Deploy` is `none` or `manual`. |
+| `watch` | `{last_polled_at, seen_ids, head, draft, held, queued}`, the cursor of the PR watch. `last_polled_at` is the ISO-8601 UTC time the next poll reads from: a `review` or `comment` older than it is not reported. `seen_ids` lists every item id the watcher has queued, a check's `<link>@<startedAt>` id included and the id of a `ready`, `merged`, `queued`, `dequeued` or `closed` line excluded. `head` is a sha, the last PR head the watcher knows. `draft` is the last draft state the watcher knows. `held` lists items that waited behind an open round of their kind. A window session writes none, and a record from before the window sessions may hold some. `queued` is a boolean, `true` while the PR is in the merge queue as far as the watcher knows, and `pr-watch.sh` reads it at start. An absent key reads as `false`. The watcher writes the cursor with `watch-step.py ack` after it queues each batch (`pr-watch.md`'s "The cursor write"), and `window-watch.py start` writes the first one (`pr-watch.md`'s "The first cursor"). A window session never writes it. The project lead writes no `run.watch` after `window-watch.py start`: its own pushes and ready flips go in `run.window.own`. Absent on a run that never had a PR. |
+| `deploy` | `{environment, workflow, timeout_minutes, source, since, ended}`, what the deploy poll reads. `environment` is the GitHub deployment environment to watch, and `workflow` is the GitHub Actions workflow name. Each is `null` when unused. Both `null` is the default: the poll reads the repo's GitHub deployments, matches the newest deployment of the merge commit with `production_environment` true or an environment named `production` or `prod`, and falls back to a `deploy` or `release` Actions run when the repo has no deployment (`pr-watch.md`'s "The deploy poll"). `timeout_minutes` is a positive integer, how long the poll waits for a result. `source` is the name of the source whose `Deploy` section won (`SKILL.md`'s "Standing instructions"), or `default`. `since` is the ISO-8601 UTC time the watcher decided the poll, and the timeout counts from it. `ended` is `null`, or the kind of the `deploy-failed` or `deploy-timeout` line the watcher queued. While `ended` is set, the script prints nothing. Written by the watcher on a `merged` line, with `watch-step.py deploy --setup-only`, and `ended` by its cursor write. Absent until then, and absent for good when the winning `Deploy` is `none` or `manual`. |
+| `window` | `{watcher, session, sessions, awaiting, own, model, merged_seen, poll, quiet, cap}`, the state of the window after the hand-over. Written by `window-watch.py` through `crew-record.py run set`, except where a row below names another writer. Absent before `window-watch.py start`. |
+| `window.watcher` | `{pid, started_at}`, the watcher process. `ensure` starts a new one when the pid is dead. The heartbeat and the poll times are in `window/watcher.json`, never here. |
+| `window.session` | `null`, or `{name, status, events, started_at, handle, session_id, stale_at}`, the one live window session. `name` is `<record slug>-w<n>`. `status` is `launching` before the launcher call and `live` after it. `events` is the event file, and `handle` and `session_id` come from the launcher. `stale_at` is set when the tab has no record write after the cap. An event file stays until the session ends with `done`. |
+| `window.sessions` | a list, one entry per window session that ended. |
+| `window.awaiting` | `null`, or the list of round ids that wait for a go-ahead answer. A window session writes it before it asks and ends, and clears it when the answer lands. |
+| `window.own` | `{pushes, ready}`. `pushes` lists the head shas that a window session or the project lead pushed, and `ready` lists the ready flips that either made. The writer is the project lead or a window session, and it writes each before the push or the flip, so the watcher starts no session for its own act. This holds for every push and flip after `window-watch.py start`, the project lead's included. |
+| `window.model` | the model of a window session. `window-watch.py start` writes it from `--model`, else from the standing-instruction section `Window model`, else `opus`. |
+| `window.merged_seen` | the sha of the merge commit that the watcher already queued, so the `merged` line starts one session only. |
+| `window.poll`, `window.quiet`, `window.cap` | the seconds of the poll interval, of the quiet wait before a burst and of the burst cap, from the flags of `start`. |
 | `checkout` | the absolute path this run does its git work in, written at `simple-path.md`'s "Create the branch". It is the target repo the charter named, unless another run already held that checkout — then it is the worktree this run cut, registered in `worktrees.json`. On a `run.kind: review` run it is the review worktree, and `review-runner.md`'s "Never review in the run's own checkout" owns its path. Every git command, the test suite and the push run against it. It is not where the run's transcripts live: those follow the session's own working directory, which the launch fixed (design §15.90). Absent on an investigation run that ends in a report, which creates no branch. |
 | `worktree_base` | the absolute path every worktree of this run lives under: territory worktrees and a held checkout under `worktrees/`, the review worktree under `review-worktrees/`. Written at the preference sweep by `full-path.md`'s launch check 1, with `run set worktree_base '"<path>"'`. It is `<record-dir>`, or `<repo>/.claude/worktrees/crew/<goal-slug>` in a worktree-isolated session whose guard refuses `<record-dir>` (design §15.126). Absent on a record written before T80 and on a review run: read `<record-dir>` then. |
 | `principal` | who to send an escalation to, when the goal did not arrive in this session. Set it with `run set principal '"<name>"'` from the `from-name` attribute of the `<cross-session-message>` that carried the goal — `from` only when there is no `from-name`, because `from` is a socket path that dies with its process (`autonomy-contract.md`, design §15.72f). When `run.orchestrator` is set, a later message can replace it (`orchestrator-report.md`'s "A new orchestrator name"). Absent when a human typed the goal in this session, and a `--resume` session that finds it absent escalates in its own pane. |
@@ -735,12 +751,12 @@ prices it.
 |---|---|---|
 | `active` or `delivered` | `blocked` | the project lead hits an escalation trigger (design §6) |
 | `blocked` | `active` or `delivered` | the principal answers; the project lead records it in `escalations`. Back to `delivered` when every deliverable holds a terminal state, and to `active` otherwise |
-| `active`, `blocked` or `delivered` | `interrupted` | `SessionEnd` fires on a crash (design §13.1) |
+| `active` or `blocked` | `interrupted` | `SessionEnd` fires on a crash (design §13.1). A `delivered` run stays `delivered` when the project lead's tab or a window tab closes, because no session of a delivered run is long-lived |
 | `interrupted` | `blocked` | `--resume`, when an `escalations` entry has no `answer` yet |
 | `interrupted` | `delivered` | `--resume`, when no answer is missing and every deliverable holds a terminal state |
 | `interrupted` | `active` | `--resume`, when no answer is missing and a deliverable is still open |
 | `active` | `delivered` | the project lead hands the work over: the PR opens, or the run ends in `work-complete` (`simple-path.md`'s "End the run"). `crew-record.py deliver` takes `--review-head <sha>` here and writes `run.review_pending` in the same write, so the hand-over cannot land without the review it owes (`skeptical-review.md`) |
-| `delivered` | `complete` | the principal says the work shipped, the deploy watch prints `deployed` or `no-deploy`, or a merge lands under `Deploy: none`, and the project lead writes `ship` (`crew:delivered-window`) |
+| `delivered` | `complete` | the principal says the work shipped, the deploy poll queues `deployed` or `no-deploy`, or a merge lands under `Deploy: none`, and a window session writes `ship` (`crew:delivered-window`) |
 
 An `interrupted` run whose deliverables all hold a terminal state, and that
 nobody resumes — a principal who typed the goal and closed the pane after the
@@ -748,7 +764,7 @@ merge — stays `interrupted` with its `delivered_at`, and `crew-stats.py`
 prices it through its latest stamp.
 
 A round of the delivered window moves `run_state` nowhere: the run stays
-`delivered` while an IC works, and `decisions.md` holds what the change
+`delivered` while a window session's IC works, and `decisions.md` holds what the change
 request or the finding was. Only an escalation moves it, to `blocked` and
 back.
 
@@ -897,6 +913,45 @@ One run, two packages, in different states:
 
 `logging-config`'s `band_history` shows both cases the table above
 describes: the initial prediction, then a promotion with its cause.
+
+## `handover.md` and `window/`
+
+The project lead writes `handover.md` at the hand-over, and each window
+session appends to it. A window session reads `charter.md`, `state.json`,
+`handover.md`, the last entries of `decisions.md` that it needs, and its
+events. Nothing else is a source of fact. So anything that only the build
+session knew goes here.
+
+The file holds these nine headings, in this order. An empty heading says
+`none`.
+
+1. `## Findings not on GitHub`: the whole text of each finding that no PR
+   comment holds.
+2. `## Offers made`: each offer to the principal, with its number.
+3. `## Files and URLs outside the schema`: each one, with its meaning.
+4. `## Figures in the PR`: the command and the inputs behind each figure.
+5. `## Build ICs and integration edits`: each build IC, and each edit the
+   project lead made itself, with its path, what changed and why.
+6. `## Standing words`: each word given mid-run, such as a limit, who merges,
+   a push rule or a shell workaround.
+7. `## Other PRs and next goals`: each one the run started.
+8. `## Pause state`: who paused, until when, and what stopped.
+9. `## Background waits`: what each background wait waited for.
+
+`window/` holds the watcher's files:
+
+| File | Holds |
+|---|---|
+| `watcher.log` | the watcher's stdout and stderr |
+| `watcher.json` | the watcher's heartbeat and its poll times |
+| `pending.jsonl` | the events that wait for a session |
+| `inbox.jsonl` | the words that `window-watch.py say` appended |
+| `events-<n>.jsonl` | the events of window session `<n>` |
+
+Each line of `pending.jsonl`, of an event file and of the inbox is one JSON
+object: `{"at": <ISO-8601 UTC>, "source": "pr" | "deploy" | "inbox", "line":
+"<the pr-watch.sh line or the inbox text>", "from": <name or null>}`.
+`crew-record.py run set` writes each `run.window` field.
 
 ## `worktrees.json`
 
@@ -1223,8 +1278,10 @@ Every name this file defines, with what consumes it.
 - `run.review_pending` — writer: `crew-record.py`'s `arm_review`, through `deliver --review-head`, `integrate --review-head` and `arm-review --head`, with or without `--past-cap`; the project lead clears it with `run set`. Consumer: `skeptical-review.md` (whether a resumed run owes a review, and on which head)
 - `run.rounds` — writer: the project lead, with `round open` when it opens a patch round, with `run set` at a refusal, with `round go-ahead` at the go-ahead, and with `round replied` at the reply's send (`crew:delivered-window`'s "Findings from a review"). Consumer: this file's "What a delivered-window round still owes"; `packages[].round` points into it
 - `run.rounds[].go_ahead_at` — writer: the project lead, with `round go-ahead` when the principal's go-ahead lands (`crew:delivered-window`'s "The go-ahead gate"). Consumer: `skeptical-review.md`'s resume entries 1a, 5 and 7; this file's "What a delivered-window round still owes"
-- `run.watch` — writer: the project lead, at the first arming (`crew:delivered-window`'s `pr-watch.md`, "The first write's cursor"), after every wake that reported something, and for `draft` at an arming (that skill's "Watch the PR"); at a fallback poll, for `draft` (`pr-watch.md`'s "The fallback poll"); and at `goal-check.md`'s "Mark the PR ready", for `draft`. `queued` is written only with the write after a wake. `head` has two more writers: the window's `push` sort, after it arms a head move, and each push crew makes itself, in the window's "A change request" and "Findings from a review" and in `skeptical-review.md`'s resume entry 5. Consumer: the monitor command and the fallback poll, which start from it; `skeptical-review.md`'s resume entry 1b, for `held`; `pr-watch.sh`, at start, for `queued`
-- `run.deploy` — writer: the project lead, when it decides the deploy watch (step 2 of `crew:delivered-window`'s "The deploy watch"), when it reports a `deploy-failed` or `deploy-timeout` line, and when the principal asks for the watch again (`crew:delivered-window`'s "The deploy watch"). Consumer: `skills/delivered-window/scripts/pr-watch.sh`, in its `deploy` and `deploy-once` modes; `crew:delivered-window`'s resume of a merged PR
+- `run.watch` — writer: `window-watch.py start`, for the first cursor (`crew:delivered-window`'s `pr-watch.md`, "The first cursor"); the watcher, with `watch-step.py ack`, after each batch it queues. Consumer: the watcher's poll; `pr-watch.sh`, at start, for `queued`
+- `run.deploy` — writer: the watcher, with `watch-step.py deploy --setup-only` on a `merged` line, and with its cursor write for `ended` (`pr-watch.md`'s "The deploy poll"). Consumer: `skills/delivered-window/scripts/pr-watch.sh`, in its `deploy` and `deploy-once` modes; `crew:delivered-window`'s "The deploy watch"
+- `run.window` — writer: `window-watch.py`, through `crew-record.py run set`; a window session and the project lead, for `own`; a window session, for `awaiting`. Consumer: `window-watch.py`; `crew:delivered-window`; `resume.md`
+- `handover.md` — writer: the project lead, at the hand-over (`crew:delivered-window`'s "The hand-over"); each window session appends. Consumer: every window session
 - `run.review_session_ids` — writer: `scripts/review-run.py`, before it launches each goal check or skeptical round (`review-runner.md`). Consumer: `scripts/spend.py` and `scripts/crew-stats.py` (the transcripts that price the review into the run). Neither hook reads it
 - `run.review_sessions` — writer: `scripts/review-run.py`, once per skeptical round of a review run (`review-runner.md`'s "Resume the reviewer"), and the project lead for a replacement's round. Consumer: `scripts/review-run.py`, for the resume check on the next round. Neither hook reads it
 - `run.kind` — writer: `/crew:review`, with `run set kind` at the record's creation. Consumer: `crew-record.py`'s `arm_review` (no cap); `crew:delivered-window` (the gate, the notice sort, the assist rule and the ship word); `scripts/crew-stats.py` (the `kind` column)

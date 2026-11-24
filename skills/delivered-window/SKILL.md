@@ -57,7 +57,7 @@ skeptical review runs on it, as `skeptical-review.md`'s "When the review
 runs" says for a head that moves in the delivered window. **On a goal run, a
 head move after the goal check runs no review.** The same write arms
 nothing and lists the head as `goal-check-done` (`goal-check.md`'s "One
-round"), and no message names it. The `ack` call below then writes
+round"), and no message names it. The `ack` call below still writes
 `run.watch.head`, so run `arm-review` before it. A `merged` item
 in a goal run arms the deploy watch, or is the ship word under `Deploy: none`
 (see "The deploy watch"). In a `run.kind: review` run, `merged` and `closed`
@@ -80,8 +80,10 @@ reads `read failed`, run the diagnosis once more. When it fails again, report
 the dequeue to the principal as a `ci` item, with the output.
 
 **The cursor is `run.watch`.** `record-format.md`'s `run.watch` row says what
-each key holds. After every wake that reported something, and never before
-your report to the principal lands, pass the wake's lines to
+each key holds. After every wake that holds a line of any kind except
+`merged`, `closed`, `deployed` and `no-deploy`, also when no message to the
+principal names the line, and never before your report to the principal lands
+when the wake has a report, pass the wake's lines to
 `python3 <watch-step> ack <record-dir>` (`pr-watch.md` names `<watch-step>`),
 in a quoted heredoc (`<<'EOF'`), so the shell expands no summary text. Pass the
 lines exactly as the monitor printed them. The call writes the whole object.
@@ -90,7 +92,8 @@ among the reported `review` and `comment` items. `draft` goes to `false` after
 a `ready` item, and `head` moves on a `push` item. The call also writes
 `run.deploy.ended` for a `deploy-failed` or `deploy-timeout` line.
 
-The call goes after the report. Put it in the same response as the report in
+A wake with no report makes the call at once. The call goes after the report
+when there is one. Put it in the same response as the report in
 both cases: after the `SendMessage` call that carries the report, because tool
 calls run in the order sent and the next one starts when the last one returns,
 or after the report text in the pane, because a response shows its text before

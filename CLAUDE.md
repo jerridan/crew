@@ -153,7 +153,7 @@ run has used it (§15.127).
 The window sessions are built: the project lead ends at the hand-over, a
 watcher with no model (`window-watch.py`) watches the PR, CI and the deploy,
 and a small window session starts from the record for each burst of events
-(§15.<TBD>). They replace the `Monitor` watch, its re-arm and the cron
+(§15.163). They replace the `Monitor` watch, its re-arm and the cron
 fallback of T72 and T70. Only the seeded tests have run them, and no crew run
 has used them.
 

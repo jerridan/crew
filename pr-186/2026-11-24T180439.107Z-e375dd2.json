@@ -1,0 +1,2651 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 186,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let a fresh reading lower the stored usage figure after a partial reset",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/186"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "286cb69982908edc750291d63736a50f53f882ff",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-186/2026-11-24T180145.513Z-286cb69.json",
+      "open": [
+        "0cf664fc40e4996c",
+        "c0172f0328f35ef8"
+      ],
+      "dismissed": [],
+      "fetch_failed": false
+    },
+    "base": "45c5bdbd1559c899b226aecde08a14289c9c2ce5",
+    "head": "e375dd208cee64f55464d1021ea8d3625a0adbe1",
+    "started_at": "2026-11-24T18:04:39.107Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let a fresh reading lower the stored usage figure after a partial reset\n\n## Summary\n\nAfter a partial reset of a usage window, the shared usage file kept the old, higher figure until the window ended. On 2026-11-24 it showed seven-day at 99% when the account was at 69%. Now a fresh reading of the account lowers the stored figure in the same window. A status line sample of an idle session still never lowers it.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/orchestrator/references/usage.md` \"The shared file\" owns the merge rule. `docs/design.md` §15.NNN (placeholder) holds the finding.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-usage.py`: `merge_window` takes a `fresh` flag, and a fresh reading replaces a window with an equal `resets_at` also when its percent is lower. A lower five-hour figure from a fresh reading starts `window_first` again.\n- `skills/orchestrator/scripts/test-crew-usage.py`: four new checks in R3, committed failing first.\n- `skills/orchestrator/references/usage.md`: the merge rule says the new case.\n- `docs/design.md`: new finding §15.NNN.\n- `CLAUDE.md`: build state says what is built and that only the seeded test ran it.\n\n### Constraints that applied\n\nThe rule lives only in `usage.md`. The plugin `version` is not bumped and the §15 number is `NNN`, both placeholders for the owner.\n\n### How this was verified\n\n`python3 skills/orchestrator/scripts/test-crew-usage.py` gives 105 of 105 checks passed, with a stub `claude`. Before the fix, 3 of the new checks failed.\n\n### Known gaps\n\nNo live reading ran the change. `check` and `watch` take a fresh reading only when the newest sample is older than 5 minutes.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZh7PDNExjtW2kbKe69\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-usage.py",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-usage.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes merge logic in crew-usage.py (new fresh-replace rule, per-session dedup state persisted in usage.json, window_first reset), which is behavioral and stateful.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-usage.py:apply_sample (session dedup, `continue` skipping merge, seen/last handling)",
+        "skills/orchestrator/scripts/crew-usage.py:merge_window (fresh flag)",
+        "skills/orchestrator/scripts/crew-usage.py:window_first reset when lowered, and `if five and d.get(\"five_hour\")` change",
+        "skills/orchestrator/scripts/crew-usage.py: sessions pruning by SESSION_AGE and shape validation of stored data",
+        "skills/orchestrator/scripts/test-crew-usage.py:R3 new cases"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "note": "Logic change: fresh readings can lower stored figures; per-session last-figure records suppress idle repeats; window_first restarts on lowered figure; seen[sid] is written before the dedup skip and `last` is read from the pruned copy."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "note": "New R3 cases: lowering by refresh, idle-session repeat, earlier resets_at not replacing. Uses sample(..., sid=) helper, so check it exists."
+        },
+        {
+          "file": "skills/orchestrator/references/usage.md",
+          "note": "Documents new merge rule and the sessions field; owns the rule per design.md."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New decision entry with placeholder number NNN."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Status note with placeholder §15.NNN."
+        }
+      ],
+      "summary": "The change lets a fresh account reading lower the stored usage figure within the same resets_at, to handle partial resets. A status line sample still never lowers it. To stop an idle session's repeated old sample from raising the figure again, usage.json now keeps each session's last figures for 2 days. A lowered five-hour figure also restarts window_first. Docs and tests are updated to match."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes merge logic in crew-usage.py (new fresh-replace rule, per-session dedup state persisted in usage.json, window_first reset), which is behavioral and stateful.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "docs/design.md",
+            "start_line": 10376,
+            "end_line": 10377,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The new §15 entry has no blank line after the previous entry, unlike the other numbered §15 findings.",
+            "evidence": "NNN. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24,",
+            "suggested_fix": "Add a blank line before the `NNN.` entry.",
+            "explanation": "The other §15 entries are separated by a blank line, and without one this entry runs on from the last bullet of the one before.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 51,
+            "end_line": 51,
+            "category": "convention",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The new constant SESSION_AGE has no unit comment, while the constants beside it state their units.",
+            "evidence": "SESSION_AGE = 2 * 86400",
+            "suggested_fix": "SESSION_AGE = 2 * 86400  # seconds a session's last figures are kept",
+            "explanation": "Nearby constants such as FORECAST_MIN and REFRESH_LIMIT have a comment that says they are in seconds.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 11380,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6497,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006617,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 939,
+              "cacheReadInputTokens": 42995,
+              "cacheCreationInputTokens": 6912,
+              "webSearchRequests": 0,
+              "costUSD": 0.082699,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 187,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.08336070000000001
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 165,
+            "end_line": 170,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A session's record is dropped after 2 days, so an idle session that comes back later can repeat its old seven-day figure and raise a figure that a fresh reading lowered, because the seven-day window lasts 7 days.",
+            "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "explanation": "After pruning, the repeat counts as a first sample and gets merged, and the same resets_at with a higher percent wins for seven_day.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 168,
+            "end_line": 176,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The session record is rebuilt from scratch on each sample, so a sample with only one window erases the session's last figure for the other window, and that window's next old repeat is merged again.",
+            "evidence": "        seen[sid] = {\"at\": ts}\n        d[\"sessions\"] = seen",
+            "explanation": "The dedup needs the last figure of each window, but a sample with a missing or unparseable window deletes that window's entry.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 165,
+            "end_line": 166,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "A `sessions` value that is not a dict, or an `at` that is not a number, raises an exception in apply_sample, and every status line sample after that is dropped without a message.",
+            "evidence": "(d.get(\"sessions\") or {}).items()",
+            "explanation": "cmd_statusline catches the exception silently, so the file stops updating until someone fixes it by hand.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 46084,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6481,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006600999999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 10,
+              "outputTokens": 4196,
+              "cacheReadInputTokens": 92816,
+              "cacheCreationInputTokens": 15719,
+              "webSearchRequests": 0,
+              "costUSD": 0.2282752,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 2335,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2289353
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/usage.md",
+            "start_line": 42,
+            "end_line": 46,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The updated_at rule says a lower figure does not move updated_at, but a fresh reading can now lower the figure, and when it does it moves updated_at.",
+            "evidence": "figure, a lower one, and a seven-day-only advance do not move them.",
+            "suggested_fix": "Say that the fresh reading moves `updated_at` on an equal or a lower figure.",
+            "explanation": "`moved = fresh` means a lowering fresh reading sets updated_at, and the new R3 test checks `d[\"updated_at\"] == NOW`. The paragraph only names the equal-figure exception for the fresh reading.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8787,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6485,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006615000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 704,
+              "cacheReadInputTokens": 26175,
+              "cacheCreationInputTokens": 8110,
+              "webSearchRequests": 0,
+              "costUSD": 0.084211,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 246,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.08487249999999999
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 165,
+            "end_line": 166,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The pruning of stored `sessions` assumes `sessions` is a dict and each `at` is a number, so a hand-edited or corrupt usage.json can make the writer raise.",
+            "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "suggested_fix": "Check isinstance(d.get(\"sessions\"), dict) and num(v.get(\"at\")) before the comparison.",
+            "explanation": "A non-dict `sessions` raises AttributeError, and a non-numeric `at` raises TypeError. The status line wrapper then fails on every refresh.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 168,
+            "end_line": 175,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A sample that carries only one window overwrites the session record with {\"at\": ts}, which drops the last figure of the other window.",
+            "evidence": "seen[sid] = {\"at\": ts}",
+            "suggested_fix": "Start from the existing record: seen[sid] = dict(last, at=ts).",
+            "explanation": "The next sample from an idle session that repeats the dropped window's old figure is no longer recognised as a repeat, so it can raise a lowered figure again.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 11322,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 10167,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0010297000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1257,
+              "cacheReadInputTokens": 30645,
+              "cacheCreationInputTokens": 11736,
+              "webSearchRequests": 0,
+              "costUSD": 0.06258649999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 527,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0636162
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5262,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6495,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006625,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 374,
+              "cacheReadInputTokens": 10376,
+              "cacheCreationInputTokens": 6001,
+              "webSearchRequests": 0,
+              "costUSD": 0.0575712,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 75,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.058233700000000006
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 165,
+            "end_line": 166,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The 2-day pruning of stored session records (SESSION_AGE) has no test.",
+            "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "suggested_fix": "Add a test that seeds a session record older than 2 days and one malformed entry, records a sample, and checks that both are gone and that a fresh session record stays.",
+            "explanation": "No test seeds an old or malformed sessions entry. A broken prune would let usage.json grow without bound, or would drop a live session's last figure and let an idle repeat raise a lowered figure.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/test-crew-usage.py",
+            "start_line": 525,
+            "end_line": 557,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The new tests do not cover a repeated sample that changes only one window, a sample with no session_id, or a lowered seven-day figure with a later five-hour reset.",
+            "evidence": "run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\"))",
+            "explanation": "The per-window `continue` and the `sid` guard have several branches. The tests exercise only the case where both windows repeat, so a regression in one window's dedup would pass.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 11037,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 6487,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006617,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1213,
+              "cacheReadInputTokens": 45846,
+              "cacheCreationInputTokens": 7903,
+              "webSearchRequests": 0,
+              "costUSD": 0.0483386,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 333,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.049000300000000004
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/usage.md",
+          "start_line": 42,
+          "end_line": 46,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The updated_at rule says a lower figure does not move updated_at, but a fresh reading can now lower the figure, and when it does it moves updated_at.",
+          "evidence": "figure, a lower one, and a seven-day-only advance do not move them.",
+          "suggested_fix": "Say that the fresh reading moves `updated_at` on an equal or a lower figure.",
+          "explanation": "`moved = fresh` means a lowering fresh reading sets updated_at, and the new R3 test checks `d[\"updated_at\"] == NOW`. The paragraph only names the equal-figure exception for the fresh reading.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    moved = fresh",
+            "A repeat of the stored\nfigure, a lower one, and a seven-day-only advance do not move them.",
+            "fresh reading is the one writer that moves `updated_at` on an equal figure."
+          ],
+          "rationale": "Code sets moved = fresh, so a fresh reading that lowers the figure also moves updated_at. The doc says a lower figure does not move it and names only the equal-figure exception, so it is now inaccurate.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    moved = fresh",
+            "A repeat of the stored\nfigure, a lower one, and a seven-day-only advance do not move them.",
+            "fresh reading is the one writer that moves `updated_at` on an equal figure."
+          ],
+          "rationale": "Code sets moved = fresh, so a fresh reading that lowers the figure also moves updated_at. The doc says a lower figure does not move it and names only the equal-figure exception, so it is now inaccurate.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 10376,
+          "end_line": 10377,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The new §15 entry has no blank line after the previous entry, unlike the other numbered §15 findings.",
+          "evidence": "NNN. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24,",
+          "suggested_fix": "Add a blank line before the `NNN.` entry.",
+          "explanation": "The other §15 entries are separated by a blank line, and without one this entry runs on from the last bullet of the one before.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "      wake or sent a round with them.\nNNN. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24,"
+          ],
+          "rationale": "The new NNN entry starts on the line right after the previous entry's last bullet, with no blank line. Other §15 entries have one, and in markdown the entry may run into the bullet before it.",
+          "score": 95,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "      wake or sent a round with them.\nNNN. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24,"
+          ],
+          "rationale": "The new NNN entry starts on the line right after the previous entry's last bullet, with no blank line. Other §15 entries have one, and in markdown the entry may run into the bullet before it.",
+          "score": 95,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 51,
+          "end_line": 51,
+          "category": "convention",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The new constant SESSION_AGE has no unit comment, while the constants beside it state their units.",
+          "evidence": "SESSION_AGE = 2 * 86400",
+          "suggested_fix": "SESSION_AGE = 2 * 86400  # seconds a session's last figures are kept",
+          "explanation": "Nearby constants such as FORECAST_MIN and REFRESH_LIMIT have a comment that says they are in seconds.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "SESSION_AGE = 2 * 86400",
+            "REFRESH_LIMIT = 30  # seconds"
+          ],
+          "rationale": "The constant has no comment, while AGE, FORECAST_MIN and REFRESH_LIMIT state seconds. DEFAULT_LIMIT and EXIT have no comment either. This is a trivial style point with no wrong result.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "SESSION_AGE = 2 * 86400",
+            "REFRESH_LIMIT = 30  # seconds"
+          ],
+          "rationale": "The constant has no comment, while AGE, FORECAST_MIN and REFRESH_LIMIT state seconds. DEFAULT_LIMIT and EXIT have no comment either. This is a trivial style point with no wrong result.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 165,
+          "end_line": 166,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The pruning of stored `sessions` assumes `sessions` is a dict and each `at` is a number, so a hand-edited or corrupt usage.json can make the writer raise.",
+          "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+          "suggested_fix": "Check isinstance(d.get(\"sessions\"), dict) and num(v.get(\"at\")) before the comparison.",
+          "explanation": "A non-dict `sessions` raises AttributeError, and a non-numeric `at` raises TypeError. The status line wrapper then fails on every refresh.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}"
+          ],
+          "rationale": "The new code calls .items() on whatever `sessions` holds and subtracts `at` without type checks, so a list/string `sessions` or a non-numeric `at` raises. The rest of the file is defensive about corrupt data, but this path only breaks if the file is hand-edited or corrupted.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "pass  # a fault in the recording never removes the user's line",
+            "update(lambda d: apply_sample(d, sample, source, ts))"
+          ],
+          "rationale": "The claim holds. A truthy `sessions` that is not a dict raises AttributeError on `.items()`. A non-numeric or null `at` raises TypeError. The comprehension runs on every path, including refresh with fresh=True, so a corrupt value stops every recording until someone fixes the file. The finding overstates the effect on the status line: cmd_statusline catches the exception, so the user's line still shows, but the recording fails without a message. This only happens after a hand edit or a corrupt write, because the script itself always writes valid shapes.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "pass  # a fault in the recording never removes the user's line",
+            "update(lambda d: apply_sample(d, sample, source, ts))"
+          ],
+          "rationale": "The claim holds. A truthy `sessions` that is not a dict raises AttributeError on `.items()`. A non-numeric or null `at` raises TypeError. The comprehension runs on every path, including refresh with fresh=True, so a corrupt value stops every recording until someone fixes the file. The finding overstates the effect on the status line: cmd_statusline catches the exception, so the user's line still shows, but the recording fails without a message. This only happens after a hand edit or a corrupt write, because the script itself always writes valid shapes.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 168,
+          "end_line": 175,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A sample that carries only one window overwrites the session record with {\"at\": ts}, which drops the last figure of the other window.",
+          "evidence": "seen[sid] = {\"at\": ts}",
+          "suggested_fix": "Start from the existing record: seen[sid] = dict(last, at=ts).",
+          "explanation": "The next sample from an idle session that repeats the dropped window's old figure is no longer recognised as a repeat, so it can raise a lowered figure again.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen[sid] = {\"at\": ts}",
+            "if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:"
+          ],
+          "rationale": "The session record is replaced with only the timestamp, so the figure of any window missing from the current sample is lost. A later repeat of that old figure is then not detected and can raise a lowered stored figure. It needs single-window samples, which are rare.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen[sid] = {\"at\": ts}",
+            "seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]",
+            "if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "The session record is replaced by {\"at\": ts} and gets only the windows in the current sample, so a one-window sample erases the other window's last figure. A later repeat of that old figure then passes the repeat check, and merge_window raises it over a value that a fresh reading had lowered. It needs a sample with only one window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen[sid] = {\"at\": ts}",
+            "seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]",
+            "if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "The session record is replaced by {\"at\": ts} and gets only the windows in the current sample, so a one-window sample erases the other window's last figure. A later repeat of that old figure then passes the repeat check, and merge_window raises it over a value that a fresh reading had lowered. It needs a sample with only one window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 165,
+          "end_line": 166,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The 2-day pruning of stored session records (SESSION_AGE) has no test.",
+          "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+          "suggested_fix": "Add a test that seeds a session record older than 2 days and one malformed entry, records a sample, and checks that both are gone and that a fresh session record stays.",
+          "explanation": "No test seeds an old or malformed sessions entry. A broken prune would let usage.json grow without bound, or would drop a live session's last figure and let an idle repeat raise a lowered figure.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}"
+          ],
+          "rationale": "A grep of the test file for SESSION_AGE, \\\"sessions\\\" and the 2-day interval finds nothing that seeds an old or malformed sessions entry, so the prune has no direct test. The prune is new code in this diff.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "SESSION_AGE = 2 * 86400",
+            "def sample(five=None, five_resets=R, seven=30, seven_resets=NOW + 3 * 86400, sid=\"s1\"):"
+          ],
+          "rationale": "This change adds the per-session records and the SESSION_AGE prune. test-crew-usage.py never mentions the \"sessions\" key or SESSION_AGE, and no test seeds an old or malformed session entry, so the prune has no test.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "SESSION_AGE = 2 * 86400",
+            "def sample(five=None, five_resets=R, seven=30, seven_resets=NOW + 3 * 86400, sid=\"s1\"):"
+          ],
+          "rationale": "This change adds the per-session records and the SESSION_AGE prune. test-crew-usage.py never mentions the \"sessions\" key or SESSION_AGE, and no test seeds an old or malformed session entry, so the prune has no test.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "start_line": 525,
+          "end_line": 557,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The new tests do not cover a repeated sample that changes only one window, a sample with no session_id, or a lowered seven-day figure with a later five-hour reset.",
+          "evidence": "run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\"))",
+          "explanation": "The per-window `continue` and the `sid` guard have several branches. The tests exercise only the case where both windows repeat, so a regression in one window's dedup would pass.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\"))",
+            "run([\"record\"], sample(30, five_resets=R, seven=20))"
+          ],
+          "rationale": "The new idle-session test only repeats a sample where both windows are unchanged, with a sid. No test repeats a sample that changes one window or that lowers the seven-day figure while the five-hour reset is later. The no-sid case is only partly covered, by the sample(30...) record call. This is a speculative test-coverage gap with no wrong result in the code, so it is not worth posting.",
+          "score": 55,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\"))",
+            "run([\"record\"], sample(75, five_resets=R, seven=40, sid=\"idle\"))",
+            "def sample(five=None, five_resets=R, seven=30, seven_resets=NOW + 3 * 86400, sid=\"s1\"):",
+            "if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "sid = sid if isinstance(sid, str) and sid and not fresh else None"
+          ],
+          "rationale": "The new idle-session checks only send samples where both windows repeat together or both change together. `sample()` always sets a session_id, so no test sends a sample with only one window repeated or with no session id. That leaves the per-window `continue` branch only partly tested. This is a real gap in coverage, but it is minor and the behaviour is correct as written.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\"))",
+            "run([\"record\"], sample(75, five_resets=R, seven=40, sid=\"idle\"))",
+            "def sample(five=None, five_resets=R, seven=30, seven_resets=NOW + 3 * 86400, sid=\"s1\"):",
+            "if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "sid = sid if isinstance(sid, str) and sid and not fresh else None"
+          ],
+          "rationale": "The new idle-session checks only send samples where both windows repeat together or both change together. `sample()` always sets a session_id, so no test sends a sample with only one window repeated or with no session id. That leaves the per-window `continue` branch only partly tested. This is a real gap in coverage, but it is minor and the behaviour is correct as written.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 165,
+          "end_line": 170,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A session's record is dropped after 2 days, so an idle session that comes back later can repeat its old seven-day figure and raise a figure that a fresh reading lowered, because the seven-day window lasts 7 days.",
+          "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+          "explanation": "After pruning, the repeat counts as a first sample and gets merged, and the same resets_at with a higher percent wins for seven_day.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "SESSION_AGE = 2 * 86400"
+          ],
+          "rationale": "A session record is pruned after 2 days, so a session that was silent that long and then repeats its old seven-day figure is treated as new. Merging keeps the higher percent when resets_at is equal, so the figure can go back up. This needs a session that emitted nothing for over 2 days and then repeated stale data, so it is an unusual path.",
+          "score": 62,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "SESSION_AGE = 2 * 86400",
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "last = seen.get(sid, {}) if sid else {}",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "The claim holds. A session record is pruned after 2 days, and then `last` is empty, so the repeat check does not fire. If that session later repeats its old seven-day figure with the same resets_at, the non-fresh merge takes the higher percent and undoes a fresh reading that lowered it. This needs a session to send no samples for over 2 days (each repeat resets \"at\") and then send its stale figure again while the 7-day window is still open, so it is an unusual path.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "SESSION_AGE = 2 * 86400",
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "last = seen.get(sid, {}) if sid else {}",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "The claim holds. A session record is pruned after 2 days, and then `last` is empty, so the repeat check does not fire. If that session later repeats its old seven-day figure with the same resets_at, the non-fresh merge takes the higher percent and undoes a fresh reading that lowered it. This needs a session to send no samples for over 2 days (each repeat resets \"at\") and then send its stale figure again while the 7-day window is still open, so it is an unusual path.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 168,
+          "end_line": 176,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The session record is rebuilt from scratch on each sample, so a sample with only one window erases the session's last figure for the other window, and that window's next old repeat is merged again.",
+          "evidence": "        seen[sid] = {\"at\": ts}\n        d[\"sessions\"] = seen",
+          "explanation": "The dedup needs the last figure of each window, but a sample with a missing or unparseable window deletes that window's entry.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen[sid] = {\"at\": ts}",
+            "d[\"sessions\"] = seen"
+          ],
+          "rationale": "The session record is rebuilt each sample, so a single-window sample erases the other window's last figure. The consequence is nearly nil, because merge_window and advanced ignore equal or lower repeats when fresh is False.",
+          "score": 65,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        seen[sid] = {\"at\": ts}",
+            "        if new is None:\n            continue",
+            "            if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:"
+          ],
+          "rationale": "Each sample replaces the session entry with `{\"at\": ts}` and adds only the windows that parsed. A sample that has one window drops the session's last figure for the other window. The next old repeat of that window then skips the dedup, and `merge_window` can raise a figure that a fresh reading had lowered. This takes a sample with a missing window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        seen[sid] = {\"at\": ts}",
+            "        if new is None:\n            continue",
+            "            if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:"
+          ],
+          "rationale": "Each sample replaces the session entry with `{\"at\": ts}` and adds only the windows that parsed. A sample that has one window drops the session's last figure for the other window. The next old repeat of that window then skips the dedup, and `merge_window` can raise a figure that a fresh reading had lowered. This takes a sample with a missing window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 165,
+          "end_line": 166,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "A `sessions` value that is not a dict, or an `at` that is not a number, raises an exception in apply_sample, and every status line sample after that is dropped without a message.",
+          "evidence": "(d.get(\"sessions\") or {}).items()",
+          "explanation": "cmd_statusline catches the exception silently, so the file stops updating until someone fixes it by hand.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()",
+            "if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "except Exception:\n        pass  # a fault in the recording never removes the user's line"
+          ],
+          "rationale": "A non-dict `sessions` or a non-numeric `at` would raise, and cmd_statusline swallows it silently. Only a hand-edited or corrupted file can trigger this, because this code is the only writer of `sessions`.",
+          "score": 70,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()",
+            "if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "update(lambda d: apply_sample(d, sample, source, ts))",
+            "pass  # a fault in the recording never removes the user's line"
+          ],
+          "rationale": "The claim is correct. If `sessions` is a non-empty list or string, `.items()` raises, and if `at` is not a number, `ts - v.get(\"at\", 0)` raises a TypeError. `cmd_statusline` swallows the exception, and the `refresh` path computes `seen` too, so the file would stay stuck. The code itself only ever writes a dict of dicts with an integer `at`, so this happens only when someone or something else corrupts the file, which is an unusual path.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()",
+            "if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "update(lambda d: apply_sample(d, sample, source, ts))",
+            "pass  # a fault in the recording never removes the user's line"
+          ],
+          "rationale": "The claim is correct. If `sessions` is a non-empty list or string, `.items()` raises, and if `at` is not a number, `ts - v.get(\"at\", 0)` raises a TypeError. `cmd_statusline` swallows the exception, and the `refresh` path computes `seen` too, so the file would stay stuck. The code itself only ever writes a dict of dicts with an integer `at`, so this happens only when someone or something else corrupts the file, which is an unusual path.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          3,
+          4,
+          5,
+          7,
+          8,
+          9
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 0,
+              "claim": "The pruning of stored `sessions` assumes `sessions` is a dict and each `at` is a number, so a hand-edited or corrupt usage.json makes the writer raise.",
+              "explanation": "A non-dict `sessions` raises AttributeError and a non-numeric `at` raises TypeError, and the status line wrapper swallows the error, so every later sample is dropped silently.",
+              "suggested_fix": "Check isinstance(d.get(\"sessions\"), dict) and num(v.get(\"at\")) before the comparison.",
+              "severity": "suggestion"
+            },
+            {
+              "member_index": 1,
+              "claim": "A sample that carries only one window overwrites the session record with {\"at\": ts}, which drops the last figure of the other window.",
+              "explanation": "The next sample from an idle session that repeats the dropped window's old figure is no longer recognised as a repeat, so it can raise a lowered figure again.",
+              "suggested_fix": "Start from the existing record: seen[sid] = dict(last, at=ts).",
+              "severity": "suggestion"
+            },
+            {
+              "member_index": 3,
+              "claim": "A session's record is dropped after 2 days, so an idle session that comes back later can repeat its old seven-day figure and raise a figure that a fresh reading lowered.",
+              "explanation": "The seven-day window lasts 7 days but SESSION_AGE is 2 days, so after pruning the repeat counts as a first sample and the same resets_at with a higher percent wins.",
+              "severity": "suggestion"
+            },
+            {
+              "member_index": 2,
+              "claim": "The 2-day pruning of stored session records (SESSION_AGE) has no test.",
+              "explanation": "No test seeds an old or malformed sessions entry, so a broken prune would let usage.json grow without bound or drop a live session's last figure.",
+              "suggested_fix": "Add a test that seeds a session record older than 2 days and one malformed entry, records a sample, and checks that both are gone and that a fresh session record stays.",
+              "severity": "suggestion"
+            }
+          ]
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6044724795,
+      "review_url": "https://github.com/jerridan/crew/pull/186#pullrequestreview-6044724795",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138664829511
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 165,
+        "end_line": 166,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The pruning of stored `sessions` assumes `sessions` is a dict and each `at` is a number, so a hand-edited or corrupt usage.json makes the writer raise.",
+        "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+        "explanation": "A non-dict `sessions` raises AttributeError and a non-numeric `at` raises TypeError, and the status line wrapper swallows the error, so every later sample is dropped silently.",
+        "needs_context": true,
+        "fingerprint": "c6c527b2d7d728ae",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "pass  # a fault in the recording never removes the user's line",
+            "update(lambda d: apply_sample(d, sample, source, ts))"
+          ],
+          "rationale": "The claim holds. A truthy `sessions` that is not a dict raises AttributeError on `.items()`. A non-numeric or null `at` raises TypeError. The comprehension runs on every path, including refresh with fresh=True, so a corrupt value stops every recording until someone fixes the file. The finding overstates the effect on the status line: cmd_statusline catches the exception, so the user's line still shows, but the recording fails without a message. This only happens after a hand edit or a corrupt write, because the script itself always writes valid shapes.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items() if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          },
+          {
+            "reviewer": "history",
+            "pass": 1
+          },
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Check isinstance(d.get(\"sessions\"), dict) and num(v.get(\"at\")) before the comparison."
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 165,
+        "end_line": 166,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The 2-day pruning of stored session records (SESSION_AGE) has no test.",
+        "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+        "explanation": "No test seeds an old or malformed sessions entry, so a broken prune would let usage.json grow without bound or drop a live session's last figure.",
+        "needs_context": false,
+        "fingerprint": "10d7a92e0d9b4bba",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "SESSION_AGE = 2 * 86400",
+            "def sample(five=None, five_resets=R, seven=30, seven_resets=NOW + 3 * 86400, sid=\"s1\"):"
+          ],
+          "rationale": "This change adds the per-session records and the SESSION_AGE prune. test-crew-usage.py never mentions the \"sessions\" key or SESSION_AGE, and no test seeds an old or malformed session entry, so the prune has no test.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items() if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          },
+          {
+            "reviewer": "history",
+            "pass": 1
+          },
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Add a test that seeds a session record older than 2 days and one malformed entry, records a sample, and checks that both are gone and that a fresh session record stays."
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 168,
+        "end_line": 175,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "A sample that carries only one window overwrites the session record with {\"at\": ts}, which drops the last figure of the other window.",
+        "evidence": "seen[sid] = {\"at\": ts}",
+        "explanation": "The next sample from an idle session that repeats the dropped window's old figure is no longer recognised as a repeat, so it can raise a lowered figure again.",
+        "needs_context": false,
+        "fingerprint": "094657c7c6a39ea4",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seen[sid] = {\"at\": ts}",
+            "seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]",
+            "if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "The session record is replaced by {\"at\": ts} and gets only the windows in the current sample, so a one-window sample erases the other window's last figure. A later repeat of that old figure then passes the repeat check, and merge_window raises it over a value that a fresh reading had lowered. It needs a sample with only one window, which is an unusual path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "if sid: seen[sid] = {\"at\": ts} d[\"sessions\"] = seen for key, new in ((\"five_hour\", five), (\"seven_day\", seven)): if new is None: continue if sid: seen[sid][key] = [new[\"used_pct\"], new[\"resets_at\"]]",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          },
+          {
+            "reviewer": "history",
+            "pass": 1
+          },
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Start from the existing record: seen[sid] = dict(last, at=ts)."
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 165,
+        "end_line": 170,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "A session's record is dropped after 2 days, so an idle session that comes back later can repeat its old seven-day figure and raise a figure that a fresh reading lowered.",
+        "evidence": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+        "explanation": "The seven-day window lasts 7 days but SESSION_AGE is 2 days, so after pruning the repeat counts as a first sample and the same resets_at with a higher percent wins.",
+        "needs_context": false,
+        "fingerprint": "a986cbb134f12e09",
+        "severity": "suggestion",
+        "score": 72,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "SESSION_AGE = 2 * 86400",
+            "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items()\n            if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE}",
+            "last = seen.get(sid, {}) if sid else {}",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "The claim holds. A session record is pruned after 2 days, and then `last` is empty, so the repeat check does not fire. If that session later repeats its old seven-day figure with the same resets_at, the non-fresh merge takes the higher percent and undoes a fresh reading that lowered it. This needs a session to send no samples for over 2 days (each repeat resets \"at\") and then send its stale figure again while the 7-day window is still open, so it is an unusual path.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "span_text": "seen = {k: v for k, v in (d.get(\"sessions\") or {}).items() if isinstance(v, dict) and ts - v.get(\"at\", 0) <= SESSION_AGE} last = seen.get(sid, {}) if sid else {} if sid: seen[sid] = {\"at\": ts} d[\"sessions\"] = seen",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          },
+          {
+            "reviewer": "history",
+            "pass": 1
+          },
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "docs/design.md",
+        "start_line": 10376,
+        "end_line": 10377,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The new §15 entry has no blank line after the previous entry, unlike the other numbered §15 findings.",
+        "evidence": "NNN. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24,",
+        "suggested_fix": "Add a blank line before the `NNN.` entry.",
+        "explanation": "The other §15 entries are separated by a blank line, and without one this entry runs on from the last bullet of the one before.",
+        "needs_context": false,
+        "fingerprint": "2d1626d0ecf9c222",
+        "severity": "nit",
+        "score": 95,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "      wake or sent a round with them.\nNNN. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24,"
+          ],
+          "rationale": "The new NNN entry starts on the line right after the previous entry's last bullet, with no blank line. Other §15 entries have one, and in markdown the entry may run into the bullet before it.",
+          "score": 95,
+          "severity": "nit"
+        },
+        "span_text": "NNN. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24, `crew-usage.py`.** On 2026-11-24 the account got a partial reset of both",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 51,
+        "end_line": 51,
+        "category": "convention",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The new constant SESSION_AGE has no unit comment, while the constants beside it state their units.",
+        "evidence": "SESSION_AGE = 2 * 86400",
+        "suggested_fix": "SESSION_AGE = 2 * 86400  # seconds a session's last figures are kept",
+        "explanation": "Nearby constants such as FORECAST_MIN and REFRESH_LIMIT have a comment that says they are in seconds.",
+        "needs_context": false,
+        "fingerprint": "64a551df885f2d2f",
+        "severity": "nit",
+        "score": 90,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "SESSION_AGE = 2 * 86400",
+            "REFRESH_LIMIT = 30  # seconds"
+          ],
+          "rationale": "The constant has no comment, while AGE, FORECAST_MIN and REFRESH_LIMIT state seconds. DEFAULT_LIMIT and EXIT have no comment either. This is a trivial style point with no wrong result.",
+          "score": 90,
+          "severity": "nit"
+        },
+        "span_text": "SESSION_AGE = 2 * 86400",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/test-crew-usage.py",
+        "start_line": 525,
+        "end_line": 557,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The new tests do not cover a repeated sample that changes only one window, a sample with no session_id, or a lowered seven-day figure with a later five-hour reset.",
+        "evidence": "run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\"))",
+        "explanation": "The per-window `continue` and the `sid` guard have several branches. The tests exercise only the case where both windows repeat, so a regression in one window's dedup would pass.",
+        "needs_context": true,
+        "fingerprint": "0998a04eee6df52f",
+        "severity": "nit",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\"))",
+            "run([\"record\"], sample(75, five_resets=R, seven=40, sid=\"idle\"))",
+            "def sample(five=None, five_resets=R, seven=30, seven_resets=NOW + 3 * 86400, sid=\"s1\"):",
+            "if last.get(key) == [new[\"used_pct\"], new[\"resets_at\"]]:",
+            "sid = sid if isinstance(sid, str) and sid and not fresh else None"
+          ],
+          "rationale": "The new idle-session checks only send samples where both windows repeat together or both change together. `sample()` always sets a session_id, so no test sends a sample with only one window repeated or with no session id. That leaves the per-window `continue` branch only partly tested. This is a real gap in coverage, but it is minor and the behaviour is correct as written.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "span_text": "seed(five=90, updated=NOW - 1000, seven=80, first=(NOW - 3000, 10)) r = run([\"refresh\"], STUB_MODE=\"figures\", STUB_PCT=40, STUB_RESETS=R, STUB_RESETS7=NOW + 3 * 86400) d = load() check(\"R3 a refresh with a lower figure in the same window lowers both windows\", r.returncode == 0 and d[\"five_hour\"][\"used_pct\"] == 40 and d[\"seven_day\"][\"used_pct\"] == 33 and d[\"updated_at\"] == NOW) check(\"R3 a lowered five-hour figure starts the forecast again from that figure\", d[\"window_first\"] == {\"resets_at\": R, \"at\": NOW, \"used_pct\": 40}) run([\"record\"], sample(30, five_resets=R, seven=20)) check(\"R3 after a lowered figure a status line sample still never lowers it\", load()[\"five_hour\"][\"used_pct\"] == 40 and load()[\"seven_day\"][\"used_pct\"] == 33) # An idle session repeats its old figure after a fresh reading lowered the file. seed(five=99, updated=NOW - 1000, seven=99) run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\")) run([\"refresh\"], STUB_MODE=\"figures\", STUB_PCT=69, STUB_RESETS=R, STUB_RESETS7=NOW + 3 * 86400) run([\"record\"], sample(99, five_resets=R, seven=99, sid=\"idle\")) d = load() check(\"R3 the repeated old sample of an idle session does not raise a lowered figure\", d[\"five_hour\"][\"used_pct\"] == 69 and d[\"seven_day\"][\"used_pct\"] == 33) run([\"record\"], sample(75, five_resets=R, seven=40, sid=\"idle\")) d = load() check(\"R3 a new higher figure of the same session still raises the figure\", d[\"five_hour\"][\"used_pct\"] == 75 and d[\"seven_day\"][\"used_pct\"] == 40) seed(five=90, updated=NOW - 1000) run([\"refresh\"], STUB_MODE=\"figures\", STUB_PCT=40, STUB_RESETS=R - 100, STUB_RESETS7=NOW + 3 * 86400) check(\"R3 a refresh with an earlier resets_at does not replace the stored window\", load()[\"five_hour\"][\"used_pct\"] == 90)",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [
+      {
+        "fingerprint": "0cf664fc40e4996c",
+        "reason": "open"
+      }
+    ],
+    "carried": [
+      {
+        "file": "skills/orchestrator/references/usage.md",
+        "start_line": 36,
+        "end_line": 40,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The paragraph on `updated_at` still says a lower figure does not move it, but a fresh reading that lowers the figure now moves it.",
+        "evidence": "figure, a lower one, and a seven-day-only advance do not move them.",
+        "suggested_fix": "Say that a lower figure from a status line sample does not move them, and that a fresh reading always does.",
+        "explanation": "The diff sets `moved = fresh` for a fresh reading, so a lowered fresh figure moves `updated_at` and `source`, and this paragraph contradicts the new rule. docs/design.md near line 9409 repeats the old claim that a stale sample never lowers the figure.",
+        "needs_context": false,
+        "fingerprint": "0cf664fc40e4996c",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "moved = fresh",
+            "A repeat of the stored\nfigure, a lower one, and a seven-day-only advance do not move them."
+          ],
+          "rationale": "In `apply_sample`, `moved = fresh` means a fresh reading moves `updated_at` and `source` even when its figure is lower. The paragraph at lines 36-40 still says a lower figure does not move them. The change added the lowering rule and left this paragraph out of date.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "`updated_at` and `source` move only when the five-hour figure advances: a higher percent in the same window, or a later window. A repeat of the stored figure, a lower one, and a seven-day-only advance do not move them. An idle session repeats its old figure and so cannot hide that the figure is old. The fresh reading is the one writer that moves `updated_at` on an equal figure.",
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 338,
+        "end_line": 347,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "A fresh reading now replaces the stored figure even when that figure is newer: a status line sample of an active session written between the probe's read and the locked update gets lowered back, and window_first is reset.",
+        "evidence": "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+        "suggested_fix": "Lower only when the stored figure is not newer than the probe's read time (for example, compare against the stored updated_at, or record the probe time and keep a higher figure that arrived after it).",
+        "explanation": "The probe's figures are read several seconds before `update` takes the lock, and `fresh` now bypasses the higher-percent guard unconditionally, so a genuinely newer higher figure from a live session can be overwritten by the older fresh value and the forecast restarted.",
+        "needs_context": false,
+        "fingerprint": "c0172f0328f35ef8",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+            "if key == \"five_hour\" and old and d[key][\"used_pct\"] < old[\"used_pct\"]:\n            lowered = True",
+            "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "stop_group(proc)\n        lines = read_lines(probe)"
+          ],
+          "rationale": "`fresh=True` now replaces any stored window that has the same resets_at, even when the stored figure is higher. The probe's lines are read before `update` takes the lock, so a higher sample that a session writes in between gets lowered and `window_first` is reset. The race window is a few seconds and only opens when the file is already stale. The next higher session sample fixes the figure, but the forecast still restarts.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "ts = now() result = [0] def fn(d): out = d got = False for x in lines: new = apply_sample(out, x, \"refresh\", ts, fresh=True) if new is not None: out, got = new, True",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6333,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5763,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005897999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 896,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 5273,
+            "webSearchRequests": 0,
+            "costUSD": 0.0301822,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.030772
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 5262,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 6495,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006625,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 374,
+            "cacheReadInputTokens": 10376,
+            "cacheCreationInputTokens": 6001,
+            "webSearchRequests": 0,
+            "costUSD": 0.0575712,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 75,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.058233700000000006
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 8787,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 6485,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006615000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 704,
+            "cacheReadInputTokens": 26175,
+            "cacheCreationInputTokens": 8110,
+            "webSearchRequests": 0,
+            "costUSD": 0.084211,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 246,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08487249999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 11380,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 6497,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006617,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 939,
+            "cacheReadInputTokens": 42995,
+            "cacheCreationInputTokens": 6912,
+            "webSearchRequests": 0,
+            "costUSD": 0.082699,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 187,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08336070000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 11322,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10167,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010297000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1257,
+            "cacheReadInputTokens": 30645,
+            "cacheCreationInputTokens": 11736,
+            "webSearchRequests": 0,
+            "costUSD": 0.06258649999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 527,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0636162
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 2785,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8309,
+            "outputTokens": 357,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010094000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 333,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 311,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 7815,
+            "webSearchRequests": 0,
+            "costUSD": 0.0348107,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0358201
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5609,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9047,
+            "outputTokens": 374,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010917000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 351,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 615,
+            "cacheReadInputTokens": 17287,
+            "cacheCreationInputTokens": 9234,
+            "webSearchRequests": 0,
+            "costUSD": 0.04482269999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 122,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.045914399999999994
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3584,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8455,
+            "outputTokens": 374,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010325,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 353,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 444,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 7961,
+            "webSearchRequests": 0,
+            "costUSD": 0.0367247,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0377572
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 11037,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 6487,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006617,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1213,
+            "cacheReadInputTokens": 45846,
+            "cacheCreationInputTokens": 7903,
+            "webSearchRequests": 0,
+            "costUSD": 0.0483386,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 333,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.049000300000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4236,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9715,
+            "outputTokens": 32,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009875,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 546,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9221,
+            "webSearchRequests": 0,
+            "costUSD": 0.0427847,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 180,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.043772200000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5932,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9724,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009824,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 758,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9230,
+            "webSearchRequests": 0,
+            "costUSD": 0.0449407,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 226,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0459231
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5946,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 12007,
+            "outputTokens": 379,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013902,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 351,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 830,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 11513,
+            "webSearchRequests": 0,
+            "costUSD": 0.0547927,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 197,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0561829
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6843,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9713,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009813,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 534,
+            "cacheReadInputTokens": 17953,
+            "cacheCreationInputTokens": 9621,
+            "webSearchRequests": 0,
+            "costUSD": 0.045627299999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.04660859999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 4,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12787,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9722,
+            "outputTokens": 230,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010872,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 207,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1273,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9224,
+            "webSearchRequests": 0,
+            "costUSD": 0.1001334,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 465,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1012206
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 14909,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9719,
+            "outputTokens": 214,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010789,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 192,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1231,
+            "cacheReadInputTokens": 32254,
+            "cacheCreationInputTokens": 11404,
+            "webSearchRequests": 0,
+            "costUSD": 0.1223268,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 484,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1234057
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 5,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12060,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9713,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009813,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 898,
+            "cacheReadInputTokens": 32242,
+            "cacheCreationInputTokens": 10290,
+            "webSearchRequests": 0,
+            "costUSD": 0.1067524,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 221,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1077337
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 46084,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 6481,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006600999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 4196,
+            "cacheReadInputTokens": 92816,
+            "cacheCreationInputTokens": 15719,
+            "webSearchRequests": 0,
+            "costUSD": 0.2282752,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 2335,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2289353
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 6,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 23249,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11985,
+            "outputTokens": 248,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013225,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 222,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 1832,
+            "cacheReadInputTokens": 75248,
+            "cacheCreationInputTokens": 19671,
+            "webSearchRequests": 0,
+            "costUSD": 0.2090976,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 828,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2104201
+      },
+      {
+        "role": "verifier",
+        "verification": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6452,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9726,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009831000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 747,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9232,
+            "webSearchRequests": 0,
+            "costUSD": 0.0448387,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0458218
+      },
+      {
+        "role": "verifier",
+        "verification": 9,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6724,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 686,
+            "cacheReadInputTokens": 17831,
+            "cacheCreationInputTokens": 9777,
+            "webSearchRequests": 0,
+            "costUSD": 0.0477591,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 154,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 9591,
+            "outputTokens": 351,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011346000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 331,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0488937
+      },
+      {
+        "role": "verifier",
+        "verification": 7,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7233,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9765,
+            "outputTokens": 194,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010735,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 173,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 775,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9271,
+            "webSearchRequests": 0,
+            "costUSD": 0.0452747,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 377,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0463482
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 8,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 9777,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9720,
+            "outputTokens": 196,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00107,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 175,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 842,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9222,
+            "webSearchRequests": 0,
+            "costUSD": 0.09149739999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 460,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0925674
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 7,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 14573,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9747,
+            "outputTokens": 275,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011122,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 253,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1403,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9249,
+            "webSearchRequests": 0,
+            "costUSD": 0.10293340000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 888,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1040456
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 9,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 15853,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9599,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009729000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1176,
+            "cacheReadInputTokens": 31897,
+            "cacheCreationInputTokens": 12055,
+            "webSearchRequests": 0,
+            "costUSD": 0.12636340000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 449,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1273363
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5572,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 2964,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00030790000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 886,
+            "cacheReadInputTokens": 1062,
+            "cacheCreationInputTokens": 2474,
+            "webSearchRequests": 0,
+            "costUSD": 0.0188662,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 183,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0191741
+      }
+    ],
+    "total_cost_usd": 1.9377364000000004,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 50,
+      "gather": 164,
+      "scope": 10,
+      "triage": 7197,
+      "find_verify": 71437,
+      "merge": 6194
+    },
+    "errors": []
+  }
+}

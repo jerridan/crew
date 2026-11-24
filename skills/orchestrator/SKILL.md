@@ -441,5 +441,5 @@ An implementer item ends with these steps, in this order:
 
 A subagent item ends at `shipped` or `closed` as `subagent-items.md` says.
 After step 6, or at that end, close the item as `resume-and-close.md`'s "The
-close of an item" says. On the principal's word, close the whole run as its "The close of
-a run" says.
+close of an item" says. On the principal's word, close the whole run as its
+"The close of a run" says.

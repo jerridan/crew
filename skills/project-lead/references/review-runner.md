@@ -29,7 +29,8 @@ python3 <project-lead-dir>/scripts/review-run.py <record-dir> [--setup "<setup c
 The completion notification carries the output. On the normal path this one
 call takes the round from the arming to the recorded `review_results` entry,
 and you make no other call before you adjudicate. The `spend.py` run in the
-table is outside this count. Read the last line, `status:`, then act on the line that named it:
+table is outside this count. Read the last line, `status:`, then act on the
+line that named it:
 
 | Output line | Exit | You |
 |---|---|---|

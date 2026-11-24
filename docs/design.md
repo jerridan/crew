@@ -10321,8 +10321,8 @@ Deliberately different:
        orchestrator run has judged an item by the test or dispatched a
        subagent item under these rules.
 
-NN. **The PR watch and the PR replies run in one call each — 2026-11-24,
-    version <version>.** A project lead in the delivered window ran each
+158. **The PR watch and the PR replies run in one call each — 2026-11-24,
+    version 0.1.126.** A project lead in the delivered window ran each
     command of two fixed sequences in its own model call, and each call read
     its whole context again.
 

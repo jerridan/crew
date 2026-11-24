@@ -152,8 +152,9 @@ that test and one probe (§15.153).
 
 `crew-step.py` is built: it runs the set-up, the verification of a package,
 the hand-over and the cleanup in one call each (`crew-step.md`). The run
-that built it used `verify` once, on its own script package. Nothing else
-has run it outside its seeded test (§15.<n>).
+that built it used `verify` once, on its own script package, and
+`hand-over` once. Nothing else has run it outside its seeded test, and no
+run has used `launch-check`, `branch` or `cleanup` (§15.159).
 
 Two items in one repo take a checkout each: the project lead cuts its own when
 another run holds the shared one, and `spend.py` prices every run from its own

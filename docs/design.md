@@ -10367,7 +10367,7 @@ NN. **The PR watch and the PR replies run in one call each — 2026-11-24,
       send go in one response. The resolve of a thread took 3 `gh` calls after
       the reply, which were the marker search, the thread read and the
       mutation. It now takes none, because the send does it.
-    - **Per session.** The watch goes from 12.6 calls to about 10.4, of which
+    - **Per session.** The watch goes from 12.6 calls to about 10.2, of which
       3.8 are expiry re-arms. Without the re-arms it goes from 8.8 to about
       6.4. The replies go from 1.6 calls to 1.2 by the narrow count.
     - **Unexercised.** Only `test-watch-step.sh` and `test-pr-reply.sh` ran

@@ -10281,3 +10281,42 @@ Deliberately different:
      - **Unexercised.** Only `test-launcher.sh` ran the change, with stub
        `herdr-app` and `hc` that give `t1j` and `t1B`. No live run has
        started, found, focused or stopped a terminal with such an address.
+
+NNN. **The orchestrator runs a small item with a subagent — 2026-11-24,
+     version placeholder.** An orchestrator gave every item an implementer
+     session. It ran an item with a subagent only on the principal's word.
+
+     - **Seen.** Item `stop-exit-keys` of the record `crew-orchestrator` ran
+       under a subagent of the orchestrator, in its own worktree, on the
+       principal's word (PR jerridan/crew#179). The record showed it only by
+       `launch: {}`, its `doing` text and a plan change. A resume would have
+       sent that item to "Launch an implementer". The principal asked the
+       orchestrator to judge such items by itself, to save tokens and time.
+       The example was a move of the tickets of a markdown file to a GitHub
+       project.
+     - **Decision.** `skills/orchestrator/SKILL.md`'s "Subagent items" holds
+       a four-part test that the orchestrator applies at intake. The default
+       is an implementer, and the principal's word wins in both directions.
+       The test sends code and instruction changes to an implementer, because
+       they need a red test or a review, and the light path exists for them.
+       The subagent runs on `sonnet`, not `haiku`, because a Haiku agent's
+       Bash, Write and Edit fall back to a prompt (`band-rubric.md`).
+     - **The marker is a field, not a stage.** The item field `subagent` is
+       `null` or an object, and `crew-orch.py` refuses an item with both a
+       `launch` and a `subagent`. So a resume and a close read each item one
+       way. A stage would mix the kind of runner into the progress, and an
+       empty `launch` already meant "not launched yet". The field also holds
+       the subagent's newest ready line, because the subagent keeps no
+       record and a restart loses its last message. `item <id> pr none`
+       clears the PR of an item that goes to an implementer.
+     - **The PR window.** No implementer reports GitHub events for a subagent
+       item, so the orchestrator's GitHub wait also watches the counts of
+       reviews and comments and the failed checks. `pr-watch.sh`'s PR poll
+       does not fit: it reads the cursor that a project lead writes into a
+       goal record. Its deploy mode needs only the PR URL and `run.deploy`,
+       so the orchestrator gives it an input file and keeps the delivered
+       window's ship word.
+     - **Unexercised.** Only `test-crew-orch.sh` ran the new field and
+       command, and `claude plugin test` ran the board fixtures. No
+       orchestrator run has judged an item by the test or dispatched a
+       subagent item under these rules.

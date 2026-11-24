@@ -162,6 +162,11 @@ its questions there (§15.139). Only the seeded test has run it.
 The `crew:orchestrator` skill is built (§15.142). No crew run has used it,
 except the build of the skill itself.
 
+Subagent items are built: the orchestrator runs an item that passes its test
+under a subagent, with no implementer session, and the record marks it with
+the item field `subagent` (§15.NNN). Only the seeded tests have run it, and
+no orchestrator run has exercised it.
+
 The board pane is built: `crew-orch.py board --json` is the one source of the
 board, and the mod `hooks/orch-board.tsx` draws it in a pane that
 `/orch-board` opens (§15.143). Only its tests and `test-crew-orch.sh` have run

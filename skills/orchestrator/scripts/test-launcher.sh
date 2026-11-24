@@ -38,9 +38,12 @@ unset CREW_LAUNCHER_CLAUDE TMUX TMUX_PANE TERM_PROGRAM ITERM_SESSION_ID __CFBund
 # tmux-close-on-enter (send-keys Enter closes the pane, as when claude ends), tmux-sessions (the
 # list-sessions output), tmux-clients (the list-clients output), tmux-list-panes
 # (the list-panes output), tmux-ttys (`<pane id> <tty>` lines: the #{pane_tty}
-# answer), tmux-screen (the capture-pane output). confirm-ends, for each
-# terminal stub: the Enter that comes after the Enter of /exit removes
-# ps-extra, as when the exit dialog of claude takes it and the session ends.
+# answer), tmux-screen (the capture-pane output after the Enter of /exit),
+# tmux-screen-before (that output before it), tmux-enter-fail (each Enter
+# after the Enter of /exit fails). confirm-ends, for each terminal stub: the
+# Enter that comes after the Enter of /exit removes ps-extra, as when the exit
+# dialog of claude takes it and the session ends. screen-fail, for each
+# terminal stub: the screen read fails.
 cat > "$T/bin/tmux" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
@@ -82,11 +85,15 @@ case "$1" in
       grep -vxF -- "$target" "$D/tmux-panes" > "$D/tmux-panes.new"; mv "$D/tmux-panes.new" "$D/tmux-panes"
     fi
     if [ "$last" = Enter ]; then
+      [ -e "$D/tmux-entered" ] && [ -e "$D/tmux-enter-fail" ] && { echo "tmux: no key" >&2; exit 1; }
       [ -e "$D/tmux-entered" ] && [ -e "$D/confirm-ends" ] && rm -f "$D/ps-extra"
       : > "$D/tmux-entered"
     fi
     exit 0 ;;
-  capture-pane) cat "$D/tmux-screen" 2>/dev/null; exit 0 ;;
+  capture-pane)
+    [ -e "$D/screen-fail" ] && { echo "tmux: no screen" >&2; exit 1; }
+    if [ -e "$D/tmux-entered" ]; then cat "$D/tmux-screen" 2>/dev/null; else cat "$D/tmux-screen-before" 2>/dev/null; fi
+    exit 0 ;;
   list-panes)
     # tmux-list-fail: the pane list read fails with an error that is not "no server running".
     [ -e "$D/tmux-list-fail" ] && { echo "tmux: protocol version mismatch" >&2; exit 1; }
@@ -102,7 +109,8 @@ STUB
 # osa-script and all of them to osa-scripts. Files: osa-fail (every call
 # fails), osa-sessions (one known iTerm2 session id per line), osa-ttys
 # (`<session id> <tty>` lines: the ttys answer, and the tty of an exit),
-# osa-screen (the screen answer).
+# osa-screen (the screen answer after the exit script), osa-screen-before
+# (that answer before it).
 cat > "$T/bin/osascript" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
@@ -125,9 +133,12 @@ case "$2" in
   start) echo 'OSA-0001' ;;
   focus|stop) if grep -sqxF -- "$3" "$D/osa-sessions" 2>/dev/null; then echo ok; else echo gone; fi ;;
   ttys) cat "$D/osa-ttys" 2>/dev/null ;;
-  screen) cat "$D/osa-screen" 2>/dev/null ;;
+  screen)
+    [ -e "$D/screen-fail" ] && { echo "execution error: iTerm2 got an error" >&2; exit 1; }
+    if [ -e "$D/osa-entered" ]; then cat "$D/osa-screen" 2>/dev/null; else cat "$D/osa-screen-before" 2>/dev/null; fi ;;
   enter) [ -e "$D/confirm-ends" ] && rm -f "$D/ps-extra"; echo ok ;;
   exit)
+    : > "$D/osa-entered"
     if grep -sqxF -- "$3" "$D/osa-sessions" 2>/dev/null; then
       t=$(awk -v s="$3" '$1 == s {print $2}' "$D/osa-ttys" 2>/dev/null); echo "${t:-/dev/ttys998}"
     else echo gone; fi ;;
@@ -188,7 +199,7 @@ STUB
 # types /exit fails), hc-exit-gone (that call fails and the terminal is gone
 # for `get`). hc files: hc-ls (the `ls --json` output), hc-get-<address>.json
 # (the `get` output; a missing file is not_found), hc-screen (the `read`
-# output).
+# output after the enter of /exit), hc-screen-before (that output before it).
 cat > "$T/bin/herdr-app" <<'STUB'
 #!/bin/bash
 D=$STUB_DIR
@@ -247,7 +258,9 @@ case "$1" in
       [ -e "$D/hc-entered" ] && [ -e "$D/confirm-ends" ] && rm -f "$D/ps-extra"
       : > "$D/hc-entered"
     fi ;;
-  read) cat "$D/hc-screen" 2>/dev/null ;;
+  read)
+    [ -e "$D/screen-fail" ] && { echo '{"error":{"kind":"internal","message":"read refused"}}'; exit 1; }
+    if [ -e "$D/hc-entered" ]; then cat "$D/hc-screen" 2>/dev/null; else cat "$D/hc-screen-before" 2>/dev/null; fi ;;
   get)
     [ -e "$D/hc-get-fail-$2" ] && { echo '{"error":{"kind":"internal","message":"core busy"}}'; exit 1; }
     if [ -e "$D/hc-get-$2.json" ]; then cat "$D/hc-get-$2.json"
@@ -994,9 +1007,10 @@ reset_stub
 echo 'SESS-1' > "$STUB_DIR/osa-sessions"
 echo 'SESS-1 /dev/ttys960' > "$STUB_DIR/osa-ttys"
 run stop iterm2:SESS-1
-r=1; [ "$rc" = 0 ] && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | sed -n 1p)" = '-|exit|SESS-1|' ] \
-  && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | sed -n 2p)" = '-|stop|SESS-1|' ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
-check 'stop iterm2:<id> types /exit into the session first, then closes the tab' $r
+r=1; [ "$rc" = 0 ] && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | sed -n 1p)" = '-|screen|SESS-1|' ] \
+  && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | sed -n 2p)" = '-|exit|SESS-1|' ] \
+  && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | sed -n 3p)" = '-|stop|SESS-1|' ] && [ ! -s "$T/out" ] && [ ! -s "$T/err" ] && r=0
+check 'stop iterm2:<id> reads the screen, types /exit into the session, then closes the tab' $r
 check 'the iTerm2 exit step types /exit with write text' $(grep -sqF 'write text "/exit"' "$STUB_DIR/osa-scripts"; echo $?)
 r=1; python3 - "$STUB_DIR/osa-scripts" <<'PY' && r=0
 import sys
@@ -2183,10 +2197,10 @@ import sys
 hc = [l.rstrip("\n") for l in open(sys.argv[1])]
 hd = [l.rstrip("\n") for l in open(sys.argv[2])]
 keys = [l for l in hc if not l.startswith("get|")]
-assert keys == ["keys|t3|esc|", "keys|t3|ctrl+u|", "keys|t3|/|e|x|i|t|", "keys|t3|enter|"], keys
+assert keys == ["read|t3|", "keys|t3|esc|", "keys|t3|ctrl+u|", "keys|t3|/|e|x|i|t|", "keys|t3|enter|"], keys
 assert [l for l in hd if l.startswith("do|")] == ["do|tab.close|--id|tb3|--confirmed|true|"], hd
 PY
-check 'stop herdr:<address> presses esc, then ctrl+u, then the keys / e x i t, then enter, with hc keys and never hc send, then closes the tab with tab.close --id <tab> --confirmed true' $r
+check 'stop herdr:<address> reads the screen, presses esc, then ctrl+u, then the keys / e x i t, then enter, with hc keys and never hc send, then closes the tab with tab.close --id <tab> --confirmed true' $r
 check 'a clean Herdr stop prints nothing' $([ ! -s "$T/out" ] && [ ! -s "$T/err" ]; echo $?)
 reset_stub
 herdr_stop stop herdr:t3
@@ -2269,9 +2283,10 @@ check 'stop with no herdr.tab label and no tab in herdr-app ls exits 6 with one 
 # -- stop and the exit dialog of a session with background work ----------------
 # With a live background task, claude answers /exit with a dialog whose first
 # option, the one in focus, is "Exit and stop tasks". stop reads the screen
-# while a claude stays on the tty, and presses Enter one time only when the
-# screen ends with that dialog. stop_slow <args...>: stop in this process with
-# a wait of 1 second.
+# before the keys, and again while a claude stays on the tty. It presses Enter
+# one time, only when the screen ends with that dialog and did not show it
+# before the keys. stop_slow <args...>: stop in this process with a wait of 1
+# second.
 stop_slow() {
   python3 - "$here" "$@" > "$T/out" 2> "$T/err" <<'PY'
 import sys
@@ -2327,8 +2342,8 @@ r=1; [ "$rc" = 0 ] && [ ! -s "$T/err" ] && python3 - "$STUB_DIR/tmux.log" <<'PY'
 import sys
 s = [l.rstrip("\n") for l in open(sys.argv[1])]
 keys = [l for l in s if l.split("|")[0] in ("send-keys", "capture-pane", "kill-pane")]
-want = ["send-keys|-t|%7|Escape|", "send-keys|-t|%7|C-u|", "send-keys|-t|%7|-l|/exit|", "send-keys|-t|%7|Enter|",
-        "capture-pane|-p|-t|%7|", "send-keys|-t|%7|Enter|", "kill-pane|-t|%7|"]
+want = ["capture-pane|-p|-t|%7|", "send-keys|-t|%7|Escape|", "send-keys|-t|%7|C-u|", "send-keys|-t|%7|-l|/exit|",
+        "send-keys|-t|%7|Enter|", "capture-pane|-p|-t|%7|", "send-keys|-t|%7|Enter|", "kill-pane|-t|%7|"]
 sys.exit(0 if keys == want else 1)
 PY
 check 'stop tmux:<pane> on a session that shows the exit dialog reads the screen, presses Enter one time, and the session ends before the kill-pane with no stderr line' $r
@@ -2355,8 +2370,156 @@ echo '%7' > "$STUB_DIR/tmux-panes"
 echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
 exit_dialog "$STUB_DIR/tmux-screen"
 stop_slow stop 'tmux:%7'
-check 'stop tmux:<pane> with no claude left on the tty reads no screen and sends one Enter' \
-  $([ "$rc" = 0 ] && [ "$(enters_tmux)" = 1 ] && ! grep -sq '^capture-pane|' "$STUB_DIR/tmux.log"; echo $?)
+check 'stop tmux:<pane> with no claude left on the tty reads the screen only before the keys and sends one Enter' \
+  $([ "$rc" = 0 ] && [ "$(enters_tmux)" = 1 ] && [ "$(grep -c '^capture-pane|' "$STUB_DIR/tmux.log")" = 1 ] \
+    && [ "$(grep -E '^(capture-pane|send-keys)' "$STUB_DIR/tmux.log" | sed -n 1p)" = 'capture-pane|-p|-t|%7|' ]; echo $?)
+# The limits of the screen check, in this process.
+r=1; python3 - "$here" "$STUB_DIR/tmux-screen" > "$T/out" 2> "$T/err" <<'PY' && r=0
+import sys
+sys.path.insert(0, sys.argv[1])
+import launcher
+full = open(sys.argv[2]).read()
+show = launcher.shows_exit_dialog
+def swap(old, new):
+    assert old in full, old
+    return full.replace(old, new)
+cases = {
+    "the dialog": (full, True),
+    "the dialog in a frame": ("\n".join("│ %s │" % l for l in full.splitlines()), True),
+    "the dialog with the background option": (swap("   2. Stay", "   2. Move to background and exit\n   3. Stay"), True),
+    "6 lines after Stay": (full + "a\nb\nc\nd\ne\n", True),
+    "7 lines after Stay": (full + "a\nb\nc\nd\ne\nf\n", False),
+    "no Stay line": (swap("   2. Stay\n", ""), False),
+    "no first option": (swap(" ❯ 1. Exit and stop tasks\n", ""), False),
+    "no title": (swap(" Background work is running\n", ""), False),
+    "Stay before the first option": (swap(" ❯ 1. Exit and stop tasks\n   2. Stay", "   1. Stay\n ❯ 2. Exit and stop tasks"), False),
+    "the title after the options": (swap(" Background work is running\n", "") + " Background work is running\n", False),
+    "another line between the options": (swap("   2. Stay", "   2. Approve the command\n   3. Stay"), False),
+    "the labels in sentences": ("The title is Background work is running.\nIts first option is Exit and stop tasks.\nIts last option is Stay.\n", False),
+    "a numbered option after Stay": (full + " ❯ 1. Yes\n", False),
+    "an empty screen": ("", False),
+}
+bad = [name for name, (text, want) in cases.items() if show(text) is not want]
+print(bad)
+sys.exit(1 if bad else 0)
+PY
+check 'the screen check takes the dialog, in a frame and with the background option, and refuses a long tail, a missing line, a wrong order, a line between the options and the labels in sentences' $r
+# exit_confirm and wait_claude_gone, in this process, with no terminal.
+r=1; python3 - "$here" "$STUB_DIR/tmux-screen" > "$T/out" 2> "$T/err" <<'PY' && r=0
+import sys, time
+sys.path.insert(0, sys.argv[1])
+import launcher
+full = open(sys.argv[2]).read()
+Fail = launcher.Fail
+bad = []
+def step(screens, enter_fails=0):
+    """exit_confirm over a list of screens, one per read. An Exception in the
+    list is raised. The first enter_fails presses of Enter fail."""
+    log = []
+    it = iter(screens)
+    def read():
+        log.append("read")
+        s = next(it)
+        if isinstance(s, Exception):
+            raise s
+        return s
+    def enter():
+        log.append("enter")
+        if log.count("enter") <= enter_fails:
+            raise Fail(6, "enter failed")
+    return launcher.exit_confirm(read, enter), log
+c, log = step([full])
+if c is not None or log != ["read"]: bad.append("a dialog before the keys gives no step")
+c, log = step([Fail(6, "read failed")])
+if c is not None: bad.append("a failed first read gives no step")
+c, log = step(["", Fail(6, "read failed"), full])
+if c() is not False or "enter" in log: bad.append("a failed later read presses no Enter and raises nothing")
+if c() is not True or log.count("enter") != 1: bad.append("the read after a failed read can still confirm")
+c, log = step(["", full, full], enter_fails=1)
+if c() is not False: bad.append("a failed Enter is not a confirm")
+if c() is not True or log.count("enter") != 2: bad.append("a failed Enter is tried again at the next poll")
+c, log = step(["", "no dialog"])
+if c() is not False or "enter" in log: bad.append("no dialog, no Enter")
+# wait_claude_gone: one claude stays. The step confirms 1.2 seconds in.
+launcher.STOP_WAIT = 2
+launcher.processes = lambda: {7: {"pid": 7, "tty": "ttys1", "argv": ["claude"]}}
+calls = []
+t0 = time.time()
+def confirm():
+    calls.append(time.time() - t0)
+    return calls[-1] >= 1.2
+left = launcher.wait_claude_gone("ttys1", "tmux:%7", confirm)
+took = time.time() - t0
+if left != {7: ["claude"]}: bad.append("the claude that stays is in the answer")
+if not calls or calls[-1] < 1.2 or sum(1 for c in calls if c >= 1.2) != 1: bad.append("no poll calls the step after it confirmed: %r" % calls)
+if not 3.0 <= took < 4.5: bad.append("the wait starts again at the confirm: %.1f" % took)
+calls2 = []
+t0 = time.time()
+launcher.wait_claude_gone("ttys1", "tmux:%7", lambda: calls2.append(1) or False)
+took = time.time() - t0
+if not 1.9 <= took < 3.0 or len(calls2) < 2: bad.append("a step that never confirms runs at each poll and keeps the wait: %.1f %d" % (took, len(calls2)))
+print(bad)
+sys.exit(1 if bad else 0)
+PY
+check 'the confirm step: no step after a dialog before the keys or a failed first read, no failure from a failed read or Enter, one confirm only, and the wait starts again at the confirm' $r
+# The dialog stays and the claude stays after Enter: stop presses Enter one time.
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+echo '900010 1 ttys961 claude --name x --model opus' > "$STUB_DIR/ps-extra"
+exit_dialog "$STUB_DIR/tmux-screen"
+stop_slow stop 'tmux:%7'
+check 'stop tmux:<pane> presses Enter on the exit dialog one time only when the dialog and the claude stay, then kills the pane' \
+  $([ "$rc" = 0 ] && [ "$(enters_tmux)" = 2 ] && [ "$(grep -c 900010 "$T/err")" = 1 ] && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log"; echo $?)
+# The words of the dialog are on the screen before the keys: /exit did not cause them.
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+echo '900010 1 ttys961 claude --name x --model opus' > "$STUB_DIR/ps-extra"
+exit_dialog "$STUB_DIR/tmux-screen"
+exit_dialog "$STUB_DIR/tmux-screen-before"
+: > "$STUB_DIR/confirm-ends"
+stop_slow stop 'tmux:%7'
+check 'stop tmux:<pane> sends no second Enter when the screen showed the exit dialog before the keys' \
+  $([ "$rc" = 0 ] && [ "$(enters_tmux)" = 1 ] && [ "$(grep -c '^capture-pane|' "$STUB_DIR/tmux.log")" = 1 ] && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log"; echo $?)
+# A screen read that fails, and an Enter that fails: no failure of stop.
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+echo '900010 1 ttys961 claude --name x --model opus' > "$STUB_DIR/ps-extra"
+exit_dialog "$STUB_DIR/tmux-screen"
+: > "$STUB_DIR/screen-fail"
+: > "$STUB_DIR/confirm-ends"
+stop_slow stop 'tmux:%7'
+check 'stop tmux:<pane> with a failing capture-pane exits 0, sends no second Enter and kills the pane' \
+  $([ "$rc" = 0 ] && [ "$(enters_tmux)" = 1 ] && ! grep -sq capture-pane "$T/err" && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log"; echo $?)
+reset_stub
+echo '%7' > "$STUB_DIR/tmux-panes"
+echo '%7 /dev/ttys961' > "$STUB_DIR/tmux-ttys"
+echo '900010 1 ttys961 claude --name x --model opus' > "$STUB_DIR/ps-extra"
+exit_dialog "$STUB_DIR/tmux-screen"
+: > "$STUB_DIR/tmux-enter-fail"
+stop_slow stop 'tmux:%7'
+check 'stop tmux:<pane> with a failing Enter on the exit dialog exits 0 with no line for it, and kills the pane' \
+  $([ "$rc" = 0 ] && [ "$(enters_tmux)" -ge 2 ] && ! grep -sq send-keys "$T/err" && grep -sq '^kill-pane|-t|%7|$' "$STUB_DIR/tmux.log"; echo $?)
+reset_stub
+echo 'SESS-1' > "$STUB_DIR/osa-sessions"
+echo 'SESS-1 /dev/ttys961' > "$STUB_DIR/osa-ttys"
+echo '900010 1 ttys961 claude --name x --model opus' > "$STUB_DIR/ps-extra"
+exit_dialog "$STUB_DIR/osa-screen"
+: > "$STUB_DIR/screen-fail"
+stop_slow stop iterm2:SESS-1
+check 'stop iterm2:<id> with a failing screen read exits 0, sends no Enter and closes the tab' \
+  $([ "$rc" = 0 ] && ! grep -sq '^-|enter|' "$STUB_DIR/osa.log" && ! grep -sq osascript "$T/err" && grep -sq '^-|stop|SESS-1|$' "$STUB_DIR/osa.log"; echo $?)
+reset_stub
+hc_get t3 900041 spaA tb3
+echo 'tb3' > "$STUB_DIR/herdr-tabs"
+printf '900041 1 ttys921 /bin/zsh -l\n900042 900041 ttys921 claude --name hd-a --model opus\n' > "$STUB_DIR/ps-extra"
+exit_dialog "$STUB_DIR/hc-screen"
+: > "$STUB_DIR/screen-fail"
+stop_slow stop herdr:t3
+check 'stop herdr:<address> with a failing hc read exits 0, presses no second enter and closes the tab' \
+  $([ "$rc" = 0 ] && [ "$(grep -cx 'keys|t3|enter|' "$STUB_DIR/hc.log")" = 1 ] && ! grep -sq 'hc read' "$T/err" && grep -sq 'tab.close|--id|tb3|' "$STUB_DIR/herdr.log"; echo $?)
 reset_stub
 echo 'SESS-1' > "$STUB_DIR/osa-sessions"
 echo 'SESS-1 /dev/ttys961' > "$STUB_DIR/osa-ttys"
@@ -2365,7 +2528,7 @@ exit_dialog "$STUB_DIR/osa-screen"
 : > "$STUB_DIR/confirm-ends"
 stop_slow stop iterm2:SESS-1
 r=1; [ "$rc" = 0 ] && [ ! -s "$T/err" ] \
-  && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | tr '\n' ' ')" = '-|exit|SESS-1| -|screen|SESS-1| -|enter|SESS-1| -|stop|SESS-1| ' ] \
+  && [ "$(grep -v '|ttys|' "$STUB_DIR/osa.log" | tr '\n' ' ')" = '-|screen|SESS-1| -|exit|SESS-1| -|screen|SESS-1| -|enter|SESS-1| -|stop|SESS-1| ' ] \
   && grep -sqF 'contents of s' "$STUB_DIR/osa-scripts" && grep -sqF 'write text ""' "$STUB_DIR/osa-scripts" && r=0
 check 'stop iterm2:<id> on a session that shows the exit dialog reads the screen, presses Enter one time, and the session ends before the close with no stderr line' $r
 reset_stub
@@ -2388,7 +2551,7 @@ import sys
 hc = [l.rstrip("\n") for l in open(sys.argv[1])]
 hd = [l.rstrip("\n") for l in open(sys.argv[2])]
 keys = [l for l in hc if not l.startswith("get|")]
-assert keys == ["keys|t3|esc|", "keys|t3|ctrl+u|", "keys|t3|/|e|x|i|t|", "keys|t3|enter|", "read|t3|", "keys|t3|enter|"], keys
+assert keys == ["read|t3|", "keys|t3|esc|", "keys|t3|ctrl+u|", "keys|t3|/|e|x|i|t|", "keys|t3|enter|", "read|t3|", "keys|t3|enter|"], keys
 assert [l for l in hd if l.startswith("do|")] == ["do|tab.close|--id|tb3|--confirmed|true|"], hd
 PY
 check 'stop herdr:<address> on a session that shows the exit dialog reads the screen, presses enter one time, and the session ends before the tab.close with no stderr line' $r

@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: "Make this session an orchestrator of crew project-lead sessions. It takes one thing, a group of tickets, a milestone or project, or one large ticket, splits the work with no approval step, starts one project lead per item in its own terminal tab and worktree, answers their questions, keeps an inbox of what needs the principal, merges in order, and slows down before the plan usage limit. Use for 'orchestrate these tickets', 'run this milestone', 'run these in parallel', 'split this ticket and run the parts', 'crew orchestrator', 'resume orchestrator <record name>', 'I renamed the orchestrator'."
+description: "Make this session an orchestrator of crew project-lead sessions. It takes one thing, a group of tickets, a milestone or project, or one large ticket, splits the work with no approval step, starts one project lead per item in its own terminal tab and worktree, or one subagent for a small item, answers their questions, keeps an inbox of what needs the principal, merges in order, and slows down before the plan usage limit. Use for 'orchestrate these tickets', 'run this milestone', 'run these in parallel', 'split this ticket and run the parts', 'crew orchestrator', 'resume orchestrator <record name>', 'I renamed the orchestrator'."
 ---
 
 # Orchestrator

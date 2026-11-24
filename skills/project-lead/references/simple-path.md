@@ -368,8 +368,10 @@ steps). The PR stays a draft until the goal check is done. `goal-check.md`'s
 "Mark the PR ready" owns that step. The call records `pr_url`, sets the
 deliverable `draft-pr-opened` and `run_state: delivered`, and writes
 `run.review_pending` with the head the goal check is owed on, in one write, so
-a session that dies there still owes the review (`skeptical-review.md`). A
-human merges the PR. The call also prices the run (`autonomy-contract.md`),
+a session that dies there still owes the review (`skeptical-review.md`). It
+also starts the watcher held: the watcher queues every PR event and starts no
+window session until "The delivered window" below releases it. A human merges
+the PR. The call also prices the run (`autonomy-contract.md`),
 and it prints the processes the run left listening. Stop each one that is
 yours (§15.50).
 
@@ -406,9 +408,9 @@ both. When the call wrote a `FAIL orch` line, write the `decisions.md` note
 from it. Send the report to the principal the way the goal arrived
 (`autonomy-contract.md`). A pane is not a report when nobody is watching it.
 
-**The report ends the work, not the session.** Invoke the skill
-`crew:delivered-window` with the `Skill` tool, then read "The goal check"
-below.
+**The report ends the work. The goal check follows it.** Invoke the skill
+`crew:delivered-window` with the `Skill` tool, so its files resolve, then read
+"The goal check" below.
 
 ## The goal check
 
@@ -427,7 +429,10 @@ adjudication, the grouping, the patch and the reply.
 
 ## The delivered window
 
-The skill `crew:delivered-window` owns the session after the hand-over, on
-every path: the watch on the PR, every message, the patch rounds, the
-go-ahead gate and the ship word. "End the run" invokes it, and `resume.md`
-invokes it on a resume.
+The skill `crew:delivered-window` owns the window after the hand-over, on
+every path. A watcher polls the PR, and a window session handles each burst of
+events: the messages, the patch rounds, the go-ahead gate and the ship word.
+You run none of them. `crew:delivered-window`'s "The hand-over" owns your last
+steps, which come after the goal check. Then you end your turn. You start no
+watch of your own, and you run no more turns for PR events. `resume.md` owns
+a resume of a delivered run.

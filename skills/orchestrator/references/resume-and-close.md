@@ -90,6 +90,13 @@ Do these steps in this order.
      Send it to a resumed implementer when `ListAgents` shows its name. A
      resumed tab can wait on the trust dialog, as SKILL.md's "The goal
      message" says for a new tab.
+   - **A delivered item.** An item at `pr` or `merged` whose project lead
+     handed over has no project lead session to wake. Send it no rejoin
+     message. Run `window-watch.py ensure <record-dir>`, which restarts a
+     dead watcher, with the item's goal record: the directory whose
+     `state.json` holds this item in `run.orchestrator`. Never run `resume`
+     for the project lead tab of a delivered item. `say` is how you reach it
+     (SKILL.md's "A word to a delivered item").
    - **No goal.** An item with a `launch` whose `told` holds no goal message
      never got its goal. A rename message or a rejoin message is not a goal.
      Send the goal now, as SKILL.md's "The goal message" says. Never send a
@@ -145,7 +152,9 @@ also runs on the principal's word for an item that stops early: write
 
 1. **The implementer's processes.** Tell the implementer, with `told`, to stop
    each process and service that it started for the item, such as a server,
-   a container, a watcher or a local stack. The message carries the
+   a container, a watcher or a local stack. For a delivered item, send the
+   message with `say` instead, and the watcher closes its own window tab at
+   the ship word (`crew:delivered-window`'s "The word that the work shipped"). The message carries the
    `Orchestrator:` line and your current session name, as SKILL.md's "A
    rename" says, so an implementer that missed a rename answers to the
    current name. It answers with what it stopped.

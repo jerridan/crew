@@ -112,7 +112,7 @@ The reply file is `skeptical-review.md`'s ledger, and
   nothing, as "One round" says.
 - **`patch round needed` opens a round of the delivered window**, never a
   fix round on a package: the packages are integrated and the work is handed
-  over.
+  over. Add the pushed head to `run.window.own.pushes` before the push.
 - **Name each goal miss to the principal**, with the package that answers it,
   in your next message.
 
@@ -146,12 +146,12 @@ from GitHub:
 gh pr view <pr_url> --json isDraft -q .isDraft
 ```
 
-`true` means write `crew-record.py run set watch.draft false`, then run `gh pr
-ready <pr_url>`, and tell the principal in your next message that the PR is
-ready for review. The write tells the PR watch that this flip is yours. Stop
-the monitor before the write. Arm it again after `gh pr ready`, as
-`crew:delivered-window`'s "Watch the PR" says, so the new command starts from
-`false` and reports no `ready`. `false` means do nothing. The check reads
+`true` means add the time of the flip to `run.window.own.ready` with
+`crew-record.py run set`, then run `gh pr ready <pr_url>`, and tell the
+principal in your next message that the PR is ready for review. The write tells
+the watcher that this flip is yours, so it queues no `ready` line. The watcher
+started at the hand-over, so every ready flip and every push after that
+writes its `own` field first, yours included. `false` means do nothing. The check reads
 GitHub, not the record, so a session killed between the commands can run it
 again safely.
 
@@ -161,3 +161,11 @@ condition holds.
 
 **Mark the PR ready once.** A later change request or patch round pushes to a
 PR that is already ready. Never turn it back into a draft.
+
+## The last call
+
+After the check is adjudicated, its patch is pushed, and the ready line is
+said, run `window-watch.py release <record-dir>`. It is your last call. The
+watcher then starts the first window session for the events it queued while
+you worked. `crew:delivered-window`'s "The hand-over" owns the steps around
+it, and `simple-path.md`'s "End the run" started the watcher held.

@@ -185,7 +185,8 @@ pushes nothing while one stands, and entry 7 sends it no reply. `<round>` is
 `review_pending.round`, and only entries 8–13 use `<round>`. **Every entry that runs git or dispatches an IC
 assumes the branch is back** — do "Get the branch back" from
 `crew:delivered-window`'s "A change request" once, before you read the list.
-Arm the watch once too, by that skill's "Watch the PR".
+Run `window-watch.py ensure` once too, and claim the slot, as `resume.md`
+says.
 
 1. **A `run.rounds` entry and its ledger file disagree on whether the
    round's open finished.** `crew:delivered-window`'s "Findings from a
@@ -238,10 +239,11 @@ Arm the watch once too, by that skill's "Watch the PR".
    gated round's work is in. Entries 2, 4 and 6 finish a round whose work is
    still open.
 1b. **`run.watch.held` holds items of a kind with no open round of that
-   kind.** The kill came after the open round's reply was sent, and before
-   the held items opened their own round. Open it, as
-   `crew:delivered-window`'s "Findings from a review" says for held items.
-   Re-enter.
+   kind.** A record from before the window sessions can hold them. The kill
+   came after the open round's reply was sent, and before the held items
+   opened their own round. Open it, as `crew:delivered-window`'s
+   `references/patch-mode.md` says, then run `watch-step.py release
+   <record-dir> <id>...`. Re-enter.
 2. **An unfinished ledger names a package id that `packages[]` does not
    hold.** Create that package from the ledger. Re-enter. **This comes right
    after entry 1** because a kill during package creation must not look like
@@ -262,9 +264,7 @@ Arm the watch once too, by that skill's "Watch the PR".
    entry is where it happens.
 5. **The branch head is not on the remote branch**, the branch has a remote,
    no push was refused for it, and no round the gate covers has
-   `go_ahead_at: null`. Push. After a push that succeeded, write
-   `run.watch.head` to the pushed sha with `crew-record.py <record-dir> run
-   set watch.head '"<sha>"'`. Re-enter. **This is judged on the
+   `go_ahead_at: null`. Add the head sha to `run.window.own.pushes` first, then push. Re-enter. **This is judged on the
    branch, not on the review**, so a head that no round reviews still
    reaches the remote.
 6. **An unfinished ledger has an accepted entry whose package is terminal —

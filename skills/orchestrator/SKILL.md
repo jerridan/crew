@@ -330,7 +330,8 @@ of the group share:
 2. Take the intersection of each pair.
 
 PRs that share a file conflict. Merge them one at a time, in the group order.
-After each merge, tell the next implementer to rebase.
+After each merge, tell the next implementer to rebase, as "A word to a
+delivered item" says.
 
 ## The merge
 
@@ -373,8 +374,21 @@ only failed condition is the approval: the merge value is `needs review`.
 With no `Merge` section, a merge value of `needs review` means that the PR
 waits for a human approval. Put a notice in the inbox, with the PR link.
 
+**A word to a delivered item.** A project lead that handed over ends its
+turn, and a message to its tab wakes its whole build context. So send each
+word to a delivered item, the merge word, the rebase word and a go-ahead
+answer, with:
+
+```bash
+python3 <plugin-dir>/skills/delivered-window/scripts/window-watch.py say --item <orch-name>/<item> --from <name> "<text>"
+```
+
+The watcher reads it as an event and starts a window session. An item that
+has not handed over takes `SendMessage` as before. A subagent item has no
+window session, and `say` does not apply to it.
+
 **After the merge.** When the merge command succeeded, or the queue merged
-the PR, tell the implementer. Write `pace.slots.busy` one lower. Then start
+the PR, tell the implementer, by `say` when the item is delivered. Write `pace.slots.busy` one lower. Then start
 the next rebase in the group. Also write it one lower when an implementer
 item reaches `closed` with no merge. A subagent item has no implementer and
 no slot: `subagent-items.md`'s "The PR" says what follows its merge.
@@ -429,8 +443,8 @@ at each change of state.
 An implementer item ends with these steps, in this order:
 
 1. The PR merges ("The merge").
-2. You tell the implementer that the PR merged.
-3. The implementer writes the stage `merged`, then `shipped` at the ship
+2. You tell the implementer that the PR merged, by `say`.
+3. A window session writes the stage `merged`, then `shipped` at the ship
    word (`crew:delivered-window`). When the repo has a deploy, the ship word
    waits for it.
 4. The implementer's run closes.

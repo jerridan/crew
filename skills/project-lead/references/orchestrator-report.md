@@ -29,9 +29,9 @@ you make:
 | Light path | `build` at each IC dispatch; then `review` and `pr` as on the change path |
 | Investigation path | `spec` while you diagnose; then the change path's calls for a fix ending, or `closed` for a report ending |
 
-A goal run runs one goal check, so no later review writes a stage. The
-delivered window writes `merged` at the merge, `shipped` at the ship word,
-and `closed` when the watch reports the PR closed with no merge. A
+A goal run runs one goal check, so no later review writes a stage. A
+window session writes `merged` at the merge, `shipped` at the ship word, and
+`closed` when the watcher reports the PR closed with no merge. A
 `crew:review` run writes no stage call.
 
 Write each question with `ask <id> "<text>"` before you send it to the
@@ -40,6 +40,15 @@ principal. `ask` prints a question id. Send the question by `SendMessage`, as
 and name that id in it. The answer arrives as a message, and the orchestrator
 records it with `answer`. If no session is addressable, the failed-send rule
 of `autonomy-contract.md` holds.
+
+## After the hand-over
+
+The project lead ends at the hand-over, so no project lead session reads an
+orchestrator message afterwards. The orchestrator sends its merge word, its
+rebase word and a go-ahead answer by `say`, and
+`skills/orchestrator/SKILL.md`'s "A word to a delivered item" owns the
+command. A window session sends its question by `SendMessage`, as above, and
+the answer comes by `say`.
 
 ## A new orchestrator name
 

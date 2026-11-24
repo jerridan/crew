@@ -16,8 +16,18 @@ from pathlib import Path
 # A `delivered` run is not here. After the hand-over the project lead's
 # session and each window session may close, and the run stays `delivered`: a
 # watcher with no model owns the PR watch, and `window-watch.py ensure` brings
-# it back. Only a run that builds work dies with its session.
+# it back. Only a run that builds work dies with its session. One exception:
+# `crew-step.py hand-over` starts the watcher held, and only the project lead's
+# `window-watch.py release` lets it start a session. A project lead that ends
+# before the release leaves a held watcher and a run nobody finishes, so that
+# run is marked interrupted (`run.window.hold` is true).
 LIVE_STATES = ("active", "blocked")
+
+
+def is_live(run: dict) -> bool:
+    if run.get("run_state") in LIVE_STATES:
+        return True
+    return run.get("run_state") == "delivered" and (run.get("window") or {}).get("hold") is True
 
 
 def crew_roots() -> list[Path]:
@@ -85,7 +95,7 @@ def interrupt_run(state_path: Path, session_id: str) -> bool:
         run = state.get("run") or {}
         if session_id not in run.get("session_ids", []):
             return False
-        if run.get("run_state") not in LIVE_STATES:
+        if not is_live(run):
             return False
         run["run_state"] = "interrupted"
         write_json(state_path, state)

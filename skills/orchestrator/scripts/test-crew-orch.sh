@@ -640,6 +640,7 @@ for s in d["sections"]:
         pr = r["pr"]
         assert pr is None or (is_int(pr["number"]) and pr["label"] == f"#{pr['number']}" and isinstance(pr["url"], str)), r
         assert link(r["ticket"]) and str_or_none(r["launch_tab"]), r
+        assert isinstance(r["subagent"], bool), r
         if s["kind"] == "group":
             assert r["ticket"] is None, ("a grouped row shows a ticket", r)
 assert is_int(d["done"]), d["done"]
@@ -715,6 +716,120 @@ python3 -c 'import json,sys; json.load(sys.stdin)' <"$TMP/bj" || fail "board --j
 python3 "$TMP/check_json.py" "$TMP/bj" || fail "a field of board --json is missing or of the wrong type"
 CREW_ORCH_NOW=$pin orch board --json --urls >"$TMP/bj2" || fail "board --json --urls failed"
 cmp -s "$TMP/bj" "$TMP/bj2" || fail "--urls changes the JSON view"
+pass
+
+# ---------------------------------------------------------------- subagent items
+# An item that a subagent of the orchestrator runs, with no implementer
+# session: the `subagent` field, `item <id> pr none`, and its board row.
+subs() { python3 "$ORCH_PY" --orch subs "$@"; }
+sjcheck() {
+  python3 "$ORCH_PY" --orch subs show >"$TMP/subs.json" || fail "show failed"
+  python3 - "$TMP/subs.json" "$1" <<'PY' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PY
+}
+SUBS="$CREW_RECORD_ROOT/orchestrators/subs/orchestrator.json"
+
+STEP="subagent: item add writes subagent null"
+expect_exit 0 subs init
+expect_exit 0 subs item add tickets --title "Move the tickets" --repo owner/dash
+expect_exit 0 subs item add impl --title "Implementer work" --repo owner/dash
+sjcheck 's["items"]["tickets"]["subagent"] is None and s["items"]["impl"]["subagent"] is None'
+pass
+
+STEP="subagent: set subagent takes an object, and subagent.<key> merges"
+expect_exit 0 subs item tickets set subagent '{"name": "sub-tickets", "model": "sonnet", "worktree": null, "branch": null}'
+expect_exit 0 subs item tickets set subagent.outcome '"moved 12 tickets"'
+expect_exit 0 subs item tickets set subagent.ready '"ready abc1234: no findings"'
+sjcheck 's["items"]["tickets"]["subagent"] == {"name": "sub-tickets", "model": "sonnet", "worktree": None, "branch": None, "outcome": "moved 12 tickets", "ready": "ready abc1234: no findings"}'
+pass
+
+STEP="subagent: a bad key, a bad value or a bad object exits 2 and writes nothing"
+before=$(cat "$SUBS")
+for args in 'subagent.tab "x"' 'subagent.name 3' 'subagent [1]' 'subagent {"name":"a","tab":"b"}' 'subagent {"name":3}' 'subagent "sub-x"'; do
+  # shellcheck disable=SC2086
+  set -- $args
+  expect_exit 2 subs item impl set "$1" "$2"
+  one_line_err
+done
+[ "$before" = "$(cat "$SUBS")" ] || fail "a refused subagent write changed the record"
+pass
+
+STEP="subagent: a subagent item takes no launch, and an item with a launch takes no subagent"
+expect_exit 2 subs item tickets set launch '{"tab": "tmux:%1"}'
+one_line_err
+expect_exit 2 subs item tickets set launch.tab '"tmux:%1"'
+one_line_err
+expect_exit 0 subs item impl set launch '{"tab": "tmux:%2", "session_name": "impl"}'
+expect_exit 2 subs item impl set subagent '{"name": "sub-impl"}'
+one_line_err
+expect_exit 2 subs item impl set subagent.name '"sub-impl"'
+one_line_err
+expect_exit 0 subs item impl set subagent null
+sjcheck 's["items"]["impl"]["subagent"] is None and s["items"]["impl"]["launch"]["tab"] == "tmux:%2"'
+pass
+
+STEP="subagent: the escalation clears pr, github and subagent, then a launch is allowed"
+expect_exit 0 subs item add esc --title "Larger than it looked" --repo owner/dash
+expect_exit 0 subs item esc set subagent '{"name": "sub-esc", "model": "sonnet", "worktree": "/w/esc", "branch": "worktree-sub-esc"}'
+expect_exit 0 subs item esc pr 501
+cat >"$TMP/gh/pr-501.json" <<'J'
+{"state": "OPEN", "isDraft": false, "reviewDecision": null, "mergeStateStatus": "CLEAN", "statusCheckRollup": []}
+J
+cat >"$TMP/gh/queue-501.json" <<'J'
+{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}
+J
+expect_exit 0 subs refresh esc
+sjcheck 's["items"]["esc"]["github"] is not None and s["items"]["esc"]["merge"] == "can merge"'
+expect_exit 2 subs item esc pr nothing
+one_line_err
+expect_exit 0 subs item esc pr none
+expect_exit 0 subs item esc set subagent null
+expect_exit 0 subs stage esc queued
+sjcheck 's["items"]["esc"]["pr"] is None and s["items"]["esc"]["github"] is None and s["items"]["esc"]["merge"] == "no PR" and s["items"]["esc"]["subagent"] is None'
+expect_exit 0 subs refresh
+sjcheck 's["items"]["esc"]["github"] is None'
+expect_exit 0 subs item esc set launch '{"tab": "tmux:%3"}'
+pass
+
+STEP="subagent: an old record with no subagent key reads as null and takes a write"
+python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p)); del s["items"]["esc"]["subagent"]; json.dump(s, open(p, "w"))' "$SUBS"
+expect_exit 0 subs board --json
+sjcheck '"subagent" in s["items"]["esc"] and s["items"]["esc"]["subagent"] is None'
+python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p)); del s["items"]["impl"]["subagent"]; json.dump(s, open(p, "w"))' "$SUBS"
+expect_exit 0 subs item add old2 --title "Old" --repo owner/dash
+python3 -c 'import json,sys; p=sys.argv[1]; s=json.load(open(p)); del s["items"]["old2"]["subagent"]; json.dump(s, open(p, "w"))' "$SUBS"
+expect_exit 0 subs item old2 set subagent.name '"sub-old2"'
+sjcheck 's["items"]["old2"]["subagent"] == {"name": "sub-old2", "model": None, "worktree": None, "branch": None, "outcome": None, "ready": None}'
+pass
+
+STEP="subagent: the board row says subagent, and the outcome takes the place of doing"
+expect_exit 0 subs stage tickets build --doing "moves the tickets"
+subs board --json >"$TMP/sbj" || fail "board --json failed"
+python3 "$TMP/check_json.py" "$TMP/sbj" || fail "a field of board --json is missing or of the wrong type"
+python3 - "$TMP/sbj" <<'PY' || fail "the subagent rows are wrong: $(cat "$TMP/sbj")"
+import json, sys
+d = json.load(open(sys.argv[1]))
+rows = {r["id"]: r for s in d["sections"] for r in s["rows"]}
+assert rows["tickets"]["subagent"] is True, rows["tickets"]
+assert rows["tickets"]["text"] == "subagent · moved 12 tickets", rows["tickets"]["text"]
+assert rows["old2"]["subagent"] is True and rows["old2"]["text"] == "subagent", rows["old2"]
+assert rows["impl"]["subagent"] is False and rows["esc"]["subagent"] is False, (rows["impl"], rows["esc"])
+assert not rows["impl"]["text"].startswith("subagent"), rows["impl"]
+PY
+subs board >"$TMP/sbt" || fail "board failed"
+grep -E '^ +[0-9]+ tickets .*subagent · moved 12 tickets' "$TMP/sbt" >/dev/null || fail "the text row of a subagent item: $(cat "$TMP/sbt")"
+python3 "$TMP/same_board.py" "$TMP/sbj" "$TMP/sbt" || fail "the subagent board views differ"
+expect_exit 0 subs item tickets set subagent.outcome null
+subs board --json >"$TMP/sbj" || fail "board --json failed"
+python3 - "$TMP/sbj" <<'PY' || fail "with no outcome the row text is not subagent · doing"
+import json, sys
+d = json.load(open(sys.argv[1]))
+rows = {r["id"]: r for s in d["sections"] for r in s["rows"]}
+assert rows["tickets"]["text"] == "subagent · moves the tickets", rows["tickets"]["text"]
+PY
 pass
 
 STEP="R1 board --json holds the values of the fleet record"

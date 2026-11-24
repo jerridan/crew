@@ -2,18 +2,17 @@
 """The mechanical steps of the PR watch, each in one call.
 
 usage:
-  watch-step.py arm <record-dir> [--resume]
   watch-step.py cursor <record-dir> [--resume]
   watch-step.py deploy <record-dir> --source <name> [--environment <e>]
-                [--workflow <w>] [--timeout <minutes>]
+                [--workflow <w>] [--timeout <minutes>] [--setup-only]
   watch-step.py ack <record-dir> [--hold <id>...]     (wake lines on stdin)
   watch-step.py release <record-dir> <id>...
 
-`arm` writes the cursor and the draft state as `pr-watch.md` says, then runs
-`pr-watch.sh <record-dir>` in its own process slot, so the stdout is the
-poll's. `cursor` writes the first cursor alone. `deploy` writes `run.deploy`
+`cursor` writes the first cursor and nothing else. `deploy` writes `run.deploy`
 as `SKILL.md`'s "The deploy watch" says, then runs the poll in deploy mode.
-`ack` makes the cursor write after a wake. `release` removes held items.
+With `--setup-only` it writes `run.deploy` and returns, and `window-watch.py`
+polls. `ack` makes the cursor write for a batch of poll lines. `release`
+removes held items. The watcher runs `cursor`, `deploy --setup-only` and `ack`.
 Every write goes through `crew-record.py`. A failed step prints
 `watch-step.py: <message>` on stderr and exits 2.
 
@@ -157,27 +156,12 @@ def pick_deliverable(state):
     return pr_of(state)[0]
 
 
-def draft_write(record, pr):
-    state = load_state(record)
-    url = pr_of(state)[1]
-    if pr is None:
-        pr = pr_read(url)
-    if pr.get("isDraft") is True and not state["run"]["watch"].get("draft"):
-        rec(record, "run", "set", "watch.draft", "true")
-
-
 def run_poll(args):
     sys.stdout.flush()
     try:
         os.execvp("bash", ["bash", POLL, *args])
     except OSError as exc:
         fail(f"cannot run the poll {POLL}: {exc}")
-
-
-def cmd_arm(a):
-    pr = ensure_cursor(a.record, a.resume)
-    draft_write(a.record, pr)
-    run_poll([a.record])
 
 
 def cmd_cursor(a):
@@ -199,6 +183,8 @@ def cmd_deploy(a):
     elif deploy.get("ended"):
         rec(a.record, "run", "set", "deploy.since", json.dumps(now()))
         rec(a.record, "run", "set", "deploy.ended", "null")
+    if a.setup_only:
+        return
     run_poll([a.record, "deploy"])
 
 
@@ -234,7 +220,7 @@ def cmd_ack(a):
     state = load_state(a.record)
     watch = (state.get("run") or {}).get("watch")
     if not isinstance(watch, dict):
-        fail("run.watch is absent; arm the monitor first")
+        fail("run.watch is absent; run window-watch.py start first")
     new = json.loads(json.dumps(watch))
     new.setdefault("seen_ids", [])
     new.setdefault("held", [])
@@ -286,7 +272,7 @@ def cmd_release(a):
 def main():
     p = Parser(prog="watch-step.py")
     sub = p.add_subparsers(dest="cmd", required=True, parser_class=Parser)
-    for name, fn in (("arm", cmd_arm), ("cursor", cmd_cursor)):
+    for name, fn in (("cursor", cmd_cursor),):
         s = sub.add_parser(name)
         s.add_argument("record")
         s.add_argument("--resume", action="store_true")
@@ -297,6 +283,7 @@ def main():
     s.add_argument("--environment")
     s.add_argument("--workflow")
     s.add_argument("--timeout", type=int)
+    s.add_argument("--setup-only", action="store_true")
     s.set_defaults(fn=cmd_deploy)
     s = sub.add_parser("ack")
     s.add_argument("record")

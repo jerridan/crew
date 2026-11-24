@@ -214,7 +214,7 @@ case "$mode" in
 esac
 
 jq -e '.run.watch.last_polled_at and .run.watch.head' "$state" >/dev/null ||
-  die 'run.watch needs last_polled_at and head; write it as pr-watch.md "Arm the monitor" says'
+  die 'run.watch needs last_polled_at and head; run window-watch.py start, which writes it'
 export SINCE
 SINCE=$(jq -r '.run.watch.last_polled_at' "$state")
 seen=" $(jq -r '(.run.watch.seen_ids // []) | join(" ")' "$state") "

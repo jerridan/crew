@@ -7,15 +7,17 @@ any error exits 0 and changes nothing, because this hook runs in every session
 on the machine, and most of them have no crew run.
 """
 
+import fcntl
 import json
 import os
 import sys
 from pathlib import Path
 
-# A `delivered` run has handed over its work and its session waits for the
-# principal's word that the work shipped (`record-format.md`). Its session is
-# as live as an `active` one, so its death is marked the same way.
-LIVE_STATES = ("active", "blocked", "delivered")
+# A `delivered` run is not here. After the hand-over the project lead's
+# session and each window session may close, and the run stays `delivered`: a
+# watcher with no model owns the PR watch, and `window-watch.py ensure` brings
+# it back. Only a run that builds work dies with its session.
+LIVE_STATES = ("active", "blocked")
 
 
 def crew_roots() -> list[Path]:
@@ -76,16 +78,19 @@ def orphan_worktrees(record_dir: Path, session_id: str) -> None:
 
 def interrupt_run(state_path: Path, session_id: str) -> bool:
     """Mark the run interrupted. `True` when this call is what changed it."""
-    state = read_json(state_path)
-    run = state.get("run") or {}
-    if session_id not in run.get("session_ids", []):
-        return False
-    if run.get("run_state") not in LIVE_STATES:
-        return False
-    run["run_state"] = "interrupted"
-    write_json(state_path, state)
-    orphan_worktrees(state_path.parent, session_id)
-    return True
+    # The same lock `crew-record.py` takes, so this write cannot erase one.
+    with (state_path.parent / "state.json.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        state = read_json(state_path)
+        run = state.get("run") or {}
+        if session_id not in run.get("session_ids", []):
+            return False
+        if run.get("run_state") not in LIVE_STATES:
+            return False
+        run["run_state"] = "interrupted"
+        write_json(state_path, state)
+        orphan_worktrees(state_path.parent, session_id)
+        return True
 
 
 def main() -> None:

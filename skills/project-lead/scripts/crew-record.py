@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Write a crew record's state.json: one change per call, timestamped, in one
-atomic replace.
+atomic replace, under one exclusive lock per record (`state.json.lock`).
 
 usage:
   crew-record.py <record-dir> init <goal> <goal-slug> <session-id>
@@ -110,6 +110,7 @@ checks none of them. A `set` value is JSON: `3`, `"text"`, `null`, `["a"]`.
 from __future__ import annotations
 
 import datetime
+import fcntl
 import json
 import os
 import re
@@ -478,7 +479,7 @@ def round_cmd(run: dict, rest: list[str]) -> None:
         entry["replied_at"] = now()
 
 
-def main(argv: list[str]) -> None:
+def main_locked(argv: list[str]) -> None:
     if argv and argv[0] in ("--help", "-h"):
         print(__doc__)
         sys.exit(0)
@@ -626,6 +627,24 @@ def main(argv: list[str]) -> None:
 
     write_json(state_path, state)
     print("ok")
+
+
+def main(argv: list[str]) -> None:
+    """Run one command under one exclusive lock per record.
+
+    Two writers that read the same state.json would each write back their own
+    copy, and the second replace would erase the first one's change. The lock
+    covers the whole read, change and write, so a call waits for the one before
+    it.
+    """
+    if len(argv) >= 2 and argv[1] == "init":
+        Path(argv[0]).mkdir(parents=True, exist_ok=True)
+    if len(argv) >= 2 and argv[0] not in ("--help", "-h") and Path(argv[0]).is_dir():
+        with (Path(argv[0]) / "state.json.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            main_locked(argv)
+    else:
+        main_locked(argv)
 
 
 if __name__ == "__main__":

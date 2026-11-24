@@ -38,11 +38,11 @@ case "$*" in
   "api --paginate repos/o/r/pulls/7/comments"*) cat "$D/pulls.json"; exit 0 ;;
   "api --paginate repos/o/r/issues/7/comments"*) cat "$D/issues.json"; exit 0 ;;
   "api repos/o/r/pulls/comments/"*)
-    id=${*##*/}; id=${id%% *}
+    last=${!#}; id=${last##*/}
     [ -f "$D/comment-$id.json" ] || exit 1
     cat "$D/comment-$id.json"; exit 0 ;;
   *"-X POST repos/o/r/pulls/7/comments/"*"/replies"*)
-    first=${*#*comments/}; first=${first%%/*}
+    all="$*"; first=${all#*comments/}; first=${first%%/*}
     [ -e "$D/fail-post-$first" ] && exit 1
     next; mkdir -p "$D/posted"; cp "$bodyfile" "$D/posted/reply-$first-$n"
     echo "{\"id\": $((9000 + n))}"; exit 0 ;;
@@ -116,7 +116,6 @@ run send "$REC" r1 "$RF"
 chk 'send to+resolve: the reply goes to the thread of the to comment' "$(calls | grep -c 'comments/300/replies')" 1
 chk 'send to+resolve: the marker holds the item id' "$(body reply-300-1)" "$(printf 'Resolved at abc123.\n%s\nx' "$(MARK F1)")"
 chk 'send to+resolve: output' "$out" "$(printf 'posted F1 9001\nresolved F1 T3')"
-chk 'send to+resolve: the mutation names the thread' "$(calls | grep -c 'resolveReviewThread.*\|id=T3')" "$(calls | grep -c 'resolveReviewThread.*\|id=T3')"
 chk 'send to+resolve: one mutation call with id=T3' "$(calls | grep 'resolveReviewThread' | grep -c 'id=T3')" 1
 chk 'send resolve: resolve comes after the reply' "$(calls | grep -n 'replies\|resolveReviewThread' | sed 's/:.*//' | tr '\n' ' ')" "$(calls | grep -n 'replies\|resolveReviewThread' | sed 's/:.*//' | sort -n | tr '\n' ' ')"
 newrec; printf '=== review-comment 202 resolve\nDone.\n' > "$RF"; run send "$REC" r1 "$RF"

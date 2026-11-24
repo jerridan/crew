@@ -1,0 +1,2383 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 187,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Count an obvious one-line fix as a subagent item",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/187"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "45c5bdbd1559c899b226aecde08a14289c9c2ce5",
+    "head": "ea83b3a08fcf68373ff2a59a4241302c195b82ee",
+    "started_at": "2026-11-24T18:06:05.772Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Count an obvious one-line fix as a subagent item\n\n## Summary\n\nThe orchestrator now gives an obvious one-line fix to a subagent with no word from the principal. Before, the test kept every change to code, a test, a config or an instruction file with an implementer. That cost time and tokens on work that needs no project lead. The test now says what \"obvious\" means, and which one-line changes still go to an implementer.\n\n**Ticket:** N/A, the principal's word: \"yes obvious one-liners should also count as a subagent item\"\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n`docs/design.md` §15.157 and the new finding §15.NNN (placeholder). `skills/orchestrator/references/subagent-items.md` owns the test.\n\n### What changed, by file\n\n- `skills/orchestrator/references/subagent-items.md`: part 3 passes an obvious one-line fix; a definition of \"obvious\"; new example rows; a section \"The one-line fix\" with what the subagent does before its ready line; the diff check before the merge for a one-line fix.\n- `docs/design.md`: new §15.NNN finding, and a pointer in §15.157's decision.\n\n### Constraints that applied\n\nNo rule has a second copy: a grep of `skills/`, `README.md`, `CLAUDE.md` and `docs/design.md` found no other statement of part 3. The plugin `version` is not bumped (placeholder, the owner bumps it). The §15 number is `NNN` (placeholder).\n\n### How this was verified\n\nRead the file and the files that point at it against `writing-standard.md`.\n\n### Known gaps\n\nNo orchestrator run has judged an item by the new part 3.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZh7PDNExjtW2kbKe69\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": "docs/design.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/references/subagent-items.md",
+        "hunks": 4
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "The change edits the orchestrator's instruction rules, which agents read as behavior, and it widens when work skips implementer review, so it changes process logic.",
+      "confidence": "medium",
+      "categories": [
+        "other",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/orchestrator/references/subagent-items.md: criterion 3 and the new definition of 'obvious one-line fix'",
+        "skills/orchestrator/references/subagent-items.md: new 'The one-line fix' section",
+        "skills/orchestrator/references/subagent-items.md: merge-time diff check for one-line fixes",
+        "skills/orchestrator/references/subagent-items.md: brief bullet with misindented continuation line",
+        "docs/design.md: placeholder 'NNN' used as the section number"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "note": "Behavioral rule change. Part 3 of the test now admits obvious one-line fixes to code, tests, config or instruction files. It adds the definition, the table rows, the subagent's extra duties and the orchestrator's diff check. One continuation line lost its indentation."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "A new decision entry and a one-line note. Both use the placeholder number 'NNN', which is unresolved. The entry mirrors the rule change."
+        }
+      ],
+      "summary": "The change lets an 'obvious one-line fix' count as a subagent item, even when it changes code, a test, config or an instruction file. Before, those changes always went to an implementer. The reference file adds a definition of 'obvious', new example rows, a 'The one-line fix' section with the subagent's test and grep duties, and a stricter diff check before the merge. The design doc records the decision under the placeholder number NNN."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: The change edits the orchestrator's instruction rules, which agents read as behavior, and it widens when work skips implementer review, so it changes process logic.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 70,
+            "end_line": 70,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The continuation line of the brief bullet is not indented to match the rest of the bullet.",
+            "evidence": "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a",
+            "suggested_fix": "Indent the line by two spaces, as the lines around it are.",
+            "explanation": "The other wrapped lines of this list are indented two spaces. This one is not, so the bullet's wrap breaks that pattern.",
+            "needs_context": false
+          },
+          {
+            "file": "docs/design.md",
+            "start_line": 10378,
+            "end_line": 10378,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The new §15 finding uses the placeholder number NNN, and §15.157 points at it as 'NNN', where it should give a real section number.",
+            "evidence": "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "suggested_fix": "Give it the next §15 number (e.g. 15.159) and update the pointer at line 10302.",
+            "explanation": "Every other §15 finding has a real number, and other text cites them as §15.x. A placeholder cannot be cited that way.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8778,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4979,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005094,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 687,
+              "cacheReadInputTokens": 24852,
+              "cacheCreationInputTokens": 4859,
+              "webSearchRequests": 0,
+              "costUSD": 0.057598399999999994,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.058107799999999994
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 38,
+            "end_line": 40,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The default rule still sends work that needs review to an implementer, which conflicts with the widened part 3 that lets a one-line code fix be a subagent item.",
+            "evidence": "gets an implementer. So does work that needs a spec, a design choice, a\npreference question, review, or more than one package.",
+            "explanation": "Part 3 used to say 'so it needs no red test and no review'. That reason is gone, but the default paragraph still excludes 'review', so an orchestrator cannot tell whether a one-line code fix counts as needing review.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 111,
+            "end_line": 114,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The merge check routes 'a line that is not the one named' to Larger, but the definition lets an item qualify when the wrong line is only plain from the ticket and not named.",
+            "evidence": "diff must be the one line and at most its test. More lines, or a line that\n  is not the one named, go there too.",
+            "explanation": "The definition allows 'or the wrong line is plain from the ticket', so no line may be named, and the merge check then has nothing to compare the diff against.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 87,
+            "end_line": 88,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "It is not clear whether the plugin-version placeholder rule lets the subagent edit the version line, and if it does, the strict merge diff check would send the fix to Larger.",
+            "evidence": "- It leaves the plugin version and any other value that the orchestrator owns\n  as a placeholder.",
+            "explanation": "A placeholder edit to the version adds a line outside 'the one line and at most its test', so the merge check at lines 112-114 would reject the diff.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 24237,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4971,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005086,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 2431,
+              "cacheReadInputTokens": 43589,
+              "cacheCreationInputTokens": 9607,
+              "webSearchRequests": 0,
+              "costUSD": 0.1342178,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 856,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1347264
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "docs/design.md",
+            "start_line": 10300,
+            "end_line": 10302,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "§15.157's decision still says that the test sends code and instruction changes to an implementer. A one-line fix is now an exception, and that sentence does not name it.",
+            "evidence": "The test sends code and instruction changes to an implementer, because",
+            "suggested_fix": "Reword it as: \"sends code and instruction changes, except an obvious one-line fix, to an implementer\".",
+            "explanation": "The new part 3 passes obvious one-line code and instruction fixes, and only the pointer line after this sentence says so.",
+            "needs_context": false
+          },
+          {
+            "file": "docs/design.md",
+            "start_line": 10302,
+            "end_line": 10302,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The new pointer and the new finding use the placeholder section number NNN, not a real §15 number.",
+            "evidence": "NNN widens part 3 to an obvious one-line fix.",
+            "suggested_fix": "Give the finding the next §15 number, for example §15.159, and use it in both places.",
+            "explanation": "A cross-reference to a placeholder number is a broken pointer once this merges.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 8699,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4983,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005098,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 703,
+              "cacheReadInputTokens": 24676,
+              "cacheCreationInputTokens": 5759,
+              "webSearchRequests": 0,
+              "costUSD": 0.06508320000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 126,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.065593
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 69,
+            "end_line": 70,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The added continuation line is not indented, unlike the other lines of the bullet.",
+            "evidence": "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a",
+            "suggested_fix": "Indent the line by two spaces.",
+            "explanation": "The line starts at column 0 inside a list bullet whose other lines are indented two spaces, which can break the list in some renderers.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 18,
+            "end_line": 19,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Part 3 now lets code, test, config and instruction changes pass without a review. This weakens the rule that earlier commits set to send such changes to an implementer. The only review left is the orchestrator's diff read.",
+            "evidence": "3. It changes no code, no test, no config and no instruction file. Or it is an",
+            "explanation": "The earlier design finding (e00ee74) says code and instruction changes need a red test or a review. The diff keeps the red test but gives no review step for the subagent's change.",
+            "needs_context": true
+          },
+          {
+            "file": "docs/design.md",
+            "start_line": 10378,
+            "end_line": 10378,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The new finding uses the placeholder number NNN, and the §15.157 pointer cites it as NNN. Neither is a real section number.",
+            "evidence": "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "suggested_fix": "Use the next real §15 number in both places.",
+            "explanation": "The pointer cannot be followed until the number is filled in. The earlier commit e00ee74 also used the placeholder §15.NNN.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 9747,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 7555,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0007670000000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 983,
+              "cacheReadInputTokens": 28036,
+              "cacheCreationInputTokens": 7548,
+              "webSearchRequests": 0,
+              "costUSD": 0.0428336,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.043600599999999996
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 18,
+            "end_line": 19,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Part 3 now lets a code, config or instruction-file change go to a subagent that has no red-test gate or review, and the only check before the merge is a line count of the diff.",
+            "evidence": "3. It changes no code, no test, no config and no instruction file. Or it is an\n   obvious one-line fix, which may change any of them.",
+            "suggested_fix": "Keep one-line changes to security-relevant config such as permissions, hooks and allow lists with an implementer, or require a review of their content before the merge.",
+            "explanation": "One changed line in a config or an instruction file can still weaken a security setting, and with this change it can merge without a review step.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6289,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4979,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005094,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 415,
+              "cacheReadInputTokens": 10376,
+              "cacheCreationInputTokens": 4488,
+              "webSearchRequests": 0,
+              "costUSD": 0.0462872,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 85,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0467966
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 3666,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 4973,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005088,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 247,
+              "cacheReadInputTokens": 11151,
+              "cacheCreationInputTokens": 4486,
+              "webSearchRequests": 0,
+              "costUSD": 0.021533100000000003,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 85,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.022041900000000003
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 18,
+          "end_line": 19,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Part 3 now lets a code, config or instruction-file change go to a subagent that has no red-test gate or review, and the only check before the merge is a line count of the diff.",
+          "evidence": "3. It changes no code, no test, no config and no instruction file. Or it is an\n   obvious one-line fix, which may change any of them.",
+          "suggested_fix": "Keep one-line changes to security-relevant config such as permissions, hooks and allow lists with an implementer, or require a review of their content before the merge.",
+          "explanation": "One changed line in a config or an instruction file can still weaken a security setting, and with this change it can merge without a review step.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "For code or config that the repo tests, it adds or changes a test that fails\n  before the fix and passes after it, and it runs the repo's own check.",
+            "It goes through every check of `SKILL.md`'s \"The merge\"."
+          ],
+          "rationale": "The change adds a red-test requirement and a repo check for one-line fixes. The PR still goes through every merge check, and the orchestrator reads the diff, so the claim of no gate and only a line count is wrong. A security-sensitive one-line config change is a minor residual risk.",
+          "score": 12,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "For code or config that the repo tests, it adds or changes a test that fails\n  before the fix and passes after it, and it runs the repo's own check.",
+            "It goes through every check of `SKILL.md`'s \"The merge\".",
+            "For a one-line fix, the\n  diff must be the one line and at most its test. More lines, or a line that\n  is not the one named, go there too.",
+            "| Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false`. This row covers each finding in a thread |"
+          ],
+          "rationale": "The code contradicts the claim. The new \"The one-line fix\" section requires a red test for any code or config that the repo tests. The PR also has to pass every check of SKILL.md's \"The merge\", including resolved review threads and answered findings. The orchestrator reads the diff and checks that the changed line is the one the ticket named, so the check is more than a line count.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "For code or config that the repo tests, it adds or changes a test that fails\n  before the fix and passes after it, and it runs the repo's own check.",
+            "It goes through every check of `SKILL.md`'s \"The merge\".",
+            "For a one-line fix, the\n  diff must be the one line and at most its test. More lines, or a line that\n  is not the one named, go there too.",
+            "| Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false`. This row covers each finding in a thread |"
+          ],
+          "rationale": "The code contradicts the claim. The new \"The one-line fix\" section requires a red test for any code or config that the repo tests. The PR also has to pass every check of SKILL.md's \"The merge\", including resolved review threads and answered findings. The orchestrator reads the diff and checks that the changed line is the one the ticket named, so the check is more than a line count.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 10300,
+          "end_line": 10302,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "§15.157's decision still says that the test sends code and instruction changes to an implementer. A one-line fix is now an exception, and that sentence does not name it.",
+          "evidence": "The test sends code and instruction changes to an implementer, because",
+          "suggested_fix": "Reword it as: \"sends code and instruction changes, except an obvious one-line fix, to an implementer\".",
+          "explanation": "The new part 3 passes obvious one-line code and instruction fixes, and only the pointer line after this sentence says so.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The test sends code and instruction changes to an implementer, because",
+            "NNN widens part 3 to an obvious one-line fix."
+          ],
+          "rationale": "The sentence still says code and instruction changes go to an implementer, and the next line adds the exception in a pointer. This is a small wording gap, not a wrong result, because the next line states the widening.",
+          "score": 70,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The test sends code and instruction changes to an implementer, because",
+            "NNN widens part 3 to an obvious one-line fix.",
+            "§15.155 replaced the\n       `hc send` with `hc keys`."
+          ],
+          "rationale": "The finding is accurate: the sentence in §15.157 still makes no exception, and the exception appears only in the pointer line added right after it. That pointer is how this repo marks a later change inside a dated §15 entry (§15.153 does the same for §15.155), so the next line already tells the reader, and a reword would add nothing.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The test sends code and instruction changes to an implementer, because",
+            "NNN widens part 3 to an obvious one-line fix.",
+            "§15.155 replaced the\n       `hc send` with `hc keys`."
+          ],
+          "rationale": "The finding is accurate: the sentence in §15.157 still makes no exception, and the exception appears only in the pointer line added right after it. That pointer is how this repo marks a later change inside a dated §15 entry (§15.153 does the same for §15.155), so the next line already tells the reader, and a reword would add nothing.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 10302,
+          "end_line": 10302,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The new pointer and the new finding use the placeholder section number NNN, not a real §15 number.",
+          "evidence": "NNN widens part 3 to an obvious one-line fix.",
+          "suggested_fix": "Give the finding the next §15 number, for example §15.159, and use it in both places.",
+          "explanation": "A cross-reference to a placeholder number is a broken pointer once this merges.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN widens part 3 to an obvious one-line fix.",
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of"
+          ],
+          "rationale": "The diff does use the literal placeholder NNN in both the pointer and the heading. The description says this is deliberate, and the repo has used NNN this way before (commit e00ee74), so the owner assigns the number later. That makes it a known step, not a surprise defect.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN widens part 3 to an obvious one-line fix.",
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of"
+          ],
+          "rationale": "The diff does use the literal placeholder NNN in both the pointer and the heading. The description says this is deliberate, and the repo has used NNN this way before (commit e00ee74), so the owner assigns the number later. That makes it a known step, not a surprise defect.",
+          "score": 90,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 70,
+          "end_line": 70,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The continuation line of the brief bullet is not indented to match the rest of the bullet.",
+          "evidence": "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a",
+          "suggested_fix": "Indent the line by two spaces, as the lines around it are.",
+          "explanation": "The other wrapped lines of this list are indented two spaces. This one is not, so the bullet's wrap breaks that pattern.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a"
+          ],
+          "rationale": "Line 70 starts at column 0 while the other lines of the bullet are indented two spaces. The PR added it. Markdown renders it the same, so the effect is cosmetic.",
+          "score": 95,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a"
+          ],
+          "rationale": "Line 70 starts at column 0 while the other lines of the bullet are indented two spaces. The PR added it. Markdown renders it the same, so the effect is cosmetic.",
+          "score": 95,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 10378,
+          "end_line": 10378,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The new §15 finding uses the placeholder number NNN, and §15.157 points at it as 'NNN', where it should give a real section number.",
+          "evidence": "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+          "suggested_fix": "Give it the next §15 number (e.g. 15.159) and update the pointer at line 10302.",
+          "explanation": "Every other §15 finding has a real number, and other text cites them as §15.x. A placeholder cannot be cited that way.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "NNN widens part 3 to an obvious one-line fix."
+          ],
+          "rationale": "The placeholder NNN is in the heading and in the pointer at §15.157. The description says this is deliberate, because the owner assigns the number, and an earlier commit did the same for §15.157. So it is real but already known and expected.",
+          "score": 92,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "NNN widens part 3 to an obvious one-line fix."
+          ],
+          "rationale": "The new finding and the pointer in §15.157 do use the placeholder NNN. The description says this is on purpose (\"The §15 number is `NNN` (placeholder)\"), and the git log shows the same flow before: an earlier commit recorded \"§15.NNN\" and the owner gave it a number later. So the finding repeats what the description already says and is not worth posting.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "NNN widens part 3 to an obvious one-line fix."
+          ],
+          "rationale": "The new finding and the pointer in §15.157 do use the placeholder NNN. The description says this is on purpose (\"The §15 number is `NNN` (placeholder)\"), and the git log shows the same flow before: an earlier commit recorded \"§15.NNN\" and the owner gave it a number later. So the finding repeats what the description already says and is not worth posting.",
+          "score": 95,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 69,
+          "end_line": 70,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The added continuation line is not indented, unlike the other lines of the bullet.",
+          "evidence": "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a",
+          "suggested_fix": "Indent the line by two spaces.",
+          "explanation": "The line starts at column 0 inside a list bullet whose other lines are indented two spaces, which can break the list in some renderers.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a"
+          ],
+          "rationale": "Line 70 starts at column 0 while the other lines of the bullet are indented two spaces. The change added this line. Most markdown renderers treat it as lazy continuation, so the effect is minor.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a"
+          ],
+          "rationale": "Line 70 starts at column 0 while the other lines of the bullet are indented two spaces. The change added this line. Most markdown renderers treat it as lazy continuation, so the effect is minor.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 18,
+          "end_line": 19,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Part 3 now lets code, test, config and instruction changes pass without a review. This weakens the rule that earlier commits set to send such changes to an implementer. The only review left is the orchestrator's diff read.",
+          "evidence": "3. It changes no code, no test, no config and no instruction file. Or it is an",
+          "explanation": "The earlier design finding (e00ee74) says code and instruction changes need a red test or a review. The diff keeps the red test but gives no review step for the subagent's change.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "Before its ready line, the subagent of an obvious one-line fix does this:",
+            "Before the merge, read `gh pr diff <n>`. A diff that does more than the\n  brief asked goes to \"Larger than it looked\", below. For a one-line fix, the\n  diff must be the one line and at most its test."
+          ],
+          "rationale": "The change adds a red test, repo check, sibling-grep, and a strict diff check for one-line fixes, and PRs still go through every check of \"The merge\" including review threads. The claim that no review remains overstates it. The narrowing to obvious one-line fixes is a deliberate design decision.",
+          "score": 12,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "3. It changes no code, no test, no config and no instruction file. Or it is an\n   obvious one-line fix, which may change any of them.",
+            "- For code or config that the repo tests, it adds or changes a test that fails\n  before the fix and passes after it, and it runs the repo's own check. The\n  ready line says what ran.",
+            "For a one-line fix, the\n  diff must be the one line and at most its test.",
+            "they need a red test or a review, and the light path exists for them.\n       NNN widens part 3 to an obvious one-line fix.",
+            "It goes through every check of `SKILL.md`'s \"The merge\"."
+          ],
+          "rationale": "It is true that no review agent is added. Instruction-file fixes, and code that the repo does not test, now pass with no red test and no review beyond the orchestrator's diff read and the merge checks. But tested code still needs a red test, so the old \"red test or a review\" rule still holds for it. The widening is also the deliberate design change that the principal asked for, and §15.157 in design.md records it.",
+          "score": 50,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "3. It changes no code, no test, no config and no instruction file. Or it is an\n   obvious one-line fix, which may change any of them.",
+            "- For code or config that the repo tests, it adds or changes a test that fails\n  before the fix and passes after it, and it runs the repo's own check. The\n  ready line says what ran.",
+            "For a one-line fix, the\n  diff must be the one line and at most its test.",
+            "they need a red test or a review, and the light path exists for them.\n       NNN widens part 3 to an obvious one-line fix.",
+            "It goes through every check of `SKILL.md`'s \"The merge\"."
+          ],
+          "rationale": "It is true that no review agent is added. Instruction-file fixes, and code that the repo does not test, now pass with no red test and no review beyond the orchestrator's diff read and the merge checks. But tested code still needs a red test, so the old \"red test or a review\" rule still holds for it. The widening is also the deliberate design change that the principal asked for, and §15.157 in design.md records it.",
+          "score": 50,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "docs/design.md",
+          "start_line": 10378,
+          "end_line": 10378,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The new finding uses the placeholder number NNN, and the §15.157 pointer cites it as NNN. Neither is a real section number.",
+          "evidence": "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+          "suggested_fix": "Use the next real §15 number in both places.",
+          "explanation": "The pointer cannot be followed until the number is filled in. The earlier commit e00ee74 also used the placeholder §15.NNN.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "NNN widens part 3 to an obvious one-line fix."
+          ],
+          "rationale": "The heading and the §15.157 pointer both use the placeholder NNN. The description admits this on purpose, so the issue is real but small, and the owner fills it in.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "NNN widens part 3 to an obvious one-line fix."
+          ],
+          "rationale": "The heading and the §15.157 pointer both use the placeholder NNN. The description admits this on purpose, so the issue is real but small, and the owner fills it in.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 38,
+          "end_line": 40,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The default rule still sends work that needs review to an implementer, which conflicts with the widened part 3 that lets a one-line code fix be a subagent item.",
+          "evidence": "gets an implementer. So does work that needs a spec, a design choice, a\npreference question, review, or more than one package.",
+          "explanation": "Part 3 used to say 'so it needs no red test and no review'. That reason is gone, but the default paragraph still excludes 'review', so an orchestrator cannot tell whether a one-line code fix counts as needing review.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "gets an implementer. So does work that needs a spec, a design choice, a\npreference question, review, or more than one package."
+          ],
+          "rationale": "The default paragraph still lists \\\"review\\\" as a reason for an implementer. The PR removed the \\\"no review\\\" wording from part 3 and now lets one-line code fixes go to a subagent. Those fixes are checked at the PR diff, so \\\"review\\\" is ambiguous. The conflict is mild, because the one-line-fix section defines what the subagent does.",
+          "score": 55,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "gets an implementer. So does work that needs a spec, a design choice, a\npreference question, review, or more than one package."
+          ],
+          "rationale": "The default paragraph still lists \\\"review\\\" as a reason for an implementer. The PR removed the \\\"no review\\\" wording from part 3 and now lets one-line code fixes go to a subagent. Those fixes are checked at the PR diff, so \\\"review\\\" is ambiguous. The conflict is mild, because the one-line-fix section defines what the subagent does.",
+          "score": 55,
+          "severity": "suggestion"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 111,
+          "end_line": 114,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The merge check routes 'a line that is not the one named' to Larger, but the definition lets an item qualify when the wrong line is only plain from the ticket and not named.",
+          "evidence": "diff must be the one line and at most its test. More lines, or a line that\n  is not the one named, go there too.",
+          "explanation": "The definition allows 'or the wrong line is plain from the ticket', so no line may be named, and the merge check then has nothing to compare the diff against.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The ticket names the file and\nthe wrong line, or the wrong line is plain from the ticket.",
+            "More lines, or a line that\n  is not the one named, go there too."
+          ],
+          "rationale": "The definition allows the wrong line to be plain without being named, but the merge check compares against 'the one named'. This is a real wording gap. The brief still states the expected line, so the effect is small.",
+          "score": 72,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The ticket names the file and\nthe wrong line, or the wrong line is plain from the ticket.",
+            "More lines, or a line that\n  is not the one named, go there too."
+          ],
+          "rationale": "The claim holds as written. The definition lets the wrong line be \"plain from the ticket\" without being named, but the merge check compares the diff against \"the one named\". A reader will most likely take that to mean the line the ticket points to, so the result is a small wording gap rather than a check that breaks.",
+          "score": 66,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The ticket names the file and\nthe wrong line, or the wrong line is plain from the ticket.",
+            "More lines, or a line that\n  is not the one named, go there too."
+          ],
+          "rationale": "The claim holds as written. The definition lets the wrong line be \"plain from the ticket\" without being named, but the merge check compares the diff against \"the one named\". A reader will most likely take that to mean the line the ticket points to, so the result is a small wording gap rather than a check that breaks.",
+          "score": 66,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 87,
+          "end_line": 88,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "It is not clear whether the plugin-version placeholder rule lets the subagent edit the version line, and if it does, the strict merge diff check would send the fix to Larger.",
+          "evidence": "- It leaves the plugin version and any other value that the orchestrator owns\n  as a placeholder.",
+          "explanation": "A placeholder edit to the version adds a line outside 'the one line and at most its test', so the merge check at lines 112-114 would reject the diff.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- It leaves the plugin version and any other value that the orchestrator owns\n  as a placeholder."
+          ],
+          "rationale": "The rule says the subagent leaves owned values as a placeholder, so it does not bump the version. The diff stays one line and the merge check does not conflict. The finding is speculative.",
+          "score": 12,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- It leaves the plugin version and any other value that the orchestrator owns\n  as a placeholder.",
+            "For a one-line fix, the\n  diff must be the one line and at most its test.",
+            "  things\"). The implementer leaves it as a placeholder.",
+            "- **A value that every PR changes.** Examples: a version number, or a\n  sequence number in a design doc. You own it. Assign it to each PR, in merge\n  order, when that PR is next to merge."
+          ],
+          "rationale": "In this repo, \"leaves it as a placeholder\" is an established phrase (SKILL.md's goal message, and this PR's own description: \"The plugin version is not bumped\") that means the worker does not touch the value and the orchestrator assigns it. So the subagent does not edit the version line, and its diff stays the one line plus at most its test. The finding's ambiguity and its route to \"Larger than it looked\" do not follow from the text.",
+          "score": 25,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- It leaves the plugin version and any other value that the orchestrator owns\n  as a placeholder.",
+            "For a one-line fix, the\n  diff must be the one line and at most its test.",
+            "  things\"). The implementer leaves it as a placeholder.",
+            "- **A value that every PR changes.** Examples: a version number, or a\n  sequence number in a design doc. You own it. Assign it to each PR, in merge\n  order, when that PR is next to merge."
+          ],
+          "rationale": "In this repo, \"leaves it as a placeholder\" is an established phrase (SKILL.md's goal message, and this PR's own description: \"The plugin version is not bumped\") that means the worker does not touch the value and the orchestrator assigns it. So the subagent does not edit the version line, and its diff stays the one line plus at most its test. The finding's ambiguity and its route to \"Larger than it looked\" do not follow from the text.",
+          "score": 25,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          0,
+          1
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 0,
+              "claim": "The continuation line of the brief bullet is not indented to match the rest of the bullet.",
+              "explanation": "The other wrapped lines of this list are indented two spaces, but this one starts at column 0, which breaks the pattern and may break the list in some renderers.",
+              "suggested_fix": "Indent the line by two spaces, as the lines around it are.",
+              "severity": "nit"
+            }
+          ]
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/references/subagent-items.md",
+        "start_line": 70,
+        "end_line": 70,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The continuation line of the brief bullet is not indented to match the rest of the bullet.",
+        "evidence": "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a",
+        "explanation": "The other wrapped lines of this list are indented two spaces, but this one starts at column 0, which breaks the pattern and may break the list in some renderers.",
+        "needs_context": false,
+        "fingerprint": "ab28c666fd2088bd",
+        "severity": "nit",
+        "score": 95,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a"
+          ],
+          "rationale": "Line 70 starts at column 0 while the other lines of the bullet are indented two spaces. The PR added it. Markdown renders it the same, so the effect is cosmetic.",
+          "score": 95,
+          "severity": "nit"
+        },
+        "span_text": "gives the rules of \"The one-line fix\", below. When the work needs a judgment, a",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          },
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Indent the line by two spaces, as the lines around it are."
+      },
+      {
+        "file": "docs/design.md",
+        "start_line": 10378,
+        "end_line": 10378,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The new finding uses the placeholder number NNN, and the §15.157 pointer cites it as NNN. Neither is a real section number.",
+        "evidence": "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+        "suggested_fix": "Use the next real §15 number in both places.",
+        "explanation": "The pointer cannot be followed until the number is filled in. The earlier commit e00ee74 also used the placeholder §15.NNN.",
+        "needs_context": false,
+        "fingerprint": "28a2e2105344de2c",
+        "severity": "nit",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+            "NNN widens part 3 to an obvious one-line fix."
+          ],
+          "rationale": "The heading and the §15.157 pointer both use the placeholder NNN. The description admits this on purpose, so the issue is real but small, and the owner fills it in.",
+          "score": 93,
+          "severity": "nit"
+        },
+        "span_text": "NNN. **An obvious one-line fix is a subagent item — 2026-11-24.** Part 3 of",
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/references/subagent-items.md",
+        "start_line": 111,
+        "end_line": 114,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The merge check routes 'a line that is not the one named' to Larger, but the definition lets an item qualify when the wrong line is only plain from the ticket and not named.",
+        "evidence": "diff must be the one line and at most its test. More lines, or a line that\n  is not the one named, go there too.",
+        "explanation": "The definition allows 'or the wrong line is plain from the ticket', so no line may be named, and the merge check then has nothing to compare the diff against.",
+        "needs_context": false,
+        "fingerprint": "04b698c474334382",
+        "severity": "nit",
+        "score": 66,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The ticket names the file and\nthe wrong line, or the wrong line is plain from the ticket.",
+            "More lines, or a line that\n  is not the one named, go there too."
+          ],
+          "rationale": "The claim holds as written. The definition lets the wrong line be \"plain from the ticket\" without being named, but the merge check compares the diff against \"the one named\". A reader will most likely take that to mean the line the ticket points to, so the result is a small wording gap rather than a check that breaks.",
+          "score": 66,
+          "severity": "nit"
+        },
+        "span_text": "- Before the merge, read `gh pr diff <n>`. A diff that does more than the brief asked goes to \"Larger than it looked\", below. For a one-line fix, the diff must be the one line and at most its test. More lines, or a line that is not the one named, go there too.",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "github": {
+      "review_id": 6044741730,
+      "review_url": "https://github.com/jerridan/crew/pull/187#pullrequestreview-6044741730",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "ab28c666fd2088bd",
+          "comment_id": 4684417856
+        },
+        {
+          "fingerprint": "28a2e2105344de2c",
+          "comment_id": 4684417867
+        },
+        {
+          "fingerprint": "04b698c474334382",
+          "comment_id": 4684417878
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 138665620447
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5748,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 3835,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000395,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 718,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 3348,
+            "webSearchRequests": 0,
+            "costUSD": 0.020702199999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.021097199999999997
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6289,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4979,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005094,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 415,
+            "cacheReadInputTokens": 10376,
+            "cacheCreationInputTokens": 4488,
+            "webSearchRequests": 0,
+            "costUSD": 0.0462872,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 85,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0467966
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 8699,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4983,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005098,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 703,
+            "cacheReadInputTokens": 24676,
+            "cacheCreationInputTokens": 5759,
+            "webSearchRequests": 0,
+            "costUSD": 0.06508320000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 126,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.065593
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 8778,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4979,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005094,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 687,
+            "cacheReadInputTokens": 24852,
+            "cacheCreationInputTokens": 4859,
+            "webSearchRequests": 0,
+            "costUSD": 0.057598399999999994,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.058107799999999994
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 9747,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 7555,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0007670000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 983,
+            "cacheReadInputTokens": 28036,
+            "cacheCreationInputTokens": 7548,
+            "webSearchRequests": 0,
+            "costUSD": 0.0428336,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.043600599999999996
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3666,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4973,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005088,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 247,
+            "cacheReadInputTokens": 11151,
+            "cacheCreationInputTokens": 4486,
+            "webSearchRequests": 0,
+            "costUSD": 0.021533100000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 85,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.022041900000000003
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3054,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10488,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010608000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 296,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9997,
+            "webSearchRequests": 0,
+            "costUSD": 0.0433887,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0444495
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4391,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9366,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009471,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 495,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8875,
+            "webSearchRequests": 0,
+            "costUSD": 0.040890699999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 136,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.041837799999999994
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 2356,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9301,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009411000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 284,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8810,
+            "webSearchRequests": 0,
+            "costUSD": 0.0385207,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0394618
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4855,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10392,
+            "outputTokens": 400,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012392000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 379,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 625,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9901,
+            "webSearchRequests": 0,
+            "costUSD": 0.0462947,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 282,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.047533900000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 2366,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9293,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009408,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 290,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8802,
+            "webSearchRequests": 0,
+            "costUSD": 0.038548700000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.039489500000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3697,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8385,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000849,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 482,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 7894,
+            "webSearchRequests": 0,
+            "costUSD": 0.0368367,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 152,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0376857
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3827,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9301,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009401000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 390,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8810,
+            "webSearchRequests": 0,
+            "costUSD": 0.0395807,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0405208
+      },
+      {
+        "role": "verifier",
+        "verification": 7,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4143,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8367,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008472,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 497,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 7876,
+            "webSearchRequests": 0,
+            "costUSD": 0.036914699999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.037761899999999994
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 24237,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4971,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005086,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 2431,
+            "cacheReadInputTokens": 43589,
+            "cacheCreationInputTokens": 9607,
+            "webSearchRequests": 0,
+            "costUSD": 0.1342178,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 856,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1347264
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 7231,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10482,
+            "outputTokens": 309,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012027,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 286,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 594,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9987,
+            "webSearchRequests": 0,
+            "costUSD": 0.0926574,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 224,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0938601
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 4,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 6679,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8381,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008511,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 521,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 7886,
+            "webSearchRequests": 0,
+            "costUSD": 0.07438940000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 147,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0752405
+      },
+      {
+        "role": "verifier",
+        "verification": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4112,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9328,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009433,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 351,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8837,
+            "webSearchRequests": 0,
+            "costUSD": 0.0392987,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.040242
+      },
+      {
+        "role": "verifier",
+        "verification": 9,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4006,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9312,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009417000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 311,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8821,
+            "webSearchRequests": 0,
+            "costUSD": 0.0388347,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.039776399999999996
+      },
+      {
+        "role": "verifier",
+        "verification": 10,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3470,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9313,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009418,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 432,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8822,
+            "webSearchRequests": 0,
+            "costUSD": 0.0400487,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0409905
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12630,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9362,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009467000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1080,
+            "cacheReadInputTokens": 17601,
+            "cacheCreationInputTokens": 10038,
+            "webSearchRequests": 0,
+            "costUSD": 0.1054402,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 454,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10638689999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 9,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 7659,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9304,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009414000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 506,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8809,
+            "webSearchRequests": 0,
+            "costUSD": 0.0814734,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 164,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0824148
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 6,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 24105,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9301,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009406000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1670,
+            "cacheReadInputTokens": 32615,
+            "cacheCreationInputTokens": 12977,
+            "webSearchRequests": 0,
+            "costUSD": 0.14376299999999997,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 721,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1447036
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 10,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 29334,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 9297,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009402,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 2128,
+            "cacheReadInputTokens": 61172,
+            "cacheCreationInputTokens": 11541,
+            "webSearchRequests": 0,
+            "costUSD": 0.1471624,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 977,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1481026
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 2508,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 1719,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00018240000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 183,
+            "cacheReadInputTokens": 1062,
+            "cacheCreationInputTokens": 1232,
+            "webSearchRequests": 0,
+            "costUSD": 0.0068682000000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.007050600000000001
+      }
+    ],
+    "total_cost_usd": 1.4994724000000001,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 40,
+      "gather": 81,
+      "triage": 6803,
+      "find_verify": 60671,
+      "merge": 3221
+    },
+    "errors": []
+  }
+}

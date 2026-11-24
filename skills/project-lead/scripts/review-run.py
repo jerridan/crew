@@ -576,6 +576,14 @@ def denied_list(data):
     return out
 
 
+def is_cannot_mark(line):
+    """A line marks a check `Cannot verify` when it is no heading and holds the
+    words outside a backtick span that names only them."""
+    if line.lstrip().startswith("#"):
+        return False
+    return "Cannot verify" in re.sub(r"`Cannot verify`", "", line)
+
+
 def evaluate(ctx):
     n = ctx.n
     reasons = []
@@ -641,7 +649,7 @@ def evaluate(ctx):
                 ev["prev_mismatch"] = True
         reasons += bad
         ev["report_ok"] = not bad
-        cannot = [x.strip() for x in text.split("\n") if "Cannot verify" in x]
+        cannot = [x.strip() for x in text.split("\n") if is_cannot_mark(x)]
     ev["denials_ok"] = text is not None
     ev["reasons"] = reasons
     ev["cannot"] = cannot

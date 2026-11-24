@@ -260,6 +260,19 @@ sub-tickets where your tickets live. It starts one project lead per item, in
 its own tab and worktree. At most three work at one time. Each project lead
 sends its questions and reports to the orchestrator, not to you.
 
+A small item that needs no spec, no design choice and no review, such as a
+move of tickets to a GitHub project, goes to a subagent of the orchestrator
+instead. It gets no tab and no project lead, and the board marks its row
+`subagent`. To choose for an item yourself, say so:
+
+```
+use a subagent for #42
+```
+
+```
+use a project lead for #45
+```
+
 What needs you goes into an inbox, and each entry has an id. Answer by id:
 
 ```
@@ -524,6 +537,7 @@ else: every package takes the same steps.
 | Project lead | your session's: use `fable` | your session's: use `high` |
 | Orchestrator | your session's | your session's |
 | Project lead that an orchestrator starts | opus, unless you name another model or set `Implementer model` | your default |
+| Subagent that an orchestrator dispatches for a small item | sonnet, unless you name another model | your default |
 | IC, Instruction IC | the package's band: sonnet or opus | your session's |
 | Scout | haiku | your session's |
 | Council advocate | sonnet, or opus for a deep decision | high |
@@ -582,7 +596,7 @@ review kind, over every record.
 | Role | What it does |
 |---|---|
 | Project lead | Runs one goal in your session: scouts, sizes the work, writes the spec, splits it, dispatches workers, integrates, opens the PR. Then stays until the work ships: it watches the PR and CI, fixes what lands, and waits for your go-ahead before it answers another person's comment or a finding you sent. It answers your questions and takes your changes too. |
-| Orchestrator | Runs many goals from one session: splits the work, starts a project lead per item in its own tab, answers their questions, keeps an inbox of what needs you, and merges in order. |
+| Orchestrator | Runs many goals from one session: splits the work, starts a project lead per item in its own tab, or a subagent for a small item, answers their questions, keeps an inbox of what needs you, and merges in order. |
 | IC | Implements one package of code, in its own worktree, test-first. |
 | Instruction IC | Implements one package of prose, such as a `CLAUDE.md`, a rule file, a `SKILL.md` or an agent definition, where a checklist decides done. |
 | Spec critic | Reviews the spec before any work starts. |

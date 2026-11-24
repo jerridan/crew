@@ -185,13 +185,15 @@ def cmd_cursor(a):
 
 
 def cmd_deploy(a):
+    if a.timeout is not None and a.timeout <= 0:
+        fail(f"--timeout {a.timeout} is not a positive integer; pass the minutes to wait")
     state = load_state(a.record)
     deploy = (state.get("run") or {}).get("deploy")
     if not isinstance(deploy, dict):
         if not a.source:
             fail("deploy needs --source when run.deploy is absent")
         obj = {"environment": a.environment, "workflow": a.workflow,
-               "timeout_minutes": a.timeout if a.timeout else 180,
+               "timeout_minutes": 180 if a.timeout is None else a.timeout,
                "source": a.source, "since": now(), "ended": None}
         rec(a.record, "run", "set", "deploy", json.dumps(obj))
     elif deploy.get("ended"):
@@ -209,6 +211,8 @@ def parse_lines(text):
     for raw in text.splitlines():
         line = raw.strip()
         if not line:
+            continue
+        if line == "isDraft=":
             continue
         if line in ("isDraft=true", "isDraft=false"):
             draft = line.endswith("true")
@@ -303,7 +307,10 @@ def main():
     s.add_argument("ids", nargs="+")
     s.set_defaults(fn=cmd_release)
     a = p.parse_args()
-    a.fn(a)
+    try:
+        a.fn(a)
+    except (ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+        fail(f"unexpected data ({type(exc).__name__}: {exc}); check the record and the gh output, then run it again")
 
 
 if __name__ == "__main__":

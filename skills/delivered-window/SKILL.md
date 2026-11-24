@@ -92,12 +92,12 @@ among the reported `review` and `comment` items. `draft` goes to `false` after
 a `ready` item, and `head` moves on a `push` item. The call also writes
 `run.deploy.ended` for a `deploy-failed` or `deploy-timeout` line.
 
-A wake with no report makes the call at once. The call goes after the report
-when there is one. Put it in the same response as the report in
-both cases: after the `SendMessage` call that carries the report, because tool
-calls run in the order sent and the next one starts when the last one returns,
-or after the report text in the pane, because a response shows its text before
-its tool calls run.
+Make the call in the response that holds the report, after the report. The
+report is a `SendMessage` call or text in the pane. After a `SendMessage` call
+the call is safe, because tool calls run in the order sent and the next one
+starts when the last one returns. After text in the pane it is safe, because a
+response shows its text before its tool calls run. A wake that has no report
+makes the call in its first response.
 
 **Arm the monitor on every entry into this window**: at the hand-over, on a
 resume, and on every return from `blocked` to `delivered`. Do not arm it when

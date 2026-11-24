@@ -535,6 +535,20 @@ def t_r3():
     check("R3 after a lowered figure a status line sample still never lowers it",
           load()["five_hour"]["used_pct"] == 40
           and load()["seven_day"]["used_pct"] == 33)
+    # An idle session repeats its old figure after a fresh reading lowered the file.
+    seed(five=99, updated=NOW - 1000, seven=99)
+    run(["record"], sample(99, five_resets=R, seven=99, sid="idle"))
+    run(["refresh"], STUB_MODE="figures", STUB_PCT=69, STUB_RESETS=R,
+        STUB_RESETS7=NOW + 3 * 86400)
+    run(["record"], sample(99, five_resets=R, seven=99, sid="idle"))
+    d = load()
+    check("R3 the repeated old sample of an idle session does not raise a lowered figure",
+          d["five_hour"]["used_pct"] == 69 and d["seven_day"]["used_pct"] == 33)
+    run(["record"], sample(75, five_resets=R, seven=40, sid="idle"))
+    d = load()
+    check("R3 a new higher figure of the same session still raises the figure",
+          d["five_hour"]["used_pct"] == 75 and d["seven_day"]["used_pct"] == 40)
+
     seed(five=90, updated=NOW - 1000)
     run(["refresh"], STUB_MODE="figures", STUB_PCT=40, STUB_RESETS=R - 100,
         STUB_RESETS7=NOW + 3 * 86400)

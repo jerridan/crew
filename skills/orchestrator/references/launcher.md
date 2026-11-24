@@ -379,24 +379,41 @@ caller knows the session.
   background task, such as a `Monitor` or a background Bash command, does
   not end on `/exit`. It shows a dialog with the title `Background work is
   running`. The first option, `Exit and stop tasks`, has the focus, and the
-  last option is `Stay`. While a `claude` process still has the tty, `stop`
-  reads the screen at each poll: `tmux capture-pane -p`, `hc read <t>`, or
-  the `contents` of the iTerm2 session. When the screen ends with that
-  dialog, `stop` presses Enter one time: `send-keys Enter`, `hc keys <t>
-  enter`, or `write text ""`. Then the 15 seconds start again. The session
-  ends with the reason `prompt_input_exit`, as after `/exit` with no dialog.
+  last option is `Stay`. `stop` reads the screen one time before the first
+  key, and then at each poll while a `claude` process still has the tty:
+  `tmux capture-pane -p`, `hc read <t>`, or the `contents` of the iTerm2
+  session. When the screen ends with that dialog, `stop` presses Enter one
+  time: `send-keys Enter`, `hc keys <t> enter`, or `write text ""`. Then the
+  15 seconds start again. The session ends with the reason
+  `prompt_input_exit`, as after `/exit` with no dialog.
 
-  The screen ends with the dialog when all of these are true:
-  - A line holds the title.
-  - A later line holds `Exit and stop tasks`.
-  - A later line holds `Stay`.
+  The screen ends with the dialog when all of these are true. A line with
+  text is a line with a letter or a digit.
+  - A line holds the title and no other word.
+  - A later line holds `Exit and stop tasks` and no other word. An option
+    number and a pointer can come before a label.
+  - The next line with text holds `Stay` and no other word. One line that
+    holds `Move to background and exit` can come between the two.
   - At most 6 lines with text come after the `Stay` line.
   - None of those lines starts with a numbered option, such as `1. Yes`.
 
-  A permission dialog has numbered options, and Enter on it would approve
-  the command. So a screen with a permission dialog under the words of the
-  exit dialog gets no Enter. A screen read that fails gets no Enter. In each
-  such case the wait ends as it does with no dialog, and the tab closes.
+  `stop` sends Enter only to that dialog, never to another prompt:
+  - A permission dialog has numbered options, and Enter on it would approve
+    the command. So a screen with a permission dialog under the words of the
+    exit dialog gets no Enter.
+  - A session can print the words of the dialog. When the first read, before
+    the keys, already shows the dialog, `/exit` did not cause it, and `stop`
+    presses no Enter in that stop. A first read that fails does the same.
+  - A sentence that has a label in it is not a line of the dialog.
+
+  A later screen read or an Enter that fails is no failure of `stop`: the
+  next poll tries again. In each case with no Enter, the wait ends as it
+  does with no dialog, and the tab closes.
+
+  One gap stays. Text that looks like the whole dialog, printed after the
+  first read and above a prompt with no numbered option, gets one Enter.
+  Escape comes before `/exit` and interrupts the turn, so the session
+  prints nothing in that time unless a new turn starts.
 - Then `stop iterm2:<id>` closes the tab, and `stop tmux:<pane>` kills the
   pane, and its window closes with it. `stop herdr:<address>` runs
   `herdr-app do tab.close --id <tab> --confirmed true`. The tab id is the
@@ -426,9 +443,10 @@ live stops on tmux ran `/exit` as a command, each on a session with no
 background task. No live run has shown any of these:
 
 - Escape, Ctrl-U and `/exit` on iTerm2.
-- `hc keys <t> / e x i t` on Herdr. It is not known that `hc` takes `/` as a
-  key name, or that the session runs the typed `/exit` as a command. If `hc`
-  refuses the key, `stop` exits 6 and the tab stays open.
+- That a Claude Code session on Herdr runs the typed `/exit` as a command.
+  One probe ran `hc keys <t> / e x i t` on a terminal that ran `cat`: it
+  exited 0 and the screen showed `/exit`. No Claude Code session got the
+  keys.
 - The exit dialog on a screen. Its title, its option labels and its focus
   come from the code of Claude Code 2.1.326, 2.1.330 and 2.1.331. Nobody saw
   the dialog, so the lines that the screen check reads are a guess at its

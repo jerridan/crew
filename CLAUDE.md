@@ -178,7 +178,7 @@ its resume and subagent mode are unexercised.
 
 The headless review and the plan review run as scripts: `review-run.py`
 runs one round of the headless review in one call, and `plan-review.py` the
-plan review in a `run` call and a `decide` call (§15.<n>). Only their seeded
+plan review in a `run` call and a `decide` call (§15.160). Only their seeded
 tests have run them, and no crew run has used them.
 
 Subagent mode is built and on trial: with the teams flag unset, every

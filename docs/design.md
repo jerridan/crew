@@ -10405,8 +10405,8 @@ Deliberately different:
        it must. It used `hand-over` once: one call, every step `ok`. No
        other crew run has used it, and no run has used `launch-check`,
        `branch` or `cleanup`.
-§15.<n>. **The headless review and the plan review run as scripts —
-     2026-11-24, version <version>.** A project lead ran the headless review of
+160. **The headless review and the plan review run as scripts —
+     2026-11-24, version 0.1.128.** A project lead ran the headless review of
      `review-runner.md` in about 12 model calls and the plan review of
      `plan-review.md` in about 4. Each call was a mechanical step.
 

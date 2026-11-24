@@ -1,0 +1,3979 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 188,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Replace the long-lived project lead after the hand-over with a watcher and small window sessions",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/188"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "2cc719b49347d4950ffdbf88400d6546688cc22b",
+    "head": "fe63d9ea1a289d4309e2262ea5ae50896a1a6cbb",
+    "started_at": "2026-11-24T20:35:18.322Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Replace the long-lived project lead after the hand-over with a watcher and small window sessions\n\n## Summary\n\nAfter a crew run hands over its PR, the project lead no longer stays alive with its whole build context. A watcher with no model now watches the PR, CI and the deploy at no token cost. When something lands that needs a model, such as a review, a comment, a failed check, the merge or a word from a person or an orchestrator, the watcher opens one small window session in a new tab. That session reads the run's record, handles the whole burst of events, writes the record and closes. Before this change, the window was 64% of a project lead's cost: every call there read a median 209K-token build context again, and a 30-minute watch expiry woke the session only to arm the watch again.\n\n**Ticket:** N/A (orchestrator item window-session, no GitHub issue)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.163 (new finding).\n- `skills/delivered-window/SKILL.md` owns the window session and the project lead's hand-over; `skills/delivered-window/references/pr-watch.md` the watcher's poll and cursor; `skills/delivered-window/references/patch-mode.md` (new) the patch rounds of a review's findings.\n- `skills/project-lead/references/record-format.md` owns `handover.md`, `window/` and `run.window`.\n- `skills/project-lead/references/crew-step.md` owns the new `watch` step of `hand-over` and the new `verify` diff output.\n- `skills/orchestrator/references/launcher.md` owns `launcher.py window`.\n- `skills/orchestrator/SKILL.md` owns how the orchestrator reaches a delivered item (`say`).\n\n### What changed, by file\n\n- `skills/delivered-window/scripts/window-watch.py` (new): the watcher. `start [--hold]`, `release`, `ensure`, `stop`, `say`, `claim`, `next`, `done [--final]`, `status`. One detached process per delivered run; polls with `pr-watch.sh` every 60 s with no expiry; drops events that need no model (the run's own push and ready flip from `run.window.own`, `queued`, a passing check, the run's own comment); queues the rest durably and acks the cursor itself; waits 120 s of quiet (600 s cap) and starts one window session per burst through `launcher.py window`; one session slot per run; a launch is recorded before the launcher call and reconciled with `launcher.py find`; sets up the deploy on `merged` and polls it; flags a stale tab and asks the orchestrator.\n- `skills/delivered-window/scripts/test-window-watch.sh` (new): 90 seeded checks with a stub `gh`, launcher, poll and `crew-orch.py`, and the real `crew-record.py`.\n- `skills/delivered-window/scripts/watch-step.py`: the `Monitor` `arm` subcommand is gone; `deploy --setup-only` writes `run.deploy` and returns. `test-watch-step.sh` changed to match.\n- `skills/delivered-window/scripts/pr-watch.sh`: the die message and the header name the watcher, not `Monitor`.\n- `skills/orchestrator/scripts/launcher.py`: new `window --name --cwd --prompt-file [--model] [--group]` subcommand: one interactive tab, no worktree, no branch, prints one JSON line whose `tab` is the handle `stop` takes. `test-launcher.sh` has 13 new checks.\n- `skills/project-lead/scripts/crew-step.py`: `hand-over` runs `window-watch.py start --hold` in a new `watch` step after `orch`; `verify` now writes the package diff to `diffs/<package-id>-verify.patch` and prints its path and the stat, and `--diff` prints the whole diff. This run saw about 1,200 lines of diff in the `verify` output of one prose package. `test-crew-step.py` covers both; its R20 check now guards the `crew-record.py` command lines instead of the whole file.\n- `skills/project-lead/scripts/crew-record.py`: one exclusive lock per record around each read-modify-write, because the watcher and a session write the same record. `hooks/session-end.py` takes the same lock and no longer marks a `delivered` run interrupted.\n- `skills/delivered-window/SKILL.md`: rewritten for the window session (entry, the watcher's events, own acts, the gate that asks and ends, the deploy, the ship word with `done --final`, the hand-over); under 500 lines.\n- `skills/delivered-window/references/pr-watch.md`, `references/patch-mode.md` (new): the watcher's poll and cursor; the patch-mode procedure moved out of SKILL.md.\n- `skills/review/SKILL.md`: a review run posts round 1, writes `handover.md`, starts the watcher and ends.\n- `skills/project-lead/SKILL.md`: the `Window model` standing-instruction section (default opus).\n- `skills/project-lead/references/record-format.md`: `handover.md` with its nine headings, `window/`, every `run.window` field, the record lock.\n- `skills/project-lead/references/goal-check.md`, `simple-path.md`, `full-path.md`, `resume.md`, `skeptical-review.md`, `orchestrator-report.md`: the project lead ends at the hand-over with `window-watch.py release`; its own pushes and flips after `start` go to `run.window.own`; a resume runs `ensure`, `claim`, the owed work, `done`.\n- `skills/orchestrator/SKILL.md`, `references/resume-and-close.md`, `references/launcher.md`: the orchestrator sends the merge word, the rebase word and gate answers to a delivered item with `window-watch.py say --item`, and runs `ensure` on its resume.\n- `README.md`, `CLAUDE.md`, `docs/design.md`: the new way, the layout rows, the build state and the finding.\n\n### Constraints that applied\n\n- \"Only the launcher and `crew-usage.py` start a `claude` process\" holds: the watcher starts a session only through `launcher.py window`.\n- One rule in one file: the window session's rules live in `crew:delivered-window`; other files point at it. The writing-standard checklist was read for each changed instruction file; `SKILL.md` is 494 lines.\n- Version and §15 number: left as placeholders for the orchestrator. The manifests carry 0.1.131, and the finding is §15.163.\n- The project lead never merges.\n\n### How this was verified\n\nEvery seeded test passes on the branch head: `test-window-watch.sh` 90/90, `test-watch-step.sh` 90/90, `test-pr-reply.sh` 55/55, `test-pr-watch-deploy.sh` 23/23, `test-launcher.sh` 326/326, `test-crew-step.py` 177/177, `test-crew-stats.py` 26/26, `test-review-run.py` 140/140, `test-plan-review.py` 45/45, `test-crew-orch.sh` all, `test-crew-usage.py` 107/107. Each code package had a red commit that failed its new checks. A Codex plan review over all five plans found six blocking design faults (record write races, the cursor, burst recovery, the deploy set-up, the tab close order, and the session ownership on resume), and each was fixed before code.\n\nWindow size, before and after. Before, from the orchestrator's study of three weeks of transcripts: the window started at a median 209K tokens and made about 87 calls. After: the seeded test measures the first prompt plus every record file it names at 5,071 bytes. An estimate from file sizes (about 3.6 bytes a token over the study's 58K base): a notice session starts at about 72K tokens and makes about 10 calls; a patch round with an IC reaches about 110K to 120K and makes 30 to 40 calls. Events that need no model start no session.\n\n### Known gaps\n\n- No real window session has run. The token figures above are estimates, not a transcript measurement. One probe against a seeded record would measure them.\n- A wait before the hand-over (a usage-limit pause, a question to the principal) still wakes the build context. The orchestrator made it a second item.\n- A machine restart stops the watcher; `--resume` or the orchestrator's resume runs `ensure` to start it again. Nothing starts it at login.\n- The test drives the watcher with a stub poll, so the real `pr-watch.sh` runs only in its own deploy test.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": true
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "README.md",
+        "hunks": 7
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/session-end.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/SKILL.md",
+        "hunks": 12
+      },
+      {
+        "path": "skills/delivered-window/references/patch-mode.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/references/pr-watch.md",
+        "hunks": 8
+      },
+      {
+        "path": "skills/delivered-window/scripts/pr-watch.sh",
+        "hunks": 2
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-watch-step.sh",
+        "hunks": 4
+      },
+      {
+        "path": "skills/delivered-window/scripts/test-window-watch.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/delivered-window/scripts/watch-step.py",
+        "hunks": 7
+      },
+      {
+        "path": "skills/delivered-window/scripts/window-watch.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 7
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/references/crew-step.md",
+        "hunks": 7
+      },
+      {
+        "path": "skills/project-lead/references/full-path.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/goal-check.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 9
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/simple-path.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/skeptical-review.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-step.py",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-step.py",
+        "hunks": 10
+      },
+      {
+        "path": "skills/review/SKILL.md",
+        "hunks": 10
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds a new detached watcher process (window-watch.py) with concurrency, locking, process spawning and record-state logic, changes the SessionEnd hook, crew-record.py write locking, launcher, hand-over flow and a version bump, which is a large architectural change to logic and public interfaces.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention",
+        "performance",
+        "other"
+      ],
+      "hotspots": [
+        "skills/delivered-window/scripts/window-watch.py (tick, collect, needs_session, start_session, launch, cmd_stop/done/claim, pid_alive, the locks)",
+        "skills/project-lead/scripts/crew-record.py (main lock wrapper, fcntl flock around every write)",
+        "hooks/session-end.py (flock, LIVE_STATES no longer includes delivered)",
+        "skills/delivered-window/scripts/watch-step.py (removed arm, --setup-only)",
+        "skills/project-lead/scripts/crew-step.py (verify diff to file, hand-over watch step)",
+        "skills/orchestrator/scripts/launcher.py (new window subcommand, window_command shell quoting)",
+        "skills/delivered-window/SKILL.md (rewritten flow, gate and ship word)"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "note": "new watcher: detached loop, queue, inbox, session slot, stale check, ack and deploy setup; races and failure paths matter"
+        },
+        {
+          "file": "skills/delivered-window/scripts/test-window-watch.sh",
+          "note": "new seeded test, timing-based with sleeps; check for flakiness"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-record.py",
+          "note": "every write now under an exclusive lock; check for deadlock on init and reentrancy"
+        },
+        {
+          "file": "hooks/session-end.py",
+          "note": "delivered runs no longer marked interrupted; lock added; the early return inside the with block"
+        },
+        {
+          "file": "skills/delivered-window/scripts/watch-step.py",
+          "note": "removed arm and draft_write; added --setup-only"
+        },
+        {
+          "file": "skills/project-lead/scripts/crew-step.py",
+          "note": "verify writes the diff to a file; hand-over starts the watcher held"
+        },
+        {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "note": "tests updated for diff file, watch step and a weakened R20 check"
+        },
+        {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "note": "new window subcommand; builds a shell command with the prompt via $(cat file)"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-launcher.sh",
+          "note": "new window tests"
+        },
+        {
+          "file": "skills/delivered-window/scripts/pr-watch.sh",
+          "note": "comment and error message text only"
+        },
+        {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "note": "rewritten docs; arm and keep-alive sections removed"
+        },
+        {
+          "file": "skills/delivered-window/references/patch-mode.md",
+          "note": "moved text from SKILL.md with edits for the window session (ask and end, own.pushes)"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs table updates"
+        },
+        {
+          "file": "README.md",
+          "note": "user docs for the new flow"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 163"
+        },
+        {
+          "file": "skills/project-lead/references/record-format.md",
+          "note": "new run.window schema docs"
+        }
+      ],
+      "summary": "Replaces the long-lived project-lead delivered window with a model-less watcher process (window-watch.py) that polls the PR and deploy, queues events, and starts one small window session per burst through a new launcher.py window subcommand. The project lead now ends at the hand-over. Supporting changes: crew-record.py and the SessionEnd hook take a file lock, delivered runs are no longer marked interrupted, crew-step verify writes the diff to a file, hand-over starts the watcher held, and watch-step.py drops arm and gains --setup-only. Docs and skill instructions are rewritten to match."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds a new detached watcher process (window-watch.py) with concurrency, locking, process spawning and record-state logic, changes the SessionEnd hook, crew-record.py write locking, launcher, hand-over flow and a version bump, which is a large architectural change to logic and public interfaces.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/launcher.md",
+            "start_line": 269,
+            "end_line": 282,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "launcher.md documents --settings and --group-color for `window`, but launcher.py's window parser accepts neither.",
+            "evidence": "                   [--model <model>] [--settings <file-or-json>]",
+            "suggested_fix": "Remove --settings and --group-color from the documented usage, or add both to the window parser.",
+            "explanation": "launcher.md says it owns the launcher's interface, and here the interface it documents does not match the WINDOW_USAGE string or the argparse definition in launcher.py.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 12351,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 109268,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.054691500000000004,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 655,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 119008,
+              "webSearchRequests": 0,
+              "costUSD": 0.965172,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 367,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 1.0198635
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 635,
+            "end_line": 643,
+            "category": "bug",
+            "severity_estimate": "blocking",
+            "confidence": "high",
+            "claim": "On a `merged` line the watcher always sets up the deploy poll with `--source window-watch` and default flags. It ignores the winning `Deploy` section, so `none`, `manual`, `environment`, `workflow` and `timeout` are never applied.",
+            "evidence": "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+            "suggested_fix": "Resolve the winning `Deploy` section from `run.standing_instructions` (repo, then machine) the way `resolve_model` reads `Window model`. Skip the setup for `none`/`manual`, and pass `--source/--environment/--workflow/--timeout` from that section.",
+            "explanation": "The skill says the watcher polls nothing under `Deploy: none`/`manual` and uses the winning section's flags. Here a `manual` repo gets a default deploy poll whose `no-deploy`/`deployed` line a later session takes as the ship word, and a configured environment or workflow is never watched.",
+            "needs_context": false
+          },
+          {
+            "file": "hooks/session-end.py",
+            "start_line": 20,
+            "end_line": 20,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "`blocked` is still a live state. The go-ahead gate now leaves a delivered run `blocked` with no live session, so closing the project lead's tab (whose session id is in `session_ids`) marks that run `interrupted`.",
+            "evidence": "LIVE_STATES = (\"active\", \"blocked\")",
+            "suggested_fix": "Skip the interrupt when every deliverable is terminal or `run.window` exists, since the watcher owns that run.",
+            "explanation": "After the hand-over a window session escalates (run goes `blocked`) and ends. When the principal later closes the original project-lead tab, SessionEnd fires and moves the waiting delivered run to `interrupted`, which the README now says is safe to do.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 461,
+            "end_line": 462,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The watcher drops every `comment` whose author is the run's own `gh` login. That login is the principal's account, so a comment the principal writes on the PR never starts a session and is still acked into `seen_ids`.",
+            "evidence": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:\n        return False, False",
+            "suggested_fix": "Drop this login filter and rely on the marker, or drop only comments that carry the `pr-review` marker.",
+            "explanation": "Crew's own replies are already left out by the `pr-review` marker in the poll, so this filter only removes human comments from the principal. Before this change those comments were reported.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 579,
+            "end_line": 584,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The stale check uses the mtime of `state.json`, which the watcher itself rewrites (ack cursor writes, `merged_seen`, `deploy.ended`). Events that arrive during a live session reset the idle clock, so a hung session may never be flagged.",
+            "evidence": "idle = time.time() - (record / \"state.json\").stat().st_mtime",
+            "suggested_fix": "Track the last write by the session separately, or exclude the watcher's own writes (for example, record the mtime after each of its own writes and compare).",
+            "explanation": "The watcher's own writes go to the same file, so they look like activity by the session.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 688,
+            "end_line": 690,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "`tick` archives a done session and writes `session` null without the window Lock. `cmd_claim` archives and writes a new claimed session under the Lock, so the watcher's null write can erase a fresh claim.",
+            "evidence": "    if sess and sess.get(\"status\") == \"done\":\n        close_tab(sess.get(\"handle\"))\n        archive(record, sess)",
+            "suggested_fix": "Take `Lock(record)` around the reload, archive and null write in `tick`, and recheck that the session is still the same done one.",
+            "explanation": "`tick` reads the record, then takes time to close the tab before it archives. If a claim lands in that gap, the later `rec_set(record, \"session\", None)` frees a slot that someone holds.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 126690,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 109262,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0546885,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 16,
+              "outputTokens": 10291,
+              "cacheReadInputTokens": 907214,
+              "cacheCreationInputTokens": 136510,
+              "webSearchRequests": 0,
+              "costUSD": 1.4794068,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 7321,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 1.5340953
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/launcher.md",
+            "start_line": 270,
+            "end_line": 272,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "high",
+            "claim": "The `window` synopsis lists `--settings` and `--group-color`, but launcher.py's window parser does not accept them.",
+            "evidence": "[--model <model>] [--settings <file-or-json>]",
+            "suggested_fix": "Drop --settings and --group-color from the synopsis and the prose, or add them to the parser.",
+            "explanation": "The parser defines only --name, --cwd, --prompt-file, --model, --group and --terminal, so a call with --settings or --group-color is a usage error.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/references/launcher.md",
+            "start_line": 294,
+            "end_line": 297,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "high",
+            "claim": "The doc says `window` prints the ten fields of `start`, but the code prints seven, with no worktree, branch or base.",
+            "evidence": "**The output.** The ten fields of `start`, with these values: `worktree` is",
+            "suggested_fix": "Describe the seven fields of the output: session_name, model, terminal, tab, tab_group, session_id and cwd.",
+            "explanation": "window() prints session_name, model, terminal, tab, tab_group, session_id and cwd, and test-launcher.sh checks for exactly those seven.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/delivered-window/references/pr-watch.md",
+            "start_line": 155,
+            "end_line": 156,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The doc says merged_seen holds the merge commit sha, but the watcher writes the time field of the `merged` line.",
+            "evidence": "2. It writes `run.window.merged_seen` with the merge commit sha, so the next",
+            "suggested_fix": "Say it writes the `at` time of the `merged` line.",
+            "explanation": "after_queue writes parts[3], the `at` time of the `merged` line (the mergedAt time), which is what record-format.md says.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 32997,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 109270,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.054695,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1777,
+              "cacheReadInputTokens": 118920,
+              "cacheCreationInputTokens": 120012,
+              "webSearchRequests": 0,
+              "costUSD": 1.019436,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 598,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 1.074131
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 636,
+            "end_line": 640,
+            "category": "bug",
+            "severity_estimate": "blocking",
+            "confidence": "medium",
+            "claim": "On a merged line the watcher always writes run.deploy with source window-watch and no environment, workflow or timeout, ignoring the winning Deploy section, including Deploy: none and manual.",
+            "evidence": "\"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+            "suggested_fix": "Resolve the winning Deploy section in the watcher. Skip the setup for none and manual, and pass --environment, --workflow and --timeout from the section.",
+            "explanation": "SKILL.md and pr-watch.md say the setup uses the winning section's flags and writes no run.deploy under none or manual. Under none the run now polls the default signal and ends with a deploy-timeout after 180 minutes, not at the merge.",
+            "needs_context": true
+          },
+          {
+            "file": "hooks/session-end.py",
+            "start_line": 20,
+            "end_line": 20,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The diff removes `delivered` from LIVE_STATES, so a project-lead session that dies after the hand-over but before its goal check or release is no longer marked interrupted.",
+            "evidence": "LIVE_STATES = (\"active\", \"blocked\")",
+            "explanation": "Commit 528ddff added `delivered` on purpose so a dead session is marked. Now such a run stays `delivered` with the watcher held, its worktrees are not orphaned, and nothing prompts a resume.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 263,
+            "end_line": 263,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "`start` on a record whose watcher is dead rewrites hold, intake, model and poll from its flags and defaults, so rerunning `hand-over` after the watcher died resets `hold` to false.",
+            "evidence": "rec_set(record, \"hold\", bool(a.hold))",
+            "explanation": "A release, a stop or an earlier hold state is overwritten, so window sessions can start before the goal check finishes.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 30049,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 139416,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.06976550000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 3441,
+              "cacheReadInputTokens": 149462,
+              "cacheCreationInputTokens": 152283,
+              "webSearchRequests": 0,
+              "costUSD": 0.6584962000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 2340,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.7282617000000001
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 403,
+            "end_line": 403,
+            "category": "security",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "`say` writes the sender name exactly as the caller gives it, so anything that can run the script can pose as the principal or the orchestrator and send the merge word or a go-ahead answer.",
+            "evidence": "append_lines(wdir(record) / \"inbox.jsonl\", [event(\"inbox\", text, a.sender)])",
+            "suggested_fix": "Mark inbox lines as unverified, and require a check in the session, such as a confirmation, before it runs a merge or push from an inbox word.",
+            "explanation": "The window session acts on inbox lines from `person` or `orch` (merge, rebase, go-ahead), and `--from` is never checked, so this weakens the go-ahead gate.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 194,
+            "end_line": 194,
+            "category": "security",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "`pid_alive` returns true when `ps` prints nothing, so a reused pid of an unrelated process can count as a live watcher.",
+            "evidence": "return \"window-watch\" in ps.stdout or not ps.stdout.strip()",
+            "suggested_fix": "Return true only when the command line holds `window-watch`.",
+            "explanation": "A false live result stops `ensure` from restarting the watcher, and PR events then go unwatched.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 22202,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 109258,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.054694,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 1169,
+              "cacheReadInputTokens": 238837,
+              "cacheCreationInputTokens": 119923,
+              "webSearchRequests": 0,
+              "costUSD": 1.0305554000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 244,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 1.0852494
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 461,
+            "end_line": 461,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The branch that drops the run's own comment (own login) has no test; no check emits a comment by the stub login `me`.",
+            "evidence": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:",
+            "suggested_fix": "Emit `comment 1 me <ts> ...` in test-window-watch.sh and assert no session starts.",
+            "explanation": "If this filter breaks, the watcher starts a model session for the run's own replies, which is the cost the change removes, and no test would fail.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/delivered-window/scripts/window-watch.py",
+            "start_line": 716,
+            "end_line": 716,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The 600s burst cap branch (events keep arriving so quiet never elapses) is untested.",
+            "evidence": "if first and (time.time() - last >= quiet or time.time() - first >= cap):",
+            "suggested_fix": "Emit an event every second with quiet larger than cap and assert one session starts after the cap.",
+            "explanation": "All tests start sessions through the quiet wait; a broken cap would let a steady stream of events postpone a session forever.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/project-lead/scripts/test-crew-step.py",
+            "start_line": 1069,
+            "end_line": 1089,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "R20 was weakened. The check that crew-record.py is unchanged now only checks that old usage lines still exist, and the write-open check accepts any line containing \"patch\".",
+            "evidence": "check(\"R20 every write-mode open() names worktrees or the verify patch\", bool(text) and all(\"worktrees\" in x or \"patch\" in x for x in writes))",
+            "explanation": "The looser matches let new writes or behaviour changes in crew-record.py or crew-step.py pass the guard unnoticed.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/launcher.py",
+            "start_line": 988,
+            "end_line": 988,
+            "category": "test",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The new `window` subcommand's Herdr branch has no test; the 13 new checks cover only tmux and iTerm2.",
+            "evidence": "    elif terminal == \"herdr\":\n        tab, group = herdr_start(a, command, a.cwd, target)",
+            "suggested_fix": "Add a window run under the Herdr stubs and assert the tab handle.",
+            "explanation": "herdr_start and herdr_target take `a` fields (such as a group or space) that the window parser does not define, so the path can fail unseen.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 18773,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 109266,
+              "outputTokens": 23,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0546905,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 2148,
+              "cacheReadInputTokens": 123038,
+              "cacheCreationInputTokens": 118422,
+              "webSearchRequests": 0,
+              "costUSD": 0.5074797999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 684,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.5621703
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/launcher.md",
+          "start_line": 269,
+          "end_line": 282,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "launcher.md documents --settings and --group-color for `window`, but launcher.py's window parser accepts neither.",
+          "evidence": "                   [--model <model>] [--settings <file-or-json>]",
+          "suggested_fix": "Remove --settings and --group-color from the documented usage, or add both to the window parser.",
+          "explanation": "launcher.md says it owns the launcher's interface, and here the interface it documents does not match the WINDOW_USAGE string or the argparse definition in launcher.py.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "[--model <model>] [--settings <file-or-json>]",
+            "\"[--model <model>] [--group <name>] [--terminal iterm2|tmux|herdr]\"",
+            "w.add_argument(\"--group\")"
+          ],
+          "rationale": "The window parser in launcher.py defines only --name, --cwd, --prompt-file, --model, --group and --terminal. launcher.md documents --settings and --group-color for it too, so a caller who passes either gets an argparse error.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "[--model <model>] [--settings <file-or-json>]",
+            "\"[--model <model>] [--group <name>] [--terminal iterm2|tmux|herdr]\"",
+            "w.add_argument(\"--group\")"
+          ],
+          "rationale": "The window parser in launcher.py defines only --name, --cwd, --prompt-file, --model, --group and --terminal. launcher.md documents --settings and --group-color for it too, so a caller who passes either gets an argparse error.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 403,
+          "end_line": 403,
+          "category": "security",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "`say` writes the sender name exactly as the caller gives it, so anything that can run the script can pose as the principal or the orchestrator and send the merge word or a go-ahead answer.",
+          "evidence": "append_lines(wdir(record) / \"inbox.jsonl\", [event(\"inbox\", text, a.sender)])",
+          "suggested_fix": "Mark inbox lines as unverified, and require a check in the session, such as a confirmation, before it runs a merge or push from an inbox word.",
+          "explanation": "The window session acts on inbox lines from `person` or `orch` (merge, rebase, go-ahead), and `--from` is never checked, so this weakens the go-ahead gate.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "append_lines(wdir(record) / \"inbox.jsonl\", [event(\"inbox\", text, a.sender)])"
+          ],
+          "rationale": "`say` does store the unchecked `--from` value. But the caller is a local process with write access to the record dir, so it could write inbox.jsonl or state.json directly. No trust boundary is crossed, so the finding is a theoretical hardening note.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "append_lines(wdir(record) / \"inbox.jsonl\", [event(\"inbox\", text, a.sender)])",
+            "if not a.sender:\n        raise Usage(\"say needs --from <name>\")",
+            "Only the principal can tell you to merge the PR, by an inbox line or a\nmessage.",
+            "python3 <window-watch> say <record-dir> --from person \"<answer>\""
+          ],
+          "rationale": "It is true that `say` records `--from` without checking it. But this is a local, single-user tool. Anyone who can run the script can already write `inbox.jsonl` or `state.json` directly, or run `gh pr merge` themselves, so the unchecked name crosses no trust boundary. The design itself tells a person to answer with `--from person`, so the label is meant to be self-declared.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "append_lines(wdir(record) / \"inbox.jsonl\", [event(\"inbox\", text, a.sender)])",
+            "if not a.sender:\n        raise Usage(\"say needs --from <name>\")",
+            "Only the principal can tell you to merge the PR, by an inbox line or a\nmessage.",
+            "python3 <window-watch> say <record-dir> --from person \"<answer>\""
+          ],
+          "rationale": "It is true that `say` records `--from` without checking it. But this is a local, single-user tool. Anyone who can run the script can already write `inbox.jsonl` or `state.json` directly, or run `gh pr merge` themselves, so the unchecked name crosses no trust boundary. The design itself tells a person to answer with `--from person`, so the label is meant to be self-declared.",
+          "score": 80,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 194,
+          "end_line": 194,
+          "category": "security",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "`pid_alive` returns true when `ps` prints nothing, so a reused pid of an unrelated process can count as a live watcher.",
+          "evidence": "return \"window-watch\" in ps.stdout or not ps.stdout.strip()",
+          "suggested_fix": "Return true only when the command line holds `window-watch`.",
+          "explanation": "A false live result stops `ensure` from restarting the watcher, and PR events then go unwatched.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return \"window-watch\" in ps.stdout or not ps.stdout.strip()",
+            "if ps.returncode != 0:\n        return False"
+          ],
+          "rationale": "`ps` prints nothing with exit code 0 only in odd cases, such as a test stub. A reused pid of an unrelated live process prints its own command line, which lacks \"window-watch\", so the check returns false. The empty-output fallback does not let a reused pid count as live in practice.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return \"window-watch\" in ps.stdout or not ps.stdout.strip()",
+            "if ps.returncode != 0:\n        return False"
+          ],
+          "rationale": "`ps` prints nothing with exit code 0 only in odd cases, such as a test stub. A reused pid of an unrelated live process prints its own command line, which lacks \"window-watch\", so the check returns false. The empty-output fallback does not let a reused pid count as live in practice.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "security",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 636,
+          "end_line": 640,
+          "category": "bug",
+          "severity_estimate": "blocking",
+          "confidence": "medium",
+          "claim": "On a merged line the watcher always writes run.deploy with source window-watch and no environment, workflow or timeout, ignoring the winning Deploy section, including Deploy: none and manual.",
+          "evidence": "\"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+          "suggested_fix": "Resolve the winning Deploy section in the watcher. Skip the setup for none and manual, and pass --environment, --workflow and --timeout from the section.",
+          "explanation": "SKILL.md and pr-watch.md say the setup uses the winning section's flags and writes no run.deploy under none or manual. Under none the run now polls the default signal and ends with a deploy-timeout after 180 minutes, not at the merge.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+            "if not isinstance(run.get(\"deploy\"), dict):"
+          ],
+          "rationale": "The watcher always runs `deploy --setup-only --source window-watch` with no environment, workflow or timeout. It never reads the winning Deploy section. SKILL.md and pr-watch.md say it uses that section and writes no run.deploy under none or manual. watch-step.py then writes run.deploy with a 180 minute default timeout. Under none or manual the run polls a deploy that should not exist and ends on deploy-timeout.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+            "obj = {\"environment\": a.environment, \"workflow\": a.workflow,\n               \"timeout_minutes\": 180 if a.timeout is None else a.timeout,\n               \"source\": a.source, \"since\": now(), \"ended\": None}",
+            "polls nothing when the winning `Deploy` is `none` or `manual`",
+            "With `none`, the `merged` line is the ship word, and `run.deploy` is absent.",
+            "`--source` is\n   the winning source's name, or `default`. `--environment` and `--workflow`\n   are the winning section's values"
+          ],
+          "rationale": "On a merge, after_queue always calls `watch-step.py deploy --setup-only --source window-watch` with no environment, workflow or timeout. watch-step.py does not resolve the Deploy section on its own, so it writes a default run.deploy (180 minutes) even under `none` or `manual`. That breaks the contract in SKILL.md and pr-watch.md, and it means a configured workflow or environment is ignored on the normal merge path.",
+          "score": 93,
+          "severity": "blocking"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+            "obj = {\"environment\": a.environment, \"workflow\": a.workflow,\n               \"timeout_minutes\": 180 if a.timeout is None else a.timeout,\n               \"source\": a.source, \"since\": now(), \"ended\": None}",
+            "polls nothing when the winning `Deploy` is `none` or `manual`",
+            "With `none`, the `merged` line is the ship word, and `run.deploy` is absent.",
+            "`--source` is\n   the winning source's name, or `default`. `--environment` and `--workflow`\n   are the winning section's values"
+          ],
+          "rationale": "On a merge, after_queue always calls `watch-step.py deploy --setup-only --source window-watch` with no environment, workflow or timeout. watch-step.py does not resolve the Deploy section on its own, so it writes a default run.deploy (180 minutes) even under `none` or `manual`. That breaks the contract in SKILL.md and pr-watch.md, and it means a configured workflow or environment is ignored on the normal merge path.",
+          "score": 93,
+          "severity": "blocking"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "hooks/session-end.py",
+          "start_line": 20,
+          "end_line": 20,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The diff removes `delivered` from LIVE_STATES, so a project-lead session that dies after the hand-over but before its goal check or release is no longer marked interrupted.",
+          "evidence": "LIVE_STATES = (\"active\", \"blocked\")",
+          "explanation": "Commit 528ddff added `delivered` on purpose so a dead session is marked. Now such a run stays `delivered` with the watcher held, its worktrees are not orphaned, and nothing prompts a resume.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "LIVE_STATES = (\"active\", \"blocked\")",
+            "# watcher with no model owns the PR watch, and `window-watch.py ensure` brings"
+          ],
+          "rationale": "The removal is real, but it is intentional. After hand-over the session may close, and a watcher with no model plus `ensure` handles recovery, so the finding describes the new design and not a defect.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "LIVE_STATES = (\"active\", \"blocked\")",
+            "if run.get(\"run_state\") not in LIVE_STATES:\n            return False",
+            "result = run([sys.executable, WINDOW_WATCH, \"start\", os.path.abspath(rec), \"--hold\"])",
+            "elif not sess and intake and not w.get(\"hold\"):",
+            "`hold: true`\nmeans the project lead died before its last call: finish the goal check, then\n`goal-check.md`'s \"The last call\"."
+          ],
+          "rationale": "The claim holds. `deliver` sets `run_state: delivered` and `hand-over` starts the watcher with `--hold` before the goal check and `release`, and the hook now skips `delivered` runs. So a project lead that dies in that gap leaves a held watcher, no session starts, and the run is never marked interrupted. The impact is smaller than the finding says: `hand-over`'s cleanup has already removed the worktrees, the orchestrator does not act on `interrupted` anyway, and `resume.md` covers `hold: true` once someone runs a resume.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "LIVE_STATES = (\"active\", \"blocked\")",
+            "if run.get(\"run_state\") not in LIVE_STATES:\n            return False",
+            "result = run([sys.executable, WINDOW_WATCH, \"start\", os.path.abspath(rec), \"--hold\"])",
+            "elif not sess and intake and not w.get(\"hold\"):",
+            "`hold: true`\nmeans the project lead died before its last call: finish the goal check, then\n`goal-check.md`'s \"The last call\"."
+          ],
+          "rationale": "The claim holds. `deliver` sets `run_state: delivered` and `hand-over` starts the watcher with `--hold` before the goal check and `release`, and the hook now skips `delivered` runs. So a project lead that dies in that gap leaves a held watcher, no session starts, and the run is never marked interrupted. The impact is smaller than the finding says: `hand-over`'s cleanup has already removed the worktrees, the orchestrator does not act on `interrupted` anyway, and `resume.md` covers `hold: true` once someone runs a resume.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 263,
+          "end_line": 263,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "`start` on a record whose watcher is dead rewrites hold, intake, model and poll from its flags and defaults, so rerunning `hand-over` after the watcher died resets `hold` to false.",
+          "evidence": "rec_set(record, \"hold\", bool(a.hold))",
+          "explanation": "A release, a stop or an earlier hold state is overwritten, so window sessions can start before the goal check finishes.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec_set(record, \"hold\", bool(a.hold))"
+          ],
+          "rationale": "`start` does overwrite `hold` from the flag when the watcher is dead. But `hand-over` runs `start --hold`, so a rerun sets `hold` to true, not false. That is the safe direction, and the project lead then runs `release` again. The claimed harm, sessions starting before the goal check, doesn't follow from this path. Only a manual `start` without `--hold` would clear it.",
+          "score": 22,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec_set(record, \"hold\", bool(a.hold))",
+            "result = run([sys.executable, WINDOW_WATCH, \"start\", os.path.abspath(rec), \"--hold\"])"
+          ],
+          "rationale": "The claim does not hold. `hand-over` always calls `start` with `--hold`, so a rerun after the watcher dies sets `hold` to true, not false. Sessions cannot start before the goal check through this path. `start` does overwrite the earlier `hold` and `intake` values, but the harm the finding describes does not follow from that.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec_set(record, \"hold\", bool(a.hold))",
+            "result = run([sys.executable, WINDOW_WATCH, \"start\", os.path.abspath(rec), \"--hold\"])"
+          ],
+          "rationale": "The claim does not hold. `hand-over` always calls `start` with `--hold`, so a rerun after the watcher dies sets `hold` to true, not false. Sessions cannot start before the goal check through this path. `start` does overwrite the earlier `hold` and `intake` values, but the harm the finding describes does not follow from that.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 461,
+          "end_line": 461,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The branch that drops the run's own comment (own login) has no test; no check emits a comment by the stub login `me`.",
+          "evidence": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:",
+          "suggested_fix": "Emit `comment 1 me <ts> ...` in test-window-watch.sh and assert no session starts.",
+          "explanation": "If this filter breaks, the watcher starts a model session for the run's own replies, which is the cost the change removes, and no test would fail.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:",
+            "for i in 1 2 3; do emit main \"comment $((200 + i)) bob $TS text $i\"; done",
+            "\"api user\"*) echo me; exit 0 ;;"
+          ],
+          "rationale": "The stub gh returns login `me`, but the only `comment` events in the test come from bob. No check exercises the own-comment drop.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:",
+            "for i in 1 2 3; do emit main \"comment $((200 + i)) bob $TS text $i\"; done",
+            "\"api user\"*) echo me; exit 0 ;;"
+          ],
+          "rationale": "The stub gh returns login `me`, but the only `comment` events in the test come from bob. No check exercises the own-comment drop.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 716,
+          "end_line": 716,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The 600s burst cap branch (events keep arriving so quiet never elapses) is untested.",
+          "evidence": "if first and (time.time() - last >= quiet or time.time() - first >= cap):",
+          "suggested_fix": "Emit an event every second with quiet larger than cap and assert one session starts after the cap.",
+          "explanation": "All tests start sessions through the quiet wait; a broken cap would let a steady stream of events postpone a session forever.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if first and (time.time() - last >= quiet or time.time() - first >= cap):"
+          ],
+          "rationale": "Every test starts the watcher with --quiet 2 --cap 5, so the quiet wait always fires first. No test sends a steady stream of events to reach the cap branch.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if first and (time.time() - last >= quiet or time.time() - first >= cap):",
+            "quiet, cap = int(w.get(\"quiet\") or 120), int(w.get(\"cap\") or 600)",
+            "ww start \"$R\" --poll 1 --quiet 2 --cap 5",
+            "for i in $(seq 1 12); do emit main \"review-comment $((100 + i)) alice $TS src/f.py:$i comment $i\"; done"
+          ],
+          "rationale": "Every test starts the watcher with quiet 2 and cap 5, and every burst stops within the quiet wait. No test keeps events coming long enough for the cap branch alone to start a session. The cap condition is a single, plainly correct line, so this is a small coverage gap.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if first and (time.time() - last >= quiet or time.time() - first >= cap):",
+            "quiet, cap = int(w.get(\"quiet\") or 120), int(w.get(\"cap\") or 600)",
+            "ww start \"$R\" --poll 1 --quiet 2 --cap 5",
+            "for i in $(seq 1 12); do emit main \"review-comment $((100 + i)) alice $TS src/f.py:$i comment $i\"; done"
+          ],
+          "rationale": "Every test starts the watcher with quiet 2 and cap 5, and every burst stops within the quiet wait. No test keeps events coming long enough for the cap branch alone to start a session. The cap condition is a single, plainly correct line, so this is a small coverage gap.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/project-lead/scripts/test-crew-step.py",
+          "start_line": 1069,
+          "end_line": 1089,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "R20 was weakened. The check that crew-record.py is unchanged now only checks that old usage lines still exist, and the write-open check accepts any line containing \"patch\".",
+          "evidence": "check(\"R20 every write-mode open() names worktrees or the verify patch\", bool(text) and all(\"worktrees\" in x or \"patch\" in x for x in writes))",
+          "explanation": "The looser matches let new writes or behaviour changes in crew-record.py or crew-step.py pass the guard unnoticed.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R20 every write-mode open() names worktrees or the verify patch\", bool(text) and all(\"worktrees\" in x or \"patch\" in x for x in writes))",
+            "bool(old_lines) and all(x in new_lines for x in old_lines))"
+          ],
+          "rationale": "The checks are looser as described. But the PR states this change openly, and it is needed because crew-record.py now legitimately changes (a lock). The patch-file write also needs an allowance, so the weakening is deliberate and not worth a comment.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R20 every write-mode open() names worktrees or the verify patch\", bool(text) and all(\"worktrees\" in x or \"patch\" in x for x in writes))",
+            "usage = re.compile(r\"^  crew-record\\.py <record-dir> .*$\", re.M)",
+            "# (a lock, a new field), but every usage line of the merge base must still be there.",
+            "with open(patch, \"w\", encoding=\"utf-8\", newline=\"\") as fh:",
+            "with open(worktrees_tmp, \"w\", encoding=\"utf-8\") as handle:"
+          ],
+          "rationale": "The checks really are looser now. But the change was made on purpose and the description says so: crew-record.py has to change in this PR to add the record lock, and the \"patch\" substring match works the same way as the old \"worktrees\" match, which only matched the variable name too. So the finding mostly repeats what the description already says.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "check(\"R20 every write-mode open() names worktrees or the verify patch\", bool(text) and all(\"worktrees\" in x or \"patch\" in x for x in writes))",
+            "usage = re.compile(r\"^  crew-record\\.py <record-dir> .*$\", re.M)",
+            "# (a lock, a new field), but every usage line of the merge base must still be there.",
+            "with open(patch, \"w\", encoding=\"utf-8\", newline=\"\") as fh:",
+            "with open(worktrees_tmp, \"w\", encoding=\"utf-8\") as handle:"
+          ],
+          "rationale": "The checks really are looser now. But the change was made on purpose and the description says so: crew-record.py has to change in this PR to add the record lock, and the \"patch\" substring match works the same way as the old \"worktrees\" match, which only matched the variable name too. So the finding mostly repeats what the description already says.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/launcher.py",
+          "start_line": 988,
+          "end_line": 988,
+          "category": "test",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The new `window` subcommand's Herdr branch has no test; the 13 new checks cover only tmux and iTerm2.",
+          "evidence": "    elif terminal == \"herdr\":\n        tab, group = herdr_start(a, command, a.cwd, target)",
+          "suggested_fix": "Add a window run under the Herdr stubs and assert the tab handle.",
+          "explanation": "herdr_start and herdr_target take `a` fields (such as a group or space) that the window parser does not define, so the path can fail unseen.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    elif terminal == \"herdr\":\n        tab, group = herdr_start(a, command, a.cwd, target)",
+            "    a.group_color = None"
+          ],
+          "rationale": "No window test sets a Herdr terminal; the three window runs use tmux or iTerm2. The claimed missing-field failure does not exist, because `check_window` sets `group_color` and the parser defines `name` and `group`. The Herdr branch reuses already-tested code.",
+          "score": 60,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        tab, group = herdr_start(a, command, a.cwd, target)",
+            "TMUX=/tmp/t,1,0 run window --name rec-w1 --cwd \"$WINDIR\" --prompt-file \"$T/win-prompt.md\" --model sonnet",
+            "TERM_PROGRAM=iTerm.app run window --name rec-w3 --cwd \"$WINDIR\" --prompt-file \"$T/win-prompt.md\" --model sonnet --group grp",
+            "    a.group_color = None",
+            "    if a.group_color:"
+          ],
+          "rationale": "The window section of test-launcher.sh runs only under tmux and iTerm2, so the new Herdr branch of `window` has no test. The finding's reason is wrong, though: check_window sets a.group_color to None, and the parser defines name and group. Those are the only fields of `a` that herdr_target and herdr_start read, so there is no missing-attribute failure.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        tab, group = herdr_start(a, command, a.cwd, target)",
+            "TMUX=/tmp/t,1,0 run window --name rec-w1 --cwd \"$WINDIR\" --prompt-file \"$T/win-prompt.md\" --model sonnet",
+            "TERM_PROGRAM=iTerm.app run window --name rec-w3 --cwd \"$WINDIR\" --prompt-file \"$T/win-prompt.md\" --model sonnet --group grp",
+            "    a.group_color = None",
+            "    if a.group_color:"
+          ],
+          "rationale": "The window section of test-launcher.sh runs only under tmux and iTerm2, so the new Herdr branch of `window` has no test. The finding's reason is wrong, though: check_window sets a.group_color to None, and the parser defines name and group. Those are the only fields of `a` that herdr_target and herdr_start read, so there is no missing-attribute failure.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/launcher.md",
+          "start_line": 270,
+          "end_line": 272,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "high",
+          "claim": "The `window` synopsis lists `--settings` and `--group-color`, but launcher.py's window parser does not accept them.",
+          "evidence": "[--model <model>] [--settings <file-or-json>]",
+          "suggested_fix": "Drop --settings and --group-color from the synopsis and the prose, or add them to the parser.",
+          "explanation": "The parser defines only --name, --cwd, --prompt-file, --model, --group and --terminal, so a call with --settings or --group-color is a usage error.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "w.add_argument(\"--prompt-file\", required=True)",
+            "w.add_argument(\"--group\")",
+            "[--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr]"
+          ],
+          "rationale": "The window subparser in launcher.py defines only --name, --cwd, --prompt-file, --model, --group and --terminal. The new docs list --settings and --group-color for `window`, so a caller that follows them gets a usage error.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "w.add_argument(\"--prompt-file\", required=True)",
+            "w.add_argument(\"--group\")",
+            "[--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr]"
+          ],
+          "rationale": "The window subparser in launcher.py defines only --name, --cwd, --prompt-file, --model, --group and --terminal. The new docs list --settings and --group-color for `window`, so a caller that follows them gets a usage error.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/launcher.md",
+          "start_line": 294,
+          "end_line": 297,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "high",
+          "claim": "The doc says `window` prints the ten fields of `start`, but the code prints seven, with no worktree, branch or base.",
+          "evidence": "**The output.** The ten fields of `start`, with these values: `worktree` is",
+          "suggested_fix": "Describe the seven fields of the output: session_name, model, terminal, tab, tab_group, session_id and cwd.",
+          "explanation": "window() prints session_name, model, terminal, tab, tab_group, session_id and cwd, and test-launcher.sh checks for exactly those seven.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"session_id\": session_id,\n                \"cwd\": a.cwd,",
+            "**The output.** The ten fields of `start`, with these values: `worktree` is"
+          ],
+          "rationale": "window() prints seven fields (session_name, model, terminal, tab, tab_group, session_id, cwd). It prints no repo, worktree, branch or base, so the doc's \\\"ten fields of start\\\" and its worktree, branch and base values are wrong.",
+          "score": 96,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"session_id\": session_id,\n                \"cwd\": a.cwd,",
+            "**The output.** The ten fields of `start`, with these values: `worktree` is"
+          ],
+          "rationale": "window() prints seven fields (session_name, model, terminal, tab, tab_group, session_id, cwd). It prints no repo, worktree, branch or base, so the doc's \\\"ten fields of start\\\" and its worktree, branch and base values are wrong.",
+          "score": 96,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/references/pr-watch.md",
+          "start_line": 155,
+          "end_line": 156,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The doc says merged_seen holds the merge commit sha, but the watcher writes the time field of the `merged` line.",
+          "evidence": "2. It writes `run.window.merged_seen` with the merge commit sha, so the next",
+          "suggested_fix": "Say it writes the `at` time of the `merged` line.",
+          "explanation": "after_queue writes parts[3], the `at` time of the `merged` line (the mergedAt time), which is what record-format.md says.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec_set(record, \"merged_seen\", parts[3] if len(parts) > 3 else now())",
+            "2. It writes `run.window.merged_seen` with the merge commit sha, so the next"
+          ],
+          "rationale": "window-watch.py writes parts[3], the time field of the `merged` line, to merged_seen. record-format.md says it holds the `at` time. pr-watch.md wrongly says merge commit sha.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec_set(record, \"merged_seen\", parts[3] if len(parts) > 3 else now())",
+            "2. It writes `run.window.merged_seen` with the merge commit sha, so the next"
+          ],
+          "rationale": "window-watch.py writes parts[3], the time field of the `merged` line, to merged_seen. record-format.md says it holds the `at` time. pr-watch.md wrongly says merge commit sha.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 635,
+          "end_line": 643,
+          "category": "bug",
+          "severity_estimate": "blocking",
+          "confidence": "high",
+          "claim": "On a `merged` line the watcher always sets up the deploy poll with `--source window-watch` and default flags. It ignores the winning `Deploy` section, so `none`, `manual`, `environment`, `workflow` and `timeout` are never applied.",
+          "evidence": "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+          "suggested_fix": "Resolve the winning `Deploy` section from `run.standing_instructions` (repo, then machine) the way `resolve_model` reads `Window model`. Skip the setup for `none`/`manual`, and pass `--source/--environment/--workflow/--timeout` from that section.",
+          "explanation": "The skill says the watcher polls nothing under `Deploy: none`/`manual` and uses the winning section's flags. Here a `manual` repo gets a default deploy poll whose `no-deploy`/`deployed` line a later session takes as the ship word, and a configured environment or workflow is never watched.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)"
+          ],
+          "rationale": "after_queue always runs deploy --setup-only with a fixed --source and no Deploy-section handling. watch-step.py then writes a default run.deploy. SKILL.md says the watcher polls nothing under none or manual and uses the winning section.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)"
+          ],
+          "rationale": "after_queue always runs deploy --setup-only with a fixed --source and no Deploy-section handling. watch-step.py then writes a default run.deploy. SKILL.md says the watcher polls nothing under none or manual and uses the winning section.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "hooks/session-end.py",
+          "start_line": 20,
+          "end_line": 20,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "`blocked` is still a live state. The go-ahead gate now leaves a delivered run `blocked` with no live session, so closing the project lead's tab (whose session id is in `session_ids`) marks that run `interrupted`.",
+          "evidence": "LIVE_STATES = (\"active\", \"blocked\")",
+          "suggested_fix": "Skip the interrupt when every deliverable is terminal or `run.window` exists, since the watcher owns that run.",
+          "explanation": "After the hand-over a window session escalates (run goes `blocked`) and ends. When the principal later closes the original project-lead tab, SessionEnd fires and moves the waiting delivered run to `interrupted`, which the README now says is safe to do.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "LIVE_STATES = (\"active\", \"blocked\")",
+            "session stays alive to wait. The run is `blocked` until the answer."
+          ],
+          "rationale": "The project lead's session ends at the hand-over (`release`), while the run is still `delivered`. Only `session-id` entries are in `session_ids`, and window sessions are not shown being added. The `blocked` run then has no session id that can still end, so the claimed interrupt needs an unusual flow. `blocked` was already live before this change.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": false,
+          "quotes": [
+            "LIVE_STATES = (\"active\", \"blocked\")",
+            "session stays alive to wait. The run is `blocked` until the answer."
+          ],
+          "rationale": "The project lead's session ends at the hand-over (`release`), while the run is still `delivered`. Only `session-id` entries are in `session_ids`, and window sessions are not shown being added. The `blocked` run then has no session id that can still end, so the claimed interrupt needs an unusual flow. `blocked` was already live before this change.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 461,
+          "end_line": 462,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The watcher drops every `comment` whose author is the run's own `gh` login. That login is the principal's account, so a comment the principal writes on the PR never starts a session and is still acked into `seen_ids`.",
+          "evidence": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:\n        return False, False",
+          "suggested_fix": "Drop this login filter and rely on the marker, or drop only comments that carry the `pr-review` marker.",
+          "explanation": "Crew's own replies are already left out by the `pr-review` marker in the poll, so this filter only removes human comments from the principal. Before this change those comments were reported.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:\n        return False, False"
+          ],
+          "rationale": "The code does drop the principal's own comments, but that is deliberate: the description lists \\\"the run's own comment\\\" as a dropped event, and the repo's github-review.md already says to leave out the principal's own login. The claim describes the intended design as a bug, and the code does not show a harm.",
+          "score": 30,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:\n        return False, False",
+            "done = subprocess.run([\"gh\", \"api\", \"user\", \"--jq\", \".login\"], capture_output=True, text=True, timeout=60)",
+            "Leave out the principal's own login, which `gh api user --jq .login` gives",
+            "| select((.body // \"\" | gsub(\"\\r\"; \"\") | rtrimstr(\"\\n\") | split(\"\\n\") | last // \"\" | startswith(\"<!-- pr-review: \")) | not)",
+            "these events: a `review`, a `review-comment`, a `comment` by another login, a"
+          ],
+          "rationale": "The `gh` login is the principal's account, and the poll already leaves out crew's own marked replies. So this filter also drops and acks conversation comments the principal writes by hand, and they never start a session. SKILL.md documents this on purpose, and `say` is another way to reach the run, so it is a design-level risk rather than a blocker.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:\n        return False, False",
+            "done = subprocess.run([\"gh\", \"api\", \"user\", \"--jq\", \".login\"], capture_output=True, text=True, timeout=60)",
+            "Leave out the principal's own login, which `gh api user --jq .login` gives",
+            "| select((.body // \"\" | gsub(\"\\r\"; \"\") | rtrimstr(\"\\n\") | split(\"\\n\") | last // \"\" | startswith(\"<!-- pr-review: \")) | not)",
+            "these events: a `review`, a `review-comment`, a `comment` by another login, a"
+          ],
+          "rationale": "The `gh` login is the principal's account, and the poll already leaves out crew's own marked replies. So this filter also drops and acks conversation comments the principal writes by hand, and they never start a session. SKILL.md documents this on purpose, and `say` is another way to reach the run, so it is a design-level risk rather than a blocker.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 579,
+          "end_line": 584,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The stale check uses the mtime of `state.json`, which the watcher itself rewrites (ack cursor writes, `merged_seen`, `deploy.ended`). Events that arrive during a live session reset the idle clock, so a hung session may never be flagged.",
+          "evidence": "idle = time.time() - (record / \"state.json\").stat().st_mtime",
+          "suggested_fix": "Track the last write by the session separately, or exclude the watcher's own writes (for example, record the mtime after each of its own writes and compare).",
+          "explanation": "The watcher's own writes go to the same file, so they look like activity by the session.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "idle = time.time() - (record / \"state.json\").stat().st_mtime",
+            "rec_run_set(record, \"deploy.ended\", kind)",
+            "rec_set(record, \"merged_seen\", parts[3] if len(parts) > 3 else now())"
+          ],
+          "rationale": "The idle clock is state.json's mtime, and the watcher itself writes that file (ack cursor, merged_seen, deploy.ended, and the live flip). Those writes reset the clock while a session is live, so a hung session can look active. Events are fairly rare and the cap is 4 hours, so the effect is limited.",
+          "score": 72,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "idle = time.time() - (record / \"state.json\").stat().st_mtime",
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"ack\", str(record)], input=\"\\n\".join(known) + \"\\n\",",
+            "rec_set(record, \"merged_seen\", parts[3] if len(parts) > 3 else now())",
+            "if new != watch:\n        set_watch(a.record, new)"
+          ],
+          "rationale": "During a live session, tick() still runs collect() and then `watch-step.py ack`. That ack rewrites run.watch in state.json whenever new PR lines arrive, and merged_seen and deploy.ended also go to state.json. check_stale measures idleness from the mtime of that same file, so the watcher's own writes reset the idle clock, and a hung session on an active PR may never be flagged.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "idle = time.time() - (record / \"state.json\").stat().st_mtime",
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"ack\", str(record)], input=\"\\n\".join(known) + \"\\n\",",
+            "rec_set(record, \"merged_seen\", parts[3] if len(parts) > 3 else now())",
+            "if new != watch:\n        set_watch(a.record, new)"
+          ],
+          "rationale": "During a live session, tick() still runs collect() and then `watch-step.py ack`. That ack rewrites run.watch in state.json whenever new PR lines arrive, and merged_seen and deploy.ended also go to state.json. check_stale measures idleness from the mtime of that same file, so the watcher's own writes reset the idle clock, and a hung session on an active PR may never be flagged.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/delivered-window/scripts/window-watch.py",
+          "start_line": 688,
+          "end_line": 690,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "`tick` archives a done session and writes `session` null without the window Lock. `cmd_claim` archives and writes a new claimed session under the Lock, so the watcher's null write can erase a fresh claim.",
+          "evidence": "    if sess and sess.get(\"status\") == \"done\":\n        close_tab(sess.get(\"handle\"))\n        archive(record, sess)",
+          "suggested_fix": "Take `Lock(record)` around the reload, archive and null write in `tick`, and recheck that the session is still the same done one.",
+          "explanation": "`tick` reads the record, then takes time to close the tab before it archives. If a claim lands in that gap, the later `rec_set(record, \"session\", None)` frees a slot that someone holds.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if sess and sess.get(\"status\") == \"done\":\n        close_tab(sess.get(\"handle\"))\n        archive(record, sess)",
+            "    rec_set(record, \"session\", None)",
+            "        if sess:\n            archive(record, sess)"
+          ],
+          "rationale": "`tick` reads the done session, closes the tab (a subprocess call that can take up to 120 s), then `archive` writes `session` null without the window Lock. `cmd_claim` can archive that same done session and write a new claimed one under the Lock in that gap. The watcher's later null write then erases the new claim. The window is narrow, so this is a rare-path race.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if sess and sess.get(\"status\") == \"done\":\n        close_tab(sess.get(\"handle\"))\n        archive(record, sess)",
+            "    rec_set(record, \"session\", None)",
+            "        if sess and sess.get(\"status\") in (\"live\", \"launching\"):\n            raise Refused(f\"the slot is held by {sess.get('name')}\")\n        if sess:\n            archive(record, sess)",
+            "        rec_set(record, \"session\", {\"name\": a.session, \"status\": \"live\", \"events\": events, \"handle\": None,"
+          ],
+          "rationale": "`tick` reads the done session, calls `close_tab` (which can block for up to 120 s), and then runs `archive`, which writes `session` to None without the Lock and without checking the session again. `cmd_claim` accepts a done session: under the Lock it archives that session and writes a new live claim. If the claim lands in that gap, the watcher's later null write erases it. A resumed lead's `next` and `done` would then be refused, and the watcher could start a second session. This is a real race, but it needs a claim to land in a narrow window.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if sess and sess.get(\"status\") == \"done\":\n        close_tab(sess.get(\"handle\"))\n        archive(record, sess)",
+            "    rec_set(record, \"session\", None)",
+            "        if sess and sess.get(\"status\") in (\"live\", \"launching\"):\n            raise Refused(f\"the slot is held by {sess.get('name')}\")\n        if sess:\n            archive(record, sess)",
+            "        rec_set(record, \"session\", {\"name\": a.session, \"status\": \"live\", \"events\": events, \"handle\": None,"
+          ],
+          "rationale": "`tick` reads the done session, calls `close_tab` (which can block for up to 120 s), and then runs `archive`, which writes `session` to None without the Lock and without checking the session again. `cmd_claim` accepts a done session: under the Lock it archives that session and writes a new live claim. If the claim lands in that gap, the watcher's later null write erases it. A resumed lead's `next` and `done` would then be refused, and the watcher could start a second session. This is a real race, but it needs a claim to land in a narrow window.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          0,
+          6
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 0,
+              "claim": "launcher.md documents --settings and --group-color for `window`, but launcher.py's window parser accepts neither.",
+              "explanation": "The documented interface does not match the WINDOW_USAGE string or argparse definition, which only accept --name, --cwd, --prompt-file, --model, --group and --terminal, so using these flags causes a usage error.",
+              "suggested_fix": "Remove --settings and --group-color from the documented usage and prose, or add both to the window parser.",
+              "severity": "suggestion"
+            }
+          ]
+        }
+      },
+      {
+        "group": [
+          1,
+          9
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 0,
+              "claim": "On a merged line the watcher always sets up the deploy poll with source window-watch and default flags, ignoring the winning Deploy section (none, manual, environment, workflow, timeout).",
+              "explanation": "The skill docs say the winning section's flags are used and nothing is polled under none or manual, but the watcher polls the default signal anyway, so a none run ends with a 180-minute deploy-timeout and a manual repo gets a default deploy poll.",
+              "suggested_fix": "Resolve the winning Deploy section from run.standing_instructions (repo, then machine) in the watcher. Skip the setup for none and manual, and pass --environment, --workflow and --timeout from the section.",
+              "severity": "blocking"
+            }
+          ]
+        }
+      },
+      {
+        "group": [
+          3,
+          10
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 1,
+              "claim": "The watcher drops every `comment` authored by the run's own `gh` login, which is the principal's account, so principal comments on the PR never start a session and are still acked into `seen_ids`.",
+              "explanation": "Crew's own replies are already excluded by the `pr-review` marker in the poll, so this filter only removes human comments from the principal, which were reported before this change.",
+              "suggested_fix": "Drop this login filter and rely on the marker, or drop only comments that carry the `pr-review` marker.",
+              "severity": "suggestion"
+            },
+            {
+              "member_index": 0,
+              "claim": "The branch that drops the run's own comment (own login) has no test; no check emits a comment by the stub login `me`.",
+              "explanation": "If this filter breaks, the watcher starts a model session for the run's own replies, which is the cost the change removes, and no test would fail.",
+              "suggested_fix": "Emit `comment 1 me <ts> ...` in test-window-watch.sh and assert no session starts.",
+              "severity": "suggestion"
+            }
+          ]
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would request changes",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/delivered-window/scripts/window-watch.py",
+        "start_line": 636,
+        "end_line": 640,
+        "category": "bug",
+        "severity_estimate": "blocking",
+        "confidence": "medium",
+        "claim": "On a merged line the watcher always sets up the deploy poll with source window-watch and default flags, ignoring the winning Deploy section (none, manual, environment, workflow, timeout).",
+        "evidence": "\"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+        "explanation": "The skill docs say the winning section's flags are used and nothing is polled under none or manual, but the watcher polls the default signal anyway, so a none run ends with a 180-minute deploy-timeout and a manual repo gets a default deploy poll.",
+        "needs_context": true,
+        "fingerprint": "884beae931702c0e",
+        "severity": "blocking",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\",\n                                       \"window-watch\", \"--setup-only\"], capture_output=True, text=True)",
+            "obj = {\"environment\": a.environment, \"workflow\": a.workflow,\n               \"timeout_minutes\": 180 if a.timeout is None else a.timeout,\n               \"source\": a.source, \"since\": now(), \"ended\": None}",
+            "polls nothing when the winning `Deploy` is `none` or `manual`",
+            "With `none`, the `merged` line is the ship word, and `run.deploy` is absent.",
+            "`--source` is\n   the winning source's name, or `default`. `--environment` and `--workflow`\n   are the winning section's values"
+          ],
+          "rationale": "On a merge, after_queue always calls `watch-step.py deploy --setup-only --source window-watch` with no environment, workflow or timeout. watch-step.py does not resolve the Deploy section on its own, so it writes a default run.deploy (180 minutes) even under `none` or `manual`. That breaks the contract in SKILL.md and pr-watch.md, and it means a configured workflow or environment is ignored on the normal merge path.",
+          "score": 93,
+          "severity": "blocking"
+        },
+        "span_text": "run = load(record).get(\"run\") or {} if not isinstance(run.get(\"deploy\"), dict): done = subprocess.run([sys.executable, str(WATCH_STEP), \"deploy\", str(record), \"--source\", \"window-watch\", \"--setup-only\"], capture_output=True, text=True) if done.returncode != 0:",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          },
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Resolve the winning Deploy section from run.standing_instructions (repo, then machine) in the watcher. Skip the setup for none and manual, and pass --environment, --workflow and --timeout from the section."
+      },
+      {
+        "file": "skills/orchestrator/references/launcher.md",
+        "start_line": 294,
+        "end_line": 297,
+        "category": "docs",
+        "severity_estimate": "suggestion",
+        "confidence": "high",
+        "claim": "The doc says `window` prints the ten fields of `start`, but the code prints seven, with no worktree, branch or base.",
+        "evidence": "**The output.** The ten fields of `start`, with these values: `worktree` is",
+        "suggested_fix": "Describe the seven fields of the output: session_name, model, terminal, tab, tab_group, session_id and cwd.",
+        "explanation": "window() prints session_name, model, terminal, tab, tab_group, session_id and cwd, and test-launcher.sh checks for exactly those seven.",
+        "needs_context": false,
+        "fingerprint": "f87771c5eed198d0",
+        "severity": "suggestion",
+        "score": 96,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "\"session_id\": session_id,\n                \"cwd\": a.cwd,",
+            "**The output.** The ten fields of `start`, with these values: `worktree` is"
+          ],
+          "rationale": "window() prints seven fields (session_name, model, terminal, tab, tab_group, session_id, cwd). It prints no repo, worktree, branch or base, so the doc's \\\"ten fields of start\\\" and its worktree, branch and base values are wrong.",
+          "score": 96,
+          "severity": "suggestion"
+        },
+        "span_text": "**The output.** The ten fields of `start`, with these values: `worktree` is the real `--cwd` path, `branch` is the branch that `--cwd` has checked out, or `null`, `base` is `null`, and `session_id` is the new id. The watcher writes `tab` and `session_id` to `run.window.session`, and closes the tab later with",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/delivered-window/references/pr-watch.md",
+        "start_line": 155,
+        "end_line": 156,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The doc says merged_seen holds the merge commit sha, but the watcher writes the time field of the `merged` line.",
+        "evidence": "2. It writes `run.window.merged_seen` with the merge commit sha, so the next",
+        "suggested_fix": "Say it writes the `at` time of the `merged` line.",
+        "explanation": "after_queue writes parts[3], the `at` time of the `merged` line (the mergedAt time), which is what record-format.md says.",
+        "needs_context": false,
+        "fingerprint": "7cd0a12c2667b7bd",
+        "severity": "suggestion",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "rec_set(record, \"merged_seen\", parts[3] if len(parts) > 3 else now())",
+            "2. It writes `run.window.merged_seen` with the merge commit sha, so the next"
+          ],
+          "rationale": "window-watch.py writes parts[3], the time field of the `merged` line, to merged_seen. record-format.md says it holds the `at` time. pr-watch.md wrongly says merge commit sha.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "span_text": "2. It writes `run.window.merged_seen` with the merge commit sha, so the next poll does not queue the `merged` line again.",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/references/launcher.md",
+        "start_line": 269,
+        "end_line": 282,
+        "category": "docs",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "launcher.md documents --settings and --group-color for `window`, but launcher.py's window parser accepts neither.",
+        "evidence": "                   [--model <model>] [--settings <file-or-json>]",
+        "explanation": "The documented interface does not match the WINDOW_USAGE string or argparse definition, which only accept --name, --cwd, --prompt-file, --model, --group and --terminal, so using these flags causes a usage error.",
+        "needs_context": false,
+        "fingerprint": "f976471833a11efb",
+        "severity": "suggestion",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "[--model <model>] [--settings <file-or-json>]",
+            "\"[--model <model>] [--group <name>] [--terminal iterm2|tmux|herdr]\"",
+            "w.add_argument(\"--group\")"
+          ],
+          "rationale": "The window parser in launcher.py defines only --name, --cwd, --prompt-file, --model, --group and --terminal. launcher.md documents --settings and --group-color for it too, so a caller who passes either gets an argparse error.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "span_text": "``` launcher.py window --name <session-name> --cwd <path> --prompt-file <file> [--model <model>] [--settings <file-or-json>] [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr] ``` `window` opens one interactive tab or window for a window session of a delivered run (`crew:delivered-window`). It makes no worktree and no branch, and it takes no `--checkout`. The watcher of `window-watch.py` runs it. The rule that only the launcher and `crew-usage.py` start a `claude` process holds. `--name`, `--model`, `--settings`, `--group`, `--group-color` and `--terminal` have the meanings and the checks of `start`. The `--model` default is `opus`, and `<json>` gets `\"remoteControlAtStartup\": false` as in `start`.",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          },
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Remove --settings and --group-color from the documented usage and prose, or add both to the window parser."
+      },
+      {
+        "file": "skills/delivered-window/scripts/window-watch.py",
+        "start_line": 461,
+        "end_line": 461,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The branch that drops the run's own comment (own login) has no test; no check emits a comment by the stub login `me`.",
+        "evidence": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:",
+        "explanation": "If this filter breaks, the watcher starts a model session for the run's own replies, which is the cost the change removes, and no test would fail.",
+        "needs_context": false,
+        "fingerprint": "90ba56d52531a1fc",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:",
+            "for i in 1 2 3; do emit main \"comment $((200 + i)) bob $TS text $i\"; done",
+            "\"api user\"*) echo me; exit 0 ;;"
+          ],
+          "rationale": "The stub gh returns login `me`, but the only `comment` events in the test come from bob. No check exercises the own-comment drop.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          },
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Emit `comment 1 me <ts> ...` in test-window-watch.sh and assert no session starts."
+      },
+      {
+        "file": "skills/delivered-window/scripts/window-watch.py",
+        "start_line": 579,
+        "end_line": 584,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The stale check uses the mtime of `state.json`, which the watcher itself rewrites (ack cursor writes, `merged_seen`, `deploy.ended`). Events that arrive during a live session reset the idle clock, so a hung session may never be flagged.",
+        "evidence": "idle = time.time() - (record / \"state.json\").stat().st_mtime",
+        "suggested_fix": "Track the last write by the session separately, or exclude the watcher's own writes (for example, record the mtime after each of its own writes and compare).",
+        "explanation": "The watcher's own writes go to the same file, so they look like activity by the session.",
+        "needs_context": false,
+        "fingerprint": "3cf7c165adabeec1",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "idle = time.time() - (record / \"state.json\").stat().st_mtime",
+            "done = subprocess.run([sys.executable, str(WATCH_STEP), \"ack\", str(record)], input=\"\\n\".join(known) + \"\\n\",",
+            "rec_set(record, \"merged_seen\", parts[3] if len(parts) > 3 else now())",
+            "if new != watch:\n        set_watch(a.record, new)"
+          ],
+          "rationale": "During a live session, tick() still runs collect() and then `watch-step.py ack`. That ack rewrites run.watch in state.json whenever new PR lines arrive, and merged_seen and deploy.ended also go to state.json. check_stale measures idleness from the mtime of that same file, so the watcher's own writes reset the idle clock, and a hung session on an active PR may never be flagged.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "return try: idle = time.time() - (record / \"state.json\").stat().st_mtime except OSError: return if idle < stale_cap():",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/delivered-window/scripts/window-watch.py",
+        "start_line": 461,
+        "end_line": 462,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The watcher drops every `comment` authored by the run's own `gh` login, which is the principal's account, so principal comments on the PR never start a session and are still acked into `seen_ids`.",
+        "evidence": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:\n        return False, False",
+        "explanation": "Crew's own replies are already excluded by the `pr-review` marker in the poll, so this filter only removes human comments from the principal, which were reported before this change.",
+        "needs_context": true,
+        "fingerprint": "9c75325b214eb441",
+        "severity": "suggestion",
+        "score": 85,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login:\n        return False, False",
+            "done = subprocess.run([\"gh\", \"api\", \"user\", \"--jq\", \".login\"], capture_output=True, text=True, timeout=60)",
+            "Leave out the principal's own login, which `gh api user --jq .login` gives",
+            "| select((.body // \"\" | gsub(\"\\r\"; \"\") | rtrimstr(\"\\n\") | split(\"\\n\") | last // \"\" | startswith(\"<!-- pr-review: \")) | not)",
+            "these events: a `review`, a `review-comment`, a `comment` by another login, a"
+          ],
+          "rationale": "The `gh` login is the principal's account, and the poll already leaves out crew's own marked replies. So this filter also drops and acks conversation comments the principal writes by hand, and they never start a session. SKILL.md documents this on purpose, and `say` is another way to reach the run, so it is a design-level risk rather than a blocker.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "span_text": "if kind == \"comment\" and login and len(parts) > 2 and parts[2] == login: return False, False",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          },
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Drop this login filter and rely on the marker, or drop only comments that carry the `pr-review` marker."
+      },
+      {
+        "file": "skills/delivered-window/scripts/window-watch.py",
+        "start_line": 688,
+        "end_line": 690,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "`tick` archives a done session and writes `session` null without the window Lock. `cmd_claim` archives and writes a new claimed session under the Lock, so the watcher's null write can erase a fresh claim.",
+        "evidence": "    if sess and sess.get(\"status\") == \"done\":\n        close_tab(sess.get(\"handle\"))\n        archive(record, sess)",
+        "suggested_fix": "Take `Lock(record)` around the reload, archive and null write in `tick`, and recheck that the session is still the same done one.",
+        "explanation": "`tick` reads the record, then takes time to close the tab before it archives. If a claim lands in that gap, the later `rec_set(record, \"session\", None)` frees a slot that someone holds.",
+        "needs_context": false,
+        "fingerprint": "16731e2dc9acc01e",
+        "severity": "suggestion",
+        "score": 82,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if sess and sess.get(\"status\") == \"done\":\n        close_tab(sess.get(\"handle\"))\n        archive(record, sess)",
+            "    rec_set(record, \"session\", None)",
+            "        if sess and sess.get(\"status\") in (\"live\", \"launching\"):\n            raise Refused(f\"the slot is held by {sess.get('name')}\")\n        if sess:\n            archive(record, sess)",
+            "        rec_set(record, \"session\", {\"name\": a.session, \"status\": \"live\", \"events\": events, \"handle\": None,"
+          ],
+          "rationale": "`tick` reads the done session, calls `close_tab` (which can block for up to 120 s), and then runs `archive`, which writes `session` to None without the Lock and without checking the session again. `cmd_claim` accepts a done session: under the Lock it archives that session and writes a new live claim. If the claim lands in that gap, the watcher's later null write erases it. A resumed lead's `next` and `done` would then be refused, and the watcher could start a second session. This is a real race, but it needs a claim to land in a narrow window.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "span_text": "if sess and sess.get(\"status\") == \"done\": close_tab(sess.get(\"handle\")) archive(record, sess)",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/launcher.py",
+        "start_line": 988,
+        "end_line": 988,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The new `window` subcommand's Herdr branch has no test; the 13 new checks cover only tmux and iTerm2.",
+        "evidence": "    elif terminal == \"herdr\":\n        tab, group = herdr_start(a, command, a.cwd, target)",
+        "suggested_fix": "Add a window run under the Herdr stubs and assert the tab handle.",
+        "explanation": "herdr_start and herdr_target take `a` fields (such as a group or space) that the window parser does not define, so the path can fail unseen.",
+        "needs_context": true,
+        "fingerprint": "233192dcfcff80ec",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        tab, group = herdr_start(a, command, a.cwd, target)",
+            "TMUX=/tmp/t,1,0 run window --name rec-w1 --cwd \"$WINDIR\" --prompt-file \"$T/win-prompt.md\" --model sonnet",
+            "TERM_PROGRAM=iTerm.app run window --name rec-w3 --cwd \"$WINDIR\" --prompt-file \"$T/win-prompt.md\" --model sonnet --group grp",
+            "    a.group_color = None",
+            "    if a.group_color:"
+          ],
+          "rationale": "The window section of test-launcher.sh runs only under tmux and iTerm2, so the new Herdr branch of `window` has no test. The finding's reason is wrong, though: check_window sets a.group_color to None, and the parser defines name and group. Those are the only fields of `a` that herdr_target and herdr_start read, so there is no missing-attribute failure.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "elif terminal == \"herdr\":",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "hooks/session-end.py",
+        "start_line": 20,
+        "end_line": 20,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The diff removes `delivered` from LIVE_STATES, so a project-lead session that dies after the hand-over but before its goal check or release is no longer marked interrupted.",
+        "evidence": "LIVE_STATES = (\"active\", \"blocked\")",
+        "explanation": "Commit 528ddff added `delivered` on purpose so a dead session is marked. Now such a run stays `delivered` with the watcher held, its worktrees are not orphaned, and nothing prompts a resume.",
+        "needs_context": true,
+        "fingerprint": "17a9438aae78ced5",
+        "severity": "suggestion",
+        "score": 78,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "LIVE_STATES = (\"active\", \"blocked\")",
+            "if run.get(\"run_state\") not in LIVE_STATES:\n            return False",
+            "result = run([sys.executable, WINDOW_WATCH, \"start\", os.path.abspath(rec), \"--hold\"])",
+            "elif not sess and intake and not w.get(\"hold\"):",
+            "`hold: true`\nmeans the project lead died before its last call: finish the goal check, then\n`goal-check.md`'s \"The last call\"."
+          ],
+          "rationale": "The claim holds. `deliver` sets `run_state: delivered` and `hand-over` starts the watcher with `--hold` before the goal check and `release`, and the hook now skips `delivered` runs. So a project lead that dies in that gap leaves a held watcher, no session starts, and the run is never marked interrupted. The impact is smaller than the finding says: `hand-over`'s cleanup has already removed the worktrees, the orchestrator does not act on `interrupted` anyway, and `resume.md` covers `hold: true` once someone runs a resume.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "span_text": "LIVE_STATES = (\"active\", \"blocked\")",
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/delivered-window/scripts/window-watch.py",
+        "start_line": 716,
+        "end_line": 716,
+        "category": "test",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The 600s burst cap branch (events keep arriving so quiet never elapses) is untested.",
+        "evidence": "if first and (time.time() - last >= quiet or time.time() - first >= cap):",
+        "suggested_fix": "Emit an event every second with quiet larger than cap and assert one session starts after the cap.",
+        "explanation": "All tests start sessions through the quiet wait; a broken cap would let a steady stream of events postpone a session forever.",
+        "needs_context": false,
+        "fingerprint": "69dfa642773a6fe6",
+        "severity": "nit",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if first and (time.time() - last >= quiet or time.time() - first >= cap):",
+            "quiet, cap = int(w.get(\"quiet\") or 120), int(w.get(\"cap\") or 600)",
+            "ww start \"$R\" --poll 1 --quiet 2 --cap 5",
+            "for i in $(seq 1 12); do emit main \"review-comment $((100 + i)) alice $TS src/f.py:$i comment $i\"; done"
+          ],
+          "rationale": "Every test starts the watcher with quiet 2 and cap 5, and every burst stops within the quiet wait. No test keeps events coming long enough for the cap branch alone to start a session. The cap condition is a single, plainly correct line, so this is a small coverage gap.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "span_text": "if first and (time.time() - last >= quiet or time.time() - first >= cap):",
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "github": {
+      "review_id": 6047022972,
+      "review_url": "https://github.com/jerridan/crew/pull/188#pullrequestreview-6047022972",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "884beae931702c0e",
+          "comment_id": 4686231177
+        },
+        {
+          "fingerprint": "f87771c5eed198d0",
+          "comment_id": 4686231190
+        },
+        {
+          "fingerprint": "7cd0a12c2667b7bd",
+          "comment_id": 4686231197
+        },
+        {
+          "fingerprint": "f976471833a11efb",
+          "comment_id": 4686231207
+        },
+        {
+          "fingerprint": "90ba56d52531a1fc",
+          "comment_id": 4686231222
+        },
+        {
+          "fingerprint": "3cf7c165adabeec1",
+          "comment_id": 4686231225
+        },
+        {
+          "fingerprint": "9c75325b214eb441",
+          "comment_id": 4686231238
+        },
+        {
+          "fingerprint": "16731e2dc9acc01e",
+          "comment_id": 4686231248
+        },
+        {
+          "fingerprint": "17a9438aae78ced5",
+          "comment_id": 4686231257
+        },
+        {
+          "fingerprint": "69dfa642773a6fe6",
+          "comment_id": 4686231277
+        }
+      ],
+      "in_body": [
+        "233192dcfcff80ec"
+      ],
+      "check_run": {
+        "id": 138760656740
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 11161,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 105790,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.05295,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1532,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 106564,
+            "webSearchRequests": 0,
+            "costUSD": 0.44158000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.49453
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 12351,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 109268,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.054691500000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 655,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 119008,
+            "webSearchRequests": 0,
+            "costUSD": 0.965172,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 367,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 1.0198635
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 22202,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 109258,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.054694,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1169,
+            "cacheReadInputTokens": 238837,
+            "cacheCreationInputTokens": 119923,
+            "webSearchRequests": 0,
+            "costUSD": 1.0305554000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 244,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 1.0852494
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5820,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13791,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013901,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 775,
+            "cacheReadInputTokens": 36255,
+            "cacheCreationInputTokens": 19485,
+            "webSearchRequests": 0,
+            "costUSD": 0.0893275,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.09071760000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 30049,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 139416,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.06976550000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 3441,
+            "cacheReadInputTokens": 149462,
+            "cacheCreationInputTokens": 152283,
+            "webSearchRequests": 0,
+            "costUSD": 0.6584962000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 2340,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.7282617000000001
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 18773,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 109266,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0546905,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 2148,
+            "cacheReadInputTokens": 123038,
+            "cacheCreationInputTokens": 118422,
+            "webSearchRequests": 0,
+            "costUSD": 0.5074797999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 684,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.5621703
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 32997,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 109270,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.054695,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1777,
+            "cacheReadInputTokens": 118920,
+            "cacheCreationInputTokens": 120012,
+            "webSearchRequests": 0,
+            "costUSD": 1.019436,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 598,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 1.074131
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4513,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22963,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023073000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 438,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22471,
+            "webSearchRequests": 0,
+            "costUSD": 0.0947047,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.097012
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6409,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22394,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022499000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 728,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21902,
+            "webSearchRequests": 0,
+            "costUSD": 0.0953287,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 392,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0975786
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3622,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8761,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008901,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 425,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8269,
+            "webSearchRequests": 0,
+            "costUSD": 0.0377667,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0386568
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6349,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22173,
+            "outputTokens": 244,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023393,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 223,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 714,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 21681,
+            "webSearchRequests": 0,
+            "costUSD": 0.09430469999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 364,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.096644
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 9539,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23587,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023702,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1200,
+            "cacheReadInputTokens": 60110,
+            "cacheCreationInputTokens": 27095,
+            "webSearchRequests": 0,
+            "costUSD": 0.126403,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 227,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1287732
+      },
+      {
+        "role": "verifier",
+        "verification": 7,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5492,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22272,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022377,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 530,
+            "cacheReadInputTokens": 30514,
+            "cacheCreationInputTokens": 22586,
+            "webSearchRequests": 0,
+            "costUSD": 0.09870340000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 88,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1009411
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6944,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23146,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023251,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 754,
+            "cacheReadInputTokens": 31388,
+            "cacheCreationInputTokens": 23213,
+            "webSearchRequests": 0,
+            "costUSD": 0.1035388,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1058639
+      },
+      {
+        "role": "verifier",
+        "verification": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4897,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 18905,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0019015000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 526,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 18413,
+            "webSearchRequests": 0,
+            "costUSD": 0.0793527,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 164,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0812542
+      },
+      {
+        "role": "verifier",
+        "verification": 10,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4644,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13545,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013655,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 525,
+            "cacheReadInputTokens": 21787,
+            "cacheCreationInputTokens": 14477,
+            "webSearchRequests": 0,
+            "costUSD": 0.0653447,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0667102
+      },
+      {
+        "role": "verifier",
+        "verification": 11,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4373,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 13602,
+            "outputTokens": 254,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014872,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 235,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 507,
+            "cacheReadInputTokens": 21844,
+            "cacheCreationInputTokens": 15893,
+            "webSearchRequests": 0,
+            "costUSD": 0.07083439999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0723216
+      },
+      {
+        "role": "verifier",
+        "verification": 12,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4626,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 24748,
+            "outputTokens": 234,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025918,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 212,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 510,
+            "cacheReadInputTokens": 32990,
+            "cacheCreationInputTokens": 25256,
+            "webSearchRequests": 0,
+            "costUSD": 0.109431,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1120228
+      },
+      {
+        "role": "verifier",
+        "verification": 9,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10274,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14796,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014911000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1306,
+            "cacheReadInputTokens": 63739,
+            "cacheCreationInputTokens": 17172,
+            "webSearchRequests": 0,
+            "costUSD": 0.08813789999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 101,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.08962899999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 18768,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22981,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023091000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1106,
+            "cacheReadInputTokens": 54216,
+            "cacheCreationInputTokens": 31270,
+            "webSearchRequests": 0,
+            "costUSD": 0.2831472,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 288,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2854563
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 5,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 17835,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22185,
+            "outputTokens": 294,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023655,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 273,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1079,
+            "cacheReadInputTokens": 52665,
+            "cacheCreationInputTokens": 28199,
+            "webSearchRequests": 0,
+            "costUSD": 0.257729,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 483,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.26009449999999995
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 29464,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23589,
+            "outputTokens": 296,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0025069000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 272,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 12,
+            "outputTokens": 1980,
+            "cacheReadInputTokens": 151879,
+            "cacheCreationInputTokens": 33778,
+            "webSearchRequests": 0,
+            "costUSD": 0.3402478,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 383,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.34275469999999997
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 7,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 17232,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22268,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022368,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1043,
+            "cacheReadInputTokens": 87096,
+            "cacheCreationInputTokens": 26125,
+            "webSearchRequests": 0,
+            "costUSD": 0.24731119999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 191,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.249548
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 8,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 15259,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 18911,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0019036,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1086,
+            "cacheReadInputTokens": 27149,
+            "cacheCreationInputTokens": 18990,
+            "webSearchRequests": 0,
+            "costUSD": 0.17908580000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 468,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18098940000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 9,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 16251,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 14788,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0014888000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1143,
+            "cacheReadInputTokens": 47797,
+            "cacheCreationInputTokens": 21865,
+            "webSearchRequests": 0,
+            "costUSD": 0.2073634,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 244,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2088522
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 4,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 61060,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8753,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008863000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 22,
+            "outputTokens": 3937,
+            "cacheReadInputTokens": 215070,
+            "cacheCreationInputTokens": 31165,
+            "webSearchRequests": 0,
+            "costUSD": 0.37116199999999994,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1328,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.37204829999999994
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 126690,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 109262,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0546885,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 16,
+            "outputTokens": 10291,
+            "cacheReadInputTokens": 907214,
+            "cacheCreationInputTokens": 136510,
+            "webSearchRequests": 0,
+            "costUSD": 1.4794068,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 7321,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 1.5340953
+      },
+      {
+        "role": "verifier",
+        "verification": 17,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6111,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22903,
+            "outputTokens": 19,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0022998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 659,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22411,
+            "webSearchRequests": 0,
+            "costUSD": 0.0966747,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 255,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0989745
+      },
+      {
+        "role": "verifier",
+        "verification": 13,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10425,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23778,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023893,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1295,
+            "cacheReadInputTokens": 90127,
+            "cacheCreationInputTokens": 26617,
+            "webSearchRequests": 0,
+            "costUSD": 0.1284467,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 93,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.130836
+      },
+      {
+        "role": "verifier",
+        "verification": 16,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10049,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23633,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023723000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1151,
+            "cacheReadInputTokens": 8734,
+            "cacheCreationInputTokens": 46309,
+            "webSearchRequests": 0,
+            "costUSD": 0.1976274,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 580,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1999997
+      },
+      {
+        "role": "verifier",
+        "verification": 15,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10082,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23212,
+            "outputTokens": 244,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024432000000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 222,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1027,
+            "cacheReadInputTokens": 59236,
+            "cacheCreationInputTokens": 24795,
+            "webSearchRequests": 0,
+            "costUSD": 0.1153856,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 359,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11782880000000001
+      },
+      {
+        "role": "verifier",
+        "verification": 14,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 12841,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 10,
+            "outputTokens": 1596,
+            "cacheReadInputTokens": 60548,
+            "cacheCreationInputTokens": 12655,
+            "webSearchRequests": 0,
+            "costUSD": 0.0726548,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 596,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 8849,
+            "outputTokens": 395,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010824,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 372,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0737372
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 17,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 11359,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 22897,
+            "outputTokens": 267,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0024232,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 246,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1014,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 22401,
+            "webSearchRequests": 0,
+            "costUSD": 0.2003694,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 446,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2027926
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 16,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 18388,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23647,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023737000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1201,
+            "cacheReadInputTokens": 59974,
+            "cacheCreationInputTokens": 25196,
+            "webSearchRequests": 0,
+            "costUSD": 0.2376068,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 428,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.23998049999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 15,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 41185,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 23212,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0023327,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 14,
+            "outputTokens": 2757,
+            "cacheReadInputTokens": 179468,
+            "cacheCreationInputTokens": 28469,
+            "webSearchRequests": 0,
+            "costUSD": 0.31884159999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 866,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.32117429999999997
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 2133,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 1785,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0001905,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 226,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 2359,
+            "webSearchRequests": 0,
+            "costUSD": 0.0117,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0118905
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 2382,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 2072,
+            "outputTokens": 284,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00034920000000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 261,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 295,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 2646,
+            "webSearchRequests": 0,
+            "costUSD": 0.013538,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.013887199999999999
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3014,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 1850,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00019500000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 447,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 2424,
+            "webSearchRequests": 0,
+            "costUSD": 0.014169999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 61,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.014365
+      }
+    ],
+    "total_cost_usd": 11.0016359,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 59,
+      "gather": 853,
+      "triage": 12215,
+      "find_verify": 181873,
+      "merge": 4130
+    },
+    "errors": []
+  }
+}

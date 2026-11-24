@@ -112,7 +112,7 @@ Do these steps in this order.
    **A subagent item**, an item whose `subagent` is not `null`, gets none of
    the steps above. Its subagent is gone after a reopen or a new session.
    Its brief is in `told`. By its stage:
-   - `queued`: dispatch it as SKILL.md's "Subagent items" says.
+   - `queued`: dispatch it as `subagent-items.md`'s "The dispatch" says.
    - `build`: dispatch it again under the same name and brief. Add as
      context its branch and commits, or, for work in no repo, what the record
      shows done. Tell it to read the current state before it changes
@@ -121,7 +121,7 @@ Do these steps in this order.
    - `pr`: when `subagent.ready` is `null`, or its sha is not the
      `headRefOid` of the PR, dispatch it again under the same name. Ask it
      only for a ready line for the current head.
-   - `merged`: when SKILL.md's "Subagent items" ran a deploy watch for it,
+   - `merged`: when `subagent-items.md`'s "The PR" ran a deploy watch for it,
      write its input file again with `since` `null`, and arm it again.
    - `shipped` or `closed` with its worktree still there: run "The close of
      an item" again.
@@ -131,7 +131,7 @@ Do these steps in this order.
    arm the usage watch, as `usage.md`'s "The watch" says. Arm a GitHub wait
    (SKILL.md's "The wait") for each item whose PR waits on something that no
    implementer reports, such as a human approval, and for each open PR of a
-   subagent item, as SKILL.md's "Subagent items" says. No scheduled job comes back
+   subagent item, as `subagent-items.md`'s "The PR" says. No scheduled job comes back
    after a restart, so a wait never lives only in a session.
 7. **The inbox.** Answer each open entry with `for: orchestrator` that is
    yours, with `answer`, and send the answer with `told`. Name each open
@@ -190,9 +190,8 @@ also runs on the principal's word for an item that stops early: write
    or a ticket in a ticket file, as the standing instructions say. For an
    item closed with no merge, leave the ticket open and say so in the inbox.
 
-**A subagent item** has no session and no tab, so skip steps 1 and 2. Stop
-its subagent with `TaskStop` when it still runs. Run step 3 on
-`subagent.worktree` when it is set, with the same flags. Run step 4 as it is.
+**A subagent item** has no session and no tab. `subagent-items.md`'s "The
+close" says which of these steps it runs.
 
 The close writes no slot count. The item released its slot when it reached
 `merged` or `closed`, as SKILL.md's "After the merge" says.

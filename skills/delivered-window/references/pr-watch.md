@@ -144,17 +144,25 @@ moves on a `push` line. The call also writes `run.deploy.ended` for a
 `SKILL.md`'s "The deploy watch" says when this runs. The watcher runs these
 steps on a `merged` line:
 
-1. It runs `python3 <watch-step> deploy <record-dir> --setup-only --source
-   <name> [--environment <e>] [--workflow <w>] [--timeout <minutes>]`. The call
-   writes `run.deploy` and returns with exit 0. It runs no poll. `--source` is
-   the winning source's name, or `default`. `--environment` and `--workflow`
-   are the winning section's values, and neither is set with no `Deploy`
-   section. `--timeout` is the section's `timeout_minutes`. `since` is the time
-   now, and `ended` is `null`. When `ended` is set, the call writes `since`
-   and `ended` only. When `ended` is `null`, it writes nothing.
-2. It writes `run.window.merged_seen` with the merge commit sha, so the next
-   poll does not queue the `merged` line again.
-3. It runs `pr-watch.sh <record-dir> deploy` itself, every 60 seconds. That
+1. It resolves the winning `Deploy`. The order is a `Deploy:` line of
+   `charter.md`, then the `Deploy` section of the repo file, then the one of
+   the machine file, at the paths in `run.standing_instructions`
+   (`<project-lead-dir>/SKILL.md`, "Standing instructions", owns the section's
+   lines). Under `none` or `manual` it sets up no poll and writes no
+   `run.deploy`. This is the one place that owns this order.
+2. Otherwise it runs `python3 <watch-step> deploy <record-dir> --setup-only
+   --source <name> [--environment <e>] [--workflow <w>] [--timeout
+   <minutes>]`. The call writes `run.deploy` and returns with exit 0. It runs
+   no poll. `--source` is the winning source's name, or `default`.
+   `--environment` and `--workflow` are the winning section's values, and
+   neither is set with no `Deploy` section. `--timeout` is the section's
+   `timeout`. `since` is the time now, and `ended` is `null`. When `ended` is
+   set, the call writes `since` and `ended` only. When `ended` is `null`, it
+   writes nothing.
+3. It writes `run.window.merged_seen` with the `at` time of the `merged` line,
+   so the next poll does not queue the line again. It writes it under `none`
+   and `manual` too.
+4. It runs `pr-watch.sh <record-dir> deploy` itself, every 60 seconds. That
    script reads `run.deploy` from `state.json`. It needs no `run.watch`. It
    exits 2 with a message on stderr when `run.deploy` is absent, or when its
    `timeout_minutes` is not a positive integer. It exits 0 and prints nothing

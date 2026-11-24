@@ -268,34 +268,33 @@ The other fields are as in `start`.
 
 ```
 launcher.py window --name <session-name> --cwd <path> --prompt-file <file>
-                   [--model <model>] [--settings <file-or-json>]
-                   [--group <name>] [--group-color <#rrggbb>] [--terminal iterm2|tmux|herdr]
+                   [--model <model>] [--group <name>] [--terminal iterm2|tmux|herdr]
 ```
 
 `window` opens one interactive tab or window for a window session of a
 delivered run (`crew:delivered-window`). It makes no worktree and no branch,
 and it takes no `--checkout`. The watcher of `window-watch.py` runs it. The
 rule that only the launcher and `crew-usage.py` start a `claude` process
-holds. `--name`, `--model`, `--settings`, `--group`, `--group-color` and
-`--terminal` have the meanings and the checks of `start`. The `--model`
-default is `opus`, and `<json>` gets `"remoteControlAtStartup": false` as in
-`start`.
+holds. `--name`, `--model`, `--group` and `--terminal` have the meanings and
+the checks of `start`. The `--model` default is `opus`. `window` takes no
+`--settings` and no `--group-color`, and its `<json>` is
+`{"remoteControlAtStartup": false}`.
 
 | Argument | Meaning |
 |---|---|
 | `--cwd` | the directory the session runs in: `run.repo` of the delivered run |
-| `--prompt-file` | a file that holds the first prompt of the session. It names the record directory and the event file |
+| `--prompt-file` | a file that holds the first prompt of the session. The tab command passes the text of the file as the prompt. It names the record directory and the event file |
 
 **The tab.** The command that runs in the tab is the command of `start`, with
-`--cwd` for the worktree, a new `--session-id`, and the prompt of
+`--cwd` for the worktree, a new `--session-id`, and the text of
 `--prompt-file` in place of the wait prompt. The tab rules of `start` apply
 whole.
 
-**The output.** The ten fields of `start`, with these values: `worktree` is
-the real `--cwd` path, `branch` is the branch that `--cwd` has checked out, or
-`null`, `base` is `null`, and `session_id` is the new id. The watcher writes
-`tab` and `session_id` to `run.window.session`, and closes the tab later with
-`stop`.
+**The output.** Stdout carries one line: one JSON object with seven fields:
+`session_name`, `model`, `terminal`, `tab`, `tab_group`, `session_id` (the new
+id) and `cwd` (the `--cwd` value). It has no `repo`, `worktree`, `branch` or
+`base`. The watcher writes `tab` and `session_id` to `run.window.session`, and
+closes the tab later with `stop`.
 
 ## groups
 

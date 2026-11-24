@@ -386,17 +386,15 @@ review runs").
 a goal run, and in a review run whose `Done` is `rolled out`. The watcher
 polls nothing when the winning `Deploy` is `none` or `manual`
 (`<project-lead-dir>/SKILL.md`, "Standing instructions"). On the `merged`
-line the watcher itself runs `watch-step.py deploy --setup-only`, which writes
-`run.deploy` and returns. It records the merge in `run.window.merged_seen`, so
-the merge reaches you once. `pr-watch.md`'s "The deploy poll" owns the flags.
+line the watcher itself sets the poll up and records the merge in
+`run.window.merged_seen`, so the merge reaches you once. `pr-watch.md`'s "The
+deploy poll" owns the order that picks the winning `Deploy` and the flags.
 You write nothing for the setup.
 
 The `merged` line still starts one session. In order:
 
-1. Decide the winning `Deploy` by the one order in "Standing instructions".
-   Read the two files again at the paths in `run.standing_instructions`. The
-   watcher uses the same section, so a difference is a finding: write it in
-   `handover.md` and tell the principal.
+1. Read `run.deploy`. Its `source` names the winning source. With no
+   `run.deploy`, the winning `Deploy` was `none` or `manual`.
 2. Report the merge to the principal in one sentence that says the deploy
    watch runs. Never say the work shipped.
 3. Write the stage `merged`, as `project-lead`'s

@@ -48,6 +48,7 @@ case "$*" in
     echo "{\"id\": $((9000 + n))}"; exit 0 ;;
   "pr comment "*)
     grep -q FAILME "$bodyfile" && exit 1
+    grep -q EMPTYOUT "$bodyfile" && exit 0
     next; mkdir -p "$D/posted"; cp "$bodyfile" "$D/posted/comment-$n"
     echo "https://github.com/o/r/pull/7#issuecomment-$((5000 + n))"; exit 0 ;;
 esac
@@ -117,7 +118,9 @@ chk 'send to+resolve: the reply goes to the thread of the to comment' "$(calls |
 chk 'send to+resolve: the marker holds the item id' "$(body reply-300-1)" "$(printf 'Resolved at abc123.\n%s\nx' "$(MARK F1)")"
 chk 'send to+resolve: output' "$out" "$(printf 'posted F1 9001\nresolved F1 T3')"
 chk 'send to+resolve: one mutation call with id=T3' "$(calls | grep 'resolveReviewThread' | grep -c 'id=T3')" 1
-chk 'send resolve: resolve comes after the reply' "$(calls | grep -n 'replies\|resolveReviewThread' | sed 's/:.*//' | tr '\n' ' ')" "$(calls | grep -n 'replies\|resolveReviewThread' | sed 's/:.*//' | sort -n | tr '\n' ' ')"
+reply_n=$(calls | grep -n 'replies' | head -1 | cut -d: -f1)
+mut_n=$(calls | grep -n 'resolveReviewThread' | head -1 | cut -d: -f1)
+chk 'send resolve: resolve comes after the reply' "$([ -n "$reply_n" ] && [ -n "$mut_n" ] && [ "$reply_n" -lt "$mut_n" ] && echo yes)" yes
 newrec; printf '=== review-comment 202 resolve\nDone.\n' > "$RF"; run send "$REC" r1 "$RF"
 chk 'send resolve without to: the thread of the item id' "$out" "$(printf 'posted 202 9001\nresolved 202 T2')"
 
@@ -158,6 +161,38 @@ chk 'failed thread read: reply posted, resolve failed, exit 1' "$rc $(printf '%s
 newrec; : > "$STUB_DIR/fail-post-202"; printf '=== review-comment 202 resolve\nx\n' > "$RF"
 run send "$REC" r1 "$RF"
 chk 'failed reply: no resolve, exit 1' "$rc $(printf '%s\n' "$out" | cut -d' ' -f1 | tr '\n' ' ')" '1 failed '
+
+# ---- send: no exception in one item stops the others
+newrec; printf '=== comment 1\nEMPTYOUT\n=== comment 2\nfine\n' > "$RF"
+run send "$REC" r1 "$RF"
+chk 'empty gh pr comment output: that item failed, the next posted, exit 1' "$rc $(printf '%s\n' "$out" | cut -d' ' -f1-2 | tr '\n' '|')" '1 failed 1|posted 2|'
+newrec; printf '{bad' > "$STUB_DIR/threads.json"; printf '=== review-comment 202 resolve\nx\n=== comment 2\nfine\n' > "$RF"
+run send "$REC" r1 "$RF"
+chk 'malformed thread read: failed line, the next item posted, exit 1' "$rc $(printf '%s\n' "$out" | cut -d' ' -f1 | tr '\n' ' ')" '1 posted failed posted '
+newrec; echo '{"data":{}}' > "$STUB_DIR/threads.json"; printf '=== review-comment 202 resolve\nx\n' > "$RF"
+run send "$REC" r1 "$RF"
+chk 'thread read with an unexpected shape: failed line, exit 1' "$rc $(printf '%s\n' "$out" | cut -d' ' -f1 | tr '\n' ' ')" '1 posted failed '
+newrec; echo '{"id":5}' > "$STUB_DIR/pulls.json"; printf '=== comment 2\nfine\n' > "$RF"
+run send "$REC" r1 "$RF"
+chk 'unexpected comments shape: exit 2 with the prefix, no post' "$rc ${err%%:*} $(npost)" '2 pr-reply.py 0'
+newrec; printf '{bad' > "$STUB_DIR/pulls.json"; run posted "$REC" r1
+chk 'posted with a malformed read: exit 2 with the prefix' "$rc ${err%%:*}" '2 pr-reply.py'
+echo '{"deliverables":[],"run":{}}' > "$REC/state.json"; run posted "$REC" r1
+chk 'posted with no PR in the record: exit 2' "$rc" 2
+echo '[1]' > "$REC/state.json"; run posted "$REC" r1
+chk 'posted with a state of the wrong shape: exit 2 with the prefix' "$rc ${err%%:*}" '2 pr-reply.py'
+
+# ---- send: resolve edge cases
+newrec; sed -i.bak 's/"id":"T1","isResolved":false/"id":"T1","isResolved":true/' "$STUB_DIR/threads.json"
+printf '=== review-comment 201 resolve\nDone.\n' > "$RF"; run send "$REC" r1 "$RF"
+chk 'already-resolved thread: resolved line, no mutation' "$out|$(calls | grep -c resolveReviewThread)" "$(printf 'posted 201 9001\nresolved 201 T1')|0"
+newrec; printf '=== review-comment 202 to 999 resolve\nx\n' > "$RF"; run send "$REC" r1 "$RF"
+chk 'to a comment that does not exist: failed, exit 1, no post' "$rc $(printf '%s\n' "$out" | cut -d' ' -f1-3) $(npost)" '1 failed 202 thread 0'
+newrec; echo '{"id":998}' > "$STUB_DIR/comment-998.json"; printf '=== review-comment 202 to 998 resolve\nx\n' > "$RF"; run send "$REC" r1 "$RF"
+chk 'a thread with no such first comment: reply posted, resolve failed, exit 1' "$rc $(printf '%s\n' "$out" | cut -d' ' -f1,3 | tr '\n' '|')" '1 posted 9001|failed thread|'
+newrec; python3 "$CR" "$REC" round drop r1; printf '=== comment 1\nx\n' > "$RF"
+run send "$REC" r1 "$RF" --mark-replied
+chk '--mark-replied when round replied fails: failed line, exit 1' "$rc $(printf '%s\n' "$out" | cut -d' ' -f1-3 | tr '\n' '|')" '1 posted 1 5001|failed r1 round|'
 
 # ---- send: --mark-replied
 newrec; printf '=== comment 1\nfine\n' > "$RF"

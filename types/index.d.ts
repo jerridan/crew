@@ -34,6 +34,7 @@ export type OrchBoardRow = {
   text: string
   age: string
   launch_tab: string | null
+  subagent: boolean
 }
 
 export type OrchBoardSection = {

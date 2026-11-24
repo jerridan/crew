@@ -211,8 +211,8 @@ waits with `crew-usage.py wait`, which exits 0 once the stored five-hour window
 has reset, or a later window shows in the file. With no figures it exits 1 at
 once.
 
-`slots` counts implementer sessions only. A subagent item takes no slot. A slot is not a brake on burn. In one
-window, a single working implementer moved the five-hour figure from 61% to 82%
+`slots` counts implementer sessions only. A subagent item takes no slot. A
+slot is not a brake on burn. In one window, a single working implementer moved the five-hour figure from 61% to 82%
 in 19 minutes. A headless review run, a CI review run on the same plan, and the
 implementer's own ICs burn usage outside the slot count. The level is the
 brake: the figure itself, and the forecast.

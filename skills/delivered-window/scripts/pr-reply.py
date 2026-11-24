@@ -104,6 +104,8 @@ def find_posted(owner, repo, num, round_id, me):
     for kind in ("pulls", "issues"):
         try:
             pages = json_stream(gh("api", "--paginate", f"repos/{owner}/{repo}/{kind}/{num}/comments"))
+            if not all(isinstance(page, list) for page in pages):
+                raise ValueError("a comments page is not a list")
         except (Failed, ValueError) as exc:
             fail(f"cannot read the {kind} comments: {exc}; check the network, then run it again")
         for page in pages:
@@ -172,7 +174,11 @@ def post_reply(rep, body_path, owner, repo, num, pr_url, first):
         return json.loads(out)["id"]
     out = gh("pr", "comment", pr_url, "--body-file", body_path).strip()
     m = re.search(r"issuecomment-(\d+)", out)
-    return m.group(1) if m else out.split()[-1]
+    if m:
+        return m.group(1)
+    if not out:
+        raise Failed("gh pr comment printed no comment URL")
+    return out.split()[-1]
 
 
 def thread_of(owner, repo, num, first):
@@ -236,7 +242,7 @@ def cmd_send(record, round_id, replies_file, mark):
                 if not resolved:
                     resolve(thread)
                 print(f"resolved {item} {thread}")
-        except (Failed, ValueError, KeyError) as exc:
+        except Exception as exc:  # no failure of one item may stop the others
             failed = True
             print(f"failed {item} {step}: {one_line(exc)}")
         sys.stdout.flush()
@@ -258,6 +264,13 @@ def cmd_posted(record, round_id):
 
 
 def main(argv):
+    try:
+        run(argv)
+    except (Failed, ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+        fail(f"unexpected data ({type(exc).__name__}: {one_line(exc)}); check the record and the gh output, then run it again")
+
+
+def run(argv):
     if len(argv) >= 4 and argv[0] == "send" and len(argv) in (4, 5) and (len(argv) == 4 or argv[4] == "--mark-replied"):
         cmd_send(argv[1], argv[2], argv[3], len(argv) == 5)
     elif len(argv) == 3 and argv[0] == "posted":

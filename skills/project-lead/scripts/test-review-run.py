@@ -395,6 +395,21 @@ check("failed setup: a decision entry is written", "etup" in decisions(c) and "e
 check("failed setup: baseline.md is the no-suite outcome", read(c, "baseline.md") == "Base: %s\nNo suite.\n" % C0)
 check("failed setup: the review goes on", rc == 0 and len(launches(c)) == 1)
 
+c = seed(pending={"head": C1, "round": 2}, rounds=1)
+add_worktree(c, C1)
+open(os.path.join(c.rec, "reviews", "skeptical-r1-setup-done"), "w").write("x\n")
+rc = go(c, "--setup", "touch setup-ran")
+check("setup runs in every round: round 2 on a tree that was not cut runs it after round 1's marker",
+      rc == 0 and os.path.exists(os.path.join(c.wt, "setup-ran")))
+check("setup marker is per round", os.path.exists(os.path.join(c.rec, "reviews", "skeptical-r2-setup-done"))
+      and not os.path.exists(os.path.join(c.rec, "reviews", "setup-done")))
+c = seed(baseline=False)
+go(c, "--setup", "echo x >> setup-count")
+open(os.path.join(c.rec, "reviews", "baseline.md"), "w").write("Base: %s\nNo suite.\n" % C0)
+go(c, "--setup", "echo x >> setup-count")
+check("setup runs once in a round: the second call after BASELINE OWED skips it",
+      open(os.path.join(c.wt, "setup-count")).read() == "x\n")
+
 # ---- the checks and the failure path ----------------------------------------
 
 c = seed()

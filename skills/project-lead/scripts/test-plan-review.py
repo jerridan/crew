@@ -252,7 +252,12 @@ check("skip --reason failed", pr_of(c2)["reason"] == "failed")
 c = seed()
 shutil.rmtree(c.checkout)
 rc = go(c, "run", *PLANS)
-check("a failed cd writes exit 1 and takes the judgment stop", rc == 21 and (rv(c, "plan-review-r1-result.exit") or "").strip() == "1")
+check("a failed cd writes exit 1 and a distinct stderr line, and is a failed skip with no judgment stop",
+      rc == 20 and "SKIPPED:" in c.out and "QUOTA CHECK:" not in c.out
+      and (rv(c, "plan-review-r1-result.exit") or "").strip() == "1"
+      and "crew: cd to the checkout failed" in (rv(c, "plan-review-r1-result.stderr") or "")
+      and pr_of(c)["outcome"] == "skipped" and pr_of(c)["reason"] == "failed"
+      and "skipped: failed" in decisions(c) and "cd to the checkout failed" in decisions(c))
 
 # ---- decide -----------------------------------------------------------------
 

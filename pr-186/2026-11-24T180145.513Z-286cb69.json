@@ -1,0 +1,1462 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 186,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Let a fresh reading lower the stored usage figure after a partial reset",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/186"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "45c5bdbd1559c899b226aecde08a14289c9c2ce5",
+    "head": "286cb69982908edc750291d63736a50f53f882ff",
+    "started_at": "2026-11-24T18:01:45.513Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Let a fresh reading lower the stored usage figure after a partial reset\n\n## Summary\n\nAfter a partial reset of a usage window, the shared usage file kept the old, higher figure until the window ended. On 2026-11-24 it showed seven-day at 99% when the account was at 69%. Now a fresh reading of the account lowers the stored figure in the same window. A status line sample of an idle session still never lowers it.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/orchestrator/references/usage.md` \"The shared file\" owns the merge rule. `docs/design.md` §15.NNN (placeholder) holds the finding.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-usage.py`: `merge_window` takes a `fresh` flag, and a fresh reading replaces a window with an equal `resets_at` also when its percent is lower. A lower five-hour figure from a fresh reading starts `window_first` again.\n- `skills/orchestrator/scripts/test-crew-usage.py`: four new checks in R3, committed failing first.\n- `skills/orchestrator/references/usage.md`: the merge rule says the new case.\n- `docs/design.md`: new finding §15.NNN.\n- `CLAUDE.md`: build state says what is built and that only the seeded test ran it.\n\n### Constraints that applied\n\nThe rule lives only in `usage.md`. The plugin `version` is not bumped and the §15 number is `NNN`, both placeholders for the owner.\n\n### How this was verified\n\n`python3 skills/orchestrator/scripts/test-crew-usage.py` gives 105 of 105 checks passed, with a stub `claude`. Before the fix, 3 of the new checks failed.\n\n### Known gaps\n\nNo live reading ran the change. `check` and `watch` take a fresh reading only when the newest sample is older than 5 minutes.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZh7PDNExjtW2kbKe69\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": "CLAUDE.md",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-usage.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-usage.py",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Changes merge logic in crew-usage.py so fresh readings can lower stored usage figures and reset window_first, which is a behavior change to data handling.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "test",
+        "docs"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-usage.py: apply_sample (the lowered flag and window_first reset)",
+        "skills/orchestrator/scripts/crew-usage.py: merge_window (fresh bypass of the higher-percent rule)",
+        "skills/orchestrator/scripts/test-crew-usage.py: new R3 cases"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "note": "merge_window gains a fresh parameter. apply_sample computes a lowered flag from the five-hour figure and uses it to restart window_first. The flag is only checked on five_hour, and it also needs checking when old is falsy or the window changed."
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "note": "New R3 tests cover a lower fresh figure, the window_first restart, a status line sample not lowering, and an earlier resets_at not replacing."
+        },
+        {
+          "file": "skills/orchestrator/references/usage.md",
+          "note": "Merge rule doc updated to two cases."
+        },
+        {
+          "file": "docs/design.md",
+          "note": "New decision entry with placeholder number NNN."
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "Status note with placeholder §15.NNN."
+        }
+      ],
+      "summary": "The merge rule in crew-usage.py now lets a fresh reading replace the stored figure in the same resets_at even when it is lower. Status line samples still never lower a figure. A lowered five-hour figure restarts window_first so the forecast rate is not measured across the drop. Tests, usage.md, design.md and CLAUDE.md are updated to match."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Changes merge logic in crew-usage.py so fresh readings can lower stored usage figures and reset window_first, which is a behavior change to data handling.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6314,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5586,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005706,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 476,
+              "cacheReadInputTokens": 10182,
+              "cacheCreationInputTokens": 5095,
+              "webSearchRequests": 0,
+              "costUSD": 0.0523244,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 105,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.052895
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 338,
+            "end_line": 347,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A fresh reading now replaces the stored figure even when that figure is newer: a status line sample of an active session written between the probe's read and the locked update gets lowered back, and window_first is reset.",
+            "evidence": "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "suggested_fix": "Lower only when the stored figure is not newer than the probe's read time (for example, compare against the stored updated_at, or record the probe time and keep a higher figure that arrived after it).",
+            "explanation": "The probe's figures are read several seconds before `update` takes the lock, and `fresh` now bypasses the higher-percent guard unconditionally, so a genuinely newer higher figure from a live session can be overwritten by the older fresh value and the forecast restarted.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-usage.py",
+            "start_line": 142,
+            "end_line": 143,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "Several probe lines are each applied with fresh=True, so the last line in the file wins even when it is lower than an earlier line in the same reading, for example when the first status line render carries a cached figure.",
+            "evidence": "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+            "suggested_fix": "Apply only the newest probe line with figures as fresh, or check that the bare start's status line figures come from a live API response.",
+            "explanation": "A fresh reading is trusted to lower the figure, but nothing ensures that each probe line reflects the account's current state and not a stale or cached value from the new session's first render.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 24377,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5572,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005697,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 8,
+              "outputTokens": 1963,
+              "cacheReadInputTokens": 61781,
+              "cacheCreationInputTokens": 9548,
+              "webSearchRequests": 0,
+              "costUSD": 0.12803219999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 863,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.1286019
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 6421,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5588,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005708,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 488,
+              "cacheReadInputTokens": 10092,
+              "cacheCreationInputTokens": 5097,
+              "webSearchRequests": 0,
+              "costUSD": 0.052562399999999995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 96,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0531332
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/usage.md",
+            "start_line": 36,
+            "end_line": 40,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The paragraph on `updated_at` still says a lower figure does not move it, but a fresh reading that lowers the figure now moves it.",
+            "evidence": "figure, a lower one, and a seven-day-only advance do not move them.",
+            "suggested_fix": "Say that a lower figure from a status line sample does not move them, and that a fresh reading always does.",
+            "explanation": "The diff sets `moved = fresh` for a fresh reading, so a lowered fresh figure moves `updated_at` and `source`, and this paragraph contradicts the new rule. docs/design.md near line 9409 repeats the old claim that a stale sample never lowers the figure.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 8896,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 8747,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0008877,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 981,
+              "cacheReadInputTokens": 48731,
+              "cacheCreationInputTokens": 9567,
+              "webSearchRequests": 0,
+              "costUSD": 0.0529631,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 302,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.053850800000000004
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 2878,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5586,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005706,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 80,
+              "cacheReadInputTokens": 10376,
+              "cacheCreationInputTokens": 5095,
+              "webSearchRequests": 0,
+              "costUSD": 0.044443199999999995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.04501379999999999
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/test-crew-usage.py",
+            "start_line": 538,
+            "end_line": 542,
+            "category": "test",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The earlier-resets_at guard is tested only for the five-hour window, not for the seven-day window, which merge_window also handles with the fresh flag.",
+            "evidence": "check(\"R3 a refresh with an earlier resets_at does not replace the stored window\",\n          load()[\"five_hour\"][\"used_pct\"] == 90)",
+            "suggested_fix": "Seed seven-day with a later resets_at, run the refresh with an earlier STUB_RESETS7, and assert the stored seven-day figure is unchanged.",
+            "explanation": "The seven-day stub still reports a later resets_at, so a regression that lets a fresh reading replace an earlier seven-day window would pass.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 5315,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5576,
+              "outputTokens": 26,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005706,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 670,
+              "cacheReadInputTokens": 11151,
+              "cacheCreationInputTokens": 5089,
+              "webSearchRequests": 0,
+              "costUSD": 0.028175099999999998,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 314,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0287457
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/test-crew-usage.py",
+          "start_line": 538,
+          "end_line": 542,
+          "category": "test",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The earlier-resets_at guard is tested only for the five-hour window, not for the seven-day window, which merge_window also handles with the fresh flag.",
+          "evidence": "check(\"R3 a refresh with an earlier resets_at does not replace the stored window\",\n          load()[\"five_hour\"][\"used_pct\"] == 90)",
+          "suggested_fix": "Seed seven-day with a later resets_at, run the refresh with an earlier STUB_RESETS7, and assert the stored seven-day figure is unchanged.",
+          "explanation": "The seven-day stub still reports a later resets_at, so a regression that lets a fresh reading replace an earlier seven-day window would pass.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    seed(five=90, updated=NOW - 1000)\n    run([\"refresh\"], STUB_MODE=\"figures\", STUB_PCT=40, STUB_RESETS=R - 100,\n        STUB_RESETS7=NOW + 3 * 86400)",
+            "load()[\"five_hour\"][\"used_pct\"] == 90)"
+          ],
+          "rationale": "The new earlier-resets_at test seeds no seven-day window and asserts only the five-hour figure, so the seven-day guard is untested. This is a minor coverage gap.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seed(five=90, updated=NOW - 1000)\n    run([\"refresh\"], STUB_MODE=\"figures\", STUB_PCT=40, STUB_RESETS=R - 100,\n        STUB_RESETS7=NOW + 3 * 86400)",
+            "load()[\"five_hour\"][\"used_pct\"] == 90)",
+            "d[\"seven_day\"] = {\"used_pct\": seven, \"resets_at\": NOW + 3 * 86400}",
+            "d[key] = merge_window(old, new, fresh)"
+          ],
+          "rationale": "The finding is right that the new earlier-resets_at check only asserts the five-hour figure. The seven-day stub reading has the same resets_at as the seeded one, not a later one as the finding says. Both windows go through the same `merge_window` call in one loop, so a regression that hit only the seven-day window is unlikely and the gap is not worth posting.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "seed(five=90, updated=NOW - 1000)\n    run([\"refresh\"], STUB_MODE=\"figures\", STUB_PCT=40, STUB_RESETS=R - 100,\n        STUB_RESETS7=NOW + 3 * 86400)",
+            "load()[\"five_hour\"][\"used_pct\"] == 90)",
+            "d[\"seven_day\"] = {\"used_pct\": seven, \"resets_at\": NOW + 3 * 86400}",
+            "d[key] = merge_window(old, new, fresh)"
+          ],
+          "rationale": "The finding is right that the new earlier-resets_at check only asserts the five-hour figure. The seven-day stub reading has the same resets_at as the seeded one, not a later one as the finding says. Both windows go through the same `merge_window` call in one loop, so a regression that hit only the seven-day window is unlikely and the gap is not worth posting.",
+          "score": 85,
+          "severity": "dont_post"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "tests",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/usage.md",
+          "start_line": 36,
+          "end_line": 40,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The paragraph on `updated_at` still says a lower figure does not move it, but a fresh reading that lowers the figure now moves it.",
+          "evidence": "figure, a lower one, and a seven-day-only advance do not move them.",
+          "suggested_fix": "Say that a lower figure from a status line sample does not move them, and that a fresh reading always does.",
+          "explanation": "The diff sets `moved = fresh` for a fresh reading, so a lowered fresh figure moves `updated_at` and `source`, and this paragraph contradicts the new rule. docs/design.md near line 9409 repeats the old claim that a stale sample never lowers the figure.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "moved = fresh",
+            "A repeat of the stored\nfigure, a lower one, and a seven-day-only advance do not move them."
+          ],
+          "rationale": "In `apply_sample`, `moved = fresh` means a fresh reading moves `updated_at` and `source` even when its figure is lower. The paragraph at lines 36-40 still says a lower figure does not move them. The change added the lowering rule and left this paragraph out of date.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "moved = fresh",
+            "A repeat of the stored\nfigure, a lower one, and a seven-day-only advance do not move them."
+          ],
+          "rationale": "In `apply_sample`, `moved = fresh` means a fresh reading moves `updated_at` and `source` even when its figure is lower. The paragraph at lines 36-40 still says a lower figure does not move them. The change added the lowering rule and left this paragraph out of date.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 338,
+          "end_line": 347,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A fresh reading now replaces the stored figure even when that figure is newer: a status line sample of an active session written between the probe's read and the locked update gets lowered back, and window_first is reset.",
+          "evidence": "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+          "suggested_fix": "Lower only when the stored figure is not newer than the probe's read time (for example, compare against the stored updated_at, or record the probe time and keep a higher figure that arrived after it).",
+          "explanation": "The probe's figures are read several seconds before `update` takes the lock, and `fresh` now bypasses the higher-percent guard unconditionally, so a genuinely newer higher figure from a live session can be overwritten by the older fresh value and the forecast restarted.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+            "new = apply_sample(out, x, \"refresh\", ts, fresh=True)"
+          ],
+          "rationale": "The code does let a fresh reading overwrite a newer, higher stored figure, because merge_window ignores the percent guard when fresh is set. The race is narrow, though. A refresh only starts when the file has been stale for more than 5 minutes, and the next status line sample corrects the figure.",
+          "score": 70,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+            "if key == \"five_hour\" and old and d[key][\"used_pct\"] < old[\"used_pct\"]:\n            lowered = True",
+            "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "stop_group(proc)\n        lines = read_lines(probe)"
+          ],
+          "rationale": "`fresh=True` now replaces any stored window that has the same resets_at, even when the stored figure is higher. The probe's lines are read before `update` takes the lock, so a higher sample that a session writes in between gets lowered and `window_first` is reset. The race window is a few seconds and only opens when the file is already stale. The next higher session sample fixes the figure, but the forecast still restarts.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+            "if key == \"five_hour\" and old and d[key][\"used_pct\"] < old[\"used_pct\"]:\n            lowered = True",
+            "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "stop_group(proc)\n        lines = read_lines(probe)"
+          ],
+          "rationale": "`fresh=True` now replaces any stored window that has the same resets_at, even when the stored figure is higher. The probe's lines are read before `update` takes the lock, so a higher sample that a session writes in between gets lowered and `window_first` is reset. The race window is a few seconds and only opens when the file is already stale. The next higher session sample fixes the figure, but the forecast still restarts.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-usage.py",
+          "start_line": 142,
+          "end_line": 143,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "Several probe lines are each applied with fresh=True, so the last line in the file wins even when it is lower than an earlier line in the same reading, for example when the first status line render carries a cached figure.",
+          "evidence": "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+          "suggested_fix": "Apply only the newest probe line with figures as fresh, or check that the bare start's status line figures come from a live API response.",
+          "explanation": "A fresh reading is trusted to lower the figure, but nothing ensures that each probe line reflects the account's current state and not a stale or cached value from the new session's first render.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "The last probe line does win mechanically, since every line is applied with fresh=True. The poll loop stops at the first figures, and later lines are chronologically newer, so the stale-render scenario is speculative.",
+          "score": 35,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for x in lines:\n            new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "if has_figures(read_lines(probe)):\n                break",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "It is true that every probe line is applied with fresh=True, so the last line wins. But probe lines are written in time order, so the last one is the newest reading, and that is the one that should win. The finding's own fix, applying only the newest line, is in effect what the code already does. The refresh loop also stops at the first line with figures, so several figure lines rarely appear, and the code does not show that any one line is cached.",
+          "score": 20,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "for x in lines:\n            new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "if has_figures(read_lines(probe)):\n                break",
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):"
+          ],
+          "rationale": "It is true that every probe line is applied with fresh=True, so the last line wins. But probe lines are written in time order, so the last one is the newest reading, and that is the one that should win. The finding's own fix, applying only the newest line, is in effect what the code already does. The refresh loop also stops at the first line with figures, so several figure lines rarely appear, and the code does not show that any one line is cached.",
+          "score": 20,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/references/usage.md",
+        "start_line": 36,
+        "end_line": 40,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The paragraph on `updated_at` still says a lower figure does not move it, but a fresh reading that lowers the figure now moves it.",
+        "evidence": "figure, a lower one, and a seven-day-only advance do not move them.",
+        "suggested_fix": "Say that a lower figure from a status line sample does not move them, and that a fresh reading always does.",
+        "explanation": "The diff sets `moved = fresh` for a fresh reading, so a lowered fresh figure moves `updated_at` and `source`, and this paragraph contradicts the new rule. docs/design.md near line 9409 repeats the old claim that a stale sample never lowers the figure.",
+        "needs_context": false,
+        "fingerprint": "0cf664fc40e4996c",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "moved = fresh",
+            "A repeat of the stored\nfigure, a lower one, and a seven-day-only advance do not move them."
+          ],
+          "rationale": "In `apply_sample`, `moved = fresh` means a fresh reading moves `updated_at` and `source` even when its figure is lower. The paragraph at lines 36-40 still says a lower figure does not move them. The change added the lowering rule and left this paragraph out of date.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "`updated_at` and `source` move only when the five-hour figure advances: a higher percent in the same window, or a later window. A repeat of the stored figure, a lower one, and a seven-day-only advance do not move them. An idle session repeats its old figure and so cannot hide that the figure is old. The fresh reading is the one writer that moves `updated_at` on an equal figure.",
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-usage.py",
+        "start_line": 338,
+        "end_line": 347,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "A fresh reading now replaces the stored figure even when that figure is newer: a status line sample of an active session written between the probe's read and the locked update gets lowered back, and window_first is reset.",
+        "evidence": "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+        "suggested_fix": "Lower only when the stored figure is not newer than the probe's read time (for example, compare against the stored updated_at, or record the probe time and keep a higher figure that arrived after it).",
+        "explanation": "The probe's figures are read several seconds before `update` takes the lock, and `fresh` now bypasses the higher-percent guard unconditionally, so a genuinely newer higher figure from a live session can be overwritten by the older fresh value and the forecast restarted.",
+        "needs_context": false,
+        "fingerprint": "c0172f0328f35ef8",
+        "severity": "suggestion",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if new[\"resets_at\"] == old[\"resets_at\"] and (fresh or new[\"used_pct\"] > old[\"used_pct\"]):",
+            "if key == \"five_hour\" and old and d[key][\"used_pct\"] < old[\"used_pct\"]:\n            lowered = True",
+            "new = apply_sample(out, x, \"refresh\", ts, fresh=True)",
+            "stop_group(proc)\n        lines = read_lines(probe)"
+          ],
+          "rationale": "`fresh=True` now replaces any stored window that has the same resets_at, even when the stored figure is higher. The probe's lines are read before `update` takes the lock, so a higher sample that a session writes in between gets lowered and `window_first` is reset. The race window is a few seconds and only opens when the file is already stale. The next higher session sample fixes the figure, but the forecast still restarts.",
+          "score": 80,
+          "severity": "suggestion"
+        },
+        "span_text": "ts = now() result = [0] def fn(d): out = d got = False for x in lines: new = apply_sample(out, x, \"refresh\", ts, fresh=True) if new is not None: out, got = new, True",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "github": {
+      "review_id": 6044677073,
+      "review_url": "https://github.com/jerridan/crew/pull/186#pullrequestreview-6044677073",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [
+        "0cf664fc40e4996c",
+        "c0172f0328f35ef8"
+      ],
+      "check_run": {
+        "id": 138662600010
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5239,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 4414,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.00045290000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 767,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 3927,
+            "webSearchRequests": 0,
+            "costUSD": 0.0235082,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0239611
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 2878,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5586,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005706,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 80,
+            "cacheReadInputTokens": 10376,
+            "cacheCreationInputTokens": 5095,
+            "webSearchRequests": 0,
+            "costUSD": 0.044443199999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.04501379999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6314,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5586,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005706,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 476,
+            "cacheReadInputTokens": 10182,
+            "cacheCreationInputTokens": 5095,
+            "webSearchRequests": 0,
+            "costUSD": 0.0523244,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 105,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.052895
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 6421,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5588,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005708,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 488,
+            "cacheReadInputTokens": 10092,
+            "cacheCreationInputTokens": 5097,
+            "webSearchRequests": 0,
+            "costUSD": 0.052562399999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 96,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0531332
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5315,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5576,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005706,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 670,
+            "cacheReadInputTokens": 11151,
+            "cacheCreationInputTokens": 5089,
+            "webSearchRequests": 0,
+            "costUSD": 0.028175099999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 314,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0287457
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8896,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8747,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008877,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 981,
+            "cacheReadInputTokens": 48731,
+            "cacheCreationInputTokens": 9567,
+            "webSearchRequests": 0,
+            "costUSD": 0.0529631,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 302,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.053850800000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4184,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11041,
+            "outputTokens": 427,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0013176,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 398,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 520,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 10550,
+            "webSearchRequests": 0,
+            "costUSD": 0.0478407,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 144,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0491583
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 8368,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8339,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0008443999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 778,
+            "cacheReadInputTokens": 29077,
+            "cacheCreationInputTokens": 9605,
+            "webSearchRequests": 0,
+            "costUSD": 0.0491197,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 51,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.049964100000000004
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 24377,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5572,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005697,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1963,
+            "cacheReadInputTokens": 61781,
+            "cacheCreationInputTokens": 9548,
+            "webSearchRequests": 0,
+            "costUSD": 0.12803219999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 863,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1286019
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13155,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11031,
+            "outputTokens": 383,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0012946,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 360,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1126,
+            "cacheReadInputTokens": 35435,
+            "cacheCreationInputTokens": 12867,
+            "webSearchRequests": 0,
+            "costUSD": 0.13256700000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 347,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1338616
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5800,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8934,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009053999999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 666,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 8443,
+            "webSearchRequests": 0,
+            "costUSD": 0.040872700000000005,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 289,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.041778100000000006
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 9482,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8991,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009116000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 937,
+            "cacheReadInputTokens": 30459,
+            "cacheCreationInputTokens": 9491,
+            "webSearchRequests": 0,
+            "costUSD": 0.0503919,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 85,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0513035
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 14625,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8922,
+            "outputTokens": 399,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010917,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 373,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1301,
+            "cacheReadInputTokens": 17161,
+            "cacheCreationInputTokens": 10190,
+            "webSearchRequests": 0,
+            "costUSD": 0.11098820000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 683,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11207990000000001
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13994,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 8993,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0009133,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1072,
+            "cacheReadInputTokens": 17232,
+            "cacheCreationInputTokens": 10289,
+            "webSearchRequests": 0,
+            "costUSD": 0.1072144,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 501,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.10812770000000001
+      }
+    ],
+    "total_cost_usd": 0.9324747000000001,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 55,
+      "gather": 158,
+      "triage": 6138,
+      "find_verify": 50366,
+      "merge": 9
+    },
+    "errors": []
+  }
+}

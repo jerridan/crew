@@ -193,7 +193,9 @@ STUB
 # with a usage message and no window line), herdr-focus-err (agent.focus fails
 # with an error that does not name an unknown terminal), herdr-slow (tab.new and
 # space.new answer after 3 seconds), herdr-close-down (tab.close takes the
-# window down: it exits 2 and sets herdr-down). hc files: hc-ls-fail (`ls`
+# window down: it exits 2 and sets herdr-down), herdr-new-terminal (the
+# terminal address that tab.new and space.new print; t9 when it is missing).
+# hc files: hc-ls-fail (`ls`
 # fails), hc-get-fail-<address> (`get` fails with an error that is not
 # not_found), hc-keys-fail (`keys` fails), hc-exit-fail (the `keys` call that
 # types /exit fails), hc-exit-gone (that call fails and the terminal is gone
@@ -221,11 +223,11 @@ case "$1" in
       tab.new)
         [ -e "$D/herdr-slow" ] && sleep 3
         [ -e "$D/herdr-do-fail" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
-        echo '{"space":"spaNEW","tab":"tbNEW","terminal":"t9"}' ;;
+        echo "{\"space\":\"spaNEW\",\"tab\":\"tbNEW\",\"terminal\":\"$(cat "$D/herdr-new-terminal" 2>/dev/null || echo t9)\"}" ;;
       space.new)
         [ -e "$D/herdr-slow" ] && sleep 3
         [ -e "$D/herdr-do-fail" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
-        echo '{"space":"spaMADE","tab":"tbNEW","terminal":"t9"}' ;;
+        echo "{\"space\":\"spaMADE\",\"tab\":\"tbNEW\",\"terminal\":\"$(cat "$D/herdr-new-terminal" 2>/dev/null || echo t9)\"}" ;;
       agent.focus)
         [ -e "$D/herdr-focus-err" ] && { echo '{"error":"layout unavailable"}'; exit 1; }
         if grep -sqxF -- "$4" "$D/herdr-terminals"; then echo '{"ok":true}'
@@ -2280,6 +2282,40 @@ printf '%s\n' '{"spaces":[{"id":"spaA","name":"grp","tabs":[{"id":"tbY","name":"
 herdr_stop stop herdr:t3
 check 'stop with no herdr.tab label and no tab in herdr-app ls exits 6 with one line that names the handle, and sends no key' \
   $([ "$rc" = 6 ] && [ "$(lines "$T/err")" = 1 ] && grep -sqF herdr:t3 "$T/err" && ! grep -sqE '^(keys|send|read)\|' "$STUB_DIR/hc.log"; echo $?)
+
+# Herdr terminal addresses with letters: hc --help says an address is like t7
+# or t1b. start, focus, find and stop take each one.
+reset_stub
+printf '%s\n' "$HERDR_LS" > "$STUB_DIR/herdr-ls"
+echo t1j > "$STUB_DIR/herdr-new-terminal"
+run start --name hd-l --terminal herdr --group grp --principal p --checkout "$CO"
+check 'start on Herdr that gets the terminal address t1j exits 0 and prints tab herdr:t1j' \
+  $([ "$rc" = 0 ] && [ "$(field tab)" = '"herdr:t1j"' ]; echo $?)
+reset_stub
+printf 't1j\n' > "$STUB_DIR/herdr-terminals"
+run focus herdr:t1j
+check 'focus herdr:t1j runs do agent.focus --terminal t1j and exits 0' \
+  $([ "$rc" = 0 ] && grep -sqx 'do|agent.focus|--terminal|t1j|' "$STUB_DIR/herdr.log"; echo $?)
+reset_stub
+cat > "$STUB_DIR/hc-ls" <<'JSON'
+{"hidden_finished":0,"terminals":[{"address":"t1j","state":"live"},{"address":"t1B","state":"live"}]}
+JSON
+hc_get t1j 900041 spaA tb3
+hc_get t1B 900043 spaA tb4
+printf '900041 1 ttys921 /bin/zsh -l\n900042 900041 ttys921 claude --name hd-a --model opus\n' > "$STUB_DIR/ps-extra"
+printf '900043 1 ttys922 /bin/zsh -l\n900044 900043 ttys922 claude --name hd-b --model opus\n' >> "$STUB_DIR/ps-extra"
+__CFBundleIdentifier=$HERDR run find hd-a
+check 'find on Herdr sees the terminal t1j' $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'herdr:t1j name' ]; echo $?)
+__CFBundleIdentifier=$HERDR run find hd-b
+check 'find on Herdr sees the terminal t1B' $([ "$rc" = 0 ] && [ "$(cat "$T/out")" = 'herdr:t1B name' ]; echo $?)
+echo 'tb3' > "$STUB_DIR/herdr-tabs"
+herdr_stop stop herdr:t1j --name hd-a
+check 'stop herdr:t1j --name of that session types /exit into t1j and closes its tab' \
+  $([ "$rc" = 0 ] && grep -sqx 'keys|t1j|/|e|x|i|t|' "$STUB_DIR/hc.log" && grep -sq 'tab.close|--id|tb3|' "$STUB_DIR/herdr.log"; echo $?)
+for bad in 'herdr:t' 'herdr:x1j' 'herdr:t1-j' 'herdr:m/t7'; do
+  run focus "$bad"
+  check "focus $bad exits 7 with one line" $([ "$rc" = 7 ] && [ "$(lines "$T/err")" = 1 ]; echo $?)
+done
 # -- stop and the exit dialog of a session with background work ----------------
 # With a live background task, claude answers /exit with a dialog whose first
 # option, the one in focus, is "Exit and stop tasks". stop reads the screen

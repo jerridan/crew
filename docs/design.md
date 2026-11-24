@@ -10343,7 +10343,33 @@ NN. **The PR watch and the PR replies run in one call each — 2026-11-24,
       lead the calls and keeps each rule about a value in the file that owned
       it. A reply carries its marker because the script adds it, and a marker
       counts as posted only from the login of the principal's own account.
-    - **Calls.** <counts>
+    - **Calls.** The count is from the 51 project-lead sessions since
+      2026-11-03 in the token study. A call is one model request. A watch
+      call is one with `Monitor` of `pr-watch.sh`, `TaskStop`, `run set
+      watch`, `run set deploy` or a `gh pr view` read of `isDraft`. A reply
+      call is one with a `/replies` post, `gh pr comment`, a `reviewThreads`
+      read or resolve, a marker search, or a write of a GitHub reply file. The
+      calls are grouped by the wake that started them.
+    - **Arming.** A hand-over, a resume, a message or a return from `blocked`
+      armed the monitor 108 times, with 2.0 calls each. It now takes 1 call:
+      `TaskStop`, `Monitor` and the login read go in one response. The re-arm
+      on the expiry notice happened 195 times, with 1.0 call each, before and
+      after. The script does not change that: each expiry still wakes the
+      project lead.
+    - **Cursor and deploy.** The cursor write after a wake happened 218
+      times, with 1.1 calls each. It now takes 1 call, in the response that
+      carries the report. The saving is the hand-composed JSON and its errors,
+      not calls. The deploy watch took 2 calls, the `run.deploy` write and the
+      `Monitor` call, and now takes 1.
+    - **Replies.** A round of PR replies happened 59 times, with 1.4 calls
+      each by this narrow count. The study's wider count is 4.3 calls per
+      session. A round now takes 1 call: the write of the replies file and the
+      send go in one response. The resolve of a thread took 3 `gh` calls after
+      the reply, which were the marker search, the thread read and the
+      mutation. It now takes none, because the send does it.
+    - **Per session.** The watch goes from 12.6 calls to about 10.4, of which
+      3.8 are expiry re-arms. Without the re-arms it goes from 8.8 to about
+      6.4. The replies go from 1.6 calls to 1.2 by the narrow count.
     - **Unexercised.** Only `test-watch-step.sh` and `test-pr-reply.sh` ran
       the scripts, with a stub `gh`. No crew run has armed a monitor, acked a
       wake or sent a round with them.

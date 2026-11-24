@@ -90,10 +90,11 @@ among the reported `review` and `comment` items. `draft` goes to `false` after
 a `ready` item, and `head` moves on a `push` item. The call also writes
 `run.deploy.ended` for a `deploy-failed` or `deploy-timeout` line.
 
-The call goes after the report. Put it in the same response as the report only
-after the `SendMessage` call that carries it: tool calls run in the order sent,
-and the next one starts when the last one returns. Otherwise make it in your
-next call.
+The call goes after the report. Put it in the same response as the report in
+both cases: after the `SendMessage` call that carries the report, because tool
+calls run in the order sent and the next one starts when the last one returns,
+or after the report text in the pane, because a response shows its text before
+its tool calls run.
 
 **Arm the monitor on every entry into this window**: at the hand-over, on a
 resume, and on every return from `blocked` to `delivered`. Do not arm it when

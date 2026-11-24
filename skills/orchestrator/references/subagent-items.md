@@ -15,8 +15,8 @@ At intake, an item is a subagent item when all four hold:
    choice and no preference question for the principal.
 2. The work is mechanical steps, and a reader can check the result against the
    ticket.
-3. It changes no code, no test, no config and no instruction file, so it needs
-   no red test and no review.
+3. It changes no code, no test, no config and no instruction file. Or it is an
+   obvious one-line fix, which may change any of them.
 4. It is one package, in one repo or in none, with at most one PR. No item
    waits on its interface, and it has no deploy to watch.
 
@@ -24,7 +24,16 @@ At intake, an item is a subagent item when all four hold:
 |---|---|
 | Move the tickets of a markdown file to a GitHub project | subagent item: all four hold |
 | A change to the orchestrator's design across several files | implementer item: 1 and 3 fail |
-| A one-line code change that needs a red test and review | implementer item: 3 fails. The project lead's light path is for it |
+| A fix to one line of a script, with a test beside it | subagent item: the fix is obvious and one line |
+| A typo or a wrong path in one line of an instruction file | subagent item: the fix is obvious and one line |
+| A one-line change with two possible fixes, or one that needs a choice | implementer item: 3 fails, because the fix is not obvious. The project lead's light path is for it |
+| A change of one rule that other files point at or copy | implementer item: 3 fails. The check of the other files is more than one line |
+
+An **obvious one-line fix** meets all of these. The ticket names the file and
+the wrong line, or the wrong line is plain from the ticket. The fix has one
+reading, so no choice is left for the principal. The diff changes one line of
+the fix, and at most a test of that line beside it. The change needs no
+change in another file, other than the test.
 
 **The default is an implementer.** When one of the four is in doubt, the item
 gets an implementer. So does work that needs a spec, a design choice, a
@@ -57,12 +66,28 @@ with `told`.
   `Closes #<n>` line, and gives these rules: open the PR ready, not as a
   draft; never merge; reply in each review thread and resolve it, as
   `SKILL.md`'s "The goal message" says; leave each value that you own as a
-  placeholder; start no `claude` process. When the work needs a judgment, a
+  placeholder; start no `claude` process. For an obvious one-line fix, it also
+  gives the rules of "The one-line fix", below. When the work needs a judgment, a
   design choice or more work than the item said, commit what is done and
   return `larger`.
 - The return: one final line. `ready <sha>: <PR URL>, ...` is a ready line, as
   `SKILL.md`'s "The goal message" defines it. `done: <outcome>` is for work
   with no PR. `larger: <what it found>` stops the subagent.
+
+## The one-line fix
+
+Before its ready line, the subagent of an obvious one-line fix does this:
+
+- For code or config that the repo tests, it adds or changes a test that fails
+  before the fix and passes after it, and it runs the repo's own check. The
+  ready line says what ran.
+- For an instruction file, it reads the standing instructions of the repo and
+  the file's rules, and it greps the key terms of the line against sibling
+  files, so no rule gets a second copy. The ready line says what it checked.
+- It leaves the plugin version and any other value that the orchestrator owns
+  as a placeholder.
+
+A change that needs more than this goes to "Larger than it looked".
 
 ## Slots and pace
 
@@ -84,7 +109,9 @@ It goes through every check of `SKILL.md`'s "The merge".
 - Write each ready line with `item <id> set subagent.ready`. It is the ready
   line of `SKILL.md`'s "The merge".
 - Before the merge, read `gh pr diff <n>`. A diff that does more than the
-  brief asked goes to "Larger than it looked", below.
+  brief asked goes to "Larger than it looked", below. For a one-line fix, the
+  diff must be the one line and at most its test. More lines, or a line
+  that the ticket neither names nor makes plain, go there too.
 - No implementer reports GitHub events, so arm a GitHub wait (`SKILL.md`'s
   "The wait") on the PR. Its output also holds the head sha, the counts of
   reviews, comments and inline comments (`gh api

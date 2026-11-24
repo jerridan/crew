@@ -232,7 +232,7 @@ check("no verdict pair: skipped with reason failed", rc == 20 and pr_of(c)["reas
 c = seed()
 rc = go(c, "run", *PLANS, mode="quota")
 check("quota: a non-zero exit stops with exit 21 and the last 20 stderr lines",
-      rc == 21 and "You have hit your usage limit." in c.out and "line 5" in c.out and "line 4\n" not in c.out
+      rc == 21 and "You have hit your usage limit." in c.out and "line 6\n" in c.out and "line 5\n" not in c.out
       and "QUOTA CHECK:" in c.out)
 check("quota: no skip record yet, reviewing, exit file present, tokens written",
       pr_of(c)["outcome"] is None and pr_of(c)["status"] == "reviewing" and pr_of(c)["tokens"] == 99

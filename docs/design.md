@@ -10477,6 +10477,14 @@ Deliberately different:
       sample lowers nothing, and a fresh reading replaces the stored figure in
       the same `resets_at` also when it is lower. An earlier `resets_at` still
       never replaces a later one. `usage.md` owns the rule.
+    - **Idle repeat.** A lowered figure must not rise again when an idle
+      session repeats its old sample on each status line refresh, a second
+      apart. A sample has no age of its own. So `usage.json` keeps the last
+      figure of each window per session id, and a sample equal to the last
+      one of its session changes nothing. A session that works sends a new
+      figure, which the merge rule takes. A session whose first sample comes
+      after the reset, with an old figure, is not told apart. The records
+      are dropped after 2 days.
     - **Forecast.** A lower five-hour figure from a fresh reading starts
       `window_first` again from that figure, so the forecast rate is not
       measured across the drop.

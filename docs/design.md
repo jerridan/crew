@@ -10186,9 +10186,9 @@ Deliberately different:
      - **Decisions.** `tab.new` has no environment argument, so the tab runs
        `["/bin/sh", "-c", <the command of the tmux path>]`. `find` reads the
        terminal's own pid with `hc get`, and the tty of that pid with `ps`, then
-       matches `claude` as on the other terminals. `stop` sends `hc keys esc`,
-       `hc keys ctrl+u` and `hc send /exit --force`. `hc send` presses Enter,
-       and `--force` covers a status that still reads blocked after Escape.
+       matches `claude` as on the other terminals. `stop` sent `hc keys esc`,
+       `hc keys ctrl+u` and `hc send /exit --force`. §15.155 replaced the
+       `hc send` with `hc keys`.
        `--group` is a space name. With no `--group`, the tab goes into the space
        of `$HC_TERMINAL_ID`. `--group-color` has no equivalent and is ignored.
      - **Unexercised.** The keys and `/exit` to a live `claude`; `agent.focus`
@@ -10245,12 +10245,17 @@ Deliberately different:
        `stop` reads the screen and presses Enter one time when the screen
        ends with the exit dialog. `stop` reads the screen first because a
        blind Enter could approve a permission dialog. A numbered option
-       under the dialog stops the Enter for the same reason.
+       under the dialog stops the Enter for the same reason. A session can
+       print the words of the dialog, so `stop` also reads the screen before
+       the first key: a dialog that is there before `/exit` gets no Enter.
+       Each line of the dialog must hold its label and no other word.
        `skills/orchestrator/references/launcher.md` owns the keys and the
        screen check.
      - **Unexercised.** Only `test-launcher.sh` ran the change, with stub
-       `tmux`, `osascript` and `hc`. No live run has shown that `hc keys`
-       takes `/`, that a Herdr session runs the typed `/exit` as a command,
-       the layout of the dialog on a screen, the screen read on any
-       terminal, or Enter on the dialog. The other exit dialog of that
+       `tmux`, `osascript` and `hc`. One probe ran `hc keys <t> / e x i t` on
+       a Herdr terminal that ran `cat`: it exited 0 and the screen showed
+       `/exit`. No Claude Code session got the keys. No live run has shown
+       that a Herdr session runs the typed `/exit` as a command, the layout
+       of the dialog on a screen, the screen read on any terminal, or Enter
+       on the dialog. The other exit dialog of that
        code, for a session whose worktree Claude Code made, gets no answer.

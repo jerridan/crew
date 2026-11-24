@@ -522,6 +522,24 @@ def t_r3():
     check("R3 a refresh with an equal figure still moves the arrival time",
           load()["updated_at"] == NOW and load().get("refresh_failed") is False)
 
+    seed(five=90, updated=NOW - 1000, seven=80, first=(NOW - 3000, 10))
+    r = run(["refresh"], STUB_MODE="figures", STUB_PCT=40, STUB_RESETS=R,
+            STUB_RESETS7=NOW + 3 * 86400)
+    d = load()
+    check("R3 a refresh with a lower figure in the same window lowers both windows",
+          r.returncode == 0 and d["five_hour"]["used_pct"] == 40
+          and d["seven_day"]["used_pct"] == 33 and d["updated_at"] == NOW)
+    check("R3 a lowered five-hour figure starts the forecast again from that figure",
+          d["window_first"] == {"resets_at": R, "at": NOW, "used_pct": 40})
+    run(["record"], sample(70, five_resets=R, seven=50))
+    check("R3 after a lowered figure a status line sample still never lowers it",
+          load()["five_hour"]["used_pct"] == 70)
+    seed(five=90, updated=NOW - 1000)
+    run(["refresh"], STUB_MODE="figures", STUB_PCT=40, STUB_RESETS=R - 100,
+        STUB_RESETS7=NOW + 3 * 86400)
+    check("R3 a refresh with an earlier resets_at does not replace the stored window",
+          load()["five_hour"]["used_pct"] == 90)
+
     check("R3 no settings file has a changed modification time",
           os.stat(USER_SETTINGS).st_mtime_ns == m_user)
 

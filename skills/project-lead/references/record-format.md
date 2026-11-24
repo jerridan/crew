@@ -907,6 +907,9 @@ The project lead alone makes it and removes it, and nothing registers it
 here. `review-runner.md`'s "Never review in the run's own checkout" owns its
 path and its removal, on a goal run and on a review run.
 
+**`crew-step.py` writes the entries**, and it makes the `crew-record.py`
+writes that go with them (`crew-step.md`).
+
 **An entry lives exactly as long as its worktree.** The step that removes a
 worktree deletes the entry. Never add a field that says the worktree is gone:
 the entry is what proves a worktree is this run's to remove, and a removed

@@ -111,65 +111,35 @@ This section owns where a run's git work happens. `full-path.md` borrows it
 
 **A `Branch names` section in the standing instructions replaces crew's
 branch name**, `crew/<goal-slug>/<deliverable-id>`, everywhere this section
-uses it (`SKILL.md`, "Standing instructions").
+uses it (`SKILL.md`, "Standing instructions"). Pass the result with
+`--branch`.
 
-**Ask first whether another run holds this checkout.** It is held when either
-of these is true:
+**Ask first whether another run holds this checkout.** It is held when the
+launch message says so. The principal says so when they start you in a clone
+another run is already working in. Read the sentence; never infer it. A
+launch that says nothing is not proof, so run the call below either way: it
+also reads the current branch, and a `crew/` branch with a goal slug that is
+not yours is another run's.
 
-- **The launch message says another run holds it.** The principal says so
-  when they start you in a clone another run is already working in. Read the
-  sentence; never infer it. A launch that says nothing is not proof, so run
-  the branch check below either way.
-- **`git -C <repo> branch --show-current` prints a `crew/` branch with a goal
-  slug that is not yours.** That branch is another run's, live or finished.
+Run `crew-step.py branch`, and pass `--held` when the launch message says the
+checkout is held (`crew-step.md` owns the command line). A free checkout gets
+a branch and stays shared: the project lead is idle while the IC works, so one
+tree costs the run nothing (design §9.1). A held checkout gets a worktree of
+its own under `run.worktree_base`. Two runs on one branch mix their commits,
+and the run that finishes second cannot say which are its own.
 
-**Free.** `git -C <repo> switch -c crew/<goal-slug>/<deliverable-id>`; never
-work on the main branch. Write the `deliverables[]` entry now — `id`, branch,
-the head sha as `base`, `state: pending`, `pr_url: null`, and the branch you
-just read as `checkout_branch`. Write `run.checkout`: this checkout's path,
-the same path `run.repo` already holds from "Take the goal".
+**Name the start point when the call fails for want of one.** With none, the
+held branch would start at the clone's `HEAD`, which is the other run's
+branch, so your draft PR would carry its unfinished commits (design §15.79c).
+`FAIL start-point` means `origin/HEAD` does not exist. Use the branch the
+charter names, record the choice in `decisions.md`, and run the call again
+with `--start-point`.
 
-**Held.** Do not switch it. Two runs on one branch mix their commits, and the
-run that finishes second cannot say which are its own. Cut a checkout of your
-own instead, under this run's worktree base:
-
-```
-git -C <repo> worktree add <run.worktree_base>/worktrees/<deliverable-id> -b crew/<goal-slug>/<deliverable-id> <start-point>
-```
-
-**Name the start-point, and never leave it out.** With none, the branch starts
-at the clone's `HEAD` — which in this case is the other run's branch, so your
-draft PR would carry its unfinished commits (design §15.79c). Use the repo's
-default branch: `git -C <repo> rev-parse --abbrev-ref origin/HEAD` prints it.
-A repo with no remote has no such ref, so use the branch the charter names,
-and record the choice in `decisions.md`.
-
-`run.worktree_base` is the base the preference sweep chose: this run's own
-record directory, or a path under the repo's `.claude/worktrees/crew/`
-(`full-path.md`'s launch check 1). Either path carries the run's goal slug,
-whose random suffix keeps two runs' worktree paths apart — a deliverable id
-alone does not, because every run's first is `deliverable-1`.
-
-Then, in the same turn:
-
-- Write `run.checkout`: the worktree's absolute path. `run.repo` already
-  holds the clone you cut it from, written at "Take the goal", and it is the
-  only path that outlives the worktree (`record-format.md`). **Every later
-  step reads
-  `run.checkout` where it says `<repo>`** — the dispatch prompt, the
-  verification, the diff, the suite and the push. The shared checkout is read
-  from and never written to.
-- Register the worktree in `worktrees.json`, keyed by the deliverable id,
-  since no IC owns a territory on this path (`record-format.md`, "the
-  deliverable id, because no IC owns it"). Nothing else proves the worktree
-  is yours to remove.
-- Write the `deliverables[]` entry as above, with `checkout_branch: null`. You
-  switched no checkout, so `checkout_restored` stays `null` as well.
-- "End the run" removes it.
-
-**You cut the worktree, and nobody cuts it for you.** The hand-off names the
-case and you resolve it. A free checkout stays shared: the project lead is
-idle while the IC works, so one tree costs the run nothing (design §9.1).
+**In a held case, every later step reads `run.checkout` where it says
+`<repo>`**: the dispatch prompt, the verification, the diff, the suite and
+the push. The shared checkout is read from and never written to. `run.repo`
+stays the clone you cut the worktree from, and it is the only path that
+outlives the worktree (`record-format.md`).
 
 ## Dispatch the IC
 
@@ -227,33 +197,41 @@ it, so read `<repo>` below as the checkout the calling path names:
 `run.checkout` on the simple and light paths, the IC's worktree on the full
 path.
 
-**Verify the committed tree, and nothing else.** Run `git -C <repo> status
---porcelain` first. A clean tree, here and everywhere a crew file says "clean
-tree", means two things and only two: no uncommitted change to any tracked
-file, and no untracked file inside the package's file set. An untracked file
-outside the file set is somebody else's, so leave it alone and never fail the
-check on it. Uncommitted work reaches no diff, no branch and no PR, so a dirty
-tree is a fix round: the IC commits, and you start this section again. An
-uncommitted change to a tracked file the file set never named is the same fix
-round, with one more question in it — the IC reverts that change, or names the
-file as one the package needs, and you decide whether the file set gains it.
+**Verify the committed tree, and nothing else.** A clean tree, here and
+everywhere a crew file says "clean tree", means two things and only two: no
+uncommitted change to any tracked file, and no untracked file inside the
+package's file set. An untracked file outside the file set is somebody else's,
+so leave it alone and never fail the check on it. Uncommitted work reaches no
+diff, no branch and no PR, so a dirty tree is a fix round: the IC commits, and
+you start this section again. An uncommitted change to a tracked file the file
+set never named is the same fix round, with one more question in it — the IC
+reverts that change, or names the file as one the package needs, and you
+decide whether the file set gains it.
 
-**The IC's report is a claim, and git is the evidence.** Three commands, with
-`<base>` the package's own `base`, which "Dispatch the IC" wrote:
+**Run `crew-step.py verify` once, before you read anything else**
+(`crew-step.md` owns the command line and the output). It checks the tree, the
+log and the file list against the file set, and it prints the full diff last.
+Choose its flags:
 
-```
-git -C <repo> log --oneline <base>..HEAD
-git -C <repo> diff <base>..HEAD --stat
-git -C <repo> diff <base>..HEAD
-```
+- Pass `--criterion` with the acceptance criterion on a goal run, and
+  `--suite` with the scout's command, or `--no-suite` when the repo has none
+  (below).
+- Pass `--red <sha>` with the sha the IC's report gives, on a goal run, when
+  the package adds the test its criterion names (design §7). Put the build in
+  `--criterion` in a repo that builds before it tests. Never pass `--red` for
+  a fix package from the investigation path (below).
+- Pass `--pattern <regex>` with the finding's pattern on a fix or patch
+  package.
+- Pass `--ic-branch` on the full path (`full-path.md`).
 
-Check the file list from the second against the declared file set. Then verify
-the package yourself and read every output you get. `band-rubric.md` says what
-a `BLOCKED` cause earns.
+**The IC's report is a claim, and git is the evidence.** Read the call's
+output, whole. The call gives no verdict on the diff: you read it against the
+declared file set, the brief and the interface contract. `band-rubric.md` says
+what a `BLOCKED` cause earns.
 
-**A code package takes two runs and one reading.** Run the acceptance
-criterion, then the repo's test suite. A review run runs neither: see "A
-review run runs no test" below. Then read the diff itself, against the
+**A code package takes two runs and one reading.** The call runs the
+acceptance criterion, then the repo's test suite. A review run runs neither:
+see "A review run runs no test" below. Then read the diff itself, against the
 brief and against the interface contract. A green suite says the tests that
 exist pass, and nothing more: a defect you can name, or a `produces` signature
 the diff does not honour, is a fix round with every test green.
@@ -281,12 +259,12 @@ for every file that needs it. Never invent a command, and never read a missing
 suite as a pass.
 
 **A review run runs no test.** On a review run (`run.kind: review`) the
-worktree has no installed dependencies. Run no test, the acceptance criterion
-included, at the head or at the red commit, and run no suite. The check passes
-on the diff reading, the pattern grep of "A fix or patch package is checked
-against the pattern", and the criterion read as text. The PR's CI runs the test
-on the push. Every rule below that runs a criterion or a suite holds for a goal
-run only.
+worktree has no installed dependencies. Pass `--no-suite` and no `--criterion`
+or `--red`, so the call runs no test, the acceptance criterion included. The
+check passes on the diff reading, the pattern grep of "A fix or patch package
+is checked against the pattern", and the criterion read as text. The PR's CI
+runs the test on the push. Every rule here that runs a criterion or a suite
+holds for a goal run only.
 
 **What sends a package back.** This list is the whole trigger, at every band
 and on every path. Every other file points here rather than keep a second copy:
@@ -307,18 +285,17 @@ and on every path. Every other file points here rather than keep a second copy:
 - a commit outside the IC's own branch or worktree, which only the full path
   can produce (`full-path.md`'s "Verify before you believe" runs that check).
 
-**A fix or patch package is checked against the pattern, not the line.**
-Grep the deliverable's diff, `git -C <repo> diff <deliverable base>..HEAD`,
-for the pattern the finding named, and read every hit. A hit the package left
-unfixed is a defect you can name. Write the pattern and the count of hits in
-the package's `decisions.md` entry.
+**A fix or patch package is checked against the pattern, not the line.** The
+`--pattern` hits are every line of the deliverable's diff that matches the
+pattern the finding named. Read every hit. A hit the package left unfixed is a
+defect you can name. Write the pattern and the count of hits in the package's
+`decisions.md` entry.
 
-**Run the criterion at the red commit too**, on a goal run, when the package
-adds the test its criterion names (design §7). `ic-contract.md`'s "Write the
-failing test first" owns the procedure and the clean-tree precondition. Run it
-in `<repo>`, against the sha the IC's report gives. Switch the branch back before anything else: an
-IC may not switch branches, the simple path's checkout may be the principal's
-own, and `checkout_restored` at "End the run" records what it was left on.
+**The red commit.** `ic-contract.md`'s "Write the failing test first" owns the
+meaning of the check, and `crew-step.md` owns the procedure. The call switches
+the branch back before anything else: an IC may not switch branches, the
+simple path's checkout may be the principal's own, and `checkout_restored` at
+"End the run" records what it was left on.
 
 **A fix package from the investigation path is exempt.** Its reproduction
 failed before the dispatch and `diagnosis.md` holds that output, so run the
@@ -375,72 +352,59 @@ what the hand-over shipped.
 
 ## End the run
 
-Push the branch. Fill the repo's pull request template if it has one, and put
-`spec.md` and `decisions.md` in the body, one long line per paragraph and list
-item. **A light-path run puts `charter.md` where the spec would go**, because
-it wrote none and the PR body is where its reasoning lands. Never hard wrap
-what you send to GitHub (`writing-standard.md`).
+Write the PR body to a file first. Fill the repo's pull request template if it
+has one, and put `spec.md` and `decisions.md` in the body, one long line per
+paragraph and list item. **A light-path run puts `charter.md` where the spec
+would go**, because it wrote none and the PR body is where its reasoning
+lands. Never hard wrap what you send to GitHub (`writing-standard.md`).
 
 **Close the issue with the PR.** For each `Issue:` line in `charter.md`, put
 `Closes <owner>/<repo>#<n>` on a line of its own in the body. GitHub then
 closes the issue when the PR merges into the default branch.
 
-`gh pr create --draft`. The PR stays a draft until the goal check is done.
-`goal-check.md`'s "Mark the PR ready" owns that step. Then one
-write: `crew-record.py deliver <deliverable-id> draft-pr-opened --pr-url
-<url> --review-head <sha>`. It records `pr_url`, sets the deliverable
-`draft-pr-opened` and `run_state: delivered`, stamps `delivered_at`, and
-writes `run.review_pending` with the head the goal check is owed on — one write, so a session that dies here still
-owes the review (`skeptical-review.md`). A human merges it. Then run
-`scripts/spend.py --write`
-(`autonomy-contract.md`), and stop every process the run left listening —
-`lsof -iTCP -sTCP:LISTEN` names them (§15.50).
+Run `crew-step.py hand-over` with `--body` and `--title`, or with `--local`
+for a branch that no PR carries (`crew-step.md` owns the command line and the
+steps). The PR stays a draft until the goal check is done. `goal-check.md`'s
+"Mark the PR ready" owns that step. The call records `pr_url`, sets the
+deliverable `draft-pr-opened` and `run_state: delivered`, and writes
+`run.review_pending` with the head the goal check is owed on, in one write, so
+a session that dies there still owes the review (`skeptical-review.md`). A
+human merges the PR. The call also prices the run (`autonomy-contract.md`),
+and it prints the processes the run left listening. Stop each one that is
+yours (§15.50).
 
-When the push or `gh pr create` cannot run, check `escalations` first for the
-entry with trigger text `launch check 3 (trigger 6): no remote` — the
-preference sweep writes it only when check 3 of `full-path.md`'s "Check the
-launch conditions" failed, before the split (`autonomy-contract.md`). Found:
-act on the answer, and do not ask again. "Keep the work local" means skip
-straight to `work-complete` below. "Add a remote" means one should already
-exist — push. If it still fails, the promised remote never arrived: that is
-new information, so escalate it now, plainly, the same way as below.
+When the push or `gh pr create` fails, the call prints the escalation entry
+for `launch check 3 (trigger 6): no remote`. The preference sweep writes that
+entry only when check 3 of `full-path.md`'s "Check the launch conditions"
+failed, before the split (`autonomy-contract.md`). Found: act on the answer,
+and do not ask again. "Keep the work local" means run the call again with
+`--local`. "Add a remote" means one should already exist, so run the call
+again. If it still fails, the promised remote never arrived: that is new
+information, so escalate it now, plainly, the same way as below.
 
-No such entry means check 3 passed at the sweep — this checkout had a remote
-then. A push or `gh pr create` failure here is a different problem: expired
-auth, a rejected push, a repo setting. Ask the principal, plainly, and **wait
-for the answer**: `blocked` until it lands, then `active`. One who already
-refused the PR has answered; do not ask twice. Then `crew-record.py deliver
-<deliverable-id> work-complete --review-head <sha>`: it records `work-complete`,
-`run_state: delivered` and `review_pending` in one write, with `pr_url` left
-`null`. Hand over the branch. **This ending takes the goal check too.**
-The review reads the branch, and a PR is only how a human reaches it
-(`skeptical-review.md`).
+`escalation: none` means check 3 passed at the sweep, because this checkout
+had a remote then. A push or `gh pr create` failure here is a different
+problem: expired auth, a rejected push, a repo setting. Ask the principal,
+plainly, and **wait for the answer**: `blocked` until it lands, then `active`.
+One who already refused the PR has answered; do not ask twice. Then run the
+call with `--local`: it records `work-complete`, `run_state: delivered` and
+`review_pending` in one write, with `pr_url` left `null`. Hand over the
+branch. **This ending takes the goal check too.** The review reads the
+branch, and a PR is only how a human reaches it (`skeptical-review.md`).
 
-**Remove a worktree you cut, after the push.** A run that cut its own checkout
-at "Create the branch" has one entry in `worktrees.json`. Remove the worktree,
-then delete that entry (`record-format.md`):
-
-```
-git -C <run.repo> worktree remove <run.worktree_base>/worktrees/<deliverable-id>
-```
-
-This runs against `run.repo` and not `run.checkout`: a worktree cannot remove
-itself. The branch stays and the PR
-stands on it; only the working tree goes. Never force the removal. A refusal
+**A worktree you cut goes after the push.** The call removes it and deletes
+its `worktrees.json` entry, never with `--force` (`crew-step.md`). A refusal
 means files exist nowhere else, so commit them to the branch first. A worktree
 left registered is work for a human (design §15.88g, §15.90).
 
-**Restore the checkout at every end.** With a clean tree and a
-`checkout_branch`, `git -C <repo> switch <checkout_branch>`; otherwise record
-why not in `checkout_restored`. A run that cut its own checkout switched
-nothing, so `checkout_branch` is `null` and this step is already done. Name
-both branches in your closing report, and list in it every decision taken on
-a recommendation (`autonomy-contract.md`'s "The preference sweep"). It also
-carries the plan review line, and the reviewer's refactor recommendations
-under the heading `Refactor recommendations`: `plan-review.md`'s "The
-hand-over" gives both. Send it to
-the principal the way the goal arrived (`autonomy-contract.md`). A pane is
-not a report when nobody is watching it.
+**The call restores the checkout at every end.** Name both branches in your
+closing report, and list in it every decision taken on a recommendation
+(`autonomy-contract.md`'s "The preference sweep"). The report also carries the
+plan review line, and the reviewer's refactor recommendations under the
+heading `Refactor recommendations`: `plan-review.md`'s "The hand-over" gives
+both. When the call wrote a `FAIL orch` line, write the `decisions.md` note
+from it. Send the report to the principal the way the goal arrived
+(`autonomy-contract.md`). A pane is not a report when nobody is watching it.
 
 **The report ends the work, not the session.** Invoke the skill
 `crew:delivered-window` with the `Skill` tool, then read "The goal check"

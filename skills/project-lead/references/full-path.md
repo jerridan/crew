@@ -36,40 +36,23 @@ that fails — none can be fixed mid-run.
 
 1. **A worktree base is reachable.** Every worktree this run cuts lives under
    one base: its territory worktrees, a held checkout, and the review
-   worktree. The default base is `<record-dir>`. Probe it with three
-   commands:
+   worktree. The default base is `<record-dir>`. A worktree-isolated session
+   that refuses it falls back to `<repo>/.claude/worktrees/crew/<goal-slug>`.
+   That fallback base must also pass one more check: the repo's test command
+   does not collect files under `.claude/`. The command's config excludes it,
+   or its runner skips dot directories. pytest skips them. vitest, for
+   example, does not by default. The check fails only when both bases fail. A
+   refused `git -C` into a checkout the run never writes, such as the shared
+   checkout, is not a failure (design §15.121, §15.126).
+2. **This run can push and open a PR.** The repo has a remote. A checkout with
+   no remote cannot push or open a PR (design §15.53).
 
-   ```
-   git -C <repo> worktree add --detach <base>/worktrees/probe HEAD
-   git -C <base>/worktrees/probe status
-   git -C <repo> worktree remove --force <base>/worktrees/probe
-   ```
-
-   Run the third command after every `add` that passed, even when the
-   second was refused, so no probe stays registered. If all three pass,
-   that is the base. A worktree-isolated session that refuses one of them
-   probes `<repo>/.claude/worktrees/crew/<goal-slug>` the same way. That
-   fallback base must also pass two more checks:
-
-   - `git -C <repo> check-ignore -v <base>` prints a line. No line is a
-     failure.
-   - The repo's test command does not collect files under `.claude/`. The
-     command's config excludes it, or its runner skips dot directories.
-     pytest skips them. vitest, for example, does not by default.
-
-   Write the base that passed with `run set worktree_base
-   '"<absolute path>"'`, and record it and any refusal in `decisions.md`.
-   The check fails only when both bases fail. A refused `git -C` into a
-   checkout the run never writes, such as the shared checkout, is not a
-   failure (design §15.121, §15.126).
-2. **This run can push and open a PR.** `git -C <repo> remote` prints at
-   least one line. A checkout with no remote cannot push or open a PR (design
-   §15.53).
-
-**Both checks already ran, at the preference sweep, before you reached this
-rule — `autonomy-contract.md` says why. Do not run them again here.** Their
-outcome is settled: either the sweep escalated a failure and the principal
-answered, or there was nothing to ask.
+**Both checks run at the preference sweep, before you reach this rule, with
+one `crew-step.py launch-check` call** (`crew-step.md` owns it, and
+`autonomy-contract.md` says why they run there). **Do not run them again
+here.** Their outcome is settled: either the sweep escalated a failure and the
+principal answered, or there was nothing to ask. You answer the `ask collect`
+line the call prints, and you escalate a collect hit.
 
 One more condition cannot be checked in advance: nothing in the run may stop
 for a human. A display mode is not a condition — in-process is the default and
@@ -148,22 +131,22 @@ its `<n>`, and dispatch no critic.
 
 ## Create the branch and the worktrees
 
-This rule switches the checkout, so run `simple-path.md`'s "Create the branch"
-first, whole. It asks whether another run holds the checkout, records
-`run.checkout`, and writes the `deliverables[]` entry — `id`, branch, the head
-sha as `base`, `state: pending`, `pr_url: null`, and `checkout_branch`. Held,
-it cuts the deliverable's own checkout there and this run's worktrees branch
-from that one. **Every `<repo>` below this line means `run.checkout`.**
+This rule switches the checkout. Read `simple-path.md`'s "Create the branch"
+first: it owns the held test, the `Branch names` rule and the start-point
+choice. **Every `<repo>` below this line means `run.checkout`.** A held
+checkout is cut as that section says, and this run's worktrees branch from it.
 
-Then one worktree per territory, all branching from that same head, so
-integration is a merge and never a rebase (design §9.3). A `Branch names`
-section names the deliverable branch alone, through "Create the branch".
-The territory branches keep crew's names, because they never reach the
-remote:
+Run `crew-step.py branch` with one `--territory <slug>=<ic-name>` for each
+territory, on every full-path run (`crew-step.md` owns the command line). The
+call also cuts the deliverable's branch and writes its entry, so one call does
+both. A promoted light-path run already has its branch and entry. The call
+reuses them, keeps their commits, and cuts only the territories. Pass the
+`--branch`, `--held` and `--start-point` flags as "Create the branch" says.
 
-```
-git -C <run.checkout> worktree add <run.worktree_base>/worktrees/<territory-slug> -b crew/<goal-slug>/<territory-slug>
-```
+All territory worktrees branch from that same head, so integration is a merge
+and never a rebase (design §9.3). A `Branch names` section names the
+deliverable branch alone. The territory branches keep crew's names, because
+they never reach the remote.
 
 `run.worktree_base` is the base launch check 1 chose (`record-format.md`).
 A repo-local base breaks the suite: a test runner that globs collects every
@@ -171,12 +154,9 @@ worktree's tests as well as the repo's own, so the run measures the wrong
 tree (design §15.35b). The isolated fallback is the one repo-local base
 allowed, and check 1 confirmed that the suite skips it.
 
-Write `worktrees.json` now: the IC's name, the absolute worktree path, its
-branch, this session's id, and `orphaned: false`. A deliverable checkout cut
-at "Create the branch" already holds an entry there, keyed by its deliverable
-id; leave it. Set every package's `ic_name` to the name of the IC that owns
-its territory. Nothing else maps a package back to the worktree that must
-verify it.
+The call writes `worktrees.json` and every package's `ic_name`. Name each IC
+in the `--territory` flags as `SKILL.md`'s "Every dispatch is named" says.
+Nothing else maps a package back to the worktree that must verify it.
 
 ## Spawn the ICs
 
@@ -288,16 +268,17 @@ respawn after a crash.
 ## Verify before you believe
 
 Read `reports/<id>.md`, then treat it as a claim and never as evidence. The
-evidence is `git -C <worktree> log <package-base>..HEAD` and `git -C
-<worktree> diff <package-base>..HEAD`.
+evidence is the output of `crew-step.py verify`, run with `--ic-branch`. That
+flag puts every check in the IC's worktree: the log, the diff, the criterion
+and the suite read the IC's own work (`crew-step.md`).
 
-`<package-base>` is that package's own `base`, not the deliverable's. A
-territory works its packages in sequence in one worktree, so a range from the
+The call reads the package's own `base`, not the deliverable's. A territory
+works its packages in sequence in one worktree, so a range from the
 deliverable base carries the previous packages' files too, and every package
 after the first would be failed for scope drift it did not cause.
 
-Run git in the IC's worktree in the form `ic-contract.md`'s "The worktree
-rule" gives (design §15.23b, §15.126).
+When you run git yourself in the IC's worktree, use the form `ic-contract.md`'s
+"The worktree rule" gives (design §15.23b, §15.126).
 
 **You are the only reader of this package.** No review agent runs over it
 (design §15.94d), so this section and the suite run at "Integrate" are the
@@ -310,18 +291,20 @@ package back. Do not keep a second copy of any of that.
 
 One check is this path's own, and it runs every time: the commits are on the
 IC's own branch, in the IC's own worktree. A commit anywhere else means the IC
-wandered, and nothing else detects that. The range above is what keeps the rest
-of the check to this package's own work.
+wandered, and nothing else detects that. The call fails a worktree that sits
+on another branch. It lists every commit on the deliverable branch since the
+deliverable's `base` without a verdict. You judge whether one of them is an
+IC's commit outside its own branch.
 
 A `BLOCKED` report names its cause, and `band-rubric.md`'s promotion rules say
 what each cause earns. Committing on a blocked IC's behalf is a normal outcome
 here, not a failure (design §15.12).
 
-Read `run.compactions` before you accept. An entry whose `agent` is this IC's
-name, dated since its last accepted package, means it lost the context it
-planned in: send it its plan back with the fix round, and treat its report's
-claims about earlier packages as unverified. An entry with `agent: null` and
-`agent_id: null` is your own session's compaction; re-read the record before
+Read the compaction lines of the call before you accept. An entry for this IC,
+dated since its last accepted package, means it lost the context it planned
+in: send it its plan back with the fix round, and treat its report's claims
+about earlier packages as unverified. An entry that the call prints as the
+project lead's own is your own session's compaction; re-read the record before
 your next decision.
 
 **An empty list is weak proof when your ICs run in panes.** The hook matches a
@@ -467,14 +450,14 @@ the record's evidence of what the hand-over shipped (design §15.24).
 
 ## Open the PR
 
-`simple-path.md`'s "End the run" owns this, unchanged. One deliverable is one
-branch and one PR however many packages it took.
+`simple-path.md`'s "End the run" owns this, unchanged: write the body file,
+run `crew-step.py hand-over`, send the report. One deliverable is one branch
+and one PR however many packages it took.
 
 A deliverable that cannot open a PR ends in `work-complete`. "End the run" owns
 that procedure too, and `record-format.md` owns what the state means.
 
-At either end, restore the checkout to `checkout_branch`, as
-`simple-path.md`'s "End the run" says.
+The call restores the checkout to `checkout_branch` at either end.
 
 ## The goal check
 
@@ -483,15 +466,16 @@ At either end, restore the checkout to `checkout_branch`, as
 
 ## Clean up
 
-Remove each IC worktree when the deliverable closes, and prune its
-registration from `worktrees.json`. A deliverable checkout goes last, because
-the IC worktrees branch from it; `simple-path.md`'s "End the run" owns that
-removal and the process sweep that comes first.
+`hand-over` removes each IC worktree when the deliverable closes, and prunes
+its registration from `worktrees.json`. The deliverable checkout goes last,
+because the IC worktrees branch from it. A later round that pushes to the open
+PR runs `crew-step.py cleanup` (`crew-step.md`). The process stop that comes
+with it is `simple-path.md`'s "End the run".
 
-**Never force a removal.** A refusal means files exist nowhere else. Commit
-them to that IC's branch, or surface them. Remove only worktrees this run
-created, proven by `worktrees.json` — a path pattern is not ownership (design
-§13.1).
+**The call never forces a removal.** A refusal means files exist nowhere else.
+Commit them to that IC's branch, or surface them. The call removes only
+worktrees this run created, proven by `worktrees.json` — a path pattern is not
+ownership (design §13.1).
 
 The work ends here, and your closing report says so. It lists every
 decision taken on a recommendation, as `simple-path.md`'s "End the run" says.

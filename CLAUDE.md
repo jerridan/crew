@@ -176,6 +176,11 @@ after their plans, and Codex reviews all the plans together before any code.
 It ran once, on two packages of the run that built it (§15.149). Its skips,
 its resume and subagent mode are unexercised.
 
+The headless review and the plan review run as scripts: `review-run.py`
+runs one round of the headless review in one call, and `plan-review.py` the
+plan review in a `run` call and a `decide` call (§15.<n>). Only their seeded
+tests have run them, and no crew run has used them.
+
 Subagent mode is built and on trial: with the teams flag unset, every
 dispatch is a background subagent. One probe passed its four checks, and no
 crew run has used the mode yet (§15.131).

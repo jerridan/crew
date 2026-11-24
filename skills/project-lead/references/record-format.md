@@ -258,7 +258,11 @@ naming convention. Do not mix their contents.
   the child process's own JSON output, which the checks read;
   `reviews/skeptical-r<n>-result.stderr`, the runner's own stderr, redirected
   there by the same command; and `reviews/skeptical-r<n>-result.exit`, the
-  same command's own exit status, the shell's `$?` redirected the same way. A
+  same command's own exit status, the shell's `$?` redirected the same way.
+  `scripts/review-run.py` writes the instructions file and
+  `reviews/skeptical-r<n>-run.sh`, the script that runs the command, and on a
+  goal run with a setup command `reviews/skeptical-r<n>-setup-done`, the
+  marker that the setup ran in this round. A
   retry of a round does not overwrite these: it renames the attempt it
   replaces to `skeptical-r<n>-attempt<k>.md`,
   `skeptical-r<n>-instructions-attempt<k>.md`,
@@ -1357,20 +1361,22 @@ Every name this file defines, with what consumes it.
 - `plans/<id>.md` — consumer: Task 6 (`ic-contract.md`); Task 7 (`crew:ic`)
 - `reviews/<deliverable-id>-split-critic-r<n>.md` — consumer: stage 3 (`split-critic` output, one file per re-plan of this deliverable); stage 6 (re-plan, design §10)
 - `reviews/skeptical-r<n>.md` — writer: the goal check's or the skeptical review's own headless session, or the project lead when the fallback supplies it (`review-runner.md`). Consumer: `simple-path.md`'s "The goal check"; `scripts/crew-stats.py` (the review kind, its catch rate and the goal-check counts)
-- `reviews/skeptical-r<n>-instructions.md` — writer: the project lead, before it launches that review. Consumer: `--append-system-prompt-file` on the review's own command; a human asking what the reviewer was told
-- `reviews/skeptical-r<n>-resume.md` — writer: the project lead, before it resumes the reviewer of round `<n-1>` (`review-runner.md`'s "Resume the reviewer"). Consumer: the resumed runner, on stdin
-- `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the project lead's four checks, live and on a resume
+- `reviews/skeptical-r<n>-instructions.md` — writer: `scripts/review-run.py`, before it launches that review, or with `--replacement` before the project lead runs a replacement. Consumer: `--append-system-prompt-file` on the review's own command; a human asking what the reviewer was told
+- `reviews/skeptical-r<n>-resume.md` — writer: `scripts/review-run.py`, before it resumes the reviewer of round `<n-1>` (`review-runner.md`'s "Resume the reviewer"). Consumer: the resumed runner, on stdin
+- `reviews/skeptical-r<n>-result.json` — writer: the shell redirect on the review's own command. Consumer: the four checks of `scripts/review-run.py`, live and on a resume
+- `reviews/skeptical-r<n>-run.sh` — writer: `scripts/review-run.py`, before it runs the default command. Consumer: the same script, which runs it with `bash`
+- `reviews/skeptical-r<n>-setup-done` — writer: `scripts/review-run.py`, after it ran the setup command of a goal run in round `<n>`. Consumer: the same script, which skips the setup on the second call of that round after `BASELINE OWED:`
 - `reviews/skeptical-r<n>-result.stderr` — writer: the same shell line's `2>` redirect, on the default runner's own command (`review-runner.md`), or the run script's `tee` on a replacement's (`substitution.md`). Consumer: a human or the project lead reading why a check failed; the project lead, which reads a replacement's session id from it
 - `reviews/<prefix>-r<n>-run.sh` — writer: the project lead, before it runs a replacement (`substitution.md`). Consumer: the pane or the headless shell that runs it
 - `reviews/skeptical-r<n>-result.txt` — writer: the shell redirect on a replacement's own command, in place of the `.json` (`substitution.md`). Consumer: the project lead, which reads the report out of it when the runner wrote no usable report file, and runs the checks the runner supports
-- `reviews/skeptical-r<n>-result.exit` — writer: the same shell line's trailing `echo $? >`, on the default runner's own command and on a replacement's alike. Consumer: the project lead's exit check, live and on a resume; its absence marks an attempt that never finished (`substitution.md`)
+- `reviews/skeptical-r<n>-result.exit` — writer: the same shell line's trailing `echo $? >`, on the default runner's own command and on a replacement's alike. Consumer: the exit check of `scripts/review-run.py` on the default runner, and the project lead's on a replacement, live and on a resume; its absence marks an attempt that never finished (`substitution.md`)
 - `reviews/baseline.md` — a goal run's file; a review run writes none. Writer: the project lead, once per deliverable base, before the goal check (`skeptical-review.md`). Consumer: every IC the delivered window dispatches (`crew:delivered-window`); adjudication, which declines a finding on it
 - `reviews/skeptical-r<n>-reply.md` — writer: the project lead, before it creates any package from that report. Consumer: a resumed session, which reads it to see which findings already have packages (`skeptical-review.md`)
 - `reviews/<round-id>-reply.md` — the same file for a patch round from any other source, with `<round-id>` from `run.rounds`. Writer and consumer as above; the send that closes it is `crew:delivered-window`'s "Send the reply file"
-- `reviews/plan-review-r1.md` — writer: the project lead, transcribing the runner's output (`plan-review.md`'s "Run the reviewer"). Consumer: the project lead's adjudication; `scripts/crew-stats.py` (the review kind `plan review`)
-- `reviews/plan-review-r1-instructions.md` — writer: the project lead, at `plan-review.md`'s "The inputs". Consumer: the runner, on stdin
-- `reviews/plan-review-r1-run.sh` — writer: the project lead, at `plan-review.md`'s "Run the reviewer", and again on a resume rerun. Consumer: the headless shell that runs it
-- `reviews/plan-review-r1-result.txt`, `reviews/plan-review-r1-result.stderr`, `reviews/plan-review-r1-result.exit` — writer: the run script. Consumer: the project lead's exit check, verdict-pair check, quota read and token read; a missing `-result.exit` marks an attempt that never finished (`plan-review.md`'s "Resume in the planning step")
+- `reviews/plan-review-r1.md` — writer: `scripts/plan-review.py run`, transcribing the runner's output (`plan-review.md`'s "Run the review"). Consumer: the project lead's adjudication; `scripts/crew-stats.py` (the review kind `plan review`)
+- `reviews/plan-review-r1-instructions.md` — writer: `scripts/plan-review.py run` (`plan-review.md`'s "Run the review"). Consumer: the runner, on stdin
+- `reviews/plan-review-r1-run.sh` — writer: `scripts/plan-review.py run`, and again on a resume rerun. Consumer: the headless shell that runs it
+- `reviews/plan-review-r1-result.txt`, `reviews/plan-review-r1-result.stderr`, `reviews/plan-review-r1-result.exit` — writer: the run script. Consumer: `scripts/plan-review.py`'s exit check, verdict-pair check and token read, and the project lead's quota read; a missing `-result.exit` marks an attempt that never finished (`plan-review.md`'s "Resume in the planning step")
 - `reviews/plan-review-r1-attempt1.md`, `reviews/plan-review-r1-instructions-attempt1.md`, `reviews/plan-review-r1-result-attempt1.txt`, `reviews/plan-review-r1-result-attempt1.stderr`, `reviews/plan-review-r1-result-attempt1.exit` — writer: the project lead, when it retires a dead attempt (`plan-review.md`'s "Resume in the planning step"). Consumer: a human; `scripts/crew-stats.py` counts none of them as a review
 - `evidence/<n>-<slug>.md` — consumer: `investigation-path.md` Phases 1 to 3 (the project lead reads the path, never the reading); an investigation council's spawn prompts
 - `reviews/diagnosis-adversary.md` — writer: the project lead, copying the case one `crew:council-advocate` returned on the investigation path; an advocate writes no file (`agents/council-advocate.md`). Consumer: design §9.5 (a report ending's only verification evidence, design §7)

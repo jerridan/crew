@@ -61,68 +61,54 @@ chk() { # label got want
 }
 want() { jq -cS . <<< "$1"; }
 
-# ---- arm: the first cursor
+# ---- cursor: the first cursor
 newrec '{"run_state":"delivered"}'
-ws arm "$REC"
-chk 'arm first: exit 0' "$rc" 0
-chk 'arm first: cursor' "$(cur)" "$(want '{"last_polled_at":"'$CREATED'","seen_ids":[],"draft":true,"head":"h1","held":[]}')"
-chk 'arm first: poll ran, stdout is the poll stdout' "$out" "$(printf 'POLL %s\nsecond line' "$REC")"
-chk 'arm first: nothing on stderr' "$err" ''
+ws cursor "$REC"
+chk 'cursor first: exit 0' "$rc" 0
+chk 'cursor first: cursor' "$(cur)" "$(want '{"last_polled_at":"'$CREATED'","seen_ids":[],"draft":true,"head":"h1","held":[]}')"
+chk 'cursor first: nothing on stderr' "$err" ''
 
 newrec '{"run_state":"delivered","kind":"review"}'
-ws arm "$REC"
+ws cursor "$REC"
 lp=$(jq -r .run.watch.last_polled_at "$REC/state.json")
-chk 'arm review run: last_polled_at is the clock' "$([[ "$lp" =~ ^20[0-9][0-9]-.*Z$ && "$lp" != "$CREATED" ]] && echo yes)" yes
+chk 'cursor review run: last_polled_at is the clock' "$([[ "$lp" =~ ^20[0-9][0-9]-.*Z$ && "$lp" != "$CREATED" ]] && echo yes)" yes
 
 newrec '{"run_state":"delivered"}'
 printf '[{"id":11},{"id":12}]\n[{"id":13}]\n' > "$STUB_DIR/comments.json"
-ws arm "$REC" --resume
-chk 'arm --resume: seen_ids hold every review comment id' "$(jq -c .run.watch.seen_ids "$REC/state.json")" '[11,12,13]'
+ws cursor "$REC" --resume
+chk 'cursor --resume: seen_ids hold every review comment id' "$(jq -c .run.watch.seen_ids "$REC/state.json")" '[11,12,13]'
 lp=$(jq -r .run.watch.last_polled_at "$REC/state.json")
-chk 'arm --resume: last_polled_at is the clock' "$([[ "$lp" != "$CREATED" ]] && echo yes)" yes
-chk 'arm --resume: poll ran' "$(polled)" yes
+chk 'cursor --resume: last_polled_at is the clock' "$([[ "$lp" != "$CREATED" ]] && echo yes)" yes
 
 newrec '{"run_state":"delivered"}'
 printf '[{"id":11}]\n' > "$STUB_DIR/comments.json"
-ws arm "$REC"
-chk 'arm with no --resume: seen_ids empty' "$(jq -c .run.watch.seen_ids "$REC/state.json")" '[]'
+ws cursor "$REC"
+chk 'cursor with no --resume: seen_ids empty' "$(jq -c .run.watch.seen_ids "$REC/state.json")" '[]'
 
-# ---- arm: a cursor that exists is not rewritten
+# ---- cursor: a cursor that exists is not rewritten
 newrec '{"run_state":"delivered","watch":'"$W0"'}'
 before=$(sum)
-ws arm "$REC"
-chk 'arm existing cursor: state.json unchanged' "$(sum)" "$before"
-chk 'arm existing cursor: no comments read' "$(cat "$STUB_DIR/calls.log" 2>/dev/null | grep -c 'comments')" 0
-chk 'arm existing cursor: poll ran' "$(polled)" yes
+ws cursor "$REC"
+chk 'cursor existing cursor: state.json unchanged' "$(sum)" "$before"
+chk 'cursor existing cursor: no comments read' "$(cat "$STUB_DIR/calls.log" 2>/dev/null | grep -c 'comments')" 0
 
-# ---- arm: the head fallback
+# ---- cursor: the head fallback
 W_NOHEAD='{"last_polled_at":"2026-01-01T00:00:00Z","seen_ids":[],"draft":true,"held":[]}'
 newrec '{"run_state":"delivered","watch":'"$W_NOHEAD"'}'
 printf 'Reviewed: aaa\n' > "$REC/reviews/skeptical-r1.md"
 printf 'Reviewed: bbb\n' > "$REC/reviews/skeptical-r2.md"
 printf 'x\nReviewed: ccc\ny\n' > "$REC/reviews/skeptical-r10.md"
-ws arm "$REC"
+ws cursor "$REC"
 chk 'head fallback: newest skeptical review by number' "$(jq -r .run.watch.head "$REC/state.json")" ccc
 chk 'head fallback: the other keys stay' "$(jq -c '.run.watch|del(.head)' "$REC/state.json")" '{"last_polled_at":"2026-01-01T00:00:00Z","seen_ids":[],"draft":true,"held":[]}'
 newrec '{"run_state":"delivered","watch":'"$W_NOHEAD"'}'
-ws arm "$REC"
+ws cursor "$REC"
 chk 'head fallback: the deliverable base when no review' "$(jq -r .run.watch.head "$REC/state.json")" basesha
 
-# ---- arm: the draft write
-newrec '{"run_state":"delivered","watch":'"$(jq -c '.draft=false' <<< "$W0")"'}'
-ws arm "$REC"
-chk 'draft write: PR is draft and watch.draft false' "$(jq -c .run.watch.draft "$REC/state.json")" true
-PRDRAFT=false newrec '{"run_state":"delivered","watch":'"$(jq -c '.draft=false' <<< "$W0")"'}'
-before=$(sum); ws arm "$REC"
-chk 'draft write: PR is not draft, no write' "$(sum)" "$before"
-PRDRAFT=false newrec '{"run_state":"delivered","watch":'"$W0"'}'
-before=$(sum); ws arm "$REC"
-chk 'draft write: PR is not draft and watch.draft true, stays true' "$(sum)" "$before"
-
-# ---- arm: failures exit 2 before the poll, with no write
+# ---- cursor: failures exit 2 with no write
 newrec '{"run_state":"delivered"}'
 : > "$STUB_DIR/fail-pr"
-before=$(sum); ws arm "$REC"
+before=$(sum); ws cursor "$REC"
 chk 'failed gh read: exit 2' "$rc" 2
 chk 'failed gh read: message prefix' "${err%%:*}" watch-step.py
 chk 'failed gh read: no write' "$(sum)" "$before"
@@ -130,12 +116,12 @@ chk 'failed gh read: poll did not run' "$(polled)" no
 chk 'failed gh read: nothing on stdout' "$out" ''
 newrec '{"run_state":"delivered"}'
 printf '[{"id":1}]\n' > "$STUB_DIR/comments.json"; : > "$STUB_DIR/fail-comments"
-before=$(sum); ws arm "$REC" --resume
+before=$(sum); ws cursor "$REC" --resume
 chk 'failed comments read on --resume: exit 2, no write' "$rc $(sum)" "2 $before"
-ws arm "$T/nowhere"
+ws cursor "$T/nowhere"
 chk 'missing record: exit 2 with the prefix' "$rc ${err%%:*}" '2 watch-step.py'
 newrec '{"run_state":"delivered"}'
-ws arm "$REC" --bogus
+ws cursor "$REC" --bogus
 chk 'unknown flag: exit 2' "$rc" 2
 
 # ---- cursor: the first write alone
@@ -157,6 +143,18 @@ printf 'Reviewed: ddd\n' > "$REC/reviews/skeptical-r1.md"
 ws cursor "$REC"
 chk 'cursor: the head fallback' "$(jq -r .run.watch.head "$REC/state.json")" ddd
 chk 'cursor: no draft read of the PR' "$(cat "$STUB_DIR/calls.log" 2>/dev/null | grep -c 'pr view')" 0
+
+# ---- deploy --setup-only: write run.deploy and return, with no poll
+newrec '{"run_state":"delivered"}'
+ws deploy "$REC" --source window-watch --setup-only
+chk 'deploy --setup-only: exit 0, nothing printed, no poll' "$rc|$out|$(polled)" '0||no'
+chk 'deploy --setup-only: the whole object' "$(jq -c '.run.deploy|del(.since)' "$REC/state.json")" '{"environment":null,"workflow":null,"timeout_minutes":180,"source":"window-watch","ended":null}'
+before=$(sum); ws deploy "$REC" --source window-watch --setup-only
+chk 'deploy --setup-only on an armed record: no write, no poll' "$(sum)|$(polled)" "$before|no"
+D_END2='{"environment":"production","workflow":null,"timeout_minutes":90,"source":"repo","since":"2026-01-01T00:00:00Z","ended":"deploy-failed"}'
+newrec '{"run_state":"delivered","deploy":'"$D_END2"'}'
+ws deploy "$REC" --source x --setup-only
+chk 'deploy --setup-only after ended: re-arms since and ended, no poll' "$(jq -c '.run.deploy.ended' "$REC/state.json") $(polled)" 'null no'
 
 # ---- deploy
 newrec '{"run_state":"delivered"}'
@@ -278,19 +276,19 @@ chk 'deploy --timeout 0 on an armed record: exit 2, no write' "$rc $(sum)" "2 $b
 
 # ---- every failure is a watch-step.py message with exit 2
 newrec '{"run_state":"delivered"}'; printf '{bad' > "$STUB_DIR/comments.json"; before=$(sum)
-ws arm "$REC" --resume
+ws cursor "$REC" --resume
 chk 'malformed paginated read: exit 2, prefix, no write, no poll' "$rc ${err%%:*} $(sum) $(polled)" "2 watch-step.py $before no"
 newrec '{"run_state":"delivered"}'; printf '{"id":1}' > "$STUB_DIR/comments.json"; before=$(sum)
-ws arm "$REC" --resume
+ws cursor "$REC" --resume
 chk 'paginated read of the wrong shape: exit 2, prefix, no write' "$rc ${err%%:*} $(sum)" "2 watch-step.py $before"
 newrec '{"run_state":"delivered"}'; echo 'not json' > "$STUB_DIR/pr.json"; before=$(sum)
-ws arm "$REC"
+ws cursor "$REC"
 chk 'PR read that is not JSON: exit 2, prefix, no write' "$rc ${err%%:*} $(sum)" "2 watch-step.py $before"
 newrec '{"run_state":"delivered"}'; echo '{}' > "$STUB_DIR/pr.json"; before=$(sum)
-ws arm "$REC"
+ws cursor "$REC"
 chk 'PR read with no fields: exit 2, prefix, no write' "$rc ${err%%:*} $(sum)" "2 watch-step.py $before"
 newrec '{"run_state":"delivered"}'; echo '[1]' > "$REC/state.json"
-ws arm "$REC"
+ws cursor "$REC"
 chk 'a state.json of the wrong shape: exit 2 with the prefix' "$rc ${err%%:*}" '2 watch-step.py'
 newack; echo '[1]' > "$REC/state.json"; LINES='review 1 a 2026-01-02T00:00:00Z x'; ack
 chk 'ack with a state.json of the wrong shape: exit 2 with the prefix' "$rc ${err%%:*}" '2 watch-step.py'

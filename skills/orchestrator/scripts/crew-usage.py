@@ -133,12 +133,13 @@ def advanced(old, new):
     return new["used_pct"] > old["used_pct"]
 
 
-def merge_window(old, new):
+def merge_window(old, new, fresh=False):
+    """A fresh reading of the account also replaces an equal window with a lower figure."""
     if not old:
         return new
     if new["resets_at"] > old["resets_at"]:
         return new
-    if new["resets_at"] == old["resets_at"] and new["used_pct"] > old["used_pct"]:
+    if new["resets_at"] == old["resets_at"] and (fresh or new["used_pct"] > old["used_pct"]):
         return new
     return old
 
@@ -157,16 +158,20 @@ def apply_sample(d, sample, source, ts, fresh=False):
         return None
     d = dict(d)
     moved = fresh
+    lowered = False
     for key, new in (("five_hour", five), ("seven_day", seven)):
         if new is None:
             continue
         old = d.get(key)
         if key == "five_hour" and advanced(old, new):
             moved = True
-        d[key] = merge_window(old, new)
+        d[key] = merge_window(old, new, fresh)
+        if key == "five_hour" and old and d[key]["used_pct"] < old["used_pct"]:
+            lowered = True
     if five:
         wf = d.get("window_first")
-        if not isinstance(wf, dict) or wf.get("resets_at") != d["five_hour"]["resets_at"]:
+        if (not isinstance(wf, dict) or wf.get("resets_at") != d["five_hour"]["resets_at"]
+                or lowered):
             d["window_first"] = {"resets_at": d["five_hour"]["resets_at"], "at": ts,
                                  "used_pct": d["five_hour"]["used_pct"]}
     if moved or "updated_at" not in d:

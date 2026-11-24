@@ -10463,3 +10463,25 @@ Deliberately different:
       before the merge. The default and the principal's word are unchanged.
     - **Unexercised.** No orchestrator run has judged an item by the new
       part 3.
+
+162. **A fresh reading lowers the stored figure after a partial reset — 2026-11-24,
+    `crew-usage.py`.** On 2026-11-24 the account got a partial reset of both
+    windows. The shared file kept the seven-day figure at 99%, and a fresh
+    reading into an empty record root gave 69% with the same `resets_at`. The
+    five-hour figure recovered only because its reset also began a new window.
+    - **Cause.** The merge rule kept the higher percent in the same
+      `resets_at` for every writer, so no writer could lower a figure.
+    - **Decision.** The reason for that rule is the old sample of an idle
+      session, which a status line sample can be. The fresh reading reads the
+      account and not a session. So the rule now has two cases: a status line
+      sample lowers nothing, and a fresh reading replaces the stored figure in
+      the same `resets_at` also when it is lower. An earlier `resets_at` still
+      never replaces a later one. `usage.md` owns the rule.
+    - **Forecast.** A lower five-hour figure from a fresh reading starts
+      `window_first` again from that figure, so the forecast rate is not
+      measured across the drop.
+    - **Latency.** `check` and `watch` take a fresh reading when the newest
+      sample is older than 5 minutes. A figure that is too high can stay for
+      that time, and not longer.
+    - **Unexercised.** Only `test-crew-usage.py` ran the change, with a stub
+      `claude`. No live reading ran it.

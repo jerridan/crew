@@ -170,6 +170,8 @@ implementer feeds one shared file, a fresh reading covers idle time, and
 `check`, `watch` and `wait` give the levels, the wake line and the restart
 (§15.141). The wrapper and the fresh reading ran live once each. No
 orchestrator run has used them yet.
+A fresh reading lowers the stored figure of a window that got a partial reset
+(§15.162). Only the seeded test ran that rule.
 
 The plan review is built: every simple-path and full-path run stops its ICs
 after their plans, and Codex reviews all the plans together before any code.

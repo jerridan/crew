@@ -1,0 +1,180 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 181,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Take a Herdr terminal address with letters, such as t1j",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/181"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "7e62cebd1324d2b7a8860db1bf74c6da5bb2e8bd",
+    "head": "c0e7f722f5ba6cd363acaa54609f5eb117909a04",
+    "started_at": "2026-11-24T04:27:03.956Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Take a Herdr terminal address with letters, such as t1j\n\n## Summary\n\nThe orchestrator launcher rejected a Herdr terminal address that has letters in it, such as `t1j`. Herdr gives such addresses, so a start opened the tab and then failed with no output, and stop and focus said the handle was unknown. The launcher now takes each local Herdr address: the letter `t`, then letters and digits.\n\nCloses jerridan/crew#180\n\n**Ticket:** N/A — answers [issue 180](https://github.com/jerridan/crew/issues/180)\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.153 (Herdr support) and the new §15.156 (this finding).\n- `skills/orchestrator/references/launcher.md` owns the launcher interface and the handle.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/launcher.py` — `HERDR_ID_RE` is now `t[0-9A-Za-z]+`. `start`, `resume`, `herdr_ttys()` (used by `find`, `resume` and the target check of `stop`) and `split_handle()` (used by `stop` and `focus`) all use it.\n- `skills/orchestrator/scripts/test-launcher.sh` — the `herdr-app` stub prints the address in `herdr-new-terminal` when that file exists. New checks: `start` with `t1j`, `focus herdr:t1j`, `find` of `t1j` and `t1B`, `stop herdr:t1j --name`, and four handles that `focus` still rejects (`herdr:t`, `herdr:x1j`, `herdr:t1-j`, `herdr:m/t7`).\n- `skills/orchestrator/references/launcher.md` — the Herdr term table states the address rule.\n- `docs/design.md` — finding §15.156.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` — version 0.1.124.\n\n### Constraints that applied\n\n- The issue says the pattern must follow the Herdr docs. `hc --help` says an address is \"like t7 or t1b\", and `hc get --help` names `machine/t7` for another machine. `hc --skill` and `hc schema` give no closer rule. So the pattern takes `t` and any letters and digits, and not the `machine/` form, because the launcher opens tabs on this machine only.\n- A change under `skills/` bumps the version in both manifests, to equal values.\n\n### How this was verified\n\n- The red commit `d8be5e5` ran `test-launcher.sh`: 300 of 305 checks passed, and the 5 new address checks failed.\n- After the fix: 305 of 305 checks passed.\n\n### Known gaps\n\nNo live run has started, found, focused or stopped a Herdr terminal with a letter address. Only the stubs give `t1j`.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01XrBTZeaaVuTzjnPwFcKrYa\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 3
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6033646477,
+      "review_url": "https://github.com/jerridan/crew/pull/181#pullrequestreview-6033646477",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138217191804
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 54,
+      "gather": 35,
+      "find_verify": 3,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

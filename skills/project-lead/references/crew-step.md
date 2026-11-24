@@ -29,7 +29,7 @@ names a question the script cannot answer. You answer it.
 Evidence follows the step lines. Each block opens with a line `--- <name>`.
 The markers are `--- log`, `--- stat`, `--- untracked`, `--- criterion`,
 `--- suite`, `--- red`, `--- pattern`, `--- compactions`,
-`--- deliverable branch`, `--- listeners` and `--- diff`.
+`--- deliverable branch`, `--- listeners` and, with `verify --diff`, `--- diff`.
 
 | Exit code | Meaning |
 |---|---|
@@ -121,7 +121,7 @@ So a promoted light-path run, whose deliverable entry and branch exist, runs
 ```
 crew-step.py verify <record-dir> <package-id> [--repo <path>]
     [--criterion <cmd>] [--suite <cmd> | --no-suite] [--red <sha>]
-    [--pattern <regex>] [--ic-branch]
+    [--pattern <regex>] [--ic-branch] [--diff]
 ```
 
 Run it once per package, before you read the diff. It reads the package's
@@ -137,11 +137,13 @@ any failed, so one call gives the whole picture for one fix round.
 | `--red <sha>` | Runs the red-commit check. It needs `--criterion`, and without it the exit code is 2. |
 | `--pattern <regex>` | Greps every line of the diff from the deliverable's `base` to HEAD. |
 | `--ic-branch` | Puts every check in the IC's worktree and checks its branch. |
+| `--diff` | Prints the whole diff after the step lines. Without it the call prints no diff body. |
 
 | Step | What it does |
 |---|---|
 | `clean-tree` | Reads `status --porcelain` by the definition in `simple-path.md`'s "Verify before you believe". A tracked change fails. An untracked file in the file set fails. An untracked file outside it prints under `--- untracked` and never fails. |
 | `log` | Prints `log --oneline <base>..HEAD` under `--- log`, and `diff <base>..HEAD --stat` under `--- stat`. |
+| `diff` | Writes `diff <base>..HEAD` to `<record-dir>/diffs/<package-id>-verify.patch` and prints `ok diff: <path> (<n> lines)`. A write that fails is `FAIL diff`. |
 | `file-set` | Lists the files of the diff against the file set. A file outside the set fails and the line names it. |
 | `ic-branch` | Runs with `--ic-branch` only. Fails when the worktree's current branch differs from the branch of the `worktrees.json` entry of the package's `ic_name`. It also prints every commit on `run.checkout`'s branch since the deliverable `base` under `--- deliverable branch`, and never fails on them. |
 | `criterion` | Runs with `--criterion`. Evidence under `--- criterion`. |
@@ -165,10 +167,12 @@ detail and evidence, and the switch back discards it, so it never reaches the
 branch. In a repo that builds before it tests, put the build in
 `--criterion`, so the build runs at the red commit too.
 
-**The diff comes last.** After every step line and every other evidence
-block, the script prints `--- diff` and the full `diff <base>..HEAD`. It
-prints no word on the diff's content. It writes no `decisions.md` entry and
-no state field.
+**The diff stays in a file.** The call prints no diff body. Read the patch
+file named on the `ok diff:` line when you need the diff, with `Read` and a
+line range. With `--diff`, the script also prints `--- diff` and the full
+`diff <base>..HEAD` after every step line and every other evidence block, as
+the last block. It prints no word on the diff's content. It writes no
+`decisions.md` entry and no state field.
 
 ## hand-over
 
@@ -182,7 +186,7 @@ draft PR. `--local` ends the run with no push and no PR. The script never
 writes, edits or reads the body for its content.
 
 It runs these steps in order and stops at the first `FAIL`, except `orch`,
-`spend` and `worktree-remove`:
+`watch`, `spend` and `worktree-remove`:
 
 | Step | What it does |
 |---|---|
@@ -190,6 +194,7 @@ It runs these steps in order and stops at the first `FAIL`, except `orch`,
 | `pr` | `gh pr create --draft --title <t> --body-file <file> --head <branch>`. It reads the URL from the output. An open PR on the branch is reused, with the detail `already open <url>`, so a rerun after a failed `deliver` write opens no second PR. Skipped with `--local`. |
 | `deliver` | `crew-record.py deliver <id> draft-pr-opened --pr-url <url> --review-head <head sha>`, or `work-complete --review-head <head sha>` with `--local`. |
 | `orch` | Runs when `run.orchestrator` is set and a PR opened: `crew-orch.py --orch <name> item <item> pr <url>`, then `stage <item> review`. A failed call prints `FAIL orch: <its error>` and the sequence goes on. |
+| `watch` | Runs when a PR opened: `window-watch.py start <record-dir> --hold`. The watcher polls and queues every event and starts no session until `window-watch.py release <record-dir>`, which you run last, after the goal check's ready line. A live watcher makes the line `ok watch: already running`. A failure prints `FAIL watch: <its error>` and the sequence goes on. Skipped with `--local`, and with no PR. |
 | `spend`, `listeners`, `worktree-remove`, `restore` | The `cleanup` steps below. |
 
 **A failed push or PR.** The script reads `escalations` for the entry with
@@ -202,10 +207,11 @@ again, which changes nothing, and goes on.
 **A rerun after `deliver`.** On a deliverable already `draft-pr-opened` or
 `work-complete`, the script skips `push`, `pr` and `deliver` with `ok <step>:
 already done`. It does not rearm the review. It runs `orch` again, because
-both `crew-orch.py` calls are idempotent, and then the cleanup steps.
+both `crew-orch.py` calls are idempotent. It runs `watch` again too, which
+starts no second watcher, and then the cleanup steps.
 
-The exit code is 1 when any step failed, including `orch`, `spend` and
-`worktree-remove`.
+The exit code is 1 when any step failed, including `orch`, `watch`, `spend`
+and `worktree-remove`.
 
 ## cleanup
 

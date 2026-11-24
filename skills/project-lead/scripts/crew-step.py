@@ -5,7 +5,7 @@ one call.
 usage:
   crew-step.py launch-check <record-dir>
   crew-step.py branch <record-dir> <deliverable-id> [--branch <name>] [--held] [--start-point <ref>] [--territory <slug>=<ic-name> ...]
-  crew-step.py verify <record-dir> <package-id> [--repo <path>] [--criterion <cmd>] [--suite <cmd> | --no-suite] [--red <sha>] [--pattern <regex>] [--ic-branch]
+  crew-step.py verify <record-dir> <package-id> [--repo <path>] [--criterion <cmd>] [--suite <cmd> | --no-suite] [--red <sha>] [--pattern <regex>] [--ic-branch] [--diff]
   crew-step.py hand-over <record-dir> <deliverable-id> --body <file> --title <t>
   crew-step.py hand-over <record-dir> <deliverable-id> --local
   crew-step.py cleanup <record-dir> <deliverable-id>
@@ -38,6 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RECORD = os.path.join(HERE, "crew-record.py")
 SPEND = os.path.join(HERE, "spend.py")
 ORCH = os.path.normpath(os.path.join(HERE, "..", "..", "orchestrator", "scripts", "crew-orch.py"))
+WINDOW_WATCH = os.path.normpath(os.path.join(HERE, "..", "..", "delivered-window", "scripts", "window-watch.py"))
 NO_REMOTE = "launch check 3 (trigger 6): no remote"
 TAIL = 40
 
@@ -516,9 +517,9 @@ def cmd_branch(argv):
 
 def cmd_verify(argv):
     positional, opts = parse(argv, ("--repo", "--criterion", "--suite", "--red", "--pattern"),
-                             ("--no-suite", "--ic-branch"))
+                             ("--no-suite", "--ic-branch", "--diff"))
     rec, pid = want(positional, 2, "verify <record-dir> <package-id> [--repo <path>] [--criterion <cmd>] "
-                                   "[--suite <cmd> | --no-suite] [--red <sha>] [--pattern <regex>] [--ic-branch]")
+                                   "[--suite <cmd> | --no-suite] [--red <sha>] [--pattern <regex>] [--ic-branch] [--diff]")
     if "--suite" in opts and "--no-suite" in opts:
         raise Usage("--suite and --no-suite exclude each other")
     if "--red" in opts and "--criterion" not in opts:
@@ -656,7 +657,18 @@ def cmd_verify(argv):
         if name in evidence:
             out.add(name, evidence[name])
     diff = git(repo, "diff", base + "..HEAD")
-    return out.finish(diff=diff.stdout)
+    if diff.returncode != 0:
+        out.fail("diff", err(diff))
+    else:
+        patch = os.path.join(rec, "diffs", "%s-verify.patch" % pid)
+        try:
+            os.makedirs(os.path.dirname(patch), exist_ok=True)
+            with open(patch, "w", encoding="utf-8", newline="") as fh:
+                fh.write(diff.stdout)
+            out.ok("diff", "%s (%d lines)" % (patch, len(diff.stdout.splitlines())))
+        except OSError as exc:
+            out.fail("diff", "cannot write %s: %s" % (patch, exc))
+    return out.finish(diff=diff.stdout if opts.get("--diff") else None)
 
 
 def red_check(out, repo, sha, criterion, clean, file_set, evidence):
@@ -810,6 +822,19 @@ def cmd_hand_over(argv):
         out.ok("orch", "skipped, no orchestrator")
     else:
         out.ok("orch", "skipped, no PR")
+
+    if local:
+        out.ok("watch", "skipped, --local")
+    elif not url:
+        out.ok("watch", "skipped, no PR")
+    else:
+        result = run([sys.executable, WINDOW_WATCH, "start", os.path.abspath(rec), "--hold"])
+        if result.returncode != 0:
+            out.fail("watch", err(result))
+        elif result.stdout.strip() == "already running":
+            out.ok("watch", "already running")
+        else:
+            out.ok("watch", "started, held")
 
     cleanup(out, rec, did)
     return out.finish()

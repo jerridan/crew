@@ -1,0 +1,3112 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 190,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Run each orchestrator sequence in one command, wake the orchestrator only for a decision, and restart it from its record",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/190"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "58462931f7529c70ead1bb2656a9b17e2bb1d1ee",
+    "head": "d822c6c788f7bc385504f33ddc3ec77754ae63e6",
+    "started_at": "2026-11-25T04:59:12.841Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Run each orchestrator sequence in one command, wake the orchestrator only for a decision, and restart it from its record\n\n## Summary\n\nThe orchestrator now runs each of its fixed sequences in one command: the merge with all its checks, a word to an implementer, the launch of an implementer, the close of an item, a short digest of a PR, and the resume after a restart. A poller with no model takes the routine events (CI waits, queued merges, usage level checks, PR events that the implementer handles itself) and wakes the orchestrator only when it must decide something. After a compaction or a resume, a hook gives the orchestrator its record again with no call. The orchestrator keeps its judgment, at a lower cost: it reads a digest and a cheap subagent's list of deviations from the brief, not the whole diff. Before, each of these was many hand calls by an expensive model, and routine events woke it every 30 minutes.\n\n**Ticket:** N/A (orchestrator item orch-commands, no GitHub issue)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `skills/orchestrator/references/orchestrator-record.md` owns every new command, its output, its exit codes and the new record fields (`events`, `merge_queue`, `handoffs`, `item.ready`, `orchestrator_session_id`, the `wait` owner).\n- `skills/orchestrator/SKILL.md` owns when the orchestrator calls each command, and which judgments stay with the model.\n- `skills/project-lead/references/band-rubric.md`'s new \"The orchestrator's dispatches\" is the one place that picks a model for an orchestrator dispatch.\n- `docs/design.md` §15.NNN (placeholder) records the decision.\n\n### What changed, by file\n\n- `skills/orchestrator/scripts/crew-orch.py`: new commands `merge`, `finalize`, `handoff clear`, `send`, `launch`, `close-item`, `digest`, `resume` and the poller `wait`; `init` stores the orchestrator's session id; the board holds routine events.\n- `skills/orchestrator/scripts/test-crew-orch.sh`: seeded cases for every new command, each named by its requirement.\n- `hooks/session-start.py`, `hooks/test-session-start.sh`, `hooks/hooks.json`: a `SessionStart` hook on `compact` and `resume` that prints `resume --read-only` for the orchestrator's own record; its seeded test; its registration.\n- `hooks/orch-board.tsx`, `tests/orch-board.test.tsx`, `types/index.d.ts`: the board pane draws the routine events; the shared board type holds them.\n- `skills/orchestrator/SKILL.md`, `references/orchestrator-record.md`, `references/resume-and-close.md`, `references/subagent-items.md`, `references/usage.md`, `references/launcher.md`: the commands replace the hand sequences; \"The wait\" names the poller and its wake kinds; the usage watch is gone from the orchestrator; the board is where routine state goes.\n- `skills/project-lead/references/band-rubric.md`: the model rule for orchestrator dispatches (lookups at haiku, the brief check at sonnet, a subagent item by its band).\n- `skills/project-lead/references/orchestrator-report.md`: one pointer fixed to a renamed section.\n- `CLAUDE.md`, `docs/design.md`: layout rows, build state, the §15.NNN finding.\n\n### Constraints that applied\n\n- Old commands keep their arguments and output, so an orchestrator on 0.1.131 is not affected. The new hook acts only for a session id that a record holds, and a 0.1.131 record holds none.\n- No script sends a cross-session message, so a word to a live implementer is two calls: `send` records it and prints the name, then one `SendMessage`. A delivered item's word is one call.\n- The plugin `version` stays 0.1.131 in both manifests, and the design finding is §15.NNN: the orchestrator assigns both when this PR is next to merge. A change to `skills/` and `hooks/` needs that bump before the merge.\n- Each rule lives in one file; the commands' argument lists live only in `orchestrator-record.md`.\n\n### How this was verified\n\n- `bash skills/orchestrator/scripts/test-crew-orch.sh`: all checks passed on the deliverable branch. One old case, the subagent board row, failed once on a clock-second boundary in an age column and passed on two reruns; it exists on main at 15ed7aa.\n- `bash hooks/test-session-start.sh`: all checks passed, including that the command registered in `hooks/hooks.json` runs the tested script.\n- `CLAUDE_CONFIG_DIR=<new empty dir> claude plugin test`: 55 pass, 0 fail.\n- Each package had a red commit that the project lead checked: the criterion fails there and passes at the head.\n- The project lead read each diff against its brief, and the docs against `writing-standard.md`'s checklist. The plan review (Codex) found six blocking plan gaps before any code; all six were fixed (slot release only after a confirmed merge, live words kept as handoffs, the approval wake, poller ownership under the lock, the hook registration, events in the pane).\n\n### The cost of one item, before and after\n\nBefore, measured from the orchestrator's own transcripts of 2026-11-24 and 25 (sessions 5730a966, 729c5d18, 69b5daa8): 319 tool calls in all. Calls whose input names an implementer item: 12 to 55 per item (script-review 12, script-watch 15, usage-reset 18, script-handover 32, window-session 51, subagent-items 55), plus 127 calls that name no item, most of them the usage watch (21 `Monitor` arms, 33 `crew-usage.py` calls) and `date`/`ListAgents`. Each call re-read the whole context: about 250k tokens a call in the long session, which peaked at 409k. One item cost 3.6M to 11.9M context tokens read. The counting scripts are in the goal record's `evidence/`.\n\nAfter, counted from the new procedure, for one implementer item with no question: launch 3 (write the goal file, `launch`, one `SendMessage`); merge 3 (`digest --diff-file`, the brief-check subagent, `merge --ready --when-green`); close 2 (`close-item`, then `close-item --continue`); about 3 re-arms of `wait`. About 11 calls in all. The usage watch costs 0 calls a half hour (before: 2 calls and a full turn each 30 minutes), a CI wait costs 0, and a resume reads its record with 0 calls (before: about 12). A word to a live implementer is 2 calls; to a delivered one, 1. Each call's output is a few short lines, and the launch no longer needs `launcher.md`, `usage.md` and the record reference read into context. These after figures are counted, not measured: no orchestrator run has used the commands yet.\n\n### Known gaps\n\n- Only the seeded tests have run the commands, the poller and the hook. No orchestrator run has used them.\n- `launch` reads the orchestrator's session name from `~/.claude/sessions/<pid>.json`, an internal Claude Code file; `--principal` overrides it.\n- `wait`'s first poll of an item is a baseline, so the orchestrator acts on the known state before it arms `wait`.\n- The subagent-worktree item changes `subagent-items.md`'s close and merges first; this branch then rebases and makes `close-item`'s subagent branch read `subagent.worktree` and `subagent.branch` as that item says.\n- Refactor recommendation from the plan review: expose the launcher's worktree path calculation, so `launch` does not repeat it.\n\n## The record\n\nThe spec and the decisions of this run are in the goal record `orch-commands-1eed` (`spec.md`, `decisions.md`).\n\n<details><summary>spec.md</summary>\n\n# Spec: orch-commands\n\nThe orchestrator runs each fixed sequence in one `crew-orch.py` call, a poller with no model takes the routine events, and the orchestrator reads short digests for its judgment.\n\nPaths are relative to the repo root. `crew-orch.py` is `skills/orchestrator/scripts/crew-orch.py`, and its test is `skills/orchestrator/scripts/test-crew-orch.sh` (stub `gh`, seeded record). A new script gets a seeded test of its own or joins that test.\n\n## Requirements\n\n### R1. `crew-orch.py merge <item> [--ready \"<line>\"]`\n\nOne call runs the whole merge of `skills/orchestrator/SKILL.md`'s \"The merge\": it records the ready line (when given) on the item, refreshes the item, runs every check of the merge table that a script can decide (the merge value, the ready-line sha against `headRefOid`, unresolved review threads, the approval rule, the overlap with the other open PRs of the group and the group order), picks the merge method from the repo settings, and runs `gh pr merge --match-head-commit <sha>`. On success it does \"After the merge\": the merge word to the implementer (by `window-watch.py say` for a delivered item), `pace.slots.busy` one lower for an implementer item, and the rebase word to the next item in the group order that shares a file with the merged PR. It prints one short result line per step.\n\n- The one check a script cannot decide, \"each finding outside a review thread has a fix or a reply\", the command decides only when no such finding exists. When some exist, it prints each finding as one line (author, kind, first 120 characters) and the ready line, and merges only with `--findings-answered`, which the orchestrator gives after it compares them.\n- A check that is only pending (CI running, a merge queue, a head that has no ready line yet) is not a failure: with `--when-green` the command queues the merge in the record, and the poller of R5 runs it again with no model turn.\n- A `Merge` section in the standing instructions (repo file on the default branch, then the machine file): the command runs every check, then stops and prints that the `Merge` section takes over, with its text. It does not run the method.\n- Exit codes: 0 merged or queued, a fixed non-zero code per failed check class, each with one stderr line naming the check. `orchestrator-record.md` lists them.\n\nAcceptance: test-crew-orch.sh seeds a record and a stub `gh`, and shows (a) a green PR merges with `--match-head-commit <sha>` and the rebase method, writes `slots.busy` one lower and records the merge word and the rebase word; (b) a ready line for an old head refuses; (c) an unresolved thread refuses; (d) a finding outside a thread refuses without `--findings-answered`; (e) a pending check with `--when-green` queues and exits 0; (f) a `Merge` section stops before the method.\n\n### R2. `crew-orch.py send <item> (--text <t> | --file <p>)`\n\nOne call records the message (as `told` does) and delivers it when a script can: by `window-watch.py say` for a delivered item. For an item whose project lead is live, a script cannot send a cross-session message, so the command records it and prints one line `send-to: <session name>` and the path of the recorded copy; the orchestrator's one `SendMessage` follows. So for a live item the charter outcome is met in two calls, not one, and the report says so. `--text` removes the scratchpad file of today. `told` stays for old callers.\n\nAcceptance: the test shows a delivered item gets a `say` inbox line and a `told` entry; a live item gets a `told` entry and the `send-to:` line with the session name from `launch`.\n\n### R3. `crew-orch.py launch <item> [--model <m>] [--group <g>] [--terminal <t>] [--goal-file <p>]`\n\nOne call runs \"Launch an implementer\" steps 3 to 6 and the wait for the name: it refuses when the slot count or `pace.mode` forbids a start; computes the worktree path; gets the settings value from `crew-usage.py settings`; finds the orchestrator's current session name from `$CLAUDE_CODE_SESSION_ID` (the file of `~/.claude/sessions/` whose `sessionId` matches), with `--principal` as the override and the fallback; runs `launcher.py start`; writes `launch`; writes `slots.busy` one higher; then waits a bounded time until a session file names the implementer, and prints `goal-ready: <session name>` or `goal-wait: <reason>`. With `--goal-file`, it records the goal as the item's first `told` entry. The model order of sources stays the orchestrator's: it passes `--model`.\n\nAcceptance: the test, with stub launcher and stub `crew-usage.py` commands and a seeded sessions directory (an environment variable names it), shows the `launch` field, the slot count, the recorded goal, the `goal-ready:` line; a refusal at `slowed` and at a full slot count.\n\n### R4. `crew-orch.py close-item <item>` and `close-item <item> --continue`\n\nThe first call runs step 1 of `resume-and-close.md`'s \"The close of an item\" (the processes message, by `say` for a delivered item, or the `send-to:` line of R2) and records that it asked. The `--continue` call, after the answer or with the session gone, runs steps 2 to 4: `launcher.py stop`, `launcher.py remove` with the flags step 3 names, the processes rule for `--stop-processes`, the ticket check with `gh issue view` and its close, and one inbox notice per refusal or kept branch. It prints one line per step. The judgment of step 3 (whether a kept process is the item's own) stays the orchestrator's: the command prints each kept process and takes `--stop-processes` only from the orchestrator.\n\nAcceptance: the test shows the two calls with stub launcher and stub `gh`: a merged item gives `remove --delete-branch --pr <n>`, an item with no PR gives `--delete-branch`, a kept branch gives one inbox notice, an open issue gets closed.\n\n### R5. The poller: `crew-orch.py wait`\n\nA command with no model that the orchestrator runs as a background Bash command (no `Monitor`, so no 30-minute expiry). It polls every `--interval <seconds>` (default 60; the test passes a small value):\n\n- the usage level (`crew-usage.py check`): it writes `pace.mode` itself, writes `slots.max` 1 at `slowed`, and restores `slots.max` at the reset. It exits to wake the orchestrator only when the level change needs messages to implementers (a rise to `slowed` or `stopped`), never at a re-check with no change.\n- each item with a PR: it runs `refresh`. A queued merge of R1 whose checks now pass merges with no wake. It exits on a red check, a conflict, a new review or comment by someone other than the implementer, a merge queue event, a PR closed with no merge, or a queued merge whose check failed.\n- the inbox: an entry the poller added.\n\nOn exit it prints one line per event and writes them into the record. Each event the poller handled itself goes to the board as routine state (R7) and wakes nobody. A second `wait` on the same record replaces the first (a pid in the record). Each event that the old instructions name as \"one turn per timeout\" no longer exists.\n\nAcceptance: the test, with stub `gh` and a stub usage command, shows (a) a run with no change prints nothing and keeps running for N polls (a `--polls N` test flag); (b) a rise to `slowed` writes the mode and `slots.max` and exits with one line; (c) a reset writes the mode and the restored `slots.max` and exits 0 only when the previous level needed action, else keeps running; (d) a queued merge goes through with no exit; (e) a red check exits with one line.\n\n### R6. The judgment digest\n\n`crew-orch.py digest <item>` prints one short block: the goal brief (the first `told` entry, cut), the PR's changed files with line counts, the unresolved threads and findings, the CI state, the files shared with each other open PR of the group and the group order. A brief check, the comparison of the diff with the brief, is one subagent dispatch: the orchestrator writes `digest <item> --diff-file <p>` (the brief and the whole diff in one file) and dispatches a cheap subagent (R8) that reads that file and returns only the deviations from the brief and any gap in a fix. The orchestrator reads the digest and the deviations, never the whole diff. `SKILL.md` says when the orchestrator asks for a brief check: before each merge of an implementer item, and after each fix round on a finding the orchestrator raised.\n\nAcceptance: the test shows the digest of a seeded item names its shared files, its unresolved threads and its brief; `--diff-file` writes a file that holds the brief and the stub diff.\n\n### R7. The board holds routine state, and the inbox holds only what needs the principal\n\n`board` shows the last routine events (merged, queued, rebase word sent, mode changes) from the record. `SKILL.md` says the orchestrator tells the principal only an inbox entry, and the principal reads routine state on the board.\n\nAcceptance: the test shows a merge from R1 and a mode change from R5 on `board --json`; the SKILL text names the rule once.\n\n### R8. The cheapest capable model for each orchestrator dispatch\n\n`skills/project-lead/references/band-rubric.md` is the only place a model is chosen. It gains a section for the orchestrator's dispatches: a read-only lookup (`crew:scout`) at `haiku`; the brief check of R6 at `sonnet`, because it needs judgment; a subagent item by the band its work would get (`light` and `standard` at `sonnet`, `deep` at `opus`), with `haiku` only for a subagent item whose tools are `Read`, `Glob` and `Grep` alone. `subagent-items.md` points at it and keeps no second copy.\n\nAcceptance: grep shows the model rule for orchestrator dispatches in band-rubric.md only, and subagent-items.md points there.\n\n### R9. Restart from the record\n\n`crew-orch.py resume` runs the mechanical steps of `resume-and-close.md`'s \"The resume\" in one call: the closed-record check, `launcher.py find` for each item with a launch, the `launch.tab` writes, `window-watch.py ensure` for each delivered item, the slot count, and prints one line per item with what the orchestrator must do (send a rejoin message, resume a gone implementer, send a missing goal, a notice to add). The judgments of step 4 (a `cwd` match, an `id` match) stay as printed actions. `init` and `resume` store the orchestrator's session id. A `SessionStart` hook in `hooks/hooks.json`, on the `compact` and `resume` sources, finds an open orchestrator record whose session id is this session's and adds the `resume` digest to the context, so the orchestrator restarts from its record with no call. The hook runs `resume --read-only`, which prints the same lines and writes nothing and starts nothing. The hook fails quiet and never blocks a session.\n\nAcceptance: the test shows `resume` on a seeded record with stub launcher prints one line per item and writes the slot count; a hook test (a script beside the hook, or the crew-orch test) shows the hook prints the digest for a matching session id and nothing for another.\n\n### R10. The instruction files say the new way\n\n`skills/orchestrator/SKILL.md`, its references, `usage.md`'s \"The watch\", `resume-and-close.md` and `subagent-items.md` name the commands in place of the hand sequences. Each command line lives in `orchestrator-record.md`'s \"The commands\" only. `CLAUDE.md`'s layout and build state, `docs/design.md` (a new §15 finding under a placeholder number `§15.NNN`), and `README.md` when a user-visible thing changes, follow. The plugin `version` stays at 0.1.131 in both manifests: the orchestrator assigns it.\n\nAcceptance: a read of each changed file against `writing-standard.md`'s checklist passes; no hand sequence that a command replaces stays in the text; grep finds each command's argument list in one file.\n\n### R11. The cost report\n\nThe final report gives the orchestrator's call count and context cost for one item before and after, with the method: the before figure from the orchestrator session's own transcript of 2026-11-24 (tool calls per item, from the JSONL), the after figure from the new procedure, counted step by step.\n\nAcceptance: the report states a before count and an after count of calls for one item, names the transcripts and the counting rule, and lists each step of the after count, with a live item's send counted as two calls.\n\n## Global constraints\n\n- `CLAUDE.md` and `skills/project-lead/references/writing-standard.md` hold the rules for every instruction file. ASD-STE100 prose.\n- Python 3 standard library only, as the other scripts are.\n- A rule lives in one file.\n- No change breaks an orchestrator already running on 0.1.131: every old command keeps its arguments and its output.\n- The version and §15 numbers stay placeholders.\n- The work lands in one PR on jerridan/crew. If it splits, each part merges safely alone, and the principal gets the list of parts before any PR opens.\n\n## Non-goals\n\n- No script sends a cross-session message, and no script types into an implementer's tab.\n- The orchestrator's judgments (the split, t",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": true
+    },
+    "history": {
+      "built": true,
+      "truncated": true
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "hunks": 4
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/hooks.json",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/orch-board.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/session-start.py",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/test-session-start.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/SKILL.md",
+        "hunks": 10
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/orchestrator/references/subagent-items.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/references/usage.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/orchestrator/scripts/crew-orch.py",
+        "hunks": 14
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-crew-orch.sh",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/references/band-rubric.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 1
+      },
+      {
+        "path": "tests/orch-board.test.tsx",
+        "hunks": 1
+      },
+      {
+        "path": "types/index.d.ts",
+        "hunks": 1
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "Adds large new logic (about 1,300 lines in crew-orch.py: merge, launch, close-item, resume and a polling wait loop with concurrency and ownership), a new SessionStart hook, and a hooks.json registration. It also changes the orchestrator's operating procedure and the record schema.",
+      "confidence": "high",
+      "categories": [
+        "bug",
+        "security",
+        "test",
+        "docs",
+        "convention"
+      ],
+      "hotspots": [
+        "skills/orchestrator/scripts/crew-orch.py: cmd_merge check order and exit codes",
+        "skills/orchestrator/scripts/crew-orch.py: finalize (slot release once, words, queued state)",
+        "skills/orchestrator/scripts/crew-orch.py: cmd_wait / poll_prs / claim_owner / stop_old_poller (concurrency, SIGTERM, kill of a pid after a ps check)",
+        "skills/orchestrator/scripts/crew-orch.py: close_stop_remove (launcher remove flags, branch deletion, kept processes)",
+        "skills/orchestrator/scripts/crew-orch.py: resume_item and cmd_launch (subprocess calls, state writes, slot count)",
+        "skills/orchestrator/scripts/crew-orch.py: poll_usage (slots.max and normal_max restore)",
+        "hooks/session-start.py and the hooks/hooks.json registration (runs in every session; must never block)",
+        "skills/orchestrator/SKILL.md and references: procedure changes must agree with the script behavior"
+      ],
+      "file_notes": [
+        {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "note": "new commands merge, finalize, handoff, send, launch, close-item, digest, resume and wait; new record fields; new Code exception and exit codes"
+        },
+        {
+          "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+          "note": "large new seeded tests and an extended gh stub for the new commands"
+        },
+        {
+          "file": "hooks/session-start.py",
+          "note": "new SessionStart hook; runs crew-orch.py resume --read-only for a matching open record"
+        },
+        {
+          "file": "hooks/hooks.json",
+          "note": "registers SessionStart for compact|resume with a 30s timeout"
+        },
+        {
+          "file": "hooks/test-session-start.sh",
+          "note": "new seeded test of the hook"
+        },
+        {
+          "file": "hooks/orch-board.tsx",
+          "note": "draws a Recent events block"
+        },
+        {
+          "file": "tests/orch-board.test.tsx",
+          "note": "new tests for the events block"
+        },
+        {
+          "file": "types/index.d.ts",
+          "note": "adds the OrchBoardEvent type and the optional events key"
+        },
+        {
+          "file": "skills/orchestrator/SKILL.md",
+          "note": "rewrites the merge, wait, launch and close procedures around the new commands"
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "owns the new fields and command specs; must match the code"
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "resume and close procedures rewritten to use resume and close-item"
+        },
+        {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "note": "procedure changes for the model choice, the brief check, wait and close"
+        },
+        {
+          "file": "skills/orchestrator/references/usage.md",
+          "note": "the usage watch is replaced by wait polling; the slow-down rule is reworded"
+        },
+        {
+          "file": "skills/orchestrator/references/launcher.md",
+          "note": "a note that start runs through launch"
+        },
+        {
+          "file": "skills/project-lead/references/band-rubric.md",
+          "note": "new section choosing the model for orchestrator dispatches"
+        },
+        {
+          "file": "skills/project-lead/references/orchestrator-report.md",
+          "note": "reference pointer update"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump"
+        },
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump"
+        },
+        {
+          "file": "CLAUDE.md",
+          "note": "docs table and status updates"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 15.166"
+        }
+      ],
+      "summary": "Adds orchestrator commands to crew-orch.py (merge, finalize, send, launch, close-item, digest, resume and a background poller wait). Each runs a fixed sequence in one call. It also adds a SessionStart hook that feeds a restarted orchestrator its record, a routine-events list on the board and pane, and a model rubric for orchestrator dispatches. The orchestrator skill and its references are rewritten around the new commands. Only seeded tests cover the new code."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: Adds large new logic (about 1,300 lines in crew-orch.py: merge, launch, close-item, resume and a polling wait loop with concurrency and ownership), a new SessionStart hook, and a hooks.json registration. It also changes the orchestrator's operating procedure and the record schema.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "CLAUDE.md",
+            "start_line": 9,
+            "end_line": 10,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The exceptions sentence still says \"two hooks\" and then lists a third hook beside them.",
+            "evidence": "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+            "suggested_fix": "Write \"the three hooks\" and name session-start.py's test once.",
+            "explanation": "The layout table now lists three hook scripts, so \"two hooks\" is wrong and the sentence reads inconsistently.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 11,
+            "end_line": 13,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "medium",
+            "claim": "The module docstring points to \"the report of the build\" for the exit codes, not to the reference that owns them.",
+            "evidence": "the report of the build says; each such exit prints one line `<command>",
+            "suggested_fix": "Point to orchestrator-record.md's \"The sequence commands\".",
+            "explanation": "The repo rule is that orchestrator-record.md owns each command's exit codes; the build report is not a repo file.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1104,
+            "end_line": 1106,
+            "category": "convention",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The machine-file path expression is written twice, and checkout_path re-parses sections instead of using the new section_text helper.",
+            "evidence": "config = os.environ.get(\"CREW_CONFIG\") or os.path.expanduser(\"~/.claude/crew/config.md\")",
+            "suggested_fix": "Add a config_path() helper and use section_text in checkout_path.",
+            "explanation": "The file already uses small shared helpers such as record_root and sessions_dir; this duplication breaks that pattern.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 15037,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 97396,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.009752100000000001,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1376,
+              "cacheReadInputTokens": 10262,
+              "cacheCreationInputTokens": 96905,
+              "webSearchRequests": 0,
+              "costUSD": 0.8048204,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 176,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.8145725
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 2112,
+            "end_line": 2112,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "A queued merge loses `--findings-answered`, so `wait` re-runs it without the flag and it fails with exit 6 (findings) as merge-failed.",
+            "evidence": "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+            "suggested_fix": "Store the findings-answered flag (e.g. with the head sha) on the item when it is queued, and pass it again in run_queued_merges.",
+            "explanation": "`merge --findings-answered --when-green` on a pending PR saves only the item id in merge_queue, so when the checks pass the poller refuses on the findings that the orchestrator already answered.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1231,
+            "end_line": 1239,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "An order refusal (exit 8) is never queued under `--when-green`, and a queued merge that hits it gets dropped from merge_queue as merge-failed. The docs say `wait` merges the PR when its turn comes.",
+            "evidence": "        if late:\n            raise Code(8, f\"merge order: {', '.join(late)} merges first and shares a file\")",
+            "suggested_fix": "With --when-green, treat the order wait like pending: queue the item, or keep it queued, and do not drop it on exit 8.",
+            "explanation": "The order check runs after the pending check, so it raises Code 8 even with --when-green, and run_queued_merges treats any code other than 11 as a failure and removes the item.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1260,
+            "end_line": 1265,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The group-order check is skipped when the merge value is `needs review`. merge_value returns `needs review` before `waits on`, so a PR that needs approval gets exit 7, or exit 9 with the Merge section printed, while an earlier item that shares a file is still unmerged.",
+            "evidence": "    if value == \"needs review\" and section is None:\n        raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\")\n    if section is not None:",
+            "suggested_fix": "Run the order check from item['waits_on'] whatever the merge value is, before the approval and Merge-section checks.",
+            "explanation": "The spec says the Merge section replaces only the method and the approval check, and that the group order still holds. Here the orchestrator is told to run the Merge section's steps out of order.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1893,
+            "end_line": 1893,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "One failing `launcher.py find` (find_handles raises Fail) stops the whole `resume`. No line prints for the items after it, and the slot count is not written. In the SessionStart hook this gives no context at all.",
+            "evidence": "        line, counts = resume_item(rec, rec.read()[\"items\"][item[\"id\"]], read_only)",
+            "suggested_fix": "Wrap resume_item in try/except Fail and print `<item> notice: <error>` for that item.",
+            "explanation": "The documented action `notice` covers \"a tool failed\", but the Fail from find_handles is not caught per item, so the command exits 1 part way through.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1350,
+            "end_line": 1355,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "When the next item that shares a file is a subagent item or has no session, deliver returns `none`, but the code still logs the event \"rebase word sent\" and prints `rebase-word:`.",
+            "evidence": "rec.mutate(lambda st: add_event(st, nxt[\"id\"], f\"rebase word sent after {item_id} merged\"))",
+            "suggested_fix": "Check word['kind'] == 'none' and print a line that tells the orchestrator to send the rebase word itself.",
+            "explanation": "The board and the output report a rebase word that nobody sent, so the orchestrator does not tell the subagent to rebase.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1946,
+            "end_line": 1952,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "stop_old_poller sends SIGTERM to any `crew-orch.py ... wait` process with the stored pid. It does not check that the process is a poller of this record (`--orch <name>`).",
+            "evidence": "        os.kill(pid, signal.SIGTERM)",
+            "suggested_fix": "Also check that the ps command line names this record (`--orch <name>`, or the same CREW_ORCH).",
+            "explanation": "If the stored pid is stale and now belongs to the poller of another record, that poller gets killed.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 144516,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 97398,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0097523,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 26,
+              "outputTokens": 12860,
+              "cacheReadInputTokens": 1421826,
+              "cacheCreationInputTokens": 117012,
+              "webSearchRequests": 0,
+              "costUSD": 1.4777652,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 9221,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 1.4875175
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 165,
+            "end_line": 171,
+            "category": "docs",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The close points to the remove flags of step 3 in resume-and-close.md, but after this change the remove flags are in step 2 and step 3 is about kept processes.",
+            "evidence": "`subagent.worktree` when it is set, with the flags of that procedure's step\n3, so the branch of a merged PR is deleted.",
+            "suggested_fix": "Point at step 2, or at `orchestrator-record.md`'s \"`close-item`\", which lists the flags.",
+            "explanation": "In the rewritten resume-and-close.md, step 3 is \"Each kept process\", so the pointer goes to the wrong step.",
+            "needs_context": false
+          },
+          {
+            "file": "CLAUDE.md",
+            "start_line": 9,
+            "end_line": 10,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The text still says \"two hooks\", but the repo now has three hook scripts.",
+            "evidence": "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+            "suggested_fix": "Say \"the three hooks, with the test of `session-start.py`\", or name each hook.",
+            "explanation": "The new `session-start.py` makes three hook scripts, so \"two hooks\" is wrong.",
+            "needs_context": false
+          },
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 11,
+            "end_line": 13,
+            "category": "docs",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The docstring says the exit codes come from \"the report of the build\", but orchestrator-record.md is the file that lists them.",
+            "evidence": "the report of the build says; each such exit prints one line `<command>",
+            "suggested_fix": "Point at orchestrator-record.md's \"The sequence commands\".",
+            "explanation": "The PR names orchestrator-record.md as the owner of the exit codes, not a build report.",
+            "needs_context": false
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 17465,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 97400,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.009754,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 1610,
+              "cacheReadInputTokens": 10172,
+              "cacheCreationInputTokens": 96909,
+              "webSearchRequests": 0,
+              "costUSD": 0.8095144,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 844,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.8192684
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/scripts/crew-orch.py",
+            "start_line": 1078,
+            "end_line": 1078,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "medium",
+            "claim": "The sender name falls back to the record name when the session name cannot be found.",
+            "evidence": "return opts.get(\"from\") or current_session_name() or rec.name",
+            "suggested_fix": "Fail with a message to pass --from when the session name is unknown, instead of using the record name.",
+            "explanation": "Commit 9781b08 fixed the orchestrator to send its current session name and never the record name. Implementers reply to the name in the message, so a record-name fallback sends their replies to the wrong session. The same fallback is in finalize's merge and rebase words and in the close-item processes word.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 13890,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 127503,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0638215,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 1516,
+              "cacheReadInputTokens": 148144,
+              "cacheCreationInputTokens": 128319,
+              "webSearchRequests": 0,
+              "costUSD": 0.5432583999999999,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1049,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.6070798999999999
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 12770,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 97410,
+              "outputTokens": 28,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.009755,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 929,
+              "cacheReadInputTokens": 10456,
+              "cacheCreationInputTokens": 96919,
+              "webSearchRequests": 0,
+              "costUSD": 0.7960312,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 400,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.8057862
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [
+          {
+            "finding": {
+              "file": "skills/orchestrator/scripts/test-crew-orch.sh",
+              "start_line": 1,
+              "end_line": 1,
+              "category": "test",
+              "severity_estimate": "suggestion",
+              "confidence": "medium",
+              "claim": "The stop_old_poller path (ps check then SIGTERM of a prior wait) has no test that covers its guard logic, e.g. a pid reused by an unrelated process.",
+              "evidence": "stop_old_poller(claim_owner(rec, token))",
+              "explanation": "The F4 test checks replacement of a real poller, but the 'kill only if ps shows crew-orch.py wait' guard (a safety branch) is never tested against a foreign process.",
+              "needs_context": true
+            },
+            "reason": "bad-quote"
+          }
+        ],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 3729,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 97406,
+              "outputTokens": 25,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.009753100000000002,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 279,
+              "cacheReadInputTokens": 11231,
+              "cacheCreationInputTokens": 96919,
+              "webSearchRequests": 0,
+              "costUSD": 0.3915931,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.40134620000000004
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1078,
+          "end_line": 1078,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The sender name falls back to the record name when the session name cannot be found.",
+          "evidence": "return opts.get(\"from\") or current_session_name() or rec.name",
+          "suggested_fix": "Fail with a message to pass --from when the session name is unknown, instead of using the record name.",
+          "explanation": "Commit 9781b08 fixed the orchestrator to send its current session name and never the record name. Implementers reply to the name in the message, so a record-name fallback sends their replies to the wrong session. The same fallback is in finalize's merge and rebase words and in the close-item processes word.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return opts.get(\"from\") or current_session_name() or rec.name",
+            "sender = sender or current_session_name() or rec.name"
+          ],
+          "rationale": "The code falls back to the record name when the session name is not found. The record name can differ from the session name after a rename, so replies would go to the wrong place. The failure happens only when the session id or session file is missing, which is rare.",
+          "score": 75,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return opts.get(\"from\") or current_session_name() or rec.name",
+            "sender = sender or current_session_name() or rec.name",
+            "\"My session name is {me}; send to that name. The item is closing.",
+            "raise Fail(\"no principal: pass --principal <your session name>\")",
+            "to the current session name (the session file of `$CLAUDE_CODE_SESSION_ID`\nunder `~/.claude/sessions/`), then to the record name."
+          ],
+          "rationale": "I confirmed the fallback to the record name in `sender_name` and in `finalize`, and the `close-item` processes word uses that value in \"My session name is {me}; send to that name\". So after a rename, or when the session file is missing, implementers are told to reply to a name that may not be a live session. `launch` refuses in the same case. The fallback is documented in orchestrator-record.md and only runs on an unusual path, so this is a suggestion, not a blocker. I could not check commit 9781b08.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return opts.get(\"from\") or current_session_name() or rec.name",
+            "sender = sender or current_session_name() or rec.name",
+            "\"My session name is {me}; send to that name. The item is closing.",
+            "raise Fail(\"no principal: pass --principal <your session name>\")",
+            "to the current session name (the session file of `$CLAUDE_CODE_SESSION_ID`\nunder `~/.claude/sessions/`), then to the record name."
+          ],
+          "rationale": "I confirmed the fallback to the record name in `sender_name` and in `finalize`, and the `close-item` processes word uses that value in \"My session name is {me}; send to that name\". So after a rename, or when the session file is missing, implementers are told to reply to a name that may not be a live session. `launch` refuses in the same case. The fallback is documented in orchestrator-record.md and only runs on an unusual path, so this is a suggestion, not a blocker. I could not check commit 9781b08.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 9,
+          "end_line": 10,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The exceptions sentence still says \"two hooks\" and then lists a third hook beside them.",
+          "evidence": "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+          "suggested_fix": "Write \"the three hooks\" and name session-start.py's test once.",
+          "explanation": "The layout table now lists three hook scripts, so \"two hooks\" is wrong and the sentence reads inconsistently.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,"
+          ],
+          "rationale": "The PR added session-start.py beside session-end.py and pre-compact.py, so three hooks exist. The sentence still says \\\"two hooks\\\" and then names a third one, which makes it inconsistent. This is a small docs error.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+            "| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py`, `hooks/session-start.py` |"
+          ],
+          "rationale": "The change added `hooks/session-start.py` right after \"two hooks\", but the layout table now lists three hook scripts, so a reader can take \"two hooks\" as a wrong count or as a list that names a third hook beside the two. The outcome is still correct, and the wording fix is cheap.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+            "| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py`, `hooks/session-start.py` |"
+          ],
+          "rationale": "The change added `hooks/session-start.py` right after \"two hooks\", but the layout table now lists three hook scripts, so a reader can take \"two hooks\" as a wrong count or as a list that names a third hook beside the two. The outcome is still correct, and the wording fix is cheap.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 11,
+          "end_line": 13,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "medium",
+          "claim": "The module docstring points to \"the report of the build\" for the exit codes, not to the reference that owns them.",
+          "evidence": "the report of the build says; each such exit prints one line `<command>",
+          "suggested_fix": "Point to orchestrator-record.md's \"The sequence commands\".",
+          "explanation": "The repo rule is that orchestrator-record.md owns each command's exit codes; the build report is not a repo file.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`merge` exits 3 to 11 and `launch` exits 3 on a refusal, as\nthe report of the build says; each such exit prints one line `<command>"
+          ],
+          "rationale": "The added docstring cites \\\"the report of the build\\\", which isn't a repo file, for the exit codes. The same docstring and the PR description say orchestrator-record.md owns them.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`merge` exits 3 to 11 and `launch` exits 3 on a refusal, as\nthe report of the build says; each such exit prints one line `<command>"
+          ],
+          "rationale": "The added docstring cites \\\"the report of the build\\\", which isn't a repo file, for the exit codes. The same docstring and the PR description say orchestrator-record.md owns them.",
+          "score": 88,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1104,
+          "end_line": 1106,
+          "category": "convention",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The machine-file path expression is written twice, and checkout_path re-parses sections instead of using the new section_text helper.",
+          "evidence": "config = os.environ.get(\"CREW_CONFIG\") or os.path.expanduser(\"~/.claude/crew/config.md\")",
+          "suggested_fix": "Add a config_path() helper and use section_text in checkout_path.",
+          "explanation": "The file already uses small shared helpers such as record_root and sessions_dir; this duplication breaks that pattern.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "config = os.environ.get(\"CREW_CONFIG\") or os.path.expanduser(\"~/.claude/crew/config.md\")"
+          ],
+          "rationale": "The config path expression appears twice, in merge_section and checkout_path, and checkout_path parses sections by hand. It is minor duplication with no wrong behavior.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "config = os.environ.get(\"CREW_CONFIG\") or os.path.expanduser(\"~/.claude/crew/config.md\")",
+            "def section_text(text: str, heading: str):",
+            "        if re.match(r\"##(?!#)\", line):\n            inside = line == \"## Checkouts\"\n            continue"
+          ],
+          "rationale": "The change adds the same machine-file path expression in both merge_section (line 1144) and checkout_path (line 1434). checkout_path also parses `##` sections by hand, although the new section_text helper already does that. This duplication is real but minor, and it produces no wrong result.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "config = os.environ.get(\"CREW_CONFIG\") or os.path.expanduser(\"~/.claude/crew/config.md\")",
+            "def section_text(text: str, heading: str):",
+            "        if re.match(r\"##(?!#)\", line):\n            inside = line == \"## Checkouts\"\n            continue"
+          ],
+          "rationale": "The change adds the same machine-file path expression in both merge_section (line 1144) and checkout_path (line 1434). checkout_path also parses `##` sections by hand, although the new section_text helper already does that. This duplication is real but minor, and it produces no wrong result.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 165,
+          "end_line": 171,
+          "category": "docs",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The close points to the remove flags of step 3 in resume-and-close.md, but after this change the remove flags are in step 2 and step 3 is about kept processes.",
+          "evidence": "`subagent.worktree` when it is set, with the flags of that procedure's step\n3, so the branch of a merged PR is deleted.",
+          "suggested_fix": "Point at step 2, or at `orchestrator-record.md`'s \"`close-item`\", which lists the flags.",
+          "explanation": "In the rewritten resume-and-close.md, step 3 is \"Each kept process\", so the pointer goes to the wrong step.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`subagent.worktree` when it is set, with the flags of that procedure's step\n3, so the branch of a merged PR is deleted."
+          ],
+          "rationale": "In the head resume-and-close.md, step 2 runs `close-item --continue` and removes the worktree with the flags the item needs. Step 3 is \"Each kept process\", so the pointer to step 3 is wrong. The PR rewrote this paragraph and kept the old number.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`subagent.worktree` when it is set, with the flags of that procedure's step\n3, so the branch of a merged PR is deleted."
+          ],
+          "rationale": "In the head resume-and-close.md, step 2 runs `close-item --continue` and removes the worktree with the flags the item needs. Step 3 is \"Each kept process\", so the pointer to step 3 is wrong. The PR rewrote this paragraph and kept the old number.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "CLAUDE.md",
+          "start_line": 9,
+          "end_line": 10,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The text still says \"two hooks\", but the repo now has three hook scripts.",
+          "evidence": "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+          "suggested_fix": "Say \"the three hooks, with the test of `session-start.py`\", or name each hook.",
+          "explanation": "The new `session-start.py` makes three hook scripts, so \"two hooks\" is wrong.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,"
+          ],
+          "rationale": "The repo now has three hook scripts (session-end, pre-compact and session-start). The sentence lists session-start as a separate item after \\\"two hooks\\\", so a reader can parse it as the two older hooks plus the new one. The wording is confusing but not wrong.",
+          "score": 55,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,"
+          ],
+          "rationale": "The repo now has three hook scripts (session-end, pre-compact and session-start). The sentence lists session-start as a separate item after \\\"two hooks\\\", so a reader can parse it as the two older hooks plus the new one. The wording is confusing but not wrong.",
+          "score": 55,
+          "severity": "nit"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 11,
+          "end_line": 13,
+          "category": "docs",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The docstring says the exit codes come from \"the report of the build\", but orchestrator-record.md is the file that lists them.",
+          "evidence": "the report of the build says; each such exit prints one line `<command>",
+          "suggested_fix": "Point at orchestrator-record.md's \"The sequence commands\".",
+          "explanation": "The PR names orchestrator-record.md as the owner of the exit codes, not a build report.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "writes nothing. `merge` exits 3 to 11 and `launch` exits 3 on a refusal, as\nthe report of the build says; each such exit prints one line `<command>\n<check>: <detail>`."
+          ],
+          "rationale": "The added docstring cites \\\"the report of the build\\\", a transient artifact, as the source of the exit codes. The PR says orchestrator-record.md owns them, and the same docstring already names that file.",
+          "score": 85,
+          "severity": "nit"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "writes nothing. `merge` exits 3 to 11 and `launch` exits 3 on a refusal, as\nthe report of the build says; each such exit prints one line `<command>",
+            "| Order | Check | Exit | It fails when |",
+            "A refusal that\nsets an exit code above 2 prints one stderr line, `crew-orch: <command>\n<check>: <detail>`."
+          ],
+          "rationale": "The new docstring line cites \"the report of the build\", which nobody keeps with the code. orchestrator-record.md's \"The sequence commands\" holds the exit-code table and the stderr line format. The pointer is wrong but harmless, and the fix is a cheap wording change.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "writes nothing. `merge` exits 3 to 11 and `launch` exits 3 on a refusal, as\nthe report of the build says; each such exit prints one line `<command>",
+            "| Order | Check | Exit | It fails when |",
+            "A refusal that\nsets an exit code above 2 prints one stderr line, `crew-orch: <command>\n<check>: <detail>`."
+          ],
+          "rationale": "The new docstring line cites \"the report of the build\", which nobody keeps with the code. orchestrator-record.md's \"The sequence commands\" holds the exit-code table and the stderr line format. The pointer is wrong but harmless, and the fix is a cheap wording change.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 2112,
+          "end_line": 2112,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "A queued merge loses `--findings-answered`, so `wait` re-runs it without the flag and it fails with exit 6 (findings) as merge-failed.",
+          "evidence": "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+          "suggested_fix": "Store the findings-answered flag (e.g. with the head sha) on the item when it is queued, and pass it again in run_queued_merges.",
+          "explanation": "`merge --findings-answered --when-green` on a pending PR saves only the item id in merge_queue, so when the checks pass the poller refuses on the findings that the orchestrator already answered.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+            "if findings and not opts.get(\"findings-answered\"):",
+            "st[\"merge_queue\"].append(item_id)"
+          ],
+          "rationale": "The queue stores only the item id, and the poller reruns `merge` with `--when-green` alone. When findings outside a thread exist, the rerun exits 6, the item is dropped, and a merge-failed wake follows. The orchestrator can recover by merging again.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+            "if value == \"ci pending\" or value.startswith(\"in queue\"):\n        return pending(value)",
+            "if item_id not in st[\"merge_queue\"]:\n                st[\"merge_queue\"].append(item_id)",
+            "if findings and not opts.get(\"findings-answered\"):",
+            "raise Code(6, f\"merge findings: {len(findings)} finding(s) outside a thread; compare them with the ready \"",
+            "wakes.append(f\"wake merge-failed {item_id}: exit {failure[0]} {failure[1]}\")"
+          ],
+          "rationale": "The claim holds. The queue stores only the item id, and `run_queued_merges` calls `cmd_merge` again with just `--when-green`. So once checks pass, any PR with a non-author comment or review fails the findings check with exit 6, and the poller drops it as merge-failed, even though the orchestrator already passed `--findings-answered`. The orchestrator is woken and can run the merge again by hand, which makes this recoverable, but it defeats the no-model queued merge in a common case.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+            "if value == \"ci pending\" or value.startswith(\"in queue\"):\n        return pending(value)",
+            "if item_id not in st[\"merge_queue\"]:\n                st[\"merge_queue\"].append(item_id)",
+            "if findings and not opts.get(\"findings-answered\"):",
+            "raise Code(6, f\"merge findings: {len(findings)} finding(s) outside a thread; compare them with the ready \"",
+            "wakes.append(f\"wake merge-failed {item_id}: exit {failure[0]} {failure[1]}\")"
+          ],
+          "rationale": "The claim holds. The queue stores only the item id, and `run_queued_merges` calls `cmd_merge` again with just `--when-green`. So once checks pass, any PR with a non-author comment or review fails the findings check with exit 6, and the poller drops it as merge-failed, even though the orchestrator already passed `--findings-answered`. The orchestrator is woken and can run the merge again by hand, which makes this recoverable, but it defeats the no-model queued merge in a common case.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1231,
+          "end_line": 1239,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "An order refusal (exit 8) is never queued under `--when-green`, and a queued merge that hits it gets dropped from merge_queue as merge-failed. The docs say `wait` merges the PR when its turn comes.",
+          "evidence": "        if late:\n            raise Code(8, f\"merge order: {', '.join(late)} merges first and shares a file\")",
+          "suggested_fix": "With --when-green, treat the order wait like pending: queue the item, or keep it queued, and do not drop it on exit 8.",
+          "explanation": "The order check runs after the pending check, so it raises Code 8 even with --when-green, and run_queued_merges treats any code other than 11 as a failure and removes the item.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Code(8, f\"merge order: {', '.join(late)} merges first and shares a file\")",
+            "| 4 | `pending` | 11 | CI runs, the PR is in a queue, or no ready line exists. With `--when-green` the command queues the item in `merge_queue` and exits 0 |"
+          ],
+          "rationale": "The code behaves as described: exit 8 isn't queued under --when-green. But the docs define pending as only CI, a queue or a missing ready line, and list order as a separate refusal (exit 8). No doc says `wait` merges a PR when its turn comes, so this is designed behavior.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Code(8, f\"merge order: {', '.join(late)} merges first and shares a file\")",
+            "| 4 | `pending` | 11 | CI runs, the PR is in a queue, or no ready line exists. With `--when-green` the command queues the item in `merge_queue` and exits 0 |"
+          ],
+          "rationale": "The code behaves as described: exit 8 isn't queued under --when-green. But the docs define pending as only CI, a queue or a missing ready line, and list order as a separate refusal (exit 8). No doc says `wait` merges a PR when its turn comes, so this is designed behavior.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1260,
+          "end_line": 1265,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "The group-order check is skipped when the merge value is `needs review`. merge_value returns `needs review` before `waits on`, so a PR that needs approval gets exit 7, or exit 9 with the Merge section printed, while an earlier item that shares a file is still unmerged.",
+          "evidence": "    if value == \"needs review\" and section is None:\n        raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\")\n    if section is not None:",
+          "suggested_fix": "Run the order check from item['waits_on'] whatever the merge value is, before the approval and Merge-section checks.",
+          "explanation": "The spec says the Merge section replaces only the method and the approval check, and that the group order still holds. Here the orchestrator is told to run the Merge section's steps out of order.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "    if waits:\n        return \"waits on \" + \", \".join(waits)",
+            "    if value == \"needs review\" and section is None:\n        raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\")",
+            "    if value.startswith(\"waits on\"):"
+          ],
+          "rationale": "merge_value returns \"needs review\" before it checks `waits`. cmd_merge runs the group-order check only when the value starts with \"waits on\". A needs-review PR with an unmerged earlier item therefore skips the order check. It exits 7, or exits 9 with the Merge section printed.",
+          "score": 82,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        return \"needs review\"\n    if waits:\n        return \"waits on \" + \", \".join(waits)",
+            "    if value.startswith(\"waits on\"):",
+            "    if value == \"needs review\" and section is None:\n        raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\")",
+            "        raise Code(9, \"merge merge-section: a Merge section replaces the method\")",
+            "| 5 | `order` | 8 | an earlier item of the group order that shares a file is not merged. A `waits on` with no shared file exits 3 `record` |",
+            "   - `merge-section`: the command printed the `Merge` section. Run its steps."
+          ],
+          "rationale": "merge_value returns `needs review` before it checks `waits_on`, and cmd_merge runs the order check only when the value starts with `waits on`. So a PR that needs review skips the order check and reaches exit 7, or exit 9, where SKILL.md tells the orchestrator to run the Merge section's steps while an earlier item that shares a file is still unmerged. That contradicts check 5 in orchestrator-record.md and the \"every other check passes\" rule.",
+          "score": 92,
+          "severity": "blocking"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        return \"needs review\"\n    if waits:\n        return \"waits on \" + \", \".join(waits)",
+            "    if value.startswith(\"waits on\"):",
+            "    if value == \"needs review\" and section is None:\n        raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\")",
+            "        raise Code(9, \"merge merge-section: a Merge section replaces the method\")",
+            "| 5 | `order` | 8 | an earlier item of the group order that shares a file is not merged. A `waits on` with no shared file exits 3 `record` |",
+            "   - `merge-section`: the command printed the `Merge` section. Run its steps."
+          ],
+          "rationale": "merge_value returns `needs review` before it checks `waits_on`, and cmd_merge runs the order check only when the value starts with `waits on`. So a PR that needs review skips the order check and reaches exit 7, or exit 9, where SKILL.md tells the orchestrator to run the Merge section's steps while an earlier item that shares a file is still unmerged. That contradicts check 5 in orchestrator-record.md and the \"every other check passes\" rule.",
+          "score": 92,
+          "severity": "blocking"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1893,
+          "end_line": 1893,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "medium",
+          "claim": "One failing `launcher.py find` (find_handles raises Fail) stops the whole `resume`. No line prints for the items after it, and the slot count is not written. In the SessionStart hook this gives no context at all.",
+          "evidence": "        line, counts = resume_item(rec, rec.read()[\"items\"][item[\"id\"]], read_only)",
+          "suggested_fix": "Wrap resume_item in try/except Fail and print `<item> notice: <error>` for that item.",
+          "explanation": "The documented action `notice` covers \"a tool failed\", but the Fail from find_handles is not caught per item, so the command exits 1 part way through.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(f\"launcher.py find {launch['session_name']} exited {rc}: {last_line(err, 'no message')}\")",
+            "line, counts = resume_item(rec, rec.read()[\"items\"][item[\"id\"]], read_only)"
+          ],
+          "rationale": "`find_handles` raises `Fail` on a non-zero `find`, and `cmd_resume` has no per-item catch. One failing item aborts the command with exit 1, so later items print nothing and the slot count is not written.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(f\"launcher.py find {launch['session_name']} exited {rc}: {last_line(err, 'no message')}\")",
+            "line, counts = resume_item(rec, rec.read()[\"items\"][item[\"id\"]], read_only)"
+          ],
+          "rationale": "`find_handles` raises `Fail` on a non-zero `find`, and `cmd_resume` has no per-item catch. One failing item aborts the command with exit 1, so later items print nothing and the slot count is not written.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1350,
+          "end_line": 1355,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "When the next item that shares a file is a subagent item or has no session, deliver returns `none`, but the code still logs the event \"rebase word sent\" and prints `rebase-word:`.",
+          "evidence": "rec.mutate(lambda st: add_event(st, nxt[\"id\"], f\"rebase word sent after {item_id} merged\"))",
+          "suggested_fix": "Check word['kind'] == 'none' and print a line that tells the orchestrator to send the rebase word itself.",
+          "explanation": "The board and the output report a rebase word that nobody sent, so the orchestrator does not tell the subagent to rebase.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "word = deliver(rec, nxt[\"id\"], REBASE_WORD.format(n=number, merged=item_id), sender, pending=True)",
+            "rec.mutate(lambda st: add_event(st, nxt[\"id\"], f\"rebase word sent after {item_id} merged\"))",
+            "print(f\"rebase-word: {nxt['id']}\")",
+            "return {\"kind\": \"none\", \"item\": item_id}"
+          ],
+          "rationale": "deliver() returns kind \\\"none\\\" for a subagent item or one with no session name and not delivered. finalize still adds the \\\"rebase word sent\\\" event and prints \\\"rebase-word:\\\" without checking the kind. The board then claims a word that nobody sent, and no handoff is recorded for the orchestrator to act on.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "word = deliver(rec, nxt[\"id\"], REBASE_WORD.format(n=number, merged=item_id), sender, pending=True)",
+            "rec.mutate(lambda st: add_event(st, nxt[\"id\"], f\"rebase word sent after {item_id} merged\"))",
+            "print(f\"rebase-word: {nxt['id']}\")",
+            "return {\"kind\": \"none\", \"item\": item_id}"
+          ],
+          "rationale": "deliver() returns kind \\\"none\\\" for a subagent item or one with no session name and not delivered. finalize still adds the \\\"rebase word sent\\\" event and prints \\\"rebase-word:\\\" without checking the kind. The board then claims a word that nobody sent, and no handoff is recorded for the orchestrator to act on.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/scripts/crew-orch.py",
+          "start_line": 1946,
+          "end_line": 1952,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "stop_old_poller sends SIGTERM to any `crew-orch.py ... wait` process with the stored pid. It does not check that the process is a poller of this record (`--orch <name>`).",
+          "evidence": "        os.kill(pid, signal.SIGTERM)",
+          "suggested_fix": "Also check that the ps command line names this record (`--orch <name>`, or the same CREW_ORCH).",
+          "explanation": "If the stored pid is stale and now belongs to the poller of another record, that poller gets killed.",
+          "needs_context": false
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if rc != 0 or not any(w.endswith(\"crew-orch.py\") for w in words) or \"wait\" not in words:",
+            "os.kill(pid, signal.SIGTERM)"
+          ],
+          "rationale": "The check only looks for a word ending in crew-orch.py and the word \\\"wait\\\". It never checks the record name, so a reused pid that now runs another record's poller would be killed. This needs a stale pid that was reused by such a poller, so it is rare.",
+          "score": 85,
+          "severity": "suggestion"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if rc != 0 or not any(w.endswith(\"crew-orch.py\") for w in words) or \"wait\" not in words:",
+            "os.kill(pid, signal.SIGTERM)",
+            "state[\"wait_owner\"] = {\"token\": token, \"pid\": os.getpid()}"
+          ],
+          "rationale": "The check that guards the kill only looks for a word ending in `crew-orch.py` and a `wait` word. It never checks the record name, so a stale pid that the OS has reused for another record's poller would get SIGTERM. A pid only goes stale when a poller dies without running release_owner, and the reuse must then land on another crew-orch wait. That makes this a rare path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if rc != 0 or not any(w.endswith(\"crew-orch.py\") for w in words) or \"wait\" not in words:",
+            "os.kill(pid, signal.SIGTERM)",
+            "state[\"wait_owner\"] = {\"token\": token, \"pid\": os.getpid()}"
+          ],
+          "rationale": "The check that guards the kill only looks for a word ending in `crew-orch.py` and a `wait` word. It never checks the record name, so a stale pid that the OS has reused for another record's poller would get SIGTERM. A pid only goes stale when a poller dies without running release_owner, and the reuse must then land on another crew-orch wait. That makes this a rare path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [
+      {
+        "group": [
+          2,
+          5
+        ],
+        "result": {
+          "merged": [
+            {
+              "member_index": 1,
+              "claim": "The module docstring cites \"the report of the build\" for the exit codes instead of orchestrator-record.md, which owns them.",
+              "explanation": "The repo rule is that orchestrator-record.md owns each command's exit codes, and the build report is not a repo file.",
+              "suggested_fix": "Point at orchestrator-record.md's \"The sequence commands\".",
+              "severity": "nit"
+            }
+          ]
+        }
+      }
+    ],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would request changes",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 1260,
+        "end_line": 1265,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The group-order check is skipped when the merge value is `needs review`. merge_value returns `needs review` before `waits on`, so a PR that needs approval gets exit 7, or exit 9 with the Merge section printed, while an earlier item that shares a file is still unmerged.",
+        "evidence": "    if value == \"needs review\" and section is None:\n        raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\")\n    if section is not None:",
+        "suggested_fix": "Run the order check from item['waits_on'] whatever the merge value is, before the approval and Merge-section checks.",
+        "explanation": "The spec says the Merge section replaces only the method and the approval check, and that the group order still holds. Here the orchestrator is told to run the Merge section's steps out of order.",
+        "needs_context": false,
+        "fingerprint": "251e4e9521b2bc11",
+        "severity": "blocking",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "        return \"needs review\"\n    if waits:\n        return \"waits on \" + \", \".join(waits)",
+            "    if value.startswith(\"waits on\"):",
+            "    if value == \"needs review\" and section is None:\n        raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\")",
+            "        raise Code(9, \"merge merge-section: a Merge section replaces the method\")",
+            "| 5 | `order` | 8 | an earlier item of the group order that shares a file is not merged. A `waits on` with no shared file exits 3 `record` |",
+            "   - `merge-section`: the command printed the `Merge` section. Run its steps."
+          ],
+          "rationale": "merge_value returns `needs review` before it checks `waits_on`, and cmd_merge runs the order check only when the value starts with `waits on`. So a PR that needs review skips the order check and reaches exit 7, or exit 9, where SKILL.md tells the orchestrator to run the Merge section's steps while an earlier item that shares a file is still unmerged. That contradicts check 5 in orchestrator-record.md and the \"every other check passes\" rule.",
+          "score": 92,
+          "severity": "blocking"
+        },
+        "span_text": "if value == \"needs review\" and section is None: raise Code(7, \"merge approval: the PR needs a review and no Merge section replaces it\") if section is not None: print(\"merge-section: the Merge section of the standing instructions takes over; no method ran\") print(section) raise Code(9, \"merge merge-section: a Merge section replaces the method\")",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/references/subagent-items.md",
+        "start_line": 165,
+        "end_line": 171,
+        "category": "docs",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The close points to the remove flags of step 3 in resume-and-close.md, but after this change the remove flags are in step 2 and step 3 is about kept processes.",
+        "evidence": "`subagent.worktree` when it is set, with the flags of that procedure's step\n3, so the branch of a merged PR is deleted.",
+        "suggested_fix": "Point at step 2, or at `orchestrator-record.md`'s \"`close-item`\", which lists the flags.",
+        "explanation": "In the rewritten resume-and-close.md, step 3 is \"Each kept process\", so the pointer goes to the wrong step.",
+        "needs_context": false,
+        "fingerprint": "1cc4ca22db4e448d",
+        "severity": "suggestion",
+        "score": 93,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "`subagent.worktree` when it is set, with the flags of that procedure's step\n3, so the branch of a merged PR is deleted."
+          ],
+          "rationale": "In the head resume-and-close.md, step 2 runs `close-item --continue` and removes the worktree with the flags the item needs. Step 3 is \"Each kept process\", so the pointer to step 3 is wrong. The PR rewrote this paragraph and kept the old number.",
+          "score": 93,
+          "severity": "suggestion"
+        },
+        "span_text": "an item\" runs. Stop its subagent with `TaskStop` when it still runs. Then run `close-item <item> --continue` only. The command sends no processes word to a subagent item and runs no `launcher.py stop` for it. It removes `subagent.worktree` when it is set, with the flags of that procedure's step 3, so the branch of a merged PR is deleted. When `subagent.worktree` is `null` and `subagent.branch` is set, it puts a notice with the item and the branch in the inbox, and deletes nothing. Then it checks the ticket.",
+        "sources": [
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 2112,
+        "end_line": 2112,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "A queued merge loses `--findings-answered`, so `wait` re-runs it without the flag and it fails with exit 6 (findings) as merge-failed.",
+        "evidence": "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+        "suggested_fix": "Store the findings-answered flag (e.g. with the head sha) on the item when it is queued, and pass it again in run_queued_merges.",
+        "explanation": "`merge --findings-answered --when-green` on a pending PR saves only the item id in merge_queue, so when the checks pass the poller refuses on the findings that the orchestrator already answered.",
+        "needs_context": false,
+        "fingerprint": "f6b99e0773e58cb5",
+        "severity": "suggestion",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+            "if value == \"ci pending\" or value.startswith(\"in queue\"):\n        return pending(value)",
+            "if item_id not in st[\"merge_queue\"]:\n                st[\"merge_queue\"].append(item_id)",
+            "if findings and not opts.get(\"findings-answered\"):",
+            "raise Code(6, f\"merge findings: {len(findings)} finding(s) outside a thread; compare them with the ready \"",
+            "wakes.append(f\"wake merge-failed {item_id}: exit {failure[0]} {failure[1]}\")"
+          ],
+          "rationale": "The claim holds. The queue stores only the item id, and `run_queued_merges` calls `cmd_merge` again with just `--when-green`. So once checks pass, any PR with a non-author comment or review fails the findings check with exit 6, and the poller drops it as merge-failed, even though the orchestrator already passed `--findings-answered`. The orchestrator is woken and can run the merge again by hand, which makes this recoverable, but it defeats the no-model queued merge in a common case.",
+          "score": 92,
+          "severity": "suggestion"
+        },
+        "span_text": "quiet(cmd_merge, rec, [item_id, \"--when-green\"])",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 1350,
+        "end_line": 1355,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "When the next item that shares a file is a subagent item or has no session, deliver returns `none`, but the code still logs the event \"rebase word sent\" and prints `rebase-word:`.",
+        "evidence": "rec.mutate(lambda st: add_event(st, nxt[\"id\"], f\"rebase word sent after {item_id} merged\"))",
+        "suggested_fix": "Check word['kind'] == 'none' and print a line that tells the orchestrator to send the rebase word itself.",
+        "explanation": "The board and the output report a rebase word that nobody sent, so the orchestrator does not tell the subagent to rebase.",
+        "needs_context": false,
+        "fingerprint": "3037254f8cef1db6",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "word = deliver(rec, nxt[\"id\"], REBASE_WORD.format(n=number, merged=item_id), sender, pending=True)",
+            "rec.mutate(lambda st: add_event(st, nxt[\"id\"], f\"rebase word sent after {item_id} merged\"))",
+            "print(f\"rebase-word: {nxt['id']}\")",
+            "return {\"kind\": \"none\", \"item\": item_id}"
+          ],
+          "rationale": "deliver() returns kind \\\"none\\\" for a subagent item or one with no session name and not delivered. finalize still adds the \\\"rebase word sent\\\" event and prints \\\"rebase-word:\\\" without checking the kind. The board then claims a word that nobody sent, and no handoff is recorded for the orchestrator to act on.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "if nxt: word = deliver(rec, nxt[\"id\"], REBASE_WORD.format(n=number, merged=item_id), sender, pending=True) show_action(rec, word) actions.append(word) rec.mutate(lambda st: add_event(st, nxt[\"id\"], f\"rebase word sent after {item_id} merged\")) print(f\"rebase-word: {nxt['id']}\")",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 1893,
+        "end_line": 1893,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "One failing `launcher.py find` (find_handles raises Fail) stops the whole `resume`. No line prints for the items after it, and the slot count is not written. In the SessionStart hook this gives no context at all.",
+        "evidence": "        line, counts = resume_item(rec, rec.read()[\"items\"][item[\"id\"]], read_only)",
+        "suggested_fix": "Wrap resume_item in try/except Fail and print `<item> notice: <error>` for that item.",
+        "explanation": "The documented action `notice` covers \"a tool failed\", but the Fail from find_handles is not caught per item, so the command exits 1 part way through.",
+        "needs_context": false,
+        "fingerprint": "5058cb872597542f",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "raise Fail(f\"launcher.py find {launch['session_name']} exited {rc}: {last_line(err, 'no message')}\")",
+            "line, counts = resume_item(rec, rec.read()[\"items\"][item[\"id\"]], read_only)"
+          ],
+          "rationale": "`find_handles` raises `Fail` on a non-zero `find`, and `cmd_resume` has no per-item catch. One failing item aborts the command with exit 1, so later items print nothing and the slot count is not written.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "line, counts = resume_item(rec, rec.read()[\"items\"][item[\"id\"]], read_only)",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 1946,
+        "end_line": 1952,
+        "category": "bug",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "stop_old_poller sends SIGTERM to any `crew-orch.py ... wait` process with the stored pid. It does not check that the process is a poller of this record (`--orch <name>`).",
+        "evidence": "        os.kill(pid, signal.SIGTERM)",
+        "suggested_fix": "Also check that the ps command line names this record (`--orch <name>`, or the same CREW_ORCH).",
+        "explanation": "If the stored pid is stale and now belongs to the poller of another record, that poller gets killed.",
+        "needs_context": false,
+        "fingerprint": "26efb50b3eb9775b",
+        "severity": "suggestion",
+        "score": 88,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "if rc != 0 or not any(w.endswith(\"crew-orch.py\") for w in words) or \"wait\" not in words:",
+            "os.kill(pid, signal.SIGTERM)",
+            "state[\"wait_owner\"] = {\"token\": token, \"pid\": os.getpid()}"
+          ],
+          "rationale": "The check that guards the kill only looks for a word ending in `crew-orch.py` and a `wait` word. It never checks the record name, so a stale pid that the OS has reused for another record's poller would get SIGTERM. A pid only goes stale when a poller dies without running release_owner, and the reuse must then land on another crew-orch wait. That makes this a rare path.",
+          "score": 88,
+          "severity": "suggestion"
+        },
+        "span_text": "return rc, out, _ = sh([\"ps\", \"-o\", \"command=\", \"-p\", str(pid)], timeout=10) words = out.split() if rc != 0 or not any(w.endswith(\"crew-orch.py\") for w in words) or \"wait\" not in words: return try: os.kill(pid, signal.SIGTERM)",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 1078,
+        "end_line": 1078,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "medium",
+        "claim": "The sender name falls back to the record name when the session name cannot be found.",
+        "evidence": "return opts.get(\"from\") or current_session_name() or rec.name",
+        "suggested_fix": "Fail with a message to pass --from when the session name is unknown, instead of using the record name.",
+        "explanation": "Commit 9781b08 fixed the orchestrator to send its current session name and never the record name. Implementers reply to the name in the message, so a record-name fallback sends their replies to the wrong session. The same fallback is in finalize's merge and rebase words and in the close-item processes word.",
+        "needs_context": true,
+        "fingerprint": "76cec42a76a1664e",
+        "severity": "suggestion",
+        "score": 78,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "return opts.get(\"from\") or current_session_name() or rec.name",
+            "sender = sender or current_session_name() or rec.name",
+            "\"My session name is {me}; send to that name. The item is closing.",
+            "raise Fail(\"no principal: pass --principal <your session name>\")",
+            "to the current session name (the session file of `$CLAUDE_CODE_SESSION_ID`\nunder `~/.claude/sessions/`), then to the record name."
+          ],
+          "rationale": "I confirmed the fallback to the record name in `sender_name` and in `finalize`, and the `close-item` processes word uses that value in \"My session name is {me}; send to that name\". So after a rename, or when the session file is missing, implementers are told to reply to a name that may not be a live session. `launch` refuses in the same case. The fallback is documented in orchestrator-record.md and only runs on an unusual path, so this is a suggestion, not a blocker. I could not check commit 9781b08.",
+          "score": 78,
+          "severity": "suggestion"
+        },
+        "span_text": "return opts.get(\"from\") or current_session_name() or rec.name",
+        "sources": [
+          {
+            "reviewer": "history",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 11,
+        "end_line": 13,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "low",
+        "claim": "The module docstring cites \"the report of the build\" for the exit codes instead of orchestrator-record.md, which owns them.",
+        "evidence": "the report of the build says; each such exit prints one line `<command>",
+        "explanation": "The repo rule is that orchestrator-record.md owns each command's exit codes, and the build report is not a repo file.",
+        "needs_context": false,
+        "fingerprint": "baf41977b6b36358",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "writes nothing. `merge` exits 3 to 11 and `launch` exits 3 on a refusal, as\nthe report of the build says; each such exit prints one line `<command>",
+            "| Order | Check | Exit | It fails when |",
+            "A refusal that\nsets an exit code above 2 prints one stderr line, `crew-orch: <command>\n<check>: <detail>`."
+          ],
+          "rationale": "The new docstring line cites \"the report of the build\", which nobody keeps with the code. orchestrator-record.md's \"The sequence commands\" holds the exit-code table and the stderr line format. The pointer is wrong but harmless, and the fix is a cheap wording change.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "writes nothing. `merge` exits 3 to 11 and `launch` exits 3 on a refusal, as the report of the build says; each such exit prints one line `<command> <check>: <detail>`.",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          },
+          {
+            "reviewer": "docs-and-comments",
+            "pass": 1
+          }
+        ],
+        "suggested_fix": "Point at orchestrator-record.md's \"The sequence commands\"."
+      },
+      {
+        "file": "skills/orchestrator/scripts/crew-orch.py",
+        "start_line": 1104,
+        "end_line": 1106,
+        "category": "convention",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The machine-file path expression is written twice, and checkout_path re-parses sections instead of using the new section_text helper.",
+        "evidence": "config = os.environ.get(\"CREW_CONFIG\") or os.path.expanduser(\"~/.claude/crew/config.md\")",
+        "suggested_fix": "Add a config_path() helper and use section_text in checkout_path.",
+        "explanation": "The file already uses small shared helpers such as record_root and sessions_dir; this duplication breaks that pattern.",
+        "needs_context": true,
+        "fingerprint": "d04113c130f47dc6",
+        "severity": "nit",
+        "score": 92,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "config = os.environ.get(\"CREW_CONFIG\") or os.path.expanduser(\"~/.claude/crew/config.md\")",
+            "def section_text(text: str, heading: str):",
+            "        if re.match(r\"##(?!#)\", line):\n            inside = line == \"## Checkouts\"\n            continue"
+          ],
+          "rationale": "The change adds the same machine-file path expression in both merge_section (line 1144) and checkout_path (line 1434). checkout_path also parses `##` sections by hand, although the new section_text helper already does that. This duplication is real but minor, and it produces no wrong result.",
+          "score": 92,
+          "severity": "nit"
+        },
+        "span_text": "except ValueError: raise Code(10, f\"{label} gh: {what}: bad output\")",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "file": "CLAUDE.md",
+        "start_line": 9,
+        "end_line": 10,
+        "category": "docs",
+        "severity_estimate": "nit",
+        "confidence": "medium",
+        "claim": "The exceptions sentence still says \"two hooks\" and then lists a third hook beside them.",
+        "evidence": "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+        "suggested_fix": "Write \"the three hooks\" and name session-start.py's test once.",
+        "explanation": "The layout table now lists three hook scripts, so \"two hooks\" is wrong and the sentence reads inconsistently.",
+        "needs_context": false,
+        "fingerprint": "e94620763893c879",
+        "severity": "nit",
+        "score": 80,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,",
+            "| `hooks/hooks.json`, `hooks/session-end.py`, `hooks/pre-compact.py`, `hooks/session-start.py` |"
+          ],
+          "rationale": "The change added `hooks/session-start.py` right after \"two hooks\", but the layout table now lists three hook scripts, so a reader can take \"two hooks\" as a wrong count or as a list that names a third hook beside the two. The outcome is still correct, and the wording fix is cheap.",
+          "score": 80,
+          "severity": "nit"
+        },
+        "span_text": "two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`, the four scripts under `skills/project-lead/scripts/`,",
+        "sources": [
+          {
+            "reviewer": "conventions",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "github": {
+      "review_id": 6052106326,
+      "review_url": "https://github.com/jerridan/crew/pull/190#pullrequestreview-6052106326",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [
+        {
+          "fingerprint": "251e4e9521b2bc11",
+          "comment_id": 4690605105
+        },
+        {
+          "fingerprint": "1cc4ca22db4e448d",
+          "comment_id": 4690605110
+        },
+        {
+          "fingerprint": "f6b99e0773e58cb5",
+          "comment_id": 4690605122
+        },
+        {
+          "fingerprint": "3037254f8cef1db6",
+          "comment_id": 4690605128
+        },
+        {
+          "fingerprint": "5058cb872597542f",
+          "comment_id": 4690605134
+        },
+        {
+          "fingerprint": "26efb50b3eb9775b",
+          "comment_id": 4690605137
+        },
+        {
+          "fingerprint": "76cec42a76a1664e",
+          "comment_id": 4690605141
+        },
+        {
+          "fingerprint": "baf41977b6b36358",
+          "comment_id": 4690605146
+        },
+        {
+          "fingerprint": "d04113c130f47dc6",
+          "comment_id": 4690605147
+        },
+        {
+          "fingerprint": "e94620763893c879",
+          "comment_id": 4690605151
+        }
+      ],
+      "in_body": [],
+      "check_run": {
+        "id": 138991302109
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 11716,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 89584,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0089699,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1627,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 89097,
+            "webSearchRequests": 0,
+            "costUSD": 0.37278819999999996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.38175809999999993
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 12770,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 97410,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.009755,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 929,
+            "cacheReadInputTokens": 10456,
+            "cacheCreationInputTokens": 96919,
+            "webSearchRequests": 0,
+            "costUSD": 0.7960312,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 400,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.8057862
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 13890,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 127503,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0638215,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1516,
+            "cacheReadInputTokens": 148144,
+            "cacheCreationInputTokens": 128319,
+            "webSearchRequests": 0,
+            "costUSD": 0.5432583999999999,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1049,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.6070798999999999
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 15037,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 97396,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.009752100000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1376,
+            "cacheReadInputTokens": 10262,
+            "cacheCreationInputTokens": 96905,
+            "webSearchRequests": 0,
+            "costUSD": 0.8048204,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 176,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.8145725
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 17465,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 97400,
+            "outputTokens": 28,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.009754,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1610,
+            "cacheReadInputTokens": 10172,
+            "cacheCreationInputTokens": 96909,
+            "webSearchRequests": 0,
+            "costUSD": 0.8095144,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 844,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.8192684
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3729,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 97406,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.009753100000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 279,
+            "cacheReadInputTokens": 11231,
+            "cacheCreationInputTokens": 96919,
+            "webSearchRequests": 0,
+            "costUSD": 0.3915931,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.40134620000000004
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3698,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27064,
+            "outputTokens": 331,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028719,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 309,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 304,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 26573,
+            "webSearchRequests": 0,
+            "costUSD": 0.1097727,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1126446
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4048,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 43876,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0043996,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 427,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 43385,
+            "webSearchRequests": 0,
+            "costUSD": 0.1782507,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18265030000000002
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6274,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46680,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046785,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 468,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 46189,
+            "webSearchRequests": 0,
+            "costUSD": 0.1898767,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1945552
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10298,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46529,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046629,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 892,
+            "cacheReadInputTokens": 105744,
+            "cacheCreationInputTokens": 47117,
+            "webSearchRequests": 0,
+            "costUSD": 0.2079744,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 85,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2126373
+      },
+      {
+        "role": "verifier",
+        "verification": 4,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5974,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 665,
+            "cacheReadInputTokens": 45477,
+            "cacheCreationInputTokens": 17655,
+            "webSearchRequests": 0,
+            "costUSD": 0.0818297,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-haiku-5-5": {
+            "inputTokens": 16367,
+            "outputTokens": 236,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0017547,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 215,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0835844
+      },
+      {
+        "role": "verifier",
+        "verification": 5,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5611,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27048,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0027163,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 648,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 26557,
+            "webSearchRequests": 0,
+            "costUSD": 0.1131487,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 329,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.11586500000000001
+      },
+      {
+        "role": "verifier",
+        "verification": 6,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3662,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 43881,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0043991,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 415,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 43390,
+            "webSearchRequests": 0,
+            "costUSD": 0.1781507,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.18254979999999998
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 6910,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 27054,
+            "outputTokens": 287,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0028489,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 267,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 589,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 26559,
+            "webSearchRequests": 0,
+            "costUSD": 0.22513339999999998,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 213,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.22798229999999997
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 8896,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46672,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046792,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 730,
+            "cacheReadInputTokens": 54911,
+            "cacheCreationInputTokens": 46628,
+            "webSearchRequests": 0,
+            "costUSD": 0.39862220000000004,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 210,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.40330140000000003
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 6,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 13720,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 43857,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0043967,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 830,
+            "cacheReadInputTokens": 101279,
+            "cacheCreationInputTokens": 45712,
+            "webSearchRequests": 0,
+            "costUSD": 0.40257579999999993,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 122,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4069724999999999
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 16685,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46541,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0046661,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1257,
+            "cacheReadInputTokens": 107594,
+            "cacheCreationInputTokens": 49585,
+            "webSearchRequests": 0,
+            "costUSD": 0.4433628,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 340,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.4480289
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 144516,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 97398,
+            "outputTokens": 25,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0097523,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 26,
+            "outputTokens": 12860,
+            "cacheReadInputTokens": 1421826,
+            "cacheCreationInputTokens": 117012,
+            "webSearchRequests": 0,
+            "costUSD": 1.4777652,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 9221,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 1.4875175
+      },
+      {
+        "role": "verifier",
+        "verification": 10,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7209,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 47071,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004718600000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 596,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 46580,
+            "webSearchRequests": 0,
+            "costUSD": 0.19272070000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1974393
+      },
+      {
+        "role": "verifier",
+        "verification": 7,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7752,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46459,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004657400000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 727,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 45968,
+            "webSearchRequests": 0,
+            "costUSD": 0.1915827,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 190,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1962401
+      },
+      {
+        "role": "verifier",
+        "verification": 11,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 7755,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 47288,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0047403,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 585,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 46797,
+            "webSearchRequests": 0,
+            "costUSD": 0.1934787,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 135,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.198219
+      },
+      {
+        "role": "verifier",
+        "verification": 8,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 10502,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 47050,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004718000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 1005,
+            "cacheReadInputTokens": 55293,
+            "cacheCreationInputTokens": 47916,
+            "webSearchRequests": 0,
+            "costUSD": 0.20725130000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 434,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.21196930000000003
+      },
+      {
+        "role": "verifier",
+        "verification": 9,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 11252,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46937,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0047037,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 871,
+            "cacheReadInputTokens": 106290,
+            "cacheCreationInputTokens": 47773,
+            "webSearchRequests": 0,
+            "costUSD": 0.210443,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 207,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2151467
+      },
+      {
+        "role": "verifier",
+        "verification": 12,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5220,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 47379,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0047509,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 513,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 46888,
+            "webSearchRequests": 0,
+            "costUSD": 0.1931227,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1978736
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 7,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 12987,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46453,
+            "outputTokens": 23,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004656800000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 1176,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 45958,
+            "webSearchRequests": 0,
+            "costUSD": 0.3920654,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 602,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3967222
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 12,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 10151,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 47365,
+            "outputTokens": 29,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004751,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 814,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 46870,
+            "webSearchRequests": 0,
+            "costUSD": 0.3921214,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 395,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.3968724
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 9,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 21418,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 46935,
+            "outputTokens": 21,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.004704,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1782,
+            "cacheReadInputTokens": 162591,
+            "cacheCreationInputTokens": 52597,
+            "webSearchRequests": 0,
+            "costUSD": 0.4889662000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 714,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.49367020000000006
+      },
+      {
+        "role": "merge",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 1890,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 1732,
+            "outputTokens": 26,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0001862,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 190,
+            "cacheReadInputTokens": 1062,
+            "cacheCreationInputTokens": 1245,
+            "webSearchRequests": 0,
+            "costUSD": 0.0069902,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0071764
+      }
+    ],
+    "total_cost_usd": 10.399429699999999,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 50,
+      "gather": 453,
+      "triage": 12761,
+      "find_verify": 180170,
+      "merge": 2655
+    },
+    "errors": []
+  }
+}

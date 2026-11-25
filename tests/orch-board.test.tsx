@@ -1157,3 +1157,35 @@ test('R2 the last page is full: it shows bodyRows lines', async ($, on) => {
   expect(lineNodes(tree).length).toBe(8)
   await ui.unmount()
 })
+
+// ---------------------------------------------------------------- routine events (orch-commands F6)
+
+test('R7 the pane draws the routine events of the board, in the order of the data', async ($, on) => {
+  const data = board({
+    sections: [singles([row(1, 'alpha')])],
+    events: [
+      { at: '2026-11-24T10:00:00Z', item: 'alpha', text: 'merged PR #7', age: '5m' },
+      { at: '2026-11-24T10:01:00Z', item: '-', text: 'mode slowed', age: '4m' },
+    ],
+  })
+  world(on, [data])
+  await command($, 'x')
+  for (const surface of SURFACES) {
+    const ui = await mount($, surface)
+    const tree = await ui.drawn()
+    expect(words(byKey(tree, 'recent'))).toContain('Recent')
+    expect(words(byKey(tree, 'event-0'))).toContain('5m alpha merged PR #7')
+    expect(words(byKey(tree, 'event-1'))).toContain('4m - mode slowed')
+    await ui.unmount()
+  }
+})
+
+test('R7 a board with no events key draws no Recent block', async ($, on) => {
+  world(on, [board({ sections: [singles([row(1, 'alpha')])] })])
+  await command($, 'x')
+  const ui = await mount($)
+  const tree = await ui.drawn()
+  expect(byKey(tree, 'recent')).toBeUndefined()
+  expect(keys(tree).filter(k => k.startsWith('event-'))).toHaveLength(0)
+  await ui.unmount()
+})

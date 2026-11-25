@@ -53,18 +53,44 @@ PY
 }
 
 # The stub gh. It answers `gh pr view <n> ...` from $TMP/gh/pr-<n>.json and
-# `gh api graphql ... -F n=<n>` from $TMP/gh/queue-<n>.json. A missing file
-# is a failed call.
+# `gh api graphql ... -F n=<n>` from $TMP/gh/queue-<n>.json, or from
+# threads-<n>.json when the query names reviewThreads (no file: no thread).
+# It also answers `pr diff` from files-<n>.txt, `repo view` from repo-view.json,
+# `api repos/...` from contents.json, `issue view` and `issue close`, and
+# `pr merge <n>`: it logs the call and sets the state of pr-<n>.json to MERGED,
+# unless the file $TMP/gh/queue-mode exists. A missing file is a failed call.
 cat >"$TMP/bin/gh" <<EOF
 #!/usr/bin/env bash
 D="$TMP/gh"
 echo "\$*" >>"\$D/calls.log"
 if [ "\$1" = pr ] && [ "\$2" = view ]; then
   f="\$D/pr-\$3.json"
+elif [ "\$1" = pr ] && [ "\$2" = diff ]; then
+  f="\$D/files-\$3.txt"
+elif [ "\$1" = pr ] && [ "\$2" = merge ]; then
+  [ ! -f "\$D/merge-fails" ] || { echo "merge refused by stub" >&2; exit 1; }
+  [ -f "\$D/queue-mode" ] || python3 - "\$D/pr-\$3.json" <<'PYG'
+import json, sys
+d = json.load(open(sys.argv[1])); d["state"] = "MERGED"
+json.dump(d, open(sys.argv[1], "w"))
+PYG
+  exit 0
+elif [ "\$1" = repo ] && [ "\$2" = view ]; then
+  f="\$D/repo-view.json"
 elif [ "\$1" = api ] && [ "\$2" = graphql ]; then
   n=""
   for a in "\$@"; do case "\$a" in n=*) n="\${a#n=}" ;; esac; done
-  f="\$D/queue-\$n.json"
+  case "\$*" in
+    *reviewThreads*) f="\$D/threads-\$n.json"
+       [ -f "\$f" ] || { echo '{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[]}}}}}'; exit 0; } ;;
+    *) f="\$D/queue-\$n.json" ;;
+  esac
+elif [ "\$1" = api ]; then
+  f="\$D/contents.json"
+elif [ "\$1" = issue ] && [ "\$2" = view ]; then
+  f="\$D/issue-\$3.json"
+elif [ "\$1" = issue ] && [ "\$2" = close ]; then
+  exit 0
 else
   echo "stub gh: unknown call: \$*" >&2; exit 1
 fi
@@ -1173,6 +1199,510 @@ python3 "$ORCH_PY" --orch oldrec show >"$TMP/old.json" || fail "show of an old r
 python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); sys.exit(0 if "closed_at" in s and s["closed_at"] is None else 1)' "$TMP/old.json" \
   || fail "an old record does not show closed_at null"
 expect_exit 0 python3 "$ORCH_PY" --orch oldrec close
+pass
+
+# ---------------------------------------------------------------- merge (R1)
+# A record of its own: two items in group g (a before b, one shared file), and
+# single items for the refusals. A stub window-watch records each `say`.
+morch() { python3 "$ORCH_PY" --orch mrg "$@"; }
+export CREW_CONFIG="$TMP/no-config.md"
+MD="$CREW_RECORD_ROOT/orchestrators/mrg"
+mjcheck() {
+  python3 "$ORCH_PY" --orch mrg show >"$TMP/mshow.json" || fail "show failed"
+  python3 - "$TMP/mshow.json" "$1" <<'PYM' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PYM
+}
+cat >"$TMP/bin/watchstub" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >>"$TMP/watch.log"
+echo said
+EOF
+chmod +x "$TMP/bin/watchstub"
+export CREW_ORCH_WATCH="$TMP/bin/watchstub"
+: >"$TMP/watch.log"
+SHA1=aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111
+# seed_pr <n> <sha> [<check conclusion>] [<review decision>]: a green PR by default.
+seed_pr() {
+  local n=$1 sha=$2 concl=${3:-SUCCESS} dec=${4:-APPROVED} status=COMPLETED
+  [ "$concl" = PENDING ] && { status=IN_PROGRESS; concl=""; }
+  cat >"$TMP/gh/pr-$n.json" <<EOF
+{"state": "OPEN", "isDraft": false, "reviewDecision": "$dec", "mergeStateStatus": "CLEAN",
+ "headRefOid": "$sha", "author": {"login": "imp"}, "reviews": [], "comments": [],
+ "statusCheckRollup": [{"__typename": "CheckRun", "name": "test", "status": "$status", "conclusion": "$concl", "startedAt": "2026-11-24T10:00:00Z"}]}
+EOF
+  echo '{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}' >"$TMP/gh/queue-$n.json"
+  printf 'src/x.py\n' >"$TMP/gh/files-$n.txt"
+}
+echo '{"defaultBranchRef": {"name": "main"}, "rebaseMergeAllowed": true, "squashMergeAllowed": true, "mergeCommitAllowed": true}' >"$TMP/gh/repo-view.json"
+expect_exit 0 morch init
+expect_exit 0 morch group add g --title Group
+expect_exit 0 morch item add a --title A --repo owner/mr --group g
+expect_exit 0 morch item add b --title B --repo owner/mr --group g
+expect_exit 0 morch group g order a,b
+for i in c d e f g h; do expect_exit 0 morch item add $i --title "Item $i" --repo owner/mr; done
+n=701; for i in a b c d e f g h; do expect_exit 0 morch item $i pr $n; n=$((n + 1)); done
+expect_exit 0 morch item b set launch '{"session_name": "sess-b", "worktree": "/x/b"}'
+expect_exit 0 morch pace set '{"slots": {"busy": 2, "max": 3}}'
+# a is a delivered item: a goal record names it.
+mkdir -p "$CREW_RECORD_ROOT/goal-a"
+echo '{"run": {"run_state": "delivered", "orchestrator": {"name": "mrg", "item": "a"}}}' >"$CREW_RECORD_ROOT/goal-a/state.json"
+seed_pr 701 $SHA1
+seed_pr 702 bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222
+seed_pr 703 cccc3333cccc3333cccc3333cccc3333cccc3333
+seed_pr 704 dddd4444dddd4444dddd4444dddd4444dddd4444
+seed_pr 705 eeee5555eeee5555eeee5555eeee5555eeee5555
+seed_pr 706 ffff6666ffff6666ffff6666ffff6666ffff6666 PENDING
+seed_pr 707 1111777711117777111177771111777711117777
+seed_pr 708 2222888822228888222288882222888822228888
+
+STEP="R1 (b) a ready line for an old head refuses with exit 4"
+expect_exit 4 morch merge c --ready "ready 9999999: fixed it"
+one_line_err
+grep -q '^crew-orch: merge ready: ' "$TMP/err" || fail "bad stderr: $(cat "$TMP/err")"
+! grep -q 'pr merge' "$TMP/gh/calls.log" || fail "gh pr merge ran"
+mjcheck 's["items"]["c"]["ready"]["sha"] == "9999999"'
+pass
+
+STEP="R1 a head with no ready line is pending: exit 11, and no merge"
+expect_exit 11 morch merge h
+one_line_err
+grep -q '^crew-orch: merge pending: ' "$TMP/err" || fail "bad stderr: $(cat "$TMP/err")"
+pass
+
+STEP="R1 (c) an unresolved review thread refuses with exit 5"
+cat >"$TMP/gh/threads-704.json" <<'EOF'
+{"data": {"repository": {"pullRequest": {"reviewThreads": {"nodes": [{"isResolved": false}, {"isResolved": true}]}}}}}
+EOF
+expect_exit 5 morch merge d --ready "ready dddd444: ok"
+one_line_err
+grep -q '^crew-orch: merge threads: ' "$TMP/err" || fail "bad stderr: $(cat "$TMP/err")"
+pass
+
+STEP="R1 (d) a finding outside a thread refuses with exit 6 unless --findings-answered"
+python3 - "$TMP/gh/pr-705.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["reviews"] = [{"author": {"login": "rev"}, "state": "COMMENTED", "body": "Please rename the helper, it is not clear what it does at all here and so on " * 3}]
+d["comments"] = [{"author": {"login": "imp"}, "body": "own comment"}]
+json.dump(d, open(sys.argv[1], "w"))
+PY
+expect_exit 6 morch merge e --ready "ready eeee555: ok"
+one_line_err
+grep -q 'rev' "$TMP/out" || fail "the finding is not printed: $(cat "$TMP/out")"
+grep -q 'Please rename' "$TMP/out" || fail "the finding text is not printed"
+! grep -q 'own comment' "$TMP/out" || fail "the PR author's own comment counts as a finding"
+! grep -q 'pr merge 705' "$TMP/gh/calls.log" || fail "gh pr merge ran"
+pass
+
+STEP="R1 (e) a pending check queues with --when-green and exits 0, else exits 11"
+expect_exit 11 morch merge f --ready "ready ffff666: ok"
+expect_exit 0 morch merge f --when-green
+mjcheck 's["merge_queue"] == ["f"]'
+! grep -q 'pr merge 706' "$TMP/gh/calls.log" || fail "gh pr merge ran for a pending PR"
+pass
+
+STEP="R1 (f) a Merge section stops before the method with exit 9 and prints its text"
+printf '# Crew\n\n## Merge\n\nPost the link in the review channel.\n\n## Other\n\nx\n' | python3 -c 'import base64,json,sys; print(json.dumps({"content": base64.b64encode(sys.stdin.read().encode()).decode(), "encoding": "base64"}))' >"$TMP/gh/contents.json"
+expect_exit 9 morch merge g --ready "ready 1111777: ok"
+grep -q 'Post the link in the review channel' "$TMP/out" || fail "the Merge section text is not printed: $(cat "$TMP/out")"
+! grep -q 'pr merge 707' "$TMP/gh/calls.log" || fail "gh pr merge ran with a Merge section"
+rm -f "$TMP/gh/contents.json"
+pass
+
+STEP="R1 (a) a green PR merges by rebase with the head sha, then the words, the slot and the events"
+expect_exit 0 morch merge a --ready "ready aaaa1111aaaa: fine"
+grep -q "pr merge 701 --repo owner/mr --rebase --match-head-commit $SHA1" "$TMP/gh/calls.log" || fail "no rebase merge with the sha: $(grep 'pr merge' "$TMP/gh/calls.log")"
+mjcheck 's["pace"]["slots"]["busy"] == 1'
+grep -q -- '--item mrg/a ' "$TMP/watch.log" || fail "no merge word by say: $(cat "$TMP/watch.log")"
+grep -q 'send-to: sess-b' "$TMP/out" || fail "no send-to line for the rebase word: $(cat "$TMP/out")"
+mjcheck 'len(s["items"]["b"]["told"]) == 1'
+grep -qi 'rebase' "$MD/told/b-1.md" || fail "the rebase word is not recorded in told"
+mjcheck 'any(e["item"] == "a" and "merged" in e["text"] for e in s["events"]) and any(e["item"] == "b" and "rebase" in e["text"] for e in s["events"])'
+mjcheck 's["items"]["a"]["slot_released"] is True'
+pass
+
+STEP="R1 a second merge of a merged item releases no second slot"
+expect_exit 0 morch merge a
+mjcheck 's["pace"]["slots"]["busy"] == 1'
+pass
+
+STEP="R7 a merge event shows on board --json"
+morch board --json >"$TMP/board.json" || fail "board --json failed"
+python3 - "$TMP/board.json" <<'PY' || fail "no merge event on the board JSON"
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert any("merged" in e["text"] and e["item"] == "a" for e in d["events"]), d.get("events")
+PY
+pass
+
+STEP="R1 (F1) a merge into a queue exits 0, sends no word, and keeps the slot"
+touch "$TMP/gh/queue-mode"
+before=$(wc -l <"$TMP/watch.log")
+expect_exit 0 morch merge c --ready "ready cccc333: ok"
+[ "$(wc -l <"$TMP/watch.log")" -eq "$before" ] || fail "a word went out for a PR that is not merged"
+mjcheck 's["pace"]["slots"]["busy"] == 1 and not s["items"]["c"].get("slot_released")'
+mjcheck 'any(e["item"] == "c" and "queued" in e["text"] for e in s["events"])'
+rm -f "$TMP/gh/queue-mode"
+pass
+
+STEP="R1 a failed gh pr merge exits 10"
+touch "$TMP/gh/merge-fails"
+expect_exit 10 morch merge c
+one_line_err
+rm -f "$TMP/gh/merge-fails"
+pass
+
+STEP="R1 --findings-answered lets a PR with findings merge"
+expect_exit 0 morch merge e --findings-answered
+grep -q 'pr merge 705 ' "$TMP/gh/calls.log" || fail "no merge for e"
+mjcheck 's["pace"]["slots"]["busy"] == 0'
+pass
+
+STEP="R1 (F1) a PR closed with no merge releases its slot once, and sends no merge word"
+python3 - "$TMP/gh/pr-704.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1])); d["state"] = "CLOSED"
+json.dump(d, open(sys.argv[1], "w"))
+PY
+expect_exit 0 morch pace set '{"slots": {"busy": 2}}'
+expect_exit 0 morch finalize d
+expect_exit 0 morch finalize d
+mjcheck 's["items"]["d"]["slot_released"] is True and s["pace"]["slots"]["busy"] == 1'
+pass
+
+# ---------------------------------------------------------------- send (R2)
+STEP="R2 a delivered item gets a say line and a told entry"
+echo hi-delivered >"$TMP/msg.txt"
+: >"$TMP/watch.log"
+expect_exit 0 morch send a --text "check the merge" --from boss
+grep -q '^said: a$' "$TMP/out" || fail "no said line: $(cat "$TMP/out")"
+grep -q -- '--item mrg/a --from boss check the merge' "$TMP/watch.log" || fail "no say call: $(cat "$TMP/watch.log")"
+mjcheck 'len(s["items"]["a"]["told"]) == 2'
+pass
+
+STEP="R2 a live item gets a told entry and the send-to lines, and no script sends it"
+expect_exit 0 morch send b --file "$TMP/msg.txt" --from boss
+grep -q '^send-to: sess-b$' "$TMP/out" || fail "no send-to line: $(cat "$TMP/out")"
+path=$(sed -n 's/^told: //p' "$TMP/out")
+[ "$(cat "$path")" = "hi-delivered" ] || fail "told copy differs: $path"
+! grep -q 'sess-b' "$TMP/watch.log" || fail "a live item went through say"
+pass
+
+STEP="R2 send needs --text or --file, not both, and refuses a subagent item"
+expect_exit 2 morch send b
+expect_exit 2 morch send b --text x --file "$TMP/msg.txt"
+expect_exit 0 morch item add sub1 --title Sub --repo owner/mr
+expect_exit 0 morch item sub1 set subagent '{"name": "sub-sub1", "model": "sonnet"}'
+expect_exit 1 morch send sub1 --text x
+one_line_err
+pass
+
+STEP="R1 (F2) a live item's word stays as a pending handoff until it is cleared"
+mjcheck 'any(h["item"] == "b" and h["name"] == "sess-b" and h["path"].startswith("told/b-") for h in s["handoffs"])'
+mjcheck 'not any(h["item"] == "a" for h in s["handoffs"])'
+expect_exit 0 morch handoff clear b
+grep -q '^cleared: 1$' "$TMP/out" || fail "bad clear output: $(cat "$TMP/out")"
+mjcheck 's["handoffs"] == []'
+pass
+
+# ---------------------------------------------------------------- launch (R3)
+lorch() { python3 "$ORCH_PY" --orch lch "$@"; }
+LD="$CREW_RECORD_ROOT/orchestrators/lch"
+ljcheck() {
+  python3 "$ORCH_PY" --orch lch show >"$TMP/lshow.json" || fail "show failed"
+  python3 - "$TMP/lshow.json" "$1" <<'PYL' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PYL
+}
+mkdir -p "$TMP/co" "$TMP/sessions"
+git -C "$TMP/co" init -q . || fail "git init"
+REALCO=$(cd "$TMP/co" && pwd -P)
+echo "## Checkouts
+
+- owner/lr: $TMP/co
+" >"$TMP/config.md"
+export CREW_CONFIG="$TMP/config.md"
+export CREW_SESSIONS_DIR="$TMP/sessions"
+echo '{"sessionId": "orchsess", "name": "principal-x"}' >"$TMP/sessions/1.json"
+cat >"$TMP/bin/launchstub" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >>"$TMP/launcher.log"
+if [ "\$1" = start ]; then
+  name=""
+  while [ \$# -gt 0 ]; do [ "\$1" = --name ] && name="\$2"; shift; done
+  [ -f "$TMP/no-session" ] || echo "{\"sessionId\": \"i-\$name\", \"name\": \"\$name\"}" >"$TMP/sessions/\$name.json"
+  echo "{\"session_name\": \"\$name\", \"repo\": \"owner/lr\", \"worktree\": \"$REALCO/.claude/worktrees/\$name\", \"branch\": \"worktree-\$name\", \"base\": \"origin/main\", \"model\": \"sonnet\", \"terminal\": \"tmux\", \"tab\": \"tmux:%7\", \"tab_group\": \"lg\", \"session_id\": \"uuid-\$name\"}"
+fi
+EOF
+chmod +x "$TMP/bin/launchstub"
+cat >"$TMP/bin/usagestub" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >>"$TMP/usage.log"
+[ "\$1" = settings ] && echo '{"statusLine": {"type": "command", "command": "stub"}}'
+exit 0
+EOF
+chmod +x "$TMP/bin/usagestub"
+export CREW_ORCH_LAUNCHER="$TMP/bin/launchstub" CREW_USAGE_CMD="$TMP/bin/usagestub"
+export CLAUDE_CODE_SESSION_ID=orchsess
+: >"$TMP/launcher.log"; : >"$TMP/usage.log"
+expect_exit 0 lorch init
+STEP="R9 init stores the orchestrator session id from CLAUDE_CODE_SESSION_ID"
+ljcheck 's.get("orchestrator_session_id") == "orchsess"'
+pass
+
+for i in l1 l2 l3; do expect_exit 0 lorch item add $i --title "Launch $i" --repo owner/lr; done
+echo "the goal of l1" >"$TMP/goal.md"
+
+STEP="R3 launch runs start with the settings, the principal name and the model, and writes launch and the slot"
+expect_exit 0 lorch launch l1 --model sonnet --group lg --terminal tmux --goal-file "$TMP/goal.md" --wait-seconds 3
+grep -q -- "settings --cwd $REALCO/.claude/worktrees/l1" "$TMP/usage.log" || fail "no settings call: $(cat "$TMP/usage.log")"
+grep -q -- '^start --name l1 --model sonnet --settings .* --principal principal-x --repo owner/lr --group lg --terminal tmux' "$TMP/launcher.log" || fail "bad start call: $(cat "$TMP/launcher.log")"
+ljcheck 's["items"]["l1"]["launch"]["session_name"] == "l1" and s["items"]["l1"]["launch"]["tab"] == "tmux:%7"'
+ljcheck 's["pace"]["slots"]["busy"] == 1'
+[ "$(cat "$LD/told/l1-1.md")" = "the goal of l1" ] || fail "the goal is not the first told entry"
+grep -q '^goal-ready: l1$' "$TMP/out" || fail "no goal-ready line: $(cat "$TMP/out")"
+pass
+
+STEP="R3 the principal override wins, and a session that never shows prints goal-wait"
+touch "$TMP/no-session"
+expect_exit 0 lorch launch l2 --principal boss-y --wait-seconds 1
+grep -q -- '--principal boss-y' "$TMP/launcher.log" || fail "the override was not used"
+grep -q '^goal-wait: ' "$TMP/out" || fail "no goal-wait line: $(cat "$TMP/out")"
+rm -f "$TMP/no-session"
+ljcheck 's["pace"]["slots"]["busy"] == 2'
+pass
+
+STEP="R3 launch refuses at slowed and at a full slot count with exit 3, and writes nothing"
+expect_exit 0 lorch pace set '{"mode": "slowed"}'
+expect_exit 3 lorch launch l3 --wait-seconds 1
+one_line_err
+expect_exit 0 lorch pace set '{"mode": "normal", "slots": {"max": 2}}'
+expect_exit 3 lorch launch l3 --wait-seconds 1
+one_line_err
+ljcheck 's["items"]["l3"]["launch"] == {} and s["pace"]["slots"]["busy"] == 2'
+[ "$(grep -c '^start ' "$TMP/launcher.log")" -eq 2 ] || fail "start ran for a refused launch"
+pass
+
+# ---------------------------------------------------------------- close-item (R4)
+# The launcher stub learns find, stop, remove and resume. `find <name>` prints
+# $TMP/find-<name>.txt; `remove <path>` prints $TMP/remove-<basename>.json
+# (a default clean removal) and exits with the number in remove-<basename>.rc.
+cat >"$TMP/bin/launchstub" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >>"$TMP/launcher.log"
+sub=\$1
+case "\$sub" in
+  start|resume)
+    name=""; prev=""
+    for a in "\$@"; do [ "\$prev" = --name ] && name="\$a"; prev="\$a"; done
+    [ "\$sub" = resume ] || [ -f "$TMP/no-session" ] || echo "{\"sessionId\": \"i-\$name\", \"name\": \"\$name\"}" >"$TMP/sessions/\$name.json"
+    echo "{\"session_name\": \"\$name\", \"repo\": \"owner/lr\", \"worktree\": \"$REALCO/.claude/worktrees/\$name\", \"branch\": \"worktree-\$name\", \"base\": \"origin/main\", \"model\": \"sonnet\", \"terminal\": \"tmux\", \"tab\": \"tmux:%7\", \"tab_group\": \"lg\", \"session_id\": \"uuid-\$name\"}" ;;
+  find) [ -f "$TMP/find-\$2.txt" ] && cat "$TMP/find-\$2.txt"; exit 0 ;;
+  stop) echo "stopped"; exit 0 ;;
+  remove)
+    base=\$(basename "\$2")
+    if [ -f "$TMP/remove-\$base.json" ]; then cat "$TMP/remove-\$base.json"
+    else echo '{"worktree": "'"\$2"'", "removed": true, "stopped": [], "kept": [], "changed": [], "branch": null, "branches": [], "lock": null}'; fi
+    [ -f "$TMP/remove-\$base.rc" ] && exit "\$(cat "$TMP/remove-\$base.rc")"
+    exit 0 ;;
+esac
+EOF
+chmod +x "$TMP/bin/launchstub"
+corch() { python3 "$ORCH_PY" --orch cls "$@"; }
+CLD="$CREW_RECORD_ROOT/orchestrators/cls"
+cjcheck() {
+  python3 "$ORCH_PY" --orch cls show >"$TMP/cshow.json" || fail "show failed"
+  python3 - "$TMP/cshow.json" "$1" <<'PYC' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PYC
+}
+: >"$TMP/launcher.log"; : >"$TMP/watch.log"
+expect_exit 0 corch init
+n=1
+for i in c1 c2 c3 c4 c5 c6; do
+  expect_exit 0 corch item add $i --title "Close $i" --repo owner/cl
+  expect_exit 0 corch item $i set launch "{\"session_name\": \"$i\", \"worktree\": \"$TMP/wt/$i\", \"tab\": \"tmux:%$n\", \"session_id\": \"sid-$i\"}"
+  n=$((n + 1))
+done
+expect_exit 0 corch item c1 pr 801
+expect_exit 0 corch item c1 set ticket '{"id": "12", "url": "https://github.com/owner/cl/issues/12"}'
+expect_exit 0 corch item c6 pr 806
+for i in c1 c2 c3 c4 c5; do expect_exit 0 corch stage $i shipped; done
+expect_exit 0 corch stage c6 closed
+echo '{"state": "OPEN"}' >"$TMP/gh/issue-12.json"
+mkdir -p "$CREW_RECORD_ROOT/goal-c5"
+echo '{"run": {"run_state": "delivered", "orchestrator": {"name": "cls", "item": "c5"}}}' >"$CREW_RECORD_ROOT/goal-c5/state.json"
+
+STEP="R4 the first call sends the processes message and records that it asked"
+expect_exit 0 corch close-item c1
+grep -q '^send-to: c1$' "$TMP/out" || fail "no send-to line: $(cat "$TMP/out")"
+grep -q 'Orchestrator: cls, item c1' "$CLD/told/c1-1.md" || fail "no Orchestrator line in the processes message"
+grep -qi 'stop each process' "$CLD/told/c1-1.md" || fail "the message does not ask for the processes"
+cjcheck 's["items"]["c1"]["close_asked_at"] is not None'
+! grep -q '^stop \|^remove ' "$TMP/launcher.log" || fail "the first call stopped or removed"
+pass
+
+STEP="R4 a delivered item gets its processes message by say"
+expect_exit 0 corch close-item c5
+grep -q '^said: c5$' "$TMP/out" || fail "no said line: $(cat "$TMP/out")"
+grep -q -- '--item cls/c5 ' "$TMP/watch.log" || fail "no say call"
+pass
+
+STEP="R4 --continue on a merged item stops, removes the branch and the PR branch, and closes the open ticket"
+expect_exit 0 corch close-item c1 --continue
+grep -q '^stop tmux:%1 --name c1 --session-id sid-c1$' "$TMP/launcher.log" || fail "bad stop call: $(cat "$TMP/launcher.log")"
+grep -q "^remove $TMP/wt/c1 --delete-branch --pr 801\$" "$TMP/launcher.log" || fail "bad remove call: $(cat "$TMP/launcher.log")"
+grep -q 'issue view 12 --repo owner/cl' "$TMP/gh/calls.log" || fail "no issue view"
+grep -q 'issue close 12 --repo owner/cl' "$TMP/gh/calls.log" || fail "the open issue was not closed"
+grep -q '^stop: ' "$TMP/out" && grep -q '^remove: ' "$TMP/out" && grep -q '^ticket: ' "$TMP/out" || fail "a step has no line: $(cat "$TMP/out")"
+pass
+
+STEP="R4 an item with no PR removes with --delete-branch alone, and a closed PR with no flag"
+expect_exit 0 corch close-item c2 --continue
+grep -q "^remove $TMP/wt/c2 --delete-branch\$" "$TMP/launcher.log" || fail "bad remove call for c2: $(grep '^remove' "$TMP/launcher.log")"
+expect_exit 0 corch close-item c6 --continue
+grep -q "^remove $TMP/wt/c6\$" "$TMP/launcher.log" || fail "bad remove call for c6: $(grep '^remove' "$TMP/launcher.log")"
+pass
+
+STEP="R4 a kept branch gives one inbox notice"
+echo '{"worktree": "x", "removed": true, "stopped": [], "kept": [], "changed": [], "branch": "worktree-c3", "branches": [{"name": "worktree-c3", "deleted": false, "unproven_commits": ["abc123"], "checked_out": null}], "lock": null}' >"$TMP/remove-c3.json"
+expect_exit 0 corch close-item c3 --continue
+cjcheck 'len([e for e in s["inbox"] if e["kind"] == "notice" and e["item"] == "c3" and "worktree-c3" in e["text"]]) == 1'
+pass
+
+STEP="R4 a kept process is printed, and --stop-processes runs remove again with the flag"
+echo '{"worktree": "x", "removed": false, "stopped": [], "kept": [{"pid": 77, "tty": null, "command": "node server.js"}], "changed": [], "branch": null, "branches": [], "lock": null}' >"$TMP/remove-c4.json"
+echo 9 >"$TMP/remove-c4.rc"
+expect_exit 0 corch close-item c4 --continue
+grep -q '^kept-process: 77 node server.js$' "$TMP/out" || fail "the kept process is not printed: $(cat "$TMP/out")"
+cjcheck 'not [e for e in s["inbox"] if e["item"] == "c4"]'
+rm -f "$TMP/remove-c4.json" "$TMP/remove-c4.rc"
+expect_exit 0 corch close-item c4 --continue --stop-processes
+grep -q "^remove $TMP/wt/c4 --delete-branch --stop-processes\$" "$TMP/launcher.log" || fail "no --stop-processes call: $(grep '^remove' "$TMP/launcher.log")"
+pass
+
+# ---------------------------------------------------------------- digest (R6)
+dorch() { python3 "$ORCH_PY" --orch dig "$@"; }
+expect_exit 0 dorch init
+expect_exit 0 dorch group add g --title Group
+expect_exit 0 dorch item add x --title X --repo owner/dg --group g
+expect_exit 0 dorch item add y --title Y --repo owner/dg --group g
+expect_exit 0 dorch group g order x,y
+expect_exit 0 dorch item x pr 901
+expect_exit 0 dorch item y pr 902
+seed_pr 901 9019019019019019019019019019019019019019
+seed_pr 902 9029029029029029029029029029029029029029
+printf 'src/x.py\nsrc/a.py\n' >"$TMP/gh/files-901.txt"
+printf 'src/x.py\nsrc/b.py\n' >"$TMP/gh/files-902.txt"
+python3 - "$TMP/gh/pr-901.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["files"] = [{"path": "src/x.py", "additions": 10, "deletions": 2}, {"path": "src/a.py", "additions": 4, "deletions": 0}]
+d["reviews"] = [{"author": {"login": "rev"}, "state": "COMMENTED", "body": "Rename the helper."}]
+json.dump(d, open(sys.argv[1], "w"))
+PY
+cat >"$TMP/gh/threads-901.json" <<'EOF'
+{"data": {"repository": {"pullRequest": {"reviewThreads": {"nodes": [{"isResolved": false}, {"isResolved": true}]}}}}}
+EOF
+printf 'Build the widget.\nIt has two parts.\n' >"$TMP/brief.md"
+expect_exit 0 dorch told x --file "$TMP/brief.md"
+
+STEP="R6 the digest names the brief, the files, the threads, the findings, the CI state, the shared files and the order"
+expect_exit 0 dorch digest x
+grep -q '^brief: Build the widget. It has two parts.$' "$TMP/out" || fail "no brief: $(cat "$TMP/out")"
+grep -q '^file: src/x.py +10 -2$' "$TMP/out" || fail "no file line: $(cat "$TMP/out")"
+grep -q '^threads: 1 unresolved$' "$TMP/out" || fail "no threads line: $(cat "$TMP/out")"
+grep -q '^finding: rev review Rename the helper.$' "$TMP/out" || fail "no finding line: $(cat "$TMP/out")"
+grep -q '^ci: pass$' "$TMP/out" || fail "no ci line: $(cat "$TMP/out")"
+grep -q '^shared with y: src/x.py$' "$TMP/out" || fail "no shared line: $(cat "$TMP/out")"
+grep -q '^order: x, y$' "$TMP/out" || fail "no order line: $(cat "$TMP/out")"
+pass
+
+STEP="R6 --diff-file writes the brief and the diff in one file"
+expect_exit 0 dorch digest x --diff-file "$TMP/brief-diff.md"
+grep -q 'Build the widget' "$TMP/brief-diff.md" || fail "the diff file has no brief"
+grep -q 'src/a.py' "$TMP/brief-diff.md" || fail "the diff file has no diff"
+pass
+
+# ---------------------------------------------------------------- resume (R9)
+rorch() { python3 "$ORCH_PY" --orch rsm "$@"; }
+RD="$CREW_RECORD_ROOT/orchestrators/rsm"
+rjcheck() {
+  python3 "$ORCH_PY" --orch rsm show >"$TMP/rshow.json" || fail "show failed"
+  python3 - "$TMP/rshow.json" "$1" <<'PYR' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PYR
+}
+expect_exit 0 rorch init
+for i in r1 r2 r3 r4 r5 r6 r7 r8 r9; do
+  expect_exit 0 rorch item add $i --title "Resume $i" --repo owner/lr
+done
+mkdir -p "$TMP/wt/r2" "$TMP/wt/r1" "$TMP/wt/r4" "$TMP/wt/r5" "$TMP/wt/r6"
+n=1
+for i in r1 r2 r3 r4 r5 r6 r7 r9; do
+  expect_exit 0 rorch item $i set launch "{\"session_name\": \"$i\", \"worktree\": \"$TMP/wt/$i\", \"tab\": \"tmux:%$n\", \"session_id\": \"sid-$i\", \"model\": \"sonnet\", \"terminal\": \"tmux\"}"
+  n=$((n + 1))
+done
+for i in r1 r2 r3 r4 r5 r7; do
+  printf 'the goal of %s\n' $i >"$TMP/g-$i.md"
+  expect_exit 0 rorch told $i --file "$TMP/g-$i.md"
+done
+for i in r1 r2 r3 r4 r5 r6; do expect_exit 0 rorch stage $i build; done
+expect_exit 0 rorch stage r7 pr
+expect_exit 0 rorch stage r9 shipped
+mkdir -p "$CREW_RECORD_ROOT/goal-r7"
+echo '{"run": {"run_state": "delivered", "orchestrator": {"name": "rsm", "item": "r7"}}}' >"$CREW_RECORD_ROOT/goal-r7/state.json"
+echo 'tmux:%9 name' >"$TMP/find-r1.txt"
+echo 'tmux:%4 id' >"$TMP/find-r4.txt"
+echo 'tmux:%5 cwd' >"$TMP/find-r5.txt"
+echo 'tmux:%6 name' >"$TMP/find-r6.txt"
+rm -f "$TMP/find-r2.txt" "$TMP/find-r3.txt"
+: >"$TMP/launcher.log"; : >"$TMP/watch.log"
+cp "$RD/orchestrator.json" "$TMP/rsm-before.json"
+
+STEP="R9 resume --read-only prints one line per item and writes and starts nothing"
+expect_exit 0 rorch resume --read-only
+for i in r1 r2 r3 r4 r5 r6 r7 r8 r9; do
+  [ "$(grep -c "^$i " "$TMP/out")" -eq 1 ] || fail "not one line for $i: $(cat "$TMP/out")"
+done
+grep -q '^r1 rejoin: ' "$TMP/out" || fail "r1 should rejoin"
+grep -q '^r2 resume: ' "$TMP/out" || fail "r2 should resume"
+grep -q '^r3 notice: ' "$TMP/out" || fail "r3 should notice"
+grep -q '^r4 restart: ' "$TMP/out" || fail "r4 should restart"
+grep -q '^r5 notice: ' "$TMP/out" || fail "r5 should notice"
+grep -q '^r6 send-goal: ' "$TMP/out" || fail "r6 should send its goal"
+grep -q '^r7 window: ' "$TMP/out" || fail "r7 should show the window"
+grep -q '^r8 launch: ' "$TMP/out" || fail "r8 should launch"
+grep -q '^r9 close: ' "$TMP/out" || fail "r9 should close"
+cmp -s "$TMP/rsm-before.json" "$RD/orchestrator.json" || fail "read-only changed the record"
+! grep -q '^resume \|^start \|^stop ' "$TMP/launcher.log" || fail "read-only started something: $(cat "$TMP/launcher.log")"
+! grep -q 'ensure' "$TMP/watch.log" || fail "read-only ran ensure"
+pass
+
+STEP="R9 resume writes the changed tab and the slot count, resumes a gone item, and ensures a delivered one"
+expect_exit 0 rorch resume
+grep -q '^r2 rejoin: ' "$TMP/out" || fail "r2 was not resumed: $(cat "$TMP/out")"
+grep -q "^resume --name r2 --worktree $TMP/wt/r2 --session-id sid-r2 --model sonnet " "$TMP/launcher.log" || fail "bad resume call: $(cat "$TMP/launcher.log")"
+rjcheck 's["items"]["r1"]["launch"]["tab"] == "tmux:%9"'
+rjcheck 's["items"]["r2"]["launch"]["tab"] == "tmux:%7"'
+rjcheck 's["pace"]["slots"]["busy"] == 5'
+grep -q "ensure $CREW_RECORD_ROOT/goal-r7" "$TMP/watch.log" || fail "no ensure: $(cat "$TMP/watch.log")"
+rjcheck 'len(s["items"]["r1"]["told"]) == 1'
+pass
+
+STEP="R9 resume stores the session id of the orchestrator, and a closed record prints closed"
+rjcheck 's.get("orchestrator_session_id") == "orchsess"'
+expect_exit 0 python3 "$ORCH_PY" --orch closer resume
+grep -q '^closed: ' "$TMP/out" || fail "no closed line: $(cat "$TMP/out")"
 pass
 
 echo "all checks passed"

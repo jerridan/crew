@@ -192,8 +192,11 @@ Remote Control setting of your own session.
 The tab starts with a wait prompt. The goal arrives later, as a cross-session
 message from you. That makes you the implementer's principal
 (`autonomy-contract.md`). Send it on the line `goal-ready: <session name>`
-that `launch` prints. On `goal-wait`, the tab can wait on the trust dialog
-(`launcher.md`'s "start"). Put a notice for the principal in the inbox, with
+that `launch` prints. On `goal-wait`, a `claude` process runs in the tab, and
+it has not registered. It can wait on the trust dialog (`launcher.md`'s
+"start"). When no `claude` process starts in the tab on iTerm2, `launcher.py`
+exits 10, and `launch` fails with the line of the launcher and prints no
+`goal-wait`. Put a notice for the principal in the inbox, with
 the item and its `tab`, and send the goal when `ListAgents` shows the name.
 
 The goal message carries:

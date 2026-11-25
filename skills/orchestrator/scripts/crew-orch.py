@@ -8,7 +8,9 @@ orchestrator-record.md defines every file, field and command.
 
 Python 3 standard library only. Exit 0 on success, 1 when a command cannot
 do its work, and 2 on a usage error. An error prints one line to stderr and
-writes nothing.
+writes nothing. `merge` exits 3 to 11 and `launch` exits 3 on a refusal, as
+the report of the build says; each such exit prints one line `<command>
+<check>: <detail>`.
 
 Commands:
   init
@@ -32,10 +34,19 @@ Commands:
   board [--urls | --json]
   show [<item>]
   close
+  merge <item> [--ready "<line>"] [--when-green] [--findings-answered]
+  finalize <item>
+  handoff clear <item>
+  send <item> (--text <t> | --file <p>) [--from <name>]
+  launch <item> [--model <m>] [--group <g>] [--terminal <t>] [--principal <name>] [--goal-file <p>] [--wait-seconds <n>]
+  close-item <item> [--continue] [--stop-processes]
+  digest <item> [--diff-file <p>]
+  resume [--read-only]
 """
 
 from __future__ import annotations
 
+import base64
 import fcntl
 import json
 import os
@@ -83,6 +94,15 @@ class Usage(Exception):
 
 class Fail(Exception):
     """The command cannot do its work: exit 1."""
+
+
+class Code(Exception):
+    """A refusal with its own exit code (`merge`, `launch`): one stderr line."""
+
+    def __init__(self, code: int, line: str):
+        super().__init__(line)
+        self.code = code
+        self.line = line
 
 
 # ---------------------------------------------------------------- time
@@ -170,9 +190,13 @@ class Record:
             state = json.loads(self.json.read_text(encoding="utf-8"))
             if isinstance(state, dict):
                 state.setdefault("closed_at", None)  # a record from before close
+                state.setdefault("events", [])  # a record from before the commands
+                state.setdefault("merge_queue", [])
+                state.setdefault("handoffs", [])
                 for item in (state.get("items") or {}).values():
                     if isinstance(item, dict):
                         item.setdefault("subagent", None)  # a record from before subagent items
+                        item.setdefault("ready", None)
             return state
         except FileNotFoundError:
             raise Fail(f"no orchestrator record '{self.name}'; run: crew-orch.py --orch {self.name} init")
@@ -222,6 +246,9 @@ def new_state(name: str) -> dict:
         "inbox": [],
         "plan_changes": [],
         "pace": {"mode": "normal", "slots": {"busy": 0, "max": 3}, "limit_pct": 95},
+        "events": [],
+        "merge_queue": [],
+        "handoffs": [],
     }
 
 
@@ -412,7 +439,10 @@ def cmd_init(rec: Record, args: list) -> None:
         rec.told.mkdir(exist_ok=True)
         if not rec.plan.exists():
             rec.plan.write_text("", encoding="utf-8")
-        rec.save(new_state(rec.name))
+        fresh = new_state(rec.name)
+        if os.environ.get("CLAUDE_CODE_SESSION_ID"):
+            fresh["orchestrator_session_id"] = os.environ["CLAUDE_CODE_SESSION_ID"]
+        rec.save(fresh)
     print(rec.dir)
 
 
@@ -752,14 +782,17 @@ def cmd_told(rec: Record, args: list) -> None:
         raise Usage(f"usage: {form}")
     body = read_source(opts["file"])
 
-    def change(state):
-        item = get_item(state, pos[0])
-        rel = f"told/{item['id']}-{len(item['told']) + 1}.md"
-        rec.told.mkdir(exist_ok=True)
-        (rec.dir / rel).write_text(body, encoding="utf-8")
-        item["told"].append({"at": now_iso(), "path": rel})
+    rec.mutate(lambda state: append_told(rec, state, pos[0], body))
 
-    rec.mutate(change)
+
+def append_told(rec: Record, state: dict, item_id: str, body: str) -> str:
+    """Write one message to told/ and list it on the item. Return its path in the record."""
+    item = get_item(state, item_id)
+    rel = f"told/{item['id']}-{len(item['told']) + 1}.md"
+    rec.told.mkdir(exist_ok=True)
+    (rec.dir / rel).write_text(body, encoding="utf-8")
+    item["told"].append({"at": now_iso(), "path": rel})
+    return rel
 
 
 def is_count(value) -> bool:
@@ -931,6 +964,918 @@ def cmd_refresh(rec: Record, args: list) -> None:
     rec.mutate(change)
 
 
+# ---------------------------------------------------------------- helpers for the commands
+
+EVENT_CAP = 50
+SKILLS_DIR = Path(__file__).resolve().parents[2]
+
+
+def sh(argv: list, timeout: int = 120):
+    """Run a program. Return (returncode, stdout, stderr). A missing program is code 127."""
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return 127, "", f"{argv[0]} is not installed"
+    except subprocess.TimeoutExpired:
+        return 124, "", f"{argv[0]} timed out after {timeout}s"
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def watch_cmd() -> list:
+    """window-watch.py, or the stub that $CREW_ORCH_WATCH names."""
+    env = os.environ.get("CREW_ORCH_WATCH")
+    return [env] if env else [sys.executable, str(SKILLS_DIR / "delivered-window" / "scripts" / "window-watch.py")]
+
+
+def sessions_dir() -> Path:
+    env = os.environ.get("CREW_SESSIONS_DIR")
+    return Path(env).expanduser() if env else Path.home() / ".claude" / "sessions"
+
+
+def current_session_name():
+    """The `name` of the session file whose `sessionId` is $CLAUDE_CODE_SESSION_ID, or None."""
+    wanted = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if not wanted:
+        return None
+    for path in sorted(sessions_dir().glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and data.get("sessionId") == wanted and data.get("name"):
+            return str(data["name"])
+    return None
+
+
+def add_event(state: dict, item_id, text: str) -> None:
+    """Append a routine event to the record. The list keeps the last EVENT_CAP."""
+    events = state.setdefault("events", [])
+    events.append({"at": now_iso(), "item": item_id, "text": text})
+    del events[:-EVENT_CAP]
+
+
+def is_delivered(rec: Record, item_id: str) -> bool:
+    """True when a goal record that names this item is at run_state `delivered`."""
+    for path in sorted(record_root().glob("*/state.json")):
+        try:
+            run = json.loads(path.read_text(encoding="utf-8")).get("run") or {}
+        except (OSError, ValueError, AttributeError):
+            continue
+        o = run.get("orchestrator") or {}
+        if str(o.get("name")) == rec.name and str(o.get("item")) == item_id and run.get("run_state") == "delivered":
+            return True
+    return False
+
+
+def deliver(rec: Record, item_id: str, text: str, sender: str, pending: bool = False) -> dict:
+    """Record a message to an item and deliver it when a script can.
+
+    A subagent item gets no word (`none`). A delivered item gets `window-watch.py say`
+    (`said`). A live item gets nothing sent: the action `send-to` names its session and
+    the recorded copy, and with `pending` the record keeps the handoff until
+    `handoff clear`. No script sends a cross-session message.
+    """
+    delivered = is_delivered(rec, item_id)
+
+    def change(state):
+        item = get_item(state, item_id)
+        if item.get("subagent"):
+            return {"kind": "none", "item": item_id}
+        name = (item.get("launch") or {}).get("session_name")
+        if not delivered and not name:
+            return {"kind": "none", "item": item_id}
+        rel = append_told(rec, state, item_id, text)
+        if delivered:
+            return {"kind": "said", "item": item_id, "path": rel}
+        if pending:
+            state["handoffs"].append({"item": item_id, "name": name, "path": rel, "at": now_iso()})
+        return {"kind": "send-to", "item": item_id, "name": name, "path": rel}
+
+    action = rec.mutate(change)
+    if action["kind"] == "said":
+        rc, _, err = sh(watch_cmd() + ["say", "--item", f"{rec.name}/{item_id}", "--from", sender, text])
+        if rc != 0:
+            raise Fail(f"say to {item_id} failed: {last_line(err, f'exit {rc}')}")
+    return action
+
+
+def show_action(rec: Record, action: dict) -> None:
+    if action["kind"] == "said":
+        print(f"said: {action['item']}")
+    elif action["kind"] == "send-to":
+        print(f"send-to: {action['name']}")
+        print(f"told: {rec.dir / action['path']}")
+
+
+def sender_name(rec: Record, opts: dict) -> str:
+    return opts.get("from") or current_session_name() or rec.name
+
+
+# ---------------------------------------------------------------- merge
+
+READY_RE = re.compile(r"ready\s*:?\s*([0-9a-fA-F]{7,40})")
+UNRECOVERABLE = {"no PR", "conflict", "ci failing", "draft", "changes requested", "blocked", "closed"}
+THREADS_QUERY = (
+    "query($owner: String!, $repo: String!, $n: Int!) {"
+    " repository(owner: $owner, name: $repo) {"
+    " pullRequest(number: $n) { reviewThreads(first: 100) { nodes { isResolved } } } } }"
+)
+MERGE_METHODS = [("rebase", "rebaseMergeAllowed"), ("squash", "squashMergeAllowed"), ("merge", "mergeCommitAllowed")]
+
+
+def ready_sha(line):
+    m = READY_RE.search(line or "")
+    return m.group(1).lower() if m else None
+
+
+def gh_data(argv: list, what: str, label: str = "merge"):
+    out, err = run_gh(argv)
+    if err:
+        raise Code(10, f"{label} gh: {what}: {err}")
+    try:
+        return json.loads(out)
+    except ValueError:
+        raise Code(10, f"{label} gh: {what}: bad output")
+
+
+def pr_files(repo: str, number: int) -> set:
+    out, err = run_gh(["pr", "diff", str(number), "--repo", repo, "--name-only"])
+    if err:
+        raise Code(10, f"merge gh: pr diff {number}: {err}")
+    return {ln.strip() for ln in out.splitlines() if ln.strip()}
+
+
+def section_text(text: str, heading: str):
+    """The body of a `## <heading>` section, or None. A `###` line does not end it."""
+    body, inside = [], False
+    for raw in (text or "").splitlines():
+        if re.match(r"##(?!#)", raw.strip()):
+            if inside:
+                break
+            inside = raw.strip() == f"## {heading}"
+            continue
+        if inside:
+            body.append(raw)
+    if not inside:
+        return None
+    return "\n".join(body).strip() or None
+
+
+def merge_section(repo: str, default_branch):
+    """The `Merge` section text: the repo file on the default branch, then the machine file."""
+    if default_branch:
+        out, err = run_gh(["api", f"repos/{repo}/contents/.claude/crew.md?ref={default_branch}"])
+        if not err:
+            try:
+                data = json.loads(out)
+                text = base64.b64decode(data["content"]).decode("utf-8")
+                found = section_text(text, "Merge")
+                if found:
+                    return found
+            except (ValueError, KeyError, TypeError):
+                pass
+    config = os.environ.get("CREW_CONFIG") or os.path.expanduser("~/.claude/crew/config.md")
+    try:
+        return section_text(Path(config).read_text(encoding="utf-8"), "Merge")
+    except OSError:
+        return None
+
+
+def finding_lines(info: dict) -> list:
+    """One line for each review or comment of someone other than the PR author."""
+    me = ((info.get("author") or {}).get("login")) or ""
+    lines = []
+    for kind, rows in (("review", info.get("reviews") or []), ("comment", info.get("comments") or [])):
+        for row in rows:
+            who = ((row.get("author") or {}).get("login")) or "?"
+            body = " ".join((row.get("body") or "").split())
+            if not body or who == me or row.get("state") == "APPROVED":
+                continue
+            lines.append(f"finding: {who} {kind} {body[:120]}")
+    return lines
+
+
+def unfinished_before(state: dict, item: dict) -> list:
+    group = state["groups"].get(item.get("group") or "")
+    if not group or item["id"] not in group["order"]:
+        return []
+    earlier = group["order"][: group["order"].index(item["id"])]
+    return [state["items"][i] for i in earlier if i in state["items"] and not finished(state["items"][i])]
+
+
+def cmd_merge(rec: Record, args: list) -> None:
+    form = 'merge <item> [--ready "<line>"] [--when-green] [--findings-answered]'
+    pos, opts = take_options(args, {"ready": True, "when-green": False, "findings-answered": False})
+    want(pos, 1, 1, form)
+    item_id = pos[0]
+    if "ready" in opts:
+        sha = ready_sha(opts["ready"])
+        if sha is None:
+            raise Usage("--ready needs a line with the head sha: ready <sha>: ...")
+
+        def store(state):
+            item = get_item(state, item_id)
+            if not item.get("pr"):
+                raise Fail(f"item '{item_id}' has no PR; set one with: item {item_id} pr <number|url>")
+            item["ready"] = {"sha": sha, "line": opts["ready"], "at": now_iso()}
+
+        rec.mutate(store)
+    state = rec.read()
+    item = get_item(state, item_id)
+    if not item.get("pr"):
+        raise Fail(f"item '{item_id}' has no PR; set one with: item {item_id} pr <number|url>")
+    cmd_refresh(rec, [item_id])
+    state = rec.read()
+    item = state["items"][item_id]
+    repo, number = item["repo"], item["pr"]["number"]
+    value = item["merge"]
+    when_green = bool(opts.get("when-green"))
+
+    def pending(why: str):
+        if not when_green:
+            raise Code(11, f"merge pending: {why}")
+
+        def queue(st):
+            if item_id not in st["merge_queue"]:
+                st["merge_queue"].append(item_id)
+                add_event(st, item_id, f"queued until green ({why})")
+
+        rec.mutate(queue)
+        print(f"queued: {item_id} ({why})")
+
+    if value == "merged":
+        finalize(rec, item_id)
+        return
+    if value in UNRECOVERABLE:
+        raise Code(3, f"merge record: merge value is '{value}'")
+    ready = item.get("ready")
+    if ready is None and (item.get("subagent") or {}).get("ready"):
+        line = item["subagent"]["ready"]
+        ready = {"sha": ready_sha(line), "line": line} if ready_sha(line) else None
+    info = gh_data(["pr", "view", str(number), "--repo", repo, "--json",
+                    "headRefOid,reviews,comments,author,reviewDecision,state"], f"pr view {number}")
+    head = (info.get("headRefOid") or "").lower()
+    if ready is not None and not (head and head.startswith(ready["sha"])):
+        raise Code(4, f"merge ready: the ready line is for {ready['sha']}, the head is {head[:12] or 'unknown'}")
+    if value == "ci pending" or value.startswith("in queue"):
+        return pending(value)
+    if ready is None:
+        return pending("no ready line for the head yet")
+    if value.startswith("waits on"):
+        mine = pr_files(repo, number)
+        late = []
+        for other in unfinished_before(state, item):
+            if other.get("pr") and mine & pr_files(other["repo"], other["pr"]["number"]):
+                late.append(other["id"])
+        if late:
+            raise Code(8, f"merge order: {', '.join(late)} merges first and shares a file")
+        raise Code(3, f"merge record: merge value is '{value}'")
+    owner, name = repo.split("/", 1)
+    data = gh_data(["api", "graphql", "-f", f"query={THREADS_QUERY}", "-f", f"owner={owner}",
+                    "-f", f"repo={name}", "-F", f"n={number}"], f"review threads {number}")
+    try:
+        nodes = data["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+    except (KeyError, TypeError):
+        raise Code(10, f"merge gh: review threads {number}: bad output")
+    open_threads = sum(1 for n in nodes if not n.get("isResolved"))
+    if open_threads:
+        raise Code(5, f"merge threads: {open_threads} unresolved review thread(s)")
+    findings = finding_lines(info)
+    if findings and not opts.get("findings-answered"):
+        for line in findings:
+            print(line)
+        print(f"ready: {ready['line']}")
+        raise Code(6, f"merge findings: {len(findings)} finding(s) outside a thread; compare them with the ready "
+                      f"line, then run again with --findings-answered")
+    repo_info = gh_data(["repo", "view", repo, "--json",
+                         "defaultBranchRef,rebaseMergeAllowed,squashMergeAllowed,mergeCommitAllowed"], "repo view")
+    section = merge_section(repo, (repo_info.get("defaultBranchRef") or {}).get("name"))
+    if value == "needs review" and section is None:
+        raise Code(7, "merge approval: the PR needs a review and no Merge section replaces it")
+    if section is not None:
+        print("merge-section: the Merge section of the standing instructions takes over; no method ran")
+        print(section)
+        raise Code(9, "merge merge-section: a Merge section replaces the method")
+    method = next((m for m, key in MERGE_METHODS if repo_info.get(key)), None)
+    if method is None:
+        raise Code(10, f"merge gh: {repo} allows no merge method")
+    out, err = run_gh(["pr", "merge", str(number), "--repo", repo, f"--{method}", "--match-head-commit", head])
+    if err:
+        raise Code(10, f"merge gh: pr merge {number}: {err}")
+    print(f"merge: {item_id} {method} {head[:12]}")
+    finalize(rec, item_id)
+
+
+# ---------------------------------------------------------------- after the merge
+
+MERGE_WORD = ("PR #{n} of item {item} merged. Nothing more is open for the merge. "
+              "Close out your work as your instructions say.")
+REBASE_WORD = ("PR #{n} of item {merged} merged, and it shares a file with your PR. "
+               "Rebase your branch on the base branch, resolve each conflict, run the tests and push.")
+
+
+def finalize(rec: Record, item_id: str, sender=None) -> list:
+    """Settle a PR after `gh pr merge` or at an event. Return the live-item actions.
+
+    A fresh `gh pr view` read decides, never a stored value. `MERGED` releases the slot (once),
+    sends the merge word, and sends the rebase word to the next item that shares a file.
+    `OPEN` after a merge call is a queue at GitHub: nothing goes out, and the item stays in
+    `merge_queue`. `CLOSED` releases the slot (once) and sends no word. A failed read changes
+    nothing and exits 10.
+    """
+    state = rec.read()
+    item = get_item(state, item_id)
+    if not item.get("pr"):
+        raise Fail(f"item '{item_id}' has no PR")
+    repo, number = item["repo"], item["pr"]["number"]
+    out, err = run_gh(["pr", "view", str(number), "--repo", repo, "--json", "state"])
+    if err:
+        def keep(st):
+            if item_id not in st["merge_queue"]:
+                st["merge_queue"].append(item_id)
+
+        rec.mutate(keep)
+        raise Code(10, f"merge gh: state of PR {number} not confirmed: {err}")
+    try:
+        pr_state = json.loads(out).get("state")
+    except (ValueError, AttributeError):
+        raise Code(10, f"merge gh: state of PR {number}: bad output")
+    sender = sender or current_session_name() or rec.name
+    actions = []
+
+    if pr_state == "OPEN":
+        def queue(st):
+            if item_id not in st["merge_queue"]:
+                st["merge_queue"].append(item_id)
+                add_event(st, item_id, f"queued at GitHub (PR #{number})")
+
+        rec.mutate(queue)
+        print(f"queued: {item_id} (PR #{number} is not merged yet)")
+        return actions
+
+    def release(st):
+        it = st["items"][item_id]
+        if item_id in st["merge_queue"]:
+            st["merge_queue"].remove(item_id)
+        if it.get("subagent") or it.get("slot_released"):
+            return False
+        busy = st["pace"]["slots"]["busy"]
+        st["pace"]["slots"]["busy"] = max(0, busy - 1)
+        it["slot_released"] = True
+        return True
+
+    if pr_state == "CLOSED":
+        if rec.mutate(release):
+            rec.mutate(lambda st: add_event(st, item_id, f"PR #{number} closed with no merge, slot released"))
+        print(f"closed: {item_id} (PR #{number} closed with no merge)")
+        return actions
+    if pr_state != "MERGED":
+        raise Code(10, f"merge gh: state of PR {number}: {pr_state!r}")
+    if rec.mutate(release):
+        rec.mutate(lambda st: add_event(st, item_id, f"merged PR #{number}"))
+    print(f"merged: {item_id} (PR #{number})")
+    if not item.get("words_sent"):
+        word = deliver(rec, item_id, MERGE_WORD.format(n=number, item=item_id), sender, pending=True)
+        show_action(rec, word)
+        actions.append(word)
+        nxt = next_sharing(rec.read(), item)
+        if nxt:
+            word = deliver(rec, nxt["id"], REBASE_WORD.format(n=number, merged=item_id), sender, pending=True)
+            show_action(rec, word)
+            actions.append(word)
+            rec.mutate(lambda st: add_event(st, nxt["id"], f"rebase word sent after {item_id} merged"))
+            print(f"rebase-word: {nxt['id']}")
+
+        def sent(st):
+            st["items"][item_id]["words_sent"] = True
+
+        rec.mutate(sent)
+    return actions
+
+
+def next_sharing(state: dict, item: dict):
+    """The next unfinished item of the group order that shares a file with the merged PR."""
+    group = state["groups"].get(item.get("group") or "")
+    if not group or item["id"] not in group["order"]:
+        return None
+    later = group["order"][group["order"].index(item["id"]) + 1:]
+    try:
+        mine = pr_files(item["repo"], item["pr"]["number"])
+    except Code:
+        return None
+    for other_id in later:
+        other = state["items"].get(other_id)
+        if other and other.get("pr") and not finished(other):
+            try:
+                if mine & pr_files(other["repo"], other["pr"]["number"]):
+                    return other
+            except Code:
+                continue
+    return None
+
+
+def cmd_finalize(rec: Record, args: list) -> None:
+    pos, _ = take_options(args, {})
+    want(pos, 1, 1, "finalize <item>")
+    finalize(rec, pos[0])
+
+
+def cmd_handoff(rec: Record, args: list) -> None:
+    pos, _ = take_options(args, {})
+    if pos[:1] != ["clear"]:
+        raise Usage("usage: handoff clear <item>")
+    want(pos, 2, 2, "handoff clear <item>")
+
+    def change(state):
+        before = len(state["handoffs"])
+        state["handoffs"] = [h for h in state["handoffs"] if h.get("item") != pos[1]]
+        return before - len(state["handoffs"])
+
+    print(f"cleared: {rec.mutate(change)}")
+
+
+# ---------------------------------------------------------------- send, launch
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+
+
+def tool_cmd(env: str, script: str) -> list:
+    """A sibling script, or the stub that the environment variable names."""
+    stub = os.environ.get(env)
+    return [stub] if stub else [sys.executable, str(SCRIPTS_DIR / script)]
+
+
+def cmd_send(rec: Record, args: list) -> None:
+    form = "send <item> (--text <t> | --file <p>) [--from <name>]"
+    pos, opts = take_options(args, {"text": True, "file": True, "from": True})
+    want(pos, 1, 1, form)
+    if ("text" in opts) == ("file" in opts):
+        raise Usage(f"usage: {form}")
+    body = opts["text"] if "text" in opts else read_source(opts["file"])
+    item = get_item(rec.read(), pos[0])
+    if item.get("subagent"):
+        raise Fail(f"item '{pos[0]}' is a subagent item: send its words with SendMessage")
+    action = deliver(rec, pos[0], body, sender_name(rec, opts))
+    if action["kind"] == "none":
+        raise Fail(f"item '{pos[0]}' has no session name; launch it first")
+    show_action(rec, action)
+
+
+def checkout_path(repo: str) -> str:
+    """The path of the `## Checkouts` line for `repo` in the machine file."""
+    config = os.environ.get("CREW_CONFIG") or os.path.expanduser("~/.claude/crew/config.md")
+    try:
+        text = Path(config).read_text(encoding="utf-8")
+    except OSError:
+        text = ""
+    inside = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if re.match(r"##(?!#)", line):
+            inside = line == "## Checkouts"
+            continue
+        if not inside or line.startswith("#"):
+            continue
+        if line.startswith("- "):
+            line = line[2:].strip()
+        m = re.fullmatch(r"([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)\s*:\s*(\S.*)", line)
+        if m and m.group(1).lower() == repo.lower():
+            return os.path.expanduser(m.group(2).strip().strip("`"))
+    raise Fail(f"no Checkouts line for {repo} in {config}")
+
+
+def cmd_launch(rec: Record, args: list) -> None:
+    form = ("launch <item> [--model <m>] [--group <g>] [--terminal <t>] [--principal <name>] "
+            "[--goal-file <p>] [--wait-seconds <n>]")
+    pos, opts = take_options(args, {"model": True, "group": True, "terminal": True, "principal": True,
+                                    "goal-file": True, "wait-seconds": True})
+    want(pos, 1, 1, form)
+    try:
+        wait_seconds = float(opts.get("wait-seconds", 60))
+    except ValueError:
+        raise Usage("--wait-seconds takes a number")
+    state = rec.read()
+    item = get_item(state, pos[0])
+    if item.get("subagent") or item.get("launch"):
+        raise Fail(f"item '{pos[0]}' is a subagent item or already has a launch")
+    pace = state["pace"]
+    if pace["mode"] != "normal":
+        raise Code(3, f"launch refused: pace mode is {pace['mode']}")
+    if pace["slots"]["busy"] >= pace["slots"]["max"]:
+        raise Code(3, f"launch refused: {pace['slots']['busy']} of {pace['slots']['max']} slots are busy")
+    goal = read_source(opts["goal-file"]) if "goal-file" in opts else None
+    name = item["id"].replace("_", "-")
+    rc, top, err = sh(["git", "-C", checkout_path(item["repo"]), "rev-parse", "--show-toplevel"])
+    if rc != 0:
+        raise Fail(f"git rev-parse in the checkout failed: {last_line(err, f'exit {rc}')}")
+    worktree = os.path.join(os.path.realpath(top.strip()), ".claude", "worktrees", name)
+    rc, settings, err = sh(tool_cmd("CREW_USAGE_CMD", "crew-usage.py") + ["settings", "--cwd", worktree])
+    if rc != 0:
+        raise Fail(f"crew-usage.py settings failed: {last_line(err, f'exit {rc}')}")
+    principal = opts.get("principal") or current_session_name()
+    if not principal:
+        raise Fail("no principal: pass --principal <your session name>")
+    argv = tool_cmd("CREW_ORCH_LAUNCHER", "launcher.py") + ["start", "--name", name]
+    if "model" in opts:
+        argv += ["--model", opts["model"]]
+    argv += ["--settings", settings.strip(), "--principal", principal, "--repo", item["repo"]]
+    if "group" in opts:
+        argv += ["--group", opts["group"]]
+    if "terminal" in opts:
+        argv += ["--terminal", opts["terminal"]]
+    rc, out, err = sh(argv, timeout=180)
+    if rc != 0:
+        raise Fail(f"launcher.py start exited {rc}: {last_line(err, 'no message')}")
+    try:
+        started = json.loads(last_line(out, ""))
+        if not isinstance(started, dict):
+            raise ValueError
+    except ValueError:
+        raise Fail(f"launcher.py start printed no JSON line: {last_line(out, '(nothing)')}")
+    print(last_line(out, ""))
+
+    def change(st):
+        it = get_item(st, item["id"])
+        it["launch"] = {k: started.get(k) for k in LAUNCH_KEYS}
+        st["pace"]["slots"]["busy"] += 1
+        if goal is not None:
+            append_told(rec, st, item["id"], goal)
+
+    rec.mutate(change)
+    session = started.get("session_name") or name
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        if any(isinstance(d, dict) and d.get("name") == session for d in session_files()):
+            print(f"goal-ready: {session}")
+            return
+        if time.monotonic() >= deadline:
+            print(f"goal-wait: no session named {session} after {wait_seconds:g}s; "
+                  f"the tab {started.get('tab')} can wait on the trust dialog")
+            return
+        time.sleep(min(0.5, max(0.05, deadline - time.monotonic())))
+
+
+def session_files() -> list:
+    found = []
+    for path in sorted(sessions_dir().glob("*.json")):
+        try:
+            found.append(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            continue
+    return found
+
+
+# ---------------------------------------------------------------- close-item
+
+PROCESS_WORD = ("Orchestrator: {orch}, item {item}\n"
+                "My session name is {me}; send to that name. The item is closing. Stop each process and "
+                "service that you started for the item, such as a server, a container, a watcher or a local "
+                "stack. Answer with what you stopped.")
+ISSUE_URL_RE = re.compile(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/([0-9]+)")
+
+
+def add_notice(rec: Record, item_id: str, text: str) -> None:
+    entry = add_entry(rec, "notice", "principal", item_id, text, None)
+    print(f"notice: {entry} {text}")
+
+
+def cmd_close_item(rec: Record, args: list) -> None:
+    form = "close-item <item> [--continue] [--stop-processes]"
+    pos, opts = take_options(args, {"continue": False, "stop-processes": False})
+    want(pos, 1, 1, form)
+    item_id = pos[0]
+    item = get_item(rec.read(), item_id)
+    if not opts.get("continue"):
+        if opts.get("stop-processes"):
+            raise Usage(f"usage: {form}; --stop-processes goes with --continue")
+        sender = sender_name(rec, {})
+        text = PROCESS_WORD.format(orch=rec.name, item=item_id, me=sender)
+        action = deliver(rec, item_id, text, sender)
+        if action["kind"] == "none":
+            print(f"processes: no word sent for {item_id} (a subagent item, or no session recorded)")
+        else:
+            show_action(rec, action)
+        rec.mutate(lambda st: get_item(st, item_id).__setitem__("close_asked_at", now_iso()))
+        return
+    close_stop_remove(rec, item, bool(opts.get("stop-processes")))
+    close_ticket(rec, rec.read()["items"][item_id])
+
+
+def close_stop_remove(rec: Record, item: dict, stop_processes: bool) -> None:
+    item_id = item["id"]
+    launch = item.get("launch") or {}
+    sub = item.get("subagent")
+    launcher = tool_cmd("CREW_ORCH_LAUNCHER", "launcher.py")
+    if sub:
+        print("stop: skipped (a subagent item has no session)")
+        worktree = sub.get("worktree")
+    else:
+        worktree = launch.get("worktree")
+        tab = launch.get("tab")
+        if not tab:
+            print("stop: skipped (no tab recorded)")
+        else:
+            argv = launcher + ["stop", tab]
+            if launch.get("session_name"):
+                argv += ["--name", launch["session_name"]]
+            if launch.get("session_id"):
+                argv += ["--session-id", launch["session_id"]]
+            rc, out, err = sh(argv, timeout=180)
+            if rc != 0:
+                print(f"stop: failed, exit {rc}: {last_line(err, 'no message')}")
+                add_notice(rec, item_id, f"The session of {item_id} did not stop (launcher.py stop exit {rc}); "
+                                         f"its worktree stays: {worktree}")
+                return
+            print(f"stop: {last_line(out, 'done')}")
+    if not worktree:
+        print("remove: skipped (no worktree recorded)")
+        return
+    argv = launcher + ["remove", worktree]
+    if landed(item) and item.get("pr"):
+        argv += ["--delete-branch", "--pr", str(item["pr"]["number"])]
+    elif not item.get("pr"):
+        argv += ["--delete-branch"]
+    if stop_processes:
+        argv += ["--stop-processes"]
+    rc, out, err = sh(argv, timeout=300)
+    try:
+        info = json.loads(last_line(out, ""))
+        if not isinstance(info, dict):
+            raise ValueError
+    except ValueError:
+        info = None
+    if rc == 0 and info is not None:
+        print(f"remove: removed {worktree}")
+        kept = [b for b in info.get("branches") or [] if not b.get("deleted")]
+        if kept:
+            parts = []
+            for b in kept:
+                why = (f"checked out in {b['checked_out']}" if b.get("checked_out")
+                       else f"{len(b.get('unproven_commits') or [])} unproven commit(s)")
+                parts.append(f"{b.get('name')} ({why})")
+            add_notice(rec, item_id, f"Kept branch of {item_id}: {'; '.join(parts)}. Never deleted by the orchestrator.")
+        return
+    if rc == 9 and info is not None:
+        procs = info.get("kept") or []
+        only_procs = (procs and not info.get("changed") and not (info.get("lock") or {}).get("reason")
+                      and all(p.get("tty") is None for p in procs))
+        if only_procs and not stop_processes:
+            for p in procs:
+                print(f"kept-process: {p.get('pid')} {p.get('command')}")
+            print(f"remove: kept {worktree}; when each process is the item's own, run: "
+                  f"close-item {item_id} --continue --stop-processes")
+            return
+        bits = [f"{len(info.get('changed') or [])} changed file(s)"] if info.get("changed") else []
+        bits += [f"process {p.get('pid')} {p.get('command')}" for p in procs]
+        if (info.get("lock") or {}).get("reason") is not None and info.get("lock"):
+            bits.append("a lock")
+        add_notice(rec, item_id, f"Removal of {worktree} was refused: {', '.join(bits) or last_line(err, 'see launcher')}.")
+        return
+    print(f"remove: failed, exit {rc}: {last_line(err, 'no message')}")
+    add_notice(rec, item_id, f"Removal of {worktree} failed with exit {rc}: {last_line(err, 'no message')}.")
+
+
+def close_ticket(rec: Record, item: dict) -> None:
+    ticket = item.get("ticket")
+    if not ticket:
+        print("ticket: none")
+        return
+    m = ISSUE_URL_RE.fullmatch(ticket.get("url") or "")
+    if not m:
+        print(f"ticket: {ticket['id']} is not a GitHub issue; close it as the standing instructions say")
+        return
+    repo, number = m.group(1), m.group(2)
+    if not landed(item):
+        print(f"ticket: {ticket['id']} left open (the item closed with no merge)")
+        add_notice(rec, item["id"], f"{item['id']} closed with no merge; ticket {ticket['id']} stays open.")
+        return
+    out, err = run_gh(["issue", "view", number, "--repo", repo, "--json", "state"])
+    if err:
+        print(f"ticket: could not read {ticket['id']}: {err}")
+        add_notice(rec, item["id"], f"Could not read ticket {ticket['id']} of {item['id']}: {err}")
+        return
+    try:
+        state = json.loads(out).get("state")
+    except (ValueError, AttributeError):
+        state = None
+    if state == "CLOSED":
+        print(f"ticket: {ticket['id']} already closed")
+        return
+    out, err = run_gh(["issue", "close", number, "--repo", repo])
+    if err:
+        print(f"ticket: could not close {ticket['id']}: {err}")
+        add_notice(rec, item["id"], f"Could not close ticket {ticket['id']} of {item['id']}: {err}")
+        return
+    print(f"ticket: closed {ticket['id']}")
+
+
+# ---------------------------------------------------------------- digest
+
+BRIEF_CHARS = 600
+
+
+def first_brief(rec: Record, item: dict) -> str:
+    told = item.get("told") or []
+    if not told:
+        return ""
+    try:
+        return (rec.dir / told[0]["path"]).read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def cmd_digest(rec: Record, args: list) -> None:
+    form = "digest <item> [--diff-file <path>]"
+    pos, opts = take_options(args, {"diff-file": True})
+    want(pos, 1, 1, form)
+    item_id = pos[0]
+    item = get_item(rec.read(), item_id)
+    if not item.get("pr"):
+        raise Fail(f"item '{item_id}' has no PR; set one with: item {item_id} pr <number|url>")
+    cmd_refresh(rec, [item_id])
+    state = rec.read()
+    item = state["items"][item_id]
+    repo, number = item["repo"], item["pr"]["number"]
+    brief = first_brief(rec, item)
+    info = gh_data(["pr", "view", str(number), "--repo", repo, "--json", "files,reviews,comments,author"],
+                   f"pr view {number}", "digest")
+    owner, name = repo.split("/", 1)
+    data = gh_data(["api", "graphql", "-f", f"query={THREADS_QUERY}", "-f", f"owner={owner}",
+                    "-f", f"repo={name}", "-F", f"n={number}"], f"review threads {number}", "digest")
+    try:
+        nodes = data["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+    except (KeyError, TypeError):
+        raise Code(10, f"digest gh: review threads {number}: bad output")
+    open_threads = sum(1 for n in nodes if not n.get("isResolved"))
+    print(f"brief: {' '.join(brief.split())[:BRIEF_CHARS] or '(none recorded)'}")
+    for f in info.get("files") or []:
+        print(f"file: {f.get('path')} +{f.get('additions', 0)} -{f.get('deletions', 0)}")
+    print(f"threads: {open_threads} unresolved")
+    for line in finding_lines(info):
+        print(line)
+    print(f"ci: {(item.get('github') or {}).get('checks') or 'unknown'}")
+    mine = pr_files(repo, number)
+    group = state["groups"].get(item.get("group") or "")
+    if group:
+        for other_id in group["order"]:
+            other = state["items"].get(other_id)
+            if other and other_id != item_id and other.get("pr") and not finished(other):
+                shared = sorted(mine & pr_files(other["repo"], other["pr"]["number"]))
+                if shared:
+                    print(f"shared with {other_id}: {', '.join(shared)}")
+        print(f"order: {', '.join(group['order'])}")
+    else:
+        print("order: none (a single item)")
+    if "diff-file" in opts:
+        out, err = run_gh(["pr", "diff", str(number), "--repo", repo])
+        if err:
+            raise Code(10, f"digest gh: pr diff {number}: {err}")
+        Path(opts["diff-file"]).write_text(f"# Brief\n\n{brief}\n\n# Diff\n\n{out}", encoding="utf-8")
+        print(f"diff-file: {opts['diff-file']}")
+
+
+# ---------------------------------------------------------------- resume
+
+
+def find_handles(item: dict) -> list:
+    """[(handle, match)] from `launcher.py find`, or raise Fail."""
+    launch = item["launch"]
+    argv = tool_cmd("CREW_ORCH_LAUNCHER", "launcher.py") + ["find", launch["session_name"]]
+    if launch.get("worktree"):
+        argv += ["--worktree", launch["worktree"]]
+    if launch.get("session_id"):
+        argv += ["--session-id", launch["session_id"]]
+    rc, out, err = sh(argv, timeout=60)
+    if rc != 0:
+        raise Fail(f"launcher.py find {launch['session_name']} exited {rc}: {last_line(err, 'no message')}")
+    pairs = []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) == 2:
+            pairs.append((parts[0], parts[1]))
+    return pairs
+
+
+def goal_record_dir(rec: Record, item_id: str):
+    for path in sorted(record_root().glob("*/state.json")):
+        try:
+            run = json.loads(path.read_text(encoding="utf-8")).get("run") or {}
+        except (OSError, ValueError, AttributeError):
+            continue
+        o = run.get("orchestrator") or {}
+        if str(o.get("name")) == rec.name and str(o.get("item")) == item_id:
+            return path.parent
+    return None
+
+
+def resume_item(rec: Record, item: dict, read_only: bool) -> tuple:
+    """Return (action line, counts as a live implementer)."""
+    item_id = item["id"]
+    stage = item["stage"]
+    launch = item.get("launch") or {}
+    sub = item.get("subagent")
+    before_merge = STAGES.index(stage) < STAGES.index("merged")
+    if sub:
+        what = {"queued": "dispatch it as the subagent items reference says",
+                "build": "dispatch it again under the same name and brief",
+                "pr": "dispatch it again only when its ready line is not for the current head",
+                "merged": "write its deploy watch input file again when one ran",
+                }.get(stage, "close it when its worktree is still there")
+        return f"{item_id} subagent: stage {stage}; {what}", False
+    if not launch:
+        if stage == "queued":
+            return f"{item_id} launch: not launched yet; run launch {item_id}", False
+        return f"{item_id} ok: stage {stage}, no session recorded", False
+    if stage in DONE_STAGES:
+        return f"{item_id} close: stage {stage}; run close-item {item_id} (--continue after its answer)", False
+    if is_delivered(rec, item_id) and stage in ("pr", "merged"):
+        gdir = goal_record_dir(rec, item_id)
+        if read_only or gdir is None:
+            note = "no goal record found" if gdir is None else "ensure not run (read-only)"
+            return f"{item_id} window: delivered; {note}; reach it with send", before_merge
+        rc, out, err = sh(watch_cmd() + ["ensure", str(gdir)], timeout=60)
+        result = last_line(out, f"exit {rc}: {last_line(err, 'no message')}")
+        return f"{item_id} window: delivered; watcher {result}; reach it with send", before_merge
+    pairs = find_handles(item)
+    names = [p for p in pairs if p[1] == "name"]
+    ids = [p for p in pairs if p[1] == "id"]
+    cwds = [p for p in pairs if p[1] == "cwd"]
+    told = bool(item.get("told"))
+    if names:
+        handle = names[0][0]
+        moved = handle != launch.get("tab")
+        if moved and not read_only:
+            rec.mutate(lambda st: st["items"][item_id]["launch"].__setitem__("tab", handle))
+        tasks = ("its process restarted (new handle {h}); tell it to arm its background tasks and watches "
+                 "again".format(h=handle)) if moved else "alive; tell it to arm only a watch it does not hold"
+        if not told:
+            return f"{item_id} send-goal: alive at {handle} but its told holds no goal; send the goal now", before_merge
+        return f"{item_id} rejoin: {tasks}; ask for its ready line, stage and open questions", before_merge
+    if ids:
+        h = ids[0][0]
+        return (f"{item_id} restart: alive at {h}, matched by id only; run launcher.py stop {h} --name "
+                f"{launch['session_name']} --session-id {launch.get('session_id')}, then resume it"), before_merge
+    if cwds:
+        h = cwds[0][0]
+        return (f"{item_id} notice: a session at {h} matches by working directory only; never stop it; "
+                f"add a notice for the principal"), False
+    worktree = launch.get("worktree")
+    if not worktree or not os.path.isdir(worktree):
+        return f"{item_id} notice: gone, and its worktree is gone; nothing can resume it; add a notice", False
+    if read_only:
+        return f"{item_id} resume: gone, its worktree exists; run resume to restart it", before_merge
+    rc, settings, err = sh(tool_cmd("CREW_USAGE_CMD", "crew-usage.py") + ["settings", "--cwd", worktree])
+    if rc != 0:
+        return f"{item_id} notice: settings value failed: {last_line(err, f'exit {rc}')}", False
+    argv = tool_cmd("CREW_ORCH_LAUNCHER", "launcher.py") + ["resume", "--name", launch["session_name"],
+                                                              "--worktree", worktree]
+    if launch.get("session_id"):
+        argv += ["--session-id", launch["session_id"]]
+    if launch.get("model"):
+        argv += ["--model", launch["model"]]
+    argv += ["--settings", settings.strip()]
+    if launch.get("repo") or item.get("repo"):
+        argv += ["--repo", launch.get("repo") or item["repo"]]
+    if launch.get("tab_group"):
+        argv += ["--group", launch["tab_group"]]
+    if launch.get("terminal"):
+        argv += ["--terminal", launch["terminal"]]
+    rc, out, err = sh(argv, timeout=180)
+    if rc != 0:
+        return (f"{item_id} notice: launcher.py resume exited {rc}: {last_line(err, 'no message')}; "
+                f"add a notice or run find"), False
+    try:
+        started = json.loads(last_line(out, ""))
+        merged = dict(launch)
+        merged.update({k: started.get(k) for k in LAUNCH_KEYS if started.get(k) is not None})
+        rec.mutate(lambda st: st["items"][item_id].__setitem__("launch", merged))
+    except ValueError:
+        return f"{item_id} notice: launcher.py resume printed no JSON line", False
+    after = (f"resumed in {started.get('tab')}; tell it to arm its background tasks and watches again"
+             if told else f"resumed in {started.get('tab')}; its told holds no goal; send the goal now")
+    return f"{item_id} {'rejoin' if told else 'send-goal'}: {after}", before_merge
+
+
+def cmd_resume(rec: Record, args: list) -> None:
+    pos, opts = take_options(args, {"read-only": False})
+    want(pos, 0, 0, "resume [--read-only]")
+    read_only = bool(opts.get("read-only"))
+    state = rec.read()
+    if state.get("closed_at"):
+        print(f"closed: the record '{rec.name}' is closed at {state['closed_at']}; do nothing more")
+        return
+    session = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if session and not read_only and state.get("orchestrator_session_id") != session:
+        rec.mutate(lambda st: st.__setitem__("orchestrator_session_id", session))
+    live = 0
+    for item in sorted(state["items"].values(), key=lambda i: i["n"]):
+        line, counts = resume_item(rec, rec.read()["items"][item["id"]], read_only)
+        print(line)
+        live += 1 if counts else 0
+    if not read_only:
+        rec.mutate(lambda st: st["pace"]["slots"].__setitem__("busy", live))
+
+
 # ---------------------------------------------------------------- board
 
 
@@ -1067,6 +2012,7 @@ def row_text(item: dict) -> str:
 
 
 BOARD_VERSION = 1
+BOARD_EVENTS = 8
 LEGEND = "spec → split → build → review → PR"
 
 
@@ -1177,7 +2123,7 @@ def board_data(name: str, state: dict) -> dict:
             "merged": None, "total": None, "rows": [row_data(i, True) for i in singles],
         })
     done_count = sum(1 for i in items.values() if done(i) and i.get("group") not in open_groups)
-    return {
+    data = {
         "version": BOARD_VERSION,
         "orch": name,
         "plan": plan_data(state),
@@ -1186,6 +2132,13 @@ def board_data(name: str, state: dict) -> dict:
         "done": done_count,
         "legend": LEGEND,
     }
+    # The routine events, newest last. The key is absent when there are none, so a
+    # board of a record with no events is the board of before.
+    events = [{"at": e.get("at") or "", "item": clean(e.get("item") or "-"), "text": clean(e.get("text") or ""),
+               "age": age(e.get("at"))} for e in (state.get("events") or [])[-BOARD_EVENTS:]]
+    if events:
+        data["events"] = events
+    return data
 
 
 def render_text(data: dict, tty: bool, urls: bool) -> str:
@@ -1262,6 +2215,10 @@ def render_text(data: dict, tty: bool, urls: bool) -> str:
         for r in s["rows"]:
             out.append(row(r, ticket_cell))
         out.append("")
+    if data.get("events"):
+        out.append(" Recent")
+        out.extend(f"  {e['age']:>4}  {e['item']}  {e['text']}" for e in data["events"])
+        out.append("")
     out.append(f" Done  {data['done']}   ·   stages: {data['legend']}")
     if urls:
         out.append("")
@@ -1308,7 +2265,9 @@ COMMANDS = {
     "init": cmd_init, "item": cmd_item, "group": cmd_group, "stage": cmd_stage, "doing": cmd_doing,
     "ask": cmd_ask, "inbox": cmd_inbox, "route": cmd_route, "answer": cmd_answer, "dismiss": cmd_dismiss,
     "plan": cmd_plan, "told": cmd_told, "pace": cmd_pace, "refresh": cmd_refresh, "board": cmd_board,
-    "show": cmd_show, "close": cmd_close,
+    "show": cmd_show, "close": cmd_close, "merge": cmd_merge, "finalize": cmd_finalize,
+    "handoff": cmd_handoff, "send": cmd_send, "launch": cmd_launch,
+    "close-item": cmd_close_item, "digest": cmd_digest, "resume": cmd_resume,
 }
 
 
@@ -1343,6 +2302,9 @@ def main(argv: list) -> int:
     except Usage as err:
         print(f"crew-orch: {err}", file=sys.stderr)
         return 2
+    except Code as err:
+        print(f"crew-orch: {err.line}", file=sys.stderr)
+        return err.code
     except Fail as err:
         print(f"crew-orch: {err}", file=sys.stderr)
         return 1

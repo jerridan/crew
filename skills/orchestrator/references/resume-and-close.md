@@ -36,7 +36,8 @@ Do these steps in this order.
    the check cannot rule out a live first orchestrator. Ask the principal to
    confirm that the earlier orchestrator session has stopped.
 2. **Run `crew-orch.py resume`.** It does the mechanical steps in one call:
-   the closed-record check, `launcher.py find` for each item with a launch,
+   the closed-record check, `launcher.py find` for each item with a launch (with `--terminal` from
+   `launch.terminal` when stored),
    the resume of each gone implementer whose worktree exists, the
    `launch.tab` writes, `window-watch.py ensure` for each delivered item, and
    the slot count. It prints one line for each item. A line `closed:` means

@@ -29,7 +29,8 @@ holds:
 4. `$__CFBundleIdentifier` is `dev.herdr.app`: herdr.
 5. Otherwise the command exits 4.
 
-`groups` and `find` use rules 2 to 5. They have no `--terminal`.
+`groups` and `find` take `--terminal` too, so rule 1 holds for them. With no
+flag they use rules 2 to 5.
 
 ## Herdr
 
@@ -242,7 +243,7 @@ worktree>` is the real worktree path with each character outside
 2. No `--session-id` and no transcript: exit 5.
 3. The base cannot be read: exit 5.
 4. `find` sees an open tab or pane for `--name`, for the session id or for
-   the worktree: exit 8. The line names each handle. No tab opens. Focus that
+   the worktree, in the terminal that `resume` chose: exit 8. The line names each handle. No tab opens. Focus that
    tab, or stop it first.
 
 **The tab.** The command that runs in the tab is:
@@ -302,7 +303,7 @@ closes the tab later with `stop`.
 ## groups
 
 ```
-launcher.py groups
+launcher.py groups [--terminal iterm2|tmux|herdr]
 ```
 
 It prints one JSON line per group, with exactly the fields `window_id`,
@@ -317,10 +318,13 @@ API is not available, it prints one line on stderr, no group line, and exits
 
 ```
 launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
+                [--terminal iterm2|tmux|herdr]
 ```
 
-`find` prints one line for each open tab or pane that holds this
-implementer, and exits 0. With no such tab or pane, it prints no line. A tab
+`find` reads the tabs or panes of one terminal, chosen as "Terminals" says.
+Pass `--terminal` with the terminal that `start` used, so that a caller in
+another terminal finds the implementer. `find` prints one line for each open
+tab or pane that holds this implementer, and exits 0. With no such tab or pane, it prints no line. A tab
 or pane holds the implementer when a `claude` process on its tty has:
 
 - the two arguments `--name <session-name>`, next to each other, or
@@ -677,7 +681,8 @@ a fixed order, and the first check that fails decides the exit:
 - `window`: 2, 4, 6. Then 6 when the tab does not open.
 - `resume`: 2, 4, 5. Then 6 when `ps`, `lsof`, `osascript` or `hc` cannot list
   the tabs, then 8. Then 6 when the tab does not open.
-- `find`: 2, 4, 6.
+- `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`,
+  `tmux` or `herdr`.
 - `groups`: 2, 4. On Herdr, then 6 when the window does not answer.
 - `focus` and `stop`: 2, 7 for an unknown prefix. Then the terminal step: 6
   or 7. `stop` with `--name` or `--session-id`: 6 when `osascript` or `ps`

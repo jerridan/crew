@@ -1204,7 +1204,9 @@ pass
 # ---------------------------------------------------------------- merge (R1)
 # A record of its own: two items in group g (a before b, one shared file), and
 # single items for the refusals. A stub window-watch records each `say`.
-morch() { python3 "$ORCH_PY" --orch mrg "$@"; }
+mkdir -p "$TMP/msessions"
+echo '{"sessionId": "msess", "name": "mrg-boss"}' >"$TMP/msessions/1.json"
+morch() { CLAUDE_CODE_SESSION_ID=msess CREW_SESSIONS_DIR="$TMP/msessions" python3 "$ORCH_PY" --orch mrg "$@"; }
 export CREW_CONFIG="$TMP/no-config.md"
 MD="$CREW_RECORD_ROOT/orchestrators/mrg"
 mjcheck() {
@@ -1502,7 +1504,8 @@ case "\$sub" in
     for a in "\$@"; do [ "\$prev" = --name ] && name="\$a"; prev="\$a"; done
     [ "\$sub" = resume ] || [ -f "$TMP/no-session" ] || echo "{\"sessionId\": \"i-\$name\", \"name\": \"\$name\"}" >"$TMP/sessions/\$name.json"
     echo "{\"session_name\": \"\$name\", \"repo\": \"owner/lr\", \"worktree\": \"$REALCO/.claude/worktrees/\$name\", \"branch\": \"worktree-\$name\", \"base\": \"origin/main\", \"model\": \"sonnet\", \"terminal\": \"tmux\", \"tab\": \"tmux:%7\", \"tab_group\": \"lg\", \"session_id\": \"uuid-\$name\"}" ;;
-  find) [ -f "$TMP/find-\$2.txt" ] && cat "$TMP/find-\$2.txt"; exit 0 ;;
+  find) [ -f "$TMP/find-\$2.rc" ] && { echo "find broke" >&2; exit "\$(cat "$TMP/find-\$2.rc")"; }
+    [ -f "$TMP/find-\$2.txt" ] && cat "$TMP/find-\$2.txt"; exit 0 ;;
   stop) echo "stopped"; exit 0 ;;
   remove)
     base=\$(basename "\$2")
@@ -1990,6 +1993,137 @@ STEP="p4 a PR that leaves the merge queue while it is still open wakes"
 echo '{"data": {"repository": {"pullRequest": {"isInMergeQueue": false, "mergeQueueEntry": null}}}}' >"$TMP/gh/queue-964.json"
 expect_exit 0 forch wait --interval 0.05 --polls 3
 grep -q '^wake queue q1: left the queue' "$TMP/out" || fail "no dequeue wake: $(cat "$TMP/out")"
+pass
+
+# ---------------------------------------------------------------- patch round 1 of PR 190 (pc1-code)
+norch() { python3 "$ORCH_PY" --orch pch "$@"; }
+PD="$CREW_RECORD_ROOT/orchestrators/pch"
+pjcheck() {
+  python3 "$ORCH_PY" --orch pch show >"$TMP/pshow.json" || fail "show failed"
+  python3 - "$TMP/pshow.json" "$1" <<'PYP' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PYP
+}
+nosession() { env -u CLAUDE_CODE_SESSION_ID python3 "$ORCH_PY" --orch pch "$@"; }
+expect_exit 0 norch init
+expect_exit 0 norch group add g --title Group
+for i in o1 o2; do expect_exit 0 norch item add $i --title "Patch $i" --repo owner/pc --group g; done
+for i in f1 f2 qa s1 s2 w1 w2 w3; do expect_exit 0 norch item add $i --title "Patch $i" --repo owner/pc; done
+expect_exit 0 norch group g order o1,o2
+expect_exit 0 norch item o1 pr 981
+expect_exit 0 norch item o2 pr 982
+seed_pr 981 9819819819819819819819819819819819819819
+seed_pr 982 9829829829829829829829829829829829829829 SUCCESS REVIEW_REQUIRED
+
+STEP="pc1 (1) a PR that needs a review still stops at the group order, exit 8"
+expect_exit 8 norch merge o2 --ready "ready 9829829: ok"
+grep -q '^crew-orch: merge order: o1 ' "$TMP/err" || fail "bad stderr: $(cat "$TMP/err")"
+! grep -q 'pr merge 982' "$TMP/gh/calls.log" || fail "gh pr merge ran out of order"
+pass
+
+STEP="pc1 (2) a queued merge keeps --findings-answered, and wait runs it with the flag"
+expect_exit 0 norch item qa pr 983
+seed_pr 983 9839839839839839839839839839839839839839 PENDING
+python3 - "$TMP/gh/pr-983.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["reviews"] = [{"author": {"login": "rev"}, "state": "COMMENTED", "body": "Please rename the helper."}]
+json.dump(d, open(sys.argv[1], "w"))
+PY
+expect_exit 0 norch refresh
+expect_exit 0 norch merge qa --ready "ready 9839839: ok" --when-green --findings-answered
+pjcheck 's["merge_queue"] == ["qa"]'
+flip_pr 983 'd["statusCheckRollup"][0]["status"] = "COMPLETED"; d["statusCheckRollup"][0]["conclusion"] = "SUCCESS"'
+expect_exit 0 norch wait --interval 0.05 --polls 3
+! grep -q 'merge-failed' "$TMP/out" || fail "the queued merge failed: $(cat "$TMP/out")"
+grep -q 'pr merge 983 ' "$TMP/gh/calls.log" || fail "the queued merge did not run"
+pjcheck 's["merge_queue"] == []'
+pass
+
+STEP="pc1 (3) a rebase word that no one can send is not logged as sent, and the line says so"
+expect_exit 0 norch group add g2 --title Group2
+expect_exit 0 norch item f1 set group '"g2"'
+expect_exit 0 norch item f2 set group '"g2"'
+expect_exit 0 norch group g2 order f1,f2
+expect_exit 0 norch item f1 pr 984
+expect_exit 0 norch item f2 pr 985
+seed_pr 984 9849849849849849849849849849849849849849
+seed_pr 985 9859859859859859859859859859859859859859
+flip_pr 984 'd["state"] = "MERGED"'
+expect_exit 0 norch item f2 set subagent '{"name": "sub-f2", "model": "sonnet"}'
+expect_exit 0 norch finalize f1
+! grep -q '^rebase-word: f2' "$TMP/out" || fail "printed a rebase word that was not sent: $(cat "$TMP/out")"
+grep -q '^rebase-word-needed: f2 ' "$TMP/out" || fail "no needed line: $(cat "$TMP/out")"
+grep -q 'SendMessage' "$TMP/out" || fail "the line does not name SendMessage for a subagent item: $(cat "$TMP/out")"
+pjcheck 'not any(e["item"] == "f2" and "rebase word sent" in e["text"] for e in s["events"])'
+pjcheck 'any(e["item"] == "f2" and "needs the orchestrator" in e["text"] for e in s["events"])'
+pass
+
+STEP="pc1 (4) a failing find prints a notice for that item and resume goes on"
+for i in s1 s2; do
+  expect_exit 0 norch item $i set launch "{\"session_name\": \"$i\", \"worktree\": \"$TMP/wt/$i\", \"tab\": \"tmux:%1\", \"session_id\": \"sid-$i\"}"
+  expect_exit 0 norch stage $i build
+done
+echo 3 >"$TMP/find-s1.rc"
+echo 'tmux:%2 name' >"$TMP/find-s2.txt"
+printf 'the goal of s2\n' >"$TMP/g-s2.md"
+expect_exit 0 norch told s2 --file "$TMP/g-s2.md"
+expect_exit 0 norch resume
+grep -q '^s1 notice: ' "$TMP/out" || fail "no notice for s1: $(cat "$TMP/out")"
+grep -q '^s2 rejoin: ' "$TMP/out" || fail "resume stopped before s2: $(cat "$TMP/out")"
+pjcheck 's["pace"]["slots"]["busy"] == 1'
+rm -f "$TMP/find-s1.rc"
+pass
+
+STEP="pc1 (5) a wait of another record is not stopped as the old poller"
+expect_exit 0 python3 "$ORCH_PY" --orch pother init
+python3 "$ORCH_PY" --orch pother wait --interval 0.1 --polls 600 >"$TMP/other.out" 2>&1 &
+OTHER=$!
+for _ in $(seq 1 50); do
+  python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get("wait_owner") else 1)' "$CREW_RECORD_ROOT/orchestrators/pother/orchestrator.json" && break
+  sleep 0.1
+done
+python3 - "$PD/orchestrator.json" "$OTHER" <<'PY'
+import json, sys
+p = sys.argv[1]
+s = json.load(open(p)); s["wait_owner"] = {"token": "old", "pid": int(sys.argv[2])}
+json.dump(s, open(p, "w"))
+PY
+expect_exit 0 norch wait --interval 0.05 --polls 2
+kill -0 "$OTHER" 2>/dev/null || fail "a wait of another record was stopped"
+kill "$OTHER"; wait "$OTHER" 2>/dev/null
+pass
+
+STEP="pc1 (6a) send and close-item with no session name and no --from exit 2 and name --from"
+expect_exit 0 norch item w1 set launch '{"session_name": "sess-w1", "worktree": "/x/w1"}'
+expect_exit 2 nosession send w1 --text hi
+grep -q -- '--from' "$TMP/err" || fail "the usage line does not name --from: $(cat "$TMP/err")"
+expect_exit 2 nosession close-item w1
+grep -q -- '--from' "$TMP/err" || fail "the usage line does not name --from: $(cat "$TMP/err")"
+expect_exit 0 nosession close-item w1 --from boss
+grep -q 'Orchestrator: pch, item w1' "$PD/told/w1-1.md" || fail "no processes word"
+grep -q 'boss' "$PD/told/w1-1.md" || fail "the word does not carry the sender"
+pass
+
+STEP="pc1 (6b) wait with no session name turns a merged PR's words into handoffs, and with --from uses the name"
+mkdir -p "$CREW_RECORD_ROOT/goal-w2" "$CREW_RECORD_ROOT/goal-w3"
+echo '{"run": {"run_state": "delivered", "orchestrator": {"name": "pch", "item": "w2"}}}' >"$CREW_RECORD_ROOT/goal-w2/state.json"
+echo '{"run": {"run_state": "delivered", "orchestrator": {"name": "pch", "item": "w3"}}}' >"$CREW_RECORD_ROOT/goal-w3/state.json"
+expect_exit 0 norch item w2 pr 986
+expect_exit 0 norch item w3 pr 987
+seed_pr 986 9869869869869869869869869869869869869869
+seed_pr 987 9879879879879879879879879879879879879879
+expect_exit 0 norch refresh
+flip_pr 986 'd["state"] = "MERGED"'
+: >"$TMP/watch.log"
+expect_exit 0 nosession wait --interval 0.05 --polls 3
+! grep -q -- '--item pch/w2' "$TMP/watch.log" || fail "a word went out with a wrong name: $(cat "$TMP/watch.log")"
+grep -q '^wake send w2: ' "$TMP/out" || fail "no handoff wake: $(cat "$TMP/out")"
+flip_pr 987 'd["state"] = "MERGED"'
+expect_exit 0 nosession wait --from boss --interval 0.05 --polls 3
+grep -q -- '--item pch/w3 --from boss ' "$TMP/watch.log" || fail "no word from boss: $(cat "$TMP/watch.log")"
 pass
 
 echo "all checks passed"

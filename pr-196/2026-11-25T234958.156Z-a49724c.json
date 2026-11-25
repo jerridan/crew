@@ -1,0 +1,228 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 196,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Park the project lead at a long wait so a wake does not rewrite the build context",
+      "draft": true,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/196"
+    },
+    "run_kind": "first",
+    "prior": null,
+    "base": "69bd198a3200805d773062236bbe6dbc7036ed72",
+    "head": "a49724c3075818e2984ccbce3d27f130fccfc1ba",
+    "started_at": "2026-11-25T23:49:58.156Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Park the project lead at a long wait so a wake does not rewrite the build context\n\n\n\n## Summary\n\nA crew project lead that waits before the hand-over (for the usage reset, an orchestrator's pause, or an answer to a question) kept its whole build context open. When it woke after an hour or more, it wrote that whole context to the prompt cache again: 360,000 tokens at the median and up to 962,000 on this machine. Now the project lead \"parks\": it ends its large session and starts a small waiter session with the same name. The waiter wakes only on a real wake and then resumes the run from the record. One wait costs about 150,000 tokens instead, and a message that does not end the wait costs about 35,000.\n\n**Ticket:** N/A (orchestrator item build-wait, no GitHub issue)\n**Type:** New feature\n\n---\n\n## Agent context\n\n### Authority\n\n- `docs/design.md` §15.NNN (number assigned at merge): the park, the 30-minute threshold, the limits and the cost.\n- `skills/project-lead/references/park.md` owns when a project lead parks, the call, the waiter's rules and the wake.\n- `skills/project-lead/references/crew-step.md` owns the `park` and `unpark` command lines, steps and exit codes.\n- `skills/project-lead/references/record-format.md` owns `run.park`, `run.parks`, the `park/` files and `crew-record.py run set|append --if`.\n- `skills/project-lead/references/resume.md` owns the first step of a resume of a parked run.\n- `skills/orchestrator/references/launcher.md` owns `launcher.py window --settings`.\n\n### What changed, by file\n\n- `skills/project-lead/references/park.md` (new): when to park (usage stop with the reset more than 30 minutes away; an orchestrator pause at once; a question after a 30-minute timer), the call, the waiter, the wake.\n- `skills/project-lead/scripts/crew-step.py`: `park` (refusals, `run.park`, a detached helper that writes the waiter prompt, starts the waiter through `launcher.py window`, writes the waiter and the orchestrator item's `launch.tab` and `launch.session_id`, then stops the old session; a failure rolls back) and `unpark` (moves the park to `run.parks`, stops a foreign waiter, writes the orchestrator item on a manual resume).\n- `skills/project-lead/scripts/crew-record.py`: `run set` and `run append` take `--if <dotted.field>=<json>`; a condition that does not hold writes nothing and exits 3.\n- `hooks/session-end.py`: a parked run, and a session retired by a park, is not marked interrupted.\n- `skills/orchestrator/scripts/launcher.py`: `window` takes `--settings` with the meaning of `start --settings`.\n- Tests: `test-crew-step.py` (park, unpark, rollback at each step, a wake during the stop delay, the three-reason park drill), `test-crew-record.py` (`--if`), `hooks/test-session-end.sh` (new), `test-launcher.sh` (`window --settings`).\n- Pointers: `autonomy-contract.md` (the usage limit line), `resume.md`, `record-format.md`, `orchestrator-report.md` (`## A park`), `crew-step.md`, `launcher.md`, `SKILL.md`'s table, `CLAUDE.md`.\n\n### Constraints that applied\n\n- Only the launcher and `crew-usage.py` start a `claude` process: the helper starts the waiter through `launcher.py window`.\n- Every `state.json` write goes through `crew-record.py`: the race-safe waiter write uses the new `--if` condition.\n- `crew-orch.py` stays the only writer of the orchestrator record: the park reads `orchestrator.json` and writes through `crew-orch.py item <id> set launch.<key>`. No `crew-orch.py` code changed.\n- One rule in one file: the three key rules are each in exactly one file (checked by grep).\n- The plugin version and the §15 number are left for the orchestrator: no version bump in this PR, and the finding is numbered `NNN`. This PR changes what the plugin loads, so it needs a version bump at merge.\n\n### How this was verified\n\n- `test-crew-step.py` 259 of 259, `test-crew-record.py` 92 of 92, `hooks/test-session-end.sh` and `hooks/test-session-start.sh` all passed, `test-crew-orch.sh` all passed, `test-window-watch.sh` 110 of 110, `test-launcher.sh` 350 of 350, each on the package head; the red commits failed as expected. No helper process was left running.\n- A Codex plan review of the three plans found 6 blocking issues (a wake racing the helper, a stop after a failed write, a manual resume leaving the orchestrator on a stopped waiter, a rejoin waking a parked run, no hand-off without an orchestrator, a failed usage wait releasing a pause). All six were fixed before code.\n- The cost figures come from 74 project-lead transcripts on this machine (`evidence/wakes.py` in the run's record).\n\n### Known gaps\n\n- A park needs an orchestrator. A hand-started run waits in place as before. This is the current limit; the decision is with the principal, and the code keeps one function (`launch_identity`) where a second source can go.\n- No crew run has parked yet: only the seeded tests ran it. The first live park will show whether the 20-second stop delay fits a real turn.\n- A wait for a working IC cannot park, because the IC dies with the session.\n\n<details><summary>spec.md</summary>\n\n# Spec: a wait before the hand-over does not wake the whole build context\n\n## The idea\n\nA **park** ends the large project-lead session at a long wait and starts a small **waiter** session in its place, with the same session name, the same working directory and the same model. The waiter holds only its first prompt. It waits for the wake: a message, a typed word, or the usage reset. Then it invokes `crew:project-lead --resume <goal-slug>` in its own context, and the run goes on from the record. A wake after hours then rewrites the waiter's small context, not the build context.\n\nThe record already has the file for facts that live only in a conversation: `handover.md` with its nine headings (`record-format.md`). A park writes it too. A new `run.park` object holds the structured pause state.\n\n## Requirements\n\nR1. **A park sequence in one call.** `crew-step.py park <record-dir> --reason <usage|pause|question> [--until <epoch seconds>] --next \"<the next step>\"` writes `run.park` and starts a detached helper, then exits 0 at once. The helper outlives the calling session. It: 1. writes the waiter's first prompt to `<record-dir>/park/prompt-<n>.md` (`<n>` counts parks from 1). It names the record directory, the goal slug and the reference section of R4, and nothing else; 2. starts the waiter with `launcher.py window`, with the session name, the working directory, the model, the terminal and the group of the project lead's session, and, when `run.orchestrator` is set, the `--settings` value of `crew-usage.py settings --cwd <run.repo>`; 3. writes `run.park.waiter` from the launcher's output; 4. when `run.orchestrator` is set, writes the waiter's `tab` and `session_id` into the orchestrator item's `launch` with `crew-orch.py --orch <name> item <id> set launch.<key> <json>`; 5. stops the old session with `launcher.py stop <handle> --name <name>` (or `--session-id <id>`), so the stop's target check holds. It waits first so that the calling turn can end: 20 seconds by default, and a flag sets it for tests. **The working directory** of the waiter is `run.repo`. `SKILL.md`'s \"Take the goal\" writes it from the session's own `git rev-parse --show-toplevel`, so it is the old session's directory. With an orchestrator it equals the item's `launch.worktree`; `park` checks that and exits 1 when they differ, because `crew-orch.py resume` resumes the waiter with `launcher.py resume --worktree <launch.worktree>`. It reads the old session's name, handle, terminal, group and model from the orchestrator record's item `launch` when `run.orchestrator` is set (read only: `crew-orch.py` stays its only writer). With no orchestrator it takes them from flags of `park`; with no handle it starts the waiter and stops nothing, and prints a line that says the old tab stays open. Each step writes one line to `<record-dir>/park/park.log`. A failed start of the waiter stops nothing and leaves `run.park.waiter` `null`. Exit codes: 0 started, 1 a failure before the helper starts (no record, a dirty tree in `run.checkout`, a park already set), 2 usage.\nR2. **An unpark in one call.** `crew-step.py unpark <record-dir> [--by \"<what woke the run>\"]` moves `run.park`, with `woke: {at, by, session_id}`, to the end of the list `run.parks`, sets `run.park` to `null`, and, when `run.park.waiter.session_id` is not `$CLAUDE_CODE_SESSION_ID` and its handle is set, stops that waiter with the stop's target check. A record with no park exits 0 and changes nothing.\nR3. **`run.park` and `run.parks`** in `record-format.md`: `run.park` is `null` or `{reason, by, at, until, next, from_session, waiter, prompt}`; `waiter` is `null` or `{name, session_id, tab, terminal, tab_group, model, started_at}`. `from_session` is the id of the session that parked. `prompt` is the path of the waiter's prompt file. `next` is the step the resumed run takes first. `by` is who paused (`usage`, the principal's name, or `project-lead` for a question). `until` is epoch seconds or `null`. `run.parks` is the history, one entry per ended park. `handover.md`'s rule says a park writes it too, before the `park` call, with every heading filled as at the hand-over. `run.park` owns the pause state: at a park, heading 8 `## Pause state` holds one line that points at `run.park`. `record-format.md`'s tree gets the `park/` directory: `prompt-<n>.md` and `park.log`.\nR4. **The waiter's rules** live in one reference section. The waiter: answers its first prompt with one line; arms `crew-usage.py wait` as a background Bash command when `run.park.reason` is `usage` or `pause` and the charter has a `Usage limit:` line; on a message or typed text that is only a pause or stop word, stays parked; on any other message, typed text or the exit of `wait`, invokes `crew:project-lead` with `--resume <goal-slug>`. The message stays in its context, and the resumed run acts on it.\nR5. **When a project lead parks**, in one reference section:\n  - at `stopped` or a pause message for the usage window, after \"The usage limit line\" steps 1 to 4: park with `--reason usage` when the reset is more than 30 minutes away, else arm `wait` in place as today;\n  - on a pause or stop message from an orchestrator: commit, then park with `--reason pause` at once, whatever its length;\n  - after an escalation is sent, when no IC works and no background task the run needs is armed: arm a 30-minute background timer; an answer before it goes on in place; the timer's exit parks with `--reason question`;\n  - never while an IC works or a worktree is dirty: an IC dies with the session. Tell each IC to commit and stop first, as the usage limit line says.\n  - every goal-run path parks the same way: the simple, light, full and investigation paths. A `/crew:review` run does not park (non-goals). The 30 minutes and the reason (the prompt cache's time to live) are in `docs/design.md` only; the reference states the number.\nR6. **The resume of a parked run.** `resume.md`: a record whose `run.park` is set runs `crew-step.py unpark` first, then reads `handover.md` and the last `run.parks` entry with the rest of the record, then re-enters as today. A usage level still at `stopped` (`crew-usage.py check` exits 20) parks again.\nR7. **The `SessionEnd` hook** treats a run whose `run.park` is set as not live: it writes no `interrupted`. It still orphans nothing else. A seeded test covers a parked run, an unparked live run and a delivered run.\nR8. **`launcher.py window --settings <file-or-json>`**, with the meaning and the checks of `start`'s `--settings`. Without it, the `<json>` stays `{\"remoteControlAtStartup\": false}`. `test-launcher.sh` covers both.\nR9. **With an orchestrator**, the orchestrator reaches the waiter by the same session name, so its `SendMessage`, its pause word and its resume word work unchanged, and `crew-orch.py resume` after a machine restart resumes the waiter's conversation from the updated `launch.session_id`. `orchestrator-report.md` names the park's two `item set` writes.\nR10. **The rule** \"only the launcher and `crew-usage.py` start a `claude` process\" holds: the helper starts the waiter only through `launcher.py`.\nR11. **Documentation**: a new reference owns the park (`references/park.md`): when, the call, the waiter, the wake. `crew-step.md` owns the `park` and `unpark` command lines. `SKILL.md`'s table, `CLAUDE.md`'s layout and build state, `autonomy-contract.md`'s usage limit line, `resume.md`, `record-format.md`, `orchestrator-report.md` and `launcher.md` point at it. A `docs/design.md` §15 finding with a placeholder number records the design and the cost figures. Version fields keep a placeholder for the orchestrator.\n\n## Acceptance criteria\n\n- A1 (R1, R2, R3, R10): `python3 skills/project-lead/scripts/test-crew-step.py` passes with new checks that seed a record and stub `launcher.py`, `crew-orch.py` and `crew-usage.py`, and show: `park` writes `run.park`, the stub launcher gets `window` with the name, cwd, model and `--settings`, then `stop` with the target flag, in that order; the orchestrator item gets the two `set` calls; a failed `window` gets no `stop`; `unpark` moves the park to `run.parks` and stops a foreign waiter only.\n- A2 (R7): a new `hooks/test-session-end.sh` passes and shows the three cases.\n- A3 (R8): `bash skills/orchestrator/scripts/test-launcher.sh` passes with a check that `window --settings` puts the value in the tab command.\n- A4 (R4, R5, R6, R9, R11): each rule in R4 to R6 is in exactly one file, found by `grep -rn` for its key phrase; every other file points at it.\n- A5: the existing suites still pass: test-crew-step.py, test-launcher.sh, test-crew-orch.sh, test-window-watch.sh, test-session-start.sh.\n- A1b (charter acceptance 1): a \"park drill\" in `test-crew-step.py`, one per reason (`usage`, `pause`, `question`): seed a record that holds a package, a `plans/` file, `run.plan_review`, `run.review_pending`, an open escalation (for `question`) and a `handover.md` with a standing word; run `park` as session A; check that the stub launcher got `window` before `stop` and that `stop` targets session A; run `unpark` as session B, the waiter; check that `run.park` is `null`, `run.parks` holds the park with `woke`, no `stop` targeted B, and every seeded fact is unchanged on disk.\n- A4 key phrases, each found in exactly one file under `skills/`: \"parks with `--reason usage`\" (R5), \"The waiter\" heading (R4), \"runs `crew-step.py unpark` first\" (R6).\n- A6: the report gives the before and after token cost of one wake, with the method.\n\n## Global constraints\n\n- Prose: ASD-STE100 and `skills/project-lead/references/writing-standard.md`.\n- A rule lives in one file (`CLAUDE.md` \"Authority\").\n- No version bump and no §15 number: placeholders.\n- Code: Python 3 standard library, as the sibling scripts.\n- Tests stub every external command; no test starts `claude`.\n- The project lead tells the orchestrator, before the build, each change to `skills/orchestrator/`, `orchestrator-report.md` and the launcher.\n\n## Non-goals\n\n- A wait for a working IC: the IC dies with the session, so the project lead does not park while an IC works.\n- Waits after the hand-over: PR 188 covers them.\n- A `/crew:review` run's waits: a review run is not a build, and its gate is after its first review. A later item can take it.\n- The other waits found, all short and in the foreground: the plan review's `plan-review.py run` (minutes, and the project lead gives the start word itself), the goal check's `review-run.py` at the hand-over, and `crew-step.py verify`. None waits for a person or for the usage window.\n- A change to `crew-orch.py` code: `item <id> set launch.<key>` exists.\n\n</details>\n\n<details><summary>decisions.md</summary>\n\n## Which path does this goal take? Route: precedent Answer: change path Citation: a wait before the hand-over does not wake the whole build context Confidence: high Timestamp: 2026-11-25T22:43:12Z\n\n## Does the work take the light path? Route: precedent Answer: no: the change is more than one package (a crew-step.py park sequence, a launcher change, a hook change and the prose) Citation: scout-1's report and charter.md Confidence: high Timestamp: 2026-11-25T22:46:40Z\n\n## Spec critic r1: adjudication Route: precedent Answer: Applied 1-7 and 9 to spec.md; declined 8. Citation: reviews/spec-critic-r1.md Confidence: high Labels: 1 suggestion (run.repo is the session cwd, now stated, with a check against launch.worktree); 2 blocking (park drill per reason added as A1b); 3 blocking (other waits listed as non-goals); 4 suggestion; 5 suggestion; 6 suggestion; 7 suggestion; 8 suggestion, declined: the prose and code packages run in parallel, so the field names are the shared interface; 9 suggestion. Timestamp: 2026-11-25T22:50:26Z\n\n## Preference sweep: what does the principal want that the repo cannot say? Route: preference Answer: none Citation: charter.md and spec.md Confidence: high Questions: the 30-minute park threshold and keeping a hand-started tab open with no orchestrator; both reversible, decided in spec.md R1 and R5. Timestamp: 2026-11-25T22:50:31Z\n\n## Which worktree base does this run use? Route: precedent Answer: /Users/jerridan/.claude/crew/build-wait-1a70 Citation: full-path.md launch check 1: /Users/jerridan/.claude/crew/build-wait-1a70: add, status and remove passed Confidence: high Timestamp: 2026-11-25T22:50:47Z\n\n## Split critic d1 r1: adjudication Route: precedent Answer: Applied all three to split.md. Citation: reviews/d1-split-critic-r1.md Confidence: high Labels: 1 suggestion (--by added); 2 suggestion (the launcher.md pointer moves to integration); 3 suggestion (exact crew-record calls, unpark's --session-id, the --settings condition, the path from __file__). Timestamp: 2026-11-25T22:52:33Z\n\n## How does the IC get ic-contract.md? Route: precedent Answer: The spawn prompt tells the IC to Read the file whole as its first step, by absolute path, in place of pasting its text. Citation: full-path.md Spawn the ICs: inject the contract as text Confidence: medium Why: pasting 278 lines into the project lead's own context twice costs more than a Read by the IC; a Read by absolute path does not depend on skills: or the agent body, which is what design §15.20d warns about. Timestamp: 2026-11-25T22:52:46Z\n\n## Plan review: which findings does the run act on? Route: precedent Answer: 6 of 6 findings sent to the ICs Citation: reviews/plan-review-r1.md Confidence: high Finding: F1 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F2 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F3 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F4 blocking (reviewer: blocking) — sent to ic-park-prose-r1 Finding: F5 blocking (reviewer: blocking) — sent to ic-launcher-settings-r1 and ic-park-prose-r1 Finding: F6 blocking (reviewer: blocking) — sent to ic-park-prose-r1 Timestamp: 2026-11-25T22:58:29Z\n\n## Where does the guarded write of run.park.waiter live? Route: precedent Answer: In crew-record.py, as a compare option on run set; park-step's file set grows by crew-record.py, test-crew-record.py and record-format.md (the prose package is integrated, so no territory conflicts). Citation: record-format.md: every state.json write is a crew-record.py call; crew-step.md: Every state.json write is a crew-record.py call Confidence: high Timestamp: 2026-11-25T23:08:49Z\n\n</details>\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": true,
+      "truncated": false
+    },
+    "history": {
+      "built": false,
+      "truncated": false
+    },
+    "injected": [],
+    "changed_files": [
+      {
+        "path": "CLAUDE.md",
+        "hunks": 5
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "hooks/session-end.py",
+        "hunks": 2
+      },
+      {
+        "path": "hooks/test-session-end.sh",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/launcher.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/scripts/launcher.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/orchestrator/scripts/test-launcher.sh",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/SKILL.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/autonomy-contract.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/crew-step.md",
+        "hunks": 3
+      },
+      {
+        "path": "skills/project-lead/references/orchestrator-report.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/park.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/references/record-format.md",
+        "hunks": 6
+      },
+      {
+        "path": "skills/project-lead/references/resume.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-record.py",
+        "hunks": 4
+      },
+      {
+        "path": "skills/project-lead/scripts/crew-step.py",
+        "hunks": 5
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-record.py",
+        "hunks": 2
+      },
+      {
+        "path": "skills/project-lead/scripts/test-crew-step.py",
+        "hunks": 2
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": null,
+    "tier": "skip",
+    "tier_reason": "Skip rule skip.draft: the pull request is a draft.",
+    "selected_reviewers": [],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [],
+    "verifications": [],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "skipped",
+    "coverage": {
+      "reviewers_ran": [],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 0,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6066623646,
+      "review_url": "https://github.com/jerridan/crew/pull/196#pullrequestreview-6066623646",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 139590195856
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [],
+    "total_cost_usd": 0,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 37,
+      "gather": 32,
+      "find_verify": 1,
+      "merge": 0
+    },
+    "errors": []
+  }
+}

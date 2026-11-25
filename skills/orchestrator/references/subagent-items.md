@@ -53,8 +53,8 @@ with `told`.
 
 ## The dispatch
 
-- The model: `sonnet`, unless the principal names one. Never `haiku`:
-  `skills/project-lead/references/band-rubric.md` says why.
+- The model: `skills/project-lead/references/band-rubric.md`'s "The
+  orchestrator's dispatches" chooses it. The principal's word wins.
 - The name: `sub-<item id>`. The agent type is `general-purpose`. The dispatch
   mode follows the table of `skills/project-lead/SKILL.md`'s "Every dispatch
   is named".
@@ -119,19 +119,19 @@ It goes through every check of `SKILL.md`'s "The merge".
 
 - Write each ready line with `item <id> set subagent.ready`. It is the ready
   line of `SKILL.md`'s "The merge".
-- Before the merge, read `gh pr diff <n>`. A diff that does more than the
-  brief asked goes to "Larger than it looked", below. For a one-line fix, the
-  diff must be the one line and at most its test. More lines, or a line
-  that the ticket neither names nor makes plain, go there too.
-- No implementer reports GitHub events, so arm a GitHub wait (`SKILL.md`'s
-  "The wait") on the PR. Its output also holds the head sha, the counts of
-  reviews, comments and inline comments (`gh api
-  repos/<owner>/<repo>/pulls/<n>/comments`), and the names of the failed
-  checks. At each arm and each wake, read each review, comment, open thread
-  and failed check that `subagent.ready` does not answer.
-- Send those to the subagent: `SendMessage` to its name, which resumes it in its own worktree. When it
-  cannot resume, make a new dispatch under its name and brief, as "The
-  dispatch" says. It fixes, replies, resolves
+- Before the merge, run the brief check of `SKILL.md`'s "The merge". A diff
+  that does more than the brief asked goes to "Larger than it looked", below.
+  For a one-line fix, the diff must be the one line and at most its test.
+  More lines, or a line that the ticket neither names nor makes plain, go
+  there too.
+- No implementer reports GitHub events. `crew-orch.py wait` polls the PR of
+  the item like any other and wakes you on a red check, a conflict, a review
+  or a comment (`SKILL.md`'s "The wait"). At each wake, run `digest` and read
+  each review, comment, open thread and failed check that `subagent.ready`
+  does not answer.
+- Send those to the subagent: `SendMessage` to its name, which resumes it in
+  its own worktree. When it cannot resume, make a new dispatch under its name
+  and brief, as "The dispatch" says. It fixes, replies, resolves
   and pushes, then returns a new ready line. A finding that needs a judgment
   goes to "Larger than it looked".
 - After the merge, the item stays `merged` until `crew:delivered-window`'s
@@ -162,9 +162,10 @@ On a `larger` line, and on a diff or a finding that needs a judgment:
 ## The close
 
 The close of a subagent item runs where `resume-and-close.md`'s "The close of
-an item" runs. The item has no session and no tab, so skip that procedure's
-steps 1 and 2. Stop its subagent with `TaskStop` when it still runs. Run its
-step 3 on `subagent.worktree` when it is set, with the flags of that step,
-so the branch of a merged PR is deleted. When `subagent.worktree` is `null`
-and `subagent.branch` is set, put a notice with the item and the branch in
-the inbox, and delete nothing. Run its step 4 as it is.
+an item" runs. Stop its subagent with `TaskStop` when it still runs. Then
+run `close-item <item> --continue` only. The command sends no processes word
+to a subagent item and runs no `launcher.py stop` for it. It removes
+`subagent.worktree` when it is set, with the flags of that procedure's step
+3, so the branch of a merged PR is deleted. When `subagent.worktree` is
+`null` and `subagent.branch` is set, it puts a notice with the item and the
+branch in the inbox, and deletes nothing. Then it checks the ticket.

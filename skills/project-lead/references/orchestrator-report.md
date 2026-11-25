@@ -45,10 +45,10 @@ of `autonomy-contract.md` holds.
 
 The project lead ends at the hand-over, so no project lead session reads an
 orchestrator message afterwards. The orchestrator sends its merge word, its
-rebase word and a go-ahead answer by `say`, and
-`skills/orchestrator/SKILL.md`'s "A word to a delivered item" owns the
-command. A window session sends its question by `SendMessage`, as above, and
-the answer comes by `say`.
+rebase word and a go-ahead answer by `say`, through its `crew-orch.py send`
+command (`skills/orchestrator/SKILL.md`'s "Message discipline", rule 7). A
+window session sends its question by `SendMessage`, as above, and the answer
+comes by `say`.
 
 ## A new orchestrator name
 

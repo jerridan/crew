@@ -66,6 +66,12 @@ Top-level keys:
 | `inbox` | a list of entries, oldest first |
 | `plan_changes` | a list of `{at, change, reason}` |
 | `pace` | the slot limit and the pace mode |
+| `events` | the routine events, oldest first: a list of `{at, item, text}`. `item` is an item id, or `null` for a mode change. A command that handles a routine thing appends one, and the list keeps the last 50. The board shows the last 8. It is not an inbox |
+| `merge_queue` | the item ids whose merge `merge --when-green` queued. `wait` runs each again when its checks pass |
+| `handoffs` | the words for a live item that a script recorded and cannot send: a list of `{item, name, path, at}`. `handoff clear` removes them |
+| `orchestrator_session_id` | the session id of the orchestrator, from `$CLAUDE_CODE_SESSION_ID`, or `null`. `init` and `resume` write it. The `SessionStart` hook reads it |
+| `wait_owner`, `wait_pid` | the token and the pid of the one running `wait`, or `null` |
+| `wait_seen_inbox` | the inbox ids that `wait` has seen. The first `wait` seeds it with the entries then open |
 
 ### Ids
 
@@ -97,6 +103,12 @@ display number `n` is `counters.item` after the add.
 | `launch` | the object below. `{}` until set |
 | `subagent` | `null` for an implementer item, or the object below for a subagent item. `item add` writes `null`. An item with no `subagent` key reads as `null` |
 | `told` | a list of `{at, path}`. `path` is `told/<item>-<k>.md` |
+| `ready` | `{sha, line, at}` of the newest ready line that `merge --ready` stored, or `null` |
+| `watch` | the review and comment ids, authors and times that `wait` has seen: `{reviews, comments}`. It is the baseline of the next poll |
+| `slot_released` | `true` once the item gave back its slot. It makes the release happen once |
+| `words_sent` | `true` once the merge word and the rebase word went out |
+| `queued_at_github` | `true` when `gh pr merge` left the PR open in the merge queue of GitHub. `wait` never runs that merge again |
+| `close_asked_at` | the time of the first `close-item` call, or `null` |
 | `created_at` | a time |
 
 `merge` and `waits_on` are recomputed on every write, from the stored fields
@@ -196,6 +208,14 @@ A closed entry stays in the list. An item can have more than one open entry.
 | `slots` | `{busy, max}`, two integers |
 | `limit_pct` | an integer, 95 by default |
 
+`slots` can also hold `normal_max`: the value of `max` before a slow-down,
+which `wait` restores at the reset (3 when it is not set). These commands
+write `pace`: `launch` writes `slots.busy` one higher. `finalize` writes it
+one lower, once for each item, and `merge` and `wait` call `finalize` ("The
+sequence commands"). `resume` writes the count of live implementers. `wait`
+writes `mode` and `slots.max` when the usage level changes. `pace set` is for
+a change that the orchestrator decides, such as the concurrency number.
+
 `pace set <json>` merges its object into `pace`. The record holds no usage
 figure. The account-wide plan figures live in `<record-root>/usage.json`, and
 `crew-usage.py` owns that file.
@@ -267,7 +287,9 @@ The text view prints, in this order:
 3. One section for each group that has an open item: the title, the ticket,
    the repo and `<merged> of <total> merged`. Its items follow in merge order.
 4. `Single items`: the items with no group.
-5. `Done <count>`: the items at `shipped` or `closed` outside an open group.
+5. `Recent`, only when `events` is not empty: the last 8 routine events,
+   each with its age, its item (`-` for a mode change) and its text.
+6. `Done <count>`: the items at `shipped` or `closed` outside an open group.
 
 An item row holds `n`, the id, the five marks, the status word, the PR number,
 `doing` and the age of `doing_at`. The text of a subagent item's row starts
@@ -318,6 +340,7 @@ view prints none.
 | `plan.word` | string | `SLOWED: <busy> of <max> slots`, `STOPPED`, or `""` |
 | `needs_you` | object | `{count, entries}`: the `Needs you` line and its rows |
 | `sections` | array | one section object per open group, in the order the text view prints them, then `Single items` |
+| `events` | array | the last 8 routine events, oldest first, each `{at, item, text, age}`. The key is absent when `events` is empty |
 | `done` | integer | the number in `Done <count>` |
 | `legend` | string | the stage legend after `stages:` in the footer |
 
@@ -404,6 +427,196 @@ Each line is one command and what it does.
 | `board [--urls \| --json]` | prints the board as text, or as one JSON object with `--json` |
 | `show [<item>]` | prints the whole state, or one item, as JSON |
 | `close` | sets `closed_at`. See "Closing the record" |
+| `merge`, `finalize`, `handoff clear`, `send`, `launch`, `close-item`, `digest`, `resume`, `wait` | each fixed sequence of the orchestrator, in one call. "The sequence commands" below gives each one |
+
+## The sequence commands
+
+Each command here runs a sequence that the orchestrator used to run by hand.
+Each does the steps that need no judgment, prints one line for each, and
+leaves each judgment to the orchestrator. A line is stdout. A refusal that
+sets an exit code above 2 prints one stderr line, `crew-orch: <command>
+<check>: <detail>`. Exit 1 is a record or tool error, and exit 2 is a usage
+error, as in "How the script runs". No command sends a cross-session message
+or types into a tab.
+
+### `merge <item> [--ready "<line>"] [--when-green] [--findings-answered]`
+
+`--ready` stores the ready line in `item.ready` before any check. The line
+holds `ready <sha>`, with a hex sha of 7 to 40 characters. Without `--ready`,
+the command reads `item.ready`, and for a subagent item `subagent.ready`.
+The command runs `refresh`, then these checks in this order, and stops at the
+first that fails:
+
+| Order | Check | Exit | It fails when |
+|---|---|---|---|
+| 1 | already done | 0 | the PR reads `MERGED`: the command runs `finalize` and stops |
+| 2 | `record` | 3 | the merge value is `no PR`, `conflict`, `ci failing`, `draft`, `changes requested`, `blocked` or `closed`: waiting does not fix it |
+| 3 | `ready` | 4 | a ready line exists and its sha is not a prefix of `headRefOid` |
+| 4 | `pending` | 11 | CI runs, the PR is in a queue, or no ready line exists. With `--when-green` the command queues the item in `merge_queue` and exits 0 |
+| 5 | `order` | 8 | an earlier item of the group order that shares a file is not merged. A `waits on` with no shared file exits 3 `record` |
+| 6 | `threads` | 5 | a review thread is unresolved |
+| 7 | `findings` | 6 | a review or comment outside a thread exists and no `--findings-answered` is given. It prints each as `finding: <author> <kind> <first 120 characters>`, and then `ready: <line>` |
+| 8 | `approval` | 7 | the approval is missing, or the merge value is `needs review` and no `Merge` section exists |
+| 9 | `merge-section` | 9 | a `Merge` section exists. The command prints `merge-section:` and its text, and does not merge |
+| 10 | `gh` | 10 | a `gh` read fails, no method is allowed, `gh pr merge` fails, or a fresh read cannot confirm the state |
+
+The `Merge` section comes from `.claude/crew.md` on the default branch of the
+repo, then from `$CREW_CONFIG` (the machine file, `~/.claude/crew/config.md`
+by default). The method is the first of rebase, squash and merge that
+`gh repo view` allows. The command runs `gh pr merge --match-head-commit
+<sha>`. Then it runs `finalize`.
+
+Output lines: `merge: <item> <method> <sha12>`, then the lines of `finalize`.
+
+### `finalize <item>`
+
+A fresh `gh pr view --json state` decides. `merge` and `wait` call it, and
+the orchestrator runs it to retry after exit 10.
+
+| State | What the command does |
+|---|---|
+| `MERGED` | releases the slot of an implementer item once (`slot_released`), appends the event `merged PR #<n>`, sends the merge word, and sends the rebase word to the next unfinished item of the group order that shares a file (`words_sent`). Prints `merged: <item> (PR #<n>)` and `rebase-word: <item>` |
+| `OPEN` | the merge queue of GitHub holds the PR. Prints `queued: <item> (...)`, sets `queued_at_github`, and adds the item to `merge_queue` |
+| `CLOSED` | releases the slot once, appends an event and sends no word. Prints `closed: <item> (...)` |
+
+A subagent item gets no word and has no slot. A delivered item gets each word
+by `window-watch.py say` (`said: <item>`). A live item gets its word recorded
+in `handoffs`, and the command prints `send-to: <session name>` and `told:
+<path>`. The orchestrator then sends it with one `SendMessage`, and runs
+`handoff clear <item>`. A read that fails keeps the item in `merge_queue` and
+exits 10.
+
+### `handoff clear <item>`
+
+Removes the `handoffs` of the item and prints `cleared: <n>`.
+
+### `send <item> (--text <t> | --file <p>) [--from <name>]`
+
+Records the message as `told` does. For a delivered item, it delivers it by
+`window-watch.py say`, and prints `said: <item>`. For an item with a live
+project lead, it prints `send-to: <session name>` and `told: <path>`: the
+orchestrator then sends the text with one `SendMessage` to that name. A
+delivered item takes one call, and a live item takes two. `--from` defaults
+to the current session name (the session file of `$CLAUDE_CODE_SESSION_ID`
+under `~/.claude/sessions/`), then to the record name. Exit 2 gives neither or
+both of `--text` and `--file`. Exit 1 gives a subagent item, or an item with
+no session name.
+
+### `launch <item> [--model <m>] [--group <g>] [--terminal <t>] [--principal <name>] [--goal-file <p>] [--wait-seconds <n>]`
+
+Runs `launcher.py start` for the item, with the worktree path, the settings
+value of `crew-usage.py settings`, and the session name. The session name is
+the item id with `_` changed to `-`. `--principal` is the orchestrator's
+current session name. Without it, the command finds the name from the session
+file of `$CLAUDE_CODE_SESSION_ID`. It stores the start output in `launch`,
+writes `pace.slots.busy` one higher, and records `--goal-file` as the first
+`told` entry. Then it waits up to `--wait-seconds` (60 by default) for a
+session file that names the implementer. It prints the launcher line, then
+`goal-ready: <session name>` or `goal-wait: <reason>`. The orchestrator sends
+the goal on `goal-ready`.
+
+Exit 3 prints `launch refused: <why>` when `pace.mode` is not `normal` or no
+slot is free. Exit 1 gives a failed `start` or settings call, no `Checkouts`
+line for the repo, no principal name, or an item that has a launch or a
+`subagent`.
+
+### `close-item <item> [--continue] [--stop-processes]`
+
+The first call sends the processes word, by `say` for a delivered item or as
+the `send-to:` and `told:` lines of `send`, and writes `close_asked_at`. A
+subagent item gets no word.
+
+`--continue` runs the stop, the removal and the ticket check, and prints one
+line for each: `stop: ...`, `remove: ...`, `kept-process: <pid> <command>` for
+each process that kept the worktree, `notice: <id> <text>` for each notice it
+added, and `ticket: ...`. `remove` gets `--delete-branch --pr <n>` for a
+merged item, `--delete-branch` for an item with no PR, and neither otherwise.
+A failed `stop` skips the removal and adds a notice. A GitHub ticket closes
+only when the item landed. `--stop-processes` goes with `--continue` only,
+and tells `remove` to stop the kept processes. Without `--continue` it exits
+2. A refusal for kept processes exits 0.
+
+### `digest <item> [--diff-file <p>]`
+
+Runs `refresh` and prints the facts that the merge judgment needs, one block:
+`brief:` (the first `told` entry, cut to 600 characters), one `file: <path>
++<added> -<deleted>` line per changed file, `threads: <n> unresolved`, one
+`finding:` line per review or comment outside a thread, `ci:`, `shared with
+<item>: <files>` for each other open PR of the group, and `order:`. With
+`--diff-file`, it writes the file with a `# Brief` part and a `# Diff` part
+and prints `diff-file: <p>`. Exit 10 gives a failed `gh` call.
+
+### `resume [--read-only]`
+
+Runs the mechanical steps of the resume of `resume-and-close.md`. It prints
+one line for each item, `<item> <action>: <detail>`, and the orchestrator does
+what the action says:
+
+| Action | The detail says |
+|---|---|
+| `rejoin` | the implementer is alive, or the command resumed it. Send the rejoin message |
+| `send-goal` | the implementer is alive, but `told` holds no goal. Send the goal |
+| `restart` | a session matches by id only. The line gives the `launcher.py stop` command. Then resume it |
+| `resume` | read-only only: the implementer is gone and its worktree exists. Run `resume` |
+| `notice` | a session matches by working directory only, or the worktree is gone, or a tool failed. Add a notice. Never stop a session that matches by working directory only |
+| `window` | the item is delivered. The command ran `window-watch.py ensure` (not with `--read-only`). Reach it with `send` |
+| `launch` | the item has no launch. Run `launch` |
+| `close` | the item is `shipped` or `closed`. The command ran `launcher.py find` and wrote a changed `launch.tab`. The line says `alive at <handle>`: run `close-item <item>`, then `--continue` after its answer. Or it says `its session is gone`: run `close-item <item> --continue` |
+| `subagent` | a subagent item. The line says what its stage needs |
+| `ok` | nothing to do |
+
+A closed record prints one line, `closed: ...`, and nothing else. Without
+`--read-only`, the command also resumes each gone implementer whose worktree
+exists, writes `launch.tab` when a handle moved (also for an item at `shipped`
+or `closed`), writes `pace.slots.busy` (the
+count of implementers that are alive, resumed or delivered, at a stage before
+`merged`), and stores `orchestrator_session_id`. With `--read-only` it writes
+nothing and starts nothing. The `SessionStart` hook (`hooks/session-start.py`)
+runs `resume --read-only` for the open record whose `orchestrator_session_id`
+is the session's, at the start of a compaction or a resume, and prints the
+lines as context.
+
+### `wait [--interval <seconds>] [--polls <n>]`
+
+A loop with no model. The orchestrator runs it as a background Bash command,
+and its exit is the wake. It polls every `--interval` seconds (60 by default).
+`--polls <n>` ends the loop after `n` polls with no event, with exit 0 and no
+output. It is for a test.
+
+Each poll: it runs `crew-usage.py check`, runs `refresh` on each item with a
+PR, runs a queued merge whose checks now pass (`merge <item> --when-green`),
+finalizes a PR that reads `MERGED` or `CLOSED`, and reads the inbox. It writes
+`pace.mode`, `pace.slots.max`, `events`, `github`, `watch` and
+`wait_seen_inbox` itself. It wakes the orchestrator only for an event in the
+table. A red check, a conflict, a new comment and a new review with words
+on an implementer item (an item with a `launch`, not in `merge_queue`) are
+board events and wake nobody: the implementer handles them. They still wake
+for a subagent item and for an item in `merge_queue`. A PR that enters the
+merge queue is a board event for every item. On a wake it prints one line for
+each event and exits 0:
+
+| Line | When |
+|---|---|
+| `wake usage -: level=<level> was=<old> <check tail>` | the level rises to `slowed` or `stopped`. At `slowed` it writes `slots.max` 1 |
+| `wake usage -: reset level=normal was=<old> <tail>` | the level returns to `normal`. It restores `slots.max` |
+| `wake check <item>: failed <names>` | a check turned red |
+| `wake conflict <item>: ...` | the PR has a conflict |
+| `wake review <item>: approved` | `reviewDecision` turned `APPROVED`: a human approval, which no implementer reports |
+| `wake review <item>: <author> <state> <text>` | a new review |
+| `wake comment <item>: <author> <text>` | a new comment by someone other than the PR author |
+| `wake queue <item>: left the queue` | the PR left the merge queue and is still open |
+| `wake closed <item>: PR #<n> closed with no merge; its slot is released` | the PR closed |
+| `wake merge-failed <item>: exit <code> <line>` | a queued merge failed a check other than `pending`. The item leaves `merge_queue` |
+| `wake inbox <item\|->: <id> <text>` | a new open entry with `for: orchestrator` |
+| `wake send <item>: send-to <name> told <path>` | a handoff waits. It repeats at each `wait` until `handoff clear` runs |
+
+A step down from `stopped` to `slowed`, a re-check with no change, and a
+queued merge that went through wake nobody. The first poll of an item with no
+stored `github` or `watch` is a baseline and wakes nobody, so the
+orchestrator reads the known state (`board`, `refresh`) before it runs
+`wait`. A second `wait` on the same record stops the first: `wait_owner` holds
+the token, and each write of the older one checks it. `wait` exits 2 on a bad
+argument.
 
 ## Closing the record
 

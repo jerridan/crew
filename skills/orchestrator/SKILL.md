@@ -16,9 +16,9 @@ value and procedure that you use. Name the command, then read its owner:
 
 | File | What it owns |
 |---|---|
-| `references/orchestrator-record.md` | the record, every field, the stages, the merge value, the board, and every `crew-orch.py` command |
+| `references/orchestrator-record.md` | the record, every field, the stages, the merge value, the board, and every `crew-orch.py` command with its output and exit codes |
 | `references/launcher.md` | every `launcher.py` command, its output, its exit codes, and the defaults of an implementer |
-| `references/usage.md` | the plan usage figures, the levels, the watch, the slow-down rule and the limit, and every `crew-usage.py` command |
+| `references/usage.md` | the plan usage figures, the levels, the slow-down rule and the limit, and every `crew-usage.py` command |
 | `references/resume-and-close.md` | the resume after a compaction or a restart, the close of an item after its end, and the close of a run |
 | `references/subagent-items.md` | the test that makes an item a subagent item, and its dispatch, PR window, escalation and close |
 
@@ -135,9 +135,9 @@ number, the order of sources decides ("Standing instructions" below).
 
 The number is part of the plan. Write each change with `plan change` and its
 reason, so the number survives a slowed period. `pace.slots.max` holds the
-number, except while `usage.md`'s "The slow-down rule" lowers it. Write
-`pace.slots.busy` with `pace set` when an implementer starts, and when it
-ends ("After the merge").
+number, except while `usage.md`'s "The slow-down rule" lowers it. You write
+no slot count: `launch` counts a start, and `merge` and `wait` count an end
+(`orchestrator-record.md`'s "`pace`").
 
 `slots` is not a brake on usage. `usage.md`'s "The slow-down rule" says why.
 
@@ -166,23 +166,19 @@ instructions and hooks. Then:
    "groups" says what a group is on each. Read the open groups with
    `launcher.py groups`. Put the implementer in a group that fits, such as
    the group of its item group or its repo. Name a new group when none fits.
-3. **The settings value.** Compute the worktree path as `launcher.md`'s
-   "start" says. Then print the value with `crew-usage.py settings`
-   (`usage.md`'s "The launch value").
-4. **Start.** Run `launcher.py start` with the arguments of `launcher.md`'s
-   "start", among them `--repo` and `--group`. Give that value as
-   `--settings`, your current session name as `--principal`, and a session name
-   that the `--name` rule accepts. Read your current session name from the
-   first line of `ListAgents` ("This session is <name> ...") at each launch.
-   Never use the record name for it, and keep no copy of the session name.
-   For the item's `--name`, use the item id when the rule accepts it.
-5. **Store the output.** Write the start output, unchanged, into the item's
-   `launch` with `item <id> set launch`.
-6. **Count the slot.** Write `pace.slots.busy` one higher.
+3. **Launch.** Run `crew-orch.py launch <item>` with `--model` (below),
+   `--group` and `--goal-file`. It refuses at a full slot count and at a
+   mode other than `normal`, so a refusal is the answer to the three
+   conditions above. Otherwise it does the rest of the start: the worktree
+   path, the settings value, your current session name as `--principal`,
+   `launcher.py start`, the `launch` field, the slot count and the record of
+   the goal. It prints `goal-ready: <session name>` or `goal-wait: <reason>`.
+   `orchestrator-record.md`'s "`launch`" owns its arguments and exit codes.
 
-On a non-zero exit, read the one stderr line beside `launcher.md`'s "Exit
-codes". Fix the cause and run `start` again, or put a notice in the inbox.
-Send no goal to an implementer that did not start.
+On a non-zero exit, read the one stderr line. For a failed `start`, read the
+line beside `launcher.md`'s "Exit codes". Fix the cause and run `launch`
+again, or put a notice in the inbox. Send no goal to an implementer that did
+not start.
 
 **The model and Remote Control.** `launcher.md` owns both defaults of an
 implementer: the model, and Remote Control off. Two things change the model:
@@ -195,10 +191,10 @@ Remote Control setting of your own session.
 
 The tab starts with a wait prompt. The goal arrives later, as a cross-session
 message from you. That makes you the implementer's principal
-(`autonomy-contract.md`). Send it when `ListAgents` shows the implementer's
-session name. When the name does not show, the tab can wait on the trust
-dialog (`launcher.md`'s "start"). Put a notice for the principal in the inbox,
-with the item and its `tab`.
+(`autonomy-contract.md`). Send it on the line `goal-ready: <session name>`
+that `launch` prints. On `goal-wait`, the tab can wait on the trust dialog
+(`launcher.md`'s "start"). Put a notice for the principal in the inbox, with
+the item and its `tab`, and send the goal when `ListAgents` shows the name.
 
 The goal message carries:
 
@@ -241,8 +237,9 @@ The rules for the run:
 - **The ticket.** Name the GitHub issue that the item resolves, so that the
   project lead writes `Closes #<n>` in the PR body.
 
-Record every message to an implementer with `told` before you send it, or as
-you send it. This holds for the goal and for every later message.
+Pass the goal as `launch --goal-file`, which records it as the first `told`
+entry. Every later message goes through `send` ("Message discipline", rule 7),
+which records it.
 
 ## A rename
 
@@ -258,7 +255,7 @@ When the principal says that the session has a new name, do these steps:
    implementer that has not got its goal: its wait prompt cannot tell it
    about a name, and the goal's envelope gives the name. Send none for a
    subagent item.
-3. Write each message with `told`. It carries the line `Orchestrator: <record
+3. Send each message with `send`. It carries the line `Orchestrator: <record
    name>, item <id>` for that item, and says that your session has the new
    name and that the implementer sends to the new name from now on.
 
@@ -281,7 +278,7 @@ names the id in its message. Read the entry. Then:
 1. Answer it yourself when it is yours: the division of the work, the order,
    the owner of a shared thing, a boundary between items, or the meaning of
    the parent ticket. Write the answer with `answer`. Then send it, with
-   `told`.
+   `send`.
 2. Route it when it is the principal's, with `route <id> principal`. The id
    stays the same. Tell the implementer that the question waits on the
    principal, and that it can work on other parts.
@@ -305,6 +302,13 @@ names the id in its message. Read the entry. Then:
 6. **No `claude` process from an agent.** No agent that you dispatch starts
    a `claude` process, and you start none by hand. Only the launcher and
    `crew-usage.py` start one.
+7. **A word to an item.** Send each message to an item with `crew-orch.py
+   send <item>`. It records the message. A delivered item gets the word at
+   once, because a project lead that handed over has no session to wake, and
+   a message to its tab would wake its whole build context. For a live item
+   the command prints `send-to: <session name>` and `told: <path>`: send the
+   text of that file with one `SendMessage`. A subagent item takes
+   `SendMessage` alone. Say it after it ran (rule 2).
 
 ## Groups and shared things
 
@@ -321,99 +325,106 @@ or component.
   sequence number in a design doc. You own it. Assign it to each PR, in merge
   order, when that PR is next to merge. Each later PR rebases on the merge.
 
-## The overlap check
-
-Before each merge decision in a group, list the files that any two open PRs
-of the group share:
-
-1. Run `gh pr diff <n> --name-only` for each open PR of the group.
-2. Take the intersection of each pair.
-
-PRs that share a file conflict. Merge them one at a time, in the group order.
-After each merge, tell the next implementer to rebase, as "A word to a
-delivered item" says.
-
 ## The merge
 
-A PR merges when each check below passes. Run `crew-orch.py refresh <item>`
-first. Each check names what decides it.
+`crew-orch.py merge <item>` runs the merge. It decides each check that a
+script can, and `orchestrator-record.md`'s "`merge`" lists them with the exit
+code of each. Three judgments stay with you: the brief check, the match of the
+findings to the ready line, and a `Merge` section. Files that two open PRs of a
+group share make them conflict, so they merge one at a time in the group order.
+`merge` refuses a PR while an earlier item that shares a file is not merged,
+and `digest` prints the shared files.
 
-| Check | What decides it |
-|---|---|
-| The record allows the merge | the item's merge value is `can merge` (`orchestrator-record.md`'s "The merge value") |
-| The ready line is for the current head | the sha of the newest ready line, the implementer's or `subagent.ready`, equals `headRefOid` of `gh pr view <n> --json headRefOid` |
-| Each finding outside a review thread has a fix or a reply | that ready line names each finding in `gh pr view <n> --json reviews,comments` |
-| Each review thread is resolved | `gh api graphql` on the PR's `reviewThreads`: no thread has `isResolved: false`. This row covers each finding in a thread |
-| A repo that requires no approval has one | `reviewDecision` of `gh pr view <n> --json reviewDecision` is empty. Then the ready line for the current head is the approval (rule 7) |
-| The overlap check is done | "The overlap check" gives this PR the next place |
+1. **The brief check.** Run it before each merge of an implementer item, and
+   after each fix round on a finding that you raised. Run `digest <item>
+   --diff-file <path in your scratchpad>`. Dispatch one subagent, named as
+   `skills/project-lead/SKILL.md`'s "Every dispatch is named" says, with the
+   model of `band-rubric.md`'s "The orchestrator's dispatches". Tell it to read
+   that file and return only each deviation from the brief and each gap in a
+   fix. Read the digest and that answer. Never read the whole diff. Send a
+   deviation that the brief does not allow back to the implementer. For a
+   subagent item, a diff that does more than the brief asked goes to
+   `subagent-items.md`'s "Larger than it looked".
+2. **The merge call.** Run `merge <item> --ready "<ready line>"` with the
+   newest ready line of the implementer, or of `subagent.ready`. For a PR that
+   waits on CI, on a merge queue or on a ready line, add `--when-green`: `wait`
+   runs the merge when its checks pass, with no turn of yours.
+3. **The result.** A refusal prints its check on stderr. By check:
+   - `findings`: the command printed each finding outside a review thread, and
+     the ready line. A finding that the line does not name is not answered
+     yet. Ask the implementer for its ready line again. When the line names
+     each one, run `merge` again with `--findings-answered`.
+   - `ready`: the line is for an old head. Ask for a ready line for the
+     current head.
+   - `threads`: tell the implementer to reply in each open thread and resolve
+     it.
+   - `order`: wait. `wait` merges a queued PR when its turn comes, or run
+     `merge` again after the earlier item merged.
+   - `record`: read the merge value that the line names. Act on it: a red
+     check, a conflict, a draft and a requested change belong to the
+     implementer.
+   - `approval`: the PR waits for a human approval. Put a notice in the inbox,
+     with the PR link. The `wait` line `review <item>: approved` wakes you
+     when it arrives.
+   - `merge-section`: the command printed the `Merge` section. Run its steps.
+   - `gh`: read the line, fix the cause, and run `merge` again, or `finalize
+     <item>` after a `gh pr merge` that may have worked.
+   - `pending` (exit 11): run `merge` again with `--when-green`.
+4. **After the merge.** The command did the rest itself: it sent the
+   merge word, it sent the rebase word to the next item of the group that
+   shares a file, it freed the slot of an implementer item, and it wrote the
+   routine events. For a live item it prints each word as `send-to:` and
+   `told:`: send each with one `SendMessage`, then run `handoff clear
+   <item>`. A subagent item has no implementer and no slot: `subagent-items.md`'s
+   "The PR" says what follows its merge.
 
-A finding that the ready line does not name is not answered yet. Ask the
-implementer for its ready line again. A ready line that reports the head as
-unreviewed approves nothing. Put a notice in the inbox, and do not merge that
-PR on the line alone. A head that the record lists as `goal-check-done` is
-not unreviewed: the goal check ran on the goal run's hand-over head.
-
-**The method.** Merge by rebase when the repo allows it. Else use the one
-method that the repo allows. `gh repo view --json
-rebaseMergeAllowed,squashMergeAllowed,mergeCommitAllowed` says which. Give
-the merge command the sha that the ready-line row read, as `gh pr merge
---match-head-commit <sha>`, so that GitHub refuses the merge when the head
-moved. In a repo with a merge queue, the merge command puts the PR in the
-queue.
+A ready line that reports the head as unreviewed approves nothing. Put a
+notice in the inbox, and do not merge that PR on the line alone. A head that
+the record lists as `goal-check-done` is not unreviewed: the goal check ran on
+the goal run's hand-over head.
 
 **A `Merge` section replaces part of this procedure.** The section holds
 prose steps, for example: "post the PR link in a review channel and wait for
-a human approval, then use the merge queue". Read it from the item's repo
-file, `.claude/crew.md` on the default branch, and from the machine file. The
-order of sources decides which wins ("Standing instructions" below). It
-replaces two things: the method, and the row "A repo that requires no
-approval has one". Every other row of the table stays, and so do the group
-order and the overlap check. Run its steps when every row passes, or when the
-only failed condition is the approval: the merge value is `needs review`.
-
-With no `Merge` section, a merge value of `needs review` means that the PR
-waits for a human approval. Put a notice in the inbox, with the PR link.
-
-**A word to a delivered item.** A project lead that handed over ends its
-turn, and a message to its tab wakes its whole build context. So send each
-word to a delivered item, the merge word, the rebase word and a go-ahead
-answer, with:
-
-```bash
-python3 <plugin-dir>/skills/delivered-window/scripts/window-watch.py say --item <orch-name>/<item> --from <name> "<text>"
-```
-
-The watcher reads it as an event and starts a window session. An item that
-has not handed over takes `SendMessage` as before. A subagent item has no
-window session, and `say` does not apply to it.
-
-**After the merge.** When the merge command succeeded, or the queue merged
-the PR, tell the implementer, by `say` when the item is delivered. Write `pace.slots.busy` one lower. Then start
-the next rebase in the group. Also write it one lower when an implementer
-item reaches `closed` with no merge. A subagent item has no implementer and
-no slot: `subagent-items.md`'s "The PR" says what follows its merge.
+a human approval, then use the merge queue". The command reads it from the
+repo file and the machine file, and the order of sources decides which wins
+("Standing instructions" below). It replaces the method and the approval
+check. When every other check passes, or when the only failed condition is
+the approval, the command prints the section and stops. Run its steps. With
+no `Merge` section, a merge value of `needs review` means that the PR waits
+for a human approval.
 
 ## The wait
 
-A wait costs no model turn, except one turn per timeout of a GitHub wait.
-When nothing needs you, end your turn. Never poll in a turn, and never sleep
-in one. Five things wake you:
+A wait costs no model turn. When nothing needs you, end your turn. Never poll
+in a turn, and never sleep in one. Run `crew-orch.py wait` as a background
+Bash command (`run_in_background`). Its exit is the wake, so run it again after
+each wake. A second `wait` replaces the first. Before you run it, run
+`refresh` and act on the state that the record holds: the first poll of an
+item is a baseline, and it wakes nobody for a state that is known already.
+
+Three things wake you:
 
 | Waker | How it arrives |
 |---|---|
-| A message from an implementer | a cross-session message. It arrives on its own. |
-| A message from the principal | it arrives on its own. |
-| A PR or CI change that you must act on | the implementer's line: the goal asks for one at each ready head, and when an approval or a merge queue event needs you. Where no implementer can tell you, such as a human approval, a GitHub wait. |
-| A usage level | the line of the usage watch (`usage.md`'s "The watch"). |
-| A subagent's return | its final message, as the table of `skills/project-lead/SKILL.md`'s "Every dispatch is named" says. |
+| A message from an implementer or from the principal | a cross-session message. It arrives on its own |
+| A subagent's return | its final message, as the table of `skills/project-lead/SKILL.md`'s "Every dispatch is named" says |
+| A line of `wait` | the exit of the background command. One line for each event, `wake <kind> <item\|->: <detail>` |
 
-**A GitHub wait.** Run a shell loop over existing commands as a background
-Bash command (`run_in_background`), with the largest timeout that the Bash
-tool allows. An example is `gh pr view <n> --json
-reviewDecision,state,mergeStateStatus`. The loop exits on the first change of
-that output, and its exit wakes you. Write no new script for it. A timeout
-wakes you too, for one turn: start the command again, only while you still
-wait on that PR.
+`wait` takes the routine events itself: it writes the mode, the slot maximum
+and the state of each PR, and it runs a merge that you queued. Each of those
+goes to the board ("The board"). It wakes you only for a kind below.
+`orchestrator-record.md`'s "`wait`" owns the line formats.
+
+| Kind | You do |
+|---|---|
+| `usage` | act as `usage.md`'s "The slow-down rule" says. `wait` wrote the mode already |
+| `check`, `conflict`, `comment`, `review` with words | `wait` wakes you for these only on a subagent item, and on an item in `merge_queue`. An implementer handles them on its own PR. For a subagent item, act as `subagent-items.md`'s "The PR" says. For a queued merge, read `digest <item>` and act as for a `merge-failed` line |
+| `review` with `approved` | a human approval arrived, the one that no implementer reports. Run `merge` ("The merge") |
+| `queue` | the PR left the merge queue and is still open. Put a notice in the inbox. A PR that entered the queue is a board event |
+| `closed` | the PR closed with no merge, and `wait` freed the slot. Put a notice in the inbox, and close the item |
+| `merge-failed` | a queued merge failed a check. Act as "The merge", step 3, says for that check |
+| `inbox` | an implementer asked a question. Read it and act as "Questions and the inbox" says |
+| `send` | a word waits for a live item. Send the text of the `told:` file with one `SendMessage`, then run `handoff clear <item>` |
 
 ## Standing instructions
 
@@ -430,30 +441,31 @@ itself, and `orchestrator-record.md`'s "The board" owns what it shows. In a
 session that cannot show a pane, print `crew-orch.py board` in the transcript
 at each change of state.
 
+The board holds routine state: a merge, a queued merge, a rebase word, a
+change of the mode. The principal reads it there. Tell the principal only an
+inbox entry, and send no message for routine state.
+
 ## Usage
 
 `usage.md` owns every action and every value of the usage limit:
 
-- Arm the usage watch, and act on each line, as its "The watch" says.
-- At each level, act as its "The slow-down rule" says.
+- Act on a `usage` line of `wait` as its "The slow-down rule" says.
 - Set and send the limit as its "The limit" says.
 
 ## The close of an item
 
 An implementer item ends with these steps, in this order:
 
-1. The PR merges ("The merge").
-2. You tell the implementer that the PR merged, by `say`.
-3. A window session writes the stage `merged`, then `shipped` at the ship
+1. The PR merges ("The merge"). The command tells the implementer.
+2. A window session writes the stage `merged`, then `shipped` at the ship
    word (`crew:delivered-window`). When the repo has a deploy, the ship word
    waits for it.
-4. The implementer's run closes.
-5. The ticket closes, as `resume-and-close.md`'s "The close of an item"
-   says.
-6. The record holds the item at `shipped`, or at `closed` for a run that ends
+3. The implementer's run closes.
+4. The record holds the item at `shipped`, or at `closed` for a run that ends
    with no merge.
 
 A subagent item ends at `shipped` or `closed` as `subagent-items.md` says.
-After step 6, or at that end, close the item as `resume-and-close.md`'s "The
-close of an item" says. On the principal's word, close the whole run as its
-"The close of a run" says.
+After step 4, or at that end, close the item with `close-item`, as
+`resume-and-close.md`'s "The close of an item" says: the processes word, then
+the session, the worktree, the branches and the ticket. On the principal's
+word, close the whole run as its "The close of a run" says.

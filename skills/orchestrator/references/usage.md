@@ -165,29 +165,27 @@ removes the user's line. No command here changes a settings file.
 
 ## The watch
 
-Arm `crew-usage.py watch --limit <pct>` with the `Monitor` tool. It prints one
-line when the level changes, and one on a reset. It prints nothing otherwise.
-Each line carries `sampled=<UTC ISO>`.
+The orchestrator arms no usage watch. `crew-orch.py wait` checks the level at
+each poll, with `check --limit` set to `pace.limit_pct`
+(`orchestrator-record.md`'s "`wait`" owns the command). It writes `pace.mode`
+and `pace.slots.max` itself, and it wakes the orchestrator only for a rise to
+`slowed` or `stopped`, or for a reset after a level that was not `normal`.
+After a window that stayed `normal`, a reset costs no turn. Each wake line
+carries the `sampled=` time of the figure.
+
+The orchestrator acts on the wake line as "The slow-down rule" says. It
+writes no mode itself.
+
+`crew-usage.py watch --limit <pct>` stays for a person and for a project
+lead. It prints one line when the level changes, and one on a reset. It
+prints nothing otherwise. Each line carries `sampled=<UTC ISO>`.
 
 ```
 usage level=<level> five_hour=<pct>% limit=<n>
 usage reset: level=<level> five_hour=<pct>%
 ```
 
-The reset line prints only when the level before the reset was not `normal`.
-After a window that stayed `normal`, a reset costs no turn.
-
-The first level the watch reads prints nothing, whatever it is. So run
-`check` once when you arm the watch, and write its level as the first mode.
-
-A `Monitor` watch ends after at most 30 minutes. Arm it again at each expiry.
-Each new watch starts with a silent first level, so run `check` at each re-arm
-too. Write its level when it differs from `pace.mode`.
-
-The watch writes no mode and reads no orchestrator record. On each line, write
-the mode yourself: `crew-orch.py pace set '{"mode": "<level>"}'`
-(`orchestrator-record.md` owns the command). A reset line carries the level
-after the reset.
+The first level that `watch` reads prints nothing, whatever it is.
 
 `watch --limit <pct> --until stopped` prints nothing while the level is below
 `stopped`. At `stopped`, even on its first read, it prints one `usage
@@ -197,22 +195,21 @@ background (`autonomy-contract.md`).
 ## The slow-down rule
 
 The mode, the slot counts and the limit live in `pace` of the orchestrator
-record (`orchestrator-record.md`). There is no second copy. A level only
-changes what you write there.
+record (`orchestrator-record.md`). There is no second copy. `wait` writes
+the mode and `slots.max` at each change of level. You write neither.
 
 - At `slowed`: start no new implementer, and dispatch no new subagent for a
-  subagent item (`subagent-items.md`). Set `slots.max` to 1 with
-  `crew-orch.py pace set '{"slots": {"max": 1}}'`. Tell each implementer above
-  that number to pause: it finishes its current package, commits, and waits
-  for the reset. Tell each implementer to defer optional work that starts a
+  subagent item (`subagent-items.md`). `wait` has set `slots.max` to 1. Tell
+  each implementer above that number to pause: it finishes its current
+  package, commits, and waits for the reset. Tell each implementer to defer optional work that starts a
   new process on the plan, until the reset, when the forecast says the limit
   falls before it. A goal check, a skeptical review round and a push that
   starts a CI run are such work.
 - At `stopped`: tell each implementer to stop. It commits and starts no new
   step. Dispatch no new subagent.
-- At the reset: set the mode to `normal` and restore `slots.max` to the
-  concurrency number: 3 by default, or the number that the principal's word or
-  the standing instructions set. An implementer that waits resumes by itself.
+- At the reset: `wait` has set the mode to `normal` and restored `slots.max`
+  to the number that it held before the slow-down, which `wait` kept in
+  `pace.slots.normal_max`. An implementer that waits resumes by itself.
 - With no plan limits: there is no meter and no slow-down. The level stays
   `normal`.
 
@@ -236,7 +233,8 @@ The limit is 95 by default. `pace.limit_pct` holds it. Two things change it:
 - A `Usage limit` section of the standing instructions
   (`skills/project-lead/SKILL.md`'s "Standing instructions").
 
-Pass the limit to every `check` and `watch` as `--limit`. Write `Usage limit:
+Pass the limit to every `check` and `watch` that you run as `--limit`. Write `Usage limit:
 <pct>` into each goal you send, as a copy of `pace.limit_pct` at that time.
-When the limit changes, write the new value to `pace.limit_pct`, restart the
-watch with it, and send the new value to each implementer.
+When the limit changes, write the new value to `pace.limit_pct` with `pace
+set`, and send the new value to each implementer. The next poll of `wait`
+reads it.

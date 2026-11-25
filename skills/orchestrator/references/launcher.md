@@ -684,7 +684,8 @@ a fixed order, and the first check that fails decides the exit:
   the tabs, then 8. Then 6 when the tab does not open.
 - `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`,
   `tmux` or `herdr`.
-- `groups`: 2, 4. On Herdr, then 6 when the window does not answer.
+- `groups`: 2, 4. Exit 2 includes a `--terminal` value that is not `iterm2`,
+  `tmux` or `herdr`. On Herdr, then 6 when the window does not answer.
 - `focus` and `stop`: 2, 7 for an unknown prefix. Then the terminal step: 6
   or 7. `stop` with `--name` or `--session-id`: 6 when `osascript` or `ps`
   fails in the target check.

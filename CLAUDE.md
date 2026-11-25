@@ -6,7 +6,8 @@ The repo root is the plugin root.
 
 Almost every file here is markdown. Verifying a change is reading, not
 running — there is no build, no test suite and no CI. The exceptions are the
-two hooks, `hooks/session-start.py` with its test `hooks/test-session-start.sh`,
+three hook scripts, `hooks/session-end.py`, `hooks/pre-compact.py` and
+`hooks/session-start.py` with its test `hooks/test-session-start.sh`,
 the four scripts under `skills/project-lead/scripts/`,
 `skills/orchestrator/scripts/crew-orch.py` with its test `test-crew-orch.sh`,
 `skills/delivered-window/scripts/pr-watch.sh` and `dequeue-diagnosis.sh`,

@@ -375,8 +375,10 @@ and `digest` prints the shared files.
    shares a file, it freed the slot of an implementer item, and it wrote the
    routine events. For a live item it prints each word as `send-to:` and
    `told:`: send each with one `SendMessage`, then run `handoff clear
-   <item>`. A subagent item has no implementer and no slot: `subagent-items.md`'s
-   "The PR" says what follows its merge.
+   <item>`. A line `rebase-word-needed: <item> (...)` means the command sent
+   no rebase word: send it yourself, to the session or the subagent that the
+   line names. A subagent item has no implementer and no slot:
+   `subagent-items.md`'s "The PR" says what follows its merge.
 
 A ready line that reports the head as unreviewed approves nothing. Put a
 notice in the inbox, and do not merge that PR on the line alone. A head that

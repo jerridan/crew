@@ -166,6 +166,6 @@ an item" runs. Stop its subagent with `TaskStop` when it still runs. Then
 run `close-item <item> --continue` only. The command sends no processes word
 to a subagent item and runs no `launcher.py stop` for it. It removes
 `subagent.worktree` when it is set, with the flags of that procedure's step
-3, so the branch of a merged PR is deleted. When `subagent.worktree` is
+2, so the branch of a merged PR is deleted. When `subagent.worktree` is
 `null` and `subagent.branch` is set, it puts a notice with the item and the
 branch in the inbox, and deletes nothing. Then it checks the ticket.

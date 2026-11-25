@@ -141,8 +141,8 @@ them.
 |---|---|
 | `name` | the dispatch name, `sub-<item id>` |
 | `model` | the model of the subagent |
-| `worktree` | the absolute path of its worktree, or `null` for work that changes no repo |
-| `branch` | its branch, or `null` |
+| `worktree` | the absolute path of its worktree, written right after the dispatch from the agent id and corrected from the task notification, or `null` for work that changes no repo |
+| `branch` | its branch, written with `worktree`, or `null` |
 | `outcome` | one line: the result of work with no PR, or `null` |
 | `ready` | the subagent's newest ready line, as it sent it, or `null` |
 

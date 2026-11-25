@@ -120,13 +120,13 @@ Do these steps in this order.
    the steps above. Its subagent is gone after a reopen or a new session.
    Its brief is in `told`. By its stage:
    - `queued`: dispatch it as `subagent-items.md`'s "The dispatch" says.
-   - `build`: dispatch it again under the same name and brief. Add as
+   - `build`: dispatch it again under the same name and brief, as `subagent-items.md`'s "The dispatch" says for a new dispatch. Add as
      context its branch and commits, or, for work in no repo, what the record
      shows done. Tell it to read the current state before it changes
      anything. When `subagent.worktree` is set and is gone, put a notice with
      the item in the inbox instead. The principal decides.
    - `pr`: when `subagent.ready` is `null`, or its sha is not the
-     `headRefOid` of the PR, dispatch it again under the same name. Ask it
+     `headRefOid` of the PR, dispatch it again under the same name, in the same way. Ask it
      only for a ready line for the current head.
    - `merged`: when `subagent-items.md`'s "The PR" ran a deploy watch for it,
      write its input file again with `since` `null`, and arm it again.

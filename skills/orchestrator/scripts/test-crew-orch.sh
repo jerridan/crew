@@ -1588,6 +1588,15 @@ expect_exit 0 corch close-item c4 --continue --stop-processes
 grep -q "^remove $TMP/wt/c4 --delete-branch --stop-processes\$" "$TMP/launcher.log" || fail "no --stop-processes call: $(grep '^remove' "$TMP/launcher.log")"
 pass
 
+STEP="R4 a subagent item with no worktree and a branch gets one inbox notice, and nothing is removed"
+expect_exit 0 corch item add c7 --title "Close c7" --repo owner/cl
+expect_exit 0 corch item c7 set subagent '{"name": "sub-c7", "branch": "worktree-agent-a1b2"}'
+: >"$TMP/launcher.log"
+expect_exit 0 corch close-item c7 --continue
+cjcheck 'len([e for e in s["inbox"] if e["kind"] == "notice" and e["item"] == "c7" and "worktree-agent-a1b2" in e["text"]]) == 1'
+grep -q "^remove" "$TMP/launcher.log" && fail "a remove ran for c7: $(cat "$TMP/launcher.log")"
+pass
+
 # ---------------------------------------------------------------- digest (R6)
 dorch() { python3 "$ORCH_PY" --orch dig "$@"; }
 expect_exit 0 dorch init

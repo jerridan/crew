@@ -10563,8 +10563,11 @@ Deliberately different:
      subagent built in the orchestrator's own worktree. An earlier item was
      dispatched with `isolation: "worktree"` and worked. `subagent-items.md`
      now orders that dispatch for work that changes a repo, and the
-     orchestrator writes the path and the branch that it returns into
-     `subagent.worktree` and `subagent.branch`. The close runs step 3 of
+     orchestrator writes the path and the branch from the agent id right after
+     the dispatch, and checks them against the task notification. An item in
+     another repo is an implementer item, because the isolation branches from
+     the repo of the orchestrator's session. A new dispatch names the recorded
+     worktree and branch and has no isolation. The close runs step 3 of
      `resume-and-close.md` on that worktree, so the branch of a merged PR is
      deleted. With no worktree and a branch, the close puts a notice in the
      inbox. No run has exercised it.

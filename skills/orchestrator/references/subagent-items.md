@@ -17,7 +17,8 @@ At intake, an item is a subagent item when all four hold:
    ticket.
 3. It changes no code, no test, no config and no instruction file. Or it is an
    obvious one-line fix, which may change any of them.
-4. It is one package, in one repo or in none, with at most one PR. No item
+4. It is one package, in the repo of the orchestrator's session or in none,
+   with at most one PR. An item in another repo is an implementer item. No item
    waits on its interface, and it has no deploy to watch.
 
 | Item | Result |
@@ -45,8 +46,8 @@ item or an implementer item, whatever the test gives.
 ## The record
 
 Before the dispatch, write `item <id> set subagent` with `name` and `model`,
-and with `worktree` and `branch` as `null`. The dispatch gives the worktree
-and the branch, so write them as "The dispatch" says, when it returns. Write a `plan change` whose reason names the test or
+and with `worktree` and `branch` as `null`. "The dispatch" says when to write
+them. Write a `plan change` whose reason names the test or
 the principal's word. Write the brief, and each later message to the subagent,
 with `told`.
 
@@ -60,10 +61,17 @@ with `told`.
 - The worktree: for work that changes a repo, dispatch the subagent with the
   Agent tool's `isolation: "worktree"`. The dispatch makes the worktree. The
   subagent runs no `git worktree add`: the guard of a worktree-isolated
-  session refuses it. When the dispatch returns the worktree path and the
-  branch, write them with `item <id> set subagent.worktree` and `item <id>
-  set subagent.branch`. Work that changes no repo gets no isolation and no
+  session refuses it. The spawn result gives the agent id at once. Right after the
+  dispatch, write `item <id> set subagent.worktree <checkout top
+  level>/.claude/worktrees/agent-<agent id>` and `item <id> set
+  subagent.branch worktree-agent-<agent id>`. When the task notification
+  arrives, compare them with its `<worktree>` element, and write the values
+  of the notification when they differ. Work that changes no repo gets no isolation and no
   worktree.
+- A new dispatch of a subagent that cannot resume: give no `isolation`. The
+  brief names `subagent.worktree` and `subagent.branch`, and says to work in
+  that worktree on that branch, with no `git worktree add` and no switch of
+  branch. The record keeps its values.
 - The brief: the goal, the outcome, and context marked as context, under the
   manager rule (`SKILL.md`'s "The manager rule"). It names the ticket for the
   `Closes #<n>` line, and gives these rules: open the PR ready, not as a
@@ -121,8 +129,9 @@ It goes through every check of `SKILL.md`'s "The merge".
   repos/<owner>/<repo>/pulls/<n>/comments`), and the names of the failed
   checks. At each arm and each wake, read each review, comment, open thread
   and failed check that `subagent.ready` does not answer.
-- Send those to the subagent: `SendMessage` to its name, or a new dispatch
-  under its name and brief when it cannot resume. It fixes, replies, resolves
+- Send those to the subagent: `SendMessage` to its name, which resumes it in its own worktree. When it
+  cannot resume, make a new dispatch under its name and brief, as "The
+  dispatch" says. It fixes, replies, resolves
   and pushes, then returns a new ready line. A finding that needs a judgment
   goes to "Larger than it looked".
 - After the merge, the item stays `merged` until `crew:delivered-window`'s

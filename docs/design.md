@@ -10571,3 +10571,51 @@ Deliberately different:
      `resume-and-close.md` on that worktree, so the branch of a merged PR is
      deleted. With no worktree and a branch, the close puts a notice in the
      inbox. No run has exercised it.
+166. **The orchestrator runs each fixed sequence in one call — 2026-11-25,
+    `crew-orch.py`, `hooks/session-start.py`.** The orchestrator ran the
+    merge, the launch, the word to an item, the close of an item and the
+    resume as hand sequences, one tool call for each step. Each step came
+    back through the model, so the orchestrator session grew with work that
+    needed no judgment.
+    - **Decision.** `crew-orch.py` gains `merge`, `finalize`, `send`,
+      `launch`, `close-item`, `digest`, `resume` and `wait`. Each runs the
+      steps that need no judgment and prints one line for each. A judgment
+      stays with the model, and the command takes the answer as a flag:
+      `--findings-answered` for the match of findings to the ready line,
+      `--stop-processes` for the test of whether a kept process is the
+      item's own, `--model` for the model. The brief check is one subagent on
+      a file that `digest --diff-file` writes, so the orchestrator reads the
+      deviations and never the whole diff. `orchestrator-record.md` owns each
+      command line, and `SKILL.md` says only when the orchestrator calls it.
+    - **No script sends a cross-session message.** A delivered item gets its
+      word by `window-watch.py say`, in one call. A live item gets it in two:
+      the command records the word and prints `send-to:`, and the
+      orchestrator sends it with one `SendMessage`. `handoff clear` ends a
+      pending word, and `wait` repeats the line `wake send` until it runs.
+    - **The poller replaces the `Monitor` watch and the GitHub wait loop.**
+      `wait` is a background Bash command with no model. It has no 30-minute
+      expiry and wakes the orchestrator for no timeout. It writes the usage
+      mode and `slots.max`, runs a queued merge, and frees the slot of a
+      merged or closed PR through `finalize`, which reads the PR fresh and
+      frees the slot once. A human approval, the case that the GitHub wait
+      covered, is the wake `review <item>: approved`. Its first poll of an
+      item is a baseline and wakes nobody.
+    - **The board holds routine state.** A merge, a queued merge, a rebase
+      word and a mode change go to `events` in the record, and the board and
+      its pane show the last 8. The inbox holds only what needs the principal.
+    - **The restart reads the record.** `init` and `resume` store the session
+      id. The `SessionStart` hook, on `compact` and `resume`, prints `resume
+      --read-only` for the open record that holds the session id, and writes
+      nothing. The orchestrator then runs `resume` for the actions that need
+      a write.
+    - **The model for an orchestrator dispatch** is chosen in `band-rubric.md`
+      alone: `haiku` for a read-only lookup, `sonnet` for the brief check, and
+      a subagent item by its band.
+    - **The poller wakes only for a decision.** A red check, a conflict, a
+      comment and a review with words on an implementer item go to the board
+      as events, because the implementer handles its own PR. They wake for a
+      subagent item and for an item in `merge_queue`. A queue entry is a board
+      event, and a dequeue wakes. A human approval, a closed PR, a failed
+      queued merge, an inbox entry, a usage rise and a pending word wake.
+    - **Unexercised.** Only the seeded tests ran the commands, the poller and
+      the hook. No orchestrator run has used them.

@@ -132,6 +132,22 @@ carries the model its job needs, and a spawn-time value silently overrides it
 (design §12). Dispatching a critic at the package's band is the easy mistake:
 it reads like consistency and it quietly downgrades the check (design §15.35).
 
+## The orchestrator's dispatches
+
+This section is the only place that chooses a model for a dispatch of the
+orchestrator (`skills/orchestrator/SKILL.md`). A spawn-time `model` is
+always given.
+
+| Dispatch | Model | Why |
+|---|---|---|
+| A read-only lookup (`crew:scout`, `Explore`) | `haiku` | its tools are `Read`, `Glob` and `Grep`, which need no approval (see above) |
+| The brief check: the brief and the whole diff in one file, and the deviations back | `sonnet` | it compares a diff with a brief, and that takes judgment |
+| A subagent item, by the band its work would get | `light` and `standard`: `sonnet`. `deep`: `opus` | the band rules above apply to its work as to a package |
+| A subagent item whose tools are `Read`, `Glob` and `Grep` alone | `haiku` | no tool of it needs approval |
+
+A subagent item with `Bash`, `Write` or `Edit` never gets `haiku`. The
+principal can name a model for an item, and the principal's word wins.
+
 ## Researcher model rules (design §3)
 
 A research question has no file set and no acceptance criterion, so the

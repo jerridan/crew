@@ -86,6 +86,9 @@ line on stderr that says so.
 
 ## start
 
+The orchestrator runs `start` through `crew-orch.py launch`, which gives it
+the arguments below (`orchestrator-record.md` owns that command).
+
 ```
 launcher.py start --name <session-name> [--model <model>] [--settings <file-or-json>]
                   --principal <orchestrator current session name>

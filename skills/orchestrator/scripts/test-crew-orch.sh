@@ -833,7 +833,9 @@ pass
 
 STEP="subagent: the board row says subagent, and the outcome takes the place of doing"
 expect_exit 0 subs stage tickets build --doing "moves the tickets"
-subs board --json >"$TMP/sbj" || fail "board --json failed"
+# Both views read one pinned time, so an age column cannot differ across a second boundary.
+spin=$(date +%s)
+CREW_ORCH_NOW=$spin subs board --json >"$TMP/sbj" || fail "board --json failed"
 python3 "$TMP/check_json.py" "$TMP/sbj" || fail "a field of board --json is missing or of the wrong type"
 python3 - "$TMP/sbj" <<'PY' || fail "the subagent rows are wrong: $(cat "$TMP/sbj")"
 import json, sys
@@ -845,7 +847,7 @@ assert rows["old2"]["subagent"] is True and rows["old2"]["text"] == "subagent", 
 assert rows["impl"]["subagent"] is False and rows["esc"]["subagent"] is False, (rows["impl"], rows["esc"])
 assert not rows["impl"]["text"].startswith("subagent"), rows["impl"]
 PY
-subs board >"$TMP/sbt" || fail "board failed"
+CREW_ORCH_NOW=$spin subs board >"$TMP/sbt" || fail "board failed"
 grep -E '^ +[0-9]+ tickets .*subagent · moved 12 tickets' "$TMP/sbt" >/dev/null || fail "the text row of a subagent item: $(cat "$TMP/sbt")"
 python3 "$TMP/same_board.py" "$TMP/sbj" "$TMP/sbt" || fail "the subagent board views differ"
 expect_exit 0 subs item tickets set subagent.outcome null

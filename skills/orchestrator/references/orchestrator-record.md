@@ -531,6 +531,9 @@ line for each: `stop: ...`, `remove: ...`, `kept-process: <pid> <command>` for
 each process that kept the worktree, `notice: <id> <text>` for each notice it
 added, and `ticket: ...`. `remove` gets `--delete-branch --pr <n>` for a
 merged item, `--delete-branch` for an item with no PR, and neither otherwise.
+A subagent item gets no `stop`, and its removal reads `subagent.worktree`.
+With no `subagent.worktree` and a `subagent.branch`, the command removes and
+deletes nothing and adds one notice that names the branch.
 A failed `stop` skips the removal and adds a notice. A GitHub ticket closes
 only when the item landed. `--stop-processes` goes with `--continue` only,
 and tells `remove` to stop the kept processes. Without `--continue` it exits

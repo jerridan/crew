@@ -2081,6 +2081,7 @@ pass
 
 STEP="issue 193 resume passes --terminal from launch.terminal to find, and reads that implementer as live"
 for i in u1 u2; do
+  expect_exit 0 norch item add $i --title "Terminal $i" --repo owner/pc
   expect_exit 0 norch item $i set launch "{\"session_name\": \"$i\", \"worktree\": \"$TMP/wt/$i\", \"tab\": \"tmux:%1\", \"session_id\": \"sid-$i\"}"
   expect_exit 0 norch stage $i build
   printf 'the goal of %s\n' $i >"$TMP/g-$i.md"

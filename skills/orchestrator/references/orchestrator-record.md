@@ -485,7 +485,7 @@ the orchestrator runs it to retry after exit 10.
 
 | State | What the command does |
 |---|---|
-| `MERGED` | releases the slot of an implementer item once (`slot_released`), appends the event `merged PR #<n>`, sends the merge word, and sends the rebase word to the next unfinished item of the group order that shares a file (`words_sent`). Prints `merged: <item> (PR #<n>)`, and `rebase-word: <item>` only when it sent a word. When it cannot send the word, it appends the event `rebase word needs the orchestrator after <id> merged` and prints `rebase-word-needed: <item> (<how>)`. `<how>` is `SendMessage to its subagent <name>` or `it has no session, so send it once it has one`. The orchestrator then sends the rebase word itself |
+| `MERGED` | releases the slot of an implementer item once (`slot_released`), appends the event `merged PR #<n>`, sends the merge word, and sends the rebase word to the next unfinished item of the group order that shares a file (`words_sent`). Prints `merged: <item> (PR #<n>)`, and `rebase-word: <item>` only when it sent a word. When it cannot send the word, it appends the event `rebase word needs the orchestrator after <id> merged` and prints `rebase-word-needed: <item> (the rebase word needs the orchestrator: <how>)`. `<how>` is `SendMessage to its subagent <name>` or `it has no session, so send it once it has one`. The orchestrator then sends the rebase word itself |
 | `OPEN` | the merge queue of GitHub holds the PR. Prints `queued: <item> (...)`, sets `queued_at_github`, and adds the item to `merge_queue` |
 | `CLOSED` | releases the slot once, appends an event and sends no word. Prints `closed: <item> (...)` |
 

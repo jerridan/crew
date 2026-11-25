@@ -22,10 +22,6 @@ import type {
 
 type Engine = EngineInterface
 
-// One routine event of the board JSON (`events`). The key is absent on a record
-// with no event.
-type BoardEvent = { at: string; item: string; text: string; age: string }
-
 const PANE = 'orch-board'
 const POLL_MS = 5000
 const BOARD_PY = 'skills/orchestrator/scripts/crew-orch.py'
@@ -624,7 +620,7 @@ export const register: Register = on => {
 
     // The routine events: the bounded `events` list of the board JSON. An older
     // board has no such key, and then the pane draws no block.
-    const events = (b as OrchBoard & { events?: BoardEvent[] }).events ?? []
+    const events = b.events ?? []
     if (events.length > 0) {
       parts.push(<Box key="recent"><Text bold wrap="truncate">Recent</Text></Box>)
       events.forEach((ev, k) =>

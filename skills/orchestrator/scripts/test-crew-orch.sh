@@ -1705,4 +1705,180 @@ expect_exit 0 python3 "$ORCH_PY" --orch closer resume
 grep -q '^closed: ' "$TMP/out" || fail "no closed line: $(cat "$TMP/out")"
 pass
 
+# ---------------------------------------------------------------- wait (R5)
+# The usage stub now answers `check` from $TMP/level (default normal) and exits
+# with the code of the level, as crew-usage.py does.
+cat >"$TMP/bin/usagestub" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >>"$TMP/usage.log"
+if [ "\$1" = settings ]; then echo '{"statusLine": {"type": "command", "command": "stub"}}'; exit 0; fi
+lv=normal; [ -f "$TMP/level" ] && lv=\$(cat "$TMP/level")
+echo "\$lv five_hour=50% sampled=2026-11-24T10:00:00Z"
+case "\$lv" in slowed) exit 10 ;; stopped) exit 20 ;; *) exit 0 ;; esac
+EOF
+chmod +x "$TMP/bin/usagestub"
+rm -f "$TMP/level"
+worch() { python3 "$ORCH_PY" --orch wtr "$@"; }
+WD="$CREW_RECORD_ROOT/orchestrators/wtr"
+wjcheck() {
+  python3 "$ORCH_PY" --orch wtr show >"$TMP/wshow.json" || fail "show failed"
+  python3 - "$TMP/wshow.json" "$1" <<'PYW' || fail "check is false: $1"
+import json, sys
+s = json.load(open(sys.argv[1]))
+sys.exit(0 if eval(sys.argv[2]) else 1)
+PYW
+}
+# flip_pr <n> <python statement over d>: change a stub PR.
+flip_pr() {
+  python3 - "$TMP/gh/pr-$1.json" "$2" <<'PYF' || fail "cannot change pr $1"
+import json, sys
+d = json.load(open(sys.argv[1]))
+exec(sys.argv[2])
+json.dump(d, open(sys.argv[1], "w"))
+PYF
+}
+expect_exit 0 worch init
+expect_exit 0 worch pace set '{"slots": {"busy": 2, "max": 3}}'
+for i in p q r u v; do expect_exit 0 worch item add $i --title "Wait $i" --repo owner/wt; done
+n=951; for i in p q r u v; do expect_exit 0 worch item $i pr $n; n=$((n + 1)); done
+expect_exit 0 worch item u set launch '{"session_name": "sess-u", "worktree": "/x/u"}'
+seed_pr 951 9519519519519519519519519519519519519519 PENDING
+seed_pr 952 9529529529529529529529529529529529529529
+seed_pr 953 9539539539539539539539539539539539539539
+seed_pr 954 9549549549549549549549549549549549549549
+seed_pr 955 9559559559559559559559559559559559559559 SUCCESS REVIEW_REQUIRED
+flip_pr 955 'd["mergeStateStatus"] = "BLOCKED"'
+expect_exit 0 worch merge p --ready "ready 9519519: ok" --when-green
+wjcheck 's["merge_queue"] == ["p"]'
+expect_exit 0 worch refresh
+
+STEP="R5 (a) a run with no change prints nothing and ends after N polls"
+expect_exit 0 worch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "a quiet run printed: $(cat "$TMP/out")"
+wjcheck 's.get("wait_owner") is None'
+pass
+
+STEP="R5 (b) a rise to slowed writes the mode and slots.max, adds an event, and exits with one line"
+echo slowed >"$TMP/level"
+expect_exit 0 worch wait --interval 0.05 --polls 5
+[ "$(wc -l <"$TMP/out" | tr -d ' ')" -eq 1 ] || fail "not one line: $(cat "$TMP/out")"
+grep -q '^wake usage -: ' "$TMP/out" || fail "bad wake line: $(cat "$TMP/out")"
+wjcheck 's["pace"]["mode"] == "slowed" and s["pace"]["slots"]["max"] == 1 and s["pace"]["slots"]["busy"] == 2'
+wjcheck 'any("slowed" in e["text"] for e in s["events"])'
+worch board --json >"$TMP/board.json"
+python3 - "$TMP/board.json" <<'PY' || fail "no mode event on the board JSON"
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert any("slowed" in e["text"] for e in d["events"]), d.get("events")
+PY
+pass
+
+STEP="R5 (b) a run that stays at slowed keeps running with no line"
+expect_exit 0 worch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "a re-check printed: $(cat "$TMP/out")"
+pass
+
+STEP="R5 (c) a reset writes the mode and the restored slots.max and exits with one line"
+echo normal >"$TMP/level"
+expect_exit 0 worch wait --interval 0.05 --polls 5
+grep -q '^wake usage -: reset' "$TMP/out" || fail "no reset line: $(cat "$TMP/out")"
+wjcheck 's["pace"]["mode"] == "normal" and s["pace"]["slots"]["max"] == 3'
+pass
+
+STEP="R5 (d) a queued merge goes through when its checks pass, with no exit and no line"
+seed_pr 951 9519519519519519519519519519519519519519
+expect_exit 0 worch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "a routine merge printed: $(cat "$TMP/out")"
+grep -q 'pr merge 951 --repo owner/wt --rebase --match-head-commit 9519' "$TMP/gh/calls.log" || fail "no merge for 951"
+wjcheck 's["merge_queue"] == [] and s["pace"]["slots"]["busy"] == 1 and s["items"]["p"]["slot_released"] is True'
+wjcheck 'any(e["item"] == "p" and "merged" in e["text"] for e in s["events"])'
+pass
+
+STEP="R5 (e) a red check exits with one line"
+expect_exit 0 worch refresh
+flip_pr 952 'd["statusCheckRollup"][0]["conclusion"] = "FAILURE"'
+expect_exit 0 worch wait --interval 0.05 --polls 5
+[ "$(wc -l <"$TMP/out" | tr -d ' ')" -eq 1 ] || fail "not one line: $(cat "$TMP/out")"
+grep -q '^wake check q: ' "$TMP/out" || fail "bad wake line: $(cat "$TMP/out")"
+pass
+
+STEP="R5 (F1) a PR closed with no merge wakes once and releases its slot once"
+expect_exit 0 worch refresh
+flip_pr 953 'd["state"] = "CLOSED"'
+expect_exit 0 worch pace set '{"slots": {"busy": 3}}'
+expect_exit 0 worch wait --interval 0.05 --polls 5
+grep -q '^wake closed r: ' "$TMP/out" || fail "no closed wake: $(cat "$TMP/out")"
+wjcheck 's["pace"]["slots"]["busy"] == 2 and s["items"]["r"]["slot_released"] is True'
+expect_exit 0 worch wait --interval 0.05 --polls 3
+wjcheck 's["pace"]["slots"]["busy"] == 2'
+pass
+
+STEP="R5 (F2) a pending handoff makes wait exit with a wake send line, until it is cleared"
+flip_pr 954 'd["state"] = "MERGED"'
+expect_exit 0 worch finalize u
+expect_exit 0 worch wait --interval 0.05 --polls 3
+grep -q '^wake send u: send-to sess-u told ' "$TMP/out" || fail "no send wake: $(cat "$TMP/out")"
+expect_exit 0 worch handoff clear u
+expect_exit 0 worch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "a cleared handoff woke: $(cat "$TMP/out")"
+pass
+
+STEP="R5 (F3) an approval, a new review and a new comment each wake"
+expect_exit 0 worch refresh
+expect_exit 0 worch wait --interval 0.05 --polls 2
+flip_pr 955 'd["reviewDecision"] = "APPROVED"; d["mergeStateStatus"] = "CLEAN"'
+expect_exit 0 worch wait --interval 0.05 --polls 4
+grep -q '^wake review v: approved' "$TMP/out" || fail "no approval wake: $(cat "$TMP/out")"
+flip_pr 955 'd["comments"] = [{"id": "c1", "author": {"login": "rev"}, "createdAt": "2026-11-24T11:00:00Z", "body": "Why this?"}]'
+expect_exit 0 worch wait --interval 0.05 --polls 4
+grep -q '^wake comment v: rev ' "$TMP/out" || fail "no comment wake: $(cat "$TMP/out")"
+flip_pr 955 'd["comments"].append({"id": "c2", "author": {"login": "imp"}, "createdAt": "2026-11-24T11:05:00Z", "body": "own"})'
+expect_exit 0 worch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "the PR author's own comment woke: $(cat "$TMP/out")"
+flip_pr 955 'd["reviews"] = [{"id": "r1", "author": {"login": "rev2"}, "state": "COMMENTED", "createdAt": "2026-11-24T11:10:00Z", "body": "Rename."}]'
+expect_exit 0 worch wait --interval 0.05 --polls 4
+grep -q '^wake review v: rev2 ' "$TMP/out" || fail "no review wake: $(cat "$TMP/out")"
+pass
+
+STEP="R5 an implementer's question wakes as inbox"
+expect_exit 0 worch wait --interval 0.05 --polls 2
+expect_exit 0 worch ask u "Which file owns the shared type?"
+expect_exit 0 worch wait --interval 0.05 --polls 4
+grep -q '^wake inbox u: ' "$TMP/out" || fail "no inbox wake: $(cat "$TMP/out")"
+expect_exit 0 worch wait --interval 0.05 --polls 3
+[ ! -s "$TMP/out" ] || fail "the same entry woke twice: $(cat "$TMP/out")"
+pass
+
+STEP="R5 (F4) a second wait replaces the first by its owner token, and a superseded poller writes nothing"
+python3 "$ORCH_PY" --orch wtr wait --interval 0.1 --polls 600 >"$TMP/first.out" 2>&1 &
+FIRST=$!
+for _ in $(seq 1 50); do
+  python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get("wait_owner") else 1)' "$WD/orchestrator.json" && break
+  sleep 0.1
+done
+wjcheck 's["wait_owner"]["pid"] == '"$FIRST"
+expect_exit 0 worch wait --interval 0.05 --polls 2
+sleep 0.5
+kill -0 "$FIRST" 2>/dev/null && { kill "$FIRST"; fail "the first wait still runs after a second wait started"; }
+wait "$FIRST" 2>/dev/null
+# A foreign owner token: the poller sees it, exits with no write, and leaves the owner alone.
+python3 "$ORCH_PY" --orch wtr wait --interval 0.1 --polls 600 >"$TMP/third.out" 2>&1 &
+THIRD=$!
+for _ in $(seq 1 50); do
+  python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get("wait_owner") else 1)' "$WD/orchestrator.json" && break
+  sleep 0.1
+done
+python3 - "$WD/orchestrator.json" <<'PY'
+import json, sys
+p = sys.argv[1]
+s = json.load(open(p)); s["wait_owner"] = {"token": "foreign", "pid": 1}
+json.dump(s, open(p, "w"))
+PY
+for _ in $(seq 1 50); do kill -0 "$THIRD" 2>/dev/null || break; sleep 0.1; done
+kill -0 "$THIRD" 2>/dev/null && { kill "$THIRD"; fail "a superseded poller kept running"; }
+wait "$THIRD" 2>/dev/null
+wjcheck 's["wait_owner"]["token"] == "foreign"'
+[ ! -s "$TMP/third.out" ] || fail "a superseded poller printed: $(cat "$TMP/third.out")"
+pass
+
 echo "all checks passed"

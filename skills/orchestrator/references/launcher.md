@@ -189,6 +189,45 @@ answers that dialog. Its status line waits too.
     every process the helper started. Then the steps above apply. The helper
     gets a deadline 20 seconds shorter, and it stops itself at that deadline.
 
+  **The typed line and its file.** In iTerm2, the launcher types a short
+  line, not the command. macOS keeps at most 1024 bytes of one line when the
+  tty is in line mode, and a longer command loses its end and its newline.
+  So the launcher writes the command to a new file in `/tmp`, with
+  `mkstemp`: the name is `crew-launch-<random>.sh`, and the mode is 0600. The
+  file has two parts. Its first line removes the file itself. The rest is the
+  command above. The typed line sources the file in the shell of the tab:
+  ` . <file>`, with the path shell-quoted. The line, with its newline, is at
+  most 1024 bytes in UTF-8. When it is longer, the command exits 6 before a
+  tab opens. The helper and the `osascript` fallback type the same line. The
+  person's `PATH` and shell set-up apply as before, and the `exec` replaces
+  the shell of the tab as before. A good start leaves no file, because the
+  command removes it before `claude` starts. When the launcher fails after it
+  wrote the file, it removes the file.
+
+  **The process check.** After the line is typed, the launcher reads the tty
+  of the new tab (the `osascript` listing of the sessions) and waits until a
+  `claude` process runs on that tty. It reads the processes every 0.5
+  seconds. The wait is 60 seconds by default. `CREW_LAUNCHER_START_WAIT` sets
+  another wait, in seconds: a positive integer or decimal, such as `90` or
+  `2.5`. An absent variable gives 60. Any other value, an empty one included,
+  exits 2 before a worktree or a tab exists. Each read has a timeout of the
+  time that is left, and the tab close has 10 seconds. `start` prints its
+  JSON line and exits 0 only when that process is there. Otherwise:
+  - No `claude` process in the wait: the launcher closes the tab, removes the
+    file, keeps the worktree, and exits 10. One line on stderr names the tab,
+    the tty and the wait. A caller that tries again leaves no dead tab. A
+    warning of the helper fallback joins that line.
+  - The tty or the processes cannot be read: the launcher closes the tab,
+    removes the file, and exits 6.
+
+  The caller timeouts (`crew-orch.py launch` and `resume`, and
+  `window-watch.py`) are 300 seconds. They allow for the helper timeout, the
+  default wait and the short reads. A longer `CREW_LAUNCHER_START_WAIT` needs
+  a longer caller timeout.
+
+  tmux and Herdr pass the command as an argument. They type nothing, and they
+  run no process check.
+
 **The output.** Stdout carries one line: one JSON object with exactly these
 ten fields.
 
@@ -253,8 +292,8 @@ cd <worktree> && exec <claude> --resume <id> --name <name> --model <model> --set
 ```
 
 It has no wait prompt. The tab rules of `start` apply whole: the tmux window,
-the iTerm2 helper, the `osascript` fallback, the Herdr tab, and the one-tab
-rule.
+the iTerm2 helper, the `osascript` fallback, the Herdr tab, the one-tab rule,
+and on iTerm2 the typed line with its file and the process check (exit 10).
 
 **The output.** The ten fields of `start`, with these values:
 
@@ -294,7 +333,8 @@ watcher gives no `--settings`. `crew-step.py park` (`park.md`) gives the value o
 **The tab.** The command that runs in the tab is the command of `start`, with
 `--cwd` for the worktree, a new `--session-id`, and the text of
 `--prompt-file` in place of the wait prompt. The tab rules of `start` apply
-whole.
+whole, and on iTerm2 that includes the typed line with its file and the
+process check (exit 10).
 
 **The output.** Stdout carries one line: one JSON object with seven fields:
 `session_name`, `model`, `terminal`, `tab`, `tab_group`, `session_id` (the new
@@ -679,11 +719,15 @@ that step 6 keeps is not a failure: `remove` exits 0.
 Each failure prints one line on stderr. Each subcommand runs its checks in
 a fixed order, and the first check that fails decides the exit:
 
-- `start`: 2, 4, 3, 5, 6. On Herdr, 4 means a missing program, and 2 and 6
-  come from the space check before any worktree.
-- `window`: 2, 4, 6. Then 6 when the tab does not open.
+- `start`: 2, 4, 3, 5, 6, then 10 on iTerm2. On Herdr, 4 means a missing
+  program, and 2 and 6 come from the space check before any worktree. On
+  iTerm2, 2 includes a bad `CREW_LAUNCHER_START_WAIT`, before any worktree.
+  Then 6 when the tab does not open, and 10 when no `claude` process starts.
+- `window`: 2, 4, 6. Then 6 when the tab does not open, then 10 on iTerm2
+  when no `claude` process starts.
 - `resume`: 2, 4, 5. Then 6 when `ps`, `lsof`, `osascript` or `hc` cannot list
-  the tabs, then 8. Then 6 when the tab does not open.
+  the tabs, then 8. Then 6 when the tab does not open, then 10 on iTerm2 when
+  no `claude` process starts.
 - `find`: 2, 4, 6. Exit 2 includes a `--terminal` value that is not `iterm2`,
   `tmux` or `herdr`.
 - `groups`: 2, 4. Exit 2 includes a `--terminal` value that is not `iterm2`,
@@ -702,10 +746,11 @@ a fixed order, and the first check that fails decides the exit:
 | 3 | no `Checkouts` line for `--repo`. The line names the repo and the section. No worktree |
 | 4 | unsupported terminal, or on Herdr no `herdr-app` or no `hc`. The line names `$TERM_PROGRAM` and the supported terminals, or the missing program. No worktree |
 | 5 | git failure, or the worktree path or branch exists. No tab. `resume`: a missing worktree, or no transcript and no `--session-id` |
-| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. On Herdr: the window does not answer, `tab.new` or `space.new` failed or timed out, `hc` failed, `herdr-app` failed in any other way (`focus`), no tab holds the terminal (`stop`), or `tab.close` failed and the tab is still there. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
+| 6 | the terminal step failed. `start` on tmux: the window did not open. `start` on iTerm2: the helper and the `osascript` fallback both failed, or a tab the helper opened did not close. `start`, `resume` and `window` on iTerm2: the launch file cannot be written, the typed line is longer than 1024 bytes, or the tty of the new tab or the processes cannot be read. For `start`, the worktree stays, and the line names its path. `focus` or `stop` on iTerm2: `osascript` failed. `stop` on tmux: `tmux kill-pane` failed. On Herdr: the window does not answer, `tab.new` or `space.new` failed or timed out, `hc` failed, `herdr-app` failed in any other way (`focus`), no tab holds the terminal (`stop`), or `tab.close` failed and the tab is still there. For `focus` and `stop`, the line names the handle and no worktree. `find`, and `resume` on iTerm2: `osascript` could not list the sessions. `ps` or `lsof` failed |
 | 7 | `focus` or `stop`: a handle with an unknown prefix. `focus`: a tab, pane or Herdr terminal that does not exist (on Herdr, one that Herdr names as unknown or that `hc get` does not find) |
 | 8 | `resume`: `find` sees an open tab or pane for this session. The line names each handle. No tab |
 | 9 | `remove` refused: changed or untracked files, a process in the worktree (with `--stop-processes`, only a process with a terminal), the caller's own working directory in the worktree, or a lock that `remove` cannot prove dead. Nothing changed. With `--stop-processes`, also a process in the worktree after `TERM` and `KILL`: one that did not stop, that `remove` could not signal, that changed its command, or that started during the stop. Also a dead lock owner whose pid runs again right before the unlock. The worktree, its lock and the branches stay |
+| 10 | `start`, `resume` and `window` on iTerm2: no `claude` process ran on the tty of the new tab in `CREW_LAUNCHER_START_WAIT` seconds (60 by default). The launcher closed the tab and removed the launch file. The worktree stays. The line names the tab, the tty and the wait. No other failure uses 10 |
 
 ## Test
 

@@ -521,13 +521,17 @@ file of `$CLAUDE_CODE_SESSION_ID`. It stores the start output in `launch`,
 writes `pace.slots.busy` one higher, and records `--goal-file` as the first
 `told` entry. Then it waits up to `--wait-seconds` (60 by default) for a
 session file that names the implementer. It prints the launcher line, then
-`goal-ready: <session name>` or `goal-wait: <reason>`. The orchestrator sends
+`goal-ready: <session name>` or `goal-wait: <reason>`. `goal-wait` means that
+a `claude` process started in the tab and has not registered, for example
+while the trust dialog waits. When `launcher.py` exits 10 (no `claude`
+process started on iTerm2), `launch` fails with exit 1 and the launcher line,
+and prints no `goal-wait`. The orchestrator sends
 the goal on `goal-ready`.
 
 Exit 3 prints `launch refused: <why>` when `pace.mode` is not `normal` or no
 slot is free. Exit 1 gives a failed `start` or settings call, no `Checkouts`
 line for the repo, no principal name, or an item that has a launch or a
-`subagent`.
+`subagent`. A `start` that exits 10 is a failed `start`.
 
 ### `close-item <item> [--continue] [--stop-processes] [--from <name>]`
 

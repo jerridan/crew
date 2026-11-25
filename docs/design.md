@@ -10679,3 +10679,21 @@ Deliberately different:
       `rejoin`, costs only the waiter's wake. The script and its output are
       in the run's record, `evidence/wakes.py` and `evidence/wake-cost.md`.
     - **Unexercised.** Only the seeded tests ran the park.
+
+169. **iTerm2 types a short line, and a launch checks for `claude` — 2026-11-25, `launcher.py`, jerridan/crew#192.**
+    On iTerm2, `launcher.py` typed the whole start command into the new tab.
+    When the shell was not ready, the tty was in line mode, and macOS keeps
+    at most 1024 bytes of one line (the canonical line limit). A longer
+    command lost its end and its newline, so no `claude` started. `start`
+    still exited 0, and `crew-orch.py launch` waited and printed a
+    `goal-wait` line that blamed the trust dialog. `start`, `resume` and
+    `window` all had the defect. tmux and Herdr pass the command as an
+    argument and type nothing, so they did not. Now the launcher writes the
+    command to a 0600 file in `/tmp` that removes itself first, and types
+    one short line that sources it, through the helper and through the
+    `osascript` fallback. It then waits until a `claude` process runs on the
+    tty of the new tab. The wait is 60 seconds, or the value of
+    `CREW_LAUNCHER_START_WAIT`. With no process, the launcher closes the tab,
+    keeps the worktree and exits 10. The callers have a timeout of 300
+    seconds, and `crew-orch.py launch` fails with the line of the launcher.
+    Only the seeded tests have run it, and no crew run has used it.

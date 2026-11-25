@@ -1,0 +1,1499 @@
+{
+  "identity": {
+    "repo": "/home/runner/work/crew/crew",
+    "pr": 191,
+    "github": {
+      "slug": "jerridan/crew",
+      "title": "Dispatch a subagent item with worktree isolation and delete its branch at the close",
+      "draft": false,
+      "labels": [],
+      "author": "jerridan",
+      "author_type": "User",
+      "author_write_access": true,
+      "fork": false,
+      "head_repo": "jerridan/crew",
+      "url": "https://github.com/jerridan/crew/pull/191"
+    },
+    "run_kind": "later",
+    "prior": {
+      "head": "64ba71fda3a8f249e1f7a90893b0815247f518cb",
+      "source": "record",
+      "record": "/home/runner/work/_temp/pr-review-records/pr-191/2026-11-25T043553.423Z-64ba71f.json",
+      "open": [
+        "26d2d9bf95c688f0",
+        "89e950a41a26d8aa"
+      ],
+      "dismissed": [
+        "3b4e13052a323833",
+        "6fa0393409db3bcf"
+      ],
+      "fetch_failed": false
+    },
+    "base": "ce3abb34be6dc3538a6becd6b2d927179b1597e5",
+    "head": "107678583a978d1a307a237d9273188089fb2c0e",
+    "started_at": "2026-11-25T04:39:08.420Z",
+    "tool_version": "0.21.0",
+    "config_hash": "a6d836b9ee726bb7a12d6cbb9374b23076cf5f5fe17ee88abf64d4b06fa847e8",
+    "config": {
+      "files": [
+        ".pr-review/config.yaml"
+      ],
+      "values": {
+        "thresholds": {
+          "default": 80,
+          "middle_band": [
+            60,
+            85
+          ]
+        },
+        "reviewers": {},
+        "suppressions": [],
+        "sensitive_globs": [],
+        "generated_globs": [],
+        "skip": {
+          "draft": true,
+          "title_keywords": [],
+          "labels": [],
+          "bot_authors": []
+        },
+        "caps": {
+          "non_blocking_base": 3,
+          "non_blocking_per_hunks": 4,
+          "non_blocking_max": 20
+        },
+        "models": {},
+        "pre_existing": "off",
+        "concurrency": 5,
+        "token_ceiling": null
+      },
+      "custom_reviewers": []
+    },
+    "description": "Dispatch a subagent item with worktree isolation and delete its branch at the close\n\n## Summary\n\nA subagent item now gets its worktree from the dispatch, with `isolation: \"worktree\"`, and not from a `git worktree add` that the subagent runs. The guard of a worktree-isolated orchestrator session refused that command, and the subagent then built inside the orchestrator's own worktree. The close of a subagent item also deletes the branch of a merged PR now.\n\n**Ticket:** N/A\n**Type:** Bug fix\n\n---\n\n## Agent context\n\n### Authority\n\n`skills/orchestrator/references/subagent-items.md` owns the subagent item. `skills/orchestrator/references/resume-and-close.md` step 3 and `skills/orchestrator/references/launcher.md` \"remove\" own the removal flags and the proof rules. Design section 15.165.\n\n### What changed, by file\n\n- `skills/orchestrator/references/subagent-items.md`: \"The dispatch\" orders `isolation: \"worktree\"` for work that changes a repo, and says the orchestrator writes the returned path and branch into `subagent.worktree` and `subagent.branch`. \"The record\" writes both as `null` first. \"The close\" runs step 3 with its flags, and puts a notice in the inbox when the worktree is `null` and the branch is set.\n- `docs/design.md`: finding 165.\n- `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`: version 0.1.133.\n\n### Constraints that applied\n\nNo second copy of a rule: the close points at step 3 of `resume-and-close.md`. The inbox notice is the smaller rule, so the close needs no branch-only delete path. A grep of `skills/`, `agents/`, `README.md` and `docs/design.md` found no other text that says the subagent adds its own worktree.\n\n### How this was verified\n\nRead the three sections against `resume-and-close.md` and `launcher.md`. Grepped for `worktree add` and \"adds its worktree\". No script runs this.\n\n### Known gaps\n\nNo run has exercised it.\n\n\n### Review findings fixed\n\nThe blocking finding and the early-record suggestion are fixed in their threads. Two findings outside the diff are fixed too: a new dispatch of a subagent that cannot resume gives no isolation and names the recorded worktree and branch (`subagent-items.md` \"The dispatch\", pointed at by `resume-and-close.md`), and the `worktree` and `branch` rows of `orchestrator-record.md` match the new rule.\n",
+    "description_meta": {
+      "source": "pr",
+      "sanitized": false,
+      "truncated": false
+    },
+    "history": {
+      "built": true,
+      "truncated": false
+    },
+    "injected": [
+      {
+        "path": "CLAUDE.md",
+        "truncated": true
+      }
+    ],
+    "changed_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "hunks": 1
+      },
+      {
+        "path": ".claude-plugin/plugin.json",
+        "hunks": 1
+      },
+      {
+        "path": "docs/design.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/orchestrator-record.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/resume-and-close.md",
+        "hunks": 1
+      },
+      {
+        "path": "skills/orchestrator/references/subagent-items.md",
+        "hunks": 5
+      }
+    ],
+    "excluded_files": [],
+    "sensitive_files": [],
+    "triage": {
+      "tier": "full",
+      "reason": "The markdown files are instructions that the orchestrator agent executes, so this changes dispatch, record-write and close behavior (worktree isolation, branch naming, cleanup), not just docs.",
+      "confidence": "medium",
+      "categories": [
+        "bug",
+        "docs",
+        "other"
+      ],
+      "hotspots": [
+        "skills/orchestrator/references/subagent-items.md: The dispatch worktree bullet (path `.claude/worktrees/agent-<id>` and branch `worktree-agent-<id>` derived from the agent id)",
+        "skills/orchestrator/references/subagent-items.md: The record (worktree and branch written as null, then set after the dispatch)",
+        "skills/orchestrator/references/subagent-items.md: close section (step 3 on the worktree, notice when the worktree is null and a branch is set)",
+        "skills/orchestrator/references/resume-and-close.md: build and pr re-dispatch wording",
+        "skills/orchestrator/references/subagent-items.md: item test 4 (other-repo items become implementer items)"
+      ],
+      "file_notes": [
+        {
+          "file": ".claude-plugin/marketplace.json",
+          "note": "version bump 0.1.132 to 0.1.133"
+        },
+        {
+          "file": ".claude-plugin/plugin.json",
+          "note": "version bump, matches marketplace.json"
+        },
+        {
+          "file": "docs/design.md",
+          "note": "new design entry 165 describing the change; docs only"
+        },
+        {
+          "file": "skills/orchestrator/references/orchestrator-record.md",
+          "note": "field descriptions for worktree and branch now say when they are written and corrected"
+        },
+        {
+          "file": "skills/orchestrator/references/resume-and-close.md",
+          "note": "re-dispatch lines now point to the new-dispatch rule; the wording is long and unwrapped"
+        },
+        {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "note": "main behavior change: isolation:\"worktree\" dispatch, record timing, new dispatch with no isolation, close cleanup, and the repo restriction in the intake test"
+        }
+      ],
+      "summary": "Subagent items now get their worktree from the Agent tool's `isolation: \"worktree\"` dispatch. Before, the brief told the subagent to run `git worktree add`, and the isolated session's guard refused that. The orchestrator writes the worktree path and branch from the agent id right after the dispatch and checks them against the task notification. A re-dispatch names the recorded worktree and has no isolation. The close runs step 3 on that worktree and puts a notice in the inbox when a branch has no worktree. Items in another repo become implementer items. The change also bumps the plugin version and adds a design note."
+    },
+    "tier": "full",
+    "tier_reason": "Triage: The markdown files are instructions that the orchestrator agent executes, so this changes dispatch, record-write and close behavior (worktree isolation, branch naming, cleanup), not just docs.",
+    "selected_reviewers": [
+      {
+        "name": "conventions",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "diff-bugs",
+        "trigger": "min_tier fast <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "docs-and-comments",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "history",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      },
+      {
+        "name": "security",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "tools_ignored": []
+      },
+      {
+        "name": "tests",
+        "trigger": "min_tier full <= full; paths: any; categories: any",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "tools_ignored": []
+      }
+    ],
+    "models": {
+      "triage": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "reviewer": {
+        "model": "claude-opus-5-5",
+        "effort": "low"
+      },
+      "verifier": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "verifier-escalation": {
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "merge": {
+        "model": "claude-sonnet-5-5",
+        "effort": "medium"
+      },
+      "smoke": {
+        "model": "claude-sonnet-5-5",
+        "effort": "low"
+      }
+    },
+    "mode": "full"
+  },
+  "stages": {
+    "reviewers": [
+      {
+        "name": "conventions",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 5675,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5841,
+              "outputTokens": 236,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0007021,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 216,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 459,
+              "cacheReadInputTokens": 10262,
+              "cacheCreationInputTokens": 5350,
+              "webSearchRequests": 0,
+              "costUSD": 0.0540404,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 144,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0547425
+        }
+      },
+      {
+        "name": "diff-bugs",
+        "pass": 1,
+        "status": "ok",
+        "findings": [
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 64,
+            "end_line": 69,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The rule assumes the spawn result returns the agent id at once and that a task notification follows, but the dispatch mode it uses can be a foreground subagent dispatch, which returns only when the subagent finishes and sends no task notification.",
+            "evidence": "The spawn result gives the agent id at once. Right after the\n  dispatch, write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "suggested_fix": "Say the dispatch runs with `run_in_background` (or say how to get the worktree from the final tool result in foreground mode), and name the source of the agent id for each dispatch mode.",
+            "explanation": "In subagent mode without `run_in_background`, no id comes back until the work is done and no `<worktree>` notification arrives, so the record write and the check never happen as the rule says.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 65,
+            "end_line": 67,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "The path is built from the orchestrator's `<checkout top level>`. In a worktree-isolated orchestrator session, that is the orchestrator's own worktree, which may not be the root where the Agent tool puts isolation worktrees.",
+            "evidence": "`item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "suggested_fix": "Get the path from `git worktree list --porcelain` by matching the branch `worktree-agent-<id>`, not from the top level of the current checkout.",
+            "explanation": "If the guessed path is wrong and the session restarts before the notification corrects it, the resume sees the `build` worktree as gone and the close runs `remove` on a path that does not exist.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 71,
+            "end_line": 74,
+            "category": "bug",
+            "severity_estimate": "suggestion",
+            "confidence": "low",
+            "claim": "A re-dispatch with no isolation tells the subagent to work in another worktree's path. In a worktree-isolated orchestrator session, the same guard that refused `git worktree add` may refuse edits or a `cd` outside the session's worktree.",
+            "evidence": "A new dispatch of a subagent that cannot resume: give no `isolation`. The\n  brief names `subagent.worktree` and `subagent.branch`, and says to work in\n  that worktree on that branch",
+            "explanation": "The non-isolated subagent inherits the orchestrator's cwd and guard, so it may fall back to building in the orchestrator's worktree, which is the failure this change is meant to fix.",
+            "needs_context": true
+          },
+          {
+            "file": "skills/orchestrator/references/subagent-items.md",
+            "start_line": 166,
+            "end_line": 170,
+            "category": "bug",
+            "severity_estimate": "nit",
+            "confidence": "low",
+            "claim": "The close runs step 3 on `subagent.worktree` whenever it is set, but the Agent tool removes an isolation worktree on its own when the subagent made no changes. `remove` is then run on a path that no longer exists, and the branch is never cleaned up.",
+            "evidence": "Run its\nstep 3 on `subagent.worktree` when it is set, with the flags of that step,\nso the branch of a merged PR is deleted.",
+            "suggested_fix": "When `subagent.worktree` is set but gone and `subagent.branch` is set, handle it like the null-worktree case and put a notice in the inbox.",
+            "explanation": "A recorded worktree that is gone falls into neither case (set and present, or null with a branch set), so the branch can be left behind with no notice.",
+            "needs_context": true
+          }
+        ],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 37507,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5845,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005965,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 12,
+              "outputTokens": 3575,
+              "cacheReadInputTokens": 122264,
+              "cacheCreationInputTokens": 19184,
+              "webSearchRequests": 0,
+              "costUSD": 0.2494728,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 1407,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.2500693
+        }
+      },
+      {
+        "name": "docs-and-comments",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 7284,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5835,
+              "outputTokens": 209,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.000688,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 189,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 6,
+              "outputTokens": 447,
+              "cacheReadInputTokens": 42075,
+              "cacheCreationInputTokens": 6558,
+              "webSearchRequests": 0,
+              "costUSD": 0.069843,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 142,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.070531
+        }
+      },
+      {
+        "name": "history",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 4692,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 11226,
+              "outputTokens": 20,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0011326,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 4,
+              "outputTokens": 461,
+              "cacheReadInputTokens": 31867,
+              "cacheCreationInputTokens": 11198,
+              "webSearchRequests": 0,
+              "costUSD": 0.0525967,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 269,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0537293
+        }
+      },
+      {
+        "name": "security",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-opus-5-5",
+          "durationMs": 3430,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5849,
+              "outputTokens": 181,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0006754,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 161,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-opus-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 191,
+              "cacheReadInputTokens": 10456,
+              "cacheCreationInputTokens": 5358,
+              "webSearchRequests": 0,
+              "costUSD": 0.0487832,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 21,
+              "canonicalModel": "claude-opus-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0494586
+        }
+      },
+      {
+        "name": "tests",
+        "pass": 1,
+        "status": "ok",
+        "findings": [],
+        "dropped": [],
+        "meta": {
+          "model": "claude-sonnet-5-5",
+          "durationMs": 1575,
+          "stopReason": "tool_use",
+          "subtype": "success",
+          "usage": {
+            "claude-haiku-5-5": {
+              "inputTokens": 5827,
+              "outputTokens": 24,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.0005947,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-haiku-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            },
+            "claude-sonnet-5-5": {
+              "inputTokens": 2,
+              "outputTokens": 93,
+              "cacheReadInputTokens": 11231,
+              "cacheCreationInputTokens": 5340,
+              "webSearchRequests": 0,
+              "costUSD": 0.0234171,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 128000,
+              "thinkingTokens": 0,
+              "canonicalModel": "claude-sonnet-5-5",
+              "provider": "firstParty",
+              "costBasis": "list"
+            }
+          },
+          "costUsd": 0.0240118
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 64,
+          "end_line": 69,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The rule assumes the spawn result returns the agent id at once and that a task notification follows, but the dispatch mode it uses can be a foreground subagent dispatch, which returns only when the subagent finishes and sends no task notification.",
+          "evidence": "The spawn result gives the agent id at once. Right after the\n  dispatch, write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+          "suggested_fix": "Say the dispatch runs with `run_in_background` (or say how to get the worktree from the final tool result in foreground mode), and name the source of the agent id for each dispatch mode.",
+          "explanation": "In subagent mode without `run_in_background`, no id comes back until the work is done and no `<worktree>` notification arrives, so the record write and the check never happen as the rule says.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The spawn result gives the agent id at once."
+          ],
+          "rationale": "The dispatch mode follows the project-lead table, which requires `run_in_background: true` for a named dispatch in subagent mode, so the id and notification flow holds there. Only the first foreground dispatch and teammate mode are uncertain, and the finding does not show those apply to subagent items.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The spawn result gives the agent id at once. Right after the",
+            "mode follows the table of `skills/project-lead/SKILL.md`'s \"Every dispatch\n  is named\".",
+            "1. Dispatch it without `run_in_background`, and alone.",
+            "In subagent mode, that first dispatch runs in the foreground and blocks\nyou until it ends.",
+            "| `run_in_background` | never: a teammate does not support it | always, after the first dispatch |"
+          ],
+          "rationale": "The new text sends the dispatch mode to the project-lead table. That table makes the first dispatch of each session a foreground one in subagent mode, and the orchestrator has no other agent dispatches, so a subagent item can easily be that first dispatch. In that case nothing comes back until the subagent ends, and the rule's \"agent id at once\" and \"task notification\" steps do not hold. Later dispatches in subagent mode run in the background, so this is an edge case and not the normal path.",
+          "score": 62,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "The spawn result gives the agent id at once. Right after the",
+            "mode follows the table of `skills/project-lead/SKILL.md`'s \"Every dispatch\n  is named\".",
+            "1. Dispatch it without `run_in_background`, and alone.",
+            "In subagent mode, that first dispatch runs in the foreground and blocks\nyou until it ends.",
+            "| `run_in_background` | never: a teammate does not support it | always, after the first dispatch |"
+          ],
+          "rationale": "The new text sends the dispatch mode to the project-lead table. That table makes the first dispatch of each session a foreground one in subagent mode, and the orchestrator has no other agent dispatches, so a subagent item can easily be that first dispatch. In that case nothing comes back until the subagent ends, and the rule's \"agent id at once\" and \"task notification\" steps do not hold. Later dispatches in subagent mode run in the background, so this is an edge case and not the normal path.",
+          "score": 62,
+          "severity": "suggestion"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 65,
+          "end_line": 67,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "The path is built from the orchestrator's `<checkout top level>`. In a worktree-isolated orchestrator session, that is the orchestrator's own worktree, which may not be the root where the Agent tool puts isolation worktrees.",
+          "evidence": "`item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+          "suggested_fix": "Get the path from `git worktree list --porcelain` by matching the branch `worktree-agent-<id>`, not from the top level of the current checkout.",
+          "explanation": "If the guessed path is wrong and the session restarts before the notification corrects it, the resume sees the `build` worktree as gone and the close runs `remove` on a path that does not exist.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "When the task notification\n  arrives, compare them with its `<worktree>` element, and write the values\n  of the notification when they differ."
+          ],
+          "rationale": "The path is guessed from the orchestrator's checkout top level and could differ from where the Agent tool puts the worktree. The doc already says to correct it from the notification, so the harm needs a restart in the short gap before that, and nothing in the repo shows where the tool puts the worktree.",
+          "score": 40,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "dispatch, write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "When the task notification\n  arrives, compare them with its `<worktree>` element, and write the values\n  of the notification when they differ.",
+            "`<checkout top level>` is the\nreal path of the checkout's top level: the output of `git rev-parse\n--show-toplevel` in the checkout, with every symlink resolved."
+          ],
+          "rationale": "The change guesses the path from `<checkout top level>`, which launcher.md defines as `git rev-parse --show-toplevel`. In a worktree-isolated orchestrator session that command returns the orchestrator's own worktree. The repo does not say whether the Agent tool roots its isolation worktrees there or at the main checkout. The change already corrects the value when the notification arrives, so a wrong value matters only if the session restarts before then, which is an unusual path.",
+          "score": 55,
+          "severity": "suggestion"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "dispatch, write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "When the task notification\n  arrives, compare them with its `<worktree>` element, and write the values\n  of the notification when they differ.",
+            "`<checkout top level>` is the\nreal path of the checkout's top level: the output of `git rev-parse\n--show-toplevel` in the checkout, with every symlink resolved."
+          ],
+          "rationale": "The change guesses the path from `<checkout top level>`, which launcher.md defines as `git rev-parse --show-toplevel`. In a worktree-isolated orchestrator session that command returns the orchestrator's own worktree. The repo does not say whether the Agent tool roots its isolation worktrees there or at the main checkout. The change already corrects the value when the notification arrives, so a wrong value matters only if the session restarts before then, which is an unusual path.",
+          "score": 55,
+          "severity": "suggestion"
+        },
+        "passed": true,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 71,
+          "end_line": 74,
+          "category": "bug",
+          "severity_estimate": "suggestion",
+          "confidence": "low",
+          "claim": "A re-dispatch with no isolation tells the subagent to work in another worktree's path. In a worktree-isolated orchestrator session, the same guard that refused `git worktree add` may refuse edits or a `cd` outside the session's worktree.",
+          "evidence": "A new dispatch of a subagent that cannot resume: give no `isolation`. The\n  brief names `subagent.worktree` and `subagent.branch`, and says to work in\n  that worktree on that branch",
+          "explanation": "The non-isolated subagent inherits the orchestrator's cwd and guard, so it may fall back to building in the orchestrator's worktree, which is the failure this change is meant to fix.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "A new dispatch of a subagent that cannot resume: give no `isolation`. The\n  brief names `subagent.worktree` and `subagent.branch`, and says to work in\n  that worktree on that branch, with no `git worktree add` and no switch of\n  branch."
+          ],
+          "rationale": "The worktree already exists as a sibling under the checkout's .claude/worktrees; the guard refused `git worktree add`, not edits in an existing worktree. The finding is speculative about the guard refusing edits or `cd`, and the file doesn't show that. The fallback also isn't the orchestrator's own worktree, since the brief names the recorded path.",
+          "score": 25,
+          "severity": "dont_post"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- A new dispatch of a subagent that cannot resume: give no `isolation`. The\n  brief names `subagent.worktree` and `subagent.branch`, and says to work in\n  that worktree on that branch, with no `git worktree add` and no switch of\n  branch. The record keeps its values.",
+            "dispatch, write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "It allowed `git worktree add` to\n     three roots: the session's scratchpad, `~/.claude/crew/`, and\n     `.claude/worktrees/crew/` inside the session's worktree. In each\n     worktree it allowed `git -C <path> status`",
+            "The guard's behavior may differ between Claude Code\n     versions, so the check probes instead of assuming."
+          ],
+          "rationale": "I can't confirm that the guard would refuse work in the recorded path. The agent worktree sits under `<checkout top level>/.claude/worktrees/`, which is likely inside the session's own worktree, and design item 126 found the guard allowed `git -C` there. The same design notes say the guard's behavior differs between Claude Code versions, so only a run can settle whether a re-dispatch with no isolation gets refused.",
+          "score": 35,
+          "severity": "unsure"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "- A new dispatch of a subagent that cannot resume: give no `isolation`. The\n  brief names `subagent.worktree` and `subagent.branch`, and says to work in\n  that worktree on that branch, with no `git worktree add` and no switch of\n  branch. The record keeps its values.",
+            "dispatch, write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "It allowed `git worktree add` to\n     three roots: the session's scratchpad, `~/.claude/crew/`, and\n     `.claude/worktrees/crew/` inside the session's worktree. In each\n     worktree it allowed `git -C <path> status`",
+            "The guard's behavior may differ between Claude Code\n     versions, so the check probes instead of assuming."
+          ],
+          "rationale": "I can't confirm that the guard would refuse work in the recorded path. The agent worktree sits under `<checkout top level>/.claude/worktrees/`, which is likely inside the session's own worktree, and design item 126 found the guard allowed `git -C` there. The same design notes say the guard's behavior differs between Claude Code versions, so only a run can settle whether a re-dispatch with no isolation gets refused.",
+          "score": 35,
+          "severity": "unsure"
+        },
+        "passed": false,
+        "unsure": "claim",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      },
+      {
+        "finding": {
+          "file": "skills/orchestrator/references/subagent-items.md",
+          "start_line": 166,
+          "end_line": 170,
+          "category": "bug",
+          "severity_estimate": "nit",
+          "confidence": "low",
+          "claim": "The close runs step 3 on `subagent.worktree` whenever it is set, but the Agent tool removes an isolation worktree on its own when the subagent made no changes. `remove` is then run on a path that no longer exists, and the branch is never cleaned up.",
+          "evidence": "Run its\nstep 3 on `subagent.worktree` when it is set, with the flags of that step,\nso the branch of a merged PR is deleted.",
+          "suggested_fix": "When `subagent.worktree` is set but gone and `subagent.branch` is set, handle it like the null-worktree case and put a notice in the inbox.",
+          "explanation": "A recorded worktree that is gone falls into neither case (set and present, or null with a branch set), so the branch can be left behind with no notice.",
+          "needs_context": true
+        },
+        "first": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "Run its\nstep 3 on `subagent.worktree` when it is set, with the flags of that step,\nso the branch of a merged PR is deleted."
+          ],
+          "rationale": "The Agent tool removes an isolation worktree, and its branch, only when the subagent made no changes. A merged PR means there were changes, so the worktree is kept and step 3 has a path to remove. An item with no changes has no branch left to clean up. The only open point is whether `remove` copes with a missing path, and that is an edge case.",
+          "score": 15,
+          "severity": "not_real"
+        },
+        "escalated": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "Run its\nstep 3 on `subagent.worktree` when it is set, with the flags of that step,\nso the branch of a merged PR is deleted.",
+            "write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "raise Fail(GIT, \"launcher: the worktree %s does not exist\" % path)",
+            "worktree, main_tree, gitdir = linked_worktree(path)"
+          ],
+          "rationale": "It is true that the record can keep a path the Agent tool has already removed. The harm the finding describes does not follow. `launcher.py remove` fails loudly when the worktree does not exist, so the orchestrator sees an error rather than a silent skip. And when the tool auto-cleans a worktree with no changes, its branch is removed with it and has no commits to keep, so nothing is left behind unnoticed.",
+          "score": 28,
+          "severity": "not_real"
+        },
+        "final": {
+          "in_scope": true,
+          "claim_holds": false,
+          "introduced_by_pr": true,
+          "quotes": [
+            "Run its\nstep 3 on `subagent.worktree` when it is set, with the flags of that step,\nso the branch of a merged PR is deleted.",
+            "write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "raise Fail(GIT, \"launcher: the worktree %s does not exist\" % path)",
+            "worktree, main_tree, gitdir = linked_worktree(path)"
+          ],
+          "rationale": "It is true that the record can keep a path the Agent tool has already removed. The harm the finding describes does not follow. `launcher.py remove` fails loudly when the worktree does not exist, so the orchestrator sees an error rather than a silent skip. And when the tool auto-cleans a worktree with no changes, its branch is removed with it and has no commits to keep, so nothing is left behind unnoticed.",
+          "score": 28,
+          "severity": "not_real"
+        },
+        "passed": false,
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "merges": [],
+    "capped": [],
+    "suppressed": [],
+    "pre_existing": []
+  },
+  "posted": {
+    "verdict": "would approve",
+    "coverage": {
+      "reviewers_ran": [
+        "conventions",
+        "diff-bugs",
+        "docs-and-comments",
+        "history",
+        "security",
+        "tests"
+      ],
+      "reviewers_failed": [],
+      "reviewers_skipped": [],
+      "reviewers_without_bash": [],
+      "sensitive_without_hunks": [],
+      "findings_dropped_by_failed_verifier": 0,
+      "findings_unsure": 1,
+      "findings_unsure_on_limit": 0
+    },
+    "findings": [],
+    "github": {
+      "review_id": 6051949534,
+      "review_url": "https://github.com/jerridan/crew/pull/191#pullrequestreview-6051949534",
+      "author": "github-actions[bot]",
+      "error": null,
+      "inline": [],
+      "in_body": [],
+      "check_run": {
+        "id": 138983412108
+      },
+      "cleanup_comment_id": null,
+      "resolved": [],
+      "errors": []
+    },
+    "below_floor": [
+      {
+        "file": "skills/orchestrator/references/subagent-items.md",
+        "start_line": 65,
+        "end_line": 67,
+        "category": "bug",
+        "severity_estimate": "suggestion",
+        "confidence": "low",
+        "claim": "The path is built from the orchestrator's `<checkout top level>`. In a worktree-isolated orchestrator session, that is the orchestrator's own worktree, which may not be the root where the Agent tool puts isolation worktrees.",
+        "evidence": "`item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+        "suggested_fix": "Get the path from `git worktree list --porcelain` by matching the branch `worktree-agent-<id>`, not from the top level of the current checkout.",
+        "explanation": "If the guessed path is wrong and the session restarts before the notification corrects it, the resume sees the `build` worktree as gone and the close runs `remove` on a path that does not exist.",
+        "needs_context": true,
+        "fingerprint": "da1ca705e9f11649",
+        "severity": "suggestion",
+        "score": 55,
+        "verifier": {
+          "in_scope": true,
+          "claim_holds": true,
+          "introduced_by_pr": true,
+          "quotes": [
+            "dispatch, write `item <id> set subagent.worktree <checkout top\n  level>/.claude/worktrees/agent-<agent id>`",
+            "When the task notification\n  arrives, compare them with its `<worktree>` element, and write the values\n  of the notification when they differ.",
+            "`<checkout top level>` is the\nreal path of the checkout's top level: the output of `git rev-parse\n--show-toplevel` in the checkout, with every symlink resolved."
+          ],
+          "rationale": "The change guesses the path from `<checkout top level>`, which launcher.md defines as `git rev-parse --show-toplevel`. In a worktree-isolated orchestrator session that command returns the orchestrator's own worktree. The repo does not say whether the Agent tool roots its isolation worktrees there or at the main checkout. The change already corrects the value when the notification arrives, so a wrong value matters only if the session restarts before then, which is an unusual path.",
+          "score": 55,
+          "severity": "suggestion"
+        },
+        "span_text": "dispatch, write `item <id> set subagent.worktree <checkout top level>/.claude/worktrees/agent-<agent id>` and `item <id> set subagent.branch worktree-agent-<agent id>`. When the task notification",
+        "sources": [
+          {
+            "reviewer": "diff-bugs",
+            "pass": 1
+          }
+        ]
+      }
+    ],
+    "not_reposted": [],
+    "carried": []
+  },
+  "cost": {
+    "queries": [
+      {
+        "role": "triage",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 6843,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5143,
+            "outputTokens": 22,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005253,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 994,
+            "cacheReadInputTokens": 1262,
+            "cacheCreationInputTokens": 4656,
+            "webSearchRequests": 0,
+            "costUSD": 0.028694200000000003,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.029219500000000002
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "security",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 3430,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5849,
+            "outputTokens": 181,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0006754,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 161,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 191,
+            "cacheReadInputTokens": 10456,
+            "cacheCreationInputTokens": 5358,
+            "webSearchRequests": 0,
+            "costUSD": 0.0487832,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 21,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0494586
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "history",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4692,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 11226,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011326,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 461,
+            "cacheReadInputTokens": 31867,
+            "cacheCreationInputTokens": 11198,
+            "webSearchRequests": 0,
+            "costUSD": 0.0525967,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 269,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0537293
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "conventions",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 5675,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5841,
+            "outputTokens": 236,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0007021,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 216,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 459,
+            "cacheReadInputTokens": 10262,
+            "cacheCreationInputTokens": 5350,
+            "webSearchRequests": 0,
+            "costUSD": 0.0540404,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 144,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0547425
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "tests",
+        "pass": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 1575,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5827,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005947,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 93,
+            "cacheReadInputTokens": 11231,
+            "cacheCreationInputTokens": 5340,
+            "webSearchRequests": 0,
+            "costUSD": 0.0234171,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0240118
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "docs-and-comments",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "low",
+        "duration_ms": 7284,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5835,
+            "outputTokens": 209,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.000688,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 189,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 447,
+            "cacheReadInputTokens": 42075,
+            "cacheCreationInputTokens": 6558,
+            "webSearchRequests": 0,
+            "costUSD": 0.069843,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 142,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.070531
+      },
+      {
+        "role": "reviewer",
+        "reviewer": "diff-bugs",
+        "pass": 1,
+        "model": "claude-opus-5-5",
+        "effort": "medium",
+        "duration_ms": 37507,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 5845,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0005965,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 12,
+            "outputTokens": 3575,
+            "cacheReadInputTokens": 122264,
+            "cacheCreationInputTokens": 19184,
+            "webSearchRequests": 0,
+            "costUSD": 0.2494728,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1407,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.2500693
+      },
+      {
+        "role": "verifier",
+        "verification": 2,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 3160,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10112,
+            "outputTokens": 27,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010247000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 402,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9621,
+            "webSearchRequests": 0,
+            "costUSD": 0.042944699999999995,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0439694
+      },
+      {
+        "role": "verifier",
+        "verification": 1,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 4720,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10142,
+            "outputTokens": 242,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011352,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 220,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 597,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9651,
+            "webSearchRequests": 0,
+            "costUSD": 0.0450147,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 220,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0461499
+      },
+      {
+        "role": "verifier",
+        "verification": 3,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5548,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10139,
+            "outputTokens": 18,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010229,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 2,
+            "outputTokens": 631,
+            "cacheReadInputTokens": 4367,
+            "cacheCreationInputTokens": 9648,
+            "webSearchRequests": 0,
+            "costUSD": 0.0453427,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 276,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0463656
+      },
+      {
+        "role": "verifier",
+        "verification": 0,
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "duration_ms": 5731,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10167,
+            "outputTokens": 243,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011382000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 220,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-sonnet-5-5": {
+            "inputTokens": 4,
+            "outputTokens": 648,
+            "cacheReadInputTokens": 18410,
+            "cacheCreationInputTokens": 11664,
+            "webSearchRequests": 0,
+            "costUSD": 0.054985000000000006,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 177,
+            "canonicalModel": "claude-sonnet-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.0561232
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 1,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 18552,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10118,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010238,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 1683,
+            "cacheReadInputTokens": 35231,
+            "cacheCreationInputTokens": 14154,
+            "webSearchRequests": 0,
+            "costUSD": 0.1539622,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 825,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.154986
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 0,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 18014,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10167,
+            "outputTokens": 252,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0011427000000000002,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 229,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 1509,
+            "cacheReadInputTokens": 51873,
+            "cacheCreationInputTokens": 13422,
+            "webSearchRequests": 0,
+            "costUSD": 0.1479626,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 624,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1491053
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 2,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 21217,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10108,
+            "outputTokens": 24,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010228000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 6,
+            "outputTokens": 2008,
+            "cacheReadInputTokens": 34145,
+            "cacheCreationInputTokens": 14147,
+            "webSearchRequests": 0,
+            "costUSD": 0.160189,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 888,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.16121180000000002
+      },
+      {
+        "role": "verifier-escalation",
+        "verification": 3,
+        "model": "claude-opus-5-5",
+        "effort": "high",
+        "duration_ms": 27161,
+        "stop_reason": "tool_use",
+        "subtype": "success",
+        "usage": {
+          "claude-haiku-5-5": {
+            "inputTokens": 10139,
+            "outputTokens": 20,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0,
+            "webSearchRequests": 0,
+            "costUSD": 0.0010239000000000001,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 0,
+            "canonicalModel": "claude-haiku-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          },
+          "claude-opus-5-5": {
+            "inputTokens": 8,
+            "outputTokens": 2400,
+            "cacheReadInputTokens": 52737,
+            "cacheCreationInputTokens": 16150,
+            "webSearchRequests": 0,
+            "costUSD": 0.1877794,
+            "contextWindow": 1000000,
+            "maxOutputTokens": 128000,
+            "thinkingTokens": 1251,
+            "canonicalModel": "claude-opus-5-5",
+            "provider": "firstParty",
+            "costBasis": "list"
+          }
+        },
+        "cost_usd": 0.1888033
+      }
+    ],
+    "total_cost_usd": 1.3784765,
+    "queries_without_cost": 0,
+    "stage_ms": {
+      "config": 37,
+      "gather": 143,
+      "scope": 12,
+      "triage": 7651,
+      "find_verify": 72819,
+      "merge": 1
+    },
+    "errors": []
+  }
+}

@@ -283,7 +283,7 @@ rule that only the launcher and `crew-usage.py` start a `claude` process
 holds. `--name`, `--model`, `--settings`, `--group` and `--terminal` have the
 meanings and the checks of `start`. The `--model` default is `opus`. With no
 `--settings`, the `<json>` is `{"remoteControlAtStartup": false}`. The
-watcher gives no `--settings`. `crew-step.py park` gives the value of
+watcher gives no `--settings`. `crew-step.py park` (`park.md`) gives the value of
 `crew-usage.py settings`. `window` takes no `--group-color`.
 
 | Argument | Meaning |

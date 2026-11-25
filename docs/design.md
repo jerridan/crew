@@ -10667,5 +10667,15 @@ NNN. **A park ends the large session at a long wait — 2026-11-25,
       working IC cannot park, because the IC dies with the session. Waits
       after the hand-over belong to the window sessions. A `/crew:review` run
       does not park.
-    - **Cost:** `Cost: <the project lead fills this at integration>`
+    - **Cost.** Measured on this machine's 74 project-lead transcripts: 90
+      wakes came more than 1 hour after the previous turn. The cache write at
+      such a wake was 360,362 tokens at the median, 443,708 on average and
+      962,139 at most. After a park, the waiter's wake writes about 35,000
+      tokens: a launched session's first turn writes 28,644 at the median.
+      The resumed project lead then writes its context once, about 116,000
+      tokens after 20 turns at the median. So one wait costs about 150,000
+      tokens in place of 360,000 or more, and every later turn reads the
+      smaller context. A message that does not wake the run, such as a
+      `rejoin`, costs only the waiter's wake. The script and its output are
+      in the run's record, `evidence/wakes.py` and `evidence/wake-cost.md`.
     - **Unexercised.** Only the seeded tests ran the park.

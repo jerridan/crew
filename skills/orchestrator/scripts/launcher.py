@@ -12,6 +12,9 @@ usage:
                      [--settings <file-or-json>] [--repo <owner/repo>]
                      [--group <name>] [--group-color <#rrggbb>]
                      [--terminal iterm2|tmux|herdr]
+  launcher.py window --name <session-name> --cwd <dir> --prompt-file <file>
+                     [--model <model>] [--settings <file-or-json>]
+                     [--group <name>] [--terminal iterm2|tmux|herdr]
   launcher.py groups [--terminal iterm2|tmux|herdr]
   launcher.py find <session-name> [--worktree <path>] [--session-id <id>]
                    [--terminal iterm2|tmux|herdr]
@@ -83,7 +86,7 @@ RESUME_USAGE = (
 REMOVE_USAGE = "usage: launcher.py remove <worktree> [--delete-branch [--pr <number>]] [--stop-processes]"
 WINDOW_USAGE = (
     "usage: launcher.py window --name <session-name> --cwd <dir> --prompt-file <file> "
-    "[--model <model>] [--group <name>] [--terminal iterm2|tmux|herdr]"
+    "[--model <model>] [--settings <file-or-json>] [--group <name>] [--terminal iterm2|tmux|herdr]"
 )
 USAGE_LINE = (
     "usage: launcher.py start ... | resume ... | window ... | groups | find <session-name> "
@@ -360,6 +363,7 @@ def parse(argv):
     w.add_argument("--cwd", required=True)
     w.add_argument("--prompt-file", required=True)
     w.add_argument("--model", default="opus")
+    w.add_argument("--settings")
     w.add_argument("--group")
     w.add_argument("--terminal", choices=["iterm2", "tmux", "herdr"])
     g = sub.add_parser("groups", add_help=False)
@@ -432,7 +436,7 @@ def check_window(a):
     if a.group is not None and not a.group.strip():
         bad("--group is empty")
     a.group_color = None
-    a.settings_json = settings_json(None, bad)
+    a.settings_json = settings_json(a.settings, bad)
 
 
 def check_remove(a):
